@@ -8,12 +8,9 @@
 #include <mbgl/util/image.hpp>
 
 #include <exception>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wshadow"
-#include <nan.h>
-#pragma GCC diagnostic pop
+#include <napi.h>
+#include <uv.h>
+#include "napi_utils.hpp"
 
 namespace mbgl {
 class HeadlessFrontend;
@@ -27,51 +24,51 @@ struct NodeMapObserver : public mbgl::MapObserver {
 
 class RenderRequest;
 
-class NodeMap : public Nan::ObjectWrap {
+class NodeMap : public Napi::ObjectWrap<NodeMap> {
 public:
     struct RenderOptions;
     class RenderWorker;
 
-    NodeMap(v8::Local<v8::Object>);
+    NodeMap(const Napi::CallbackInfo& info);
     ~NodeMap() override;
 
-    static Nan::Persistent<v8::Function> constructor;
-    static Nan::Persistent<v8::Object> parseError;
+    static Napi::FunctionReference constructor;
+    static Napi::ObjectReference parseError;
 
-    static void Init(v8::Local<v8::Object>);
+    static void Init(Napi::Object target);
+    static Napi::Value New(const Napi::CallbackInfo& info);
 
-    static void New(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Load(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Loaded(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Render(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Release(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Cancel(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void AddSource(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void RemoveSource(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void AddLayer(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void RemoveLayer(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void AddImage(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void RemoveImage(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetLayerZoomRange(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetLayerProperty(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetFilter(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetSize(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetCenter(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetZoom(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetBearing(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetPitch(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetLight(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetAxonometric(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetXSkew(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void SetYSkew(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void DumpDebugLogs(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void QueryRenderedFeatures(const Nan::FunctionCallbackInfo<v8::Value>&);
+    Napi::Value Load(const Napi::CallbackInfo& info);
+    Napi::Value Loaded(const Napi::CallbackInfo& info);
+    Napi::Value Render(const Napi::CallbackInfo& info);
+    Napi::Value Release(const Napi::CallbackInfo& info);
+    Napi::Value Cancel(const Napi::CallbackInfo& info);
+    Napi::Value AddSource(const Napi::CallbackInfo& info);
+    Napi::Value RemoveSource(const Napi::CallbackInfo& info);
+    Napi::Value AddLayer(const Napi::CallbackInfo& info);
+    Napi::Value RemoveLayer(const Napi::CallbackInfo& info);
+    Napi::Value AddImage(const Napi::CallbackInfo& info);
+    Napi::Value RemoveImage(const Napi::CallbackInfo& info);
+    Napi::Value SetLayerZoomRange(const Napi::CallbackInfo& info);
+    Napi::Value SetLayerProperty(const Napi::CallbackInfo& info);
+    Napi::Value SetFilter(const Napi::CallbackInfo& info);
+    Napi::Value SetSize(const Napi::CallbackInfo& info);
+    Napi::Value SetCenter(const Napi::CallbackInfo& info);
+    Napi::Value SetZoom(const Napi::CallbackInfo& info);
+    Napi::Value SetBearing(const Napi::CallbackInfo& info);
+    Napi::Value SetPitch(const Napi::CallbackInfo& info);
+    Napi::Value SetLight(const Napi::CallbackInfo& info);
+    Napi::Value SetAxonometric(const Napi::CallbackInfo& info);
+    Napi::Value SetXSkew(const Napi::CallbackInfo& info);
+    Napi::Value SetYSkew(const Napi::CallbackInfo& info);
+    Napi::Value DumpDebugLogs(const Napi::CallbackInfo& info);
+    Napi::Value QueryRenderedFeatures(const Napi::CallbackInfo& info);
 
-    static void SetFeatureState(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void GetFeatureState(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void RemoveFeatureState(const Nan::FunctionCallbackInfo<v8::Value>&);
+    Napi::Value SetFeatureState(const Napi::CallbackInfo& info);
+    Napi::Value GetFeatureState(const Napi::CallbackInfo& info);
+    Napi::Value RemoveFeatureState(const Napi::CallbackInfo& info);
 
-    static v8::Local<v8::Value> ParseError(const char* msg);
+    static Napi::Value ParseError(const Napi::Env& env, const char* msg);
 
     void startRender();
     void startRender(const RenderOptions& options);
@@ -80,7 +77,11 @@ public:
     void release();
     void cancel();
 
-    static RenderOptions ParseOptions(v8::Local<v8::Object>);
+    static RenderOptions ParseOptions(const Napi::Object& obj);
+    
+    // Helper methods for reference counting
+    void ref();
+    void unref();
 
     const float pixelRatio;
     mbgl::MapMode mode;

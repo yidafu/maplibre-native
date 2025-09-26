@@ -1,10 +1,7 @@
 #pragma once
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wshadow"
-#include <nan.h>
-#pragma GCC diagnostic pop
+#include <node_api.h>
+#include "napi_utils.hpp"
 
 #include <mbgl/storage/file_source.hpp>
 #include <mbgl/storage/resource.hpp>
@@ -20,23 +17,24 @@ struct NodeAsyncRequest : public mbgl::AsyncRequest {
     NodeRequest* request = nullptr;
 };
 
-class NodeRequest : public Nan::ObjectWrap {
+class NodeRequest {
 public:
     NodeRequest(mbgl::FileSource::Callback, NodeAsyncRequest*);
-    ~NodeRequest() override;
+    ~NodeRequest();
 
-    static Nan::Persistent<v8::Function> constructor;
+    static napi_ref constructor;
 
-    static void Init(v8::Local<v8::Object>);
-
-    static void New(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void HandleCallback(const Nan::FunctionCallbackInfo<v8::Value>&);
+    static napi_value Init(napi_env, napi_value);
+    static napi_value New(napi_env, napi_callback_info);
+    static napi_value HandleCallback(napi_env, napi_callback_info);
 
     void unrefRequest();
 
     mbgl::FileSource::Callback callback;
     NodeAsyncRequest* asyncRequest;
-    Nan::AsyncResource* asyncResource = new Nan::AsyncResource("mbgl:execute");
+    napi_env env;
+    napi_ref wrapperRef;
+    napi_async_context asyncContext;
 };
 
 } // namespace node_mbgl

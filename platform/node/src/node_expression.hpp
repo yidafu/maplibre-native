@@ -1,39 +1,33 @@
 #pragma once
 
+#include <node_api.h>
 #include <mbgl/style/conversion_impl.hpp>
 #include <mbgl/style/expression/expression.hpp>
 #include <exception>
 #include <memory>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wshadow"
-#include <nan.h>
-#pragma GCC diagnostic pop
+#include "napi_utils.hpp"
 
 namespace node_mbgl {
 
-v8::Local<v8::Value> toJS(const mbgl::style::expression::Value&);
+napi_value toJS(napi_env env, const mbgl::style::expression::Value&);
 
-class NodeExpression : public Nan::ObjectWrap {
+class NodeExpression {
 public:
-    static void Init(v8::Local<v8::Object>);
+    static napi_value Init(napi_env env, napi_value exports);
+    static napi_value New(napi_env env, napi_callback_info info);
+    static napi_value Parse(napi_env env, napi_callback_info info);
+    static napi_value Evaluate(napi_env env, napi_callback_info info);
+    static napi_value GetType(napi_env env, napi_callback_info info);
+    static napi_value IsFeatureConstant(napi_env env, napi_callback_info info);
+    static napi_value IsZoomConstant(napi_env env, napi_callback_info info);
+    static napi_value Serialize(napi_env env, napi_callback_info info);
 
-private:
     NodeExpression(std::unique_ptr<mbgl::style::expression::Expression> expression_)
         : expression(std::move(expression_)) {};
+    ~NodeExpression() = default;
 
-    static void New(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Parse(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void Evaluate(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void GetType(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void IsFeatureConstant(const Nan::FunctionCallbackInfo<v8::Value>&);
-    static void IsZoomConstant(const Nan::FunctionCallbackInfo<v8::Value>&);
-
-    static void Serialize(const Nan::FunctionCallbackInfo<v8::Value>&);
-
-    static Nan::Persistent<v8::Function> constructor;
-
+private:
+    static inline napi_ref constructor = nullptr;
     std::unique_ptr<mbgl::style::expression::Expression> expression;
 };
 

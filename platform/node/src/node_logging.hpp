@@ -1,14 +1,9 @@
 #pragma once
 
+#include <node_api.h>
+#include "napi_utils.hpp"
 #include "util/async_queue.hpp"
-
 #include <mbgl/util/logging.hpp>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Wshadow"
-#include <nan.h>
-#pragma GCC diagnostic pop
 
 namespace node_mbgl {
 
@@ -19,14 +14,15 @@ class AsyncQueue;
 
 class NodeLogObserver : public mbgl::Log::Observer {
 public:
-    NodeLogObserver(v8::Local<v8::Object> target);
+    NodeLogObserver(napi_env env, napi_value target);
     ~NodeLogObserver() override;
 
     // Log::Observer implementation
     bool onRecord(mbgl::EventSeverity severity, mbgl::Event event, int64_t code, const std::string& text) override;
 
 private:
-    Nan::Persistent<v8::Object> module;
+    napi_env env;
+    napi_ref moduleRef;
 
     struct LogMessage;
     util::AsyncQueue<LogMessage>* queue;

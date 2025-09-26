@@ -1,4 +1,9 @@
 #include "node_feature.hpp"
+#include "napi_utils.hpp"
+#include <node_api.h>
+#include <mbgl/util/feature.hpp>
+#include <mbgl/style/conversion/geojson.hpp>
+#include <mapbox/geometry/geometry.hpp>
 
 namespace node_mbgl {
 
@@ -14,141 +19,142 @@ using Properties = mbgl::PropertyMap;
 template <class T>
 struct ToType {
 public:
-    v8::Local<v8::String> operator()(const empty&) { return type("Empty"); }
+    napi_env env;
+    
+    ToType(napi_env e) : env(e) {}
+    
+    napi_value operator()(const empty&) { return type("Empty"); }
 
-    v8::Local<v8::String> operator()(const point<T>&) { return type("Point"); }
+    napi_value operator()(const point<T>&) { return type("Point"); }
 
-    v8::Local<v8::String> operator()(const line_string<T>&) { return type("LineString"); }
+    napi_value operator()(const line_string<T>&) { return type("LineString"); }
 
-    v8::Local<v8::String> operator()(const polygon<T>&) { return type("Polygon"); }
+    napi_value operator()(const polygon<T>&) { return type("Polygon"); }
 
-    v8::Local<v8::String> operator()(const multi_point<T>&) { return type("MultiPoint"); }
+    napi_value operator()(const multi_point<T>&) { return type("MultiPoint"); }
 
-    v8::Local<v8::String> operator()(const multi_line_string<T>&) { return type("MultiLineString"); }
+    napi_value operator()(const multi_line_string<T>&) { return type("MultiLineString"); }
 
-    v8::Local<v8::String> operator()(const multi_polygon<T>&) { return type("MultiPolygon"); }
+    napi_value operator()(const multi_polygon<T>&) { return type("MultiPolygon"); }
 
-    v8::Local<v8::String> operator()(const geometry_collection<T>&) { return type("GeometryCollection"); }
+    napi_value operator()(const geometry_collection<T>&) { return type("GeometryCollection"); }
 
 private:
-    v8::Local<v8::String> type(const char* type_) {
-        Nan::EscapableHandleScope scope;
-        return scope.Escape(Nan::New(type_).ToLocalChecked());
+    napi_value type(const char* type_) {
+        return node_mbgl::napi_utils::createString(env, type_);
     }
 };
 
 template <class T>
 struct ToCoordinatesOrGeometries {
 public:
+    napi_env env;
+    
+    ToCoordinatesOrGeometries(napi_env e) : env(e) {}
+    
     // Handles line_string, polygon, multi_point, multi_line_string,
     // multi_polygon, and geometry_collection.
     template <class E>
-    v8::Local<v8::Object> operator()(const std::vector<E>& vector) {
-        Nan::EscapableHandleScope scope;
-        v8::Local<v8::Array> result = Nan::New<v8::Array>(vector.size());
+    napi_value operator()(const std::vector<E>& vector) {
+        napi_value result = node_mbgl::napi_utils::createArray(env);
         for (std::size_t i = 0; i < vector.size(); ++i) {
-            Nan::Set(result, static_cast<uint32_t>(i), operator()(vector[i]));
+            node_mbgl::napi_utils::setArrayElement(env, result, static_cast<uint32_t>(i), operator()(vector[i]));
         }
-        return scope.Escape(result);
+        return result;
     }
 
-    v8::Local<v8::Object> operator()(const point<T>& point) {
-        Nan::EscapableHandleScope scope;
-        v8::Local<v8::Array> result = Nan::New<v8::Array>(2);
-        Nan::Set(result, 0, Nan::New(point.x));
-        Nan::Set(result, 1, Nan::New(point.y));
-        return scope.Escape(result);
+    napi_value operator()(const point<T>& point) {
+        napi_value result = node_mbgl::napi_utils::createArray(env);
+        node_mbgl::napi_utils::setArrayElement(env, result, 0, node_mbgl::napi_utils::createNumber(env, point.x));
+        node_mbgl::napi_utils::setArrayElement(env, result, 1, node_mbgl::napi_utils::createNumber(env, point.y));
+        return result;
     }
 
-    v8::Local<v8::Object> operator()(const geometry<T>& geometry) { return toJS(geometry); }
+    napi_value operator()(const geometry<T>& geometry) { return toJS(env, geometry); }
 };
 
 struct ToValue {
-    v8::Local<v8::Value> operator()(mbgl::NullValue) {
-        Nan::EscapableHandleScope scope;
-        return scope.Escape(Nan::Null());
+    napi_env env;
+    
+    ToValue(napi_env e) : env(e) {}
+    
+    napi_value operator()(mbgl::NullValue) {
+        return node_mbgl::napi_utils::createNull(env);
     }
 
-    v8::Local<v8::Value> operator()(bool t) {
-        Nan::EscapableHandleScope scope;
-        return scope.Escape(Nan::New(t));
+    napi_value operator()(bool t) {
+        return node_mbgl::napi_utils::createBoolean(env, t);
     }
 
-    v8::Local<v8::Value> operator()(int64_t t) { return operator()(static_cast<double>(t)); }
+    napi_value operator()(int64_t t) { return operator()(static_cast<double>(t)); }
 
-    v8::Local<v8::Value> operator()(uint64_t t) { return operator()(static_cast<double>(t)); }
+    napi_value operator()(uint64_t t) { return operator()(static_cast<double>(t)); }
 
-    v8::Local<v8::Value> operator()(double t) {
-        Nan::EscapableHandleScope scope;
-        return scope.Escape(Nan::New(t));
+    napi_value operator()(double t) {
+        return node_mbgl::napi_utils::createNumber(env, t);
     }
 
-    v8::Local<v8::Value> operator()(const std::string& t) {
-        Nan::EscapableHandleScope scope;
-        return scope.Escape(Nan::New(t).ToLocalChecked());
+    napi_value operator()(const std::string& t) {
+        return node_mbgl::napi_utils::createString(env, t);
     }
 
-    v8::Local<v8::Value> operator()(const std::vector<mbgl::Value>& array) {
-        Nan::EscapableHandleScope scope;
-        v8::Local<v8::Array> result = Nan::New<v8::Array>();
+    napi_value operator()(const std::vector<mbgl::Value>& array) {
+        napi_value result = node_mbgl::napi_utils::createArray(env);
         for (std::size_t i = 0; i < array.size(); i++) {
-            Nan::Set(result, static_cast<uint32_t>(i), toJS(array[i]));
+            node_mbgl::napi_utils::setArrayElement(env, result, static_cast<uint32_t>(i), toJS(env, array[i]));
         }
-        return scope.Escape(result);
+        return result;
     }
 
-    v8::Local<v8::Value> operator()(const std::unordered_map<std::string, mbgl::Value>& map) { return toJS(map); }
+    napi_value operator()(const std::unordered_map<std::string, mbgl::Value>& map) { return toJS(env, map); }
 };
 
-v8::Local<v8::Object> toJS(const Geometry& geometry) {
-    Nan::EscapableHandleScope scope;
+napi_value toJS(napi_env env, const Geometry& geometry) {
+    napi_value result = node_mbgl::napi_utils::createObject(env);
 
-    v8::Local<v8::Object> result = Nan::New<v8::Object>();
+    node_mbgl::napi_utils::setProperty(env, result, "type", Geometry::visit(geometry, ToType<double>(env)));
 
-    Nan::Set(result, Nan::New("type").ToLocalChecked(), Geometry::visit(geometry, ToType<double>()));
+    node_mbgl::napi_utils::setProperty(
+        env,
+        result,
+        geometry.is<GeometryCollection>() ? "geometries" : "coordinates",
+        Geometry::visit(geometry, ToCoordinatesOrGeometries<double>(env))
+    );
 
-    Nan::Set(result,
-             Nan::New(geometry.is<GeometryCollection>() ? "geometries" : "coordinates").ToLocalChecked(),
-             Geometry::visit(geometry, ToCoordinatesOrGeometries<double>()));
-
-    return scope.Escape(result);
+    return result;
 }
 
-v8::Local<v8::Value> toJS(const Value& value) {
-    return Value::visit(value, ToValue());
+napi_value toJS(napi_env env, const Value& value) {
+    return Value::visit(value, ToValue(env));
 }
 
-v8::Local<v8::Object> toJS(const Properties& properties) {
-    Nan::EscapableHandleScope scope;
-
-    v8::Local<v8::Object> result = Nan::New<v8::Object>();
+napi_value toJS(napi_env env, const Properties& properties) {
+    napi_value result = node_mbgl::napi_utils::createObject(env);
     for (const auto& property : properties) {
-        Nan::Set(result, Nan::New(property.first).ToLocalChecked(), toJS(property.second));
+        node_mbgl::napi_utils::setProperty(env, result, property.first.c_str(), toJS(env, property.second));
     }
 
-    return scope.Escape(result);
+    return result;
 }
 
-v8::Local<v8::Object> toJS(const Feature& feature) {
-    Nan::EscapableHandleScope scope;
+napi_value toJS(napi_env env, const Feature& feature) {
+    napi_value result = node_mbgl::napi_utils::createObject(env);
 
-    v8::Local<v8::Object> result = Nan::New<v8::Object>();
-
-    Nan::Set(result, Nan::New("type").ToLocalChecked(), Nan::New("Feature").ToLocalChecked());
-    Nan::Set(result, Nan::New("geometry").ToLocalChecked(), toJS(feature.geometry));
-    Nan::Set(result, Nan::New("properties").ToLocalChecked(), toJS(feature.properties));
+    node_mbgl::napi_utils::setProperty(env, result, "type", node_mbgl::napi_utils::createString(env, "Feature"));
+    node_mbgl::napi_utils::setProperty(env, result, "geometry", toJS(env, feature.geometry));
+    node_mbgl::napi_utils::setProperty(env, result, "properties", toJS(env, feature.properties));
 
     if (!feature.id.is<mbgl::NullValue>()) {
-        Nan::Set(result, Nan::New("id").ToLocalChecked(), FeatureIdentifier::visit(feature.id, ToValue()));
+        node_mbgl::napi_utils::setProperty(env, result, "id", FeatureIdentifier::visit(feature.id, ToValue(env)));
     }
 
-    Nan::Set(result, Nan::New("source").ToLocalChecked(), toJS(feature.source));
+    node_mbgl::napi_utils::setProperty(env, result, "source", toJS(env, feature.source));
     if (!feature.sourceLayer.empty()) {
-        Nan::Set(result, Nan::New("sourceLayer").ToLocalChecked(), toJS(feature.sourceLayer));
+        node_mbgl::napi_utils::setProperty(env, result, "sourceLayer", toJS(env, feature.sourceLayer));
     }
-    Nan::Set(result, Nan::New("state").ToLocalChecked(), toJS(feature.state));
+    node_mbgl::napi_utils::setProperty(env, result, "state", toJS(env, feature.state));
 
-    return scope.Escape(result);
+    return result;
 }
 
 } // namespace node_mbgl
