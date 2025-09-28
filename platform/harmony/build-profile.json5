@@ -27,18 +27,6 @@
   },
   "modules": [
     {
-      "name": "entry",
-      "srcPath": "./entry",
-      "targets": [
-        {
-          "name": "default",
-          "applyToProducts": [
-            "default"
-          ]
-        }
-      ]
-    },
-    {
       "name": "maplibre_harmony",
       "srcPath": "./maplibre_harmony",
       "targets": [
