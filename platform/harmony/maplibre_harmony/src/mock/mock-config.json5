@@ -1,0 +1,5 @@
+{
+  "libmaplibre_harmony.so": {
+    "source": "src/mock/Libmaplibre_harmony.mock.ets"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "maplibre_harmony",
+  "version": "1.0.0",
+  "description": "Please describe the basic information.",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "libmaplibre_harmony.so": "file:./src/main/cpp/types/libmaplibre_harmony"
+  }
+}

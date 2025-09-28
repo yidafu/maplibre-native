@@ -1,0 +1,26 @@
+{
+  "module": {
+    "name": "maplibre_harmony",
+    "type": "feature",
+    "description": "$string:module_desc",
+    "mainElement": "MaplibreAbility",
+    "deviceTypes": [
+      "phone"
+    ],
+    "deliveryWithInstall": true,
+    "installationFree": false,
+    "pages": "$profile:main_pages",
+    "abilities": [
+      {
+        "name": "MaplibreAbility",
+        "srcEntry": "./ets/maplibreability/MaplibreAbility.ets",
+        "description": "$string:MaplibreAbility_desc",
+        "icon": "$media:layered_image",
+        "label": "$string:MaplibreAbility_label",
+        "startWindowIcon": "$media:startIcon",
+        "startWindowBackground": "$color:start_window_background",
+        "exported": true
+      }
+    ]
+  }
+}
