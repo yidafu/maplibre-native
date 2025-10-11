@@ -2,6 +2,11 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(harmony)
 
+add_subdirectory(
+    ../../../../../../
+    ${CMAKE_BINARY_DIR}/maplibre
+)
+
 ADD_DEFINITIONS(-DVK_USE_PLATFORM_OHOS=1)
 ADD_DEFINITIONS(-DOHOS_PLATFORM)
 
@@ -15,15 +20,21 @@ endif()
 include_directories(${NATIVERENDER_ROOT_PATH}
                     ${NATIVERENDER_ROOT_PATH}/include)
 
-#add_library(maplibre_harmony_loop STATIC)
-#
-#target_sources(
-#    maplibre_harmony_loop
-#    PRIVATE
-#        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/async_task.cpp
-#        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/run_loop.cpp
-#        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/timer.cpp
-#)
+target_include_directories(
+  maplibre
+  PRIVATE ${PROJECT_SOURCE_DIR}
+          ../../../../../src
+          ../../../src
+          ../../../../default/include)
+
+add_library(maplibre_harmony_loop STATIC)
+target_sources(
+    maplibre_harmony_loop
+    PRIVATE
+        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/async_task.cpp
+        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/run_loop.cpp
+        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/timer.cpp
+)
 #
 #target_include_directories(
 #    maplibre_harmony_loop
@@ -49,13 +60,13 @@ add_library(maplibre_harmony
     Render.cpp
     EGLCore.h
     EGLCore.cpp
-    common.h)
+    common.h
+#    native_map_view_harmony.cpp
+#    native_map_view_harmony.hpp
+    )
 
 find_library(
-    # Sets the name of the path variable.
     hilog-lib
-    # Specifies the name of the NDK library that
-    # you want CMake to locate.
     hilog_ndk.z
 )
 
@@ -70,4 +81,5 @@ PUBLIC libace_napi.z.so
     libGLESv3.so
     libEGL.so
     libnative_window.so
-    libvulkan.so)
+    libvulkan.so
+)

@@ -1,5 +1,6 @@
 // NativeMapView接口定义
-export interface NativeMapView {
+
+export class NativeMapView {
     constructor();
     
     // 基础方法
@@ -142,10 +143,11 @@ export interface NativeMapView {
     enableRenderingStatsView(enabled: boolean): void;
 }
 
-// XComponent相关接口
+// 原有接口定义
+
 export type XComponentContextStatus = {
-  hasDraw: boolean;
-  hasChangeColor: boolean;
+  hasDraw: boolean,
+  hasChangeColor: boolean,
 };
 
 export const SetSurfaceId: (id: BigInt) => any;
@@ -154,5 +156,3 @@ export const DrawPattern: (id: BigInt) => any;
 export const GetXComponentStatus: (id: BigInt) => XComponentContextStatus;
 export const ChangeColor: (id: BigInt) => any;
 export const DestroySurface: (id: BigInt) => any;
-
-export const add: (a: number, b: number) => number;
