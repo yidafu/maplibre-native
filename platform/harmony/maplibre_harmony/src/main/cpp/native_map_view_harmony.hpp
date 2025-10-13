@@ -1,16 +1,19 @@
 #ifndef MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 #define MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 
+#include <mbgl/map/change.hpp>
+#include <mbgl/map/camera.hpp>
+#include <mbgl/map/map.hpp>
+#include <mbgl/util/noncopyable.hpp>
+#include <mbgl/util/run_loop.hpp>
+#include <mbgl/tile/tile_operation.hpp>
+#include <mbgl/storage/network_status.hpp>
+
+#include <string>
+#include <memory>
+#include <vector>
 #include "common.h"
-
-// 定义NAPI相关类型以避免直接包含napi/native_api.h
-typedef void* napi_env;
-typedef void* napi_value;
-typedef void* napi_callback_info;
-
-typedef void* napi_ref;
-typedef void* napi_handle_scope;
-typedef void* napi_escapable_handle_scope;
+#include <js_native_api.h>
 
 typedef enum {
     napi_default = 0,
@@ -27,17 +30,6 @@ typedef struct {
     void* data;
 } napi_property_descriptor;
 
-#include <mbgl/map/change.hpp>
-#include <mbgl/map/camera.hpp>
-#include <mbgl/map/map.hpp>
-#include <mbgl/util/noncopyable.hpp>
-#include <mbgl/util/run_loop.hpp>
-#include <mbgl/tile/tile_operation.hpp>
-#include <mbgl/storage/network_status.hpp>
-
-#include <string>
-#include <memory>
-#include <vector>
 
 namespace mbgl {
 namespace harmony {

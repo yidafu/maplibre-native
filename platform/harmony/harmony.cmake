@@ -27,21 +27,21 @@ target_link_libraries(
 target_sources(
     mbgl-core
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/platform/android/src/async_task.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/attach_env.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/attach_env.hpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/bitmap.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/bitmap.hpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/bitmap_factory.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/bitmap_factory.hpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/image.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/jni.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/jni.hpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/run_loop.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/run_loop_impl.hpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/string_util.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/thread.cpp
-        ${PROJECT_SOURCE_DIR}/platform/android/src/timer.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/thread.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/async_task.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/attach_env.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/attach_env.hpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap.hpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap_factory.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap_factory.hpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/gl_functions.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/image.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop_impl.hpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/string_util.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/logging.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gfx/headless_backend.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gfx/headless_frontend.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/map/map_snapshotter.cpp
@@ -98,21 +98,21 @@ target_link_libraries(
     PRIVATE
         EGL
         GLESv3
-        MapLibreNative::Base::jni.hpp
-        android
-        atomic
-        jnigraphics
-        log
         mbgl-vendor-icu
-        mbgl-vendor-sqlite
-        z
+    mbgl-vendor-sqlite
+    z
+    hilog_ndk.z
+    uv
+    ace_ndk.z
+    native_window
+    vulkan
 )
 
 # this is needed because Android is not officially supported
 # https://discourse.cmake.org/t/error-when-crosscompiling-with-whole-archive-target-link/9394
 # https://cmake.org/cmake/help/latest/release/3.24.html#generator-expressions
 set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE
-"-Wl,--whole-archive <LIBRARY> -Wl,--no-whole-archive"
+"-Wl,--whole-archive <LIBRARY>-Wl,--no-whole-archive"
 )
 set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED True)
 
@@ -120,3 +120,4 @@ find_package(curl CONFIG)
 
 
 install(TARGETS  LIBRARY DESTINATION lib)
+

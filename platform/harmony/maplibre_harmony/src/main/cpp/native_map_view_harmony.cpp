@@ -11,10 +11,6 @@
 #include <mbgl/util/timer.hpp>
 #include <napi/native_api.h>
 
-// 定义NAPI相关类型以避免直接包含napi/native_api.h
-typedef void* napi_env;
-typedef void* napi_value;
-typedef void* napi_callback_info;
 
 #include <memory>
 #include <string>
@@ -48,6 +44,7 @@ NativeMapView::~NativeMapView() {
 void NativeMapView::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
     delete static_cast<NativeMapView*>(nativeObject);
 }
+
 
 napi_value NativeMapView::Init(napi_env env, napi_value exports) {
     napi_status status;
