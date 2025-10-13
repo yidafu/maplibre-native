@@ -963,7 +963,7 @@ const auto& filterTypeInCompoundExpression() {
         [](const EvaluationContext& params, const Varargs<std::string>& types) -> Result<bool> {
             assert(params.feature);
             const auto type = featureTypeAsString(params.feature->getType());
-            return std::ranges::find(types, type) != types.end();
+            return std::find(types.begin(), types.end(), type) != types.end();
         },
         Dependency::Feature);
     return signature;
@@ -974,7 +974,7 @@ const auto& filterIdInCompoundExpression() {
         "filter-id-in",
         [](const EvaluationContext& params, const Varargs<Value>& ids) -> Result<bool> {
             const auto id = featureIdAsExpressionValue(params);
-            return std::ranges::find(ids, id) != ids.end();
+            return std::find(ids.begin(), ids.end(), id) != ids.end();
         },
         Dependency::Feature);
     return signature;

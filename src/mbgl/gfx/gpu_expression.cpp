@@ -55,7 +55,7 @@ auto addStop(UniqueGPUExpression& expr, GPUOutputType outType, std::size_t& inde
                     assert(value.is<Color>());
                     if (value.is<Color>()) {
                         const auto& color = attributeValue(value.get<Color>());
-                        std::ranges::copy(color, &expr->stops.colors[2 * index++]);
+                        std::copy(std::begin(color), std::end(color), &expr->stops.colors[2 * index++]);
                     } else {
                         // Evaluation error, cancel
                         expr.reset();

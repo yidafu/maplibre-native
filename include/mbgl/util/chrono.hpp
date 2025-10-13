@@ -54,7 +54,7 @@ constexpr std::chrono::duration<Rep, Period> abs(std::chrono::duration<Rep, Peri
     requires(std::chrono::duration<Rep, Period>::min() < std::chrono::duration<Rep, Period>::zero())
 {
     return d >= d.zero() ? d : -d;
-}
+};
 #endif
 
 } // namespace util

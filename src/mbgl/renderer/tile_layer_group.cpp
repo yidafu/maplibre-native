@@ -41,7 +41,7 @@ std::vector<gfx::UniqueDrawable> TileLayerGroup::removeDrawables(mbgl::RenderPas
             return std::move(pair.second);
         });
     drawablesByTile.erase(range.first, range.second);
-    std::ranges::for_each(result, [&](const auto& item) {
+    std::for_each(result.begin(), result.end(), [&](const auto& item) {
         const auto hit = sortedDrawables.find(item.get());
         assert(hit != sortedDrawables.end());
         if (hit != sortedDrawables.end()) {

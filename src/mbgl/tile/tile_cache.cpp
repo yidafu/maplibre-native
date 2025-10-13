@@ -4,6 +4,7 @@
 #include <mbgl/util/instrumentation.hpp>
 
 #include <cassert>
+#include <algorithm>
 
 namespace mbgl {
 
@@ -43,7 +44,7 @@ namespace {
 struct CaptureWrapper {
     CaptureWrapper(std::vector<std::unique_ptr<Tile>>&& items_)
         : items(items_.size()) {
-        std::ranges::move(items_, items.begin());
+        std::move(items_.begin(), items_.end(), items.begin());
     }
     CaptureWrapper(CaptureWrapper&&) = default;
 
