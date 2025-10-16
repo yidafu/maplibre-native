@@ -6,6 +6,9 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "libmaplibre_harmony.so": "file:./src/main/cpp/types/libmaplibre_harmony"
-  }
+    "libmaplibre_native.so": "file:./src/main/cpp/types/libmaplibre_native",
+    "@types/geojson": "^7946.0.16"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
 }

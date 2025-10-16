@@ -6,17 +6,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
-endif()
-
 if(CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     # 鸿蒙系统特定的 C++20 设置
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fPIC")
     # 忽略未使用的命令行参数警告
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-command-line-argument")
+    # 启用 RTTI 支持
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
 endif()
 
 link_directories(/opt/homebrew/opt)
@@ -40,10 +36,18 @@ message(STATUS "NATIVERENDER_ROOT_PATH\"${NATIVERENDER_ROOT_PATH}\"")
 include_directories(${NATIVERENDER_ROOT_PATH}
                     ${NATIVERENDER_ROOT_PATH}/include)
 
+# 声明 curl 为 IMPORTED 库
+add_library(curl SHARED IMPORTED)
+set_target_properties(curl
+    PROPERTIES
+    IMPORTED_LOCATION
+    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so
+)
 
-add_library(maplibre_harmony_loop STATIC)
+
+add_library(maplibre_native_loop STATIC)
 target_sources(
-    maplibre_harmony_loop
+    maplibre_native_loop
     PRIVATE
         ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/async_task.cpp
         ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/run_loop.cpp
@@ -51,7 +55,7 @@ target_sources(
 )
 
 target_include_directories(
-    maplibre_harmony_loop
+    maplibre_native_loop
     PUBLIC
         ${MBGL_SOURCE_DIR}/include
         ${MBGL_SOURCE_DIR}/platform/default/include
@@ -60,39 +64,51 @@ target_include_directories(
     PRIVATE ${LIBUV_INCLUDE_DIRS}
 )
 
-add_library(maplibre_harmony
+add_library(maplibre_native
     SHARED
-    #map_napi.cpp
     napi_init.cpp
+    napi_utils.h
+    napi_utils.cpp
     PluginManager.h
     PluginManager.cpp
+    harmony_renderer_backend.hpp
+    harmony_renderer_backend.cpp
+    harmony_gl_renderer_backend.hpp
+    harmony_gl_renderer_backend.cpp
+    harmony_renderer_frontend.hpp
+    harmony_renderer_frontend.cpp
+    harmony_renderer.hpp
+    harmony_renderer.cpp
     Render.h
     Render.cpp
     EGLCore.h
     EGLCore.cpp
     common.h
-#    native_map_view_harmony.cpp
-#    native_map_view_harmony.hpp
-    )
-
+    native_map_view_harmony.cpp
+    native_map_view_harmony.hpp
+    ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
+)
 
 
 target_include_directories(
-  maplibre_harmony
-  PRIVATE ${PROJECT_SOURCE_DIR}
+  maplibre_native
+  PUBLIC ${PROJECT_SOURCE_DIR}
           ../../../../../../src
           ../../../../../../include
           ../../../src
           ../../../../../default/include
-          ../../../../../../vendor/maplibre-native-base/include)
+          ../../../../../../vendor/maplibre-native-base/include
+          ../../../../../../vendor/nunicode/include
+          ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/curl/${OHOS_ARCH}/include
+          /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot/usr/include)
 
 
-target_link_libraries(maplibre_harmony
-#    INTERFACE maplibre_harmony_loop
-#    INTERFACE Mapbox::Map
+target_link_libraries(maplibre_native
 PUBLIC
+    curl
     mbgl-core
     mbgl-vendor-unique_resource
+    mbgl-vendor-nunicode
     ace_napi.z
     hilog_ndk.z
     uv
@@ -103,4 +119,3 @@ PUBLIC
     vulkan
 )
 
-install(TARGETS maplibre_harmony LIBRARY DESTINATION lib)
