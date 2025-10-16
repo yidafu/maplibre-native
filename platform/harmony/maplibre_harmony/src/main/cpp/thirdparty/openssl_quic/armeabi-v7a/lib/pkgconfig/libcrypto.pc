@@ -1,0 +1,12 @@
+prefix=/Users/yidafu/Code/tpc_c_cplusplus/lycium/usr/openssl_quic/armeabi-v7a/
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+enginesdir=${libdir}/engines-81.1.1
+
+Name: OpenSSL-libcrypto
+Description: OpenSSL cryptography library
+Version: 1.1.1t+quic
+Libs: -L${libdir} -lcrypto
+Libs.private: -ldl -pthread 
+Cflags: -I${includedir}
