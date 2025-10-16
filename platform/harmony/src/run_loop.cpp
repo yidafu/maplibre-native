@@ -37,6 +37,22 @@ void RunLoop::Impl::bind(RunLoop*) {
     // harmony平台上的简化实现
 }
 
+void RunLoop::Impl::addWatch(int fd, RunLoop::Event event, std::function<void(int, RunLoop::Event)>&& callback) {
+    // Harmony平台上的简化实现
+    // 在实际应用中，这里应该使用Harmony平台的事件循环机制
+    // 目前只是一个占位符实现
+    (void)fd;
+    (void)event;
+    (void)callback;
+}
+
+void RunLoop::Impl::removeWatch(int fd) {
+    // Harmony平台上的简化实现
+    // 在实际应用中，这里应该使用Harmony平台的事件循环机制
+    // 目前只是一个占位符实现
+    (void)fd;
+}
+
 RunLoop::RunLoop(Type) : impl(std::make_unique<Impl>(this)) {
 }
 
@@ -107,6 +123,14 @@ void RunLoop::runOnce() {
     if (fn) {
         fn();
     }
+}
+
+void RunLoop::addWatch(int fd, Event event, std::function<void(int, Event)>&& callback) {
+    impl->addWatch(fd, event, std::move(callback));
+}
+
+void RunLoop::removeWatch(int fd) {
+    impl->removeWatch(fd);
 }
 
 } // namespace util

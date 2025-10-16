@@ -1,10 +1,23 @@
 target_compile_definitions(
     mbgl-core
     PUBLIC
+        MBGL_USE_BUILTIN_ICU
+        MLN_RENDER_BACKEND_OPENGL=1
 )
+
+# Enable RTTI for Harmony platform (needed for OpenGL renderer backend)
+set(MLN_WITH_RTTI ON)
+
+# Override the RTTI flag for this target - remove -fno-rtti and add -frtti
+target_compile_options(mbgl-core PRIVATE -frtti)
+target_compile_options(mbgl-core PRIVATE $<$<CONFIG:Debug>:-frtti>)
+target_compile_options(mbgl-core PRIVATE $<$<CONFIG:Release>:-frtti>)
+target_compile_options(mbgl-core PRIVATE $<$<CONFIG:RelWithDebInfo>:-frtti>)
+target_compile_options(mbgl-core PRIVATE $<$<CONFIG:MinSizeRel>:-frtti>)
 
 include(${PROJECT_SOURCE_DIR}/vendor/icu.cmake)
 include(${PROJECT_SOURCE_DIR}/vendor/sqlite.cmake)
+include(${PROJECT_SOURCE_DIR}/vendor/nunicode.cmake)
 
 # cmake-format: off
 target_compile_options(mbgl-vendor-csscolorparser PRIVATE $<$<CONFIG:Release>:-Oz> $<$<CONFIG:Release>:-Qunused-arguments> $<$<CONFIG:Release>:-flto>)
@@ -42,6 +55,9 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/string_util.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/logging.cpp
+        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/http_file_source.cpp
+        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/text/local_glyph_rasterizer.cpp
+        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/i18n/number_format.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gfx/headless_backend.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gfx/headless_frontend.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/map/map_snapshotter.cpp
@@ -70,13 +86,47 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/layermanager/layer_manager.cpp
 )
 
+# Add OpenGL renderer backend sources
+target_sources(
+    mbgl-core
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/attribute.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/command_encoder.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/context.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/fence.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/debugging_extension.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/enum.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/index_buffer_resource.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/object.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/offscreen_texture.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/render_pass.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderbuffer_resource.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderer_backend.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/resource_pool.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/timestamp_query_extension.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/upload_pass.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/value.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_array.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_buffer_resource.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/buffer_allocator.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl_builder.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/layer_group_gl.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/texture2d.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform_buffer_gl.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_attribute_gl.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_info.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_program_gl.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/legacy/programs.cpp
+)
+
 if(MLN_WITH_OPENGL)
     target_sources(
         mbgl-core
         PRIVATE
             ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gl/headless_backend.cpp
             ${PROJECT_SOURCE_DIR}/platform/linux/src/headless_backend_egl.cpp
-            ${PROJECT_SOURCE_DIR}/platform/android/src/gl_functions.cpp
     )
 endif()
 
@@ -93,20 +143,49 @@ target_include_directories(
     PRIVATE ${PROJECT_SOURCE_DIR}/platform/default/include
 )
 
-target_link_libraries(
-    mbgl-core
-    PRIVATE
-        EGL
-        GLESv3
-        mbgl-vendor-icu
-    mbgl-vendor-sqlite
-    z
-    hilog_ndk.z
-    uv
-    ace_ndk.z
-    native_window
-    vulkan
-)
+# Add curl include directory for HTTPFileSource
+if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/include")
+    target_include_directories(
+        mbgl-core
+        PRIVATE ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/include
+    )
+endif()
+
+# Add curl library path
+if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so")
+    target_link_libraries(
+        mbgl-core
+        PRIVATE
+            EGL
+            GLESv3
+            mbgl-vendor-icu
+            mbgl-vendor-sqlite
+            mbgl-vendor-nunicode
+            z
+            hilog_ndk.z
+            uv
+            ace_ndk.z
+            native_window
+            vulkan
+            ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so
+    )
+else()
+    target_link_libraries(
+        mbgl-core
+        PRIVATE
+            EGL
+            GLESv3
+            mbgl-vendor-icu
+            mbgl-vendor-sqlite
+            mbgl-vendor-nunicode
+            z
+            hilog_ndk.z
+            uv
+            ace_ndk.z
+            native_window
+            vulkan
+    )
+endif()
 
 # this is needed because Android is not officially supported
 # https://discourse.cmake.org/t/error-when-crosscompiling-with-whole-archive-target-link/9394

@@ -20,6 +20,9 @@ public:
     void stop();
     void push(std::function<void()>);
     void bind(RunLoop*);
+    
+    void addWatch(int fd, RunLoop::Event, std::function<void(int, RunLoop::Event)>&& callback);
+    void removeWatch(int fd);
 
     enum class Type : uint8_t {
         Default,
