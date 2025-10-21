@@ -48,6 +48,7 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap.hpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap_factory.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap_factory.hpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/gl_functions.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/image.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop_impl.hpp

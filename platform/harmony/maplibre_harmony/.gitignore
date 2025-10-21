@@ -4,3 +4,7 @@
 /build
 /.cxx
 /.test
+
+/*.md
+/*.log
+/*.sh

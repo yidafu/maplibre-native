@@ -71,6 +71,11 @@ add_library(maplibre_native
     napi_utils.cpp
     PluginManager.h
     PluginManager.cpp
+    logger.h
+    logger.cpp
+    curl_event_loop.hpp
+    curl_event_loop.cpp
+    http_file_source_harmony.cpp
     harmony_renderer_backend.hpp
     harmony_renderer_backend.cpp
     harmony_gl_renderer_backend.hpp
@@ -86,7 +91,8 @@ add_library(maplibre_native
     common.h
     native_map_view_harmony.cpp
     native_map_view_harmony.hpp
-    ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
+    # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
+    # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
 )
 
 

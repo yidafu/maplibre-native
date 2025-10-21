@@ -41,10 +41,19 @@ namespace harmony {
  * 2. 原子操作确保线程安全
  * 3. 优雅的关闭机制
  * 4. 与HTTPFileSource松耦合
+ * 
+ * 支持两种工作模式：
+ * - 简单模式：使用 100ms 定时器轮询（默认，稳定）
+ * - 事件驱动模式：使用 socket 事件驱动（高性能）
  */
 class CURLEventLoop {
 public:
-    CURLEventLoop();
+    enum class Mode {
+        SimplePolling,   // 简单的 100ms 定时器轮询（默认）
+        EventDriven      // Socket 事件驱动（高性能）
+    };
+    
+    CURLEventLoop(Mode mode = Mode::SimplePolling);
     ~CURLEventLoop();
 
     // 启动事件循环
@@ -74,11 +83,17 @@ private:
     std::atomic<bool> running_;
     std::atomic<bool> stopping_;
     
+    // 工作模式
+    Mode mode_;
+    
     // CURL multi handle
     CURLM* multi_;
     
     // 定时器用于CURL超时处理（使用指针避免不完整类型问题）
     uv_timer_t* timeout_timer_;
+    
+    // 简单轮询定时器（SimplePolling 模式使用）
+    uv_timer_t* polling_timer_;
     
     // Holder async handle用于保持loop运行
     uv_async_t* holder_;
@@ -96,6 +111,7 @@ private:
     // libuv回调函数
     static void onSocketEvent(uv_poll_t* poll, int status, int events);
     static void onTimeout(uv_timer_t* timer);
+    static void onPolling(uv_timer_t* timer);  // 简单轮询回调
     static void onClose(uv_handle_t* handle);
     
     // CURL回调函数

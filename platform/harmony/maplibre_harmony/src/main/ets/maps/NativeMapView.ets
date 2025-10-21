@@ -203,11 +203,12 @@ class NativeMapViewController extends XComponentController {
   addMarkers(markers: Marker[]): number[] {
     if (this.mapView && this.isInitialized) {
       try {
-        const markerIds = this.mapView.addMarkers(markers);
+        const markerIds: number[] = this.mapView.addMarkers(markers) as number[];
         hilog.info(DOMAIN, 'NativeMapView', `Added ${markers.length} markers`);
         return markerIds;
       } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to add markers: ${error.message}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to add markers: ${errorMsg}`);
         return [];
       }
     }
@@ -297,7 +298,7 @@ export struct NativeMapView {
   private handleMapClick(event: ClickEvent): void {
     hilog.warn(DOMAIN, "NativeMapView", "Map Click")
     if (this.controller.isMapInitialized()) {
-      const mapView = this.controller.getMapView();
+      const mapView: NativeMapView = this.controller.getMapView();
       const latLng = new LatLng(event.x, event.y);
       console.info(`Map clicked at: ${latLng.latitude}, ${latLng.longitude}`);
     }

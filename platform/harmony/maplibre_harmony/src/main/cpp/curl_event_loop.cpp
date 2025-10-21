@@ -24,16 +24,20 @@
 namespace mbgl {
 namespace harmony {
 
-CURLEventLoop::CURLEventLoop() 
+CURLEventLoop::CURLEventLoop(Mode mode) 
     : loop_(nullptr)
     , thread_(nullptr)
     , running_(false)
     , stopping_(false)
+    , mode_(mode)
     , multi_(nullptr)
     , timeout_timer_(nullptr)
+    , polling_timer_(nullptr)
     , holder_(nullptr) {
     
     CURL_LOG_INFO("========== CURLEventLoop Constructor START ==========");
+    CURL_LOG_INFO("Mode: %{public}s", 
+                  mode == Mode::SimplePolling ? "SimplePolling (100ms)" : "EventDriven");
     
     // 创建独立的libuv事件循环
     loop_ = new uv_loop_t;
@@ -72,11 +76,18 @@ CURLEventLoop::CURLEventLoop()
     }
     CURL_LOG_INFO("CURL multi handle initialized successfully");
     
-    // 设置CURL回调
-    curl_multi_setopt(multi_, CURLMOPT_SOCKETFUNCTION, handleSocket);
-    curl_multi_setopt(multi_, CURLMOPT_SOCKETDATA, this);
-    curl_multi_setopt(multi_, CURLMOPT_TIMERFUNCTION, handleTimer);
-    curl_multi_setopt(multi_, CURLMOPT_TIMERDATA, this);
+    // 根据模式设置CURL回调
+    if (mode_ == Mode::EventDriven) {
+        // 事件驱动模式：使用 socket 和 timer 回调
+        curl_multi_setopt(multi_, CURLMOPT_SOCKETFUNCTION, handleSocket);
+        curl_multi_setopt(multi_, CURLMOPT_SOCKETDATA, this);
+        curl_multi_setopt(multi_, CURLMOPT_TIMERFUNCTION, handleTimer);
+        curl_multi_setopt(multi_, CURLMOPT_TIMERDATA, this);
+        CURL_LOG_INFO("EventDriven mode: Socket callbacks registered");
+    } else {
+        // 简单轮询模式：不需要 socket 回调
+        CURL_LOG_INFO("SimplePolling mode: Using 100ms timer polling");
+    }
     
     CURL_LOG_INFO("========== CURLEventLoop Constructor COMPLETE ==========");
 }
@@ -95,6 +106,13 @@ CURLEventLoop::~CURLEventLoop() {
         curl_multi_cleanup(multi_);
         multi_ = nullptr;
         CURL_LOG_DEBUG("CURL multi handle cleaned up");
+    }
+    
+    // 清理轮询定时器（如果有）
+    if (polling_timer_) {
+        CURL_LOG_DEBUG("Cleaning up polling timer...");
+        delete polling_timer_;
+        polling_timer_ = nullptr;
     }
     
     // 清理holder（如果还没被清理）
@@ -134,6 +152,29 @@ void CURLEventLoop::start() {
     running_.store(true);
     stopping_.store(false);
     
+    // 如果是简单轮询模式，启动轮询定时器
+    if (mode_ == Mode::SimplePolling) {
+        polling_timer_ = new uv_timer_t;
+        polling_timer_->data = this;
+        
+        int err = uv_timer_init(loop_, polling_timer_);
+        if (err != 0) {
+            CURL_LOG_ERROR("Failed to initialize polling timer: %{public}s", uv_strerror(err));
+            delete polling_timer_;
+            polling_timer_ = nullptr;
+            throw std::runtime_error("Failed to initialize polling timer: " + std::string(uv_strerror(err)));
+        }
+        
+        // 启动 100ms 定时器
+        err = uv_timer_start(polling_timer_, onPolling, 100, 100);
+        if (err != 0) {
+            CURL_LOG_ERROR("Failed to start polling timer: %{public}s", uv_strerror(err));
+            throw std::runtime_error("Failed to start polling timer: " + std::string(uv_strerror(err)));
+        }
+        
+        CURL_LOG_INFO("✅ SimplePolling mode: 100ms timer started");
+    }
+    
     // 启动事件循环线程
     thread_ = std::make_unique<std::thread>(&CURLEventLoop::eventLoopThread, this);
     
@@ -154,6 +195,17 @@ void CURLEventLoop::stop() {
     
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        
+        // 停止并清理轮询定时器
+        if (polling_timer_) {
+            uv_timer_stop(polling_timer_);
+            uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
+                CURL_LOG_DEBUG("Polling timer closed");
+                delete reinterpret_cast<uv_timer_t*>(h);
+            });
+            polling_timer_ = nullptr;
+            CURL_LOG_DEBUG("Polling timer close scheduled");
+        }
         
         // 停止并清理timer
         if (timeout_timer_) {
@@ -216,18 +268,23 @@ bool CURLEventLoop::addHandle(CURL* handle) {
     
     CURL_LOG_DEBUG("CURL handle added successfully: %{public}p", handle);
     
-    // 触发CURL开始处理这个句柄
-    // 这会调用handleSocket回调来注册socket监听
-    int running_handles = 0;
-    result = curl_multi_socket_action(multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
-    if (result != CURLM_OK) {
-        CURL_LOG_ERROR("Failed to kick off CURL handle: %{public}s", curl_multi_strerror(result));
+    // 在事件驱动模式下，触发CURL开始处理这个句柄
+    if (mode_ == Mode::EventDriven) {
+        // 这会调用handleSocket回调来注册socket监听
+        int running_handles = 0;
+        result = curl_multi_socket_action(multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
+        if (result != CURLM_OK) {
+            CURL_LOG_ERROR("Failed to kick off CURL handle: %{public}s", curl_multi_strerror(result));
+        } else {
+            CURL_LOG_DEBUG("CURL handle kicked off, running_handles=%{public}d", running_handles);
+        }
+        
+        // 处理可能已完成的消息
+        processCURLMessages();
     } else {
-        CURL_LOG_DEBUG("CURL handle kicked off, running_handles=%{public}d", running_handles);
+        // 简单轮询模式：定时器会自动处理
+        CURL_LOG_DEBUG("SimplePolling mode: Will be processed by 100ms timer");
     }
-    
-    // 处理可能已完成的消息
-    processCURLMessages();
     
     return true;
 }
@@ -331,6 +388,40 @@ void CURLEventLoop::onTimeout(uv_timer_t* timer) {
     eventLoop->processCURLMessages();
 }
 
+// 简单轮询回调（SimplePolling 模式）
+void CURLEventLoop::onPolling(uv_timer_t* timer) {
+    auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
+    
+    if (!eventLoop->multi_) {
+        CURL_LOG_WARN("Multi handle is null, ignoring polling");
+        return;
+    }
+    
+    if (eventLoop->stopping_.load()) {
+        CURL_LOG_DEBUG("Event loop is stopping, skip polling");
+        return;
+    }
+    
+    // 执行 CURL 处理（不带 socket，让 CURL 自己处理所有活跃的传输）
+    int running_handles = 0;
+    CURLMcode result = curl_multi_perform(eventLoop->multi_, &running_handles);
+    
+    if (result != CURLM_OK) {
+        CURL_LOG_ERROR("curl_multi_perform failed: %{public}s", curl_multi_strerror(result));
+        return;
+    }
+    
+    // 处理完成的请求
+    eventLoop->processCURLMessages();
+    
+    // 每10次轮询输出一次统计（避免日志过多）
+    static int poll_count = 0;
+    if (++poll_count % 10 == 0) {
+        CURL_LOG_DEBUG("Polling: running_handles=%{public}d (count=%{public}d)", 
+                      running_handles, poll_count);
+    }
+}
+
 void CURLEventLoop::onClose(uv_handle_t* handle) {
     CURL_LOG_DEBUG("Poll handle closed: %{public}p", handle);
 }
@@ -416,34 +507,51 @@ int CURLEventLoop::handleTimer(CURLM* /*multi*/, long timeout_ms, void* userp) {
     return 0;
 }
 
+// 外部函数声明（在 http_file_source_harmony.cpp 中实现）
+extern "C" void handleHTTPRequestResult(void* request, CURLcode code);
+
 void CURLEventLoop::processCURLMessages() {
     CURLMsg* msg;
     int msgs_left;
     
+    CURL_LOG_DEBUG("processCURLMessages() called");
+    
     while ((msg = curl_multi_info_read(multi_, &msgs_left))) {
+        CURL_LOG_INFO("🔔 Message from CURL: msg_type=%{public}d", msg->msg);
+        
         if (msg->msg == CURLMSG_DONE) {
             CURL* handle = msg->easy_handle;
             CURLcode result = msg->data.result;
             
-            CURL_LOG_DEBUG("CURL request completed: handle=%{public}p, result=%{public}d", handle, result);
+            CURL_LOG_INFO("================================================");
+            CURL_LOG_INFO("CURL request COMPLETED!");
+            CURL_LOG_INFO("Handle: %{public}p", handle);
+            CURL_LOG_INFO("Result code: %{public}d", result);
+            CURL_LOG_INFO("Result: %{public}s", curl_easy_strerror(result));
+            CURL_LOG_INFO("================================================");
             
             // 获取HTTPRequest并通知结果
             void* privateData = nullptr;
             curl_easy_getinfo(handle, CURLINFO_PRIVATE, &privateData);
             
             if (privateData) {
-                // HTTPRequest通过CURLOPT_PRIVATE存储了自己的指针
-                // 这里需要跨边界调用HTTPRequest::handleResult
-                // 注意：这需要在http_file_source_harmony.cpp中提供一个C风格的回调
-                CURL_LOG_INFO("Notifying HTTPRequest: %{public}p", privateData);
+                CURL_LOG_INFO("Private data found: %{public}p", privateData);
+                CURL_LOG_INFO("Calling HTTPRequest::handleResult...");
                 
-                // HTTPRequest会通过CURL的回调机制自动处理结果
-                // 不需要手动调用handleResult
+                // 调用外部函数处理结果
+                // privateData 是 HTTPRequest* 指针，直接传递即可
+                handleHTTPRequestResult(privateData, result);
+                
+                CURL_LOG_INFO("HTTPRequest::handleResult called successfully");
             } else {
-                CURL_LOG_WARN("No private data found for completed handle");
+                CURL_LOG_ERROR("❌ No private data found for completed handle!");
             }
         }
+        
+        CURL_LOG_DEBUG("Messages left: %{public}d", msgs_left);
     }
+    
+    CURL_LOG_DEBUG("processCURLMessages() finished");
 }
 
 void CURLEventLoop::updateTimeout(long timeout_ms) {

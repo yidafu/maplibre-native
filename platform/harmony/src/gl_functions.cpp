@@ -294,14 +294,15 @@ gl::ProcAddress GetProcAddress(const char* name) {
     return address;
 }
 
-#ifndef NDEBUG
-void glCheckError(const char* cmd, const char* file, int line) {
-    if (GLenum err = glGetError()) {
-        Log::Warning(Event::OpenGL,
-                     "Error" + std::to_string(err) + ": " + cmd + " - " + file + ":" + std::to_string(line));
-    }
-}
-#endif
+// glCheckError is defined in src/mbgl/platform/gl_functions.cpp (core)
+// #ifndef NDEBUG
+// void glCheckError(const char* cmd, const char* file, int line) {
+//     if (GLenum err = glGetError()) {
+//         Log::Warning(Event::OpenGL,
+//                      "Error" + std::to_string(err) + ": " + cmd + " - " + file + ":" + std::to_string(line));
+//     }
+// }
+// #endif
 
 } // namespace platform
 } // namespace mbgl

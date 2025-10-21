@@ -20,13 +20,35 @@
 #include <cassert>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 #include <optional>
 
 // HarmonyOS独立CURL事件循环
 #include "curl_event_loop.hpp"
 
 #include <hilog/log.h>
-#define HTTP_LOG(...) OH_LOG_Print(LOG_APP, LOG_INFO, 0xA00000, "HTTPFileSource", __VA_ARGS__)
+#include <fstream>
+#include <ctime>
+#include <sys/time.h>
+
+// 文件日志函数（绕过hilog限制）
+static void FILE_LOG(const char* msg) {
+    std::ofstream log("/data/local/tmp/http_debug.log", std::ios::app);
+    if (log.is_open()) {
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+        log << tv.tv_sec << "." << tv.tv_usec << " " << msg << std::endl;
+        log.close();
+    }
+    // 同时输出到stderr
+    fprintf(stderr, "[HTTP_FILE_LOG] %s\n", msg);
+    fflush(stderr);
+}
+
+// 使用已验证可用的tag，并提升日志级别以确保输出
+#define HTTP_LOG(...) OH_LOG_Print(LOG_APP, LOG_ERROR, 0xA00000, "CURLEventLoop", __VA_ARGS__)
+// 添加高优先级日志宏用于关键节点
+#define HTTP_LOG_CRITICAL(...) OH_LOG_Print(LOG_APP, LOG_FATAL, 0xFFFFFF, "HTTP_CRITICAL", __VA_ARGS__)
 
 namespace {
 // handleError(CURLMcode)已移除，现在由CURLEventLoop处理
@@ -60,9 +82,6 @@ public:
 
     // CURL multi handle - 现在由CURLEventLoop管理
     CURLM *multi = nullptr;
-    
-    // 定时器用于定期检查CURL消息
-    util::Timer checkTimer;
 
     // CURL share handles are used for sharing session state (e.g.)
     CURLSH *share = nullptr;
@@ -112,46 +131,81 @@ private:
     char error[CURL_ERROR_SIZE] = {0};
 };
 
+// 外部函数供 CURLEventLoop 调用
+// 这个函数桥接 CURLEventLoop 和 HTTPRequest::handleResult
+extern "C" void handleHTTPRequestResult(void* request, CURLcode code) {
+    if (request) {
+        HTTPRequest* httpRequest = static_cast<HTTPRequest*>(request);
+        httpRequest->handleResult(code);
+    }
+}
+
 HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const ClientOptions &clientOptions_)
     : resourceOptions(resourceOptions_.clone()),
       clientOptions(clientOptions_.clone()) {
+    
+    // 文件日志：第一件事
+    FILE_LOG("========================================");
+    FILE_LOG("HTTPFileSource::Impl CONSTRUCTOR ENTRY");
+    FILE_LOG("========================================");
+    
+    // 使用最高优先级日志标记构造函数开始
+    HTTP_LOG_CRITICAL("================================================");
+    HTTP_LOG_CRITICAL("HTTPFileSource::Impl CONSTRUCTOR START");
+    HTTP_LOG_CRITICAL("================================================");
+    
+    FILE_LOG("After HTTP_LOG_CRITICAL in Impl constructor");
     
     // 第一行就打印，确认代码执行
     fprintf(stderr, "\n\n*** HTTPFileSource::Impl CONSTRUCTOR HARMONY CALLED ***\n\n");
     fflush(stderr);
     
+    FILE_LOG("After fprintf in Impl constructor");
     HTTP_LOG("========== HTTPFileSource::Impl CONSTRUCTOR START ==========");
     
+    HTTP_LOG("Step 1/5: Initializing CURL global...");
     if (curl_global_init(CURL_GLOBAL_ALL)) {
         HTTP_LOG("CURL global init FAILED!");
+        HTTP_LOG_CRITICAL("CRITICAL ERROR: CURL global init FAILED!");
         throw std::runtime_error("Could not init cURL");
     }
-    HTTP_LOG("CURL global init SUCCESS");
+    HTTP_LOG("Step 1/5: CURL global init SUCCESS");
 
     share = curl_share_init();
-    HTTP_LOG("CURL share init: %{public}p", share);
+    HTTP_LOG("Step 2/5: CURL share init: %{public}p", share);
 
     // 创建独立的CURL事件循环
     try {
-        curlEventLoop = std::make_unique<harmony::CURLEventLoop>();
-        HTTP_LOG("CURLEventLoop created successfully");
+        HTTP_LOG("Step 3/5: Creating CURLEventLoop...");
+        
+        // 默认使用简单轮询模式（稳定可靠）
+        // 如果需要高性能模式，可以通过环境变量切换：CURL_MODE=event
+        auto mode = harmony::CURLEventLoop::Mode::SimplePolling;
+        
+        const char* curl_mode_env = getenv("CURL_MODE");
+        if (curl_mode_env && strcmp(curl_mode_env, "event") == 0) {
+            mode = harmony::CURLEventLoop::Mode::EventDriven;
+            HTTP_LOG("Using EventDriven mode (from environment)");
+        } else {
+            HTTP_LOG("Using SimplePolling mode (default, 100ms timer)");
+        }
+        
+        curlEventLoop = std::make_unique<harmony::CURLEventLoop>(mode);
+        HTTP_LOG("Step 3/5: CURLEventLoop created successfully at %{public}p", curlEventLoop.get());
         
         // 启动事件循环
+        HTTP_LOG("Step 4/5: Starting CURLEventLoop...");
         curlEventLoop->start();
-        HTTP_LOG("CURLEventLoop started successfully");
+        HTTP_LOG("Step 4/5: CURLEventLoop started successfully");
         
         // 获取multi handle（由CURLEventLoop管理）
         multi = curlEventLoop->getMultiHandle();
-        HTTP_LOG("CURL multi handle obtained: %{public}p", multi);
-        
-        // 启动定时器定期检查CURL消息（在mbgl::RunLoop上运行）
-        checkTimer.start(mbgl::Milliseconds(100), mbgl::Milliseconds(100), [this]() {
-            this->checkMultiInfo();
-        });
-        HTTP_LOG("Check timer started for processing CURL messages");
+        HTTP_LOG("Step 5/5: CURL multi handle obtained: %{public}p", multi);
+        HTTP_LOG("Step 5/5: No external timer needed (handled by CURLEventLoop)");
         
     } catch (const std::exception& e) {
-        HTTP_LOG("Failed to create CURLEventLoop: %{public}s", e.what());
+        HTTP_LOG("CRITICAL ERROR: Failed to create CURLEventLoop: %{public}s", e.what());
+        HTTP_LOG_CRITICAL("CURLEventLoop creation FAILED: %{public}s", e.what());
         if (share) {
             curl_share_cleanup(share);
             share = nullptr;
@@ -160,18 +214,14 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
         throw;
     }
     
-    HTTP_LOG("========== HTTPFileSource::Impl CONSTRUCTOR END ==========");
+    HTTP_LOG("========== HTTPFileSource::Impl CONSTRUCTOR END - SUCCESS ==========");
+    HTTP_LOG_CRITICAL("HTTPFileSource::Impl CONSTRUCTOR COMPLETE");
 }
 
 HTTPFileSource::Impl::~Impl() {
     HTTP_LOG("========== HTTPFileSource::Impl DESTRUCTOR START ==========");
     
-    // 1. 停止检查定时器
-    HTTP_LOG("Stopping check timer...");
-    checkTimer.stop();
-    HTTP_LOG("Check timer stopped");
-    
-    // 2. 停止CURL事件循环（这会自动清理所有活跃的CURL句柄）
+    // 1. 停止CURL事件循环（这会自动清理所有活跃的CURL句柄）
     HTTP_LOG("Stopping CURLEventLoop...");
     if (curlEventLoop) {
         curlEventLoop->stop();
@@ -221,16 +271,26 @@ void HTTPFileSource::Impl::checkMultiInfo() {
     int pending = 0;
 
     while ((message = curl_multi_info_read(multi, &pending))) {
+        // 收到CURL消息时使用高优先级日志
+        HTTP_LOG("========== checkMultiInfo: Got CURL message ==========");
+        HTTP_LOG_CRITICAL("CURL message received - type: %{public}d", message->msg);
+        
         switch (message->msg) {
             case CURLMSG_DONE: {
                 HTTPRequest *baton = nullptr;
                 curl_easy_getinfo(message->easy_handle, CURLINFO_PRIVATE, (char *)&baton);
                 assert(baton);
+                
+                HTTP_LOG("Request completed for handle %{public}p", message->easy_handle);
+                HTTP_LOG("Result code: %{public}d", message->data.result);
+                HTTP_LOG_CRITICAL("Request DONE - calling handleResult");
+                
                 baton->handleResult(message->data.result);
             } break;
 
             default:
-                // This should never happen, because there are no other message types.
+                HTTP_LOG("ERROR: Unknown CURL message type: %{public}d", message->msg);
+                HTTP_LOG_CRITICAL("ERROR: Unknown message type");
                 throw std::runtime_error("CURLMsg returned unknown message type");
         }
     }
@@ -269,14 +329,30 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
       resource(std::move(resource_)),
       callback(std::move(callback_)),
       handle(context->getHandle()) {
+    
+    // 文件日志：第一件事
+    FILE_LOG("HTTPRequest CONSTRUCTOR ENTRY");
+    FILE_LOG(("HTTPRequest URL: " + resource.url).c_str());
+    
+    // 使用最高优先级日志标记开始
+    HTTP_LOG_CRITICAL("HTTPRequest CONSTRUCTOR START");
+    HTTP_LOG_CRITICAL("URL: %{public}s", resource.url.c_str());
+    
+    FILE_LOG("After HTTP_LOG_CRITICAL in HTTPRequest");
+    
     HTTP_LOG("========== HTTPRequest CONSTRUCTOR START ==========");
     HTTP_LOG("URL: %{public}s", resource.url.c_str());
     HTTP_LOG("CURL handle: %{public}p", handle);
+    HTTP_LOG("Context: %{public}p", context);
+    
+    FILE_LOG("After basic HTTP_LOG in HTTPRequest");
+    HTTP_LOG("Step 1/3: Setting up CURL options...");
     
     if (resource.dataRange) {
         const std::string header = std::string("Range: bytes=") + std::to_string(resource.dataRange->first) +
                                    std::string("-") + std::to_string(resource.dataRange->second);
         headers = curl_slist_append(headers, header.c_str());
+        HTTP_LOG("Added Range header: %{public}s", header.c_str());
     }
 
     // If there's already a response, set the correct etags/modified headers to
@@ -285,45 +361,91 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
     if (resource.priorEtag) {
         const std::string header = std::string("If-None-Match: ") + *resource.priorEtag;
         headers = curl_slist_append(headers, header.c_str());
+        HTTP_LOG("Added ETag header");
     } else if (resource.priorModified) {
         const std::string time = std::string("If-Modified-Since: ") + util::rfc1123(*resource.priorModified);
         headers = curl_slist_append(headers, time.c_str());
+        HTTP_LOG("Added If-Modified-Since header");
     }
 
-    if (headers) {
-        curl_easy_setopt(handle, CURLOPT_HTTPHEADER, headers);
-    }
-
-    handleError(curl_easy_setopt(handle, CURLOPT_PRIVATE, this));
-    handleError(curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, error));
-    handleError(curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1));
-    handleError(curl_easy_setopt(handle, CURLOPT_URL, resource.url.c_str()));
-    handleError(curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, writeCallback));
-    handleError(curl_easy_setopt(handle, CURLOPT_WRITEDATA, this));
-    handleError(curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, headerCallback));
-    handleError(curl_easy_setopt(handle, CURLOPT_HEADERDATA, this));
-#if LIBCURL_VERSION_NUM >= ((7) << 16 | (21) << 8 | 6) // Renamed in 7.21.6
-    handleError(curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "gzip, deflate"));
-#else
-    handleError(curl_easy_setopt(handle, CURLOPT_ENCODING, "gzip, deflate"));
-#endif
-    handleError(curl_easy_setopt(handle, CURLOPT_USERAGENT, "MapLibreNative/1.0"));
-    handleError(curl_easy_setopt(handle, CURLOPT_SHARE, context->share));
-
-    // Start requesting the information using CURLEventLoop.
-    HTTP_LOG("About to add CURL handle to CURLEventLoop - handle=%{public}p", handle);
-    if (context->curlEventLoop) {
-        bool success = context->curlEventLoop->addHandle(handle);
-        if (!success) {
-            HTTP_LOG("ERROR: Failed to add handle to CURLEventLoop");
-            throw std::runtime_error("Failed to add handle to CURLEventLoop");
+    FILE_LOG("Before setting headers");
+    
+    try {
+        if (headers) {
+            curl_easy_setopt(handle, CURLOPT_HTTPHEADER, headers);
         }
-        HTTP_LOG("CURL handle added to CURLEventLoop successfully");
-    } else {
-        HTTP_LOG("ERROR: CURLEventLoop is null");
-        throw std::runtime_error("CURLEventLoop is null");
+
+        FILE_LOG("Before handleError calls");
+        handleError(curl_easy_setopt(handle, CURLOPT_PRIVATE, this));
+        handleError(curl_easy_setopt(handle, CURLOPT_ERRORBUFFER, error));
+        handleError(curl_easy_setopt(handle, CURLOPT_FOLLOWLOCATION, 1));
+        handleError(curl_easy_setopt(handle, CURLOPT_URL, resource.url.c_str()));
+        handleError(curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, writeCallback));
+        handleError(curl_easy_setopt(handle, CURLOPT_WRITEDATA, this));
+        handleError(curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, headerCallback));
+        handleError(curl_easy_setopt(handle, CURLOPT_HEADERDATA, this));
+#if LIBCURL_VERSION_NUM >= ((7) << 16 | (21) << 8 | 6) // Renamed in 7.21.6
+        handleError(curl_easy_setopt(handle, CURLOPT_ACCEPT_ENCODING, "gzip, deflate"));
+#else
+        handleError(curl_easy_setopt(handle, CURLOPT_ENCODING, "gzip, deflate"));
+#endif
+        handleError(curl_easy_setopt(handle, CURLOPT_USERAGENT, "MapLibreNative/1.0"));
+        handleError(curl_easy_setopt(handle, CURLOPT_SHARE, context->share));
+
+        FILE_LOG("After all handleError calls");
+        HTTP_LOG("Step 1/3: CURL options set successfully");
+        
+        // Start requesting the information using CURLEventLoop.
+        FILE_LOG("Before adding handle to CURLEventLoop");
+        HTTP_LOG("Step 2/3: About to add CURL handle to CURLEventLoop - handle=%{public}p", handle);
+        HTTP_LOG_CRITICAL("Adding CURL handle to event loop...");
+        
+        if (context->curlEventLoop) {
+            FILE_LOG("CURLEventLoop exists, calling addHandle");
+            HTTP_LOG("CURLEventLoop exists at %{public}p", context->curlEventLoop.get());
+            bool success = context->curlEventLoop->addHandle(handle);
+            if (!success) {
+                FILE_LOG("ERROR: addHandle returned false");
+                HTTP_LOG("ERROR: Failed to add handle to CURLEventLoop");
+                HTTP_LOG_CRITICAL("FAILED to add handle to CURLEventLoop!");
+                throw std::runtime_error("Failed to add handle to CURLEventLoop");
+            }
+            FILE_LOG("addHandle SUCCESS");
+            HTTP_LOG("Step 2/3: CURL handle added to CURLEventLoop successfully");
+            HTTP_LOG_CRITICAL("CURL handle added to event loop SUCCESS");
+        } else {
+            FILE_LOG("ERROR: CURLEventLoop is null");
+            HTTP_LOG("ERROR: CURLEventLoop is null");
+            HTTP_LOG_CRITICAL("CRITICAL ERROR: CURLEventLoop is NULL!");
+            throw std::runtime_error("CURLEventLoop is null");
+        }
+        
+        FILE_LOG("HTTPRequest constructor completing");
+        HTTP_LOG("Step 3/3: HTTPRequest constructor complete");
+        HTTP_LOG("========== HTTPRequest CONSTRUCTOR END ==========");
+        HTTP_LOG_CRITICAL("HTTPRequest CONSTRUCTOR COMPLETE - request is active");
+        
+    } catch (const std::runtime_error& e) {
+        FILE_LOG("EXCEPTION in HTTPRequest constructor: runtime_error");
+        FILE_LOG(e.what());
+        HTTP_LOG_CRITICAL("❌ EXCEPTION in HTTPRequest constructor: %{public}s", e.what());
+        fprintf(stderr, "❌ EXCEPTION in HTTPRequest constructor: %s\n", e.what());
+        fflush(stderr);
+        throw; // 重新抛出异常
+    } catch (const std::exception& e) {
+        FILE_LOG("EXCEPTION in HTTPRequest constructor: exception");
+        FILE_LOG(e.what());
+        HTTP_LOG_CRITICAL("❌ EXCEPTION in HTTPRequest constructor: %{public}s", e.what());
+        fprintf(stderr, "❌ EXCEPTION in HTTPRequest constructor: %s\n", e.what());
+        fflush(stderr);
+        throw; // 重新抛出异常
+    } catch (...) {
+        FILE_LOG("EXCEPTION in HTTPRequest constructor: UNKNOWN");
+        HTTP_LOG_CRITICAL("❌ UNKNOWN EXCEPTION in HTTPRequest constructor");
+        fprintf(stderr, "❌ UNKNOWN EXCEPTION in HTTPRequest constructor\n");
+        fflush(stderr);
+        throw; // 重新抛出异常
     }
-    HTTP_LOG("========== HTTPRequest CONSTRUCTOR END ==========");
 }
 
 HTTPRequest::~HTTPRequest() {
@@ -432,15 +554,29 @@ size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const 
 }
 
 void HTTPRequest::handleResult(CURLcode code) {
+    // 使用最高优先级日志
+    HTTP_LOG_CRITICAL("================================================");
+    HTTP_LOG_CRITICAL("HTTPRequest::handleResult() CALLED");
+    HTTP_LOG_CRITICAL("CURL code: %{public}d (%{public}s)", code, curl_easy_strerror(code));
+    HTTP_LOG_CRITICAL("================================================");
+    
+    HTTP_LOG("========== HTTPRequest::handleResult() START ==========");
+    HTTP_LOG("URL: %{public}s", resource.url.c_str());
+    HTTP_LOG("CURL result code: %{public}d", code);
+    
     // Make sure a response object exists in case we haven't got any headers or content.
     if (!response) {
         response = std::make_unique<Response>();
+        HTTP_LOG("Created new Response object");
     }
 
     using Error = Response::Error;
 
     // Add human-readable error code
     if (code != CURLE_OK) {
+        HTTP_LOG("CURL request FAILED with code %{public}d: %{public}s", code, curl_easy_strerror(code));
+        HTTP_LOG_CRITICAL("CURL FAILED: %{public}s", curl_easy_strerror(code));
+        
         switch (code) {
             case CURLE_COULDNT_RESOLVE_PROXY:
             case CURLE_COULDNT_RESOLVE_HOST:
@@ -449,52 +585,89 @@ void HTTPRequest::handleResult(CURLcode code) {
 
                 response->error = std::make_unique<Error>(Error::Reason::Connection,
                                                           std::string{curl_easy_strerror(code)} + ": " + error);
+                HTTP_LOG("Connection error: %{public}s", error);
                 break;
 
             default:
                 response->error = std::make_unique<Error>(Error::Reason::Other,
                                                           std::string{curl_easy_strerror(code)} + ": " + error);
+                HTTP_LOG("Other error: %{public}s", error);
                 break;
         }
     } else {
         long responseCode = 0;
         curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &responseCode);
+        
+        HTTP_LOG("CURL request SUCCESS - HTTP status: %{public}ld", responseCode);
+        HTTP_LOG_CRITICAL("HTTP Response Code: %{public}ld", responseCode);
 
         if (responseCode == 200 || responseCode == 206) {
             if (data) {
                 response->data = std::move(data);
+                HTTP_LOG("Response data size: %{public}zu bytes", response->data->size());
+                HTTP_LOG_CRITICAL("Got data: %{public}zu bytes", response->data->size());
             } else {
                 response->data = std::make_shared<std::string>();
+                HTTP_LOG("No data in response");
             }
         } else if (responseCode == 204 || (responseCode == 404 && resource.kind == Resource::Kind::Tile)) {
             response->noContent = true;
+            HTTP_LOG("No content response (204 or 404 tile)");
         } else if (responseCode == 304) {
             response->notModified = true;
+            HTTP_LOG("Not modified (304)");
         } else if (responseCode == 404) {
             response->error = std::make_unique<Error>(Error::Reason::NotFound, "HTTP status code 404");
+            HTTP_LOG("Not found (404)");
         } else if (responseCode == 429) {
             response->error = std::make_unique<Error>(
                 Error::Reason::RateLimit, "HTTP status code 429", http::parseRetryHeaders(retryAfter, xRateLimitReset));
+            HTTP_LOG("Rate limited (429)");
         } else if (responseCode >= 500 && responseCode < 600) {
             response->error = std::make_unique<Error>(Error::Reason::Server,
                                                       std::string{"HTTP status code "} + util::toString(responseCode));
+            HTTP_LOG("Server error (%{public}ld)", responseCode);
         } else {
             response->error = std::make_unique<Error>(Error::Reason::Other,
                                                       std::string{"HTTP status code "} + util::toString(responseCode));
+            HTTP_LOG("Other HTTP error (%{public}ld)", responseCode);
         }
     }
 
+    HTTP_LOG("About to invoke callback...");
+    HTTP_LOG_CRITICAL("Invoking response callback...");
+    
     // Calling `callback` may result in deleting `this`. Copy data to temporaries first.
     auto callback_ = callback;
     auto response_ = *response;
     callback_(response_);
+    
+    // 注意：this可能已被删除，不能在这里添加日志
 }
 
 HTTPFileSource::HTTPFileSource(const ResourceOptions &resourceOptions, const ClientOptions &clientOptions)
     : impl(std::make_unique<Impl>(resourceOptions, clientOptions)) {
+    
+    // 文件日志：第一件事
+    FILE_LOG("========================================");
+    FILE_LOG("HTTPFileSource CONSTRUCTOR ENTRY");
+    FILE_LOG("========================================");
+    
+    // 使用最高优先级日志标记
+    HTTP_LOG_CRITICAL("================================================");
+    HTTP_LOG_CRITICAL("HTTPFileSource CONSTRUCTOR START");
+    HTTP_LOG_CRITICAL("This is HarmonyOS implementation");
+    HTTP_LOG_CRITICAL("================================================");
+    
+    FILE_LOG("After HTTP_LOG_CRITICAL in HTTPFileSource constructor");
+    
+    // 第一行就打印
+    HTTP_LOG("🔥🔥🔥 HTTPFileSource HARMONY CONSTRUCTOR CALLED 🔥🔥🔥");
     HTTP_LOG("========== HTTPFileSource CONSTRUCTOR (HarmonyOS) ==========");
     HTTP_LOG("This is the HarmonyOS-specific HTTPFileSource implementation");
     HTTP_LOG("impl address: %{public}p", impl.get());
+    
+    FILE_LOG("After basic HTTP_LOG in HTTPFileSource constructor");
     
     // 直接打印到stderr以确认代码被执行
     fprintf(stderr, "\n\n");
@@ -503,26 +676,92 @@ HTTPFileSource::HTTPFileSource(const ResourceOptions &resourceOptions, const Cli
     fprintf(stderr, "**************************************************\n");
     fprintf(stderr, "\n\n");
     fflush(stderr);
+    
+    HTTP_LOG("HTTPFileSource constructor complete");
+    HTTP_LOG_CRITICAL("HTTPFileSource CONSTRUCTOR COMPLETE");
 }
 
 HTTPFileSource::~HTTPFileSource() = default;
 
 std::unique_ptr<AsyncRequest> HTTPFileSource::request(const Resource &resource, Callback callback) {
-    HTTP_LOG("========== HTTPFileSource::request() START ==========");
-    HTTP_LOG("Resource URL: %{public}s", resource.url.c_str());
-    HTTP_LOG("Resource kind: %{public}d", static_cast<int>(resource.kind));
-    HTTP_LOG("Creating HTTPRequest...");
+    // 文件日志：第一件事！
+    FILE_LOG("========================================");
+    FILE_LOG("HTTPFileSource::request() ENTRY");
+    FILE_LOG(("URL: " + resource.url).c_str());
+    FILE_LOG("========================================");
     
-    // 直接打印确认代码执行
-    fprintf(stderr, "\n*** HTTPFileSource::request() HARMONY CALLED for: %s ***\n", resource.url.c_str());
-    fflush(stderr);
-    
-    auto request = std::make_unique<HTTPRequest>(impl.get(), resource, callback);
-    
-    HTTP_LOG("HTTPRequest created: %{public}p", request.get());
-    HTTP_LOG("========== HTTPFileSource::request() END ==========");
-    
-    return request;
+    try {
+        // 使用最高优先级日志
+        HTTP_LOG_CRITICAL("================================================");
+        HTTP_LOG_CRITICAL("HTTPFileSource::request() CALLED");
+        HTTP_LOG_CRITICAL("URL: %{public}s", resource.url.c_str());
+        HTTP_LOG_CRITICAL("================================================");
+        
+        FILE_LOG("After HTTP_LOG_CRITICAL");
+        
+        // 第一行就打印，确保执行
+        HTTP_LOG("🔥🔥🔥 HTTPFileSource::request() HARMONY VERSION CALLED 🔥🔥🔥");
+        HTTP_LOG("========== HTTPFileSource::request() START ==========");
+        HTTP_LOG("Resource URL: %{public}s", resource.url.c_str());
+        HTTP_LOG("Resource kind: %{public}d", static_cast<int>(resource.kind));
+        HTTP_LOG("impl pointer: %{public}p", impl.get());
+        
+        FILE_LOG("After basic HTTP_LOG");
+        
+        if (!impl) {
+            FILE_LOG("ERROR: impl is NULL!");
+            HTTP_LOG("❌ ERROR: impl is NULL!");
+            HTTP_LOG_CRITICAL("CRITICAL ERROR: impl is NULL!");
+            return nullptr;
+        }
+        
+        FILE_LOG("impl check passed");
+        HTTP_LOG("About to create HTTPRequest object...");
+        
+        // 直接打印确认代码执行
+        fprintf(stderr, "\n*** HTTPFileSource::request() HARMONY CALLED for: %s ***\n", resource.url.c_str());
+        fflush(stderr);
+        
+        FILE_LOG("Before make_unique<HTTPRequest>");
+        
+        auto request = std::make_unique<HTTPRequest>(impl.get(), resource, callback);
+        
+        FILE_LOG("After make_unique<HTTPRequest>");
+        HTTP_LOG("HTTPRequest created successfully: %{public}p", request.get());
+        HTTP_LOG("========== HTTPFileSource::request() END ==========");
+        HTTP_LOG_CRITICAL("HTTPFileSource::request() COMPLETE - returning request");
+        
+        FILE_LOG("Returning request");
+        return request;
+        
+    } catch (const std::bad_alloc& e) {
+        FILE_LOG("EXCEPTION: std::bad_alloc");
+        FILE_LOG(e.what());
+        HTTP_LOG_CRITICAL("❌ EXCEPTION: std::bad_alloc: %{public}s", e.what());
+        fprintf(stderr, "❌ EXCEPTION in HTTPFileSource::request(): bad_alloc: %s\n", e.what());
+        fflush(stderr);
+        return nullptr;
+    } catch (const std::runtime_error& e) {
+        FILE_LOG("EXCEPTION: std::runtime_error");
+        FILE_LOG(e.what());
+        HTTP_LOG_CRITICAL("❌ EXCEPTION: std::runtime_error: %{public}s", e.what());
+        fprintf(stderr, "❌ EXCEPTION in HTTPFileSource::request(): runtime_error: %s\n", e.what());
+        fflush(stderr);
+        return nullptr;
+    } catch (const std::exception& e) {
+        FILE_LOG("EXCEPTION: std::exception");
+        FILE_LOG(e.what());
+        HTTP_LOG_CRITICAL("❌ EXCEPTION: std::exception: %{public}s", e.what());
+        fprintf(stderr, "❌ EXCEPTION in HTTPFileSource::request(): %s\n", e.what());
+        fflush(stderr);
+        return nullptr;
+    } catch (...) {
+        FILE_LOG("EXCEPTION: UNKNOWN");
+        HTTP_LOG_CRITICAL("❌ EXCEPTION: UNKNOWN in HTTPFileSource::request()");
+        fprintf(stderr, "❌ UNKNOWN EXCEPTION in HTTPFileSource::request()!\n");
+        fflush(stderr);
+        return nullptr;
+    }
 }
 
 void HTTPFileSource::setResourceOptions(ResourceOptions options) {
