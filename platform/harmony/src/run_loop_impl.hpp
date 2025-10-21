@@ -3,36 +3,36 @@
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/util/util.hpp>
 
+#include <uv.h>
 #include <memory>
 #include <functional>
-#include <mutex>
-#include <queue>
+#include <unordered_map>
 
 namespace mbgl {
 namespace util {
 
+// Forward declaration
+struct Watch;
+class AsyncTask;
+
 class RunLoop::Impl {
 public:
-    Impl(RunLoop*);
+    Impl(RunLoop*, RunLoop::Type);
     ~Impl();
 
-    void wake();
-    void stop();
-    void push(std::function<void()>);
-    void bind(RunLoop*);
-    
-    void addWatch(int fd, RunLoop::Event, std::function<void(int, RunLoop::Event)>&& callback);
-    void removeWatch(int fd);
+    void closeHolder() {
+        uv_close(holderHandle(), [](uv_handle_t* h) { delete reinterpret_cast<uv_async_t*>(h); });
+    }
 
-    enum class Type : uint8_t {
-        Default,
-        EventLoop,
-        NewThread
-    };
+    uv_handle_t* holderHandle() { return reinterpret_cast<uv_handle_t*>(holder); }
 
-    bool running = true;
-    std::mutex mutex;
-    std::queue<std::function<void()>> queue;
+    uv_loop_t* loop = nullptr;
+    uv_async_t* holder = new uv_async_t;
+
+    RunLoop::Type type;
+    std::unique_ptr<AsyncTask> async;
+
+    std::unordered_map<int, std::unique_ptr<Watch>> watchPoll;
 };
 
 } // namespace util

@@ -2,15 +2,23 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "module description"
+      "value": "MapLibre Native HarmonyOS Module"
     },
     {
       "name": "MaplibreAbility_desc",
-      "value": "description"
+      "value": "MapLibre Native Map Application"
     },
     {
       "name": "MaplibreAbility_label",
-      "value": "label"
+      "value": "MapLibre Native"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "Load map styles, tiles and resources from network"
+    },
+    {
+      "name": "network_info_permission_reason",
+      "value": "Check network connectivity for map data loading"
     }
   ]
 }

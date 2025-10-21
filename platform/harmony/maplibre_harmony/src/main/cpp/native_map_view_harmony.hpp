@@ -1,43 +1,22 @@
 #ifndef MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 #define MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 
-#include <mbgl/map/change.hpp>
-#include <mbgl/map/camera.hpp>
+#include "harmony_renderer_backend.hpp"
 #include <mbgl/map/map.hpp>
-#include <mbgl/util/noncopyable.hpp>
-#include <mbgl/util/run_loop.hpp>
 #include <mbgl/tile/tile_operation.hpp>
-#include <mbgl/storage/network_status.hpp>
+#include <mbgl/util/run_loop.hpp>
 
 #include <string>
 #include <memory>
-#include <vector>
-#include "common.h"
 #include <js_native_api.h>
-
-typedef enum {
-    napi_default = 0,
-} napi_property_attributes;
-
-typedef struct {
-    const char* utf8name;
-    napi_value name;
-    napi_callback method;
-    napi_callback getter;
-    napi_callback setter;
-    napi_value value;
-    napi_property_attributes attributes;
-    void* data;
-} napi_property_descriptor;
-
 
 namespace mbgl {
 namespace harmony {
 
-class AndroidRendererFrontend;
 class FileSource;
 class MapRenderer;
 class RenderingStats;
+class HarmonyRenderer;
 
 class NativeMapView : public MapObserver {
 public:
@@ -46,6 +25,12 @@ public:
     
     NativeMapView(napi_env env, napi_value wrapper);
     virtual ~NativeMapView();
+    
+    // 资源清理方法
+    void cleanupAllResources();
+    
+    // 设置原生窗口（带尺寸参数）
+    void setNativeWindowWithSize(int64_t surfaceId, int width, int height);
 
     // mbgl::RendererBackend (mbgl::MapObserver) //
     void onCameraWillChange(MapObserver::CameraChangeMode) override;
@@ -168,6 +153,8 @@ public:
     static napi_value triggerRepaint(napi_env env, napi_callback_info info);
     static napi_value isRenderingStatsViewEnabled(napi_env env, napi_callback_info info);
     static napi_value enableRenderingStatsView(napi_env env, napi_callback_info info);
+    static napi_value setNativeWindow(napi_env env, napi_callback_info info);
+    static napi_value setNativeWindowWithSize(napi_env env, napi_callback_info info);
 
     // Shader compilation
     void onRegisterShaders(mbgl::gfx::ShaderRegistry&) override;
@@ -193,10 +180,13 @@ private:
     
     mbgl::Map& getMap();
     
+    // 初始化渲染器
+    void initializeRenderer();
+    
     napi_env env_;
     napi_ref wrapper_;
     
-    std::shared_ptr<AndroidRendererFrontend> rendererFrontend;
+    std::unique_ptr<HarmonyRenderer> harmonyRenderer;
     
     MapRenderer* mapRenderer = nullptr;
     
@@ -207,6 +197,9 @@ private:
     // Minimum texture size according to OpenGL ES 2.0 specification.
     int width = 64;
     int height = 64;
+    
+    // 窗口指针
+    OHNativeWindow* nativeWindow = nullptr;
     
     // Ensure these are initialised last
     std::unique_ptr<mbgl::Map> map;

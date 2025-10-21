@@ -36,7 +36,7 @@ private:
     bool FinishDraw();
 
 private:
-    EGLNativeWindowType eglWindow_;
+    EGLNativeWindowType eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
     EGLDisplay eglDisplay_ = EGL_NO_DISPLAY;
     EGLConfig eglConfig_ = EGL_NO_CONFIG_KHR;
     EGLSurface eglSurface_ = EGL_NO_SURFACE;

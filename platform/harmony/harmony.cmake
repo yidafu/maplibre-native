@@ -48,16 +48,19 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap.hpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap_factory.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/bitmap_factory.hpp
-        ${PROJECT_SOURCE_DIR}/platform/harmony/src/gl_functions.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/image.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop_impl.hpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/string_util.cpp
-        ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer.cpp
-        ${PROJECT_SOURCE_DIR}/platform/harmony/src/logging.cpp
-        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/http_file_source.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer/timer_original.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/logging_harmony.cpp
+        # logger.cpp is in libmaplibre_native.so (CMakeLists.txt)
+        # HTTP file source is implemented in libmaplibre_native.so (http_file_source_harmony.cpp)
+        # ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/http_file_source.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/text/local_glyph_rasterizer.cpp
-        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/i18n/number_format.cpp
+        # HarmonyOS i18n implementation
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/i18n/collator.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/i18n/number_format.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gfx/headless_backend.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gfx/headless_frontend.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/map/map_snapshotter.cpp

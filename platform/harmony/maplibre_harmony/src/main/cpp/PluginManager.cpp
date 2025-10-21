@@ -7,31 +7,32 @@
 
 #include <ace/xcomponent/native_interface_xcomponent.h>
 #include <cstdint>
-#include <hilog/log.h>
 #include <napi/native_api.h>
 #include <string>
 #include <native_window/external_window.h>
-#include "common.h"
+#include "logger.h"
 #include "Render.h"
 #include "PluginManager.h"
+
+using mbgl::harmony::Logger;
 
 namespace {
     int64_t ParseId(napi_env env, napi_callback_info info)
     {
         if ((env == nullptr) || (info == nullptr)) {
-            OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "ParseId", "env or info is null");
+            Logger::error("ParseId", "env or info is null");
             return -1;
         }
         size_t argc = 1;
         napi_value args[1] = {nullptr};
         if (napi_ok != napi_get_cb_info(env, info, &argc, args, nullptr, nullptr)) {
-            OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "ParseId", "GetContext napi_get_cb_info failed");
+            Logger::error("ParseId", "GetContext napi_get_cb_info failed");
             return -1;
         }
         int64_t value = 0;
         bool lossless = true;
         if (napi_ok != napi_get_value_bigint_int64(env, args[0], &value, &lossless)) {
-            OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "ParseId", "Get value failed");
+            Logger::error("ParseId", "Get value failed");
             return -1;
         }
         return value;
@@ -43,7 +44,7 @@ std::unordered_map<int64_t, OHNativeWindow*> PluginManager::windowMap_;
 
 PluginManager::~PluginManager()
 {
-    OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "~PluginManager");
+    Logger::info("PluginManager", "~PluginManager");
     for (auto iter = pluginRenderMap_.begin(); iter != pluginRenderMap_.end(); ++iter) {
         if (iter->second != nullptr) {
             delete iter->second;
@@ -106,8 +107,7 @@ napi_value PluginManager::DestroySurface(napi_env env, napi_callback_info info)
 napi_value PluginManager::ChangeSurface(napi_env env, napi_callback_info info)
 {
     if ((env == nullptr) || (info == nullptr)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "ChangeSurface: OnLoad env or info is null");
+        Logger::error("PluginManager", "ChangeSurface: OnLoad env or info is null");
         return nullptr;
     }
     int64_t surfaceId = 0;
@@ -115,25 +115,24 @@ napi_value PluginManager::ChangeSurface(napi_env env, napi_callback_info info)
     napi_value args[3] = {nullptr};
 
     if (napi_ok != napi_get_cb_info(env, info, &argc, args, nullptr, nullptr)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "ChangeSurface: GetContext napi_get_cb_info failed");
+        Logger::error("PluginManager", "ChangeSurface: GetContext napi_get_cb_info failed");
     }
     bool lossless = true;
     int index = 0;
     if (napi_ok != napi_get_value_bigint_int64(env, args[index++], &surfaceId, &lossless)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "ChangeSurface: Get value failed");
+        Logger::error("PluginManager", "ChangeSurface: Get value failed");
     }
     double width;
     if (napi_ok != napi_get_value_double(env, args[index++], &width)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "ChangeSurface: Get width failed");
+        Logger::error("PluginManager", "ChangeSurface: Get width failed");
     }
     double height;
     if (napi_ok != napi_get_value_double(env, args[index++], &height)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "ChangeSurface: Get height failed");
+        Logger::error("PluginManager", "ChangeSurface: Get height failed");
     }
     auto pluginRender = GetRender(surfaceId);
     if (pluginRender == nullptr) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "ChangeSurface: Get pluginRender failed");
+        Logger::error("PluginManager", "ChangeSurface: Get pluginRender failed");
         return nullptr;
     }
     pluginRender->UpdateNativeWindowSize(width, height);
@@ -145,7 +144,7 @@ napi_value PluginManager::ChangeColor(napi_env env, napi_callback_info info)
     int64_t surfaceId = ParseId(env, info);
     auto pluginRender = GetRender(surfaceId);
     if (pluginRender == nullptr) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "ChangeColor: Get pluginRender failed");
+        Logger::error("PluginManager", "ChangeColor: Get pluginRender failed");
         return nullptr;
     }
     pluginRender->ChangeColor();
@@ -157,7 +156,7 @@ napi_value PluginManager::DrawPattern(napi_env env, napi_callback_info info)
     int64_t surfaceId = ParseId(env, info);
     auto pluginRender = GetRender(surfaceId);
     if (pluginRender == nullptr) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager", "DrawPattern: Get pluginRender failed");
+        Logger::error("PluginManager", "DrawPattern: Get pluginRender failed");
         return nullptr;
     }
     pluginRender->DrawPattern();
@@ -169,41 +168,35 @@ napi_value PluginManager::GetXComponentStatus(napi_env env, napi_callback_info i
     int64_t surfaceId = ParseId(env, info);
     auto pluginRender = GetRender(surfaceId);
     if (pluginRender == nullptr) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "GetXComponentStatus: Get pluginRender failed");
+        Logger::error("PluginManager", "GetXComponentStatus: Get pluginRender failed");
         return nullptr;
     }
     napi_value hasDraw;
     napi_value hasChangeColor;
     napi_status ret = napi_create_int32(env, pluginRender->HasDraw(), &(hasDraw));
     if (ret != napi_ok) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "GetXComponentStatus: napi_create_int32 hasDraw_ error");
+        Logger::error("PluginManager", "GetXComponentStatus: napi_create_int32 hasDraw_ error");
         return nullptr;
     }
     ret = napi_create_int32(env, pluginRender->HasChangedColor(), &(hasChangeColor));
     if (ret != napi_ok) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "GetXComponentStatus: napi_create_int32 hasChangeColor_ error");
+        Logger::error("PluginManager", "GetXComponentStatus: napi_create_int32 hasChangeColor_ error");
         return nullptr;
     }
     napi_value obj;
     ret = napi_create_object(env, &obj);
     if (ret != napi_ok) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN,
-                     "PluginManager", "GetXComponentStatus: napi_create_object error");
+        Logger::error("PluginManager", "GetXComponentStatus: napi_create_object error");
         return nullptr;
     }
     ret = napi_set_named_property(env, obj, "hasDraw", hasDraw);
     if (ret != napi_ok) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "GetXComponentStatus: napi_set_named_property hasDraw error");
+        Logger::error("PluginManager", "GetXComponentStatus: napi_set_named_property hasDraw error");
         return nullptr;
     }
     ret = napi_set_named_property(env, obj, "hasChangeColor", hasChangeColor);
     if (ret != napi_ok) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "PluginManager",
-                     "GetXComponentStatus: napi_set_named_property hasChangeColor error");
+        Logger::error("PluginManager", "GetXComponentStatus: napi_set_named_property hasChangeColor error");
         return nullptr;
     }
     return obj;

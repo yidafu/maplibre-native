@@ -1,4 +1,12 @@
-import { Component, Container, Window, Surface, Size, Point, Rect, EdgeInsets } from '@kit.ArkUI';
+import { Feature, Polygon, } from 'geojson';
+import { Marker } from './annotations/Marker';
+import { CameraPosition } from './camera/CameraPosition';
+import { LatLng } from './geometry/LatLng';
+import { LatLngBounds } from './geometry/LatLngBounds';
+import { OnFpsChangedListener } from './OnFpsChangedListener';
+import { SnapshotReadyCallback } from './SnapshotReadyCallback';
+import { Layer } from './style/layers/Layer';
+import { Source } from './style/sources/Source';
 
 /**
  * NativeMap接口定义

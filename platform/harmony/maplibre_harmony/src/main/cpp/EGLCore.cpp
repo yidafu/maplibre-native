@@ -28,10 +28,11 @@
 #include <GLES3/gl3.h>
 #include <cmath>
 #include <cstdio>
-#include <hilog/log.h>
 
 #include "Render.h"
-#include "common.h"
+#include "logger.h"
+
+using mbgl::harmony::Logger;
 
 namespace {
 constexpr int32_t NUM_4 = 4;
@@ -197,21 +198,20 @@ const EGLint CONTEXT_ATTRIBS[] = {
 } // namespace
 bool EGLCore::EglContextInit(void* window)
 {
-    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_PRINT_DOMAIN, "EGLCore", "EglContextInit execute");
-    eglWindow_ = static_cast<EGLNativeWindowType>(window);
+    Logger::info("EGLCore", "EglContextInit execute");
+    eglWindow_ = reinterpret_cast<EGLNativeWindowType>(window);
 
     // Init display.
     eglDisplay_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (eglDisplay_ == EGL_NO_DISPLAY) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "eglGetDisplay: unable to get EGL display");
+        Logger::error("EGLCore", "eglGetDisplay: unable to get EGL display");
         return false;
     }
 
     EGLint majorVersion;
     EGLint minorVersion;
     if (!eglInitialize(eglDisplay_, &majorVersion, &minorVersion)) {
-        OH_LOG_Print(
-            LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "eglInitialize: unable to get initialize EGL display");
+        Logger::error("EGLCore", "eglInitialize: unable to get initialize EGL display");
         return false;
     }
 
@@ -219,7 +219,7 @@ bool EGLCore::EglContextInit(void* window)
     const EGLint maxConfigSize = 1;
     EGLint numConfigs;
     if (!eglChooseConfig(eglDisplay_, ATTRIB_LIST, &eglConfig_, maxConfigSize, &numConfigs)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "eglChooseConfig: unable to choose configs");
+        Logger::error("EGLCore", "eglChooseConfig: unable to choose configs");
         return false;
     }
 
@@ -229,26 +229,25 @@ bool EGLCore::EglContextInit(void* window)
 bool EGLCore::CreateEnvironment()
 {
     // Create surface.
-    if (eglWindow_ == nullptr) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "eglWindow_ is null");
+    if (eglWindow_ == 0) {
+        Logger::error("EGLCore", "eglWindow_ is null");
         return false;
     }
     eglSurface_ = eglCreateWindowSurface(eglDisplay_, eglConfig_, eglWindow_, NULL);
     if (eglSurface_ == nullptr) {
-        OH_LOG_Print(
-            LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "eglCreateWindowSurface: unable to create surface");
+        Logger::error("EGLCore", "eglCreateWindowSurface: unable to create surface");
         return false;
     }
     // Create context.
     eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, CONTEXT_ATTRIBS);
     if (!eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "eglMakeCurrent failed");
+        Logger::error("EGLCore", "eglMakeCurrent failed");
         return false;
     }
     // Create program.
     program_ = CreateProgram(VERTEX_SHADER, FRAGMENT_SHADER);
     if (program_ == PROGRAM_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "CreateProgram: unable to create program");
+        Logger::error("EGLCore", "CreateProgram: unable to create program");
         return false;
     }
     return true;
@@ -258,18 +257,18 @@ void EGLCore::Background()
 {
     GLint position = PrepareDraw();
     if (position == POSITION_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Background get position failed");
+        Logger::error("EGLCore", "Background get position failed");
         return;
     }
 
     if (!ExecuteDraw(position, BACKGROUND_COLOR,
                      BACKGROUND_RECTANGLE_VERTICES, sizeof(BACKGROUND_RECTANGLE_VERTICES))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Background execute draw failed");
+        Logger::error("EGLCore", "Background execute draw failed");
         return;
     }
 
     if (!FinishDraw()) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Background FinishDraw failed");
+        Logger::error("EGLCore", "Background FinishDraw failed");
         return;
     }
 }
@@ -277,16 +276,16 @@ void EGLCore::Background()
 void EGLCore::Draw(int& hasDraw)
 {
     flag_ = false;
-    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_PRINT_DOMAIN, "EGLCore", "Draw");
+    Logger::info("EGLCore", "Draw");
     GLint position = PrepareDraw();
     if (position == POSITION_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw get position failed");
+        Logger::error("EGLCore", "Draw get position failed");
         return;
     }
 
     if (!ExecuteDraw(position, BACKGROUND_COLOR,
                      BACKGROUND_RECTANGLE_VERTICES, sizeof(BACKGROUND_RECTANGLE_VERTICES))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw execute draw background failed");
+        Logger::error("EGLCore", "Draw execute draw background failed");
         return;
     }
 
@@ -307,7 +306,7 @@ void EGLCore::Draw(int& hasDraw)
         rotateX / width_, rotateY / height_, rightX / width_, rightY / height_ };
 
     if (!ExecuteDrawStar(position, DRAW_COLOR, shapeVertices, sizeof(shapeVertices))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw execute draw shape failed");
+        Logger::error("EGLCore", "Draw execute draw shape failed");
         return;
     }
 
@@ -323,13 +322,13 @@ void EGLCore::Draw(int& hasDraw)
             rotateX / width_, rotateY / height_, rightX / width_, rightY / height_ };
 
         if (!ExecuteDrawStar(position, DRAW_COLOR, shapeVertices, sizeof(shapeVertices))) {
-            OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw execute draw shape failed");
+            Logger::error("EGLCore", "Draw execute draw shape failed");
             return;
         }
     }
 
     if (!FinishDraw()) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw FinishDraw failed");
+        Logger::error("EGLCore", "Draw FinishDraw failed");
         return;
     }
     hasDraw = 1;
@@ -342,16 +341,16 @@ void EGLCore::ChangeColor(int& hasChangeColor)
     if (!flag_) {
         return;
     }
-    OH_LOG_Print(LOG_APP, LOG_INFO, LOG_PRINT_DOMAIN, "EGLCore", "ChangeColor");
+    Logger::info("EGLCore", "ChangeColor");
     GLint position = PrepareDraw();
     if (position == POSITION_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "ChangeColor get position failed");
+        Logger::error("EGLCore", "ChangeColor get position failed");
         return;
     }
 
     if (!ExecuteDraw(position, BACKGROUND_COLOR,
                      BACKGROUND_RECTANGLE_VERTICES, sizeof(BACKGROUND_RECTANGLE_VERTICES))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "ChangeColor execute draw background failed");
+        Logger::error("EGLCore", "ChangeColor execute draw background failed");
         return;
     }
 
@@ -372,7 +371,7 @@ void EGLCore::ChangeColor(int& hasChangeColor)
         rotateX / width_, rotateY / height_, rightX / width_, rightY / height_ };
 
     if (!ExecuteDrawNewStar(0, CHANGE_COLOR, shapeVertices, sizeof(shapeVertices))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw execute draw shape failed");
+        Logger::error("EGLCore", "Draw execute draw shape failed");
         return;
     }
 
@@ -387,13 +386,13 @@ void EGLCore::ChangeColor(int& hasChangeColor)
             rotateX / width_, rotateY / height_, rightX / width_, rightY / height_ };
 
         if (!ExecuteDrawNewStar(position, CHANGE_COLOR, shapeVertices, sizeof(shapeVertices))) {
-            OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Draw execute draw shape failed");
+            Logger::error("EGLCore", "Draw execute draw shape failed");
             return;
         }
     }
 
     if (!FinishDraw()) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "ChangeColor FinishDraw failed");
+        Logger::error("EGLCore", "ChangeColor FinishDraw failed");
     }
     hasChangeColor = 1;
 }
@@ -402,7 +401,7 @@ GLint EGLCore::PrepareDraw()
 {
     if ((eglDisplay_ == nullptr) || (eglSurface_ == nullptr) || (eglContext_ == nullptr) ||
         (!eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "PrepareDraw: param error");
+        Logger::error("EGLCore", "PrepareDraw: param error");
         return POSITION_ERROR;
     }
 
@@ -418,7 +417,7 @@ GLint EGLCore::PrepareDraw()
 bool EGLCore::ExecuteDraw(GLint position, const GLfloat* color, const GLfloat shapeVertices[], unsigned long vertSize)
 {
     if ((position > 0) || (color == nullptr) || (vertSize / sizeof(shapeVertices[0])) != SHAPE_VERTICES_SIZE) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "ExecuteDraw: param error");
+        Logger::error("EGLCore", "ExecuteDraw: param error");
         return false;
     }
 
@@ -436,7 +435,7 @@ bool EGLCore::ExecuteDrawStar(
     GLint position, const GLfloat* color, const GLfloat shapeVertices[], unsigned long vertSize)
 {
     if ((position > 0) || (color == nullptr) || (vertSize / sizeof(shapeVertices[0])) != SHAPE_VERTICES_SIZE) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "ExecuteDraw: param error");
+        Logger::error("EGLCore", "ExecuteDraw: param error");
         return false;
     }
 
@@ -457,7 +456,7 @@ bool EGLCore::ExecuteDrawNewStar(
     GLint position, const GLfloat* color, const GLfloat shapeVertices[], unsigned long vertSize)
 {
     if ((position > 0) || (color == nullptr) || (vertSize / sizeof(shapeVertices[0])) != SHAPE_VERTICES_SIZE) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "ExecuteDraw: param error");
+        Logger::error("EGLCore", "ExecuteDraw: param error");
         return false;
     }
 
@@ -490,13 +489,13 @@ bool EGLCore::FinishDraw()
 GLuint EGLCore::LoadShader(GLenum type, const char* shaderSrc)
 {
     if ((type <= 0) || (shaderSrc == nullptr)) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "glCreateShader type or shaderSrc error");
+        Logger::error("EGLCore", "glCreateShader type or shaderSrc error");
         return PROGRAM_ERROR;
     }
 
     GLuint shader = glCreateShader(type);
     if (shader == 0) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "glCreateShader unable to load shader");
+        Logger::error("EGLCore", "glCreateShader unable to load shader");
         return PROGRAM_ERROR;
     }
 
@@ -521,7 +520,7 @@ GLuint EGLCore::LoadShader(GLenum type, const char* shaderSrc)
     if (infoLog != nullptr) {
         memset(infoLog, 0, infoLen + 1);
         glGetShaderInfoLog(shader, infoLen, nullptr, infoLog);
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "glCompileShader error = %s", infoLog);
+        Logger::error("EGLCore", "glCompileShader error = %s", infoLog);
         free(infoLog);
         infoLog = nullptr;
     }
@@ -532,26 +531,25 @@ GLuint EGLCore::LoadShader(GLenum type, const char* shaderSrc)
 GLuint EGLCore::CreateProgram(const char* vertexShader, const char* fragShader)
 {
     if ((vertexShader == nullptr) || (fragShader == nullptr)) {
-        OH_LOG_Print(
-            LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "createProgram: vertexShader or fragShader is null");
+        Logger::error("EGLCore", "createProgram: vertexShader or fragShader is null");
         return PROGRAM_ERROR;
     }
 
     GLuint vertex = LoadShader(GL_VERTEX_SHADER, vertexShader);
     if (vertex == PROGRAM_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "createProgram vertex error");
+        Logger::error("EGLCore", "createProgram vertex error");
         return PROGRAM_ERROR;
     }
 
     GLuint fragment = LoadShader(GL_FRAGMENT_SHADER, fragShader);
     if (fragment == PROGRAM_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "createProgram fragment error");
+        Logger::error("EGLCore", "createProgram fragment error");
         return PROGRAM_ERROR;
     }
 
     GLuint program = glCreateProgram();
     if (program == PROGRAM_ERROR) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "createProgram program error");
+        Logger::error("EGLCore", "createProgram program error");
         glDeleteShader(vertex);
         glDeleteShader(fragment);
         return PROGRAM_ERROR;
@@ -570,14 +568,14 @@ GLuint EGLCore::CreateProgram(const char* vertexShader, const char* fragShader)
         return program;
     }
 
-    OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "createProgram linked error");
+    Logger::error("EGLCore", "createProgram linked error");
     GLint infoLen = 0;
     glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLen);
     if (infoLen > 1) {
         char* infoLog = (char*)malloc(sizeof(char) * (infoLen + 1));
         memset(infoLog, 0, infoLen + 1);
         glGetProgramInfoLog(program, infoLen, nullptr, infoLog);
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "glLinkProgram error = %s", infoLog);
+        Logger::error("EGLCore", "glLinkProgram error = %s", infoLog);
         free(infoLog);
         infoLog = nullptr;
     }
@@ -599,14 +597,14 @@ void EGLCore::UpdateSize(int width, int height)
 void EGLCore::Release()
 {
     if ((eglDisplay_ == nullptr) || (eglSurface_ == nullptr) || (!eglDestroySurface(eglDisplay_, eglSurface_))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Release eglDestroySurface failed");
+        Logger::error("EGLCore", "Release eglDestroySurface failed");
     }
 
     if ((eglDisplay_ == nullptr) || (eglContext_ == nullptr) || (!eglDestroyContext(eglDisplay_, eglContext_))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Release eglDestroyContext failed");
+        Logger::error("EGLCore", "Release eglDestroyContext failed");
     }
 
     if ((eglDisplay_ == nullptr) || (!eglTerminate(eglDisplay_))) {
-        OH_LOG_Print(LOG_APP, LOG_ERROR, LOG_PRINT_DOMAIN, "EGLCore", "Release eglTerminate failed");
+        Logger::error("EGLCore", "Release eglTerminate failed");
     }
 }

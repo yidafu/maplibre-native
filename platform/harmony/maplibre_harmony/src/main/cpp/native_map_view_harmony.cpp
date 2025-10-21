@@ -1,9 +1,13 @@
 #include "native_map_view_harmony.hpp"
-#include "common.h"
 
 #include <js_native_api_types.h>
 #include <mbgl/map/map.hpp>
+#include <mbgl/map/map_options.hpp>
+#include <mbgl/storage/resource_options.hpp>
+#include <mbgl/util/client_options.hpp>
 #include <mbgl/storage/file_source.hpp>
+#include <mbgl/storage/file_source_manager.hpp>
+#include <mbgl/storage/sqlite3.hpp>
 #include <mbgl/style/style.hpp>
 #include <mbgl/util/exception.hpp>
 #include <mbgl/util/chrono.hpp>
@@ -11,9 +15,21 @@
 #include <mbgl/util/timer.hpp>
 #include <napi/native_api.h>
 
+// 添加Harmony渲染器头文件
+#include "harmony_renderer.hpp"
+#include "harmony_renderer_frontend.hpp"
+#include "harmony_renderer_backend.hpp"
+#include "napi_utils.h"
+#include "logger.h"
+
 
 #include <memory>
+#include <native_window/external_window.h>
 #include <string>
+#include <thread>
+#include <chrono>
+
+using mbgl::harmony::Logger;
 
 namespace mbgl {
 namespace harmony {
@@ -23,22 +39,129 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
     napi_create_reference(env, wrapper, 1, &wrapper_);
     
     // 初始化成员变量
-    rendererFrontend = nullptr;
     mapRenderer = nullptr;
     map = nullptr;
     pixelRatio = 1.0f;
+    nativeWindow = nullptr;
+    
+    Logger::info("NativeMapView", "NativeMapView constructed");
 }
 
 NativeMapView::~NativeMapView() {
-    // 释放资源
-    if (wrapper_) {
-        napi_delete_reference(env_, wrapper_);
-        wrapper_ = nullptr;
+    Logger::info("NativeMapView", "========== Destructor START ==========");
+    
+    // 确保资源按正确顺序清理
+    cleanupAllResources();
+    
+    Logger::info("NativeMapView", "========== Destructor END ==========");
+}
+
+void NativeMapView::cleanupAllResources() {
+    Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
+    
+    try {
+        // 1. 首先停止所有网络请求和异步操作
+        Logger::debug("NativeMapView", "Stopping all network requests and async operations...");
+        
+        if (map) {
+            Logger::debug("NativeMapView", "Stopping map operations...");
+            // 停止地图的所有网络请求和过渡动画
+            try {
+                map->cancelTransitions();
+                // 注意：mbgl::Map没有stop()方法，使用其他方式停止操作
+            } catch (const std::exception& e) {
+                Logger::warn("NativeMapView", "Error stopping map operations: %s", e.what());
+            }
+        }
+        
+        // 2. 停止所有渲染操作和网络请求
+        if (harmonyRenderer) {
+            Logger::debug("NativeMapView", "Stopping HarmonyRenderer requests...");
+            harmonyRenderer->stopAllRequests();
+            Logger::debug("NativeMapView", "Pausing HarmonyRenderer...");
+            harmonyRenderer->pause();
+        }
+        
+        // 3. 等待所有异步操作完成
+        Logger::debug("NativeMapView", "Waiting for async operations to complete...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // 进一步增加等待时间
+        
+        // 4. 强制停止所有RunLoop
+        Logger::debug("NativeMapView", "Force stopping all RunLoops...");
+        try {
+            // 这里可以添加强制停止RunLoop的逻辑
+            Logger::debug("NativeMapView", "RunLoop cleanup initiated");
+        } catch (const std::exception& e) {
+            Logger::warn("NativeMapView", "Error during RunLoop cleanup: %s", e.what());
+        }
+        
+        // 5. 再次等待确保RunLoop完全停止
+        Logger::debug("NativeMapView", "Final wait for RunLoop shutdown...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        
+        // 6. 清理Map对象 (在RunLoop仍然有效时)
+        if (map) {
+            Logger::debug("NativeMapView", "Destroying Map object...");
+            map.reset();
+            Logger::debug("NativeMapView", "Map destroyed");
+        }
+        
+        // 5. 清理HarmonyRenderer
+        if (harmonyRenderer) {
+            Logger::debug("NativeMapView", "Destroying HarmonyRenderer...");
+            harmonyRenderer->cleanup();
+            harmonyRenderer.reset();
+            Logger::debug("NativeMapView", "HarmonyRenderer destroyed");
+        }
+        
+        // 6. 清理其他资源
+        mapRenderer = nullptr;
+        nativeWindow = nullptr;
+        
+        // 7. 释放NAPI引用
+        if (wrapper_) {
+            napi_delete_reference(env_, wrapper_);
+            wrapper_ = nullptr;
+        }
+        
+        Logger::info("NativeMapView", "All resources cleaned up successfully");
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
+    } catch (...) {
+        Logger::error("NativeMapView", "Unknown error during resource cleanup");
     }
     
-    map.reset();
-    rendererFrontend.reset();
-    mapRenderer = nullptr;
+    Logger::info("NativeMapView", "========== cleanupAllResources END ==========");
+}
+
+void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int height) {
+    Logger::info("NativeMapView", "========== setNativeWindowWithSize() START ==========");
+    Logger::info("NativeMapView", "Surface ID: %ld, Width: %d, Height: %d", (long)surfaceId, width, height);
+    
+    // 更新尺寸
+    this->width = width;
+    this->height = height;
+    
+    // 创建原生窗口
+    OHNativeWindow *nativeWindow;
+    Logger::debug("NativeMapView", "Creating native window from surface ID...");
+    OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
+    
+    if (nativeWindow) {
+        Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
+        this->nativeWindow = nativeWindow;
+        
+        // 初始化渲染器（如果尚未初始化）
+        Logger::info("NativeMapView", "Initializing renderer with size %dx%d...", width, height);
+        this->initializeRenderer();
+        
+        Logger::info("NativeMapView", "setNativeWindowWithSize completed successfully");
+    } else {
+        Logger::error("NativeMapView", "Failed to create native window from surface ID");
+    }
+    
+    Logger::info("NativeMapView", "========== setNativeWindowWithSize() END ==========");
 }
 
 void NativeMapView::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
@@ -47,154 +170,157 @@ void NativeMapView::Destructor(napi_env env, void* nativeObject, void* finalize_
 
 
 napi_value NativeMapView::Init(napi_env env, napi_value exports) {
+    Logger::info("NativeMapView", "========== Init() - Registering NAPI class ==========");
+    
     napi_status status;
     napi_value cons;
     
-    // 定义类构造函数
+    // 定义所有实例方法
+    std::vector<napi_property_descriptor> properties = {
+        {"resizeView", nullptr, resizeView, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getStyleUrl", nullptr, getStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setStyleUrl", nullptr, setStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getStyleJson", nullptr, getStyleJson, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setStyleJson", nullptr, setStyleJson, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setLatLngBounds", nullptr, setLatLngBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"cancelTransitions", nullptr, cancelTransitions, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setGestureInProgress", nullptr, setGestureInProgress, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"moveBy", nullptr, moveBy, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"jumpTo", nullptr, jumpTo, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"easeTo", nullptr, easeTo, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"flyTo", nullptr, flyTo, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLatLng", nullptr, getLatLng, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setLatLng", nullptr, setLatLng, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getCameraForLatLngBounds", nullptr, getCameraForLatLngBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getCameraForGeometry", nullptr, getCameraForGeometry, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setReachability", nullptr, setReachability, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"resetPosition", nullptr, resetPosition, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getPitch", nullptr, getPitch, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setPitch", nullptr, setPitch, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setZoom", nullptr, setZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getZoom", nullptr, getZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"resetZoom", nullptr, resetZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setMinZoom", nullptr, setMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getMinZoom", nullptr, getMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setMaxZoom", nullptr, setMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getMaxZoom", nullptr, getMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setMinPitch", nullptr, setMinPitch, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getMinPitch", nullptr, getMinPitch, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setMaxPitch", nullptr, setMaxPitch, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getMaxPitch", nullptr, getMaxPitch, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"rotateBy", nullptr, rotateBy, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setBearing", nullptr, setBearing, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setBearingXY", nullptr, setBearingXY, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getBearing", nullptr, getBearing, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"resetNorth", nullptr, resetNorth, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setVisibleCoordinateBounds", nullptr, setVisibleCoordinateBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getVisibleCoordinateBounds", nullptr, getVisibleCoordinateBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"scheduleSnapshot", nullptr, scheduleSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getCameraPosition", nullptr, getCameraPosition, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"updateMarker", nullptr, updateMarker, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addMarkers", nullptr, addMarkers, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"onLowMemory", nullptr, onLowMemory, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setDebug", nullptr, setDebug, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getDebug", nullptr, getDebug, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getActionJournalLogFiles", nullptr, getActionJournalLogFiles, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getActionJournalLog", nullptr, getActionJournalLog, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"clearActionJournalLog", nullptr, clearActionJournalLog, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"isFullyLoaded", nullptr, isFullyLoaded, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getMetersPerPixelAtLatitude", nullptr, getMetersPerPixelAtLatitude, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"projectedMetersForLatLng", nullptr, projectedMetersForLatLng, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"pixelForLatLng", nullptr, pixelForLatLng, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"pixelsForLatLngs", nullptr, pixelsForLatLngs, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"latLngForProjectedMeters", nullptr, latLngForProjectedMeters, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"latLngForPixel", nullptr, latLngForPixel, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"latLngsForPixels", nullptr, latLngsForPixels, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addPolylines", nullptr, addPolylines, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addPolygons", nullptr, addPolygons, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"updatePolyline", nullptr, updatePolyline, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"updatePolygon", nullptr, updatePolygon, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeAnnotations", nullptr, removeAnnotations, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addAnnotationIcon", nullptr, addAnnotationIcon, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeAnnotationIcon", nullptr, removeAnnotationIcon, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTopOffsetPixelsForAnnotationSymbol", nullptr, getTopOffsetPixelsForAnnotationSymbol, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTransitionOptions", nullptr, getTransitionOptions, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTransitionOptions", nullptr, setTransitionOptions, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"queryPointAnnotations", nullptr, queryPointAnnotations, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"queryShapeAnnotations", nullptr, queryShapeAnnotations, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"queryRenderedFeaturesForPoint", nullptr, queryRenderedFeaturesForPoint, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"queryRenderedFeaturesForBox", nullptr, queryRenderedFeaturesForBox, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLight", nullptr, getLight, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLayers", nullptr, getLayers, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLayer", nullptr, getLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addLayer", nullptr, addLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addLayerAbove", nullptr, addLayerAbove, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addLayerAt", nullptr, addLayerAt, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeLayerAt", nullptr, removeLayerAt, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeLayer", nullptr, removeLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getSources", nullptr, getSources, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getSource", nullptr, getSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addSource", nullptr, addSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeSource", nullptr, removeSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addImage", nullptr, addImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addImages", nullptr, addImages, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeImage", nullptr, removeImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getImage", nullptr, getImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setPrefetchTiles", nullptr, setPrefetchTiles, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getPrefetchTiles", nullptr, getPrefetchTiles, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setPrefetchZoomDelta", nullptr, setPrefetchZoomDelta, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getPrefetchZoomDelta", nullptr, getPrefetchZoomDelta, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTileCacheEnabled", nullptr, setTileCacheEnabled, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTileCacheEnabled", nullptr, getTileCacheEnabled, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTileLodMinRadius", nullptr, setTileLodMinRadius, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTileLodMinRadius", nullptr, getTileLodMinRadius, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTileLodScale", nullptr, setTileLodScale, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTileLodScale", nullptr, getTileLodScale, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTileLodPitchThreshold", nullptr, setTileLodPitchThreshold, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTileLodPitchThreshold", nullptr, getTileLodPitchThreshold, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTileLodZoomShift", nullptr, setTileLodZoomShift, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTileLodZoomShift", nullptr, getTileLodZoomShift, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"triggerRepaint", nullptr, triggerRepaint, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"isRenderingStatsViewEnabled", nullptr, isRenderingStatsViewEnabled, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"enableRenderingStatsView", nullptr, enableRenderingStatsView, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setNativeWindow", nullptr, setNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setNativeWindowWithSize", nullptr, setNativeWindowWithSize, nullptr, nullptr, nullptr, napi_default, nullptr}
+    };
+    
+    Logger::info("NativeMapView", "Registering %zu methods", properties.size());
+    
+    // 定义类构造函数，并传入所有属性描述符
     status = napi_define_class(
         env,
         "NativeMapView",
         NAPI_AUTO_LENGTH,
         New,
         nullptr,
-        0,
-        nullptr,
+        properties.size(),
+        properties.data(),
         &cons
     );
     
-    if (status != napi_ok) return nullptr;
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "Failed to define NativeMapView class");
+        return nullptr;
+    }
     
-    // 设置构造函数的引用
-    status = napi_create_reference(env, cons, 1, &wrapper_);
-    if (status != napi_ok) return nullptr;
+    Logger::debug("NativeMapView", "NativeMapView class defined successfully");
+    
+    // 设置构造函数的引用 - 使用静态变量存储
+    static napi_ref static_wrapper;
+    status = napi_create_reference(env, cons, 1, &static_wrapper);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "Failed to create reference to constructor");
+        return nullptr;
+    }
     
     // 设置导出对象
     status = napi_set_named_property(env, exports, "NativeMapView", cons);
-    if (status != napi_ok) return nullptr;
-    
-    // 注册所有方法
-    std::vector<std::pair<std::string, napi_callback>> methods = {
-        {"resizeView", resizeView},
-        {"getStyleUrl", getStyleUrl},
-        {"setStyleUrl", setStyleUrl},
-        {"getStyleJson", getStyleJson},
-        {"setStyleJson", setStyleJson},
-        {"setLatLngBounds", setLatLngBounds},
-        {"cancelTransitions", cancelTransitions},
-        {"setGestureInProgress", setGestureInProgress},
-        {"moveBy", moveBy},
-        {"jumpTo", jumpTo},
-        {"easeTo", easeTo},
-        {"flyTo", flyTo},
-        {"getLatLng", getLatLng},
-        {"setLatLng", setLatLng},
-        {"getCameraForLatLngBounds", getCameraForLatLngBounds},
-        {"getCameraForGeometry", getCameraForGeometry},
-        {"setReachability", setReachability},
-        {"resetPosition", resetPosition},
-        {"getPitch", getPitch},
-        {"setPitch", setPitch},
-        {"setZoom", setZoom},
-        {"getZoom", getZoom},
-        {"resetZoom", resetZoom},
-        {"setMinZoom", setMinZoom},
-        {"getMinZoom", getMinZoom},
-        {"setMaxZoom", setMaxZoom},
-        {"getMaxZoom", getMaxZoom},
-        {"setMinPitch", setMinPitch},
-        {"getMinPitch", getMinPitch},
-        {"setMaxPitch", setMaxPitch},
-        {"getMaxPitch", getMaxPitch},
-        {"rotateBy", rotateBy},
-        {"setBearing", setBearing},
-        {"setBearingXY", setBearingXY},
-        {"getBearing", getBearing},
-        {"resetNorth", resetNorth},
-        {"setVisibleCoordinateBounds", setVisibleCoordinateBounds},
-        {"getVisibleCoordinateBounds", getVisibleCoordinateBounds},
-        {"scheduleSnapshot", scheduleSnapshot},
-        {"getCameraPosition", getCameraPosition},
-        {"updateMarker", updateMarker},
-        {"addMarkers", addMarkers},
-        {"onLowMemory", onLowMemory},
-        {"setDebug", setDebug},
-        {"getDebug", getDebug},
-        {"getActionJournalLogFiles", getActionJournalLogFiles},
-        {"getActionJournalLog", getActionJournalLog},
-        {"clearActionJournalLog", clearActionJournalLog},
-        {"isFullyLoaded", isFullyLoaded},
-        {"getMetersPerPixelAtLatitude", getMetersPerPixelAtLatitude},
-        {"projectedMetersForLatLng", projectedMetersForLatLng},
-        {"pixelForLatLng", pixelForLatLng},
-        {"pixelsForLatLngs", pixelsForLatLngs},
-        {"latLngForProjectedMeters", latLngForProjectedMeters},
-        {"latLngForPixel", latLngForPixel},
-        {"latLngsForPixels", latLngsForPixels},
-        {"addPolylines", addPolylines},
-        {"addPolygons", addPolygons},
-        {"updatePolyline", updatePolyline},
-        {"updatePolygon", updatePolygon},
-        {"removeAnnotations", removeAnnotations},
-        {"addAnnotationIcon", addAnnotationIcon},
-        {"removeAnnotationIcon", removeAnnotationIcon},
-        {"getTopOffsetPixelsForAnnotationSymbol", getTopOffsetPixelsForAnnotationSymbol},
-        {"getTransitionOptions", getTransitionOptions},
-        {"setTransitionOptions", setTransitionOptions},
-        {"queryPointAnnotations", queryPointAnnotations},
-        {"queryShapeAnnotations", queryShapeAnnotations},
-        {"queryRenderedFeaturesForPoint", queryRenderedFeaturesForPoint},
-        {"queryRenderedFeaturesForBox", queryRenderedFeaturesForBox},
-        {"getLight", getLight},
-        {"getLayers", getLayers},
-        {"getLayer", getLayer},
-        {"addLayer", addLayer},
-        {"addLayerAbove", addLayerAbove},
-        {"addLayerAt", addLayerAt},
-        {"removeLayerAt", removeLayerAt},
-        {"removeLayer", removeLayer},
-        {"getSources", getSources},
-        {"getSource", getSource},
-        {"addSource", addSource},
-        {"removeSource", removeSource},
-        {"addImage", addImage},
-        {"addImages", addImages},
-        {"removeImage", removeImage},
-        {"getImage", getImage},
-        {"setPrefetchTiles", setPrefetchTiles},
-        {"getPrefetchTiles", getPrefetchTiles},
-        {"setPrefetchZoomDelta", setPrefetchZoomDelta},
-        {"getPrefetchZoomDelta", getPrefetchZoomDelta},
-        {"setTileCacheEnabled", setTileCacheEnabled},
-        {"getTileCacheEnabled", getTileCacheEnabled},
-        {"setTileLodMinRadius", setTileLodMinRadius},
-        {"getTileLodMinRadius", getTileLodMinRadius},
-        {"setTileLodScale", setTileLodScale},
-        {"getTileLodScale", getTileLodScale},
-        {"setTileLodPitchThreshold", setTileLodPitchThreshold},
-        {"getTileLodPitchThreshold", getTileLodPitchThreshold},
-        {"setTileLodZoomShift", setTileLodZoomShift},
-        {"getTileLodZoomShift", getTileLodZoomShift},
-        {"triggerRepaint", triggerRepaint},
-        {"isRenderingStatsViewEnabled", isRenderingStatsViewEnabled},
-        {"enableRenderingStatsView", enableRenderingStatsView}
-    };
-    
-    // 注册每个方法
-    for (const auto& method : methods) {
-        napi_property_descriptor desc = {
-            method.first.c_str(),
-            nullptr,
-            method.second,
-            nullptr,
-            nullptr,
-            nullptr,
-            napi_default,
-            nullptr
-        };
-        
-        status = napi_define_class_property(env, cons, &desc);
-        if (status != napi_ok) return nullptr;
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "Failed to export NativeMapView");
+        return nullptr;
     }
+    
+    Logger::info("NativeMapView", "NativeMapView class registered successfully with %zu methods", properties.size());
     
     return exports;
 }
@@ -229,26 +355,342 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
 }
 
 // MapObserver 方法实现
-void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {}
-void NativeMapView::onCameraIsChanging() {}
-void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode) {}
-void NativeMapView::onWillStartLoadingMap() {}
-void NativeMapView::onDidFinishLoadingMap() {}
-void NativeMapView::onDidFailLoadingMap(MapLoadError, const std::string&) {}
-void NativeMapView::onWillStartRenderingFrame() {}
-void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStatus&) {}
-void NativeMapView::onWillStartRenderingMap() {}
-void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode) {}
-void NativeMapView::onDidBecomeIdle() {}
-void NativeMapView::onDidFinishLoadingStyle() {}
-void NativeMapView::onSourceChanged(mbgl::style::Source&) {}
-void NativeMapView::onStyleImageMissing(const std::string&) {}
-bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string&) { return false; }
+void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {
+    Logger::debug("NativeMapView", "onCameraWillChange");
+}
+void NativeMapView::onCameraIsChanging() {
+    Logger::debug("NativeMapView", "onCameraIsChanging");
+}
+void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode) {
+    Logger::debug("NativeMapView", "onCameraDidChange");
+    
+    // 相机变化后请求渲染
+    if (harmonyRenderer) {
+        harmonyRenderer->requestRender();
+    }
+}
+void NativeMapView::onWillStartLoadingMap() {
+    Logger::info("NativeMapView", "========== onWillStartLoadingMap ==========");
+    Logger::info("NativeMapView", "Map loading started");
+    Logger::info("NativeMapView", "This is triggered when:");
+    Logger::info("NativeMapView", "  - Style URL/JSON is set");
+    Logger::info("NativeMapView", "  - Map starts loading resources");
+    Logger::info("NativeMapView", "===========================================");
+}
+void NativeMapView::onDidFinishLoadingMap() {
+    Logger::info("NativeMapView", "========== onDidFinishLoadingMap ==========");
+    Logger::info("NativeMapView", "Map finished loading");
+    Logger::info("NativeMapView", "All resources loaded successfully:");
+    Logger::info("NativeMapView", "  ✓ Style loaded");
+    Logger::info("NativeMapView", "  ✓ Sources initialized");
+    Logger::info("NativeMapView", "  ✓ Layers configured");
+    Logger::info("NativeMapView", "  ✓ Ready to render");
+    Logger::info("NativeMapView", "===========================================");
+    
+    // 地图加载完成后请求渲染
+    if (harmonyRenderer) {
+        harmonyRenderer->requestRender();
+        Logger::debug("NativeMapView", "Render requested after map loaded");
+    }
+}
+void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& errorMsg) {
+    Logger::error("NativeMapView", "========== onDidFailLoadingMap ==========");
+    
+    // 根据错误类型输出不同的信息
+    const char* errorType = "Unknown";
+    const char* suggestion = "";
+    
+    switch (error) {
+        case MapLoadError::StyleParseError:
+            errorType = "StyleParseError";
+            suggestion = "Check if the style JSON is valid. Validate at: https://maplibre.org/maplibre-style-spec/";
+            break;
+        case MapLoadError::StyleLoadError:
+            errorType = "StyleLoadError";
+            suggestion = "Check if the style URL is accessible and the network connection is working";
+            break;
+        case MapLoadError::NotFoundError:
+            errorType = "NotFoundError";
+            suggestion = "The style file or resource was not found. Check the URL and file paths";
+            break;
+        case MapLoadError::UnknownError:
+            errorType = "UnknownError";
+            suggestion = "An unknown error occurred. Check the error message for details";
+            break;
+    }
+    
+    Logger::error("NativeMapView", "Map loading failed!");
+    Logger::error("NativeMapView", "  Error Type: %s", errorType);
+    Logger::error("NativeMapView", "  Error Message: %s", errorMsg.c_str());
+    Logger::info("NativeMapView", "  Suggestion: %s", suggestion);
+    Logger::error("NativeMapView", "=========================================");
+}
+void NativeMapView::onWillStartRenderingFrame() {
+    Logger::debug("NativeMapView", "onWillStartRenderingFrame");
+}
+void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStatus& status) {
+    Logger::debug("NativeMapView", "onDidFinishRenderingFrame: mode=%d, needsRepaint=%d", 
+                 static_cast<int>(status.mode), status.needsRepaint);
+    
+    // Network I/O is now handled by the renderer thread's RunLoop
+    // No need to trigger a separate main thread RunLoop
+}
+void NativeMapView::onWillStartRenderingMap() {
+    Logger::debug("NativeMapView", "onWillStartRenderingMap");
+}
+void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
+    Logger::debug("NativeMapView", "onDidFinishRenderingMap");
+    
+    // 地图渲染完成后触发重绘
+    if (harmonyRenderer) {
+        harmonyRenderer->requestRender();
+    }
+}
+void NativeMapView::onDidBecomeIdle() {
+    Logger::debug("NativeMapView", "onDidBecomeIdle");
+}
+void NativeMapView::onDidFinishLoadingStyle() {
+    Logger::info("NativeMapView", "========== onDidFinishLoadingStyle ==========");
+    
+    if (map) {
+        try {
+            // 获取样式URL和名称
+            std::string styleUrl = map->getStyle().getURL();
+            std::string styleName = map->getStyle().getName();
+            
+            Logger::info("NativeMapView", "Style loaded successfully:");
+            Logger::info("NativeMapView", "  - URL: %s", styleUrl.empty() ? "(inline JSON)" : styleUrl.c_str());
+            Logger::info("NativeMapView", "  - Name: %s", styleName.empty() ? "(unnamed)" : styleName.c_str());
+            
+            // 获取Sources列表
+            auto sources = map->getStyle().getSources();
+            Logger::info("NativeMapView", "  - Sources count: %zu", sources.size());
+            for (const auto* source : sources) {
+                if (source) {
+                    Logger::debug("NativeMapView", "    * Source: %s (type: %d)", 
+                                  source->getID().c_str(), static_cast<int>(source->getType()));
+                }
+            }
+            
+            // 获取Layers列表
+            auto layers = map->getStyle().getLayers();
+            Logger::info("NativeMapView", "  - Layers count: %zu", layers.size());
+            for (const auto* layer : layers) {
+                if (layer) {
+                    Logger::debug("NativeMapView", "    * Layer: %s (source: %s)", 
+                                  layer->getID().c_str(), layer->getSourceID().c_str());
+                }
+            }
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "Error inspecting loaded style: %s", e.what());
+        }
+    } else {
+        Logger::warn("NativeMapView", "Map object is null");
+    }
+    
+    Logger::info("NativeMapView", "=============================================");
+    
+    // 样式加载完成后请求渲染
+    if (harmonyRenderer) {
+        harmonyRenderer->requestRender();
+        Logger::debug("NativeMapView", "Render requested after style loaded");
+    }
+}
+void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
+    Logger::info("NativeMapView", "========== onSourceChanged ==========");
+    Logger::info("NativeMapView", "Source changed: %s", source.getID().c_str());
+    Logger::info("NativeMapView", "  - Type: %d", static_cast<int>(source.getType()));
+    Logger::info("NativeMapView", "  - Volatile: %s", source.isVolatile() ? "yes" : "no");
+    
+    // 获取attribution信息
+    auto attribution = source.getAttribution();
+    if (attribution.has_value() && !attribution->empty()) {
+        Logger::debug("NativeMapView", "  - Attribution: %s", attribution->c_str());
+    }
+    
+    Logger::info("NativeMapView", "=====================================");
+    
+    // 源变化后请求渲染
+    if (harmonyRenderer) {
+        harmonyRenderer->requestRender();
+        Logger::debug("NativeMapView", "Render requested after source changed");
+    }
+}
+void NativeMapView::onStyleImageMissing(const std::string& id) {
+    Logger::warn("NativeMapView", "========== onStyleImageMissing ==========");
+    Logger::warn("NativeMapView", "Missing image: %s", id.c_str());
+    Logger::info("NativeMapView", "Hint: Add this image using map.addImage() or provide it in sprite sheet");
+    Logger::warn("NativeMapView", "=========================================");
+}
 
-// N-API 方法实现 - 所有实现置空
+bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
+    Logger::debug("NativeMapView", "onCanRemoveUnusedStyleImage: %s - returning false (keep image)", id.c_str());
+    return false;
+}
+
+void NativeMapView::initializeRenderer() {
+    Logger::debug("NativeMapView", "initializeRenderer() called - harmonyRenderer=%s, nativeWindow=%s, map=%s", 
+                  harmonyRenderer ? "exists" : "null",
+                  nativeWindow ? "exists" : "null",
+                  map ? "exists" : "null");
+    
+    // 1. 创建 HarmonyRenderer（如果不存在）
+    if (!harmonyRenderer) {
+        Logger::info("NativeMapView", "Creating HarmonyRenderer (width=%d, height=%d, pixelRatio=%.2f)", 
+                     width, height, pixelRatio);
+        harmonyRenderer = std::make_unique<HarmonyRenderer>();
+        harmonyRenderer->initialize(width, height, pixelRatio);
+        
+        Logger::info("NativeMapView", "HarmonyRenderer initialized successfully");
+    } else {
+        Logger::debug("NativeMapView", "HarmonyRenderer already exists, skipping creation");
+    }
+    
+    // 2. 如果有窗口，设置窗口
+    if (nativeWindow && harmonyRenderer) {
+        Logger::info("NativeMapView", "Setting native window to HarmonyRenderer");
+        harmonyRenderer->setNativeWindow(nativeWindow);
+        Logger::debug("NativeMapView", "Native window set successfully");
+    } else {
+        Logger::warn("NativeMapView", "Cannot set native window - nativeWindow=%s, harmonyRenderer=%s",
+                     nativeWindow ? "exists" : "null",
+                     harmonyRenderer ? "exists" : "null");
+    }
+    
+    // 3. 创建 Map 对象（如果不存在）
+    if (!map && harmonyRenderer) {
+        Logger::info("NativeMapView", "Creating Map object...");
+        
+        auto* rendererFrontend = harmonyRenderer->getRendererFrontend();
+        if (!rendererFrontend) {
+            Logger::error("NativeMapView", "Cannot create Map - RendererFrontend is null");
+            return;
+        }
+        Logger::debug("NativeMapView", "Got RendererFrontend: %p", rendererFrontend);
+        
+        try {
+            // Configure MapOptions
+            MapOptions mapOptions;
+            mapOptions.withMapMode(MapMode::Continuous)
+                      .withConstrainMode(ConstrainMode::HeightOnly)
+                      .withViewportMode(ViewportMode::Default)
+                      .withCrossSourceCollisions(true)
+                      .withSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)})
+                      .withPixelRatio(pixelRatio);
+            Logger::debug("NativeMapView", "MapOptions configured: size=%dx%d, pixelRatio=%.2f", 
+                          width, height, pixelRatio);
+            
+            // Configure ResourceOptions
+            ResourceOptions resourceOptions;
+            std::string cachePath = "/data/storage/el2/base/cache";
+            resourceOptions.withCachePath(cachePath + "/mbgl_cache.db")
+                          .withAssetPath(cachePath)
+                          .withPlatformContext(reinterpret_cast<void*>(this)); // Enable platform context
+            Logger::debug("NativeMapView", "ResourceOptions configured with cache path and platform context");
+            
+            // Configure ClientOptions
+            ClientOptions clientOptions;
+            clientOptions.withName("MapLibre Harmony")
+                         .withVersion("1.0.0");
+            Logger::debug("NativeMapView", "ClientOptions configured");
+            
+            // Create Map object
+            map = std::make_unique<Map>(
+                *rendererFrontend,
+                *this,
+                mapOptions,
+                resourceOptions,
+                clientOptions
+            );
+            
+            Logger::info("NativeMapView", "Map object created successfully: %p", map.get());
+            
+            // DEBUG: Check if RunLoop exists on this thread
+            auto* currentRunLoop = util::RunLoop::Get();
+            if (currentRunLoop) {
+                Logger::info("NativeMapView", "RunLoop EXISTS on current thread: %p", currentRunLoop);
+                printf("[MAP DEBUG] RunLoop verified: %p\n", currentRunLoop);
+                fflush(stdout);
+            } else {
+                Logger::error("NativeMapView", "RunLoop is NULL on current thread! Network requests will FAIL!");
+                Logger::error("NativeMapView", "CRITICAL: Map must be created on a thread with an active RunLoop");
+                printf("[MAP ERROR] RunLoop is NULL!\n");
+                fflush(stdout);
+            }
+            
+            // DEBUG: Trigger style loading to test network
+            printf("[MAP DEBUG] About to call map->getStyle().loadURL()...\n");
+            fflush(stdout);
+            
+            // Connect Map to RendererFrontend
+            auto* frontend = harmonyRenderer->getRendererFrontend();
+            if (frontend) {
+                frontend->setMap(map.get());
+                Logger::info("NativeMapView", "Map connected to RendererFrontend");
+            } else {
+                Logger::error("NativeMapView", "Failed to get RendererFrontend");
+            }
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "Failed to create Map object: %s", e.what());
+        }
+    } else if (map) {
+        Logger::debug("NativeMapView", "Map already exists, skipping creation");
+    } else {
+        Logger::warn("NativeMapView", "Cannot create Map - harmonyRenderer is null");
+    }
+}
+
 napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取参数
+    size_t argc = 2;
+    napi_value args[2];
+    
+    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get resizeView arguments");
+        return undefined;
+    }
+    
+    if (argc < 2) {
+        Logger::error("NativeMapView", "resizeView requires 2 arguments");
+        return undefined;
+    }
+    
+    // 解析宽度和高度
+    int32_t newWidth, newHeight;
+    if (napi_get_value_int32(env, args[0], &newWidth) != napi_ok ||
+        napi_get_value_int32(env, args[1], &newHeight) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to parse resizeView arguments");
+        return undefined;
+    }
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 更新尺寸
+    instance->width = newWidth;
+    instance->height = newHeight;
+    
+    // 如果渲染器已初始化，调整尺寸
+    if (instance->harmonyRenderer) {
+        instance->harmonyRenderer->resize(instance->width, instance->height);
+    }
+    
+    Logger::info("NativeMapView", "View resized to %d x %d", instance->width, instance->height);
+    
     return undefined;
 }
 
@@ -259,8 +701,95 @@ napi_value NativeMapView::getStyleUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== setStyleUrl() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setStyleUrl: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "setStyleUrl: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    Logger::debug("NativeMapView", "setStyleUrl: instance=%p", instance);
+    Logger::debug("NativeMapView", "setStyleUrl: Current state - map=%s, harmonyRenderer=%s, nativeWindow=%s",
+                  instance->map ? "exists" : "null",
+                  instance->harmonyRenderer ? "exists" : "null",
+                  instance->nativeWindow ? "exists" : "null");
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::error("NativeMapView", "setStyleUrl: Map not initialized! Please call setNativeWindow first.");
+        return undefined;
+    }
+    
+    // 获取样式URL参数
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setStyleUrl: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setStyleUrl: Missing style URL argument");
+        return undefined;
+    }
+    
+    // 提取样式URL字符串
+    size_t strSize;
+    if (napi_get_value_string_utf8(env, args[0], nullptr, 0, &strSize) != napi_ok) {
+        Logger::error("NativeMapView", "setStyleUrl: Failed to get style URL string size");
+        return undefined;
+    }
+    
+    std::string styleUrl(strSize + 1, '\0');
+    if (napi_get_value_string_utf8(env, args[0], &styleUrl[0], strSize + 1, &strSize) != napi_ok) {
+        Logger::error("NativeMapView", "setStyleUrl: Failed to get style URL string");
+        return undefined;
+    }
+    styleUrl.resize(strSize);
+    
+    Logger::info("NativeMapView", "setStyleUrl: Loading style from URL: %s", styleUrl.c_str());
+    
+    // 加载样式
+    try {
+        printf("[STYLE DEBUG] Calling getStyle().loadURL('%s')...\n", styleUrl.c_str());
+        fflush(stdout);
+        
+        instance->map->getStyle().loadURL(styleUrl);
+        
+        Logger::info("NativeMapView", "✅ loadURL() returned successfully");
+        Logger::info("NativeMapView", "📞 About to call triggerRepaint()...");
+        printf("[STYLE DEBUG] loadURL() returned successfully\n");
+        printf("[STYLE DEBUG] Calling triggerRepaint()...\n");
+        fflush(stdout);
+        
+        instance->map->triggerRepaint();  // Trigger rendering
+        
+        Logger::info("NativeMapView", "✅ triggerRepaint() returned successfully");
+        printf("[STYLE DEBUG] triggerRepaint() completed\n");
+        printf("[STYLE DEBUG] If no RunLoop::addWatch() was called, HTTP request was NOT initiated!\n");
+        fflush(stdout);
+        
+        Logger::info("NativeMapView", "setStyleUrl: Style URL set successfully");
+        Logger::info("NativeMapView", "========== setStyleUrl() END - SUCCESS ==========");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setStyleUrl: Failed to load style: %s", e.what());
+        Logger::error("NativeMapView", "========== setStyleUrl() END - FAILED ==========");
+        printf("[STYLE ERROR] loadURL() exception: %s\n", e.what());
+        fflush(stdout);
+    }
+    
     return undefined;
 }
 
@@ -301,8 +830,111 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== jumpTo() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "jumpTo: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    Logger::debug("NativeMapView", "jumpTo: instance=%p", instance);
+    Logger::debug("NativeMapView", "jumpTo: Current state - map=%s, harmonyRenderer=%s, nativeWindow=%s",
+                  instance->map ? "exists" : "null",
+                  instance->harmonyRenderer ? "exists" : "null",
+                  instance->nativeWindow ? "exists" : "null");
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::error("NativeMapView", "jumpTo: Map not initialized! Please call setNativeWindow first.");
+        return undefined;
+    }
+    
+    // 获取相机参数
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "jumpTo: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "jumpTo: Missing camera options argument");
+        return undefined;
+    }
+    
+    // 解析相机选项对象
+    napi_value cameraObj = args[0];
+    
+    CameraOptions cameraOptions;
+    
+    // 获取 center (LatLng)
+    napi_value centerValue;
+    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
+        napi_value latValue, lngValue;
+        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
+            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
+            double lat, lng;
+            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
+                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
+                cameraOptions.center = LatLng{lat, lng};
+                Logger::debug("NativeMapView", "jumpTo: center = (%f, %f)", lat, lng);
+            }
+        }
+    }
+    
+    // 获取 zoom
+    napi_value zoomValue;
+    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
+        double zoom;
+        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
+            cameraOptions.zoom = zoom;
+            Logger::debug("NativeMapView", "jumpTo: zoom = %f", zoom);
+        }
+    }
+    
+    // 获取 bearing
+    napi_value bearingValue;
+    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
+        double bearing;
+        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
+            cameraOptions.bearing = bearing;
+            Logger::debug("NativeMapView", "jumpTo: bearing = %f", bearing);
+        }
+    }
+    
+    // 获取 pitch
+    napi_value pitchValue;
+    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
+        double pitch;
+        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
+            cameraOptions.pitch = pitch;
+            Logger::debug("NativeMapView", "jumpTo: pitch = %f", pitch);
+        }
+    }
+    
+    // 执行相机跳转
+    try {
+        instance->map->jumpTo(cameraOptions);
+        instance->map->triggerRepaint();  // Trigger rendering
+        Logger::info("NativeMapView", "jumpTo: Camera jump executed successfully");
+        Logger::info("NativeMapView", "========== jumpTo() END - SUCCESS ==========");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "jumpTo: Failed to jump camera: %s", e.what());
+        Logger::error("NativeMapView", "========== jumpTo() END - FAILED ==========");
+    }
+    
     return undefined;
 }
 
@@ -849,6 +1481,95 @@ napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info i
 napi_value NativeMapView::triggerRepaint(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 请求渲染
+    if (instance->harmonyRenderer) {
+        instance->harmonyRenderer->requestRender();
+        Logger::debug("NativeMapView", "Render requested");
+    }
+    
+    return undefined;
+}
+
+// 设置NativeWindow的NAPI方法
+napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== setNativeWindow() START ==========");
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    
+    // 获取参数
+    size_t argc = 1;
+    napi_value args[1];
+    
+    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get setNativeWindow arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setNativeWindow requires 1 argument");
+        return undefined;
+    }
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get this object");
+        return undefined;
+    }
+
+    int64_t surfaceId = mbgl::harmony::napi::ParseSurfaceId(env, info);
+    Logger::info("NativeMapView", "Surface ID: %ld", (long)surfaceId);
+
+    // 获取NativeMapView实例
+    NativeMapView* nativeMapView;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&nativeMapView)) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to unwrap NativeMapView");
+        return undefined;
+    }
+    
+    Logger::debug("NativeMapView", "NativeMapView instance: %p", nativeMapView);
+    Logger::debug("NativeMapView", "Current state - harmonyRenderer=%s, map=%s, nativeWindow=%s",
+                  nativeMapView->harmonyRenderer ? "exists" : "null",
+                  nativeMapView->map ? "exists" : "null",
+                  nativeMapView->nativeWindow ? "exists" : "null");
+
+    OHNativeWindow *nativeWindow;
+    Logger::debug("NativeMapView", "Creating native window from surface ID...");
+    OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
+    
+    if (nativeWindow) {
+        Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
+    } else {
+        Logger::error("NativeMapView", "Failed to create native window from surface ID");
+        return undefined;
+    }
+    
+    // 保存窗口指针
+    nativeMapView->nativeWindow = nativeWindow;
+    Logger::debug("NativeMapView", "Native window saved to NativeMapView");
+    
+    // 初始化渲染器（如果尚未初始化）
+    Logger::info("NativeMapView", "Initializing renderer...");
+    nativeMapView->initializeRenderer();
+    
+    Logger::info("NativeMapView", "========== setNativeWindow() END - SUCCESS ==========");
+    
     return undefined;
 }
 
@@ -864,18 +1585,103 @@ napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_i
     return undefined;
 }
 
+// 设置NativeWindow的NAPI方法（带尺寸参数）
+napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== setNativeWindowWithSize() START ==========");
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    
+    // 获取参数
+    size_t argc = 3;
+    napi_value args[3];
+    
+    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get setNativeWindowWithSize arguments");
+        return undefined;
+    }
+    
+    if (argc < 3) {
+        Logger::error("NativeMapView", "setNativeWindowWithSize requires 3 arguments");
+        return undefined;
+    }
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to get this object");
+        return undefined;
+    }
+
+    // 解析参数
+    int64_t surfaceId = mbgl::harmony::napi::ParseSurfaceId(env, info);
+    int32_t width, height;
+    
+    if (napi_get_value_int32(env, args[1], &width) != napi_ok ||
+        napi_get_value_int32(env, args[2], &height) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to parse width/height arguments");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "Surface ID: %ld, Width: %d, Height: %d", (long)surfaceId, width, height);
+
+    // 获取NativeMapView实例
+    NativeMapView* nativeMapView;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&nativeMapView)) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to unwrap NativeMapView");
+        return undefined;
+    }
+    
+    // 调用新的方法
+    nativeMapView->setNativeWindowWithSize(surfaceId, width, height);
+    
+    Logger::info("NativeMapView", "========== setNativeWindowWithSize() END - SUCCESS ==========");
+    
+    return undefined;
+}
+
 // 其他方法实现
 mbgl::Map& NativeMapView::getMap() {
-    // 这里应该返回实际的map对象，但目前返回一个引用（会导致崩溃），实际使用时需要实现
-    static mbgl::Map dummyMap;
-    return dummyMap;
+    // 返回实际的地图对象，如果map为null则抛出异常
+    if (map) {
+        Logger::debug("NativeMapView", "getMap: returning valid map object");
+        return *map;
+    } else {
+        Logger::error("NativeMapView", "getMap: map object is null");
+        throw std::runtime_error("Map object is null");
+    }
 }
 
 // Shader compilation
-void NativeMapView::onRegisterShaders(mbgl::gfx::ShaderRegistry&) {}
-void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn, mbgl::gfx::Backend::Type, const std::string&) {}
-void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn, mbgl::gfx::Backend::Type, const std::string&) {}
-void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn, mbgl::gfx::Backend::Type, const std::string&) {}
+void NativeMapView::onRegisterShaders(mbgl::gfx::ShaderRegistry&) {
+    Logger::info("NativeMapView", "onRegisterShaders called");
+}
+
+void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
+    Logger::info("NativeMapView", "onPreCompileShader: shader=%d, backend=%d, source_length=%zu", 
+                 static_cast<int>(shader), static_cast<int>(backend), source.length());
+}
+
+void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
+    Logger::info("NativeMapView", "onPostCompileShader: shader=%d, backend=%d, source_length=%zu", 
+                 static_cast<int>(shader), static_cast<int>(backend), source.length());
+    
+    // 详细记录shader编译信息
+    if (source.find("a_pos") != std::string::npos) {
+        Logger::info("NativeMapView", "Shader contains 'a_pos' attribute");
+    }
+    if (source.find("a_tex") != std::string::npos) {
+        Logger::info("NativeMapView", "Shader contains 'a_tex' attribute");
+    }
+    if (source.find("a_normal") != std::string::npos) {
+        Logger::info("NativeMapView", "Shader contains 'a_normal' attribute");
+    }
+}
+
+void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
+    Logger::error("NativeMapView", "onShaderCompileFailed: shader=%d, backend=%d, source_length=%zu", 
+                  static_cast<int>(shader), static_cast<int>(backend), source.length());
+}
 
 // Glyph requests
 void NativeMapView::onGlyphsLoaded(const mbgl::FontStack&, const mbgl::GlyphRange&) {}
@@ -892,11 +1698,3 @@ void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>&)
 
 } // namespace harmony
 } // namespace mbgl
-
-// 初始化模块
-napi_value Init(napi_env env, napi_value exports) {
-    return mbgl::harmony::NativeMapView::Init(env, exports);
-}
-
-// 注册模块
-NAPI_MODULE(maplibre_harmony, Init)

@@ -1,5 +1,7 @@
 #include "napi/native_api.h"
 #include "PluginManager.h"
+#include "native_map_view_harmony.hpp"
+//#include "native_map_view_harmony.hpp"
 
 static napi_value Add(napi_env env, napi_callback_info info) {
     size_t argc = 2;
@@ -37,18 +39,22 @@ static napi_value Init(napi_env env, napi_value exports) {
         {"GetXComponentStatus", nullptr, PluginManager::GetXComponentStatus, nullptr, nullptr, nullptr, napi_default,
          nullptr}};
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
+
+    // 初始化 NativeMapView 类
+    mbgl::harmony::NativeMapView::Init(env, exports);
+    
     return exports;
 }
 EXTERN_C_END
 
-static napi_module demoModule = {
+static napi_module maplibreModule = {
     .nm_version = 1,
     .nm_flags = 0,
     .nm_filename = nullptr,
     .nm_register_func = Init,
-    .nm_modname = "maplibre_harmony",
+    .nm_modname = "maplibre_native",
     .nm_priv = ((void *)0),
     .reserved = {0},
 };
 
-extern "C" __attribute__((constructor)) void RegisterMaplibre_harmonyModule(void) { napi_module_register(&demoModule); }
+extern "C" __attribute__((constructor)) void RegisterMaplibre_harmonyModule(void) { napi_module_register(&maplibreModule); }

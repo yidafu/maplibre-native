@@ -5,17 +5,58 @@ import { window } from '@kit.ArkUI';
 const DOMAIN = 0x0000;
 
 export default class MaplibreAbility extends UIAbility {
+  private isDestroyed: boolean = false;
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+    this.isDestroyed = false;
+    
+    // 清理可能残留的全局状态
+    this.cleanupGlobalState();
   }
 
   onDestroy(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
+    this.isDestroyed = true;
+    
+    // 确保所有资源都被正确清理
+    this.cleanupAllResources();
   }
+
+  private cleanupGlobalState(): void {
+    try {
+      // 清理可能残留的NAPI引用
+      hilog.info(DOMAIN, 'testTag', 'Cleaning up global state');
+      
+      // 重置FileSourceManager状态
+      // 这里可以添加更多全局状态清理逻辑
+    } catch (error) {
+      hilog.error(DOMAIN, 'testTag', 'Error cleaning up global state: %{public}s', JSON.stringify(error));
+    }
+  }
+
+  private cleanupAllResources(): void {
+    try {
+      hilog.info(DOMAIN, 'testTag', 'Cleaning up all resources');
+      
+      // 清理EGL上下文
+      // 清理OpenGL资源
+      // 停止所有后台线程
+      // 释放NAPI引用
+      
+    } catch (error) {
+      hilog.error(DOMAIN, 'testTag', 'Error cleaning up resources: %{public}s', JSON.stringify(error));
+    }
+  }
+
+  private windowStage: window.WindowStage | null = null;
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+    
+    // 保存窗口引用
+    this.windowStage = windowStage;
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
@@ -29,15 +70,47 @@ export default class MaplibreAbility extends UIAbility {
   onWindowStageDestroy(): void {
     // Main window is destroyed, release UI related resources
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
+    
+    // 清理窗口相关资源
+    if (this.windowStage) {
+      try {
+        // 确保窗口资源被正确释放
+        this.windowStage = null;
+        hilog.info(DOMAIN, 'testTag', 'Window stage resources cleaned up');
+      } catch (error) {
+        hilog.error(DOMAIN, 'testTag', 'Error cleaning up window stage: %{public}s', JSON.stringify(error));
+      }
+    }
   }
 
   onForeground(): void {
     // Ability has brought to foreground
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    
+    // 检查窗口状态
+    if (!this.windowStage) {
+      hilog.warn(DOMAIN, 'testTag', 'Window stage is null in onForeground');
+    }
   }
 
   onBackground(): void {
     // Ability has back to background
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+    
+    // 暂停非必要的操作
+    this.pauseNonEssentialOperations();
+  }
+
+  private pauseNonEssentialOperations(): void {
+    try {
+      hilog.info(DOMAIN, 'testTag', 'Pausing non-essential operations');
+      
+      // 暂停地图渲染
+      // 暂停网络请求
+      // 其他非必要操作
+      
+    } catch (error) {
+      hilog.error(DOMAIN, 'testTag', 'Error pausing operations: %{public}s', JSON.stringify(error));
+    }
   }
 }

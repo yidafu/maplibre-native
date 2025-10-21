@@ -1,5 +1,4 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so'
 import { NativeMapView } from '../maps/NativeMapView'
 
 const DOMAIN = 0x0000;
@@ -30,7 +29,7 @@ struct Index {
         Row() {
           Button('添加标记')
             .onClick(() => {
-              // this.addTestMarker();
+              hilog.warn(DOMAIN, "IndexPage", "添加标记")
             })
             .enabled(this.mapReady)
 
@@ -42,7 +41,7 @@ struct Index {
 
           Button('跳转北京')
             .onClick(() => {
-              // this.jumpToBeijing();
+              hilog.warn(DOMAIN, "IndexPage", "跳转北京")
             })
             .enabled(this.mapReady)
 
@@ -67,10 +66,13 @@ struct Index {
             debugMode: true,
             onMapReady: () => {
               console.info('Map is ready!');
+              hilog.warn(DOMAIN, "IndexPage", 'Map is ready!')
+
               this.mapReady = true;
             },
             onMapLoaded: () => {
               console.info('Map loaded!');
+              hilog.warn(DOMAIN, "IndexPage", 'Map loaded!')
             },
             onMapError: (error: string) => {
               console.error('Map error:', error);
