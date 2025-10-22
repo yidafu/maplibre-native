@@ -1,129 +1,171 @@
+/**
+ * MapLibre Native for HarmonyOS
+ * 测试页面导航首页
+ */
+
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { NativeMapView } from '../maps/NativeMapView'
+import { router } from '@kit.ArkUI';
 
 const DOMAIN = 0x0000;
+
+// 测试页面配置
+class TestPageItem {
+  title: string = '';
+  description: string = '';
+  route: string = '';
+  icon: string = '';
+  
+  constructor(title: string, description: string, route: string, icon: string) {
+    this.title = title;
+    this.description = description;
+    this.route = route;
+    this.icon = icon;
+  }
+}
 
 @Entry
 @Component
 struct Index {
-  @State mapReady: boolean= true;
-  @State message: string = 'Hello World';
-  @State currentStatus: string = "index";
+  // 测试页面列表
+  private testPages: TestPageItem[] = [
+    new TestPageItem(
+      '基础地图测试',
+      '测试地图渲染、标记添加、相机跳转等基础功能',
+      'pages/BasicMapPage',
+      '🗺️'
+    ),
+    new TestPageItem(
+      '手势系统测试',
+      '测试平移、缩放、旋转等手势功能和惯性动画',
+      'pages/GestureTestPage',
+      '👆'
+    ),
+  ];
 
   build() {
-    Row() {
-      Column() {
-        // 标题栏
-        Row() {
-          Text('MapLibre Native 测试')
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(Color.White)
-        }
-        .width('100%')
-        .height(60)
-        .backgroundColor('#2196F3')
-        .justifyContent(FlexAlign.Center)
-
-        // 控制按钮
-        Row() {
-          Button('添加标记')
-            .onClick(() => {
-              hilog.warn(DOMAIN, "IndexPage", "添加标记")
-            })
-            .enabled(this.mapReady)
-
-          Button('清除标记')
-            .onClick(() => {
-              // this.clearMarkers();
-            })
-            .enabled(this.mapReady)
-
-          Button('跳转北京')
-            .onClick(() => {
-              hilog.warn(DOMAIN, "IndexPage", "跳转北京")
-            })
-            .enabled(this.mapReady)
-
-          Button('跳转上海')
-            .onClick(() => {
-              // this.jumpToShanghai();
-            })
-            .enabled(this.mapReady)
-        }
-        .width('100%')
-        .height(50)
-        .padding({ left: 10, right: 10 })
-        .justifyContent(FlexAlign.SpaceEvenly)
-
-        // 地图容器
-        Stack() {
-          NativeMapView({
-            styleUrl: "https://demotiles.maplibre.org/style.json",
-            initialLatitude: 39.9042,
-            initialLongitude: 116.4074,
-            initialZoom: 10,
-            debugMode: true,
-            onMapReady: () => {
-              console.info('Map is ready!');
-              hilog.warn(DOMAIN, "IndexPage", 'Map is ready!')
-
-              this.mapReady = true;
-            },
-            onMapLoaded: () => {
-              console.info('Map loaded!');
-              hilog.warn(DOMAIN, "IndexPage", 'Map loaded!')
-            },
-            onMapError: (error: string) => {
-              console.error('Map error:', error);
-            }
-          })
-          .width('100%')
-          .height('100%')
-
-          // 加载指示器
-          if (!this.mapReady) {
-            Column() {
-              LoadingProgress()
-                .width(50)
-                .height(50)
-                .color('#2196F3')
-
-              Text('地图加载中...')
-                .fontSize(16)
-                .fontColor('#666666')
-                .margin({ top: 10 })
-            }
-            .width('100%')
-            .height('100%')
-            .justifyContent(FlexAlign.Center)
-            .backgroundColor('rgba(255, 255, 255, 0.8)')
-          }
-        }
-        .width('100%')
-        .layoutWeight(1)
-
-        // 状态栏
-        Row() {
-          Text(`状态: ${this.mapReady ? '已就绪' : '加载中'}`)
-            .fontSize(14)
-            .fontColor('#666666')
-
-          Text(`标记数量: ${0}`)
-            .fontSize(14)
-            .fontColor('#666666')
-            .margin({ left: 20 })
-        }
-        .width('100%')
-        .height(40)
-        .padding({ left: 10, right: 10 })
-        .justifyContent(FlexAlign.SpaceBetween)
-        .backgroundColor('#F5F5F5')
+    Column() {
+      // 标题栏
+      Row() {
+        Text('MapLibre Native for HarmonyOS')
+          .fontSize(22)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(Color.White)
       }
       .width('100%')
-      .height('100%')
+      .height(80)
+      .backgroundColor('#2196F3')
+      .justifyContent(FlexAlign.Center)
+      .padding({ top: 20 })
 
+      // 副标题
+      Column() {
+        Text('测试页面导航')
+          .fontSize(16)
+          .fontColor('#666666')
+          .margin({ top: 10, bottom: 5 })
+
+        Text('选择一个测试页面开始')
+          .fontSize(14)
+          .fontColor('#999999')
+      }
+      .width('100%')
+      .padding(15)
+
+      // 测试页面列表
+      List({ space: 15 }) {
+        ForEach(this.testPages, (item: TestPageItem) => {
+          ListItem() {
+            this.buildTestPageCard(item)
+          }
+        })
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .padding({ left: 15, right: 15 })
+
+      // 底部信息
+      Column() {
+        Text('MapLibre Native v1.0.0')
+          .fontSize(12)
+          .fontColor('#999999')
+          .margin({ bottom: 5 })
+
+        Text('HarmonyOS 平台适配版本')
+          .fontSize(12)
+          .fontColor('#999999')
+      }
+      .width('100%')
+      .padding(20)
+      .backgroundColor('#F5F5F5')
     }
+    .width('100%')
     .height('100%')
+    .backgroundColor('#FFFFFF')
+  }
+
+  @Builder
+  buildTestPageCard(item: TestPageItem) {
+    Column() {
+      Row() {
+        // 图标
+        Text(item.icon)
+          .fontSize(32)
+          .margin({ right: 15 })
+
+        // 文字信息
+        Column() {
+          Text(item.title)
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .margin({ bottom: 5 })
+
+          Text(item.description)
+            .fontSize(14)
+            .fontColor('#666666')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+
+        // 箭头
+        Text('›')
+          .fontSize(28)
+          .fontColor('#CCCCCC')
+          .margin({ left: 10 })
+      }
+      .width('100%')
+      .padding(20)
+    }
+    .width('100%')
+    .backgroundColor('#FAFAFA')
+    .borderRadius(12)
+    .shadow({
+      radius: 8,
+      color: 'rgba(0, 0, 0, 0.1)',
+      offsetX: 0,
+      offsetY: 2
+    })
+    .onClick(() => {
+      this.navigateToPage(item.route);
+    })
+  }
+
+  /**
+   * 导航到指定页面
+   */
+  private navigateToPage(route: string): void {
+    hilog.info(DOMAIN, 'Index', `Attempting to navigate to: ${route}`);
+    
+    // 直接使用 pushUrl，不使用命名路由
+    router.pushUrl({
+      url: route
+    }).then(() => {
+      hilog.info(DOMAIN, 'Index', `Successfully navigated to: ${route}`);
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, 'Index', `Navigation failed: ${err.message}`);
+      console.error(`Navigation error: ${err.message}`);
+    });
   }
 }
+

@@ -2,6 +2,18 @@ import { Marker } from './annotations/Marker';
 import maplibre from 'libmaplibre_native.so'
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { LatLng } from './geometry/LatLng';
+import { MapGestureDetector } from './gestures/MapGestureDetector';
+import { UiSettings } from './UiSettings';
+import {
+  OnMoveListener,
+  OnScaleListener,
+  OnRotateListener,
+  OnMapClickListener,
+  OnMapLongClickListener,
+  OnDoubleTapListener,
+  OnTiltListener,
+  OnQuickZoomListener
+} from './gestures/GestureListeners';
 
 // 日志域名
 const DOMAIN = 0xFF00;
@@ -17,6 +29,10 @@ class NativeMapViewController extends XComponentController {
   private surfaceId: string = '';
   private surfaceWidth: number = 0;
   private surfaceHeight: number = 0;
+  
+  // 手势系统
+  private uiSettings: UiSettings = new UiSettings();
+  private gestureDetector: MapGestureDetector = new MapGestureDetector(this.uiSettings);
 
   /**
    * 表面创建回调
@@ -48,6 +64,10 @@ class NativeMapViewController extends XComponentController {
 
 
       this.isInitialized = true;
+      
+      // 设置手势检测器的地图控制器引用
+      this.gestureDetector.setMapController(this.mapView);
+      
       hilog.info(DOMAIN, 'NativeMapView', 'Map initialized successfully');
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to initialize map: ${error.message}`);
@@ -227,6 +247,20 @@ class NativeMapViewController extends XComponentController {
       }
     }
   }
+  
+  /**
+   * 获取 UI 设置
+   */
+  getUiSettings(): UiSettings {
+    return this.uiSettings;
+  }
+  
+  /**
+   * 获取手势检测器
+   */
+  getGestureDetector(): MapGestureDetector {
+    return this.gestureDetector;
+  }
 }
 
 /**
@@ -282,34 +316,184 @@ export struct NativeMapView {
       })
         .width('100%')
         .height('100%')
-        .onClick((event: ClickEvent) => {
-          this.handleMapClick(event);
-        })
-        .onTouch((event: TouchEvent) => {
-          this.handleMapTouch(event);
-        })
-
+        .parallelGesture(
+          // 使用 GestureGroup 组合多个手势，允许并行识别
+          GestureGroup(GestureMode.Parallel,
+            // 平移手势 - 单指拖动
+            PanGesture({ fingers: 1, distance: 5 })
+              .onActionStart((event: GestureEvent) => {
+                this.controller.getGestureDetector().onPanStart(event);
+              })
+              .onActionUpdate((event: GestureEvent) => {
+                this.controller.getGestureDetector().onPanUpdate(event);
+              })
+              .onActionEnd((event: GestureEvent) => {
+                this.controller.getGestureDetector().onPanEnd(event);
+              }),
+            
+            // 缩放手势 - 双指捏合
+            PinchGesture({ fingers: 2, distance: 5 })
+              .onActionStart((event: GestureEvent) => {
+                this.controller.getGestureDetector().onPinchStart(event);
+              })
+              .onActionUpdate((event: GestureEvent) => {
+                this.controller.getGestureDetector().onPinchUpdate(event);
+              })
+              .onActionEnd((event: GestureEvent) => {
+                this.controller.getGestureDetector().onPinchEnd(event);
+              }),
+            
+            // 旋转手势 - 双指旋转
+            RotationGesture({ fingers: 2, angle: 1 })
+              .onActionStart((event: GestureEvent) => {
+                this.controller.getGestureDetector().onRotateStart(event);
+              })
+              .onActionUpdate((event: GestureEvent) => {
+                this.controller.getGestureDetector().onRotateUpdate(event);
+              })
+              .onActionEnd((event: GestureEvent) => {
+                this.controller.getGestureDetector().onRotateEnd(event);
+              })
+          )
+        )
+        .gesture(
+          // 点击手势 - 单独处理以避免冲突
+          TapGesture({ count: 1 })
+            .onAction((event: GestureEvent) => {
+              this.controller.getGestureDetector().onSingleTap(event);
+            })
+        )
+        .gesture(
+          // 双击手势
+          TapGesture({ count: 2 })
+            .onAction((event: GestureEvent) => {
+              this.controller.getGestureDetector().onDoubleTap(event);
+            })
+        )
+        .gesture(
+          // 长按手势
+          LongPressGesture({ repeat: false, duration: 500 })
+            .onAction((event: GestureEvent) => {
+              this.controller.getGestureDetector().onLongPress(event);
+            })
+        )
+        .gesture(
+          // Tilt 手势 - 双指垂直拖动
+          PanGesture({ fingers: 2, distance: 10, direction: PanDirection.Vertical })
+            .onActionStart((event: GestureEvent) => {
+              this.controller.getGestureDetector().onTwoFingerPanStart(event);
+            })
+            .onActionUpdate((event: GestureEvent) => {
+              this.controller.getGestureDetector().onTwoFingerPanUpdate(event);
+            })
+            .onActionEnd((event: GestureEvent) => {
+              this.controller.getGestureDetector().onTwoFingerPanEnd(event);
+            })
+        )
     }
   }
 
   /**
-   * 处理地图点击事件
+   * 添加平移手势监听器
    */
-  private handleMapClick(event: ClickEvent): void {
-    hilog.warn(DOMAIN, "NativeMapView", "Map Click")
-    if (this.controller.isMapInitialized()) {
-      const mapView: NativeMapView = this.controller.getMapView();
-      const latLng = new LatLng(event.x, event.y);
-      console.info(`Map clicked at: ${latLng.latitude}, ${latLng.longitude}`);
+  addOnMoveListener(listener: OnMoveListener): void {
+    this.controller.getGestureDetector().addOnMoveListener(listener);
+  }
+
+  /**
+   * 添加缩放手势监听器
+   */
+  addOnScaleListener(listener: OnScaleListener): void {
+    this.controller.getGestureDetector().addOnScaleListener(listener);
+  }
+
+  /**
+   * 添加旋转手势监听器
+   */
+  addOnRotateListener(listener: OnRotateListener): void {
+    this.controller.getGestureDetector().addOnRotateListener(listener);
+  }
+
+  /**
+   * 添加点击监听器
+   */
+  addOnMapClickListener(listener: OnMapClickListener): void {
+    this.controller.getGestureDetector().addOnMapClickListener(listener);
+  }
+
+  /**
+   * 添加长按监听器
+   */
+  addOnMapLongClickListener(listener: OnMapLongClickListener): void {
+    this.controller.getGestureDetector().addOnMapLongClickListener(listener);
+  }
+
+  /**
+   * 添加双击监听器
+   */
+  addOnDoubleTapListener(listener: OnDoubleTapListener): void {
+    this.controller.getGestureDetector().addOnDoubleTapListener(listener);
+  }
+
+  /**
+   * 添加倾斜监听器
+   */
+  addOnTiltListener(listener: OnTiltListener): void {
+    this.controller.getGestureDetector().addOnTiltListener(listener);
+  }
+
+  /**
+   * 添加 Quick Zoom 监听器
+   */
+  addOnQuickZoomListener(listener: OnQuickZoomListener): void {
+    this.controller.getGestureDetector().addOnQuickZoomListener(listener);
+  }
+
+  /**
+   * 获取地图俯仰角度
+   * @returns 当前俯仰角度（度）
+   */
+  getPitch(): number {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getPitch: Native map view not initialized');
+      return 0;
+    }
+    try {
+      const pitch: number | undefined = mapView.getPitch() as number | undefined;
+      return pitch !== undefined ? pitch : 0;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `getPitch failed: ${errorMsg}`);
+      return 0;
     }
   }
 
   /**
-   * 处理地图触摸事件
+   * 设置地图俯仰角度
+   * @param pitch 俯仰角度（度，0-60）
+   * @param duration 可选的动画时长（毫秒），默认为 0（不使用动画）
    */
-  private handleMapTouch(event: TouchEvent): void {
-    // 可以在这里处理触摸手势，如缩放、平移等
-    console.info(`Map touch event: ${event.type}`);
+  setPitch(pitch: number, duration: number = 0): void {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setPitch: Native map view not initialized');
+      return;
+    }
+    try {
+      mapView.setPitch(pitch, duration);
+      hilog.info(DOMAIN, 'NativeMapView', `setPitch: Set pitch to ${pitch} degrees`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `setPitch failed: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * 获取 UI 设置
+   */
+  getUiSettings(): UiSettings {
+    return this.controller.getUiSettings();
   }
 
   /**
