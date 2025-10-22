@@ -321,7 +321,7 @@ export class MapGestureDetector {
 
     // 移动地图（立即移动，不带动画）
     if (this.mapController && (actualDeltaX !== 0 || deltaY !== 0)) {
-      this.mapController.moveBy(-actualDeltaX, -deltaY, 0);
+      this.mapController.moveBy(actualDeltaX, deltaY, 0);
     }
 
     // 通知监听器
@@ -810,8 +810,8 @@ export class MapGestureDetector {
       this.uiSettings.getQuickZoomMaxChange()
     );
 
-    // 向上拖动缩小，向下拖动放大
-    const zoomedOut = deltaY < 0;
+    // 向上拖动放大，向下拖动缩小
+    const zoomedOut = deltaY > 0;
     const targetZoom = zoomedOut
       ? this.quickZoomStartZoom - normalizedDelta
       : this.quickZoomStartZoom + normalizedDelta;

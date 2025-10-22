@@ -50,6 +50,10 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
 NativeMapView::~NativeMapView() {
     Logger::info("NativeMapView", "========== Destructor START ==========");
     
+    // 立即标记对象正在析构，防止回调访问
+    isDestroying.store(true, std::memory_order_release);
+    Logger::debug("NativeMapView", "Marked isDestroying=true");
+    
     // 确保资源按正确顺序清理
     cleanupAllResources();
     
@@ -178,6 +182,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
     // 定义所有实例方法
     std::vector<napi_property_descriptor> properties = {
         {"resizeView", nullptr, resizeView, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setPixelRatio", nullptr, setPixelRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getStyleUrl", nullptr, getStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setStyleUrl", nullptr, setStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getStyleJson", nullptr, getStyleJson, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -356,18 +361,19 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
 
 // MapObserver 方法实现
 void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraWillChange");
 }
 void NativeMapView::onCameraIsChanging() {
+    if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraIsChanging");
 }
 void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraDidChange");
     
-    // 相机变化后请求渲染
-    if (harmonyRenderer) {
-        harmonyRenderer->requestRender();
-    }
+    // MapLibre 内部已经处理渲染时机（通过 triggerRepaint）
+    // 不需要在这里额外请求渲染，否则会造成过度渲染
 }
 void NativeMapView::onWillStartLoadingMap() {
     Logger::info("NativeMapView", "========== onWillStartLoadingMap ==========");
@@ -378,20 +384,16 @@ void NativeMapView::onWillStartLoadingMap() {
     Logger::info("NativeMapView", "===========================================");
 }
 void NativeMapView::onDidFinishLoadingMap() {
-    Logger::info("NativeMapView", "========== onDidFinishLoadingMap ==========");
-    Logger::info("NativeMapView", "Map finished loading");
-    Logger::info("NativeMapView", "All resources loaded successfully:");
-    Logger::info("NativeMapView", "  ✓ Style loaded");
-    Logger::info("NativeMapView", "  ✓ Sources initialized");
-    Logger::info("NativeMapView", "  ✓ Layers configured");
-    Logger::info("NativeMapView", "  ✓ Ready to render");
-    Logger::info("NativeMapView", "===========================================");
+    if (isDestroying.load(std::memory_order_acquire)) return;
     
-    // 地图加载完成后请求渲染
-    if (harmonyRenderer) {
-        harmonyRenderer->requestRender();
-        Logger::debug("NativeMapView", "Render requested after map loaded");
-    }
+    auto now = std::chrono::steady_clock::now();
+    static auto startTime = now;
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+    
+    Logger::warn("NativeMapView", "🗺️ [%lld ms] onDidFinishLoadingMap", elapsed);
+    
+    // MapLibre内部已自动处理渲染，不需要额外请求
+    // 移除此处的 requestRender() 避免重复渲染
 }
 void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& errorMsg) {
     Logger::error("NativeMapView", "========== onDidFailLoadingMap ==========");
@@ -426,31 +428,46 @@ void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& e
     Logger::error("NativeMapView", "=========================================");
 }
 void NativeMapView::onWillStartRenderingFrame() {
+    if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onWillStartRenderingFrame");
 }
 void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStatus& status) {
-    Logger::debug("NativeMapView", "onDidFinishRenderingFrame: mode=%d, needsRepaint=%d", 
-                 static_cast<int>(status.mode), status.needsRepaint);
+    if (isDestroying.load(std::memory_order_acquire)) {
+        return;
+    }
     
     // Network I/O is now handled by the renderer thread's RunLoop
-    // No need to trigger a separate main thread RunLoop
 }
 void NativeMapView::onWillStartRenderingMap() {
+    if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onWillStartRenderingMap");
 }
 void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
-    Logger::debug("NativeMapView", "onDidFinishRenderingMap");
+    // 立即检查对象是否正在析构
+    if (isDestroying.load(std::memory_order_acquire)) {
+        return;
+    }
     
-    // 地图渲染完成后触发重绘
-    if (harmonyRenderer) {
-        harmonyRenderer->requestRender();
+    try {
+        Logger::debug("NativeMapView", "onDidFinishRenderingMap");
+        // 渲染已完成，不需要再次请求渲染
+        // onCameraDidChange 已经处理了渲染请求
+    } catch (...) {
+        // 忽略所有异常，避免崩溃
     }
 }
 void NativeMapView::onDidBecomeIdle() {
+    if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onDidBecomeIdle");
 }
 void NativeMapView::onDidFinishLoadingStyle() {
-    Logger::info("NativeMapView", "========== onDidFinishLoadingStyle ==========");
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    auto now = std::chrono::steady_clock::now();
+    static auto startTime = now;
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+    
+    Logger::warn("NativeMapView", "🎨 [%lld ms] onDidFinishLoadingStyle", elapsed);
     
     if (map) {
         try {
@@ -490,31 +507,22 @@ void NativeMapView::onDidFinishLoadingStyle() {
     
     Logger::info("NativeMapView", "=============================================");
     
-    // 样式加载完成后请求渲染
-    if (harmonyRenderer) {
-        harmonyRenderer->requestRender();
-        Logger::debug("NativeMapView", "Render requested after style loaded");
-    }
+    // MapLibre内部已自动处理渲染，不需要额外请求
+    // 移除此处的 requestRender() 避免重复渲染
 }
 void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
-    Logger::info("NativeMapView", "========== onSourceChanged ==========");
-    Logger::info("NativeMapView", "Source changed: %s", source.getID().c_str());
-    Logger::info("NativeMapView", "  - Type: %d", static_cast<int>(source.getType()));
-    Logger::info("NativeMapView", "  - Volatile: %s", source.isVolatile() ? "yes" : "no");
+    if (isDestroying.load(std::memory_order_acquire)) return;
     
-    // 获取attribution信息
-    auto attribution = source.getAttribution();
-    if (attribution.has_value() && !attribution->empty()) {
-        Logger::debug("NativeMapView", "  - Attribution: %s", attribution->c_str());
-    }
+    int count = ++sourceChangedCount;
+    auto now = std::chrono::steady_clock::now();
+    static auto startTime = now;
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
     
-    Logger::info("NativeMapView", "=====================================");
+    Logger::warn("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d)", 
+                 elapsed, count, source.getID().c_str(), static_cast<int>(source.getType()));
     
-    // 源变化后请求渲染
-    if (harmonyRenderer) {
-        harmonyRenderer->requestRender();
-        Logger::debug("NativeMapView", "Render requested after source changed");
-    }
+    // MapLibre内部已自动处理渲染，不需要额外请求
+    // 移除此处的 requestRender() 避免重复渲染导致无限循环
 }
 void NativeMapView::onStyleImageMissing(const std::string& id) {
     Logger::warn("NativeMapView", "========== onStyleImageMissing ==========");
@@ -690,6 +698,66 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     }
     
     Logger::info("NativeMapView", "View resized to %d x %d", instance->width, instance->height);
+    
+    return undefined;
+}
+
+napi_value NativeMapView::setPixelRatio(napi_env env, napi_callback_info info) {
+    Logger::warn("NativeMapView", "========== setPixelRatio() CALLED ==========");
+    
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    
+    // 获取this对象和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setPixelRatio: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setPixelRatio: Missing pixelRatio argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "setPixelRatio: Failed to unwrap instance or instance is null");
+        return undefined;
+    }
+    
+    // 获取 pixelRatio 值
+    double pixelRatio;
+    if (napi_get_value_double(env, args[0], &pixelRatio) != napi_ok) {
+        Logger::error("NativeMapView", "setPixelRatio: Failed to get pixelRatio value");
+        return undefined;
+    }
+    
+    // 限制在合理范围内 (0.5 - 4.0)
+    pixelRatio = std::max(0.5, std::min(4.0, pixelRatio));
+    
+    try {
+        // 设置像素比
+        instance->pixelRatio = static_cast<float>(pixelRatio);
+        Logger::warn("NativeMapView", "setPixelRatio: Set to %.2f", instance->pixelRatio);
+        
+        // 如果 harmonyRenderer 已存在，更新它的 pixelRatio
+        if (instance->harmonyRenderer) {
+            instance->harmonyRenderer->setPixelRatio(instance->pixelRatio);
+            Logger::warn("NativeMapView", "setPixelRatio: Updated HarmonyRenderer pixelRatio");
+        } else {
+            Logger::warn("NativeMapView", "setPixelRatio: HarmonyRenderer not yet created, pixelRatio will be used during initialization");
+        }
+        
+        Logger::warn("NativeMapView", "========== setPixelRatio() COMPLETED ==========");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setPixelRatio: Exception occurred: %s", e.what());
+    } catch (...) {
+        Logger::error("NativeMapView", "setPixelRatio: Unknown exception occurred");
+    }
     
     return undefined;
 }
@@ -949,6 +1017,12 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
     }
     
     try {
+        // 再次检查 map 是否有效（防止竞态条件）
+        if (!instance->map) {
+            Logger::warn("NativeMapView", "moveBy: Map became null before execution");
+            return undefined;
+        }
+        
         if (duration > 0) {
             // 带动画的移动
             instance->map->moveBy(
@@ -961,9 +1035,15 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
             instance->map->moveBy(mbgl::ScreenCoordinate{dx, dy});
             Logger::debug("NativeMapView", "moveBy: Instant move by (%.2f, %.2f)", dx, dy);
         }
-        instance->map->triggerRepaint();
+        
+        // 再次检查 map 是否有效
+        if (instance->map) {
+            instance->map->triggerRepaint();
+        }
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "moveBy: Failed - %s", e.what());
+    } catch (...) {
+        Logger::error("NativeMapView", "moveBy: Unknown exception");
     }
     
     return undefined;
@@ -975,17 +1055,25 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象
+    // 获取this对象和参数
     napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "jumpTo: Failed to get this object");
+    size_t argc = 6;  // 最多6个参数（5个必需 + 1个可选的padding）
+    napi_value args[6];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "jumpTo: Failed to get arguments");
+        return undefined;
+    }
+    
+    // 检查参数数量（至少需要5个参数）
+    if (argc < 5) {
+        Logger::error("NativeMapView", "jumpTo: Requires at least 5 arguments (angle, latitude, longitude, pitch, zoom), got %zu", argc);
         return undefined;
     }
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
-        Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance");
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance or instance is null");
         return undefined;
     }
     
@@ -997,82 +1085,57 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
-        Logger::error("NativeMapView", "jumpTo: Map not initialized! Please call setNativeWindow first.");
+        Logger::warn("NativeMapView", "jumpTo: Map not initialized yet, will skip jumpTo");
         return undefined;
     }
     
-    // 获取相机参数
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "jumpTo: Failed to get arguments");
+    // 解析参数：angle, latitude, longitude, pitch, zoom
+    double angle, latitude, longitude, pitch, zoom;
+    
+    if (napi_get_value_double(env, args[0], &angle) != napi_ok ||
+        napi_get_value_double(env, args[1], &latitude) != napi_ok ||
+        napi_get_value_double(env, args[2], &longitude) != napi_ok ||
+        napi_get_value_double(env, args[3], &pitch) != napi_ok ||
+        napi_get_value_double(env, args[4], &zoom) != napi_ok) {
+        Logger::error("NativeMapView", "jumpTo: Failed to parse numeric arguments");
         return undefined;
     }
     
-    if (argc < 1) {
-        Logger::error("NativeMapView", "jumpTo: Missing camera options argument");
-        return undefined;
-    }
+    Logger::info("NativeMapView", "jumpTo: angle=%f, lat=%f, lng=%f, pitch=%f, zoom=%f", 
+                  angle, latitude, longitude, pitch, zoom);
     
-    // 解析相机选项对象
-    napi_value cameraObj = args[0];
-    
+    // 构建 CameraOptions
     CameraOptions cameraOptions;
+    cameraOptions.center = LatLng{latitude, longitude};
+    cameraOptions.zoom = zoom;
+    cameraOptions.bearing = angle;
+    cameraOptions.pitch = pitch;
     
-    // 获取 center (LatLng)
-    napi_value centerValue;
-    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
-        napi_value latValue, lngValue;
-        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
-            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
-            double lat, lng;
-            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
-                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
-                cameraOptions.center = LatLng{lat, lng};
-                Logger::debug("NativeMapView", "jumpTo: center = (%f, %f)", lat, lng);
-            }
-        }
-    }
-    
-    // 获取 zoom
-    napi_value zoomValue;
-    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
-        double zoom;
-        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
-            cameraOptions.zoom = zoom;
-            Logger::debug("NativeMapView", "jumpTo: zoom = %f", zoom);
-        }
-    }
-    
-    // 获取 bearing
-    napi_value bearingValue;
-    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
-        double bearing;
-        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
-            cameraOptions.bearing = bearing;
-            Logger::debug("NativeMapView", "jumpTo: bearing = %f", bearing);
-        }
-    }
-    
-    // 获取 pitch
-    napi_value pitchValue;
-    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
-        double pitch;
-        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
-            cameraOptions.pitch = pitch;
-            Logger::debug("NativeMapView", "jumpTo: pitch = %f", pitch);
-        }
-    }
+    // TODO: 解析可选的 padding 参数（如果提供）
+    // if (argc >= 6) { ... }
     
     // 执行相机跳转
     try {
+        // 再次检查 map 是否有效（防止竞态条件）
+        if (!instance->map) {
+            Logger::error("NativeMapView", "jumpTo: Map became null before execution");
+            return undefined;
+        }
+        
+        Logger::debug("NativeMapView", "jumpTo: Executing map->jumpTo()...");
         instance->map->jumpTo(cameraOptions);
+        
+        Logger::debug("NativeMapView", "jumpTo: Executing map->triggerRepaint()...");
         instance->map->triggerRepaint();  // Trigger rendering
+        
         Logger::info("NativeMapView", "jumpTo: Camera jump executed successfully");
         Logger::info("NativeMapView", "========== jumpTo() END - SUCCESS ==========");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "jumpTo: Failed to jump camera: %s", e.what());
         Logger::error("NativeMapView", "========== jumpTo() END - FAILED ==========");
+    } catch (...) {
+        Logger::error("NativeMapView", "jumpTo: Unknown exception occurred");
+        Logger::error("NativeMapView", "========== jumpTo() END - UNKNOWN ERROR ==========");
     }
     
     return undefined;
@@ -2103,8 +2166,17 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
     Logger::debug("NativeMapView", "Native window saved to NativeMapView");
     
     // 初始化渲染器（如果尚未初始化）
-    Logger::info("NativeMapView", "Initializing renderer...");
-    nativeMapView->initializeRenderer();
+    try {
+        Logger::info("NativeMapView", "Initializing renderer...");
+        nativeMapView->initializeRenderer();
+        Logger::info("NativeMapView", "Renderer initialized successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "Failed to initialize renderer: %s", e.what());
+        return undefined;
+    } catch (...) {
+        Logger::error("NativeMapView", "Failed to initialize renderer: Unknown exception");
+        return undefined;
+    }
     
     Logger::info("NativeMapView", "========== setNativeWindow() END - SUCCESS ==========");
     

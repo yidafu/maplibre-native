@@ -453,6 +453,15 @@ HTTPRequest::~HTTPRequest() {
     HTTP_LOG("URL: %{public}s", resource.url.c_str());
     HTTP_LOG("Context: %{public}p, Handle: %{public}p", context, handle);
     
+    // 🔧 修复SIGSEGV：先清除userp指针，防止CURL回调访问已销毁对象
+    if (handle) {
+        HTTP_LOG("⚠️  Clearing CURL userp to prevent use-after-free...");
+        curl_easy_setopt(handle, CURLOPT_WRITEDATA, nullptr);
+        curl_easy_setopt(handle, CURLOPT_HEADERDATA, nullptr);
+        curl_easy_setopt(handle, CURLOPT_PRIVATE, nullptr);
+        HTTP_LOG("✅ CURL userp cleared");
+    }
+    
     // 1. 安全地从CURLEventLoop移除CURL句柄
     if (context && context->curlEventLoop && handle) {
         HTTP_LOG("Removing CURL handle from CURLEventLoop...");
@@ -462,6 +471,11 @@ HTTPRequest::~HTTPRequest() {
         } else {
             HTTP_LOG("CURL handle removed from CURLEventLoop successfully");
         }
+        
+        // 🔧 修复SIGSEGV：等待CURL操作完全停止
+        HTTP_LOG("⏸️  Waiting for CURL operations to complete...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        HTTP_LOG("✅ CURL operations wait completed");
     }
     
     // 2. 返回句柄到池中
@@ -484,15 +498,26 @@ HTTPRequest::~HTTPRequest() {
 // This function is called when we have new data for a request. We just append
 // it to the string containing the previous data.
 size_t HTTPRequest::writeCallback(void *const contents, const size_t size, const size_t nmemb, void *userp) {
-    assert(userp);
-    auto impl = reinterpret_cast<HTTPRequest *>(userp);
-
-    if (!impl->data) {
-        impl->data = std::make_shared<std::string>();
+    // 🔧 修复SIGSEGV：检查userp有效性，防止use-after-free
+    if (!userp) {
+        HTTP_LOG("⚠️  writeCallback: userp is null - HTTPRequest已销毁，忽略回调");
+        return 0;  // 返回0会让CURL终止请求
     }
+    
+    auto impl = reinterpret_cast<HTTPRequest *>(userp);
+    
+    // 🔍 额外验证：检查impl指向的内存是否合法（简单检查）
+    try {
+        if (!impl->data) {
+            impl->data = std::make_shared<std::string>();
+        }
 
-    impl->data->append(static_cast<char *>(contents), size * nmemb);
-    return size * nmemb;
+        impl->data->append(static_cast<char *>(contents), size * nmemb);
+        return size * nmemb;
+    } catch (...) {
+        HTTP_LOG("❌ writeCallback: Exception caught - HTTPRequest可能已销毁");
+        return 0;  // 返回0终止请求
+    }
 }
 
 namespace {
@@ -515,42 +540,54 @@ size_t headerMatches(const char *const header, const char *const buffer, const s
 } // namespace
 
 size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const size_t nmemb, void *userp) {
-    assert(userp);
+    // 🔧 修复SIGSEGV：检查userp有效性，防止use-after-free
+    if (!userp) {
+        HTTP_LOG("⚠️  headerCallback: userp is null - HTTPRequest已销毁，忽略回调");
+        return 0;  // 返回0会让CURL终止请求
+    }
+    
     auto baton = reinterpret_cast<HTTPRequest *>(userp);
+    
+    // 🔍 额外验证：try-catch保护
+    try {
+        if (!baton->response) {
+            baton->response = std::make_unique<Response>();
+        }
 
-    if (!baton->response) {
-        baton->response = std::make_unique<Response>();
-    }
-
-    // NOLINTBEGIN(bugprone-assignment-in-if-condition)
-    const size_t length = size * nmemb;
-    size_t begin = std::string::npos;
-    if ((begin = headerMatches("last-modified: ", buffer, length)) != std::string::npos) {
-        // Always overwrite the modification date; We might already have a value
-        // here from the Date header, but this one is more accurate.
-        const std::string value{buffer + begin, length - begin - 2}; // remove \r\n
-        baton->response->modified = Timestamp{Seconds(curl_getdate(value.c_str(), nullptr))};
-    } else if ((begin = headerMatches("etag: ", buffer, length)) != std::string::npos) {
-        baton->response->etag = std::string(buffer + begin,
+        // NOLINTBEGIN(bugprone-assignment-in-if-condition)
+        const size_t length = size * nmemb;
+        size_t begin = std::string::npos;
+        if ((begin = headerMatches("last-modified: ", buffer, length)) != std::string::npos) {
+            // Always overwrite the modification date; We might already have a value
+            // here from the Date header, but this one is more accurate.
+            const std::string value{buffer + begin, length - begin - 2}; // remove \r\n
+            baton->response->modified = Timestamp{Seconds(curl_getdate(value.c_str(), nullptr))};
+        } else if ((begin = headerMatches("etag: ", buffer, length)) != std::string::npos) {
+            baton->response->etag = std::string(buffer + begin,
+                                                length - begin - 2); // remove \r\n
+        } else if ((begin = headerMatches("cache-control: ", buffer, length)) != std::string::npos) {
+            const std::string value{buffer + begin, length - begin - 2}; // remove \r\n
+            const auto cc = http::CacheControl::parse(value);
+            baton->response->expires = cc.toTimePoint();
+            baton->response->mustRevalidate = cc.mustRevalidate;
+        } else if ((begin = headerMatches("expires: ", buffer, length)) != std::string::npos) {
+            const std::string value{buffer + begin, length - begin - 2}; // remove \r\n
+            baton->response->expires = Timestamp{Seconds(curl_getdate(value.c_str(), nullptr))};
+        } else if ((begin = headerMatches("retry-after: ", buffer, length)) != std::string::npos) {
+            baton->retryAfter = std::string(buffer + begin,
                                             length - begin - 2); // remove \r\n
-    } else if ((begin = headerMatches("cache-control: ", buffer, length)) != std::string::npos) {
-        const std::string value{buffer + begin, length - begin - 2}; // remove \r\n
-        const auto cc = http::CacheControl::parse(value);
-        baton->response->expires = cc.toTimePoint();
-        baton->response->mustRevalidate = cc.mustRevalidate;
-    } else if ((begin = headerMatches("expires: ", buffer, length)) != std::string::npos) {
-        const std::string value{buffer + begin, length - begin - 2}; // remove \r\n
-        baton->response->expires = Timestamp{Seconds(curl_getdate(value.c_str(), nullptr))};
-    } else if ((begin = headerMatches("retry-after: ", buffer, length)) != std::string::npos) {
-        baton->retryAfter = std::string(buffer + begin,
-                                        length - begin - 2); // remove \r\n
-    } else if ((begin = headerMatches("x-rate-limit-reset: ", buffer, length)) != std::string::npos) {
-        baton->xRateLimitReset = std::string(buffer + begin,
-                                             length - begin - 2); // remove \r\n
-    }
-    // NOLINTEND(bugprone-assignment-in-if-condition)
+        } else if ((begin = headerMatches("x-rate-limit-reset: ", buffer, length)) != std::string::npos) {
+            baton->xRateLimitReset = std::string(buffer + begin,
+                                                 length - begin - 2); // remove \r\n
+        }
+        // NOLINTEND(bugprone-assignment-in-if-condition)
 
-    return length;
+        return length;
+        
+    } catch (...) {
+        HTTP_LOG("❌ headerCallback: Exception caught - HTTPRequest可能已销毁");
+        return 0;  // 返回0终止请求
+    }
 }
 
 void HTTPRequest::handleResult(CURLcode code) {

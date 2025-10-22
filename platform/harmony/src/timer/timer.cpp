@@ -56,42 +56,25 @@ public:
         
         // 获取 RunLoop（确保回调在正确线程执行）
         runLoop = RunLoop::Get();
-        
-        TIMER_LOG("Timer started: timeout=%lld ms, repeat=%lld ms, runLoop=%p", 
-                 std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count(),
-                 std::chrono::duration_cast<std::chrono::milliseconds>(repeatInterval).count(),
-                 runLoop);
 
         // 提交到线程池（而不是创建独立线程）
         TimerThreadPool::instance().submit([this]() {
-            TIMER_LOG("Timer task started in thread pool");
-            
             bool hasFired = false;
             while (running) {
                 std::this_thread::sleep_for(delay);
 
                 if (running && callback && runLoop) {
-                    TIMER_LOG("Timer fired - dispatching callback to RunLoop thread");
-                    
                     auto repeatCount = this->repeat.count();
                     runLoop->invoke([this, repeatCount]() {
-                        TIMER_LOG("⭐ INSIDE INVOKE LAMBDA - about to execute timer callback");
                         if (running && callback) {
-                            TIMER_LOG("✅ Executing timer callback on RunLoop thread");
                             callback();
-                            TIMER_LOG("✅ Timer callback COMPLETED");
                             
                             // 非重复 timer 在回调后停止
                             if (repeatCount == 0) {
-                                TIMER_LOG("Non-repeating timer - stopping after callback");
                                 stop();
                             }
-                        } else {
-                            TIMER_LOG("❌ Timer callback SKIPPED - running=%d, callback=%p", 
-                                     running.load(), (void*)&callback);
                         }
                     });
-                    TIMER_LOG("runLoop->invoke() returned");
                     
                     hasFired = true;
                 }
@@ -104,18 +87,11 @@ public:
                     delay = std::chrono::milliseconds(10);
                 }
             }
-            
-            TIMER_LOG("Timer task exiting from thread pool");
         });
-        
-        TIMER_LOG("Timer task submitted to thread pool, pending tasks=%{public}zu", 
-                 TimerThreadPool::instance().pendingTaskCount());
     }
 
     void stop() {
-        if (running.exchange(false)) {
-            TIMER_LOG("Timer stopped");
-        }
+        running.exchange(false);
     }
 
 private:

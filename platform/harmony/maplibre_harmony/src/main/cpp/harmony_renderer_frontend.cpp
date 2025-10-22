@@ -124,74 +124,59 @@ void HarmonyRendererFrontend::setObserver(RendererObserver& observer) {
 }
 
 void HarmonyRendererFrontend::update(std::shared_ptr<UpdateParameters> params) {
-    Logger::info("HarmonyRendererFrontend", "========== update() CALLED - params=%p ==========", params.get());
-    
     if (!params) {
-        Logger::warn("HarmonyRendererFrontend", "update() called with null params");
         return;
     }
     
-    Logger::info("HarmonyRendererFrontend", "update() - Checking RunLoop...");
+    // 🔧 修复闪烁：帧率限制器 - 防止过度渲染导致的闪烁
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime);
+    
+    if (elapsed < minFrameInterval) {
+        return;  // 跳过此帧，防止过快渲染
+    }
+    
+    lastFrameTime = now;
+    
     if (!runLoop) {
         Logger::error("HarmonyRendererFrontend", "Cannot update: RunLoop not initialized");
         return;
     }
     
     // CRITICAL DEADLOCK FIX: Check if we're already on the RunLoop thread
-    // If yes, execute directly to avoid mutex deadlock in invoke()
-    // 
-    // Use thread ID comparison instead of RunLoop pointer comparison
-    // to avoid potential issues with Scheduler::GetCurrent()
-    Logger::info("HarmonyRendererFrontend", "update() - Checking thread ID...");
     auto currentThreadId = std::this_thread::get_id();
     bool onRunLoopThread = (currentThreadId == runLoopThreadId);
-    
-    Logger::info("HarmonyRendererFrontend", "update() - current thread is %s the RunLoop thread",
-                 onRunLoopThread ? "SAME as" : "DIFFERENT from");
     
     // Define the rendering task
     auto renderTask = [this, params]() {
         if (params && renderer && rendererBackend) {
             try {
-                Logger::debug("HarmonyRendererFrontend", "Processing update with params on RunLoop thread");
-                
                 // Activate the OpenGL context before rendering
-                // This is CRITICAL - without BackendScope, rendering operations will crash
                 auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
                 gfx::RendererBackend& backendImpl = harmonyBackend->getImpl();
                 gfx::BackendScope backendGuard{backendImpl};
                 
-                Logger::debug("HarmonyRendererFrontend", "BackendScope activated, rendering frame");
-                
-                // HarmonyOS渲染时序优化 - 确保在正确的时机进行渲染
-                // 添加小延迟以确保EGL上下文完全就绪
+                // HarmonyOS渲染时序优化 - 小延迟确保EGL上下文就绪
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 
                 renderer->render(params);
-                Logger::debug("HarmonyRendererFrontend", "Frame rendered successfully");
+            } catch (const std::runtime_error& e) {
+                // 🔧 修复闪退：捕获 swapBuffers 失败异常
+                Logger::error("HarmonyRendererFrontend", "Render failed: %s - Pausing to prevent crash", e.what());
+                renderingPaused = true;
             } catch (const std::exception& e) {
                 Logger::error("HarmonyRendererFrontend", "Render failed: %s", e.what());
             }
-        } else {
-            Logger::warn("HarmonyRendererFrontend", "Cannot render: params=%s, renderer=%s, backend=%s",
-                         params ? "exists" : "null",
-                         renderer ? "exists" : "null",
-                         rendererBackend ? "exists" : "null");
         }
     };
     
     if (onRunLoopThread) {
-        // Already on RunLoop thread - execute directly to avoid deadlock
-        Logger::info("HarmonyRendererFrontend", "✅ SAME THREAD - executing directly to avoid deadlock");
+        // Execute directly to avoid deadlock
         renderTask();
-        Logger::info("HarmonyRendererFrontend", "✅ Direct execution completed");
     } else {
-        // Different thread - dispatch via invoke()
-        Logger::info("HarmonyRendererFrontend", "📤 DIFFERENT THREAD - about to call runLoop->invoke()...");
+        // Dispatch via invoke()
         runLoop->invoke(std::move(renderTask));
-        Logger::info("HarmonyRendererFrontend", "📤 runLoop->invoke() returned - task dispatched");
     }
-    Logger::info("HarmonyRendererFrontend", "========== update() END ==========");
 }
 
 const TaggedScheduler& HarmonyRendererFrontend::getThreadPool() const {
@@ -230,8 +215,16 @@ void HarmonyRendererFrontend::requestRender() {
     if (renderingPaused) {
         return;
     }
+    
+    // 防抖：如果已经有待处理的渲染请求，忽略新请求
+    // 这可以防止过度的渲染请求堆积
+    if (needsRender) {
+        Logger::debug("HarmonyRendererFrontend", "requestRender() ignored - already pending");
+        return;
+    }
+    
     needsRender = true;
-    Logger::debug("HarmonyRendererFrontend", "requestRender() called");
+    Logger::debug("HarmonyRendererFrontend", "requestRender() accepted");
     
     // Note: Rendering is triggered through the update() mechanism
     // No need to explicitly trigger rendering here

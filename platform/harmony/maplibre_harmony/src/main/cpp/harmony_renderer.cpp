@@ -176,6 +176,13 @@ void HarmonyRenderer::requestRender() {
         Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
         return;
     }
+    
+    static int totalCalls = 0;
+    auto now = std::chrono::steady_clock::now();
+    static auto startTime = now;
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+    
+    Logger::warn("HarmonyRenderer", "🎬 [%lld ms] requestRender() #%d", elapsed, ++totalCalls);
     rendererFrontend->requestRender();
 }
 

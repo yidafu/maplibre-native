@@ -50,6 +50,10 @@ private:
     // Renderer components
     std::unique_ptr<Renderer> renderer;
     // Note: updateParams and updateAsyncTask removed - we now use runLoop->invoke() directly
+    
+    // 🔧 修复闪烁：帧率限制器
+    std::chrono::steady_clock::time_point lastFrameTime{};
+    const std::chrono::milliseconds minFrameInterval{16};  // 60fps = 16.67ms
 };
 
 } // namespace harmony

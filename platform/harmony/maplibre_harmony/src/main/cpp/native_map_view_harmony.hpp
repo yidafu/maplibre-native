@@ -51,6 +51,7 @@ public:
 
     // N-API methods //
     static napi_value resizeView(napi_env env, napi_callback_info info);
+    static napi_value setPixelRatio(napi_env env, napi_callback_info info);
     static napi_value getStyleUrl(napi_env env, napi_callback_info info);
     static napi_value setStyleUrl(napi_env env, napi_callback_info info);
     static napi_value getStyleJson(napi_env env, napi_callback_info info);
@@ -200,6 +201,14 @@ private:
     
     // 窗口指针
     OHNativeWindow* nativeWindow = nullptr;
+    
+    // 析构标志 - 用于防止析构期间的回调崩溃
+    std::atomic<bool> isDestroying{false};
+    
+    // 调试计数器 - 追踪渲染触发频率
+    std::atomic<int> renderRequestCount{0};
+    std::atomic<int> sourceChangedCount{0};
+    std::atomic<int> cameraChangedCount{0};
     
     // Ensure these are initialised last
     std::unique_ptr<mbgl::Map> map;

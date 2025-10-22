@@ -242,11 +242,11 @@ struct GestureTestPage {
       // 地图视图
       NativeMapView({
         styleUrl: "https://demotiles.maplibre.org/style.json",
-        initialLatitude: 39.9042,
-        initialLongitude: 116.4074,
-        initialZoom: 10,
-        initialBearing: 0,
-        initialPitch: 0,
+        initialLatitude: 30.2741,
+        initialLongitude: 120.1551,
+        initialZoom: 3,
+        initialBearing: 0,    // 先用0测试，避免初始化问题
+        initialPitch: 0,      // 先用0测试，避免初始化问题
         onMapReady: () => {
           hilog.info(DOMAIN, TAG, 'Map ready, setting up gesture listeners');
           // 这里不需要设置监听器，因为 NativeMapView 已经内部处理了

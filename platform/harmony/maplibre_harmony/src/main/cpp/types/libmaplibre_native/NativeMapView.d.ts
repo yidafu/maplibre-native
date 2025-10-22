@@ -5,6 +5,7 @@ export class NativeMapView {
     // View management
     resizeView(width: number, height: number): void;
     setNativeWindow(surfaceId: BigInt): void;
+    setPixelRatio(pixelRatio: number): void;
 
     // Style management
     getStyleUrl(): string;

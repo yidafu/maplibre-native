@@ -1,6 +1,7 @@
 import { Marker } from './annotations/Marker';
 import maplibre from 'libmaplibre_native.so'
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { display } from '@kit.ArkUI';
 import { LatLng } from './geometry/LatLng';
 import { MapGestureDetector } from './gestures/MapGestureDetector';
 import { UiSettings } from './UiSettings';
@@ -30,6 +31,14 @@ class NativeMapViewController extends XComponentController {
   private surfaceWidth: number = 0;
   private surfaceHeight: number = 0;
   
+  // 初始配置
+  public styleUrl: string = "https://demotiles.maplibre.org/style.json";
+  public initialLatitude: number = 30.2741;
+  public initialLongitude: number = 120.1551;
+  public initialZoom: number = 10;
+  public initialBearing: number = 0;
+  public initialPitch: number = 0;
+  
   // 手势系统
   private uiSettings: UiSettings = new UiSettings();
   private gestureDetector: MapGestureDetector = new MapGestureDetector(this.uiSettings);
@@ -44,24 +53,59 @@ class NativeMapViewController extends XComponentController {
 
     try {
       // 创建 MapView 实例
+      hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Creating NativeMapView instance...`);
       this.mapView = new maplibre.NativeMapView();
+      hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] NativeMapView instance created successfully`);
 
-      hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: setDebug`);
-      // 启用调试模式
-      // this.mapView.setDebug(true);
-      hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: setNativeWindow`);
+      // 获取并设置设备像素比（在初始化地图之前）
+      hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Starting DPI detection...`);
+      try {
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Calling display.getDefaultDisplaySync()...`);
+        const defaultDisplay = display.getDefaultDisplaySync();
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Got display object: ${defaultDisplay}`);
+        
+        const densityDPI = defaultDisplay.densityDPI;
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] densityDPI: ${densityDPI}`);
+        
+        const pixelRatio = densityDPI / 160; // 标准DPI为160
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Calculated pixelRatio: ${pixelRatio.toFixed(2)}`);
+        
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Calling setPixelRatio(${pixelRatio})...`);
+        this.mapView.setPixelRatio(pixelRatio);
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] setPixelRatio completed successfully`);
+      } catch (err) {
+        hilog.error(DOMAIN, "NativeMapView", `[ERROR] Failed to get display DPI: ${err.message}`);
+        hilog.error(DOMAIN, "NativeMapView", `[ERROR] Error stack: ${err.stack}`);
+        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Using default pixelRatio=1.0`);
+        this.mapView.setPixelRatio(1.0);
+      }
 
+      hilog.info(DOMAIN, "NativeMapView", `Setting native window...`);
       // 设置渲染表面（使用默认方法，尺寸将在onSurfaceChanged中处理）
       this.mapView.setNativeWindow(BigInt(surfaceId));
+      hilog.info(DOMAIN, "NativeMapView", `Native window set successfully`);
 
-      hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: setStyleUrl`);
+      hilog.info(DOMAIN, "NativeMapView", `Setting style URL: ${this.styleUrl}`);
       // 设置地图样式
-      this.mapView.setStyleUrl("https://demotiles.maplibre.org/style.json");
+      this.mapView.setStyleUrl(this.styleUrl);
 
-      hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: jumpTo`);
-      // 设置初始位置和缩放
-      this.mapView.jumpTo(0, 39.9042, 116.4074, 0, 10); // 北京
-
+      // 延迟调用 jumpTo，等待地图完全初始化
+      setTimeout(() => {
+        try {
+          if (this.mapView && this.isInitialized) {
+            hilog.info(DOMAIN, "NativeMapView", `Delayed jumpTo: bearing=${this.initialBearing}, lat=${this.initialLatitude}, lng=${this.initialLongitude}, pitch=${this.initialPitch}, zoom=${this.initialZoom}`);
+            this.mapView.jumpTo(this.initialBearing, this.initialLatitude, this.initialLongitude, this.initialPitch, this.initialZoom);
+            hilog.info(DOMAIN, 'NativeMapView', 'Delayed jumpTo completed successfully');
+          } else {
+            hilog.warn(DOMAIN, 'NativeMapView', `Delayed jumpTo skipped - mapView=${this.mapView ? 'exists' : 'null'}, initialized=${this.isInitialized}`);
+          }
+        } catch (jumpErr) {
+          hilog.error(DOMAIN, 'NativeMapView', `Delayed jumpTo failed: ${jumpErr.message}`);
+          if (jumpErr.stack) {
+            hilog.error(DOMAIN, 'NativeMapView', `Stack: ${jumpErr.stack}`);
+          }
+        }
+      }, 300); // 延迟 300ms 确保地图完全初始化
 
       this.isInitialized = true;
       
@@ -71,6 +115,7 @@ class NativeMapViewController extends XComponentController {
       hilog.info(DOMAIN, 'NativeMapView', 'Map initialized successfully');
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to initialize map: ${error.message}`);
+      hilog.error(DOMAIN, 'NativeMapView', `Error stack: ${error.stack}`);
     }
   }
 
@@ -273,8 +318,8 @@ export struct NativeMapView {
   @State private isDestroyed: boolean = false;
   // 组件属性
   @Prop styleUrl: string = "https://demotiles.maplibre.org/style.json";
-  @Prop initialLatitude: number = 39.9042;
-  @Prop initialLongitude: number = 116.4074;
+  @Prop initialLatitude: number = 30.2741;
+  @Prop initialLongitude: number = 120.1551;
   @Prop initialZoom: number = 10;
   @Prop initialBearing: number = 0;
   @Prop initialPitch: number = 0;
@@ -288,8 +333,26 @@ export struct NativeMapView {
    * 组件即将出现
    */
   aboutToAppear(): void {
-    hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToAppear');
-    this.isDestroyed = false;
+    try {
+      hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToAppear');
+      this.isDestroyed = false;
+      
+      // 将组件的 prop 传递给 controller
+      if (this.controller) {
+        this.controller.styleUrl = this.styleUrl;
+        this.controller.initialLatitude = this.initialLatitude;
+        this.controller.initialLongitude = this.initialLongitude;
+        this.controller.initialZoom = this.initialZoom;
+        this.controller.initialBearing = this.initialBearing;
+        this.controller.initialPitch = this.initialPitch;
+        
+        hilog.info(DOMAIN, 'NativeMapView', `Initial config: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
+      } else {
+        hilog.error(DOMAIN, 'NativeMapView', 'Controller is null in aboutToAppear');
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `aboutToAppear failed: ${error.message}`);
+    }
   }
 
   /**

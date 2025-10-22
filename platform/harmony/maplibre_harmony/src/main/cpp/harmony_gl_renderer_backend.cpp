@@ -14,6 +14,7 @@
 #include <cassert>
 #include <thread>
 #include <chrono>
+#include <stdexcept>  // for std::runtime_error
 
 using mbgl::harmony::Logger;
 
@@ -55,15 +56,17 @@ public:
     }
 
     void swap() override {
-        assert(gfx::BackendScope::exists());
+        // 🔧 修复闪退：检查BackendScope，避免 abort()
+        if (!gfx::BackendScope::exists()) {
+            throw std::runtime_error("BackendScope does not exist during swap operation");
+        }
         
-        // First flush if needed
+        // Flush if needed
         const auto& swapBehaviour = static_cast<HarmonyRendererBackend&>(backend).getSwapBehavior();
         if (swapBehaviour == gfx::Renderable::SwapBehaviour::Flush) {
             static_cast<gl::Context&>(backend.getContext()).finish();
         }
         
-        // Then swap buffers to display the frame
         backend.swapBuffers();
     }
 
@@ -192,6 +195,14 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         return false;
     }
     Logger::info("HarmonyGLRendererBackend", "Step 5/5: EGL surface created: %p", eglSurface_);
+    
+    // 🔧 修复闪烁：启用 VSync
+    if (!eglSwapInterval(eglDisplay_, 1)) {
+        EGLint error = eglGetError();
+        Logger::warn("HarmonyGLRendererBackend", 
+                     "Failed to set swap interval: %s - May cause flicker",
+                     eglErrorString(error));
+    }
     
     Logger::info("HarmonyGLRendererBackend", "---------- initializeEGLDisplay() END - SUCCESS ----------");
     Logger::info("HarmonyGLRendererBackend", "EGL State: display=%p, surface=%p (context will be created on render thread)", 
@@ -577,9 +588,7 @@ void HarmonyGLRendererBackend::deactivate() {
 
 void HarmonyGLRendererBackend::swapBuffers() {
     if (eglDisplay_ != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
-        Logger::debug("HarmonyGLRendererBackend", "Swapping buffers...");
-        
-        // HarmonyOS缓冲区刷新重试机制 - 解决50401000错误
+        // HarmonyOS缓冲区刷新重试机制
         int retryCount = 0;
         const int maxRetries = 3;
         bool success = false;
@@ -587,22 +596,16 @@ void HarmonyGLRendererBackend::swapBuffers() {
         while (retryCount < maxRetries && !success) {
             if (eglSwapBuffers(eglDisplay_, eglSurface_)) {
                 success = true;
-                Logger::debug("HarmonyGLRendererBackend", "Buffers swapped successfully (attempt %d)", retryCount + 1);
             } else {
                 EGLint error = eglGetError();
                 retryCount++;
                 Logger::warn("HarmonyGLRendererBackend", 
-                            "eglSwapBuffers failed (attempt %d/%d): %s (error code: 0x%X)",
-                            retryCount, maxRetries, eglErrorString(error), error);
+                            "eglSwapBuffers failed (attempt %d/%d): %s",
+                            retryCount, maxRetries, eglErrorString(error));
                 
                 if (retryCount < maxRetries) {
-                    // 短暂等待后重试
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    
-                    // 尝试重新激活上下文
-                    if (eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_)) {
-                        Logger::debug("HarmonyGLRendererBackend", "EGL context reactivated for retry");
-                    }
+                    eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_);
                 }
             }
         }
@@ -610,10 +613,11 @@ void HarmonyGLRendererBackend::swapBuffers() {
         if (!success) {
             EGLint error = eglGetError();
             Logger::error("HarmonyGLRendererBackend", 
-                          "eglSwapBuffers failed after %d attempts: %s (error code: 0x%X)", 
-                          maxRetries, eglErrorString(error), error);
-        } else {
-            Logger::debug("HarmonyGLRendererBackend", "Buffers swapped successfully");
+                          "eglSwapBuffers failed after %d attempts: %s", 
+                          maxRetries, eglErrorString(error));
+            
+            // 🔧 修复闪退：抛出异常，停止渲染
+            throw std::runtime_error("eglSwapBuffers failed: EGL buffer allocation failed");
         }
     } else {
         Logger::warn("HarmonyGLRendererBackend", 
