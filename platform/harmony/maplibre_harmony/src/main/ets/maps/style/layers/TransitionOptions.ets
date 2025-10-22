@@ -1,14 +1,19 @@
 /**
+ * TransitionOptionsInput - 过渡选项输入接口
+ */
+export interface TransitionOptionsInput {
+  duration?: number;
+  delay?: number;
+}
+
+/**
  * TransitionOptions - 过渡选项类
  */
 export class TransitionOptions {
   public duration: number;
   public delay: number;
 
-  constructor(options: {
-    duration?: number;
-    delay?: number;
-  } = {}) {
+  constructor(options: TransitionOptionsInput = {}) {
     this.duration = options.duration || 300;
     this.delay = options.delay || 0;
   }

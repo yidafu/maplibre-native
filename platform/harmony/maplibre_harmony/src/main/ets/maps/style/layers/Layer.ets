@@ -1,4 +1,40 @@
 /**
+ * LayerFilter - 图层过滤器类型
+ */
+export type LayerFilter = Object | null;
+
+/**
+ * LayerLayout - 图层布局属性类型
+ */
+export type LayerLayout = Record<string, Object>;
+
+/**
+ * LayerPaint - 图层绘制属性类型
+ */
+export type LayerPaint = Record<string, Object>;
+
+/**
+ * LayerMetadata - 图层元数据类型
+ */
+export type LayerMetadata = Record<string, Object> | null;
+
+/**
+ * LayerOptions - 图层选项接口
+ */
+export interface LayerOptions {
+  id: string;
+  type: string;
+  source: string;
+  sourceLayer?: string;
+  minZoom?: number;
+  maxZoom?: number;
+  filter?: LayerFilter;
+  layout?: LayerLayout;
+  paint?: LayerPaint;
+  metadata?: LayerMetadata;
+}
+
+/**
  * Layer - 图层基类
  */
 export abstract class Layer {
@@ -8,23 +44,12 @@ export abstract class Layer {
   public sourceLayer: string | null;
   public minZoom: number | null;
   public maxZoom: number | null;
-  public filter: any;
-  public layout: any;
-  public paint: any;
-  public metadata: any;
+  public filter: LayerFilter;
+  public layout: LayerLayout;
+  public paint: LayerPaint;
+  public metadata: LayerMetadata;
 
-  constructor(options: {
-    id: string;
-    type: string;
-    source: string;
-    sourceLayer?: string;
-    minZoom?: number;
-    maxZoom?: number;
-    filter?: any;
-    layout?: any;
-    paint?: any;
-    metadata?: any;
-  }) {
+  constructor(options: LayerOptions) {
     this.id = options.id;
     this.type = options.type;
     this.source = options.source;
@@ -110,56 +135,56 @@ export abstract class Layer {
   /**
    * 获取过滤器
    */
-  public getFilter(): any {
+  public getFilter(): LayerFilter {
     return this.filter;
   }
 
   /**
    * 设置过滤器
    */
-  public setFilter(filter: any): void {
+  public setFilter(filter: LayerFilter): void {
     this.filter = filter;
   }
 
   /**
    * 获取布局属性
    */
-  public getLayout(): any {
+  public getLayout(): LayerLayout {
     return this.layout;
   }
 
   /**
    * 设置布局属性
    */
-  public setLayout(layout: any): void {
+  public setLayout(layout: LayerLayout): void {
     this.layout = layout;
   }
 
   /**
    * 获取绘制属性
    */
-  public getPaint(): any {
+  public getPaint(): LayerPaint {
     return this.paint;
   }
 
   /**
    * 设置绘制属性
    */
-  public setPaint(paint: any): void {
+  public setPaint(paint: LayerPaint): void {
     this.paint = paint;
   }
 
   /**
    * 获取元数据
    */
-  public getMetadata(): any {
+  public getMetadata(): LayerMetadata {
     return this.metadata;
   }
 
   /**
    * 设置元数据
    */
-  public setMetadata(metadata: any): void {
+  public setMetadata(metadata: LayerMetadata): void {
     this.metadata = metadata;
   }
 
@@ -175,19 +200,19 @@ export abstract class Layer {
   /**
    * 转换为JSON
    */
-  public toJSON(): any {
-    return {
-      id: this.id,
-      type: this.type,
-      source: this.source,
-      sourceLayer: this.sourceLayer,
-      minZoom: this.minZoom,
-      maxZoom: this.maxZoom,
-      filter: this.filter,
-      layout: this.layout,
-      paint: this.paint,
-      metadata: this.metadata
-    };
+  public toJSON(): ESObject {
+    const obj: ESObject = {};
+    obj['id'] = this.id;
+    obj['type'] = this.type;
+    obj['source'] = this.source;
+    obj['sourceLayer'] = this.sourceLayer;
+    obj['minZoom'] = this.minZoom;
+    obj['maxZoom'] = this.maxZoom;
+    obj['filter'] = this.filter;
+    obj['layout'] = this.layout;
+    obj['paint'] = this.paint;
+    obj['metadata'] = this.metadata;
+    return obj;
   }
 
   /**

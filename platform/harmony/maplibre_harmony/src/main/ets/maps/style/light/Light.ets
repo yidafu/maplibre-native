@@ -1,4 +1,14 @@
 /**
+ * LightOptions - 光照选项接口
+ */
+export interface LightOptions {
+  anchor?: string;
+  position?: number[];
+  color?: string;
+  intensity?: number;
+}
+
+/**
  * Light - 光照类
  */
 export class Light {
@@ -7,12 +17,7 @@ export class Light {
   public color: string;
   public intensity: number;
 
-  constructor(options: {
-    anchor?: string;
-    position?: number[];
-    color?: string;
-    intensity?: number;
-  } = {}) {
+  constructor(options: LightOptions = {}) {
     this.anchor = options.anchor || 'viewport';
     this.position = options.position || [1.15, 210, 30];
     this.color = options.color || '#ffffff';

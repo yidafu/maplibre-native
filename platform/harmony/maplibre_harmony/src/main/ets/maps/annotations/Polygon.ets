@@ -1,4 +1,21 @@
 import { LatLng } from '../geometry/LatLng';
+import { GeoBounds } from './Polyline';
+
+/**
+ * PolygonOptions - 多边形选项接口
+ */
+export interface PolygonOptions {
+  id?: string;
+  points: LatLng[];
+  holes?: LatLng[][];
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
+  fillAlpha?: number;
+  strokeAlpha?: number;
+  visible?: boolean;
+  zIndex?: number;
+}
 
 /**
  * Polygon - 多边形类
@@ -15,18 +32,7 @@ export class Polygon {
   public visible: boolean;
   public zIndex: number;
 
-  constructor(options: {
-    id?: string;
-    points: LatLng[];
-    holes?: LatLng[][];
-    fillColor?: string;
-    strokeColor?: string;
-    strokeWidth?: number;
-    fillAlpha?: number;
-    strokeAlpha?: number;
-    visible?: boolean;
-    zIndex?: number;
-  }) {
+  constructor(options: PolygonOptions) {
     this.id = options.id || this.generateId();
     this.points = options.points;
     this.holes = options.holes || [];
@@ -279,7 +285,7 @@ export class Polygon {
   /**
    * 计算边界框
    */
-  public getBounds(): { north: number; east: number; south: number; west: number } {
+  public getBounds(): GeoBounds {
     if (this.points.length === 0) {
       return { north: 0, east: 0, south: 0, west: 0 };
     }

@@ -1,6 +1,14 @@
 import { Point } from './Point';
 
 /**
+ * Size - 尺寸接口
+ */
+export interface Size {
+  width: number;
+  height: number;
+}
+
+/**
  * Rect - 矩形类
  */
 export class Rect {
@@ -54,7 +62,7 @@ export class Rect {
   /**
    * 获取尺寸
    */
-  public getSize(): { width: number; height: number } {
+  public getSize(): Size {
     return { width: this.getWidth(), height: this.getHeight() };
   }
 

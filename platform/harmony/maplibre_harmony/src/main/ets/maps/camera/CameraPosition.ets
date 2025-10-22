@@ -1,6 +1,27 @@
 import { LatLng } from '../geometry/LatLng';
 
 /**
+ * EdgeInsets - 边距接口
+ */
+export interface EdgeInsets {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * CameraPositionOptions - 相机位置选项接口
+ */
+export interface CameraPositionOptions {
+  target: LatLng;
+  zoom?: number;
+  bearing?: number;
+  tilt?: number;
+  padding?: EdgeInsets;
+}
+
+/**
  * CameraPosition - 相机位置类
  */
 export class CameraPosition {
@@ -8,15 +29,9 @@ export class CameraPosition {
   public zoom: number;
   public bearing: number;
   public tilt: number;
-  public padding: { left: number; top: number; right: number; bottom: number };
+  public padding: EdgeInsets;
 
-  constructor(options: {
-    target: LatLng;
-    zoom?: number;
-    bearing?: number;
-    tilt?: number;
-    padding?: { left: number; top: number; right: number; bottom: number };
-  }) {
+  constructor(options: CameraPositionOptions) {
     this.target = options.target;
     this.zoom = options.zoom || 0;
     this.bearing = options.bearing || 0;
@@ -109,14 +124,14 @@ export class CameraPosition {
   /**
    * 设置内边距
    */
-  public setPadding(padding: { left: number; top: number; right: number; bottom: number }): void {
+  public setPadding(padding: EdgeInsets): void {
     this.padding = padding;
   }
 
   /**
    * 获取内边距
    */
-  public getPadding(): { left: number; top: number; right: number; bottom: number } {
+  public getPadding(): EdgeInsets {
     return this.padding;
   }
 

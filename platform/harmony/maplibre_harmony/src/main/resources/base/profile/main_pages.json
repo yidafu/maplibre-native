@@ -2,6 +2,7 @@
   "src": [
     "pages/Index",
     "pages/BasicMapPage",
-    "pages/GestureTestPage"
+    "pages/GestureTestPage",
+    "pages/MarkerTestPage"
   ]
 }

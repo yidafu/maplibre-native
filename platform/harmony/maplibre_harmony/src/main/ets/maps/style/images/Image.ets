@@ -1,4 +1,24 @@
 /**
+ * ImageOptions - 图片选项接口
+ */
+export interface ImageOptions {
+  name: string;
+  width: number;
+  height: number;
+  pixelRatio?: number;
+  sdf?: boolean;
+  data?: Uint8Array;
+}
+
+/**
+ * ImageSize - 图片尺寸接口
+ */
+export interface ImageSize {
+  width: number;
+  height: number;
+}
+
+/**
  * Image - 图片类
  */
 export class Image {
@@ -9,14 +29,7 @@ export class Image {
   public sdf: boolean;
   public data: Uint8Array | null;
 
-  constructor(options: {
-    name: string;
-    width: number;
-    height: number;
-    pixelRatio?: number;
-    sdf?: boolean;
-    data?: Uint8Array;
-  }) {
+  constructor(options: ImageOptions) {
     this.name = options.name;
     this.width = options.width;
     this.height = options.height;
@@ -112,7 +125,7 @@ export class Image {
   /**
    * 获取图片尺寸
    */
-  public getSize(): { width: number; height: number } {
+  public getSize(): ImageSize {
     return { width: this.width, height: this.height };
   }
 

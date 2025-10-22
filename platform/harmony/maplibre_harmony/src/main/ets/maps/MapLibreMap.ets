@@ -1,4 +1,4 @@
-import { NativeMapView } from './NativeMapView';
+import maplibre from 'libmaplibre_native.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
@@ -14,18 +14,27 @@ import { Light } from './style/light/Light';
 import { Marker } from './annotations/Marker';
 import { Polyline } from './annotations/Polyline';
 import { Polygon } from './annotations/Polygon';
+import { MarkerManager } from './annotations/MarkerManager';
+import { MarkerOptions } from './annotations/MarkerOptions';
+import { Annotation } from './annotations/Annotation';
+import { OnMarkerClickListener } from './listeners/OnMarkerClickListener';
+import { OnMarkerDragListener } from './listeners/OnMarkerDragListener';
+import { OnInfoWindowClickListener } from './listeners/OnInfoWindowClickListener';
+import { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
 
 /**
  * MapLibreMap - 主要的地图API类
  */
 export class MapLibreMap {
-  private nativeMapView: NativeMapView;
+  private nativeMapView: maplibre.NativeMapView;
   private options: MapLibreMapOptions;
   private destroyed: boolean = false;
+  private markerManager: MarkerManager;
 
-  constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
+  constructor(nativeMapView: maplibre.NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
     this.options = options;
+    this.markerManager = new MarkerManager(this);
   }
 
   /**
@@ -36,7 +45,8 @@ export class MapLibreMap {
       return;
     }
     this.destroyed = true;
-    this.nativeMapView.destroy();
+    // NativeMapView 没有 destroy 方法，资源由系统管理
+    // this.nativeMapView.destroy();
   }
 
   /**
@@ -55,14 +65,14 @@ export class MapLibreMap {
   }
 
   // 样式管理
-  public setStyleUri(url: string): void {
+  public setStyleUrl(url: string): void {
     if (this.destroyed) return;
-    this.nativeMapView.setStyleUri(url);
+    this.nativeMapView.setStyleUrl(url);
   }
 
-  public getStyleUri(): string {
+  public getStyleUrl(): string {
     if (this.destroyed) return '';
-    return this.nativeMapView.getStyleUri();
+    return this.nativeMapView.getStyleUrl();
   }
 
   public setStyleJson(json: string): void {
@@ -113,8 +123,9 @@ export class MapLibreMap {
 
   // 位置和相机
   public getLatLng(): LatLng {
-    if (this.destroyed) return new LatLng(0, 0)
-    return this.nativeMapView.getLatLng();
+    if (this.destroyed) return new LatLng(0, 0);
+    const result = this.nativeMapView.getLatLng();
+    return new LatLng(result.latitude, result.longitude);
   }
 
   public setLatLng(latitude: number, longitude: number, padding?: number[], duration?: number): void {
@@ -122,14 +133,18 @@ export class MapLibreMap {
     this.nativeMapView.setLatLng(latitude, longitude, padding, duration);
   }
 
-  public getCameraForLatLngBounds(bounds: LatLngBounds, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): CameraPosition {
+  public getCameraForLatLngBounds(bounds: LatLngBounds, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): CameraPosition | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getCameraForLatLngBounds(bounds, top, left, bottom, right, bearing, tilt);
+    const result: ESObject = this.nativeMapView.getCameraForLatLngBounds(bounds, top, left, bottom, right, bearing, tilt) as ESObject;
+    // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
+    return result as CameraPosition;
   }
 
-  public getCameraForGeometry(geometry: any, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): CameraPosition {
+  public getCameraForGeometry(geometry: ESObject, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): CameraPosition | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getCameraForGeometry(geometry, top, left, bottom, right, bearing, tilt);
+    const result: ESObject = this.nativeMapView.getCameraForGeometry(geometry, top, left, bottom, right, bearing, tilt) as ESObject;
+    // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
+    return result as CameraPosition;
   }
 
   public setReachability(status: boolean): void {
@@ -255,9 +270,11 @@ export class MapLibreMap {
   }
 
   // 相机位置
-  public getCameraPosition(): CameraPosition {
+  public getCameraPosition(): ESObject | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getCameraPosition();
+    const result: ESObject = this.nativeMapView.getCameraPosition() as ESObject;
+    // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
+    return result;
   }
 
   // 注解
@@ -356,14 +373,15 @@ export class MapLibreMap {
     return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, zoom);
   }
 
-  public projectedMetersForLatLng(latitude: number, longitude: number): any {
+  public projectedMetersForLatLng(latitude: number, longitude: number): Object | null {
     if (this.destroyed) return null;
     return this.nativeMapView.projectedMetersForLatLng(latitude, longitude);
   }
 
   public pixelForLatLng(latitude: number, longitude: number): Point {
-    if (this.destroyed) return { x: 0, y: 0 };
-    return this.nativeMapView.pixelForLatLng(latitude, longitude);
+    if (this.destroyed) return new Point(0, 0);
+    const result = this.nativeMapView.pixelForLatLng(latitude, longitude);
+    return new Point(result.x, result.y);
   }
 
   public pixelsForLatLngs(input: number[], output: number[]): void {
@@ -372,13 +390,15 @@ export class MapLibreMap {
   }
 
   public latLngForProjectedMeters(northing: number, easting: number): LatLng {
-    if (this.destroyed) return { latitude: 0, longitude: 0 };
-    return this.nativeMapView.latLngForProjectedMeters(northing, easting);
+    if (this.destroyed) return new LatLng(0, 0);
+    const result = this.nativeMapView.latLngForProjectedMeters(northing, easting);
+    return new LatLng(result.latitude, result.longitude);
   }
 
   public latLngForPixel(x: number, y: number): LatLng {
-    if (this.destroyed) return { latitude: 0, longitude: 0 };
-    return this.nativeMapView.latLngForPixel(x, y);
+    if (this.destroyed) return new LatLng(0, 0);
+    const result = this.nativeMapView.latLngForPixel(x, y);
+    return new LatLng(result.latitude, result.longitude);
   }
 
   public latLngsForPixels(input: number[], output: number[]): void {
@@ -388,8 +408,12 @@ export class MapLibreMap {
 
   // 过渡
   public getTransitionOptions(): TransitionOptions {
-    if (this.destroyed) return { duration: 0, delay: 0 };
-    return this.nativeMapView.getTransitionOptions();
+    if (this.destroyed) return new TransitionOptions({ duration: 0, delay: 0 });
+    const result: ESObject = this.nativeMapView.getTransitionOptions() as ESObject;
+    // 将 NAPI 返回的对象转换为 TransitionOptions 实例
+    const duration: number = (result['duration'] as number) || 0;
+    const delay: number = (result['delay'] as number) || 0;
+    return new TransitionOptions({ duration, delay });
   }
 
   public setTransitionOptions(options: TransitionOptions): void {
@@ -408,20 +432,23 @@ export class MapLibreMap {
     return this.nativeMapView.queryShapeAnnotations(rect);
   }
 
-  public queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: any): Feature[] {
+  public queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: ESObject): Feature[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
+    const results: ESObject[] = this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter) as ESObject[];
+    return results as Feature[];
   }
 
-  public queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[], filter?: any): Feature[] {
+  public queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[], filter?: ESObject): Feature[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter);
+    const results: ESObject[] = this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter) as ESObject[];
+    return results as Feature[];
   }
 
   // 光照
-  public getLight(): Light {
+  public getLight(): Light | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getLight();
+    const result: ESObject = this.nativeMapView.getLight() as ESObject;
+    return result as Light;
   }
 
   // 图层
@@ -482,7 +509,7 @@ export class MapLibreMap {
   }
 
   // 图片
-  public addImage(name: string, bitmap: any, pixelRatio: number, sdf: boolean): void {
+  public addImage(name: string, bitmap: Object, pixelRatio: number, sdf: boolean): void {
     if (this.destroyed) return;
     this.nativeMapView.addImage(name, bitmap, pixelRatio, sdf);
   }
@@ -497,9 +524,10 @@ export class MapLibreMap {
     this.nativeMapView.removeImage(name);
   }
 
-  public getImage(name: string): any {
+  public getImage(name: string): ESObject | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getImage(name);
+    const result: ESObject = this.nativeMapView.getImage(name) as ESObject;
+    return result;
   }
 
   // 瓦片管理
@@ -591,7 +619,228 @@ export class MapLibreMap {
   }
 
   // 获取原生地图视图
-  public getNativeMapView(): NativeMapView {
+  public getNativeMapView(): maplibre.NativeMapView {
     return this.nativeMapView;
+  }
+  
+  // ========== Marker 管理方法（新增）==========
+  
+  /**
+   * 添加单个 Marker
+   * 
+   * @param options MarkerOptions 实例
+   * @returns 创建的 Marker
+   */
+  public addMarker(options: MarkerOptions): Marker {
+    if (this.destroyed) {
+      throw new Error('Map has been destroyed');
+    }
+    return this.markerManager.addMarker(options);
+  }
+  
+  /**
+   * 批量添加 Marker
+   * 
+   * @param optionsList MarkerOptions 数组
+   * @returns 创建的 Marker 数组
+   */
+  public addMarkersBatch(optionsList: MarkerOptions[]): Marker[] {
+    if (this.destroyed) return [];
+    return this.markerManager.addMarkers(optionsList);
+  }
+  
+  /**
+   * 移除单个 Marker
+   * 
+   * @param marker 要移除的 Marker
+   */
+  public removeMarker(marker: Marker): void {
+    if (this.destroyed) return;
+    this.markerManager.removeMarker(marker);
+  }
+  
+  /**
+   * 移除 Annotation（通用方法）
+   * 
+   * @param annotation 要移除的 Annotation
+   */
+  public removeAnnotation(annotation: Annotation): void {
+    if (this.destroyed) return;
+    
+    if (annotation instanceof Marker) {
+      this.markerManager.removeMarker(annotation as Marker);
+    } else {
+      // 对于其他类型的 Annotation（Polyline, Polygon），调用原有方法
+      const id = annotation.getId();
+      if (id !== -1) {
+        this.removeAnnotations([id]);
+      }
+    }
+  }
+  
+  /**
+   * 批量移除 Annotation
+   * 
+   * @param annotations Annotation 数组
+   */
+  public removeAnnotationsBatch(annotations: Annotation[]): void {
+    if (this.destroyed) return;
+    
+    const markers: Marker[] = [];
+    const otherIds: number[] = [];
+    
+    for (const annotation of annotations) {
+      if (annotation instanceof Marker) {
+        markers.push(annotation as Marker);
+      } else {
+        const id = annotation.getId();
+        if (id !== -1) {
+          otherIds.push(id);
+        }
+      }
+    }
+    
+    // 移除 Markers
+    if (markers.length > 0) {
+      this.markerManager.removeMarkers(markers);
+    }
+    
+    // 移除其他类型的 Annotations
+    if (otherIds.length > 0) {
+      this.removeAnnotations(otherIds);
+    }
+  }
+  
+  /**
+   * 清除所有 Marker
+   */
+  public clearMarkers(): void {
+    if (this.destroyed) return;
+    this.markerManager.clear();
+  }
+  
+  /**
+   * 获取所有 Marker
+   * 
+   * @returns Marker 数组
+   */
+  public getMarkers(): Marker[] {
+    if (this.destroyed) return [];
+    return this.markerManager.getMarkers();
+  }
+  
+  /**
+   * 根据 ID 获取 Marker
+   * 
+   * @param id Marker ID
+   * @returns Marker 实例，如果不存在则返回 null
+   */
+  public getMarkerById(id: number): Marker | null {
+    if (this.destroyed) return null;
+    return this.markerManager.getMarker(id);
+  }
+  
+  // ========== Marker 选中管理 ==========
+  
+  /**
+   * 选中 Marker
+   * 
+   * @param marker 要选中的 Marker
+   * @param animated 是否显示动画（暂未实现）
+   */
+  public selectMarker(marker: Marker, animated: boolean = true): void {
+    if (this.destroyed) return;
+    this.markerManager.selectMarker(marker, true);
+  }
+  
+  /**
+   * 取消选中 Marker
+   * 
+   * @param marker 要取消选中的 Marker
+   */
+  public deselectMarker(marker: Marker): void {
+    if (this.destroyed) return;
+    this.markerManager.deselectMarker(marker);
+  }
+  
+  /**
+   * 取消所有选中的 Marker
+   */
+  public deselectMarkers(): void {
+    if (this.destroyed) return;
+    this.markerManager.deselectMarkers();
+  }
+  
+  /**
+   * 获取所有选中的 Marker
+   * 
+   * @returns 选中的 Marker 数组
+   */
+  public getSelectedMarkers(): Marker[] {
+    if (this.destroyed) return [];
+    return this.markerManager.getSelectedMarkers();
+  }
+  
+  // ========== 事件监听器 ==========
+  
+  /**
+   * 设置 Marker 点击监听器
+   * 
+   * @param listener 监听器实例
+   */
+  public setOnMarkerClickListener(listener: OnMarkerClickListener | null): void {
+    if (this.destroyed) return;
+    this.markerManager.setOnMarkerClickListener(listener);
+  }
+  
+  /**
+   * 设置 Marker 拖拽监听器
+   * 
+   * @param listener 监听器实例
+   */
+  public setOnMarkerDragListener(listener: OnMarkerDragListener | null): void {
+    if (this.destroyed) return;
+    this.markerManager.setOnMarkerDragListener(listener);
+  }
+  
+  /**
+   * 设置 InfoWindow 点击监听器
+   * 
+   * @param listener 监听器实例
+   */
+  public setOnInfoWindowClickListener(listener: OnInfoWindowClickListener | null): void {
+    if (this.destroyed) return;
+    this.markerManager.setOnInfoWindowClickListener(listener);
+  }
+  
+  /**
+   * 设置 InfoWindow 适配器
+   * 
+   * 允许自定义 InfoWindow 的显示内容
+   * 
+   * @param adapter 适配器实例
+   */
+  public setInfoWindowAdapter(adapter: InfoWindowAdapter | null): void {
+    if (this.destroyed) return;
+    this.markerManager.setInfoWindowAdapter(adapter);
+  }
+  
+  /**
+   * 获取 InfoWindow 适配器
+   * 
+   * @returns 适配器实例
+   */
+  public getInfoWindowAdapter(): InfoWindowAdapter | null {
+    if (this.destroyed) return null;
+    return this.markerManager.getInfoWindowAdapter();
+  }
+  
+  /**
+   * 获取 MarkerManager 实例（内部使用）
+   * 
+   * @returns MarkerManager 实例
+   */
+  public getMarkerManager(): MarkerManager {
+    return this.markerManager;
   }
 }

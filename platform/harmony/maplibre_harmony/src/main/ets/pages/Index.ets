@@ -40,6 +40,12 @@ struct Index {
       'pages/GestureTestPage',
       '👆'
     ),
+    new TestPageItem(
+      'Marker 功能测试',
+      '测试 Marker 添加、删除、事件、动画、拖拽、InfoWindow 等完整功能',
+      'pages/MarkerTestPage',
+      '📍'
+    ),
   ];
 
   build() {

@@ -1,6 +1,32 @@
 import { LatLng } from '../geometry/LatLng';
 
 /**
+ * GeoBounds - 地理边界接口
+ */
+export interface GeoBounds {
+  north: number;
+  east: number;
+  south: number;
+  west: number;
+}
+
+/**
+ * PolylineOptions - 折线选项接口
+ */
+export interface PolylineOptions {
+  id?: string;
+  points: LatLng[];
+  color?: string;
+  width?: number;
+  alpha?: number;
+  visible?: boolean;
+  zIndex?: number;
+  pattern?: number[];
+  jointType?: string;
+  capType?: string;
+}
+
+/**
  * Polyline - 折线类
  */
 export class Polyline {
@@ -15,18 +41,7 @@ export class Polyline {
   public jointType: string;
   public capType: string;
 
-  constructor(options: {
-    id?: string;
-    points: LatLng[];
-    color?: string;
-    width?: number;
-    alpha?: number;
-    visible?: boolean;
-    zIndex?: number;
-    pattern?: number[];
-    jointType?: string;
-    capType?: string;
-  }) {
+  constructor(options: PolylineOptions) {
     this.id = options.id || this.generateId();
     this.points = options.points;
     this.color = options.color || '#000000';
@@ -214,7 +229,7 @@ export class Polyline {
   /**
    * 计算边界框
    */
-  public getBounds(): { north: number; east: number; south: number; west: number } {
+  public getBounds(): GeoBounds {
     if (this.points.length === 0) {
       return { north: 0, east: 0, south: 0, west: 0 };
     }

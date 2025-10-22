@@ -1,10 +1,54 @@
 /**
+ * SourceData - 数据源数据类型
+ */
+export type SourceData = Object | string | null;
+
+/**
+ * SourceMetadata - 数据源元数据类型
+ */
+export type SourceMetadata = Record<string, Object> | null;
+
+/**
+ * ClusterProperties - 聚合属性类型
+ */
+export type ClusterProperties = Record<string, Object> | null;
+
+/**
+ * SourceOptions - 数据源选项接口
+ */
+export interface SourceOptions {
+  id: string;
+  type: string;
+  data?: SourceData;
+  minZoom?: number;
+  maxZoom?: number;
+  attribution?: string;
+  bounds?: number[];
+  cluster?: boolean;
+  clusterMaxZoom?: number;
+  clusterRadius?: number;
+  clusterMinPoints?: number;
+  clusterProperties?: ClusterProperties;
+  generateId?: boolean;
+  promoteId?: string;
+  tolerance?: number;
+  buffer?: number;
+  lineMetrics?: boolean;
+  maxzoom?: number;
+  tileSize?: number;
+  url?: string;
+  tiles?: string[];
+  scheme?: string;
+  metadata?: SourceMetadata;
+}
+
+/**
  * Source - 数据源基类
  */
 export abstract class Source {
   public id: string;
   public type: string;
-  public data: any;
+  public data: SourceData;
   public minZoom: number | null;
   public maxZoom: number | null;
   public attribution: string | null;
@@ -13,7 +57,7 @@ export abstract class Source {
   public clusterMaxZoom: number | null;
   public clusterRadius: number | null;
   public clusterMinPoints: number | null;
-  public clusterProperties: any;
+  public clusterProperties: ClusterProperties;
   public generateId: boolean;
   public promoteId: string | null;
   public tolerance: number | null;
@@ -24,33 +68,9 @@ export abstract class Source {
   public url: string | null;
   public tiles: string[] | null;
   public scheme: string | null;
-  public metadata: any;
+  public metadata: SourceMetadata;
 
-  constructor(options: {
-    id: string;
-    type: string;
-    data?: any;
-    minZoom?: number;
-    maxZoom?: number;
-    attribution?: string;
-    bounds?: number[];
-    cluster?: boolean;
-    clusterMaxZoom?: number;
-    clusterRadius?: number;
-    clusterMinPoints?: number;
-    clusterProperties?: any;
-    generateId?: boolean;
-    promoteId?: string;
-    tolerance?: number;
-    buffer?: number;
-    lineMetrics?: boolean;
-    maxzoom?: number;
-    tileSize?: number;
-    url?: string;
-    tiles?: string[];
-    scheme?: string;
-    metadata?: any;
-  }) {
+  constructor(options: SourceOptions) {
     this.id = options.id;
     this.type = options.type;
     this.data = options.data || null;
@@ -93,14 +113,14 @@ export abstract class Source {
   /**
    * 获取数据
    */
-  public getData(): any {
+  public getData(): SourceData {
     return this.data;
   }
 
   /**
    * 设置数据
    */
-  public setData(data: any): void {
+  public setData(data: SourceData): void {
     this.data = data;
   }
 
@@ -219,14 +239,14 @@ export abstract class Source {
   /**
    * 获取聚类属性
    */
-  public getClusterProperties(): any {
+  public getClusterProperties(): ClusterProperties {
     return this.clusterProperties;
   }
 
   /**
    * 设置聚类属性
    */
-  public setClusterProperties(clusterProperties: any): void {
+  public setClusterProperties(clusterProperties: ClusterProperties): void {
     this.clusterProperties = clusterProperties;
   }
 
@@ -373,14 +393,14 @@ export abstract class Source {
   /**
    * 获取元数据
    */
-  public getMetadata(): any {
+  public getMetadata(): SourceMetadata {
     return this.metadata;
   }
 
   /**
    * 设置元数据
    */
-  public setMetadata(metadata: any): void {
+  public setMetadata(metadata: SourceMetadata): void {
     this.metadata = metadata;
   }
 
@@ -396,7 +416,7 @@ export abstract class Source {
   /**
    * 转换为JSON
    */
-  public toJSON(): any {
+  public toJSON(): ESObject {
     return {
       id: this.id,
       type: this.type,
