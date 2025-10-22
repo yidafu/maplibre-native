@@ -78,8 +78,6 @@ add_library(maplibre_native
     http_file_source_harmony.cpp
     harmony_renderer_backend.hpp
     harmony_renderer_backend.cpp
-    harmony_gl_renderer_backend.hpp
-    harmony_gl_renderer_backend.cpp
     harmony_renderer_frontend.hpp
     harmony_renderer_frontend.cpp
     harmony_renderer.hpp
@@ -94,6 +92,25 @@ add_library(maplibre_native
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
 )
+
+# Conditionally add rendering backend sources
+if(MLN_WITH_VULKAN)
+    target_sources(
+        maplibre_native PRIVATE
+            harmony_vulkan_renderer_backend.hpp
+            harmony_vulkan_renderer_backend.cpp
+    )
+    message(STATUS "HarmonyOS: Adding Vulkan renderer backend sources")
+endif()
+
+if(MLN_WITH_OPENGL)
+    target_sources(
+        maplibre_native PRIVATE
+            harmony_gl_renderer_backend.hpp
+            harmony_gl_renderer_backend.cpp
+    )
+    message(STATUS "HarmonyOS: Adding OpenGL renderer backend sources")
+endif()
 
 
 target_include_directories(

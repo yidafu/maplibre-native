@@ -812,20 +812,160 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "cancelTransitions() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "cancelTransitions: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "cancelTransitions: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "cancelTransitions: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        instance->map->cancelTransitions();
+        Logger::debug("NativeMapView", "cancelTransitions: Transitions cancelled successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "cancelTransitions: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setGestureInProgress() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setGestureInProgress: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setGestureInProgress: Missing inProgress argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "setGestureInProgress: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "setGestureInProgress: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取布尔参数
+    bool inProgress = false;
+    if (napi_get_value_bool(env, args[0], &inProgress) != napi_ok) {
+        Logger::error("NativeMapView", "setGestureInProgress: Failed to get boolean value");
+        return undefined;
+    }
+    
+    try {
+        instance->map->setGestureInProgress(inProgress);
+        Logger::debug("NativeMapView", "setGestureInProgress: Set to %s", inProgress ? "true" : "false");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setGestureInProgress: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "moveBy() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    size_t argc = 3;  // 支持可选的 duration 参数
+    napi_value args[3];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "moveBy: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 2) {
+        Logger::error("NativeMapView", "moveBy: Missing dx/dy arguments");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "moveBy: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "moveBy: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取移动距离
+    double dx = 0, dy = 0;
+    if (napi_get_value_double(env, args[0], &dx) != napi_ok ||
+        napi_get_value_double(env, args[1], &dy) != napi_ok) {
+        Logger::error("NativeMapView", "moveBy: Failed to get dx/dy values");
+        return undefined;
+    }
+    
+    // 获取动画时长（可选，默认 0 表示立即执行）
+    uint64_t duration = 0;
+    if (argc >= 3) {
+        double durationValue;
+        if (napi_get_value_double(env, args[2], &durationValue) == napi_ok) {
+            duration = static_cast<uint64_t>(durationValue);
+            Logger::debug("NativeMapView", "moveBy: with animation duration = %lu ms", (unsigned long)duration);
+        }
+    }
+    
+    try {
+        if (duration > 0) {
+            // 带动画的移动
+            instance->map->moveBy(
+                mbgl::ScreenCoordinate{dx, dy},
+                mbgl::AnimationOptions(std::chrono::milliseconds(duration))
+            );
+            Logger::debug("NativeMapView", "moveBy: Animated move by (%.2f, %.2f) over %lu ms", dx, dy, (unsigned long)duration);
+        } else {
+            // 立即移动
+            instance->map->moveBy(mbgl::ScreenCoordinate{dx, dy});
+            Logger::debug("NativeMapView", "moveBy: Instant move by (%.2f, %.2f)", dx, dy);
+        }
+        instance->map->triggerRepaint();
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "moveBy: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
@@ -939,8 +1079,125 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== easeTo() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    size_t argc = 2;
+    napi_value args[2];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "easeTo: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "easeTo: Missing camera options argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "easeTo: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::error("NativeMapView", "easeTo: Map not initialized");
+        return undefined;
+    }
+    
+    // 解析相机选项对象
+    napi_value cameraObj = args[0];
+    
+    CameraOptions cameraOptions;
+    
+    // 获取 center (LatLng)
+    napi_value centerValue;
+    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
+        napi_value latValue, lngValue;
+        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
+            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
+            double lat, lng;
+            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
+                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
+                cameraOptions.center = LatLng{lat, lng};
+                Logger::debug("NativeMapView", "easeTo: center = (%f, %f)", lat, lng);
+            }
+        }
+    }
+    
+    // 获取 zoom
+    napi_value zoomValue;
+    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
+        double zoom;
+        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
+            cameraOptions.zoom = zoom;
+            Logger::debug("NativeMapView", "easeTo: zoom = %f", zoom);
+        }
+    }
+    
+    // 获取 bearing
+    napi_value bearingValue;
+    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
+        double bearing;
+        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
+            cameraOptions.bearing = bearing;
+            Logger::debug("NativeMapView", "easeTo: bearing = %f", bearing);
+        }
+    }
+    
+    // 获取 pitch
+    napi_value pitchValue;
+    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
+        double pitch;
+        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
+            cameraOptions.pitch = pitch;
+            Logger::debug("NativeMapView", "easeTo: pitch = %f", pitch);
+        }
+    }
+    
+    // 获取 anchor (可选)
+    napi_value anchorValue;
+    if (napi_get_named_property(env, cameraObj, "anchor", &anchorValue) == napi_ok) {
+        napi_value anchorX, anchorY;
+        if (napi_get_named_property(env, anchorValue, "x", &anchorX) == napi_ok &&
+            napi_get_named_property(env, anchorValue, "y", &anchorY) == napi_ok) {
+            double x, y;
+            if (napi_get_value_double(env, anchorX, &x) == napi_ok &&
+                napi_get_value_double(env, anchorY, &y) == napi_ok) {
+                cameraOptions.anchor = mbgl::ScreenCoordinate{x, y};
+                Logger::debug("NativeMapView", "easeTo: anchor = (%f, %f)", x, y);
+            }
+        }
+    }
+    
+    // 获取动画时长（可选，默认 300ms）
+    uint64_t duration = 300;
+    if (argc >= 2) {
+        double durationValue;
+        if (napi_get_value_double(env, args[1], &durationValue) == napi_ok) {
+            duration = static_cast<uint64_t>(durationValue);
+            Logger::debug("NativeMapView", "easeTo: duration = %lu ms", (unsigned long)duration);
+        }
+    }
+    
+    // 执行 easeTo 相机动画
+    try {
+        instance->map->easeTo(cameraOptions, 
+                             mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
+        instance->map->triggerRepaint();
+        Logger::info("NativeMapView", "easeTo: Camera animation started successfully");
+        Logger::info("NativeMapView", "========== easeTo() END - SUCCESS ==========");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "easeTo: Failed - %s", e.what());
+        Logger::error("NativeMapView", "========== easeTo() END - FAILED ==========");
+    }
+    
     return undefined;
 }
 
@@ -987,14 +1244,109 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getPitch() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "getPitch: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getPitch: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "getPitch: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        auto cameraOptions = instance->map->getCameraOptions();
+        if (cameraOptions.pitch) {
+            napi_value result;
+            napi_create_double(env, *cameraOptions.pitch, &result);
+            Logger::debug("NativeMapView", "getPitch: Current pitch = %.2f", *cameraOptions.pitch);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getPitch: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setPitch() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象和参数
+    size_t argc = 2;
+    napi_value args[2];
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setPitch: Failed to get callback info");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setPitch: Missing pitch argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "setPitch: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "setPitch: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取 pitch 值
+    double pitch;
+    if (napi_get_value_double(env, args[0], &pitch) != napi_ok) {
+        Logger::error("NativeMapView", "setPitch: Failed to get pitch value");
+        return undefined;
+    }
+    
+    // 获取可选的动画时长参数（毫秒）
+    uint32_t duration = 0;
+    if (argc >= 2) {
+        napi_get_value_uint32(env, args[1], &duration);
+    }
+    
+    try {
+        mbgl::CameraOptions options;
+        options.pitch = pitch;
+        
+        if (duration > 0) {
+            mbgl::AnimationOptions animationOptions;
+            animationOptions.duration = std::chrono::milliseconds(duration);
+            instance->map->easeTo(options, animationOptions);
+            Logger::debug("NativeMapView", "setPitch: Animating to pitch %.2f over %u ms", pitch, duration);
+        } else {
+            instance->map->jumpTo(options);
+            Logger::debug("NativeMapView", "setPitch: Set pitch to %.2f", pitch);
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setPitch: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
@@ -1005,8 +1357,43 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getZoom() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "getZoom: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getZoom: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "getZoom: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        auto cameraOptions = instance->map->getCameraOptions();
+        if (cameraOptions.zoom) {
+            napi_value result;
+            napi_create_double(env, *cameraOptions.zoom, &result);
+            Logger::debug("NativeMapView", "getZoom: Current zoom = %.2f", *cameraOptions.zoom);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getZoom: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
@@ -1071,8 +1458,53 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setBearing() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setBearing: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setBearing: Missing bearing argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "setBearing: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "setBearing: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取bearing值
+    double bearing;
+    if (napi_get_value_double(env, args[0], &bearing) != napi_ok) {
+        Logger::error("NativeMapView", "setBearing: Failed to get bearing value");
+        return undefined;
+    }
+    
+    try {
+        instance->map->jumpTo(mbgl::CameraOptions().withBearing(bearing));
+        instance->map->triggerRepaint();
+        Logger::debug("NativeMapView", "setBearing: Set bearing to %.2f", bearing);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setBearing: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
@@ -1083,8 +1515,43 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getBearing() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "getBearing: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getBearing: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "getBearing: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        auto cameraOptions = instance->map->getCameraOptions();
+        if (cameraOptions.bearing) {
+            napi_value result;
+            napi_create_double(env, *cameraOptions.bearing, &result);
+            Logger::debug("NativeMapView", "getBearing: Current bearing = %.2f", *cameraOptions.bearing);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getBearing: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
@@ -1113,8 +1580,79 @@ napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info
 }
 
 napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getCameraPosition() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "getCameraPosition: Failed to get this object");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getCameraPosition: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查 Map 对象是否已初始化
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "getCameraPosition: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        auto cameraOptions = instance->map->getCameraOptions();
+        
+        // 创建返回对象
+        napi_value result;
+        napi_create_object(env, &result);
+        
+        // 添加 zoom
+        if (cameraOptions.zoom) {
+            napi_value zoomValue;
+            napi_create_double(env, *cameraOptions.zoom, &zoomValue);
+            napi_set_named_property(env, result, "zoom", zoomValue);
+        }
+        
+        // 添加 bearing
+        if (cameraOptions.bearing) {
+            napi_value bearingValue;
+            napi_create_double(env, *cameraOptions.bearing, &bearingValue);
+            napi_set_named_property(env, result, "bearing", bearingValue);
+        }
+        
+        // 添加 pitch (tilt)
+        if (cameraOptions.pitch) {
+            napi_value pitchValue;
+            napi_create_double(env, *cameraOptions.pitch, &pitchValue);
+            napi_set_named_property(env, result, "tilt", pitchValue);
+        }
+        
+        // 添加 center (target)
+        if (cameraOptions.center) {
+            napi_value targetObj;
+            napi_create_object(env, &targetObj);
+            
+            napi_value latValue, lngValue;
+            napi_create_double(env, cameraOptions.center->latitude(), &latValue);
+            napi_create_double(env, cameraOptions.center->longitude(), &lngValue);
+            
+            napi_set_named_property(env, targetObj, "latitude", latValue);
+            napi_set_named_property(env, targetObj, "longitude", lngValue);
+            napi_set_named_property(env, result, "target", targetObj);
+        }
+        
+        Logger::debug("NativeMapView", "getCameraPosition: Returned camera position");
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getCameraPosition: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 

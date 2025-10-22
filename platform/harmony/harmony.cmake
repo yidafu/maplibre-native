@@ -2,8 +2,23 @@ target_compile_definitions(
     mbgl-core
     PUBLIC
         MBGL_USE_BUILTIN_ICU
-        MLN_RENDER_BACKEND_OPENGL=1
 )
+
+# Conditionally set rendering backend macro
+# Ensure only one backend is enabled
+if(MLN_WITH_VULKAN AND MLN_WITH_OPENGL)
+    message(FATAL_ERROR "Cannot enable both Vulkan and OpenGL backends. Please set only one to ON.")
+endif()
+
+if(MLN_WITH_VULKAN)
+    target_compile_definitions(mbgl-core PUBLIC MLN_RENDER_BACKEND_VULKAN=1)
+    message(STATUS "HarmonyOS: Using Vulkan rendering backend")
+elseif(MLN_WITH_OPENGL)
+    target_compile_definitions(mbgl-core PUBLIC MLN_RENDER_BACKEND_OPENGL=1)
+    message(STATUS "HarmonyOS: Using OpenGL rendering backend")
+else()
+    message(FATAL_ERROR "No rendering backend selected. Please set MLN_WITH_VULKAN=ON or MLN_WITH_OPENGL=ON.")
+endif()
 
 # Enable RTTI for Harmony platform (needed for OpenGL renderer backend)
 set(MLN_WITH_RTTI ON)
@@ -90,56 +105,62 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/layermanager/layer_manager.cpp
 )
 
-# Add OpenGL renderer backend sources
-target_sources(
-    mbgl-core
-    PRIVATE
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/attribute.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/command_encoder.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/context.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/fence.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/debugging_extension.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/enum.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/index_buffer_resource.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/object.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/offscreen_texture.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/render_pass.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderbuffer_resource.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderer_backend.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/resource_pool.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/timestamp_query_extension.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/upload_pass.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/value.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_array.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_buffer_resource.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/buffer_allocator.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl_builder.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/layer_group_gl.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/texture2d.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform_buffer_gl.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_attribute_gl.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_info.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_program_gl.cpp
-        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/legacy/programs.cpp
-)
-
+# Add OpenGL renderer backend sources (conditional)
 if(MLN_WITH_OPENGL)
     target_sources(
         mbgl-core
         PRIVATE
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/attribute.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/command_encoder.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/context.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/fence.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/debugging_extension.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/enum.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/index_buffer_resource.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/object.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/offscreen_texture.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/render_pass.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderbuffer_resource.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/renderer_backend.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/resource_pool.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/timestamp_query_extension.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/upload_pass.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/value.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_array.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_buffer_resource.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/buffer_allocator.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/drawable_gl_builder.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/layer_group_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/texture2d.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/uniform_buffer_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/gl/vertex_attribute_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_info.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/shader_program_gl.cpp
+            ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/gl/legacy/programs.cpp
+            # Platform-specific OpenGL sources
             ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/gl/headless_backend.cpp
             ${PROJECT_SOURCE_DIR}/platform/linux/src/headless_backend_egl.cpp
     )
+    message(STATUS "HarmonyOS: Added OpenGL renderer backend sources")
 endif()
 
 if(MLN_WITH_VULKAN)
+    # Include Vulkan headers from vendor directory
+    target_include_directories(
+        mbgl-core
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/vendor/Vulkan-Headers/include
+    )
+    
     target_sources(
         mbgl-core
         PRIVATE
             ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/vulkan/headless_backend.cpp
     )
+    
+    message(STATUS "HarmonyOS: Configured Vulkan backend with headers from vendor/Vulkan-Headers")
 endif()
 
 target_include_directories(

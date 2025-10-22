@@ -10,6 +10,8 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #elif defined(__ANDROID__)
 #define VK_USE_PLATFORM_ANDROID_KHR
+#elif defined(__OHOS__) || defined(OHOS_PLATFORM)
+#define VK_USE_PLATFORM_OHOS_KHR
 #endif
 
 #include <vulkan/vulkan.hpp>

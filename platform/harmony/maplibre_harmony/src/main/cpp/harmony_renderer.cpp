@@ -1,5 +1,12 @@
 #include "harmony_renderer.hpp"
+
+// Include the appropriate renderer backend based on build configuration
+#if MLN_RENDER_BACKEND_VULKAN
+#include "harmony_vulkan_renderer_backend.hpp"
+#else
 #include "harmony_gl_renderer_backend.hpp"
+#endif
+
 #include "harmony_renderer_frontend.hpp"
 #include "logger.h"
 
@@ -53,9 +60,9 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     FileSourceManager::get();
     Logger::info("HarmonyRenderer", "FileSourceManager initialized successfully");
     
-    Logger::debug("HarmonyRenderer", "Creating HarmonyGLRendererBackend...");
-    auto backend = std::make_unique<HarmonyGLRendererBackend>();
-    Logger::debug("HarmonyRenderer", "HarmonyGLRendererBackend created: %p", backend.get());
+    Logger::debug("HarmonyRenderer", "Creating renderer backend...");
+    auto backend = std::make_unique<HarmonyRendererBackendImpl>();
+    Logger::debug("HarmonyRenderer", "Renderer backend created: %p", backend.get());
     
     Logger::debug("HarmonyRenderer", "Creating HarmonyRendererFrontend...");
     rendererFrontend = std::make_unique<HarmonyRendererFrontend>(std::move(backend), pixelRatio);
@@ -80,8 +87,8 @@ void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
     }
     
     Logger::debug("HarmonyRenderer", "Getting renderer backend...");
-    auto* backend = static_cast<HarmonyGLRendererBackend*>(&rendererFrontend->getRendererBackend());
-    Logger::debug("HarmonyRenderer", "HarmonyGLRendererBackend: %p", backend);
+    auto* backend = static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
+    Logger::debug("HarmonyRenderer", "Renderer backend: %p", backend);
     
     if (backend) {
         Logger::info("HarmonyRenderer", "Setting native window to backend...");
@@ -125,7 +132,7 @@ void HarmonyRenderer::resize(int width_, int height_) {
     width = width_;
     height = height_;
     
-    auto* backend = static_cast<HarmonyGLRendererBackend*>(&rendererFrontend->getRendererBackend());
+    auto* backend = static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
     if (backend) {
         try {
             // HarmonyOS缓冲区刷新优化 - 在resize前确保EGL上下文稳定
@@ -248,11 +255,11 @@ void HarmonyRenderer::cleanup() {
     Log::Info(Event::OpenGL, "HarmonyRenderer cleaned up successfully");
 }
 
-HarmonyGLRendererBackend* HarmonyRenderer::getRendererBackend() const {
+HarmonyRendererBackendImpl* HarmonyRenderer::getRendererBackend() const {
     if (!initialized || !rendererFrontend) {
         return nullptr;
     }
-    return static_cast<HarmonyGLRendererBackend*>(&rendererFrontend->getRendererBackend());
+    return static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
 }
 
 HarmonyRendererFrontend* HarmonyRenderer::getRendererFrontend() const {

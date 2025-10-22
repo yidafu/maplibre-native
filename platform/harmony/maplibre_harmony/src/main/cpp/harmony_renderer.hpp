@@ -11,7 +11,15 @@
 namespace mbgl {
 namespace harmony {
 
+// Forward declarations - use the appropriate backend based on build configuration
+#if MLN_RENDER_BACKEND_VULKAN
+class HarmonyVulkanRendererBackend;
+using HarmonyRendererBackendImpl = HarmonyVulkanRendererBackend;
+#else
 class HarmonyGLRendererBackend;
+using HarmonyRendererBackendImpl = HarmonyGLRendererBackend;
+#endif
+
 class HarmonyRendererFrontend;
 
 class HarmonyRenderer : public mbgl::util::noncopyable, public mbgl::Scheduler {
@@ -53,7 +61,7 @@ public:
     void cleanup();
     
     // 获取渲染后端
-    HarmonyGLRendererBackend* getRendererBackend() const;
+    HarmonyRendererBackendImpl* getRendererBackend() const;
     
     // 获取渲染前端
     HarmonyRendererFrontend* getRendererFrontend() const;
@@ -67,7 +75,7 @@ public:
     void waitForEmpty(const util::SimpleIdentity = util::SimpleIdentity::Empty) override;
 
 private:
-    std::unique_ptr<HarmonyGLRendererBackend> rendererBackend;
+    std::unique_ptr<HarmonyRendererBackendImpl> rendererBackend;
     std::unique_ptr<HarmonyRendererFrontend> rendererFrontend;
     std::shared_ptr<Map> map;
     int width = 0;
