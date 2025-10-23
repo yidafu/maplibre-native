@@ -512,12 +512,15 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
     Logger::info("HarmonyGLRendererBackend", "New framebuffer size: %ux%u (logical pixels)", 
                  size.width, size.height);
     
-    // HarmonyOS：不在这里调用activate()
-    // resizeFramebuffer可能在主线程调用，但context必须在渲染线程创建
-    // viewport更新会在渲染线程的activate()后自动处理
+    // 鸿蒙平台：使用逻辑像素渲染
+    // EGL Surface 会自动使用 Native Window 的尺寸，无需手动重新配置
+    // viewport 会在渲染线程的 updateAssumedState() 中自动更新
     
-    // 不调用BackendScope，避免在主线程创建context
-    // updateViewPort会在下次渲染时在渲染线程自动调用
+    if (oldSize.width != size.width || oldSize.height != size.height) {
+        Logger::info("HarmonyGLRendererBackend", 
+                    "Size changed from %ux%u to %ux%u",
+                    oldSize.width, oldSize.height, size.width, size.height);
+    }
 }
 
 PremultipliedImage HarmonyGLRendererBackend::readFramebuffer() {
