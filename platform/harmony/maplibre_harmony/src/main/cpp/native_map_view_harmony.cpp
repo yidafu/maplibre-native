@@ -1723,15 +1723,225 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
 }
 
 napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== updateMarker() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 4;
+    napi_value args[4];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "updateMarker: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 4) {
+        Logger::error("NativeMapView", "updateMarker: Requires 4 arguments (markerId, lat, lon, iconId)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "updateMarker: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "updateMarker: Map not initialized");
+        return undefined;
+    }
+    
+    // 解析参数：markerId, lat, lon, iconId
+    int64_t markerId;
+    double lat, lon;
+    
+    if (napi_get_value_int64(env, args[0], &markerId) != napi_ok ||
+        napi_get_value_double(env, args[1], &lat) != napi_ok ||
+        napi_get_value_double(env, args[2], &lon) != napi_ok) {
+        Logger::error("NativeMapView", "updateMarker: Failed to parse numeric arguments");
+        return undefined;
+    }
+    
+    // 获取 iconId 字符串
+    size_t iconIdLength = 0;
+    napi_get_value_string_utf8(env, args[3], nullptr, 0, &iconIdLength);
+    std::string iconId;
+    if (iconIdLength > 0) {
+        iconId.resize(iconIdLength);
+        napi_get_value_string_utf8(env, args[3], &iconId[0], iconIdLength + 1, &iconIdLength);
+    }
+    
+    Logger::info("NativeMapView", "updateMarker: markerId=%lld, lat=%f, lon=%f, iconId=%s", 
+                  markerId, lat, lon, iconId.c_str());
+    
+    try {
+        // 更新 Marker (使用 SymbolAnnotation)
+        mbgl::SymbolAnnotation annotation(mbgl::Point<double>(lon, lat), iconId);
+        instance->map->updateAnnotation(static_cast<mbgl::AnnotationID>(markerId), annotation);
+        
+        // 触发重绘
+        instance->map->triggerRepaint();
+        
+        Logger::info("NativeMapView", "updateMarker: Marker updated successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "updateMarker: Failed - %s", e.what());
+    }
+    
+    Logger::info("NativeMapView", "========== updateMarker() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== addMarkers() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
-    return undefined;
+    
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "addMarkers: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "addMarkers: Requires 1 argument (markers array)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "addMarkers: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "addMarkers: Map not initialized");
+        return undefined;
+    }
+    
+    // 检查参数是否是数组
+    bool isArray = false;
+    if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
+        Logger::error("NativeMapView", "addMarkers: First argument must be an array");
+        return undefined;
+    }
+    
+    // 获取数组长度
+    uint32_t length = 0;
+    if (napi_get_array_length(env, args[0], &length) != napi_ok) {
+        Logger::error("NativeMapView", "addMarkers: Failed to get array length");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "addMarkers: Processing %u markers", length);
+    
+    // 存储生成的 annotation IDs
+    std::vector<mbgl::AnnotationID> ids;
+    ids.reserve(length);
+    
+    // 遍历 Marker 数组
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value markerObj;
+        if (napi_get_element(env, args[0], i, &markerObj) != napi_ok) {
+            Logger::error("NativeMapView", "addMarkers: Failed to get marker at index %u", i);
+            continue;
+        }
+        
+        // 提取 Marker 属性：position, icon
+        napi_value positionValue, iconValue;
+        
+        // 获取 position 对象
+        if (napi_get_named_property(env, markerObj, "position", &positionValue) != napi_ok) {
+            Logger::error("NativeMapView", "addMarkers: Failed to get position for marker %u", i);
+            continue;
+        }
+        
+        // 从 position 中提取 latitude 和 longitude
+        napi_value latValue, lonValue;
+        double lat, lon;
+        
+        if (napi_get_named_property(env, positionValue, "latitude", &latValue) != napi_ok ||
+            napi_get_named_property(env, positionValue, "longitude", &lonValue) != napi_ok ||
+            napi_get_value_double(env, latValue, &lat) != napi_ok ||
+            napi_get_value_double(env, lonValue, &lon) != napi_ok) {
+            Logger::error("NativeMapView", "addMarkers: Failed to parse position for marker %u", i);
+            continue;
+        }
+        
+        // 获取 icon (可能为 null)
+        std::string iconId;
+        if (napi_get_named_property(env, markerObj, "icon", &iconValue) == napi_ok) {
+            napi_valuetype iconType;
+            napi_typeof(env, iconValue, &iconType);
+            
+            if (iconType == napi_string) {
+                size_t iconLength = 0;
+                napi_get_value_string_utf8(env, iconValue, nullptr, 0, &iconLength);
+                if (iconLength > 0) {
+                    iconId.resize(iconLength);
+                    napi_get_value_string_utf8(env, iconValue, &iconId[0], iconLength + 1, &iconLength);
+                }
+            }
+        }
+        
+        // 如果没有图标 ID，使用空字符串（将使用默认图标）
+        if (iconId.empty()) {
+            iconId = "";
+        }
+        
+        Logger::debug("NativeMapView", "addMarkers[%u]: lat=%f, lon=%f, icon=%s", 
+                     i, lat, lon, iconId.c_str());
+        
+        try {
+            // 创建 SymbolAnnotation
+            mbgl::SymbolAnnotation annotation(mbgl::Point<double>(lon, lat), iconId);
+            
+            // 添加到地图并获取 ID
+            mbgl::AnnotationID annotationId = instance->map->addAnnotation(annotation);
+            ids.push_back(annotationId);
+            
+            Logger::debug("NativeMapView", "addMarkers[%u]: Added with ID=%llu", i, annotationId);
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "addMarkers[%u]: Failed to add - %s", i, e.what());
+        }
+    }
+    
+    Logger::info("NativeMapView", "addMarkers: Added %zu markers successfully", ids.size());
+    
+    // 触发重绘
+    if (!ids.empty()) {
+        try {
+            instance->map->triggerRepaint();
+            Logger::debug("NativeMapView", "addMarkers: Repaint triggered");
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "addMarkers: Failed to trigger repaint - %s", e.what());
+        }
+    }
+    
+    // 创建返回的 ID 数组
+    napi_value resultArray;
+    if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
+        Logger::error("NativeMapView", "addMarkers: Failed to create result array");
+        return undefined;
+    }
+    
+    // 填充 ID 数组
+    for (size_t i = 0; i < ids.size(); i++) {
+        napi_value idValue;
+        if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
+            napi_set_element(env, resultArray, i, idValue);
+        }
+    }
+    
+    Logger::info("NativeMapView", "========== addMarkers() END - SUCCESS ==========");
+    return resultArray;
 }
 
 napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
@@ -1843,20 +2053,241 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== removeAnnotations() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "removeAnnotations: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "removeAnnotations: Requires 1 argument (annotation IDs array)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "removeAnnotations: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "removeAnnotations: Map not initialized");
+        return undefined;
+    }
+    
+    // 检查参数是否是数组
+    bool isArray = false;
+    if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
+        Logger::error("NativeMapView", "removeAnnotations: First argument must be an array");
+        return undefined;
+    }
+    
+    // 获取数组长度
+    uint32_t length = 0;
+    if (napi_get_array_length(env, args[0], &length) != napi_ok) {
+        Logger::error("NativeMapView", "removeAnnotations: Failed to get array length");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "removeAnnotations: Removing %u annotations", length);
+    
+    // 遍历 ID 数组并删除
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value idValue;
+        if (napi_get_element(env, args[0], i, &idValue) != napi_ok) {
+            Logger::error("NativeMapView", "removeAnnotations: Failed to get ID at index %u", i);
+            continue;
+        }
+        
+        int64_t annotationId;
+        if (napi_get_value_int64(env, idValue, &annotationId) != napi_ok) {
+            Logger::error("NativeMapView", "removeAnnotations: Failed to parse ID at index %u", i);
+            continue;
+        }
+        
+        if (annotationId == -1) {
+            continue; // 跳过无效 ID
+        }
+        
+        try {
+            instance->map->removeAnnotation(static_cast<mbgl::AnnotationID>(annotationId));
+            Logger::debug("NativeMapView", "removeAnnotations[%u]: Removed annotation ID=%lld", i, annotationId);
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "removeAnnotations[%u]: Failed to remove ID=%lld - %s", i, annotationId, e.what());
+        }
+    }
+    
+    // 触发重绘
+    if (length > 0) {
+        try {
+            instance->map->triggerRepaint();
+            Logger::debug("NativeMapView", "removeAnnotations: Repaint triggered");
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "removeAnnotations: Failed to trigger repaint - %s", e.what());
+        }
+    }
+    
+    Logger::info("NativeMapView", "========== removeAnnotations() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== addAnnotationIcon() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 5;
+    napi_value args[5];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 5) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Requires 5 arguments (symbol, width, height, scale, pixels)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Map not initialized");
+        return undefined;
+    }
+    
+    // 解析参数：symbol (string), width, height, scale, pixels (Uint8Array)
+    // 获取 symbol 字符串
+    size_t symbolLength = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &symbolLength);
+    std::string symbol;
+    if (symbolLength > 0) {
+        symbol.resize(symbolLength);
+        napi_get_value_string_utf8(env, args[0], &symbol[0], symbolLength + 1, &symbolLength);
+    }
+    
+    // 获取尺寸和缩放比例
+    int32_t width, height;
+    double scale;
+    if (napi_get_value_int32(env, args[1], &width) != napi_ok ||
+        napi_get_value_int32(env, args[2], &height) != napi_ok ||
+        napi_get_value_double(env, args[3], &scale) != napi_ok) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Failed to parse numeric arguments");
+        return undefined;
+    }
+    
+    // 获取 Uint8Array 像素数据
+    void* pixelData = nullptr;
+    size_t pixelLength = 0;
+    napi_value arrayBuffer;
+    
+    // 尝试获取 TypedArray 的 ArrayBuffer
+    if (napi_get_typedarray_info(env, args[4], nullptr, &pixelLength, &pixelData, &arrayBuffer, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Failed to get pixel data");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "addAnnotationIcon: symbol=%s, width=%d, height=%d, scale=%f, pixelLength=%zu", 
+                  symbol.c_str(), width, height, scale, pixelLength);
+    
+    try {
+        // 创建图片数据
+        mbgl::PremultipliedImage image({static_cast<uint32_t>(width), static_cast<uint32_t>(height)});
+        
+        // 复制像素数据
+        size_t expectedSize = width * height * 4; // RGBA
+        if (pixelLength >= expectedSize && pixelData) {
+            std::memcpy(image.data.get(), pixelData, expectedSize);
+            
+            // 创建并添加图片到样式
+            auto styleImage = std::make_unique<mbgl::style::Image>(
+                symbol,
+                std::move(image),
+                static_cast<float>(scale)
+            );
+            
+            instance->map->getStyle().addImage(std::move(styleImage));
+            
+            Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' added successfully", symbol.c_str());
+        } else {
+            Logger::error("NativeMapView", "addAnnotationIcon: Invalid pixel data size (expected %zu, got %zu)", 
+                         expectedSize, pixelLength);
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Failed - %s", e.what());
+    }
+    
+    Logger::info("NativeMapView", "========== addAnnotationIcon() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== removeAnnotationIcon() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "removeAnnotationIcon: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "removeAnnotationIcon: Requires 1 argument (symbol)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "removeAnnotationIcon: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "removeAnnotationIcon: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取 symbol 字符串
+    size_t symbolLength = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &symbolLength);
+    std::string symbol;
+    if (symbolLength > 0) {
+        symbol.resize(symbolLength);
+        napi_get_value_string_utf8(env, args[0], &symbol[0], symbolLength + 1, &symbolLength);
+    }
+    
+    Logger::info("NativeMapView", "removeAnnotationIcon: symbol=%s", symbol.c_str());
+    
+    try {
+        instance->map->getStyle().removeImage(symbol);
+        Logger::info("NativeMapView", "removeAnnotationIcon: Icon '%s' removed successfully", symbol.c_str());
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "removeAnnotationIcon: Failed - %s", e.what());
+    }
+    
+    Logger::info("NativeMapView", "========== removeAnnotationIcon() END ==========");
     return undefined;
 }
 
