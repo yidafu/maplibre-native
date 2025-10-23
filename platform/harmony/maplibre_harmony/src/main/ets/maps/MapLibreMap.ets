@@ -21,6 +21,7 @@ import { OnMarkerClickListener } from './listeners/OnMarkerClickListener';
 import { OnMarkerDragListener } from './listeners/OnMarkerDragListener';
 import { OnInfoWindowClickListener } from './listeners/OnInfoWindowClickListener';
 import { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
+import { Style } from './style/Style';
 
 /**
  * MapLibreMap - 主要的地图API类
@@ -30,11 +31,39 @@ export class MapLibreMap {
   private options: MapLibreMapOptions;
   private destroyed: boolean = false;
   private markerManager: MarkerManager;
+  private style: Style | null = null;
+  private styleLoaded: boolean = false;
 
   constructor(nativeMapView: maplibre.NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
     this.options = options;
     this.markerManager = new MarkerManager(this);
+    
+    // 初始化Style对象（需要等待样式加载完成）
+    this.initializeStyle();
+  }
+
+  /**
+   * 初始化样式对象
+   */
+  private initializeStyle(): void {
+    try {
+      // 获取native map指针
+      const nativePtr = this.nativeMapView.getNativePtr ? this.nativeMapView.getNativePtr() : 0;
+      this.style = new Style(nativePtr);
+    } catch (error) {
+      console.error(`Failed to initialize style: ${error}`);
+    }
+  }
+
+  /**
+   * 标记样式已加载（由外部调用，通常在样式加载完成回调中）
+   */
+  public onStyleLoaded(): void {
+    this.styleLoaded = true;
+    if (this.style) {
+      this.style.setFullyLoaded(true);
+    }
   }
 
   /**
@@ -68,6 +97,10 @@ export class MapLibreMap {
   public setStyleUrl(url: string): void {
     if (this.destroyed) return;
     this.nativeMapView.setStyleUrl(url);
+    this.styleLoaded = false;
+    if (this.style) {
+      this.style.setFullyLoaded(false);
+    }
   }
 
   public getStyleUrl(): string {
@@ -78,11 +111,35 @@ export class MapLibreMap {
   public setStyleJson(json: string): void {
     if (this.destroyed) return;
     this.nativeMapView.setStyleJson(json);
+    this.styleLoaded = false;
+    if (this.style) {
+      this.style.setFullyLoaded(false);
+    }
   }
 
   public getStyleJson(): string {
     if (this.destroyed) return '';
     return this.nativeMapView.getStyleJson();
+  }
+
+  /**
+   * 获取样式对象
+   * 
+   * @returns Style对象，如果样式未加载则返回null
+   */
+  public getStyle(): Style | null {
+    if (this.destroyed) return null;
+    if (!this.styleLoaded) {
+      console.warn('Style is not fully loaded yet');
+    }
+    return this.style;
+  }
+
+  /**
+   * 样式是否已加载
+   */
+  public isStyleLoaded(): boolean {
+    return this.styleLoaded;
   }
 
   public setLatLngBounds(bounds: LatLngBounds): void {
