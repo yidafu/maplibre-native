@@ -54,10 +54,15 @@ export class MapGestureDetector {
   private initialZoom: number = 0;
   private currentScale: number = 1.0;
   private lastScale: number = 1.0;
+  private previousPinchCenterX: number = 0;
+  private previousPinchCenterY: number = 0;
 
   // 旋转相关状态
   private lastRotation: number = 0;
   private totalRotation: number = 0;
+  private previousRotateCenterX: number = 0;
+  private previousRotateCenterY: number = 0;
+  private currentBearing: number = 0;
 
   // 平移相关状态
   private lastPanX: number = 0;
@@ -404,8 +409,10 @@ export class MapGestureDetector {
       this.mapController.setGestureInProgress(true);
     }
 
-    // 获取焦点
+    // 获取焦点并保存（用于下一帧的补偿计算）
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    this.previousPinchCenterX = focalPoint.x;
+    this.previousPinchCenterY = focalPoint.y;
 
     // 通知监听器
     this.notifyScaleBegin(focalPoint.x, focalPoint.y);
@@ -413,6 +420,7 @@ export class MapGestureDetector {
 
   /**
    * 缩放手势更新
+   * 参考 iOS handlePinchGesture 和 Android onScale 实现
    */
   onPinchUpdate(event: GestureEvent): void {
     if (!this.uiSettings.isZoomGesturesEnabled() || !this.isScaling) {
@@ -430,23 +438,34 @@ export class MapGestureDetector {
     const now = Date.now();
     this.scaleVelocityTracker.addSample(this.currentScale, 0, now);
 
-    // 获取焦点
+    // 获取当前焦点
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
 
-    // 应用缩放
+    // 应用缩放 - 使用锚点避免抖动
     if (this.mapController) {
-      // 使用 jumpTo 方法，以焦点为锚点进行缩放
-      // 缩放地图 - 使用简化的缩放方法
-      // 注意：这里需要根据实际的 Native API 来调整
-      // 当前 Native 层可能没有完整实现带锚点的缩放
+      // 🔑 关键修复：使用 setZoom 的锚点参数（参考 iOS 和 Android）
+      // setZoom 参数：zoom, cx (锚点X), cy (锚点Y), duration
       if (this.mapController.setZoom) {
-        this.mapController.setZoom(newZoom);
+        this.mapController.setZoom(newZoom, focalPoint.x, focalPoint.y, 0);
+      }
+
+      // 🔑 iOS 关键技巧：补偿焦点移动造成的偏移
+      // 当焦点位置变化时，需要 moveBy 来保持地图内容在手指下方不移动
+      const deltaX = focalPoint.x - this.previousPinchCenterX;
+      const deltaY = focalPoint.y - this.previousPinchCenterY;
+      
+      if ((Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) && this.mapController.moveBy) {
+        // 补偿焦点移动
+        this.mapController.moveBy(deltaX, deltaY, 0);
       }
     }
 
     // 通知监听器
     this.notifyScale(scaleFactor, focalPoint.x, focalPoint.y);
 
+    // 保存当前焦点，用于下一帧的补偿计算
+    this.previousPinchCenterX = focalPoint.x;
+    this.previousPinchCenterY = focalPoint.y;
     this.lastScale = this.currentScale;
   }
 
@@ -459,6 +478,9 @@ export class MapGestureDetector {
     }
 
     hilog.debug(DOMAIN, TAG, `Pinch gesture ended, final scale: ${this.currentScale}`);
+
+    // 获取最终焦点（用于惯性动画）
+    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
 
     // 检查是否应该播放惯性动画
     if (this.uiSettings.isScaleVelocityAnimationEnabled() && 
@@ -482,10 +504,10 @@ export class MapGestureDetector {
         
         hilog.info(DOMAIN, TAG, `Scale inertia animation: finalZoom=${finalZoom.toFixed(2)}, duration=${duration.toFixed(0)}ms`);
         
-        // 执行缩放动画（使用 setZoom 方法，支持动画时长）
+        // 🔑 关键修复：执行缩放动画时也要传递锚点
         if (this.mapController && this.mapController.setZoom) {
-          // setZoom 的参数：zoom, cx?, cy?, duration?
-          this.mapController.setZoom(finalZoom, undefined, undefined, duration);
+          // setZoom 的参数：zoom, cx (锚点X), cy (锚点Y), duration
+          this.mapController.setZoom(finalZoom, focalPoint.x, focalPoint.y, duration);
         }
       }
     }
@@ -518,14 +540,17 @@ export class MapGestureDetector {
     // 重置速度跟踪器
     this.rotateVelocityTracker.reset();
 
-    // 取消当前动画
+    // 取消当前动画并获取当前bearing
     if (this.mapController) {
       this.mapController.cancelTransitions();
       this.mapController.setGestureInProgress(true);
+      this.currentBearing = this.mapController.getBearing();
     }
 
-    // 获取焦点
+    // 获取焦点并保存
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    this.previousRotateCenterX = focalPoint.x;
+    this.previousRotateCenterY = focalPoint.y;
 
     // 通知监听器
     this.notifyRotateBegin(focalPoint.x, focalPoint.y);
@@ -533,6 +558,7 @@ export class MapGestureDetector {
 
   /**
    * 旋转手势更新
+   * 参考 iOS handleRotateGesture 和 Android 实现
    */
   onRotateUpdate(event: GestureEvent): void {
     if (!this.uiSettings.isRotateGesturesEnabled() || !this.isRotating) {
@@ -544,23 +570,38 @@ export class MapGestureDetector {
     const rotationDelta = currentRotation - this.lastRotation;
     this.totalRotation += rotationDelta;
 
+    // 计算新的bearing
+    this.currentBearing += rotationDelta;
+
     // 记录速度样本（用于惯性动画）
     const now = Date.now();
     this.rotateVelocityTracker.addSample(currentRotation, 0, now);
 
-    // 获取焦点
+    // 获取当前焦点
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
 
-    // 应用旋转
-    if (this.mapController && this.mapController.setBearing) {
-      // 使用简化的旋转方法
-      // 注意：这里需要根据实际的 Native API 来调整
-      this.mapController.setBearing(rotationDelta);
+    // 🔑 关键修复：应用旋转时使用锚点（参考 iOS 和 Android）
+    if (this.mapController) {
+      if (this.mapController.setBearingXY) {
+        // 使用 setBearingXY 方法，传递锚点参数
+        this.mapController.setBearingXY(this.currentBearing, focalPoint.x, focalPoint.y, 0);
+      }
+
+      // 🔑 iOS 关键技巧：补偿焦点移动造成的偏移
+      const deltaX = focalPoint.x - this.previousRotateCenterX;
+      const deltaY = focalPoint.y - this.previousRotateCenterY;
+      
+      if ((Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) && this.mapController.moveBy) {
+        this.mapController.moveBy(deltaX, deltaY, 0);
+      }
     }
 
     // 通知监听器
     this.notifyRotate(rotationDelta, focalPoint.x, focalPoint.y);
 
+    // 保存当前状态
+    this.previousRotateCenterX = focalPoint.x;
+    this.previousRotateCenterY = focalPoint.y;
     this.lastRotation = currentRotation;
   }
 
@@ -573,6 +614,9 @@ export class MapGestureDetector {
     }
 
     hilog.debug(DOMAIN, TAG, `Rotation gesture ended, total rotation: ${this.totalRotation}`);
+
+    // 获取最终焦点（用于惯性动画）
+    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
 
     // 检查是否应该播放惯性动画
     if (this.uiSettings.isRotateVelocityAnimationEnabled() && 
@@ -593,13 +637,15 @@ export class MapGestureDetector {
         
         hilog.info(DOMAIN, TAG, `Rotate inertia animation: deltaBearing=${deltaBearing.toFixed(2)}°, duration=${duration.toFixed(0)}ms`);
         
-        // 执行旋转动画（使用 setBearing 方法，支持动画时长）
-        if (this.mapController && this.mapController.getBearing && this.mapController.setBearing) {
-          const currentBearing: number = this.mapController.getBearing() as number;
+        // 🔑 关键修复：执行旋转动画时也使用锚点
+        if (this.mapController) {
+          const currentBearing = this.mapController.getBearing();
           const newBearing = (currentBearing + deltaBearing) % 360;
           
-          // setBearing 的参数：degrees, duration?
-          this.mapController.setBearing(newBearing, duration);
+          if (this.mapController.setBearingXY) {
+            // 使用 setBearingXY 方法传递锚点参数
+            this.mapController.setBearingXY(newBearing, focalPoint.x, focalPoint.y, duration);
+          }
         }
       }
     }

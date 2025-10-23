@@ -29,9 +29,7 @@ export class RasterSource extends Source {
    * 从TileSet创建栅格数据源
    */
   public static withTileSet(id: string, tileSet: TileSet, tileSize: number = 512): RasterSource {
-    const source = Object.create(RasterSource.prototype) as RasterSource;
-    source.id = id;
-    source.type = 'raster';
+    const source = new RasterSource(id, '');
     source._tileSize = tileSize;
     source.initializeWithTileSet(id, tileSet, tileSize);
     return source;

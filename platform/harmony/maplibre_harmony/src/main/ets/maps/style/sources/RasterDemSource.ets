@@ -36,10 +36,7 @@ export class RasterDemSource extends Source {
    * 从TileSet创建DEM数据源
    */
   public static withTileSet(id: string, tileSet: TileSet, encoding: DemEncoding = DemEncoding.MAPBOX): RasterDemSource {
-    const source = Object.create(RasterDemSource.prototype) as RasterDemSource;
-    source.id = id;
-    source.type = 'raster-dem';
-    source.encoding = encoding;
+    const source = new RasterDemSource(id, '', encoding);
     source.initializeWithTileSet(id, tileSet, encoding);
     return source;
   }

@@ -27,9 +27,7 @@ export class VectorSource extends Source {
    * 从TileSet创建矢量数据源
    */
   public static withTileSet(id: string, tileSet: TileSet): VectorSource {
-    const source = Object.create(VectorSource.prototype) as VectorSource;
-    source.id = id;
-    source.type = 'vector';
+    const source = new VectorSource(id, '');
     source.initializeWithTileSet(id, tileSet);
     return source;
   }
