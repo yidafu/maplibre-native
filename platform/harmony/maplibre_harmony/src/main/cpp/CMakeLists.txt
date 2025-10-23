@@ -69,6 +69,9 @@ add_library(maplibre_native
     napi_init.cpp
     napi_utils.h
     napi_utils.cpp
+    napi_utils_ext.cpp
+    napi_args.hpp
+    napi_args.cpp
     PluginManager.h
     PluginManager.cpp
     logger.h
@@ -89,6 +92,21 @@ add_library(maplibre_native
     common.h
     native_map_view_harmony.cpp
     native_map_view_harmony.hpp
+    # Style API 绑定
+    style/style_harmony.hpp
+    style/style_harmony.cpp
+    style/sources/geojson_source_harmony.hpp
+    style/sources/geojson_source_harmony.cpp
+    style/sources/vector_source_harmony.hpp
+    style/sources/vector_source_harmony.cpp
+    style/sources/raster_source_harmony.hpp
+    style/sources/raster_source_harmony.cpp
+    style/layers/fill_layer_harmony.hpp
+    style/layers/fill_layer_harmony.cpp
+    style/layers/line_layer_harmony.hpp
+    style/layers/line_layer_harmony.cpp
+    style/layers/circle_layer_harmony.hpp
+    style/layers/circle_layer_harmony.cpp
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
 )
