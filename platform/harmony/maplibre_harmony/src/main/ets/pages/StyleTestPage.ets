@@ -1,7 +1,12 @@
-import { MapViewComponentController } from '../maps/MapViewComponentController';
+import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
+import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { LatLng } from '../maps/geometry/LatLng';
 import { CameraPosition } from '../maps/camera/CameraPosition';
+import { GeoJsonOptionsBuilder } from '../maps/style/sources/GeoJsonOptions';
+import { RasterLayer } from '../maps/style/layers/RasterLayer';
+import { router } from '@kit.ArkUI';
+import maplibre from 'libmaplibre_native.so';
 import { 
   Style, 
   GeoJsonSource, 
@@ -16,46 +21,103 @@ import {
   PropertyFactory
 } from '../maps/style/index';
 
+// 样式URL配置接口
+interface StyleUrlItem {
+  name: string;
+  url: string;
+}
+
+// GeoJSON类型定义
+interface GeoJSONGeometry {
+  type: string;
+  coordinates: number[] | number[][] | number[][][] | number[][][][];
+}
+
+interface GeoJSONFeature {
+  type: string;
+  geometry: GeoJSONGeometry;
+  properties: ESObject;
+}
+
+interface GeoJSONFeatureCollection {
+  type: string;
+  features: Array<GeoJSONFeature>;
+}
+
 @Entry
 @Component
 struct StyleTestPage {
   @State message: string = 'Style API 测试';
-  private mapController: MapViewComponentController = new MapViewComponentController();
+  private nativeMapView: maplibre.NativeMapView | null = null;
   private mapLibreMap: MapLibreMap | null = null;
   @State currentExample: string = '无';
+  @State currentStyleName: string = 'MapLibre Demo';
+  @State mapReady: boolean = false;
+  
+  // 免费样式列表
+  private styleUrls: StyleUrlItem[] = [
+    {
+      name: 'MapLibre Demo',
+      url: 'https://demotiles.maplibre.org/style.json'
+    },
+    {
+      name: 'Americana',
+      url: 'https://americanamap.org/style.json'
+    },
+    {
+      name: 'VersaTiles Colorful',
+      url: 'https://tiles.versatiles.org/assets/styles/colorful.json'
+    }
+  ];
 
   build() {
     Column() {
       // 标题栏
       Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+
         Text(this.message)
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
-          .padding(16)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
       }
       .width('100%')
+      .height(50)
       .backgroundColor('#f5f5f5')
 
       // 地图容器
-      Stack() {
-        XComponent({
-          id: 'mapview',
-          type: 'surface',
-          controller: this.mapController.getXComponentController()
-        })
-          .onLoad(() => {
-            console.info('XComponent onLoad');
-            this.mapController.onCreate();
-          })
-          .width('100%')
-          .height('100%')
-      }
-      .width('100%')
-      .layoutWeight(1)
+      NativeMapView({
+        styleUrl: this.styleUrls[0].url,
+        initialLatitude: 39.9042,
+        initialLongitude: 116.4074,
+        initialZoom: 3,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          if (mapView) {
+            this.nativeMapView = mapView;
+            const options = new MapLibreMapOptions();
+            this.mapLibreMap = new MapLibreMap(mapView, options);
+            this.mapReady = true;
+            console.info('Map is ready for Style API testing');
+          }
+        }
+      })
+        .width('100%')
+        .layoutWeight(1)
 
-      // 当前示例显示
+      // 当前状态显示
       Row() {
-        Text(`当前示例: ${this.currentExample}`)
+        Text(`当前样式: ${this.currentStyleName} | 示例: ${this.currentExample}`)
           .fontSize(14)
           .padding(8)
       }
@@ -65,6 +127,22 @@ struct StyleTestPage {
       // 控制面板
       Scroll() {
         Column({ space: 8 }) {
+          // 地图样式切换区域
+          Text('地图样式切换')
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .width('100%')
+            .padding({ left: 16, top: 8 })
+
+          ForEach(this.styleUrls, (item: StyleUrlItem) => {
+            Button(item.name)
+              .onClick(() => this.switchStyle(item.url, item.name))
+              .width('90%')
+              .backgroundColor(this.currentStyleName === item.name ? '#4CAF50' : '#2196F3')
+          })
+
+          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
+
           Text('数据源示例')
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
@@ -127,26 +205,6 @@ struct StyleTestPage {
     .height('100%')
   }
 
-  aboutToAppear() {
-    // 地图初始化后的回调
-    this.mapController.setOnMapReadyCallback((map: MapLibreMap) => {
-      this.mapLibreMap = map;
-      
-      // 设置初始位置
-      const position = new CameraPosition(
-        new LatLng(39.9042, 116.4074), // 北京
-        10,
-        0,
-        0
-      );
-      map.setCameraPosition(position);
-
-      // 标记样式已加载
-      map.onStyleLoaded();
-      
-      console.info('Map is ready');
-    });
-  }
 
   /**
    * 示例1: GeoJSON + FillLayer (填充区域)
@@ -160,24 +218,30 @@ struct StyleTestPage {
 
     try {
       // 创建GeoJSON数据源
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": [{
-          "type": "Feature",
-          "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-              [116.3, 39.8],
-              [116.5, 39.8],
-              [116.5, 40.0],
-              [116.3, 40.0],
-              [116.3, 39.8]
-            ]]
-          },
-          "properties": {
-            "name": "测试区域"
-          }
-        }]
+      const geometry: GeoJSONGeometry = {
+        type: "Polygon",
+        coordinates: [[
+          [116.3, 39.8],
+          [116.5, 39.8],
+          [116.5, 40.0],
+          [116.3, 40.0],
+          [116.3, 39.8]
+        ]]
+      };
+      
+      const properties: ESObject = {
+        name: "测试区域"
+      };
+      
+      const feature: GeoJSONFeature = {
+        type: "Feature",
+        geometry: geometry,
+        properties: properties
+      };
+
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: [feature]
       };
 
       const source = GeoJsonSource.withData('fill-source', geojsonData);
@@ -208,23 +272,29 @@ struct StyleTestPage {
     this.currentExample = 'GeoJSON 线条路径';
 
     try {
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": [{
-          "type": "Feature",
-          "geometry": {
-            "type": "LineString",
-            "coordinates": [
-              [116.3, 39.9],
-              [116.4, 39.95],
-              [116.5, 39.9],
-              [116.6, 39.95]
-            ]
-          },
-          "properties": {
-            "name": "测试路径"
-          }
-        }]
+      const geometry: GeoJSONGeometry = {
+        type: "LineString",
+        coordinates: [
+          [116.3, 39.9],
+          [116.4, 39.95],
+          [116.5, 39.9],
+          [116.6, 39.95]
+        ]
+      };
+      
+      const properties: ESObject = {
+        name: "测试路径"
+      };
+      
+      const feature: GeoJSONFeature = {
+        type: "Feature",
+        geometry: geometry,
+        properties: properties
+      };
+
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: [feature]
       };
 
       const source = GeoJsonSource.withData('line-source', geojsonData);
@@ -255,25 +325,23 @@ struct StyleTestPage {
     this.currentExample = 'GeoJSON 圆形热点';
 
     try {
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": [
-          {
-            "type": "Feature",
-            "geometry": { "type": "Point", "coordinates": [116.4, 39.9] },
-            "properties": { "value": 100 }
-          },
-          {
-            "type": "Feature",
-            "geometry": { "type": "Point", "coordinates": [116.45, 39.95] },
-            "properties": { "value": 80 }
-          },
-          {
-            "type": "Feature",
-            "geometry": { "type": "Point", "coordinates": [116.35, 39.85] },
-            "properties": { "value": 120 }
-          }
-        ]
+      const features: Array<GeoJSONFeature> = [];
+      
+      const geom1: GeoJSONGeometry = { type: "Point", coordinates: [116.4, 39.9] };
+      const props1: ESObject = { value: 100 };
+      features.push({ type: "Feature", geometry: geom1, properties: props1 });
+      
+      const geom2: GeoJSONGeometry = { type: "Point", coordinates: [116.45, 39.95] };
+      const props2: ESObject = { value: 80 };
+      features.push({ type: "Feature", geometry: geom2, properties: props2 });
+      
+      const geom3: GeoJSONGeometry = { type: "Point", coordinates: [116.35, 39.85] };
+      const props3: ESObject = { value: 120 };
+      features.push({ type: "Feature", geometry: geom3, properties: props3 });
+
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: features
       };
 
       const source = GeoJsonSource.withData('circle-source', geojsonData);
@@ -305,13 +373,18 @@ struct StyleTestPage {
     this.currentExample = 'GeoJSON 符号标注';
 
     try {
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": [{
-          "type": "Feature",
-          "geometry": { "type": "Point", "coordinates": [116.4074, 39.9042] },
-          "properties": { "title": "北京" }
-        }]
+      const geometry: GeoJSONGeometry = { type: "Point", coordinates: [116.4074, 39.9042] };
+      const properties: ESObject = { title: "北京" };
+      
+      const feature: GeoJSONFeature = {
+        type: "Feature",
+        geometry: geometry,
+        properties: properties
+      };
+
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: [feature]
       };
 
       const source = GeoJsonSource.withData('symbol-source', geojsonData);
@@ -341,28 +414,30 @@ struct StyleTestPage {
 
     try {
       // 生成随机点数据
-      const features = [];
+      const features: Array<GeoJSONFeature> = [];
       for (let i = 0; i < 50; i++) {
-        features.push({
-          "type": "Feature",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [
-              116.3 + Math.random() * 0.3,
-              39.8 + Math.random() * 0.3
-            ]
-          },
-          "properties": { "id": i }
-        });
+        const geometry: GeoJSONGeometry = {
+          type: "Point",
+          coordinates: [
+            116.3 + Math.random() * 0.3,
+            39.8 + Math.random() * 0.3
+          ]
+        };
+        const properties: ESObject = { id: i };
+        const feature: GeoJSONFeature = {
+          type: "Feature",
+          geometry: geometry,
+          properties: properties
+        };
+        features.push(feature);
       }
 
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": features
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: features
       };
 
       // 使用聚类选项
-      import { GeoJsonOptionsBuilder } from '../maps/style/sources/GeoJsonOptions';
       const options = new GeoJsonOptionsBuilder()
         .withCluster(true)
         .withClusterRadius(50)
@@ -398,24 +473,27 @@ struct StyleTestPage {
 
     try {
       // 生成随机热力点
-      const features = [];
+      const features: Array<GeoJSONFeature> = [];
       for (let i = 0; i < 100; i++) {
-        features.push({
-          "type": "Feature",
-          "geometry": {
-            "type": "Point",
-            "coordinates": [
-              116.4 + (Math.random() - 0.5) * 0.2,
-              39.9 + (Math.random() - 0.5) * 0.2
-            ]
-          },
-          "properties": { "intensity": Math.random() }
-        });
+        const geometry: GeoJSONGeometry = {
+          type: "Point",
+          coordinates: [
+            116.4 + (Math.random() - 0.5) * 0.2,
+            39.9 + (Math.random() - 0.5) * 0.2
+          ]
+        };
+        const properties: ESObject = { intensity: Math.random() };
+        const feature: GeoJSONFeature = {
+          type: "Feature",
+          geometry: geometry,
+          properties: properties
+        };
+        features.push(feature);
       }
 
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": features
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: features
       };
 
       const source = GeoJsonSource.withData('heatmap-source', geojsonData);
@@ -446,25 +524,31 @@ struct StyleTestPage {
     this.currentExample = '3D 建筑拉伸';
 
     try {
-      const geojsonData = {
-        "type": "FeatureCollection",
-        "features": [{
-          "type": "Feature",
-          "geometry": {
-            "type": "Polygon",
-            "coordinates": [[
-              [116.4, 39.9],
-              [116.42, 39.9],
-              [116.42, 39.92],
-              [116.4, 39.92],
-              [116.4, 39.9]
-            ]]
-          },
-          "properties": {
-            "height": 100,
-            "base_height": 0
-          }
-        }]
+      const geometry: GeoJSONGeometry = {
+        type: "Polygon",
+        coordinates: [[
+          [116.4, 39.9],
+          [116.42, 39.9],
+          [116.42, 39.92],
+          [116.4, 39.92],
+          [116.4, 39.9]
+        ]]
+      };
+      
+      const properties: ESObject = {
+        height: 100,
+        base_height: 0
+      };
+      
+      const feature: GeoJSONFeature = {
+        type: "Feature",
+        geometry: geometry,
+        properties: properties
+      };
+
+      const geojsonData: GeoJSONFeatureCollection = {
+        type: "FeatureCollection",
+        features: [feature]
       };
 
       const source = GeoJsonSource.withData('extrusion-source', geojsonData);
@@ -504,7 +588,6 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 栅格图层
-      import { RasterLayer } from '../maps/style/layers/RasterLayer';
       const layer = new RasterLayer('raster-layer', 'raster-source')
         .withRasterOpacity(0.5);
       
@@ -550,6 +633,34 @@ struct StyleTestPage {
       console.info('All layers cleared');
     } catch (error) {
       console.error(`Failed to clear layers: ${error}`);
+    }
+  }
+
+  /**
+   * 切换地图样式
+   */
+  private switchStyle(styleUrl: string, styleName: string) {
+    if (!this.mapLibreMap) {
+      console.error('Map not initialized');
+      return;
+    }
+
+    try {
+      // 清除所有自定义图层（避免样式冲突）
+      this.clearAllLayers();
+      
+      // 切换样式
+      this.mapLibreMap.setStyleUrl(styleUrl);
+      
+      // 更新状态
+      this.currentStyleName = styleName;
+      this.currentExample = '无';
+      this.message = `已切换到: ${styleName}`;
+      
+      console.info(`Switched to style: ${styleName} (${styleUrl})`);
+    } catch (error) {
+      console.error(`Failed to switch style: ${error}`);
+      this.message = `切换样式失败: ${error}`;
     }
   }
 }

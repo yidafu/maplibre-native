@@ -3,6 +3,7 @@
     "pages/Index",
     "pages/BasicMapPage",
     "pages/GestureTestPage",
-    "pages/MarkerTestPage"
+    "pages/MarkerTestPage",
+    "pages/StyleTestPage"
   ]
 }

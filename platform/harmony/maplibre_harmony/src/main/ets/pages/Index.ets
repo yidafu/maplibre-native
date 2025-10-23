@@ -46,6 +46,12 @@ struct Index {
       'pages/MarkerTestPage',
       '📍'
     ),
+    new TestPageItem(
+      'Style 样式测试',
+      '测试地图样式切换、图层、数据源等 Style API 功能',
+      'pages/StyleTestPage',
+      '🎨'
+    ),
   ];
 
   build() {
