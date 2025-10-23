@@ -51,7 +51,6 @@ public:
 
     // N-API methods //
     static napi_value resizeView(napi_env env, napi_callback_info info);
-    static napi_value setPixelRatio(napi_env env, napi_callback_info info);
     static napi_value getStyleUrl(napi_env env, napi_callback_info info);
     static napi_value setStyleUrl(napi_env env, napi_callback_info info);
     static napi_value getStyleJson(napi_env env, napi_callback_info info);
