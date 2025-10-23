@@ -19,3 +19,4 @@ export interface OnMarkerClickListener {
   onMarkerClick(marker: Marker): boolean;
 }
 
+

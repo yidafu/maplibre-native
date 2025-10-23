@@ -29,3 +29,4 @@ export interface InfoWindowAdapter {
   getInfoWindow(marker: Marker): ComponentContent<Object> | null;
 }
 
+

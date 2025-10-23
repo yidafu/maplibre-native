@@ -22,3 +22,4 @@ export { InfoWindowAdapter } from './InfoWindowAdapter';
 export { Polyline } from './Polyline';
 export { Polygon } from './Polygon';
 
+

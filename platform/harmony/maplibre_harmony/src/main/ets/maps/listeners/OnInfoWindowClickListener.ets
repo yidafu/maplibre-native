@@ -17,3 +17,4 @@ export interface OnInfoWindowClickListener {
   onInfoWindowClick(marker: Marker): void;
 }
 
+
