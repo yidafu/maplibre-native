@@ -160,6 +160,9 @@ export class NativeMapView {
     triggerRepaint(): void;
     isRenderingStatsViewEnabled(): boolean;
     enableRenderingStatsView(enabled: boolean): void;
+
+    // Native pointer (for Style API)
+    getNativePtr?(): number;
 }
 
 // 原有接口定义

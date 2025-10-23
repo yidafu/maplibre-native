@@ -64,5 +64,15 @@ private:
 } // namespace harmony
 } // namespace mbgl
 
+// 便捷的日志宏定义
+#ifndef MBGL_LOG_TAG
+#define MBGL_LOG_TAG "MapLibreStyle"
+#endif
+
+#define LOGD(...) mbgl::harmony::Logger::debug(MBGL_LOG_TAG, __VA_ARGS__)
+#define LOGI(...) mbgl::harmony::Logger::info(MBGL_LOG_TAG, __VA_ARGS__)
+#define LOGW(...) mbgl::harmony::Logger::warn(MBGL_LOG_TAG, __VA_ARGS__)
+#define LOGE(...) mbgl::harmony::Logger::error(MBGL_LOG_TAG, __VA_ARGS__)
+
 #endif // MAPLIBREHARMONY_LOGGER_H
 

@@ -13,6 +13,8 @@
 #include <mbgl/util/chrono.hpp>
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/util/timer.hpp>
+#include <mbgl/annotation/annotation.hpp>
+#include <mbgl/util/geometry.hpp>
 #include <napi/native_api.h>
 
 // 添加Harmony渲染器头文件
@@ -28,6 +30,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 using mbgl::harmony::Logger;
 
