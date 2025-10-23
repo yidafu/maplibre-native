@@ -143,19 +143,14 @@ class NativeMapViewController extends XComponentController {
     }
     
     try {
-      // 🔧 使用物理像素设置Surface尺寸
-      const physicalWidth = Math.floor(width);
-      const physicalHeight = Math.floor(height);
-      //
-      // this.setXComponentSurfaceRect({
-      //   offsetX: 0,
-      //   offsetY: 0,
-      //   surfaceWidth: width,   // 物理像素
-      //   surfaceHeight: height  // 物理像素
-      // });
+      // ✅ 使用逻辑像素设置 Surface 尺寸（与 C++ 层的 viewport 一致）
+      this.setXComponentSurfaceRect({
+        surfaceWidth: width,     // 逻辑像素
+        surfaceHeight: height    // 逻辑像素
+      });
       this.isSurfaceRectSet = true;
       hilog.info(DOMAIN, "NativeMapView", 
-        `✅ Surface rect set to physical pixels: ${physicalWidth}x${physicalHeight} (logical: ${width}x${height}, pixelRatio: ${this.pixelRatio.toFixed(2)})`);
+        `✅ Surface rect set: ${width}x${height} (logical pixels)`);
     } catch (error) {
       hilog.warn(DOMAIN, "NativeMapView", `⚠️  setXComponentSurfaceRect failed: ${error.message}`);
     }
