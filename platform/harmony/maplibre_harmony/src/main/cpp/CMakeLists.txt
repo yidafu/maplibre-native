@@ -92,9 +92,25 @@ add_library(maplibre_native
     common.h
     native_map_view_harmony.cpp
     native_map_view_harmony.hpp
+    # Geometry API 绑定
+    geometry/lat_lng_harmony.hpp
+    geometry/lat_lng_harmony.cpp
+    geometry/point_harmony.hpp
+    geometry/point_harmony.cpp
+    geometry/projected_meters_harmony.hpp
+    geometry/projected_meters_harmony.cpp
+    geometry/lat_lng_bounds_harmony.hpp
+    geometry/lat_lng_bounds_harmony.cpp
+    geometry/rect_harmony.hpp
+    geometry/rect_harmony.cpp
+    # Camera API 绑定
+    camera/camera_position_harmony.hpp
+    camera/camera_position_harmony.cpp
     # Style API 绑定
     style/style_harmony.hpp
     style/style_harmony.cpp
+    style/transition_options_harmony.hpp
+    style/transition_options_harmony.cpp
     style/sources/geojson_source_harmony.hpp
     style/sources/geojson_source_harmony.cpp
     style/sources/vector_source_harmony.hpp
@@ -158,5 +174,6 @@ PUBLIC
     EGL
     native_window
     vulkan
+    native_display_manager
 )
 
