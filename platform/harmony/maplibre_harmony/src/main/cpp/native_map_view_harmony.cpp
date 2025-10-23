@@ -22,17 +22,33 @@
 #include "harmony_renderer_frontend.hpp"
 #include "harmony_renderer_backend.hpp"
 #include "napi_utils.h"
+#include "napi_args.hpp"
 #include "logger.h"
+
+// 几何类型转换
+#include "geometry/lat_lng_harmony.hpp"
+#include "geometry/point_harmony.hpp"
+#include "geometry/projected_meters_harmony.hpp"
+#include "geometry/lat_lng_bounds_harmony.hpp"
+#include "geometry/rect_harmony.hpp"
+
+// 相机类型转换
+#include "camera/camera_position_harmony.hpp"
+
+// 样式类型转换
+#include "style/transition_options_harmony.hpp"
 
 
 #include <memory>
 #include <native_window/external_window.h>
+#include <window_manager/oh_display_manager.h>
 #include <string>
 #include <thread>
 #include <chrono>
 #include <vector>
 
 using mbgl::harmony::Logger;
+using mbgl::harmony::napi::NapiArgs;
 
 namespace mbgl {
 namespace harmony {
@@ -142,6 +158,7 @@ void NativeMapView::cleanupAllResources() {
     Logger::info("NativeMapView", "========== cleanupAllResources END ==========");
 }
 
+
 void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int height) {
     Logger::info("NativeMapView", "========== setNativeWindowWithSize() START ==========");
     Logger::info("NativeMapView", "Surface ID: %ld, Width: %d, Height: %d", (long)surfaceId, width, height);
@@ -158,6 +175,27 @@ void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int he
     if (nativeWindow) {
         Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
         this->nativeWindow = nativeWindow;
+        
+        // 使用鸿蒙DisplayManager API获取屏幕DPI
+        int32_t systemDensityDpi = 0;
+        NativeDisplayManager_ErrorCode ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&systemDensityDpi);
+        
+        if (ret == DISPLAY_MANAGER_OK && systemDensityDpi > 0) {
+            float actualPixelRatio = systemDensityDpi / 160.0f;
+            Logger::info("NativeMapView", "System DPI: %d, pixelRatio: %.4f", systemDensityDpi, actualPixelRatio);
+            
+            // 使用DisplayManager的值（更准确）
+            if (std::abs(actualPixelRatio - pixelRatio) > 0.01f) {
+                Logger::warn("NativeMapView", "PixelRatio mismatch: TS=%.4f, DisplayManager=%.4f (using DisplayManager)", 
+                           pixelRatio, actualPixelRatio);
+                pixelRatio = actualPixelRatio;
+                this->pixelRatio = actualPixelRatio;
+            }
+        } else {
+            Logger::warn("NativeMapView", "Failed to get DPI (error: %d), using TS pixelRatio: %.4f", ret, pixelRatio);
+        }
+        
+        Logger::info("NativeMapView", "Initializing with size %dx%d, pixelRatio: %.4f", width, height, pixelRatio);
         
         // 初始化渲染器（如果尚未初始化）
         Logger::info("NativeMapView", "Initializing renderer with size %dx%d...", width, height);
@@ -185,7 +223,6 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
     // 定义所有实例方法
     std::vector<napi_property_descriptor> properties = {
         {"resizeView", nullptr, resizeView, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"setPixelRatio", nullptr, setPixelRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getStyleUrl", nullptr, getStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setStyleUrl", nullptr, setStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getStyleJson", nullptr, getStyleJson, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -547,8 +584,12 @@ void NativeMapView::initializeRenderer() {
     
     // 1. 创建 HarmonyRenderer（如果不存在）
     if (!harmonyRenderer) {
-        Logger::info("NativeMapView", "Creating HarmonyRenderer (width=%d, height=%d, pixelRatio=%.2f)", 
-                     width, height, pixelRatio);
+        Logger::info("NativeMapView", "🔍 [DPI] Creating HarmonyRenderer:");
+        Logger::info("NativeMapView", "  - Logical size: %dx%d", width, height);
+        Logger::info("NativeMapView", "  - PixelRatio: %.2f", pixelRatio);
+        Logger::info("NativeMapView", "  - Physical size: %dx%d", 
+                     static_cast<int>(width * pixelRatio),
+                     static_cast<int>(height * pixelRatio));
         harmonyRenderer = std::make_unique<HarmonyRenderer>();
         harmonyRenderer->initialize(width, height, pixelRatio);
         
@@ -588,8 +629,12 @@ void NativeMapView::initializeRenderer() {
                       .withCrossSourceCollisions(true)
                       .withSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)})
                       .withPixelRatio(pixelRatio);
-            Logger::debug("NativeMapView", "MapOptions configured: size=%dx%d, pixelRatio=%.2f", 
-                          width, height, pixelRatio);
+            Logger::info("NativeMapView", "🔍 [DPI] MapOptions configured:");
+            Logger::info("NativeMapView", "  - Size (logical): %dx%d", width, height);
+            Logger::info("NativeMapView", "  - PixelRatio: %.2f", pixelRatio);
+            Logger::info("NativeMapView", "  - Expected physical: %dx%d", 
+                         static_cast<int>(width * pixelRatio),
+                         static_cast<int>(height * pixelRatio));
             
             // Configure ResourceOptions
             ResourceOptions resourceOptions;
@@ -677,6 +722,8 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
+    Logger::info("NativeMapView", "🔍 [DPI] resizeView called: %dx%d (logical)", newWidth, newHeight);
+    
     // 获取this对象
     napi_value thisObj;
     if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
@@ -695,72 +742,19 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     instance->width = newWidth;
     instance->height = newHeight;
     
+    Logger::info("NativeMapView", "🔍 [DPI] Resize details:");
+    Logger::info("NativeMapView", "  - New logical size: %dx%d", instance->width, instance->height);
+    Logger::info("NativeMapView", "  - Current pixelRatio: %.2f", instance->pixelRatio);
+    Logger::info("NativeMapView", "  - Target physical size: %dx%d", 
+                 static_cast<int>(instance->width * instance->pixelRatio),
+                 static_cast<int>(instance->height * instance->pixelRatio));
+    
     // 如果渲染器已初始化，调整尺寸
     if (instance->harmonyRenderer) {
         instance->harmonyRenderer->resize(instance->width, instance->height);
     }
     
     Logger::info("NativeMapView", "View resized to %d x %d", instance->width, instance->height);
-    
-    return undefined;
-}
-
-napi_value NativeMapView::setPixelRatio(napi_env env, napi_callback_info info) {
-    Logger::warn("NativeMapView", "========== setPixelRatio() CALLED ==========");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象和参数
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "setPixelRatio: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "setPixelRatio: Missing pixelRatio argument");
-        return undefined;
-    }
-    
-    // 获取NativeMapView实例
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "setPixelRatio: Failed to unwrap instance or instance is null");
-        return undefined;
-    }
-    
-    // 获取 pixelRatio 值
-    double pixelRatio;
-    if (napi_get_value_double(env, args[0], &pixelRatio) != napi_ok) {
-        Logger::error("NativeMapView", "setPixelRatio: Failed to get pixelRatio value");
-        return undefined;
-    }
-    
-    // 限制在合理范围内 (0.5 - 4.0)
-    pixelRatio = std::max(0.5, std::min(4.0, pixelRatio));
-    
-    try {
-        // 设置像素比
-        instance->pixelRatio = static_cast<float>(pixelRatio);
-        Logger::warn("NativeMapView", "setPixelRatio: Set to %.2f", instance->pixelRatio);
-        
-        // 如果 harmonyRenderer 已存在，更新它的 pixelRatio
-        if (instance->harmonyRenderer) {
-            instance->harmonyRenderer->setPixelRatio(instance->pixelRatio);
-            Logger::warn("NativeMapView", "setPixelRatio: Updated HarmonyRenderer pixelRatio");
-        } else {
-            Logger::warn("NativeMapView", "setPixelRatio: HarmonyRenderer not yet created, pixelRatio will be used during initialization");
-        }
-        
-        Logger::warn("NativeMapView", "========== setPixelRatio() COMPLETED ==========");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setPixelRatio: Exception occurred: %s", e.what());
-    } catch (...) {
-        Logger::error("NativeMapView", "setPixelRatio: Unknown exception occurred");
-    }
     
     return undefined;
 }
@@ -865,20 +859,136 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getStyleJson() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getStyleJson: Failed to get instance or map not initialized");
+        return undefined;
+    }
+    
+    try {
+        std::string json = instance->map->getStyle().getJSON();
+        napi_value result;
+        napi_create_string_utf8(env, json.c_str(), json.length(), &result);
+        Logger::debug("NativeMapView", "getStyleJson: Returned JSON (%zu bytes)", json.length());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getStyleJson: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setStyleJson() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setStyleJson: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "setStyleJson: Missing JSON argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setStyleJson: Failed to get instance or map not initialized");
+        return undefined;
+    }
+    
+    // 获取JSON字符串
+    size_t jsonLength = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &jsonLength);
+    std::string json(jsonLength, '\0');
+    napi_get_value_string_utf8(env, args[0], &json[0], jsonLength + 1, &jsonLength);
+    json.resize(jsonLength);
+    
+    Logger::info("NativeMapView", "setStyleJson: Loading style JSON (%zu bytes)", json.length());
+    
+    try {
+        instance->map->getStyle().loadJSON(json);
+        instance->map->triggerRepaint();
+        Logger::info("NativeMapView", "setStyleJson: Style JSON loaded successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setStyleJson: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setLatLngBounds() called");
+    
+    NapiArgs args(env, info);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setLatLngBounds: Map not initialized");
+        return undefined;
+    }
+    
+    // 检查参数是否为 null（允许清除边界限制）
+    if (!args.Has(0)) {
+        // 清除边界限制
+        instance->map->setBounds(mbgl::BoundOptions());
+        Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (no argument)");
+        return undefined;
+    }
+    
+    napi_valuetype type;
+    napi_typeof(env, args.GetValue(0), &type);
+    if (type == napi_null || type == napi_undefined) {
+        // 清除边界限制
+        instance->map->setBounds(mbgl::BoundOptions());
+        Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (null/undefined)");
+        return undefined;
+    }
+    
+    // 解析 LatLngBounds
+    napi_value boundsObj = args.GetObject(0, "bounds");
+    if (args.HasError()) {
+        return undefined;
+    }
+    
+    mbgl::LatLngBounds bounds;
+    if (!LatLngBoundsHarmony::ParseLatLngBounds(env, boundsObj, bounds)) {
+        Logger::error("NativeMapView", "setLatLngBounds: Failed to parse LatLngBounds");
+        return undefined;
+    }
+    
+    try {
+        mbgl::BoundOptions boundOptions;
+        boundOptions.withLatLngBounds(bounds);
+        instance->map->setBounds(boundOptions);
+        Logger::info("NativeMapView", "setLatLngBounds: Set bounds N=%f, E=%f, S=%f, W=%f", 
+                     bounds.north(), bounds.east(), bounds.south(), bounds.west());
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setLatLngBounds: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
@@ -1268,42 +1378,313 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== flyTo() START ==========");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取this对象和参数
+    napi_value thisObj;
+    size_t argc = 2;  // CameraOptions object + duration
+    napi_value args[2];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "flyTo: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "flyTo: Missing camera options argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "flyTo: Failed to get instance or map not initialized");
+        return undefined;
+    }
+    
+    // 解析相机选项对象
+    napi_value cameraObj = args[0];
+    
+    CameraOptions cameraOptions;
+    
+    // 获取 center (LatLng)
+    napi_value centerValue;
+    if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
+        napi_value latValue, lngValue;
+        if (napi_get_named_property(env, centerValue, "latitude", &latValue) == napi_ok &&
+            napi_get_named_property(env, centerValue, "longitude", &lngValue) == napi_ok) {
+            double lat, lng;
+            if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
+                napi_get_value_double(env, lngValue, &lng) == napi_ok) {
+                cameraOptions.center = LatLng{lat, lng};
+                Logger::debug("NativeMapView", "flyTo: center = (%f, %f)", lat, lng);
+            }
+        }
+    }
+    
+    // 获取 zoom
+    napi_value zoomValue;
+    if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
+        double zoom;
+        if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
+            cameraOptions.zoom = zoom;
+            Logger::debug("NativeMapView", "flyTo: zoom = %f", zoom);
+        }
+    }
+    
+    // 获取 bearing
+    napi_value bearingValue;
+    if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
+        double bearing;
+        if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
+            cameraOptions.bearing = bearing;
+            Logger::debug("NativeMapView", "flyTo: bearing = %f", bearing);
+        }
+    }
+    
+    // 获取 pitch
+    napi_value pitchValue;
+    if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
+        double pitch;
+        if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
+            cameraOptions.pitch = pitch;
+            Logger::debug("NativeMapView", "flyTo: pitch = %f", pitch);
+        }
+    }
+    
+    // 获取动画时长（可选，默认使用 flyTo 自动时长）
+    uint64_t duration = 0;
+    if (argc >= 2) {
+        double durationValue;
+        if (napi_get_value_double(env, args[1], &durationValue) == napi_ok) {
+            duration = static_cast<uint64_t>(durationValue);
+            Logger::debug("NativeMapView", "flyTo: duration = %lu ms", (unsigned long)duration);
+        }
+    }
+    
+    // 执行 flyTo 相机动画
+    try {
+        mbgl::AnimationOptions animationOptions;
+        if (duration > 0) {
+            animationOptions.duration.emplace(mbgl::Milliseconds(duration));
+        }
+        instance->map->flyTo(cameraOptions, animationOptions);
+        instance->map->triggerRepaint();
+        Logger::info("NativeMapView", "flyTo: Camera flight started successfully");
+        Logger::info("NativeMapView", "========== flyTo() END - SUCCESS ==========");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "flyTo: Failed - %s", e.what());
+        Logger::error("NativeMapView", "========== flyTo() END - FAILED ==========");
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getLatLng() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getLatLng: Failed to get instance or map not initialized");
+        return undefined;
+    }
+    
+    try {
+        auto cameraOptions = instance->map->getCameraOptions();
+        if (cameraOptions.center) {
+            const auto& center = *cameraOptions.center;
+            
+            // 创建返回对象 { latitude: number, longitude: number }
+            napi_value result;
+            napi_create_object(env, &result);
+            
+            napi_value latValue, lngValue;
+            napi_create_double(env, center.latitude(), &latValue);
+            napi_create_double(env, center.longitude(), &lngValue);
+            
+            napi_set_named_property(env, result, "latitude", latValue);
+            napi_set_named_property(env, result, "longitude", lngValue);
+            
+            Logger::debug("NativeMapView", "getLatLng: lat=%.6f, lng=%.6f", center.latitude(), center.longitude());
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getLatLng: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setLatLng() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setLatLng: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取参数：latitude, longitude, padding (可选), duration (可选)
+    double latitude = args.GetDouble(0, "latitude");
+    double longitude = args.GetDouble(1, "longitude");
+    double duration = args.GetDoubleOr(3, 0.0);
+    
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::CameraOptions cameraOptions;
+        cameraOptions.center = mbgl::LatLng(latitude, longitude);
+        
+        // TODO: 处理 padding 参数（args[2]）
+        
+        instance->map->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+        Logger::info("NativeMapView", "setLatLng: lat=%.6f, lng=%.6f, duration=%.0fms", latitude, longitude, duration);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setLatLng: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    Logger::debug("NativeMapView", "getCameraForLatLngBounds() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getCameraForLatLngBounds: Map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 解析 LatLngBounds
+    napi_value boundsObj = args.GetObject(0, "bounds");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    mbgl::LatLngBounds bounds;
+    if (!LatLngBoundsHarmony::ParseLatLngBounds(env, boundsObj, bounds)) {
+        Logger::error("NativeMapView", "getCameraForLatLngBounds: Failed to parse bounds");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 解析 padding (top, left, bottom, right)
+    double top = args.GetDoubleOr(1, 0.0);
+    double left = args.GetDoubleOr(2, 0.0);
+    double bottom = args.GetDoubleOr(3, 0.0);
+    double right = args.GetDoubleOr(4, 0.0);
+    mbgl::EdgeInsets padding{top, left, bottom, right};
+    
+    // 解析 bearing 和 tilt（可选）
+    double bearing = args.GetDoubleOr(5, 0.0);
+    double tilt = args.GetDoubleOr(6, 0.0);
+    
+    try {
+        mbgl::CameraOptions cameraOptions = instance->map->cameraForLatLngBounds(bounds, padding, bearing, tilt);
+        
+        napi_value result = CameraPositionHarmony::CreateCameraPositionObject(env, cameraOptions, instance->pixelRatio);
+        Logger::debug("NativeMapView", "getCameraForLatLngBounds: Calculated camera position");
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getCameraForLatLngBounds: Failed - %s", e.what());
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getCameraForGeometry() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Geometry 和 CameraPosition 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/geojson/geometry.cpp
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/map/camera_position.cpp
+    Logger::warn("NativeMapView", "getCameraForGeometry: Not implemented - requires Geometry and CameraPosition wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info) {
+    // 网络可达性由 Harmony 网络管理器处理，不需要手动设置
+    // Network reachability handled by Harmony network manager
+    Logger::debug("NativeMapView", "setReachability: Network reachability handled by Harmony system");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "resetPosition() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "resetPosition: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->jumpTo(mbgl::CameraOptions()
+            .withCenter(mbgl::LatLng{0.0, 0.0})
+            .withZoom(0.0)
+            .withBearing(0.0)
+            .withPitch(0.0));
+        Logger::info("NativeMapView", "resetPosition: Reset to origin (0,0) zoom 0");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "resetPosition: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -1417,6 +1798,57 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setZoom() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setZoom: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取参数：zoom, cx (可选), cy (可选), duration (可选)
+    double zoom = args.GetDouble(0, "zoom");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double cx = args.GetDoubleOr(1, 0.0);
+    double cy = args.GetDoubleOr(2, 0.0);
+    double duration = args.GetDoubleOr(3, 0.0);
+    bool hasAnchor = args.Count() >= 3;
+    
+    try {
+        mbgl::CameraOptions cameraOptions;
+        cameraOptions.zoom = zoom;
+        
+        if (hasAnchor) {
+            cameraOptions.anchor = mbgl::ScreenCoordinate{cx, cy};
+            Logger::info("NativeMapView", "setZoom: zoom=%.2f, anchor=(%.2f, %.2f), duration=%.0fms", 
+                        zoom, cx, cy, duration);
+        } else {
+            Logger::info("NativeMapView", "setZoom: zoom=%.2f, duration=%.0fms", zoom, duration);
+        }
+        
+        instance->map->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setZoom: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -1464,60 +1896,363 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "resetZoom() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "resetZoom: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->jumpTo(mbgl::CameraOptions().withZoom(0.0));
+        Logger::info("NativeMapView", "resetZoom: Reset zoom to 0");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "resetZoom: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setMinZoom() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setMinZoom: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double zoom = args.GetDouble(0, "zoom");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->setBounds(mbgl::BoundOptions().withMinZoom(zoom));
+        Logger::info("NativeMapView", "setMinZoom: Set min zoom to %.2f", zoom);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setMinZoom: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getMinZoom() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getMinZoom: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        auto bounds = instance->map->getBounds();
+        if (bounds.minZoom) {
+            napi_value result;
+            napi_create_double(env, *bounds.minZoom, &result);
+            Logger::debug("NativeMapView", "getMinZoom: Current min zoom = %.2f", *bounds.minZoom);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getMinZoom: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setMaxZoom() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setMaxZoom: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double zoom = args.GetDouble(0, "zoom");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->setBounds(mbgl::BoundOptions().withMaxZoom(zoom));
+        Logger::info("NativeMapView", "setMaxZoom: Set max zoom to %.2f", zoom);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setMaxZoom: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getMaxZoom() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getMaxZoom: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        auto bounds = instance->map->getBounds();
+        if (bounds.maxZoom) {
+            napi_value result;
+            napi_create_double(env, *bounds.maxZoom, &result);
+            Logger::debug("NativeMapView", "getMaxZoom: Current max zoom = %.2f", *bounds.maxZoom);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getMaxZoom: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setMinPitch() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setMinPitch: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double pitch = args.GetDouble(0, "pitch");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->setBounds(mbgl::BoundOptions().withMinPitch(pitch));
+        Logger::info("NativeMapView", "setMinPitch: Set min pitch to %.2f", pitch);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setMinPitch: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getMinPitch() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getMinPitch: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        auto bounds = instance->map->getBounds();
+        if (bounds.minPitch) {
+            napi_value result;
+            napi_create_double(env, *bounds.minPitch, &result);
+            Logger::debug("NativeMapView", "getMinPitch: Current min pitch = %.2f", *bounds.minPitch);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getMinPitch: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setMaxPitch() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setMaxPitch: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double pitch = args.GetDouble(0, "pitch");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->setBounds(mbgl::BoundOptions().withMaxPitch(pitch));
+        Logger::info("NativeMapView", "setMaxPitch: Set max pitch to %.2f", pitch);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setMaxPitch: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getMaxPitch() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getMaxPitch: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        auto bounds = instance->map->getBounds();
+        if (bounds.maxPitch) {
+            napi_value result;
+            napi_create_double(env, *bounds.maxPitch, &result);
+            Logger::debug("NativeMapView", "getMaxPitch: Current max pitch = %.2f", *bounds.maxPitch);
+            return result;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getMaxPitch: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "rotateBy() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(4);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "rotateBy: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取参数：sx, sy, ex, ey, duration (可选)
+    double sx = args.GetDouble(0, "sx");
+    double sy = args.GetDouble(1, "sy");
+    double ex = args.GetDouble(2, "ex");
+    double ey = args.GetDouble(3, "ey");
+    double duration = args.GetDoubleOr(4, 0.0);
+    
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::ScreenCoordinate first(sx, sy);
+        mbgl::ScreenCoordinate second(ex, ey);
+        instance->map->rotateBy(first, second, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+        Logger::info("NativeMapView", "rotateBy: (%.2f, %.2f) -> (%.2f, %.2f), duration=%.0fms", sx, sy, ex, ey, duration);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "rotateBy: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -1575,6 +2310,51 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setBearingXY() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(3);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setBearingXY: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取参数：degrees, cx, cy, duration (可选)
+    double degrees = args.GetDouble(0, "degrees");
+    double cx = args.GetDouble(1, "cx");
+    double cy = args.GetDouble(2, "cy");
+    double duration = args.GetDoubleOr(3, 0.0);
+    
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::ScreenCoordinate anchor(cx, cy);
+        instance->map->easeTo(
+            mbgl::CameraOptions().withBearing(degrees).withAnchor(anchor),
+            mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}
+        );
+        Logger::info("NativeMapView", "setBearingXY: bearing=%.2f, anchor=(%.2f, %.2f), duration=%.0fms", 
+                    degrees, cx, cy, duration);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setBearingXY: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -1622,24 +2402,87 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "resetNorth() called");
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "resetNorth: Failed to get instance or map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        // 使用 easeTo 将 bearing 设为 0，动画时长 500ms
+        instance->map->easeTo(
+            mbgl::CameraOptions().withBearing(0.0),
+            mbgl::AnimationOptions{mbgl::Milliseconds(500)}
+        );
+        Logger::info("NativeMapView", "resetNorth: Reset bearing to 0 with 500ms animation");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "resetNorth: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setVisibleCoordinateBounds() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 LatLng 数组和 RectF 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:583-615
+    Logger::warn("NativeMapView", "setVisibleCoordinateBounds: Not implemented - requires LatLng array and RectF wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getVisibleCoordinateBounds() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "getVisibleCoordinateBounds: Failed to get this object");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getVisibleCoordinateBounds: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        auto latLngBounds = instance->map->latLngBoundsForCameraUnwrapped(instance->map->getCameraOptions(std::nullopt));
+        
+        napi_value result = LatLngBoundsHarmony::CreateLatLngBoundsObject(env, latLngBounds);
+        Logger::debug("NativeMapView", "getVisibleCoordinateBounds: N=%f, E=%f, S=%f, W=%f", 
+                      latLngBounds.north(), latLngBounds.east(), 
+                      latLngBounds.south(), latLngBounds.west());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getVisibleCoordinateBounds: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info) {
+    // 快照功能需要渲染器回调支持
+    // Snapshot functionality requires renderer callback support
+    Logger::debug("NativeMapView", "scheduleSnapshot: Snapshot functionality requires renderer callback support");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -1945,110 +2788,356 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
+    // 低内存处理由 Harmony 系统管理
+    // Low memory handling delegated to Harmony system
+    Logger::debug("NativeMapView", "onLowMemory: Low memory handling delegated to Harmony system");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
+    // Debug 可视化功能未在 Harmony 平台实现
+    // Debug visualization not implemented for Harmony platform
+    Logger::debug("NativeMapView", "setDebug: Debug visualization not implemented for Harmony platform");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    // Debug 可视化功能未在 Harmony 平台实现
+    // Debug visualization not implemented for Harmony platform
+    Logger::debug("NativeMapView", "getDebug: Debug visualization not implemented for Harmony platform");
+    
+    napi_value result;
+    napi_get_boolean(env, false, &result);
+    return result;
 }
 
 napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_info info) {
+    // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
+    // Action journal requires ActionJournal support, not configured for Harmony
+    Logger::debug("NativeMapView", "getActionJournalLogFiles: Action journal not configured for Harmony");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info info) {
+    // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
+    // Action journal requires ActionJournal support, not configured for Harmony
+    Logger::debug("NativeMapView", "getActionJournalLog: Action journal not configured for Harmony");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::clearActionJournalLog(napi_env env, napi_callback_info info) {
+    // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
+    // Action journal requires ActionJournal support, not configured for Harmony
+    Logger::debug("NativeMapView", "clearActionJournalLog: Action journal not configured for Harmony");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "isFullyLoaded() called");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "isFullyLoaded: Map not initialized, returning false");
+        return result;
+    }
+    
+    try {
+        bool loaded = instance->map->isFullyLoaded();
+        napi_get_boolean(env, loaded, &result);
+        Logger::debug("NativeMapView", "isFullyLoaded: %s", loaded ? "true" : "false");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "isFullyLoaded: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getMetersPerPixelAtLatitude() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    
     napi_value result;
     napi_create_double(env, 0.0, &result);
+    
+    if (args.HasError()) {
+        return result;
+    }
+    
+    double latitude = args.GetDouble(0, "latitude");
+    double zoom = args.GetDouble(1, "zoom");
+    if (args.HasError()) {
+        return result;
+    }
+    
+    try {
+        double metersPerPixel = mbgl::Projection::getMetersPerPixelAtLatitude(latitude, zoom);
+        napi_create_double(env, metersPerPixel, &result);
+        Logger::debug("NativeMapView", "getMetersPerPixelAtLatitude: lat=%f, zoom=%f, result=%f", latitude, zoom, metersPerPixel);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getMetersPerPixelAtLatitude: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    Logger::debug("NativeMapView", "projectedMetersForLatLng() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double latitude = args.GetDouble(0, "latitude");
+    double longitude = args.GetDouble(1, "longitude");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::ProjectedMeters projectedMeters = mbgl::Projection::projectedMetersForLatLng(
+            mbgl::LatLng(latitude, longitude)
+        );
+        
+        napi_value result = ProjectedMetersHarmony::CreateProjectedMetersObject(env, projectedMeters);
+        Logger::debug("NativeMapView", "projectedMetersForLatLng: lat=%f, lng=%f -> northing=%f, easting=%f", 
+                      latitude, longitude, projectedMeters.northing(), projectedMeters.easting());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "projectedMetersForLatLng: Failed - %s", e.what());
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    Logger::debug("NativeMapView", "pixelForLatLng() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "pixelForLatLng: Map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double latitude = args.GetDouble(0, "latitude");
+    double longitude = args.GetDouble(1, "longitude");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::ScreenCoordinate pixel = instance->map->pixelForLatLng(mbgl::LatLng(latitude, longitude));
+        napi_value result = PointHarmony::CreatePointObject(env, pixel);
+        Logger::debug("NativeMapView", "pixelForLatLng: lat=%f, lng=%f -> x=%f, y=%f", 
+                      latitude, longitude, pixel.x, pixel.y);
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "pixelForLatLng: Failed - %s", e.what());
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "pixelsForLatLngs() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现数组参数解析和结果数组返回
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:772-796
+    Logger::warn("NativeMapView", "pixelsForLatLngs: Not implemented - requires array parameter parsing");
+    
     return undefined;
 }
 
 napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    Logger::debug("NativeMapView", "latLngForProjectedMeters() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double northing = args.GetDouble(0, "northing");
+    double easting = args.GetDouble(1, "easting");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::LatLng latLng = mbgl::Projection::latLngForProjectedMeters(
+            mbgl::ProjectedMeters(northing, easting)
+        );
+        
+        napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
+        Logger::debug("NativeMapView", "latLngForProjectedMeters: northing=%f, easting=%f -> lat=%f, lng=%f", 
+                      northing, easting, latLng.latitude(), latLng.longitude());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "latLngForProjectedMeters: Failed - %s", e.what());
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    Logger::debug("NativeMapView", "latLngForPixel() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "latLngForPixel: Map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    double x = args.GetDouble(0, "x");
+    double y = args.GetDouble(1, "y");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        mbgl::LatLng latLng = instance->map->latLngForPixel(mbgl::ScreenCoordinate(x, y));
+        napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
+        Logger::debug("NativeMapView", "latLngForPixel: x=%f, y=%f -> lat=%f, lng=%f", 
+                      x, y, latLng.latitude(), latLng.longitude());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "latLngForPixel: Failed - %s", e.what());
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "latLngsForPixels() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现数组参数解析和结果数组返回
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:802-826
+    Logger::warn("NativeMapView", "latLngsForPixels: Not implemented - requires array parameter parsing");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addPolylines() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Polyline 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/annotation/polyline.cpp
+    Logger::warn("NativeMapView", "addPolylines: Not implemented - requires Polyline wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addPolygons() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Polygon 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/annotation/polygon.cpp
+    Logger::warn("NativeMapView", "addPolygons: Not implemented - requires Polygon wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "updatePolyline() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Polyline 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:866-869
+    Logger::warn("NativeMapView", "updatePolyline: Not implemented - requires Polyline wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "updatePolygon() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Polygon 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:871-874
+    Logger::warn("NativeMapView", "updatePolygon: Not implemented - requires Polygon wrapper class");
+    
     return undefined;
 }
 
@@ -2292,224 +3381,804 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol() called");
+    
     napi_value result;
     napi_create_double(env, 0.0, &result);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::warn("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: Missing symbol name argument, returning 0.0");
+        return result;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: Map not initialized, returning 0.0");
+        return result;
+    }
+    
+    // 获取 symbol 名称
+    size_t symbolLength = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &symbolLength);
+    std::string symbolName(symbolLength, '\0');
+    napi_get_value_string_utf8(env, args[0], &symbolName[0], symbolLength + 1, &symbolLength);
+    symbolName.resize(symbolLength);
+    
+    try {
+        double offset = instance->map->getTopOffsetPixelsForAnnotationImage(symbolName);
+        napi_create_double(env, offset, &result);
+        Logger::debug("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: symbol=%s, offset=%f", symbolName.c_str(), offset);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getTransitionOptions() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getTransitionOptions: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        const auto transitionOptions = instance->map->getStyle().getTransitionOptions();
+        napi_value result = TransitionOptionsHarmony::CreateTransitionOptionsObject(env, transitionOptions);
+        Logger::debug("NativeMapView", "getTransitionOptions: Retrieved transition options");
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTransitionOptions: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setTransitionOptions() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setTransitionOptions: Map not initialized");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 解析 TransitionOptions
+    napi_value optionsObj = args.GetObject(0, "options");
+    if (args.HasError()) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    mbgl::style::TransitionOptions transitionOptions;
+    if (!TransitionOptionsHarmony::ParseTransitionOptions(env, optionsObj, transitionOptions)) {
+        Logger::error("NativeMapView", "setTransitionOptions: Failed to parse options");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    try {
+        instance->map->getStyle().setTransitionOptions(transitionOptions);
+        Logger::info("NativeMapView", "setTransitionOptions: Set transition options");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setTransitionOptions: Failed - %s", e.what());
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "queryPointAnnotations() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要渲染器前端支持 queryPointAnnotations
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:936-955
+    Logger::warn("NativeMapView", "queryPointAnnotations: Not implemented - requires renderer frontend support");
+    
     return undefined;
 }
 
 napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "queryShapeAnnotations() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要渲染器前端支持 queryShapeAnnotations
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:957-975
+    Logger::warn("NativeMapView", "queryShapeAnnotations: Not implemented - requires renderer frontend support");
+    
     return undefined;
 }
 
 napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Feature 的 NAPI 包装类和渲染器前端支持
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:977-993
+    Logger::warn("NativeMapView", "queryRenderedFeaturesForPoint: Not implemented - requires Feature wrapper class and renderer support");
+    
     return undefined;
 }
 
 napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "queryRenderedFeaturesForBox() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Feature 的 NAPI 包装类和渲染器前端支持
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:995-1014
+    Logger::warn("NativeMapView", "queryRenderedFeaturesForBox: Not implemented - requires Feature wrapper class and renderer support");
+    
     return undefined;
 }
 
 napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getLight() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Light 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
+    Logger::warn("NativeMapView", "getLight: Not implemented - requires Light wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getLayers() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/layers/
+    Logger::warn("NativeMapView", "getLayers: Not implemented - requires Layer wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getLayer() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/layers/
+    Logger::warn("NativeMapView", "getLayer: Not implemented - requires Layer wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addLayer(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addLayer() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1052-1064
+    Logger::warn("NativeMapView", "addLayer: Not implemented - requires Layer wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addLayerAbove(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addLayerAbove() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1066-1103
+    Logger::warn("NativeMapView", "addLayerAbove: Not implemented - requires Layer wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addLayerAt(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addLayerAt() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1105-1128
+    Logger::warn("NativeMapView", "addLayerAt: Not implemented - requires Layer wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "removeLayerAt() called");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1133-1150
+    Logger::warn("NativeMapView", "removeLayerAt: Not implemented - requires Layer wrapper classes");
+    
     return result;
 }
 
 napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "removeLayer() called");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
+    
+    // TODO: 需要实现 Layer 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1155-1165
+    Logger::warn("NativeMapView", "removeLayer: Not implemented - requires Layer wrapper classes");
+    
     return result;
 }
 
 napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getSources() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Source 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/sources/
+    Logger::warn("NativeMapView", "getSources: Not implemented - requires Source wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getSource() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Source 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/sources/
+    Logger::warn("NativeMapView", "getSource: Not implemented - requires Source wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addSource() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Source 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1194-1204
+    Logger::warn("NativeMapView", "addSource: Not implemented - requires Source wrapper classes");
+    
     return undefined;
 }
 
 napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "removeSource() called");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
+    
+    // TODO: 需要实现 Source 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1206-1216
+    Logger::warn("NativeMapView", "removeSource: Not implemented - requires Source wrapper classes");
+    
     return result;
 }
 
 napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addImage() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Bitmap 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/bitmap.cpp
+    Logger::warn("NativeMapView", "addImage: Not implemented - requires Bitmap wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "addImages() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Image 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/map/image.cpp
+    Logger::warn("NativeMapView", "addImages: Not implemented - requires Image wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "removeImage() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "removeImage: Missing image name argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "removeImage: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取图片名称
+    size_t nameLength = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &nameLength);
+    std::string name(nameLength, '\0');
+    napi_get_value_string_utf8(env, args[0], &name[0], nameLength + 1, &nameLength);
+    name.resize(nameLength);
+    
+    try {
+        instance->map->getStyle().removeImage(name);
+        Logger::info("NativeMapView", "removeImage: Removed image '%s'", name.c_str());
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "removeImage: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getImage() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // TODO: 需要实现 Bitmap 的 NAPI 包装类
+    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1241-1246
+    Logger::warn("NativeMapView", "getImage: Not implemented - requires Bitmap wrapper class");
+    
     return undefined;
 }
 
 napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setPrefetchTiles() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setPrefetchTiles: Missing enable argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setPrefetchTiles: Map not initialized");
+        return undefined;
+    }
+    
+    bool enable;
+    if (napi_get_value_bool(env, args[0], &enable) != napi_ok) {
+        Logger::error("NativeMapView", "setPrefetchTiles: Failed to parse enable argument");
+        return undefined;
+    }
+    
+    try {
+        // 参考 Android: 如果启用则设置默认 zoom delta，否则设为 0
+        instance->map->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0));
+        Logger::info("NativeMapView", "setPrefetchTiles: Set to %s", enable ? "enabled" : "disabled");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setPrefetchTiles: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getPrefetchTiles() called");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getPrefetchTiles: Map not initialized, returning false");
+        return result;
+    }
+    
+    try {
+        bool enabled = instance->map->getPrefetchZoomDelta() > 0;
+        napi_get_boolean(env, enabled, &result);
+        Logger::debug("NativeMapView", "getPrefetchTiles: %s", enabled ? "enabled" : "disabled");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getPrefetchTiles: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setPrefetchZoomDelta() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setPrefetchZoomDelta: Missing delta argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setPrefetchZoomDelta: Map not initialized");
+        return undefined;
+    }
+    
+    int32_t delta;
+    if (napi_get_value_int32(env, args[0], &delta) != napi_ok) {
+        Logger::error("NativeMapView", "setPrefetchZoomDelta: Failed to parse delta argument");
+        return undefined;
+    }
+    
+    try {
+        instance->map->setPrefetchZoomDelta(static_cast<uint8_t>(delta));
+        Logger::info("NativeMapView", "setPrefetchZoomDelta: Set to %d", delta);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setPrefetchZoomDelta: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getPrefetchZoomDelta() called");
+    
     napi_value result;
     napi_create_int32(env, 0, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getPrefetchZoomDelta: Map not initialized, returning 0");
+        return result;
+    }
+    
+    try {
+        int32_t delta = static_cast<int32_t>(instance->map->getPrefetchZoomDelta());
+        napi_create_int32(env, delta, &result);
+        Logger::debug("NativeMapView", "getPrefetchZoomDelta: %d", delta);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getPrefetchZoomDelta: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info info) {
+    // Tile 缓存控制需要渲染器前端支持
+    // Tile cache control requires renderer frontend support
+    Logger::debug("NativeMapView", "setTileCacheEnabled: Tile cache control requires renderer frontend support");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info info) {
+    // Tile 缓存控制需要渲染器前端支持
+    // Tile cache control requires renderer frontend support
+    Logger::debug("NativeMapView", "getTileCacheEnabled: Tile cache control requires renderer frontend support");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
     return result;
 }
 
 napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setTileLodMinRadius() called");
+    
+    // Tile LOD 参数控制已实现
+    // Tile LOD parameter control is implemented
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setTileLodMinRadius: Missing radius argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setTileLodMinRadius: Map not initialized");
+        return undefined;
+    }
+    
+    double radius;
+    if (napi_get_value_double(env, args[0], &radius) != napi_ok) {
+        Logger::error("NativeMapView", "setTileLodMinRadius: Failed to parse radius argument");
+        return undefined;
+    }
+    
+    try {
+        instance->map->setTileLodMinRadius(radius);
+        Logger::info("NativeMapView", "setTileLodMinRadius: Set to %f", radius);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setTileLodMinRadius: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getTileLodMinRadius() called");
+    
     napi_value result;
     napi_create_double(env, 0.0, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getTileLodMinRadius: Map not initialized, returning 0.0");
+        return result;
+    }
+    
+    try {
+        double radius = instance->map->getTileLodMinRadius();
+        napi_create_double(env, radius, &result);
+        Logger::debug("NativeMapView", "getTileLodMinRadius: %f", radius);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTileLodMinRadius: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setTileLodScale() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setTileLodScale: Missing scale argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setTileLodScale: Map not initialized");
+        return undefined;
+    }
+    
+    double scale;
+    if (napi_get_value_double(env, args[0], &scale) != napi_ok) {
+        Logger::error("NativeMapView", "setTileLodScale: Failed to parse scale argument");
+        return undefined;
+    }
+    
+    try {
+        instance->map->setTileLodScale(scale);
+        Logger::info("NativeMapView", "setTileLodScale: Set to %f", scale);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setTileLodScale: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getTileLodScale() called");
+    
     napi_value result;
     napi_create_double(env, 0.0, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getTileLodScale: Map not initialized, returning 0.0");
+        return result;
+    }
+    
+    try {
+        double scale = instance->map->getTileLodScale();
+        napi_create_double(env, scale, &result);
+        Logger::debug("NativeMapView", "getTileLodScale: %f", scale);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTileLodScale: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setTileLodPitchThreshold() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setTileLodPitchThreshold: Missing threshold argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setTileLodPitchThreshold: Map not initialized");
+        return undefined;
+    }
+    
+    double threshold;
+    if (napi_get_value_double(env, args[0], &threshold) != napi_ok) {
+        Logger::error("NativeMapView", "setTileLodPitchThreshold: Failed to parse threshold argument");
+        return undefined;
+    }
+    
+    try {
+        instance->map->setTileLodPitchThreshold(threshold);
+        Logger::info("NativeMapView", "setTileLodPitchThreshold: Set to %f", threshold);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setTileLodPitchThreshold: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getTileLodPitchThreshold() called");
+    
     napi_value result;
     napi_create_double(env, 0.0, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getTileLodPitchThreshold: Map not initialized, returning 0.0");
+        return result;
+    }
+    
+    try {
+        double threshold = instance->map->getTileLodPitchThreshold();
+        napi_create_double(env, threshold, &result);
+        Logger::debug("NativeMapView", "getTileLodPitchThreshold: %f", threshold);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTileLodPitchThreshold: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
 napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setTileLodZoomShift() called");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+    
+    // 获取NativeMapView实例和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setTileLodZoomShift: Missing shift argument");
+        return undefined;
+    }
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setTileLodZoomShift: Map not initialized");
+        return undefined;
+    }
+    
+    double shift;
+    if (napi_get_value_double(env, args[0], &shift) != napi_ok) {
+        Logger::error("NativeMapView", "setTileLodZoomShift: Failed to parse shift argument");
+        return undefined;
+    }
+    
+    try {
+        instance->map->setTileLodZoomShift(shift);
+        Logger::info("NativeMapView", "setTileLodZoomShift: Set to %f", shift);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setTileLodZoomShift: Failed - %s", e.what());
+    }
+    
     return undefined;
 }
 
 napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getTileLodZoomShift() called");
+    
     napi_value result;
     napi_create_double(env, 0.0, &result);
+    
+    // 获取NativeMapView实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "getTileLodZoomShift: Map not initialized, returning 0.0");
+        return result;
+    }
+    
+    try {
+        double shift = instance->map->getTileLodZoomShift();
+        napi_create_double(env, shift, &result);
+        Logger::debug("NativeMapView", "getTileLodZoomShift: %f", shift);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTileLodZoomShift: Failed - %s", e.what());
+    }
+    
     return result;
 }
 
@@ -2599,6 +4268,34 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
     nativeMapView->nativeWindow = nativeWindow;
     Logger::debug("NativeMapView", "Native window saved to NativeMapView");
     
+    // 🔧 使用鸿蒙官方API获取屏幕DPI信息
+    Logger::info("NativeMapView", "🔍 [DPI] ========== Querying Display DPI ==========");
+    
+    int32_t systemDensityDpi = 0;
+    NativeDisplayManager_ErrorCode ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&systemDensityDpi);
+    
+    if (ret == DISPLAY_MANAGER_OK && systemDensityDpi > 0) {
+        Logger::info("NativeMapView", "  ✅ System DensityDPI: %d (from DisplayManager)", systemDensityDpi);
+        
+        // 计算实际pixelRatio
+        float actualPixelRatio = systemDensityDpi / 160.0f;
+        Logger::info("NativeMapView", "  🔍 Calculated pixelRatio: %.4f (DPI/160)", actualPixelRatio);
+        
+        // 更新pixelRatio
+        if (actualPixelRatio > 0.5f && actualPixelRatio < 5.0f) {
+            nativeMapView->pixelRatio = actualPixelRatio;
+            Logger::info("NativeMapView", "  ✅ PixelRatio set to: %.4f", nativeMapView->pixelRatio);
+        } else {
+            Logger::warn("NativeMapView", "  ⚠️  Abnormal pixelRatio: %.4f, using default 1.0", actualPixelRatio);
+        }
+    } else {
+        Logger::warn("NativeMapView", "  ⚠️  Failed to get DisplayManager DPI, error code: %d", ret);
+        Logger::info("NativeMapView", "  ℹ️  Using default pixelRatio: %.4f", nativeMapView->pixelRatio);
+    }
+    
+    Logger::info("NativeMapView", "🔍 [DPI] Final pixelRatio: %.4f", nativeMapView->pixelRatio);
+    Logger::info("NativeMapView", "🔍 [DPI] ==============================================");
+    
     // 初始化渲染器（如果尚未初始化）
     try {
         Logger::info("NativeMapView", "Initializing renderer...");
@@ -2618,12 +4315,20 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callback_info info) {
+    // Rendering stats view 未在 Harmony 平台实现
+    // Rendering stats view not implemented for Harmony
+    Logger::debug("NativeMapView", "isRenderingStatsViewEnabled: Rendering stats view not implemented for Harmony");
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
     return result;
 }
 
 napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_info info) {
+    // Rendering stats view 未在 Harmony 平台实现
+    // Rendering stats view not implemented for Harmony
+    Logger::debug("NativeMapView", "enableRenderingStatsView: Rendering stats view not implemented for Harmony");
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
