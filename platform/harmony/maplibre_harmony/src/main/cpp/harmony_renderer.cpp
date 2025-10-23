@@ -35,7 +35,7 @@ HarmonyRenderer::~HarmonyRenderer() {
 
 void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     Logger::info("HarmonyRenderer", "========== initialize() START ==========");
-    Logger::info("HarmonyRenderer", "Parameters: width=%d, height=%d, pixelRatio=%.2f", width_, height_, pixelRatio_);
+    Logger::info("HarmonyRenderer", "Size: %dx%d, pixelRatio: %.2f", width_, height_, pixelRatio_);
     
     if (initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer already initialized");
@@ -96,6 +96,7 @@ void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
         Logger::info("HarmonyRenderer", "Native window set to backend successfully");
         
         if (width > 0 && height > 0) {
+            // ℹ️  MapLibre使用逻辑像素尺寸 + pixelRatio来内部处理高DPI渲染
             Logger::info("HarmonyRenderer", "Resizing framebuffer to %dx%d", width, height);
             backend->resizeFramebuffer(width, height);
             Logger::debug("HarmonyRenderer", "Framebuffer resized successfully");
@@ -127,7 +128,8 @@ void HarmonyRenderer::resize(int width_, int height_) {
     }
     
     Logger::info("HarmonyRenderer", "========== resize() START ==========");
-    Logger::info("HarmonyRenderer", "Resizing from %dx%d to %dx%d", width, height, width_, height_);
+    Logger::info("HarmonyRenderer", "Resizing: %dx%d -> %dx%d (pixelRatio: %.2f)", 
+                 width, height, width_, height_, pixelRatio);
     
     width = width_;
     height = height_;
@@ -135,8 +137,6 @@ void HarmonyRenderer::resize(int width_, int height_) {
     auto* backend = static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
     if (backend) {
         try {
-            // HarmonyOS缓冲区刷新优化 - 在resize前确保EGL上下文稳定
-            Logger::debug("HarmonyRenderer", "Resizing framebuffer with error handling...");
             backend->resizeFramebuffer(width, height);
             Logger::info("HarmonyRenderer", "Framebuffer resized successfully");
         } catch (const std::exception& e) {
@@ -160,16 +160,6 @@ void HarmonyRenderer::resize(int width_, int height_) {
     Logger::info("HarmonyRenderer", "========== resize() END ==========");
 }
 
-void HarmonyRenderer::setPixelRatio(float pixelRatio_) {
-    if (!initialized) {
-        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
-        return;
-    }
-    pixelRatio = pixelRatio_;
-    // Note: Map doesn't have a resize method, this needs to be handled differently
-    // The resize is handled by the renderer backend
-    requestRender();
-}
 
 void HarmonyRenderer::requestRender() {
     if (!initialized) {

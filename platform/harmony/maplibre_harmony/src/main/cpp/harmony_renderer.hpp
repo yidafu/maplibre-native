@@ -39,9 +39,6 @@ public:
     // 调整大小
     void resize(int width, int height);
     
-    // 设置像素比例
-    void setPixelRatio(float pixelRatio);
-    
     // 请求渲染
     void requestRender();
     

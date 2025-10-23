@@ -126,7 +126,7 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
     Logger::info("HarmonyGLRendererBackend", "---------- initializeEGLDisplay() START (Main Thread) ----------");
     Logger::debug("HarmonyGLRendererBackend", "eglWindow_: %lu", eglWindow_);
     
-    // HarmonyOS优化的EGL配置 - 解决缓冲区刷新问题
+    // HarmonyOS优化的EGL配置 - 解决缓冲区刷新问题 + MSAA抗锯齿
     const EGLint attribList[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RED_SIZE, 8,
@@ -136,6 +136,9 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         EGL_DEPTH_SIZE, 16,
         EGL_STENCIL_SIZE, 8,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+        // 🎨 添加MSAA抗锯齿配置（改善渲染质量）
+        EGL_SAMPLE_BUFFERS, 1,
+        EGL_SAMPLES, 4,  // 4x MSAA
         // HarmonyOS特定配置
         EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
         EGL_CONFIG_CAVEAT, EGL_NONE,  // 避免EGL_SLOW_CONFIG
@@ -185,6 +188,18 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         return false;
     }
     Logger::info("HarmonyGLRendererBackend", "Step 4/5: EGL config chosen (numConfigs=%d)", numConfigs);
+    
+    // 🎨 验证MSAA配置
+    EGLint samples = 0, sampleBuffers = 0;
+    eglGetConfigAttrib(eglDisplay_, eglConfig_, EGL_SAMPLES, &samples);
+    eglGetConfigAttrib(eglDisplay_, eglConfig_, EGL_SAMPLE_BUFFERS, &sampleBuffers);
+    Logger::info("HarmonyGLRendererBackend", "🎨 [MSAA] Config: sampleBuffers=%d, samples=%d", 
+                 sampleBuffers, samples);
+    if (samples > 1) {
+        Logger::info("HarmonyGLRendererBackend", "  ✅ MSAA enabled: %dx anti-aliasing", samples);
+    } else {
+        Logger::warn("HarmonyGLRendererBackend", "  ⚠️  MSAA not enabled (device may not support)");
+    }
 
     Logger::debug("HarmonyGLRendererBackend", "Step 5/5: Creating window surface (window=%lu)...", eglWindow_);
     eglSurface_ = eglCreateWindowSurface(eglDisplay_, eglConfig_, eglWindow_, nullptr);
@@ -195,6 +210,12 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         return false;
     }
     Logger::info("HarmonyGLRendererBackend", "Step 5/5: EGL surface created: %p", eglSurface_);
+    
+    // 查询EGL surface的实际尺寸
+    EGLint surfaceWidth = 0, surfaceHeight = 0;
+    eglQuerySurface(eglDisplay_, eglSurface_, EGL_WIDTH, &surfaceWidth);
+    eglQuerySurface(eglDisplay_, eglSurface_, EGL_HEIGHT, &surfaceHeight);
+    Logger::info("HarmonyGLRendererBackend", "EGL Surface size: %dx%d", surfaceWidth, surfaceHeight);
     
     // 🔧 修复闪烁：启用 VSync
     if (!eglSwapInterval(eglDisplay_, 1)) {
@@ -277,6 +298,12 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
     GLint maxTextureSize = 0;
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
     Logger::info("OpenGL", "GL_MAX_TEXTURE_SIZE: %d", maxTextureSize);
+    
+    // 查询当前viewport设置
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    Logger::info("OpenGL", "GL_VIEWPORT: x=%d, y=%d, width=%d, height=%d", 
+                 viewport[0], viewport[1], viewport[2], viewport[3]);
     
     Logger::info("OpenGL", "=====================================================");
     
@@ -471,8 +498,12 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
         return;
     }
     
-    Logger::debug("HarmonyGLRendererBackend", "resizeFramebuffer: %dx%d", width, height);
+    Logger::info("HarmonyGLRendererBackend", "resizeFramebuffer: %dx%d -> %ux%u", 
+                 width, height, size.width, size.height);
+    
     size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    
+    Logger::info("HarmonyGLRendererBackend", "New framebuffer size: %ux%u", size.width, size.height);
     
     // HarmonyOS关键修复：不在这里调用activate()
     // resizeFramebuffer可能在主线程调用，但context必须在渲染线程创建
@@ -507,8 +538,7 @@ void HarmonyGLRendererBackend::updateAssumedState() {
     // GL commands may be processed asynchronously, causing glGet* functions to return stale values
     // immediately after setting state. Base class methods call assert() which fails in this scenario.
     
-    Logger::debug("HarmonyGLRendererBackend", 
-                  "updateAssumedState: setting framebuffer=0, viewport=(0, 0, %u, %u)", 
+    Logger::debug("HarmonyGLRendererBackend", "updateAssumedState: viewport=(0, 0, %u, %u)", 
                   size.width, size.height);
     
     // Set framebuffer binding directly (skip assumeFramebufferBinding which asserts)
