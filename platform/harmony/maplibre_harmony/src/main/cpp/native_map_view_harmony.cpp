@@ -41,7 +41,6 @@
 
 #include <memory>
 #include <native_window/external_window.h>
-#include <window_manager/oh_display_manager.h>
 #include <string>
 #include <thread>
 #include <chrono>
@@ -176,26 +175,12 @@ void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int he
         Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
         this->nativeWindow = nativeWindow;
         
-        // 使用鸿蒙DisplayManager API获取屏幕DPI
-        int32_t systemDensityDpi = 0;
-        NativeDisplayManager_ErrorCode ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&systemDensityDpi);
+        // 鸿蒙平台：统一使用逻辑像素渲染，固定 pixelRatio = 1.0
+        pixelRatio = 1.0f;
+        this->pixelRatio = 1.0f;
+        Logger::info("NativeMapView", "Using logical pixels (pixelRatio=1.0)");
         
-        if (ret == DISPLAY_MANAGER_OK && systemDensityDpi > 0) {
-            float actualPixelRatio = systemDensityDpi / 160.0f;
-            Logger::info("NativeMapView", "System DPI: %d, pixelRatio: %.4f", systemDensityDpi, actualPixelRatio);
-            
-            // 使用DisplayManager的值（更准确）
-            if (std::abs(actualPixelRatio - pixelRatio) > 0.01f) {
-                Logger::warn("NativeMapView", "PixelRatio mismatch: TS=%.4f, DisplayManager=%.4f (using DisplayManager)", 
-                           pixelRatio, actualPixelRatio);
-                pixelRatio = actualPixelRatio;
-                this->pixelRatio = actualPixelRatio;
-            }
-        } else {
-            Logger::warn("NativeMapView", "Failed to get DPI (error: %d), using TS pixelRatio: %.4f", ret, pixelRatio);
-        }
-        
-        Logger::info("NativeMapView", "Initializing with size %dx%d, pixelRatio: %.4f", width, height, pixelRatio);
+        Logger::info("NativeMapView", "Initializing with size %dx%d (logical pixels)", width, height);
         
         // 初始化渲染器（如果尚未初始化）
         Logger::info("NativeMapView", "Initializing renderer with size %dx%d...", width, height);
@@ -584,12 +569,9 @@ void NativeMapView::initializeRenderer() {
     
     // 1. 创建 HarmonyRenderer（如果不存在）
     if (!harmonyRenderer) {
-        Logger::info("NativeMapView", "🔍 [DPI] Creating HarmonyRenderer:");
-        Logger::info("NativeMapView", "  - Logical size: %dx%d", width, height);
+        Logger::info("NativeMapView", "Creating HarmonyRenderer:");
+        Logger::info("NativeMapView", "  - Size: %dx%d (logical pixels)", width, height);
         Logger::info("NativeMapView", "  - PixelRatio: %.2f", pixelRatio);
-        Logger::info("NativeMapView", "  - Physical size: %dx%d", 
-                     static_cast<int>(width * pixelRatio),
-                     static_cast<int>(height * pixelRatio));
         harmonyRenderer = std::make_unique<HarmonyRenderer>();
         harmonyRenderer->initialize(width, height, pixelRatio);
         
@@ -630,11 +612,8 @@ void NativeMapView::initializeRenderer() {
                       .withSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)})
                       .withPixelRatio(pixelRatio);
             Logger::info("NativeMapView", "🔍 [DPI] MapOptions configured:");
-            Logger::info("NativeMapView", "  - Size (logical): %dx%d", width, height);
+            Logger::info("NativeMapView", "  - Size: %dx%d (logical pixels)", width, height);
             Logger::info("NativeMapView", "  - PixelRatio: %.2f", pixelRatio);
-            Logger::info("NativeMapView", "  - Expected physical: %dx%d", 
-                         static_cast<int>(width * pixelRatio),
-                         static_cast<int>(height * pixelRatio));
             
             // Configure ResourceOptions
             ResourceOptions resourceOptions;
@@ -742,12 +721,9 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     instance->width = newWidth;
     instance->height = newHeight;
     
-    Logger::info("NativeMapView", "🔍 [DPI] Resize details:");
-    Logger::info("NativeMapView", "  - New logical size: %dx%d", instance->width, instance->height);
-    Logger::info("NativeMapView", "  - Current pixelRatio: %.2f", instance->pixelRatio);
-    Logger::info("NativeMapView", "  - Target physical size: %dx%d", 
-                 static_cast<int>(instance->width * instance->pixelRatio),
-                 static_cast<int>(instance->height * instance->pixelRatio));
+    Logger::info("NativeMapView", "Resize details:");
+    Logger::info("NativeMapView", "  - New size: %dx%d (logical pixels)", instance->width, instance->height);
+    Logger::info("NativeMapView", "  - PixelRatio: %.2f", instance->pixelRatio);
     
     // 如果渲染器已初始化，调整尺寸
     if (instance->harmonyRenderer) {
@@ -4268,33 +4244,9 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
     nativeMapView->nativeWindow = nativeWindow;
     Logger::debug("NativeMapView", "Native window saved to NativeMapView");
     
-    // 🔧 使用鸿蒙官方API获取屏幕DPI信息
-    Logger::info("NativeMapView", "🔍 [DPI] ========== Querying Display DPI ==========");
-    
-    int32_t systemDensityDpi = 0;
-    NativeDisplayManager_ErrorCode ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&systemDensityDpi);
-    
-    if (ret == DISPLAY_MANAGER_OK && systemDensityDpi > 0) {
-        Logger::info("NativeMapView", "  ✅ System DensityDPI: %d (from DisplayManager)", systemDensityDpi);
-        
-        // 计算实际pixelRatio
-        float actualPixelRatio = systemDensityDpi / 160.0f;
-        Logger::info("NativeMapView", "  🔍 Calculated pixelRatio: %.4f (DPI/160)", actualPixelRatio);
-        
-        // 更新pixelRatio
-        if (actualPixelRatio > 0.5f && actualPixelRatio < 5.0f) {
-            nativeMapView->pixelRatio = actualPixelRatio;
-            Logger::info("NativeMapView", "  ✅ PixelRatio set to: %.4f", nativeMapView->pixelRatio);
-        } else {
-            Logger::warn("NativeMapView", "  ⚠️  Abnormal pixelRatio: %.4f, using default 1.0", actualPixelRatio);
-        }
-    } else {
-        Logger::warn("NativeMapView", "  ⚠️  Failed to get DisplayManager DPI, error code: %d", ret);
-        Logger::info("NativeMapView", "  ℹ️  Using default pixelRatio: %.4f", nativeMapView->pixelRatio);
-    }
-    
-    Logger::info("NativeMapView", "🔍 [DPI] Final pixelRatio: %.4f", nativeMapView->pixelRatio);
-    Logger::info("NativeMapView", "🔍 [DPI] ==============================================");
+    // 鸿蒙平台：统一使用逻辑像素渲染，固定 pixelRatio = 1.0
+    nativeMapView->pixelRatio = 1.0f;
+    Logger::info("NativeMapView", "Using logical pixels (pixelRatio=1.0)");
     
     // 初始化渲染器（如果尚未初始化）
     try {

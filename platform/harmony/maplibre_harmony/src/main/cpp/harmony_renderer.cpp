@@ -35,7 +35,7 @@ HarmonyRenderer::~HarmonyRenderer() {
 
 void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     Logger::info("HarmonyRenderer", "========== initialize() START ==========");
-    Logger::info("HarmonyRenderer", "Size: %dx%d, pixelRatio: %.2f", width_, height_, pixelRatio_);
+    Logger::info("HarmonyRenderer", "Size: %dx%d (logical pixels)", width_, height_);
     
     if (initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer already initialized");
@@ -45,7 +45,8 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     
     width = width_;
     height = height_;
-    pixelRatio = pixelRatio_;
+    // 鸿蒙平台：统一使用逻辑像素，忽略传入的 pixelRatio_，固定为 1.0
+    pixelRatio = 1.0f;
     
     // Initialize FileSourceManager for network resource loading
     Logger::info("HarmonyRenderer", "Initializing FileSourceManager...");
@@ -96,8 +97,8 @@ void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
         Logger::info("HarmonyRenderer", "Native window set to backend successfully");
         
         if (width > 0 && height > 0) {
-            // ℹ️  MapLibre使用逻辑像素尺寸 + pixelRatio来内部处理高DPI渲染
-            Logger::info("HarmonyRenderer", "Resizing framebuffer to %dx%d", width, height);
+            // 鸿蒙平台：统一使用逻辑像素渲染
+            Logger::info("HarmonyRenderer", "Resizing framebuffer to %dx%d (logical pixels)", width, height);
             backend->resizeFramebuffer(width, height);
             Logger::debug("HarmonyRenderer", "Framebuffer resized successfully");
         } else {
@@ -128,8 +129,8 @@ void HarmonyRenderer::resize(int width_, int height_) {
     }
     
     Logger::info("HarmonyRenderer", "========== resize() START ==========");
-    Logger::info("HarmonyRenderer", "Resizing: %dx%d -> %dx%d (pixelRatio: %.2f)", 
-                 width, height, width_, height_, pixelRatio);
+    Logger::info("HarmonyRenderer", "Resizing: %dx%d -> %dx%d (logical pixels)", 
+                 width, height, width_, height_);
     
     width = width_;
     height = height_;

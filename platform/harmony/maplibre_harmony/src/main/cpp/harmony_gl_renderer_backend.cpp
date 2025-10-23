@@ -202,6 +202,7 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
     }
 
     Logger::debug("HarmonyGLRendererBackend", "Step 5/5: Creating window surface (window=%lu)...", eglWindow_);
+    // 注意：Native Window buffer尺寸将在resizeFramebuffer()中设置，此时只创建初始surface
     eglSurface_ = eglCreateWindowSurface(eglDisplay_, eglConfig_, eglWindow_, nullptr);
     if (eglSurface_ == EGL_NO_SURFACE) {
         EGLint error = eglGetError();
@@ -211,11 +212,12 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
     }
     Logger::info("HarmonyGLRendererBackend", "Step 5/5: EGL surface created: %p", eglSurface_);
     
-    // 查询EGL surface的实际尺寸
+    // 查询EGL surface的初始尺寸
     EGLint surfaceWidth = 0, surfaceHeight = 0;
     eglQuerySurface(eglDisplay_, eglSurface_, EGL_WIDTH, &surfaceWidth);
     eglQuerySurface(eglDisplay_, eglSurface_, EGL_HEIGHT, &surfaceHeight);
-    Logger::info("HarmonyGLRendererBackend", "EGL Surface size: %dx%d", surfaceWidth, surfaceHeight);
+    Logger::info("HarmonyGLRendererBackend", "Initial EGL Surface size: %dx%d", 
+                 surfaceWidth, surfaceHeight);
     
     // 🔧 修复闪烁：启用 VSync
     if (!eglSwapInterval(eglDisplay_, 1)) {
@@ -498,14 +500,19 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
         return;
     }
     
-    Logger::info("HarmonyGLRendererBackend", "resizeFramebuffer: %dx%d -> %ux%u", 
-                 width, height, size.width, size.height);
+    // 鸿蒙平台：统一使用逻辑像素渲染，不做DPI缩放
+    Logger::info("HarmonyGLRendererBackend", "resizeFramebuffer: %dx%d (logical pixels)", width, height);
     
+    // 记录旧尺寸用于判断是否需要重新创建surface
+    Size oldSize = size;
+    
+    // 直接使用逻辑像素尺寸
     size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
     
-    Logger::info("HarmonyGLRendererBackend", "New framebuffer size: %ux%u", size.width, size.height);
+    Logger::info("HarmonyGLRendererBackend", "New framebuffer size: %ux%u (logical pixels)", 
+                 size.width, size.height);
     
-    // HarmonyOS关键修复：不在这里调用activate()
+    // HarmonyOS：不在这里调用activate()
     // resizeFramebuffer可能在主线程调用，但context必须在渲染线程创建
     // viewport更新会在渲染线程的activate()后自动处理
     
@@ -538,7 +545,7 @@ void HarmonyGLRendererBackend::updateAssumedState() {
     // GL commands may be processed asynchronously, causing glGet* functions to return stale values
     // immediately after setting state. Base class methods call assert() which fails in this scenario.
     
-    Logger::debug("HarmonyGLRendererBackend", "updateAssumedState: viewport=(0, 0, %u, %u)", 
+    Logger::debug("HarmonyGLRendererBackend", "updateAssumedState: viewport=(0, 0, %u, %u) logical pixels", 
                   size.width, size.height);
     
     // Set framebuffer binding directly (skip assumeFramebufferBinding which asserts)
