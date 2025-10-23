@@ -30,6 +30,8 @@ class NativeMapViewController extends XComponentController {
   private surfaceId: string = '';
   private surfaceWidth: number = 0;
   private surfaceHeight: number = 0;
+  private pixelRatio: number = 1.0;  // 保存设备像素比
+  private isSurfaceRectSet: boolean = false;  // 防止setXComponentSurfaceRect无限循环
   
   // 初始配置
   public styleUrl: string = "https://demotiles.maplibre.org/style.json";
@@ -38,6 +40,9 @@ class NativeMapViewController extends XComponentController {
   public initialZoom: number = 10;
   public initialBearing: number = 0;
   public initialPitch: number = 0;
+  
+  // 回调函数
+  public onMapReadyCallback?: (mapView?: maplibre.NativeMapView) => void;
   
   // 手势系统
   private uiSettings: UiSettings = new UiSettings();
@@ -57,28 +62,20 @@ class NativeMapViewController extends XComponentController {
       this.mapView = new maplibre.NativeMapView();
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] NativeMapView instance created successfully`);
 
-      // 获取并设置设备像素比（在初始化地图之前）
-      hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Starting DPI detection...`);
+      // 🔧 获取并设置设备像素比（在初始化地图之前）
+      hilog.info(DOMAIN, "NativeMapView", `🔍 [DPI] ========== DPI Detection START ==========`);
       try {
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Calling display.getDefaultDisplaySync()...`);
         const defaultDisplay = display.getDefaultDisplaySync();
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Got display object: ${defaultDisplay}`);
-        
         const densityDPI = defaultDisplay.densityDPI;
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] densityDPI: ${densityDPI}`);
+        this.pixelRatio = densityDPI / 160;
         
-        const pixelRatio = densityDPI / 160; // 标准DPI为160
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Calculated pixelRatio: ${pixelRatio.toFixed(2)}`);
-        
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Calling setPixelRatio(${pixelRatio})...`);
-        this.mapView.setPixelRatio(pixelRatio);
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] setPixelRatio completed successfully`);
+        hilog.warn(DOMAIN, "NativeMapView", `🔍 [DPI] densityDPI: ${densityDPI}`);
+        hilog.warn(DOMAIN, "NativeMapView", `🔍 [DPI] pixelRatio: ${this.pixelRatio.toFixed(4)}`);
       } catch (err) {
-        hilog.error(DOMAIN, "NativeMapView", `[ERROR] Failed to get display DPI: ${err.message}`);
-        hilog.error(DOMAIN, "NativeMapView", `[ERROR] Error stack: ${err.stack}`);
-        hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Using default pixelRatio=1.0`);
-        this.mapView.setPixelRatio(1.0);
+        hilog.error(DOMAIN, "NativeMapView", `Failed to get DPI: ${err.message}`);
+        this.pixelRatio = 1.0;
       }
+      hilog.info(DOMAIN, "NativeMapView", `🔍 [DPI] ========== DPI Detection END ==========`);
 
       hilog.info(DOMAIN, "NativeMapView", `Setting native window...`);
       // 设置渲染表面（使用默认方法，尺寸将在onSurfaceChanged中处理）
@@ -109,10 +106,28 @@ class NativeMapViewController extends XComponentController {
 
       this.isInitialized = true;
       
+      // 🔧 延迟配置Surface Rect，等待第一次onSurfaceChanged提供尺寸
+      // 在Surface创建后配置，确保有有效的尺寸信息
+      setTimeout(() => {
+        if (this.surfaceWidth > 0 && this.surfaceHeight > 0 && !this.isSurfaceRectSet) {
+          this.setupSurfaceRect(this.surfaceWidth, this.surfaceHeight);
+        }
+      }, 100); // 等待100ms确保onSurfaceChanged已被调用
+      
       // 设置手势检测器的地图控制器引用
       this.gestureDetector.setMapController(this.mapView);
       
       hilog.info(DOMAIN, 'NativeMapView', 'Map initialized successfully');
+      
+      // 调用 onMapReady 回调
+      if (this.onMapReadyCallback) {
+        try {
+          this.onMapReadyCallback(this.mapView);
+          hilog.info(DOMAIN, 'NativeMapView', 'onMapReady callback invoked');
+        } catch (callbackError) {
+          hilog.error(DOMAIN, 'NativeMapView', `onMapReady callback error: ${callbackError.message}`);
+        }
+      }
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to initialize map: ${error.message}`);
       hilog.error(DOMAIN, 'NativeMapView', `Error stack: ${error.stack}`);
@@ -120,27 +135,61 @@ class NativeMapViewController extends XComponentController {
   }
 
   /**
+   * 设置XComponent Surface尺寸（在Surface创建后调用）
+   */
+  private setupSurfaceRect(width: number, height: number): void {
+    if (this.isSurfaceRectSet || width <= 0 || height <= 0) {
+      return;
+    }
+    
+    try {
+      // 🔧 使用物理像素设置Surface尺寸
+      const physicalWidth = Math.floor(width * this.pixelRatio);
+      const physicalHeight = Math.floor(height * this.pixelRatio);
+      //
+      this.setXComponentSurfaceRect({
+        offsetX: 0,
+        offsetY: 0,
+        surfaceWidth: width,   // 物理像素
+        surfaceHeight: height  // 物理像素
+      });
+      this.isSurfaceRectSet = true;
+      hilog.info(DOMAIN, "NativeMapView", 
+        `✅ Surface rect set to physical pixels: ${physicalWidth}x${physicalHeight} (logical: ${width}x${height}, pixelRatio: ${this.pixelRatio.toFixed(2)})`);
+    } catch (error) {
+      hilog.warn(DOMAIN, "NativeMapView", `⚠️  setXComponentSurfaceRect failed: ${error.message}`);
+    }
+  }
+
+  /**
    * 表面变化回调
    */
   onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
-    console.info(`NativeMapView: onSurfaceChanged surfaceId: ${surfaceId}, rect: ${JSON.stringify(rect)}`);
+    hilog.info(DOMAIN, "NativeMapView", `onSurfaceChanged: ${rect.surfaceWidth}x${rect.surfaceHeight}`);
 
+    // ✅ HarmonyOS的onSurfaceChanged传入的就是逻辑像素，直接使用
     this.surfaceWidth = rect.surfaceWidth;
     this.surfaceHeight = rect.surfaceHeight;
 
+    // ⚠️ 不在onSurfaceChanged中调用setXComponentSurfaceRect
+    // 该方法应该在onSurfaceCreated的生命周期中调用
+
     if (this.mapView && this.isInitialized) {
       try {
-        // 调整地图大小
+        hilog.info(DOMAIN, 'NativeMapView', 
+          `Resizing map to: ${rect.surfaceWidth}x${rect.surfaceHeight} (logical), pixelRatio=${this.pixelRatio.toFixed(2)}`);
+        
         this.mapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
-        hilog.info(DOMAIN, 'NativeMapView', `Map resized to ${rect.surfaceWidth}x${rect.surfaceHeight}`);
+        hilog.info(DOMAIN, 'NativeMapView', `Map resized successfully`);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to resize map: ${error.message}`);
       }
     } else if (this.mapView && !this.isInitialized) {
       // 如果地图尚未初始化，使用新的尺寸重新初始化
       try {
-        hilog.info(DOMAIN, 'NativeMapView', `Reinitializing map with size ${rect.surfaceWidth}x${rect.surfaceHeight}`);
-        // 使用resizeView方法调整尺寸
+        hilog.info(DOMAIN, 'NativeMapView', 
+          `Initializing map with: ${rect.surfaceWidth}x${rect.surfaceHeight} (logical)`);
+        
         this.mapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
         this.isInitialized = true;
       } catch (error) {
@@ -325,7 +374,7 @@ export struct NativeMapView {
   @Prop initialPitch: number = 0;
   @Prop debugMode: boolean = false;
   // 回调函数
-  onMapReady?: () => void;
+  onMapReady?: (mapView?: maplibre.NativeMapView) => void;
   onMapLoaded?: () => void;
   onMapError?: (error: string) => void;
 
@@ -337,7 +386,7 @@ export struct NativeMapView {
       hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToAppear');
       this.isDestroyed = false;
       
-      // 将组件的 prop 传递给 controller
+      // 将组件的 prop 和回调传递给 controller
       if (this.controller) {
         this.controller.styleUrl = this.styleUrl;
         this.controller.initialLatitude = this.initialLatitude;
@@ -345,6 +394,7 @@ export struct NativeMapView {
         this.controller.initialZoom = this.initialZoom;
         this.controller.initialBearing = this.initialBearing;
         this.controller.initialPitch = this.initialPitch;
+        this.controller.onMapReadyCallback = this.onMapReady;
         
         hilog.info(DOMAIN, 'NativeMapView', `Initial config: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
       } else {

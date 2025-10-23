@@ -22,7 +22,6 @@ export interface NativeMap {
   setLatLngBounds(bounds: LatLngBounds): void;
   cancelTransitions(): void;
   setGestureInProgress(inProgress: boolean): void;
-  setPixelRatio(pixelRatio: number): void;
   getPixelRatio(): number;
   
   // 相机控制
