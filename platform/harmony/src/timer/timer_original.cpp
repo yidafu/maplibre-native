@@ -7,12 +7,6 @@
 #include <thread>
 #include <atomic>
 
-#ifdef __OHOS__
-#include <hilog/log.h>
-#define TIMER_LOG(...) OH_LOG_Print(LOG_APP, LOG_DEBUG, 0x0000, "Timer", __VA_ARGS__)
-#else
-#define TIMER_LOG(...)
-#endif
 
 namespace mbgl {
 namespace util {
@@ -38,11 +32,6 @@ public:
         // Get the RunLoop from the calling thread (where Timer was created)
         // This ensures callbacks are dispatched to the correct thread
         runLoop = RunLoop::Get();
-        
-        TIMER_LOG("Timer started: timeout=%lld ms, repeat=%lld ms, runLoop=%p", 
-                 std::chrono::duration_cast<std::chrono::milliseconds>(timeout).count(),
-                 std::chrono::duration_cast<std::chrono::milliseconds>(repeatInterval).count(),
-                 runLoop);
 
         thread = std::thread([this]() {
             bool hasFired = false;
@@ -53,28 +42,18 @@ public:
                     // CRITICAL FIX: Invoke callback via RunLoop to ensure it runs on the correct thread
                     // This prevents deadlocks from cross-thread Map access
                     // RACE CONDITION FIX: Capture repeat count to decide stop inside lambda
-                    TIMER_LOG("Timer fired - dispatching callback to RunLoop thread");
-                    TIMER_LOG("RunLoop address: %p, has callback: %d", runLoop, callback != nullptr);
                     
                     auto repeatCount = this->repeat.count();
                     runLoop->invoke([this, repeatCount]() {
-                        TIMER_LOG("⭐ INSIDE INVOKE LAMBDA - about to execute timer callback");
                         if (running && callback) {
-                            TIMER_LOG("✅ Executing timer callback on RunLoop thread");
                             callback();
-                            TIMER_LOG("✅ Timer callback COMPLETED");
                             
                             // Stop timer AFTER callback execution (if non-repeating)
                             if (repeatCount == 0) {
-                                TIMER_LOG("Non-repeating timer - stopping after callback");
                                 stop();
                             }
-                        } else {
-                            TIMER_LOG("❌ Timer callback SKIPPED - running=%d, callback=%p", 
-                                     running.load(), (void*)&callback);
                         }
                     });
-                    TIMER_LOG("runLoop->invoke() returned");
                     
                     hasFired = true;
                 }
@@ -93,7 +72,6 @@ public:
                     delay = std::chrono::milliseconds(10);
                 }
             }
-            TIMER_LOG("Timer thread exiting");
         });
 
         thread.detach();

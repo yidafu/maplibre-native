@@ -10,16 +10,6 @@
 #include <thread>
 #include <vector>
 
-#ifdef __OHOS__
-#include <hilog/log.h>
-#define POOL_LOG_DEBUG(...) OH_LOG_Print(LOG_APP, LOG_DEBUG, 0x0000, "TimerPool", __VA_ARGS__)
-#define POOL_LOG_INFO(...) OH_LOG_Print(LOG_APP, LOG_INFO, 0x0000, "TimerPool", __VA_ARGS__)
-#define POOL_LOG_ERROR(...) OH_LOG_Print(LOG_APP, LOG_ERROR, 0x0000, "TimerPool", __VA_ARGS__)
-#else
-#define POOL_LOG_DEBUG(...)
-#define POOL_LOG_INFO(...)
-#define POOL_LOG_ERROR(...)
-#endif
 
 namespace mbgl {
 namespace util {

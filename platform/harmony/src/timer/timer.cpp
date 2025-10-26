@@ -26,12 +26,6 @@
 #include <thread>
 #include <atomic>
 
-#ifdef __OHOS__
-#include <hilog/log.h>
-#define TIMER_LOG(...) OH_LOG_Print(LOG_APP, LOG_DEBUG, 0x0000, "Timer", __VA_ARGS__)
-#else
-#define TIMER_LOG(...)
-#endif
 
 namespace mbgl {
 namespace util {
