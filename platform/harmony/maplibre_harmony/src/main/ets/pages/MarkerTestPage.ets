@@ -1,3 +1,4 @@
+import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { MarkerOptions } from '../maps/annotations/MarkerOptions';
@@ -7,8 +8,12 @@ import { CameraPosition } from '../maps/camera/CameraPosition';
 import { OnMarkerClickListener } from '../maps/listeners/OnMarkerClickListener';
 import { OnMarkerDragListener } from '../maps/listeners/OnMarkerDragListener';
 import { OnInfoWindowClickListener } from '../maps/listeners/OnInfoWindowClickListener';
-import { NodeController, FrameNode, RenderNode } from '@kit.ArkUI';
+import { router } from '@kit.ArkUI';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
+
+const DOMAIN = 0x0000;
+const TAG = 'MarkerTestPage';
 
 /**
  * MarkerTestPage - Marker 功能测试页面
@@ -95,104 +100,14 @@ class InfoWindowClickListenerImpl implements OnInfoWindowClickListener {
   }
 }
 
-/**
- * SurfaceRect - 渲染表面尺寸接口
- */
-interface SurfaceRect {
-  surfaceWidth: number;
-  surfaceHeight: number;
-}
-
-/**
- * MapReadyCallback - 地图就绪回调类型
- */
-type MapReadyCallback = (map: MapLibreMap) => void;
-
-/**
- * 地图视图控制器
- */
-class MapViewController extends NodeController {
-  private rootNode: FrameNode | null = null;
-  private nativeMapView: maplibre.NativeMapView | null = null;
-  private mapReadyCallback?: MapReadyCallback;
-
-  constructor(mapReadyCallback?: MapReadyCallback) {
-    super();
-    this.mapReadyCallback = mapReadyCallback;
-  }
-
-  makeNode(uiContext: UIContext): FrameNode | null {
-    this.rootNode = new FrameNode(uiContext);
-    
-    if (this.rootNode !== null) {
-      const renderNode = new RenderNode();
-      renderNode.frame = { x: 0, y: 0, width: 100, height: 100 };
-      renderNode.backgroundColor = 0xFFEEEEEE;
-      this.rootNode.getRenderNode()?.appendChild(renderNode);
-    }
-    
-    return this.rootNode;
-  }
-
-  onSurfaceCreated(surfaceId: string, rect: SurfaceRect): void {
-    console.info(`MapViewController: onSurfaceCreated surfaceId=${surfaceId}, ` +
-      `width=${rect.surfaceWidth}, height=${rect.surfaceHeight}`);
-    
-    try {
-      // 创建 NativeMapView
-      this.nativeMapView = new maplibre.NativeMapView();
-      
-      // 设置渲染表面
-      this.nativeMapView.setNativeWindow(BigInt(surfaceId));
-      
-      // 创建 MapLibreMap
-      const options = new MapLibreMapOptions();
-      const mapLibreMap = new MapLibreMap(this.nativeMapView, options);
-      
-      // 设置样式
-      mapLibreMap.setStyleUrl("https://demotiles.maplibre.org/style.json");
-      
-      // 设置初始相机位置（中国中心）
-      mapLibreMap.jumpTo(
-        0,      // angle
-        35.0,   // latitude
-        105.0,  // longitude
-        0,      // pitch
-        4.0     // zoom
-      );
-      
-      // 触发回调
-      if (this.mapReadyCallback) {
-        this.mapReadyCallback(mapLibreMap);
-      }
-      
-      console.info('MapViewController: Map initialized successfully');
-    } catch (error) {
-      console.error(`MapViewController: Failed to initialize map - ${error.message}`);
-    }
-  }
-
-  onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
-    if (this.nativeMapView) {
-      this.nativeMapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
-    }
-  }
-
-  onSurfaceDestroyed(surfaceId: string): void {
-    console.info('MapViewController: onSurfaceDestroyed');
-    if (this.nativeMapView) {
-      // NativeMapView 没有 destroy 方法，资源由系统管理
-      this.nativeMapView = null;
-    }
-  }
-}
 
 @Entry
 @Component
 struct MarkerTestPage {
   private mapLibreMap: MapLibreMap | null = null;
-  private mapViewController: MapViewController = new MapViewController((map: MapLibreMap): void => this.onMapReady(map));
+  private nativeMapView: maplibre.NativeMapView | null = null;
   
+  @State mapReady: boolean = false;
   @State markerCount: number = 0;
   @State selectedMarkerId: number = -1;
   @State message: string = '等待地图加载...';
@@ -200,22 +115,22 @@ struct MarkerTestPage {
   
   // 测试用的位置
   private testLocations: LatLng[] = [
-    new LatLng(39.9042, 116.4074),  // 北京
-    new LatLng(31.2304, 121.4737),  // 上海
-    new LatLng(22.3193, 114.1694),  // 深圳
-    new LatLng(30.5728, 104.0668),  // 成都
-    new LatLng(34.2634, 108.9463),  // 西安
+    { latitude: 39.9042, longitude: 116.4074 },  // 北京
+    { latitude: 31.2304, longitude: 121.4737 },  // 上海
+    { latitude: 22.3193, longitude: 114.1694 },  // 深圳
+    { latitude: 30.5728, longitude: 104.0668 },  // 成都
+    { latitude: 34.2634, longitude: 108.9463 },  // 西安
   ];
   
   private testMarker: Marker | null = null;
   private markerList: Marker[] = [];
   
   aboutToAppear() {
-    console.info('MarkerTestPage: aboutToAppear');
+    hilog.info(DOMAIN, TAG, 'aboutToAppear');
   }
   
   aboutToDisappear() {
-    console.info('MarkerTestPage: aboutToDisappear');
+    hilog.info(DOMAIN, TAG, 'aboutToDisappear');
     if (this.mapLibreMap) {
       this.mapLibreMap.destroy();
     }
@@ -224,14 +139,35 @@ struct MarkerTestPage {
   /**
    * 地图初始化完成回调
    */
-  onMapReady(map: MapLibreMap) {
-    this.mapLibreMap = map;
-    this.message = '✅ 地图已就绪 - 可以开始测试';
+  onMapReady(mapView?: maplibre.NativeMapView) {
+    if (!mapView) {
+      hilog.error(DOMAIN, TAG, 'onMapReady: mapView is null');
+      this.message = '❌ 地图初始化失败';
+      return;
+    }
     
-    // 设置事件监听器
-    this.setupEventListeners();
-    
-    console.info('MarkerTestPage: Map ready, setting up event listeners');
+    try {
+      this.nativeMapView = mapView;
+      
+      // 创建 MapLibreMap 实例
+      const options = new MapLibreMapOptions();
+      this.mapLibreMap = new MapLibreMap(mapView, options);
+      
+      // 设置初始相机位置（中国中心）
+      this.mapLibreMap.jumpTo(0, 35.0, 105.0, 0, 4.0);
+      
+      this.mapReady = true;
+      this.message = '✅ 地图已就绪 - 可以开始测试';
+      
+      // 设置事件监听器
+      this.setupEventListeners();
+      
+      hilog.info(DOMAIN, TAG, 'Map ready, setting up event listeners');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to initialize MapLibreMap: ${errorMsg}`);
+      this.message = `❌ 初始化失败: ${errorMsg}`;
+    }
   }
   
   /**
@@ -378,10 +314,10 @@ struct MarkerTestPage {
     }
     
     const currentPos = this.testMarker.getPosition();
-    const targetPos = new LatLng(
-      currentPos.latitude + 0.5,
-      currentPos.longitude + 0.5
-    );
+    const targetPos: LatLng = {
+      latitude: currentPos.latitude + 0.5,
+      longitude: currentPos.longitude + 0.5
+    };
     
     this.message = '开始动画...';
     
@@ -429,21 +365,64 @@ struct MarkerTestPage {
     Column() {
       // 标题栏
       Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#1E88E5')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+        
         Text('Marker 功能测试')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .fontColor(Color.White)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
       }
       .width('100%')
       .height(50)
       .backgroundColor('#1E88E5')
-      .justifyContent(FlexAlign.Center)
+      .justifyContent(FlexAlign.Start)
       
-      // 地图视图
-      NodeContainer(this.mapViewController)
-        .width('100%')
-        .height(300)
-        .backgroundColor('#EEEEEE')
+      // 地图视图容器
+      Stack() {
+        // 使用 NativeMapView 组件
+        NativeMapView({
+          styleUrl: "https://demotiles.maplibre.org/style.json",
+          initialLatitude: 35.0,
+          initialLongitude: 105.0,
+          initialZoom: 4,
+          initialBearing: 0,
+          initialPitch: 0,
+          onMapReady: (mapView?: maplibre.NativeMapView): void => this.onMapReady(mapView)
+        })
+          .width('100%')
+          .height('100%')
+        
+        // 加载指示器
+        if (!this.mapReady) {
+          Column() {
+            LoadingProgress()
+              .width(50)
+              .height(50)
+              .color('#1E88E5')
+            
+            Text('地图加载中...')
+              .fontSize(16)
+              .margin({ top: 10 })
+          }
+          .width('100%')
+          .height('100%')
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor('rgba(255, 255, 255, 0.8)')
+        }
+      }
+      .width('100%')
+      .height(300)
+      .backgroundColor('#EEEEEE')
       
       // 状态信息区
       Column({ space: 5 }) {

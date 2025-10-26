@@ -6,6 +6,7 @@ import { CameraPosition } from '../maps/camera/CameraPosition';
 import { GeoJsonOptionsBuilder } from '../maps/style/sources/GeoJsonOptions';
 import { RasterLayer } from '../maps/style/layers/RasterLayer';
 import { router } from '@kit.ArkUI';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { 
   Style, 
@@ -20,6 +21,9 @@ import {
   FillExtrusionLayer,
   PropertyFactory
 } from '../maps/style/index';
+
+const DOMAIN = 0x0000;
+const TAG = 'StyleTestPage';
 
 // 样式URL配置接口
 interface StyleUrlItem {
@@ -53,6 +57,7 @@ struct StyleTestPage {
   @State currentExample: string = '无';
   @State currentStyleName: string = 'MapLibre Demo';
   @State mapReady: boolean = false;
+  @State isInitializing: boolean = false;
   
   // 免费样式列表
   private styleUrls: StyleUrlItem[] = [
@@ -95,25 +100,40 @@ struct StyleTestPage {
       .backgroundColor('#f5f5f5')
 
       // 地图容器
-      NativeMapView({
-        styleUrl: this.styleUrls[0].url,
-        initialLatitude: 39.9042,
-        initialLongitude: 116.4074,
-        initialZoom: 3,
-        initialBearing: 0,
-        initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          if (mapView) {
-            this.nativeMapView = mapView;
-            const options = new MapLibreMapOptions();
-            this.mapLibreMap = new MapLibreMap(mapView, options);
-            this.mapReady = true;
-            console.info('Map is ready for Style API testing');
+      Stack() {
+        NativeMapView({
+          styleUrl: this.styleUrls[0].url,
+          initialLatitude: 39.9042,
+          initialLongitude: 116.4074,
+          initialZoom: 3,
+          initialBearing: 0,
+          initialPitch: 0,
+          onMapReady: (mapView?: maplibre.NativeMapView) => {
+            this.initializeMap(mapView);
           }
+        })
+          .width('100%')
+          .height('100%')
+        
+        // 加载指示器
+        if (!this.mapReady) {
+          Column() {
+            LoadingProgress()
+              .width(50)
+              .height(50)
+              .color('#2196F3')
+            
+            Text('地图加载中...')
+              .fontSize(16)
+              .margin({ top: 10 })
+          }
+          .width('100%')
+          .height('100%')
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor('rgba(255, 255, 255, 0.8)')
         }
-      })
-        .width('100%')
-        .layoutWeight(1)
+      }
+      .layoutWeight(1)
 
       // 当前状态显示
       Row() {
@@ -205,6 +225,43 @@ struct StyleTestPage {
     .height('100%')
   }
 
+  /**
+   * 初始化地图
+   */
+  private initializeMap(mapView?: maplibre.NativeMapView) {
+    if (this.isInitializing) {
+      hilog.warn(DOMAIN, TAG, 'Map is already initializing, skipping duplicate initialization');
+      return;
+    }
+    
+    if (!mapView) {
+      hilog.error(DOMAIN, TAG, 'onMapReady: mapView is null');
+      this.message = '❌ 地图初始化失败';
+      return;
+    }
+    
+    this.isInitializing = true;
+    
+    try {
+      this.nativeMapView = mapView;
+      
+      // 创建 MapLibreMap 实例
+      const options = new MapLibreMapOptions();
+      this.mapLibreMap = new MapLibreMap(mapView, options);
+      
+      this.mapReady = true;
+      this.message = '✅ 地图已就绪 - 可以开始测试 Style API';
+      
+      hilog.info(DOMAIN, TAG, 'Map is ready for Style API testing');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to initialize map: ${errorMsg}`);
+      this.message = `❌ 初始化失败: ${errorMsg}`;
+      this.mapReady = false;
+    } finally {
+      this.isInitializing = false;
+    }
+  }
 
   /**
    * 示例1: GeoJSON + FillLayer (填充区域)

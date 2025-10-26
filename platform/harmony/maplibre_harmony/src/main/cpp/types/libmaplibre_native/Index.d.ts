@@ -1,191 +1,114 @@
+/**
+ * MapLibre Native for HarmonyOS - Type Definitions
+ * 主入口文件
+ * 
+ * 此文件重新导出所有类型定义，提供统一的访问入口
+ */
 
-export type XComponentContextStatus = {
-  hasDraw: boolean,
-  hasChangeColor: boolean,
-};
+// ========== 核心组件 ==========
 
-export const SetSurfaceId: (id: BigInt) => any;
-export const ChangeSurface: (id: BigInt, w: number, h: number) => any;
-export const DrawPattern: (id: BigInt) => any;
-export const GetXComponentStatus: (id: BigInt) => XComponentContextStatus;
-export const ChangeColor: (id: BigInt) => any;
-export const DestroySurface: (id: BigInt) => any;
+/**
+ * NativeMapView - 地图视图主类
+ * 提供地图渲染、相机控制、图层管理等核心功能
+ */
+export * from './NativeMapView';
 
-export const add: (a: number, b: number) => number;
+/**
+ * PluginManager - XComponent 插件管理
+ * 提供 Surface 管理和测试函数
+ */
+export * from './PluginManager';
 
-// Style API 类型定义
-export namespace Style {
-  export function getStyleUri(mapPtr: number): string;
-  export function getStyleJson(mapPtr: number): string;
-  export function addSource(mapPtr: number, sourceId: string, sourceJson: string, sourceNativePtr: number): boolean;
-  export function removeSource(mapPtr: number, sourceId: string): boolean;
-  export function getSource(mapPtr: number, sourceId: string): string | null;
-  export function getSources(mapPtr: number): string;
-  export function addLayer(mapPtr: number, layerId: string, layerJson: string, layerNativePtr: number): boolean;
-  export function addLayerBelow(mapPtr: number, layerId: string, layerJson: string, layerNativePtr: number, belowLayerId: string): boolean;
-  export function addLayerAbove(mapPtr: number, layerId: string, layerJson: string, layerNativePtr: number, aboveLayerId: string): boolean;
-  export function addLayerAt(mapPtr: number, layerId: string, layerJson: string, layerNativePtr: number, index: number): boolean;
-  export function removeLayer(mapPtr: number, layerId: string): boolean;
-  export function removeLayerAt(mapPtr: number, index: number): boolean;
-  export function getLayer(mapPtr: number, layerId: string): string | null;
-  export function getLayers(mapPtr: number): string;
-  export function addImage(mapPtr: number, name: string, imageData: any, width: number, height: number, sdf: boolean): boolean;
-  export function removeImage(mapPtr: number, name: string): boolean;
-  export function getImage(mapPtr: number, name: string): any | null;
-  export function getLight(mapPtr: number): string | null;
-  export function setLight(mapPtr: number, lightJson: string): boolean;
-  export function getTransition(mapPtr: number): string | null;
-  export function setTransition(mapPtr: number, transitionJson: string): boolean;
-}
+/**
+ * Style - 样式管理 API
+ * 提供地图样式、数据源、图层、图像、光照和过渡效果的管理功能
+ */
+export { Style } from './Style';
 
-// GeoJsonSource 类型定义
-export namespace GeoJsonSource {
-  export function create(id: string, optionsJson: string | null): number;
-  export function setGeoJson(sourcePtr: number, geoJsonString: string): void;
-  export function setGeoJsonSync(sourcePtr: number, geoJsonString: string): void;
-  export function setUrl(sourcePtr: number, url: string): void;
-  export function getUrl(sourcePtr: number): string;
-  export function querySourceFeatures(sourcePtr: number, filterJson: string | null): string;
-  export function getClusterChildren(sourcePtr: number, clusterJson: string): string;
-  export function getClusterLeaves(sourcePtr: number, clusterJson: string, limit: number, offset: number): string;
-  export function getClusterExpansionZoom(sourcePtr: number, clusterJson: string): number;
-}
+// ========== 数据源 (Sources) ==========
 
-// VectorSource 类型定义
-export namespace VectorSource {
-  export function createWithUrl(id: string, url: string): number;
-  export function createWithTileSet(id: string, tileSetJson: string): number;
-  export function querySourceFeatures(sourcePtr: number, sourceLayerId: string, filterJson: string | null): string;
-}
+/**
+ * GeoJsonSource - GeoJSON 数据源
+ * 支持点、线、面等矢量要素，支持聚类
+ */
+export * as GeoJsonSource from './sources/GeoJsonSource';
 
-// RasterSource 类型定义
-export namespace RasterSource {
-  export function createWithUrl(id: string, url: string, tileSize: number): number;
-  export function createWithTileSet(id: string, tileSetJson: string, tileSize: number): number;
-}
+/**
+ * VectorSource - 矢量瓦片数据源
+ * 用于加载 Mapbox Vector Tiles (MVT) 格式的数据
+ */
+export * as VectorSource from './sources/VectorSource';
 
-// RasterDemSource 类型定义
-export namespace RasterDemSource {
-  export function createWithUrl(id: string, url: string, encoding: string): number;
-  export function createWithTileSet(id: string, tileSetJson: string, encoding: string): number;
-}
+/**
+ * RasterSource - 栅格瓦片数据源
+ * 用于加载栅格瓦片图像
+ */
+export * as RasterSource from './sources/RasterSource';
 
-// ImageSource 类型定义
-export namespace ImageSource {
-  export function create(id: string, coordinates: string, imageData: Uint8Array | null): number;
-  export function setUrl(sourcePtr: number, url: string): void;
-  export function setImage(sourcePtr: number, imageData: Uint8Array): void;
-  export function setCoordinates(sourcePtr: number, coordinates: string): void;
-}
+/**
+ * RasterDemSource - 栅格 DEM 数据源
+ * 用于加载数字高程模型数据
+ */
+export * as RasterDemSource from './sources/RasterDemSource';
 
-// FillLayer 类型定义
-export namespace FillLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setFillColor(layerPtr: number, color: string): void;
-  export function setFillOpacity(layerPtr: number, opacity: number): void;
-  export function setFillOutlineColor(layerPtr: number, color: string): void;
-  export function setFillPattern(layerPtr: number, pattern: string): void;
-  export function setFillAntialias(layerPtr: number, antialias: boolean): void;
-  export function setFillTranslate(layerPtr: number, translate: number[]): void;
-}
+/**
+ * ImageSource - 图像数据源
+ * 用于在指定的地理坐标范围内显示单张图像
+ */
+export * as ImageSource from './sources/ImageSource';
 
-// LineLayer 类型定义
-export namespace LineLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setLineColor(layerPtr: number, color: string): void;
-  export function setLineWidth(layerPtr: number, width: number): void;
-  export function setLineOpacity(layerPtr: number, opacity: number): void;
-  export function setLinePattern(layerPtr: number, pattern: string): void;
-  export function setLineGapWidth(layerPtr: number, gapWidth: number): void;
-  export function setLineDasharray(layerPtr: number, dasharray: number[]): void;
-  export function setLineBlur(layerPtr: number, blur: number): void;
-  export function setLineCap(layerPtr: number, cap: string): void;
-  export function setLineJoin(layerPtr: number, join: string): void;
-}
+// ========== 图层 (Layers) ==========
 
-// CircleLayer 类型定义
-export namespace CircleLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setCircleRadius(layerPtr: number, radius: number): void;
-  export function setCircleColor(layerPtr: number, color: string): void;
-  export function setCircleOpacity(layerPtr: number, opacity: number): void;
-  export function setCircleBlur(layerPtr: number, blur: number): void;
-  export function setCircleStrokeWidth(layerPtr: number, width: number): void;
-  export function setCircleStrokeColor(layerPtr: number, color: string): void;
-  export function setCircleStrokeOpacity(layerPtr: number, opacity: number): void;
-}
+/**
+ * FillLayer - 填充图层
+ * 用于渲染多边形填充
+ */
+export * as FillLayer from './layers/FillLayer';
 
-// SymbolLayer 类型定义
-export namespace SymbolLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setIconImage(layerPtr: number, iconImage: string): void;
-  export function setIconSize(layerPtr: number, size: number): void;
-  export function setIconRotate(layerPtr: number, rotate: number): void;
-  export function setIconOpacity(layerPtr: number, opacity: number): void;
-  export function setIconColor(layerPtr: number, color: string): void;
-  export function setTextField(layerPtr: number, textField: string): void;
-  export function setTextSize(layerPtr: number, size: number): void;
-  export function setTextColor(layerPtr: number, color: string): void;
-  export function setTextHaloColor(layerPtr: number, color: string): void;
-  export function setTextHaloWidth(layerPtr: number, width: number): void;
-  export function setTextOpacity(layerPtr: number, opacity: number): void;
-  export function setTextAnchor(layerPtr: number, anchor: string): void;
-  export function setTextOffset(layerPtr: number, offset: number[]): void;
-  export function setTextFont(layerPtr: number, font: string[]): void;
-}
+/**
+ * LineLayer - 线图层
+ * 用于渲染线要素
+ */
+export * as LineLayer from './layers/LineLayer';
 
-// RasterLayer 类型定义
-export namespace RasterLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setRasterOpacity(layerPtr: number, opacity: number): void;
-  export function setRasterHueRotate(layerPtr: number, hueRotate: number): void;
-  export function setRasterBrightnessMin(layerPtr: number, brightnessMin: number): void;
-  export function setRasterBrightnessMax(layerPtr: number, brightnessMax: number): void;
-  export function setRasterSaturation(layerPtr: number, saturation: number): void;
-  export function setRasterContrast(layerPtr: number, contrast: number): void;
-  export function setRasterFadeDuration(layerPtr: number, fadeDuration: number): void;
-  export function setRasterResampling(layerPtr: number, resampling: string): void;
-}
+/**
+ * CircleLayer - 圆形图层
+ * 用于渲染圆形点要素
+ */
+export * as CircleLayer from './layers/CircleLayer';
 
-// BackgroundLayer 类型定义
-export namespace BackgroundLayer {
-  export function create(layerId: string): number;
-  export function setBackgroundColor(layerPtr: number, color: string): void;
-  export function setBackgroundOpacity(layerPtr: number, opacity: number): void;
-  export function setBackgroundPattern(layerPtr: number, pattern: string): void;
-}
+/**
+ * SymbolLayer - 符号图层
+ * 用于渲染图标和文本标注
+ */
+export * as SymbolLayer from './layers/SymbolLayer';
 
-// HeatmapLayer 类型定义
-export namespace HeatmapLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setHeatmapRadius(layerPtr: number, radius: number): void;
-  export function setHeatmapWeight(layerPtr: number, weight: number): void;
-  export function setHeatmapIntensity(layerPtr: number, intensity: number): void;
-  export function setHeatmapColor(layerPtr: number, color: string): void;
-  export function setHeatmapOpacity(layerPtr: number, opacity: number): void;
-}
+/**
+ * RasterLayer - 栅格图层
+ * 用于渲染栅格瓦片数据
+ */
+export * as RasterLayer from './layers/RasterLayer';
 
-// HillshadeLayer 类型定义
-export namespace HillshadeLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setHillshadeIlluminationDirection(layerPtr: number, direction: number): void;
-  export function setHillshadeIlluminationAnchor(layerPtr: number, anchor: string): void;
-  export function setHillshadeExaggeration(layerPtr: number, exaggeration: number): void;
-  export function setHillshadeShadowColor(layerPtr: number, color: string): void;
-  export function setHillshadeHighlightColor(layerPtr: number, color: string): void;
-  export function setHillshadeAccentColor(layerPtr: number, color: string): void;
-}
+/**
+ * BackgroundLayer - 背景图层
+ * 用于渲染地图背景
+ */
+export * as BackgroundLayer from './layers/BackgroundLayer';
 
-// FillExtrusionLayer 类型定义
-export namespace FillExtrusionLayer {
-  export function create(layerId: string, sourceId: string): number;
-  export function setFillExtrusionOpacity(layerPtr: number, opacity: number): void;
-  export function setFillExtrusionColor(layerPtr: number, color: string): void;
-  export function setFillExtrusionTranslate(layerPtr: number, translate: number[]): void;
-  export function setFillExtrusionPattern(layerPtr: number, pattern: string): void;
-  export function setFillExtrusionHeight(layerPtr: number, height: number): void;
-  export function setFillExtrusionBase(layerPtr: number, base: number): void;
-  export function setFillExtrusionVerticalGradient(layerPtr: number, verticalGradient: boolean): void;
-}
+/**
+ * HeatmapLayer - 热力图层
+ * 用于渲染密度热力图
+ */
+export * as HeatmapLayer from './layers/HeatmapLayer';
 
-export * from './NativeMapView'
+/**
+ * HillshadeLayer - 山体阴影图层
+ * 用于渲染地形阴影效果
+ */
+export * as HillshadeLayer from './layers/HillshadeLayer';
+
+/**
+ * FillExtrusionLayer - 3D 填充拉伸图层
+ * 用于渲染 3D 建筑物等拉伸效果
+ */
+export * as FillExtrusionLayer from './layers/FillExtrusionLayer';

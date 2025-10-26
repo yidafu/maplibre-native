@@ -142,7 +142,7 @@ export class LineLayer extends Layer {
   public setLineCap(cap: string): void {
     if (this.nativePtr === 0) return;
     try {
-      maplibre.LineLayer.setLineCap(this.nativePtr, cap);
+      maplibre.LineLayer.setLineCap(this.nativePtr, cap as 'butt' | 'round' | 'square');
     } catch (error) {
       console.error(`Failed to set line cap: ${error}`);
     }
@@ -154,7 +154,7 @@ export class LineLayer extends Layer {
   public setLineJoin(join: string): void {
     if (this.nativePtr === 0) return;
     try {
-      maplibre.LineLayer.setLineJoin(this.nativePtr, join);
+      maplibre.LineLayer.setLineJoin(this.nativePtr, join as 'bevel' | 'round' | 'miter');
     } catch (error) {
       console.error(`Failed to set line join: ${error}`);
     }

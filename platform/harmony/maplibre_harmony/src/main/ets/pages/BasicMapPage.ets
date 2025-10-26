@@ -9,7 +9,11 @@ import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
 
+// 从 NAPI 模块导入相机选项类型
+type CameraOptions = maplibre.CameraOptions;
+
 const DOMAIN = 0x0000;
+const TAG = 'BasicMapPage';
 
 // 全局地图视图引用（用于测试）
 let globalMapView: maplibre.NativeMapView | null = null;
@@ -40,11 +44,11 @@ struct BasicMapPage {
   
   // 测试位置列表
   private testLocations: TestLocation[] = [
-    { name: '北京 - 天安门', latitude: 39.9042, longitude: 116.4074, zoom: 14, icon: '🏛️' },
-    { name: '上海 - 东方明珠', latitude: 31.2397, longitude: 121.4997, zoom: 15, icon: '🗼' },
-    { name: '杭州 - 西湖', latitude: 30.2489, longitude: 120.1363, zoom: 13, icon: '🏞️' },
-    { name: '深圳 - 深圳湾', latitude: 22.5431, longitude: 113.9547, zoom: 14, icon: '🌊' },
-    { name: '成都 - 锦里', latitude: 30.6517, longitude: 104.0468, zoom: 15, icon: '🏮' },
+    { name: '北京 - 天安门', latitude: 39.9042, longitude: 116.4074, zoom: 6, icon: '🏛️' },
+    { name: '上海 - 东方明珠', latitude: 31.2397, longitude: 121.4997, zoom: 6, icon: '🗼' },
+    { name: '杭州 - 西湖', latitude: 30.2489, longitude: 120.1363, zoom: 6, icon: '🏞️' },
+    { name: '深圳 - 深圳湾', latitude: 22.5431, longitude: 113.9547, zoom: 6, icon: '🌊' },
+    { name: '成都 - 锦里', latitude: 30.6517, longitude: 104.0468, zoom: 6, icon: '🏮' },
   ];
 
   build() {
@@ -78,6 +82,11 @@ struct BasicMapPage {
           .fontColor('#333333')
           .layoutWeight(1)
         
+        Text(this.mapReady ? '✅ 已加载' : '⏳ 加载中...')
+          .fontSize(12)
+          .fontColor(this.mapReady ? '#4CAF50' : '#FF9800')
+          .margin({ right: 10 })
+        
         Button(this.showControlPanel ? '隐藏面板' : '显示面板')
           .fontSize(12)
           .height(30)
@@ -89,38 +98,38 @@ struct BasicMapPage {
       .padding(10)
       .backgroundColor('#F8F8F8')
 
-      // 地图和控制面板容器
+      // 地图容器 - 移除加载遮罩层，避免遮挡地图渲染
       Stack() {
-        // 地图视图
-        MapViewWrapper({
-          onMapViewReady: (mapView) => {
-            globalMapView = mapView;
-            this.mapReady = true;
-            hilog.info(DOMAIN, 'BasicMapPage', 'Map ready and saved');
+        // 地图视图 - 使用 NativeMapView 组件
+        NativeMapView({
+          styleUrl: "https://demotiles.maplibre.org/style.json",
+          initialLatitude: 39.9042,
+          initialLongitude: 116.4074,
+          initialZoom: 6,
+          initialBearing: 0,
+          initialPitch: 0,
+          onMapReady: (mapView?: maplibre.NativeMapView) => {
+            if (mapView) {
+              globalMapView = mapView;
+              this.mapReady = true;
+              hilog.info(DOMAIN, TAG, 'Map ready and saved');
+            } else {
+              hilog.error(DOMAIN, TAG, 'Map ready callback received null mapView');
+            }
           }
         })
+          .width('100%')
+          .height('100%')
 
-        // 加载指示器
-        if (!this.mapReady) {
+        // 控制面板 - 浮动在地图上方
+        if (this.mapReady && this.showControlPanel) {
           Column() {
-            LoadingProgress()
-              .width(50)
-              .height(50)
-              .color('#2196F3')
-
-            Text('地图加载中...')
-              .fontSize(16)
-              .margin({ top: 10 })
+            this.buildControlPanel()
           }
           .width('100%')
           .height('100%')
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor('rgba(255, 255, 255, 0.8)')
-        }
-
-        // 控制面板
-        if (this.mapReady && this.showControlPanel) {
-          this.buildControlPanel()
+          .justifyContent(FlexAlign.End)
+          .padding({ bottom: 20 })
         }
       }
       .layoutWeight(1)
@@ -188,7 +197,6 @@ struct BasicMapPage {
       offsetX: 0,
       offsetY: 2
     })
-    .margin({ bottom: 20 })
   }
 
   @Builder
@@ -201,15 +209,22 @@ struct BasicMapPage {
         .width('100%')
 
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        ForEach(buttons, (btn: ButtonAction) => {
+        ForEach(buttons, (btn: ButtonAction, index: number) => {
           Button(btn.title)
             .fontSize(12)
             .height(32)
             .margin({ right: 8, bottom: 8 })
             .onClick((): void => {
-              btn.action();
+              // 添加点击事件日志
+              hilog.info(DOMAIN, 'BasicMapPage', `🖱️ Button clicked: "${btn.title}" (index=${index})`);
+              try {
+                btn.action();
+                hilog.info(DOMAIN, 'BasicMapPage', `✅ Button action completed: "${btn.title}"`);
+              } catch (error) {
+                hilog.error(DOMAIN, 'BasicMapPage', `❌ Button action failed: ${error}`);
+              }
             })
-        })
+        }, (btn: ButtonAction, index: number) => `${title}-${index}-${btn.title}`)
       }
       .width('100%')
     }
@@ -243,18 +258,50 @@ struct BasicMapPage {
    * 使用 flyTo 飞行到指定位置（飞行动画）
    */
   flyToLocation(index: number, duration: number) {
+    // 🔵 最优先的日志 - 确保能捕获到点击事件
+    const timestamp = Date.now();
+    hilog.info(DOMAIN, 'BasicMapPage', `🔵 flyToLocation CALLED: index=${index}, duration=${duration}, timestamp=${timestamp}`);
+    
     if (!globalMapView) {
+      hilog.error(DOMAIN, 'BasicMapPage', '❌ globalMapView is NULL');
       this.showToast('地图未初始化');
       return;
     }
     
+    hilog.info(DOMAIN, 'BasicMapPage', '✅ globalMapView exists, calling cancelTransitions...');
+    
+    // 取消当前正在进行的所有动画
+    globalMapView.cancelTransitions();
+    
+    hilog.info(DOMAIN, 'BasicMapPage', '✅ cancelTransitions completed');
+    
     const location = this.testLocations[index];
-    const bearing = location.bearing || 0;
-    const pitch = location.pitch || 0;
-    globalMapView.flyTo(bearing, location.latitude, location.longitude, duration, pitch, location.zoom);
+    const options: CameraOptions = {
+      center: {
+        latitude: location.latitude,
+        longitude: location.longitude
+      },
+      zoom: 6,  // 固定 zoom 为 6（用于测试）
+      bearing: location.bearing || 0,
+      pitch: location.pitch || 0
+    };
+    
+    // 调试日志：记录当前位置和目标位置
+    const currentPos = globalMapView.getLatLng();
+    const currentZoom = globalMapView.getZoom();
+    hilog.info(DOMAIN, 'BasicMapPage', 
+      `flyTo: BEFORE - current: lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
+    hilog.info(DOMAIN, 'BasicMapPage', 
+      `flyTo: TARGET - lat=${location.latitude}, lng=${location.longitude}, zoom=6 (fixed for testing), duration=${duration}ms`);
+    
+    globalMapView.flyTo(options, duration);
+    
+    // 🔧 显式触发渲染，确保动画开始
+    globalMapView.triggerRepaint();
+    
     this.currentInfo = location.name;
     this.showToast(`飞往: ${location.name} (${duration / 1000}秒)`);
-    hilog.info(DOMAIN, 'BasicMapPage', `flyTo: ${location.name}, duration: ${duration}ms`);
+    hilog.info(DOMAIN, 'BasicMapPage', `flyTo: Animation started for ${location.name}`);
   }
 
   /**
@@ -266,13 +313,36 @@ struct BasicMapPage {
       return;
     }
     
+    // 取消当前正在进行的所有动画
+    globalMapView.cancelTransitions();
+    
     const location = this.testLocations[index];
-    const bearing = location.bearing || 0;
-    const pitch = location.pitch || 0;
-    globalMapView.easeTo(bearing, location.latitude, location.longitude, duration, pitch, location.zoom);
+    const options: CameraOptions = {
+      center: {
+        latitude: location.latitude,
+        longitude: location.longitude
+      },
+      zoom: 6,  // 固定 zoom 为 6（用于测试）
+      bearing: location.bearing || 0,
+      pitch: location.pitch || 0
+    };
+    
+    // 调试日志：记录当前位置和目标位置
+    const currentPos = globalMapView.getLatLng();
+    const currentZoom = globalMapView.getZoom();
+    hilog.info(DOMAIN, 'BasicMapPage', 
+      `easeTo: BEFORE - current: lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
+    hilog.info(DOMAIN, 'BasicMapPage', 
+      `easeTo: TARGET - lat=${location.latitude}, lng=${location.longitude}, zoom=6 (fixed for testing), duration=${duration}ms`);
+    
+    globalMapView.easeTo(options, duration);
+    
+    // 🔧 显式触发渲染，确保动画开始
+    globalMapView.triggerRepaint();
+    
     this.currentInfo = location.name;
     this.showToast(`平滑过渡到: ${location.name} (${duration / 1000}秒)`);
-    hilog.info(DOMAIN, 'BasicMapPage', `easeTo: ${location.name}, duration: ${duration}ms`);
+    hilog.info(DOMAIN, 'BasicMapPage', `easeTo: Animation started for ${location.name}`);
   }
 
   /**
@@ -284,12 +354,30 @@ struct BasicMapPage {
       return;
     }
     
+    // 取消当前正在进行的所有动画
+    globalMapView.cancelTransitions();
+    
     const currentPos = globalMapView.getLatLng();
-    const currentZoom = globalMapView.getZoom();
+    
     // 旋转到 120 度，倾斜 45 度
-    globalMapView.easeTo(120, currentPos.latitude, currentPos.longitude, 2000, 45, currentZoom);
+    const options: CameraOptions = {
+      center: {
+        latitude: currentPos.latitude,
+        longitude: currentPos.longitude
+      },
+      zoom: 6,  // 固定 zoom 为 6（用于测试）
+      bearing: 120,
+      pitch: 45
+    };
+    
+    hilog.info(DOMAIN, 'BasicMapPage', `easeToRotated: bearing=120, pitch=45, zoom=6 (fixed for testing)`);
+    globalMapView.easeTo(options, 2000);
+    
+    // 🔧 显式触发渲染，确保动画开始
+    globalMapView.triggerRepaint();
+    
     this.showToast('旋转视角: 120°, 倾斜: 45°');
-    hilog.info(DOMAIN, 'BasicMapPage', 'easeTo: rotated view (120°, 45°)');
+    hilog.info(DOMAIN, 'BasicMapPage', 'easeToRotated: Animation started');
   }
 
   /**
@@ -408,48 +496,4 @@ struct BasicMapPage {
   }
 }
 
-/**
- * MapViewWrapper - NativeMapView 包装组件
- * 用于获取和传递地图视图引用
- */
-@Component
-struct MapViewWrapper {
-  onMapViewReady?: (mapView: maplibre.NativeMapView) => void;
-  private controller: XComponentController = new XComponentController();
-  private mapView: maplibre.NativeMapView | null = null;
-  
-  build() {
-    Stack() {
-      XComponent({
-        id: 'mapSurface',
-        type: 'surface',
-        controller: this.controller
-      })
-        .onLoad(() => {
-          // XComponent 加载完成，创建地图视图
-          try {
-            this.mapView = new maplibre.NativeMapView();
-            const surfaceId = this.controller.getXComponentSurfaceId();
-            this.mapView.setNativeWindow(BigInt(surfaceId));
-            this.mapView.setStyleUrl("https://demotiles.maplibre.org/style.json");
-            
-            // 设置初始位置（延迟调用，等待地图初始化）
-            setTimeout(() => {
-              if (this.mapView) {
-                this.mapView.jumpTo(0, 39.9042, 116.4074, 0, 10);
-                if (this.onMapViewReady) {
-                  this.onMapViewReady(this.mapView);
-                }
-                hilog.info(DOMAIN, 'MapViewWrapper', 'Map view created and initialized');
-              }
-            }, 500);
-          } catch (error) {
-            hilog.error(DOMAIN, 'MapViewWrapper', `Failed to create map view: ${error.message}`);
-          }
-        })
-        .width('100%')
-        .height('100%')
-    }
-  }
-}
 

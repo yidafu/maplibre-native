@@ -114,7 +114,7 @@ export class RasterLayer extends Layer {
   public setRasterResampling(resampling: string): void {
     if (this.nativePtr === 0) return;
     try {
-      maplibre.RasterLayer.setRasterResampling(this.nativePtr, resampling);
+      maplibre.RasterLayer.setRasterResampling(this.nativePtr, resampling as 'linear' | 'nearest');
     } catch (error) {
       console.error(`Failed to set raster resampling: ${error}`);
     }

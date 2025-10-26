@@ -244,7 +244,7 @@ struct GestureTestPage {
         styleUrl: "https://demotiles.maplibre.org/style.json",
         initialLatitude: 30.2741,
         initialLongitude: 120.1551,
-        initialZoom: 3,
+        initialZoom: 6,
         initialBearing: 0,    // 先用0测试，避免初始化问题
         initialPitch: 0,      // 先用0测试，避免初始化问题
         onMapReady: () => {

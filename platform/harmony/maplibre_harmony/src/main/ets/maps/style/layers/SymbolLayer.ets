@@ -144,7 +144,7 @@ export class SymbolLayer extends Layer {
   public setTextAnchor(anchor: string): void {
     if (this.nativePtr === 0) return;
     try {
-      maplibre.SymbolLayer.setTextAnchor(this.nativePtr, anchor);
+      maplibre.SymbolLayer.setTextAnchor(this.nativePtr, anchor as 'center' | 'left' | 'right' | 'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right');
     } catch (error) {
       console.error(`Failed to set text anchor: ${error}`);
     }

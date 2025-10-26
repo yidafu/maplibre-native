@@ -1,125 +1,35 @@
 /**
- * Point - 2D点坐标类
+ * Point/PixelCoordinate - 像素坐标
+ * 使用 NAPI 模块中的 PixelCoordinate 类型定义
  */
-export class Point {
-  public x: number;
-  public y: number;
+import maplibre from 'libmaplibre_native.so';
 
-  constructor(x: number, y: number) {
-    this.x = x;
-    this.y = y;
-  }
+// Point 是 PixelCoordinate 的别名，用于 ArkTS 代码
+export type Point = maplibre.PixelCoordinate;
+export type PixelCoordinate = maplibre.PixelCoordinate;
 
-  /**
-   * 创建Point对象
-   */
-  public static fromPoint(x: number, y: number): Point {
-    return new Point(x, y);
-  }
+/**
+ * 创建 Point/PixelCoordinate 对象
+ */
+export function createPoint(x: number, y: number): Point {
+  return { x, y };
+}
 
-  /**
-   * 计算到另一个点的距离
-   */
-  public distanceTo(other: Point): number {
-    const dx = this.x - other.x;
-    const dy = this.y - other.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
+/**
+ * 计算两点之间的距离
+ */
+export function distanceBetweenPoints(from: Point, to: Point): number {
+  const dx = from.x - to.x;
+  const dy = from.y - to.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
-  /**
-   * 计算到另一个点的平方距离（用于性能优化）
-   */
-  public distanceSquaredTo(other: Point): number {
-    const dx = this.x - other.x;
-    const dy = this.y - other.y;
-    return dx * dx + dy * dy;
-  }
-
-  /**
-   * 计算中点
-   */
-  public midpoint(other: Point): Point {
-    return new Point((this.x + other.x) / 2, (this.y + other.y) / 2);
-  }
-
-  /**
-   * 计算向量加法
-   */
-  public add(other: Point): Point {
-    return new Point(this.x + other.x, this.y + other.y);
-  }
-
-  /**
-   * 计算向量减法
-   */
-  public subtract(other: Point): Point {
-    return new Point(this.x - other.x, this.y - other.y);
-  }
-
-  /**
-   * 计算标量乘法
-   */
-  public multiply(scalar: number): Point {
-    return new Point(this.x * scalar, this.y * scalar);
-  }
-
-  /**
-   * 计算标量除法
-   */
-  public divide(scalar: number): Point {
-    return new Point(this.x / scalar, this.y / scalar);
-  }
-
-  /**
-   * 计算点积
-   */
-  public dot(other: Point): number {
-    return this.x * other.x + this.y * other.y;
-  }
-
-  /**
-   * 计算叉积
-   */
-  public cross(other: Point): number {
-    return this.x * other.y - this.y * other.x;
-  }
-
-  /**
-   * 计算向量的长度
-   */
-  public length(): number {
-    return Math.sqrt(this.x * this.x + this.y * this.y);
-  }
-
-  /**
-   * 计算向量的平方长度
-   */
-  public lengthSquared(): number {
-    return this.x * this.x + this.y * this.y;
-  }
-
-  /**
-   * 标准化向量
-   */
-  public normalize(): Point {
-    const len = this.length();
-    if (len === 0) {
-      return new Point(0, 0);
-    }
-    return new Point(this.x / len, this.y / len);
-  }
-
-  /**
-   * 比较两个点是否相等
-   */
-  public equals(other: Point): boolean {
-    return Math.abs(this.x - other.x) < 1e-10 && Math.abs(this.y - other.y) < 1e-10;
-  }
-
-  /**
-   * 转换为字符串
-   */
-  public toString(): string {
-    return `Point(${this.x}, ${this.y})`;
-  }
+/**
+ * 计算中点
+ */
+export function midpoint(from: Point, to: Point): Point {
+  return { 
+    x: (from.x + to.x) / 2, 
+    y: (from.y + to.y) / 2 
+  };
 }

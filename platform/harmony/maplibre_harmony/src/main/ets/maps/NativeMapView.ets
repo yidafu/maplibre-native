@@ -15,6 +15,9 @@ import {
   OnQuickZoomListener
 } from './gestures/GestureListeners';
 
+// 从 NAPI 模块导入相机选项类型
+type CameraOptions = maplibre.CameraOptions;
+
 // 日志域名
 const DOMAIN = 0xFF00;
 
@@ -36,7 +39,7 @@ class NativeMapViewController extends XComponentController {
   public styleUrl: string = "https://demotiles.maplibre.org/style.json";
   public initialLatitude: number = 30.2741;
   public initialLongitude: number = 120.1551;
-  public initialZoom: number = 10;
+  public initialZoom: number = 6;
   public initialBearing: number = 0;
   public initialPitch: number = 0;
   
@@ -274,6 +277,40 @@ class NativeMapViewController extends XComponentController {
   }
 
   /**
+   * 飞行到指定位置（带飞行动画）
+   * @param options 相机选项
+   * @param duration 动画持续时间（毫秒）
+   */
+  flyTo(options: CameraOptions, duration: number): void {
+    if (this.mapView && this.isInitialized) {
+      try {
+        this.mapView.flyTo(options, duration);
+        hilog.info(DOMAIN, 'NativeMapView', 
+          `Flying to: center=${JSON.stringify(options.center)}, zoom=${options.zoom}, bearing=${options.bearing}, pitch=${options.pitch}, duration=${duration}ms`);
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to fly to position: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * 平滑过渡到指定位置
+   * @param options 相机选项
+   * @param duration 动画持续时间（毫秒）
+   */
+  easeTo(options: CameraOptions, duration: number): void {
+    if (this.mapView && this.isInitialized) {
+      try {
+        this.mapView.easeTo(options, duration);
+        hilog.info(DOMAIN, 'NativeMapView', 
+          `Easing to: center=${JSON.stringify(options.center)}, zoom=${options.zoom}, bearing=${options.bearing}, pitch=${options.pitch}, duration=${duration}ms`);
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to ease to position: ${error.message}`);
+      }
+    }
+  }
+
+  /**
    * 添加标记
    */
   addMarkers(markers: Marker[]): number[] {
@@ -331,7 +368,7 @@ export struct NativeMapView {
   @Prop styleUrl: string = "https://demotiles.maplibre.org/style.json";
   @Prop initialLatitude: number = 30.2741;
   @Prop initialLongitude: number = 120.1551;
-  @Prop initialZoom: number = 10;
+  @Prop initialZoom: number = 6;
   @Prop initialBearing: number = 0;
   @Prop initialPitch: number = 0;
   @Prop debugMode: boolean = false;
@@ -580,10 +617,46 @@ export struct NativeMapView {
   }
 
   /**
+   * 取消所有正在进行的相机过渡动画
+   */
+  cancelTransitions(): void {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'cancelTransitions: Native map view not initialized');
+      return;
+    }
+    try {
+      mapView.cancelTransitions();
+      hilog.info(DOMAIN, 'NativeMapView', 'cancelTransitions: All transitions cancelled');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `cancelTransitions failed: ${errorMsg}`);
+    }
+  }
+
+  /**
    * 跳转到指定位置
    */
   jumpTo(angle: number, latitude: number, longitude: number, pitch: number, zoom: number): void {
     this.controller.jumpTo(angle, latitude, longitude, pitch, zoom);
+  }
+
+  /**
+   * 飞行到指定位置（带飞行动画）
+   * @param options 相机选项
+   * @param duration 动画持续时间（毫秒）
+   */
+  flyTo(options: CameraOptions, duration: number): void {
+    this.controller.flyTo(options, duration);
+  }
+
+  /**
+   * 平滑过渡到指定位置
+   * @param options 相机选项
+   * @param duration 动画持续时间（毫秒）
+   */
+  easeTo(options: CameraOptions, duration: number): void {
+    this.controller.easeTo(options, duration);
   }
 
   /**

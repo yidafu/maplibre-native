@@ -1,63 +1,51 @@
 /**
- * LatLng - 经纬度坐标类
+ * LatLng - 经纬度坐标
+ * 使用 NAPI 模块中的类型定义
  */
-export class LatLng {
-  public latitude: number;
-  public longitude: number;
+import maplibre from 'libmaplibre_native.so';
 
-  constructor(latitude: number, longitude: number) {
-    this.latitude = latitude;
-    this.longitude = longitude;
-  }
+export type LatLng = maplibre.LatLng;
 
-  /**
-   * 创建LatLng对象
-   */
-  public static fromLatLng(latitude: number, longitude: number): LatLng {
-    return new LatLng(latitude, longitude);
-  }
+/**
+ * 创建 LatLng 对象
+ */
+export function createLatLng(latitude: number, longitude: number): LatLng {
+  return { latitude, longitude };
+}
 
-  /**
-   * 检查坐标是否有效
-   */
-  public isValid(): boolean {
-    return this.latitude >= -90 && this.latitude <= 90 && 
-           this.longitude >= -180 && this.longitude <= 180;
-  }
+/**
+ * 检查坐标是否有效
+ */
+export function isValidLatLng(latLng: LatLng): boolean {
+  return latLng.latitude >= -90 && latLng.latitude <= 90 && 
+         latLng.longitude >= -180 && latLng.longitude <= 180;
+}
 
-  /**
-   * 计算到另一个点的距离（米）
-   */
-  public distanceTo(other: LatLng): number {
-    const R = 6371000; // 地球半径（米）
-    const dLat = this.toRadians(other.latitude - this.latitude);
-    const dLon = this.toRadians(other.longitude - this.longitude);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(this.toRadians(this.latitude)) * Math.cos(this.toRadians(other.latitude)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
+/**
+ * 计算两点之间的距离（米）
+ */
+export function distanceBetween(from: LatLng, to: LatLng): number {
+  const R = 6371000; // 地球半径（米）
+  const dLat = toRadians(to.latitude - from.latitude);
+  const dLon = toRadians(to.longitude - from.longitude);
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRadians(from.latitude)) * Math.cos(toRadians(to.latitude)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
-  /**
-   * 角度转弧度
-   */
-  private toRadians(degrees: number): number {
-    return degrees * (Math.PI / 180);
-  }
+/**
+ * 比较两个坐标是否相等
+ */
+export function latLngEquals(a: LatLng, b: LatLng): boolean {
+  return Math.abs(a.latitude - b.latitude) < 1e-10 &&
+         Math.abs(a.longitude - b.longitude) < 1e-10;
+}
 
-  /**
-   * 转换为字符串
-   */
-  public toString(): string {
-    return `LatLng(${this.latitude}, ${this.longitude})`;
-  }
-
-  /**
-   * 比较两个坐标是否相等
-   */
-  public equals(other: LatLng): boolean {
-    return Math.abs(this.latitude - other.latitude) < 1e-10 &&
-           Math.abs(this.longitude - other.longitude) < 1e-10;
-  }
+/**
+ * 角度转弧度
+ */
+function toRadians(degrees: number): number {
+  return degrees * (Math.PI / 180);
 }

@@ -4,7 +4,7 @@ import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
 import { Point } from './geometry/Point';
-import { Rect } from './geometry/Rect';
+// Rect 类型已在 maplibre NAPI 中定义
 import { Layer } from './style/layers/Layer';
 import { Source } from './style/sources/Source';
 import { Image } from './style/images/Image';
@@ -168,21 +168,20 @@ export class MapLibreMap {
     this.nativeMapView.jumpTo(angle, latitude, longitude, pitch, zoom, padding);
   }
 
-  public easeTo(angle: number, latitude: number, longitude: number, duration: number, pitch: number, zoom: number, padding?: number[], easingInterpolator?: boolean): void {
+  public easeTo(options: maplibre.CameraOptions, duration: number): void {
     if (this.destroyed) return;
-    this.nativeMapView.easeTo(angle, latitude, longitude, duration, pitch, zoom, padding, easingInterpolator);
+    this.nativeMapView.easeTo(options, duration);
   }
 
-  public flyTo(angle: number, latitude: number, longitude: number, duration: number, pitch: number, zoom: number, padding?: number[]): void {
+  public flyTo(options: maplibre.CameraOptions, duration: number): void {
     if (this.destroyed) return;
-    this.nativeMapView.flyTo(angle, latitude, longitude, duration, pitch, zoom, padding);
+    this.nativeMapView.flyTo(options, duration);
   }
 
   // 位置和相机
   public getLatLng(): LatLng {
-    if (this.destroyed) return new LatLng(0, 0);
-    const result = this.nativeMapView.getLatLng();
-    return new LatLng(result.latitude, result.longitude);
+    if (this.destroyed) return { latitude: 0, longitude: 0 };
+    return this.nativeMapView.getLatLng();
   }
 
   public setLatLng(latitude: number, longitude: number, padding?: number[], duration?: number): void {
@@ -310,7 +309,7 @@ export class MapLibreMap {
   }
 
   // 坐标边界
-  public setVisibleCoordinateBounds(coordinates: LatLng[], padding: Rect, direction: number, duration: number): void {
+  public setVisibleCoordinateBounds(coordinates: LatLng[], padding: maplibre.Rect, direction: number, duration: number): void {
     if (this.destroyed) return;
     this.nativeMapView.setVisibleCoordinateBounds(coordinates, padding, direction, duration);
   }
@@ -430,15 +429,14 @@ export class MapLibreMap {
     return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, zoom);
   }
 
-  public projectedMetersForLatLng(latitude: number, longitude: number): Object | null {
-    if (this.destroyed) return null;
+  public projectedMetersForLatLng(latitude: number, longitude: number): maplibre.ProjectedMeters {
+    if (this.destroyed) return { northing: 0, easting: 0 };
     return this.nativeMapView.projectedMetersForLatLng(latitude, longitude);
   }
 
   public pixelForLatLng(latitude: number, longitude: number): Point {
-    if (this.destroyed) return new Point(0, 0);
-    const result = this.nativeMapView.pixelForLatLng(latitude, longitude);
-    return new Point(result.x, result.y);
+    if (this.destroyed) return { x: 0, y: 0 };
+    return this.nativeMapView.pixelForLatLng(latitude, longitude);
   }
 
   public pixelsForLatLngs(input: number[], output: number[]): void {
@@ -447,15 +445,13 @@ export class MapLibreMap {
   }
 
   public latLngForProjectedMeters(northing: number, easting: number): LatLng {
-    if (this.destroyed) return new LatLng(0, 0);
-    const result = this.nativeMapView.latLngForProjectedMeters(northing, easting);
-    return new LatLng(result.latitude, result.longitude);
+    if (this.destroyed) return { latitude: 0, longitude: 0 };
+    return this.nativeMapView.latLngForProjectedMeters(northing, easting);
   }
 
   public latLngForPixel(x: number, y: number): LatLng {
-    if (this.destroyed) return new LatLng(0, 0);
-    const result = this.nativeMapView.latLngForPixel(x, y);
-    return new LatLng(result.latitude, result.longitude);
+    if (this.destroyed) return { latitude: 0, longitude: 0 };
+    return this.nativeMapView.latLngForPixel(x, y);
   }
 
   public latLngsForPixels(input: number[], output: number[]): void {
@@ -465,12 +461,8 @@ export class MapLibreMap {
 
   // 过渡
   public getTransitionOptions(): TransitionOptions {
-    if (this.destroyed) return new TransitionOptions({ duration: 0, delay: 0 });
-    const result: ESObject = this.nativeMapView.getTransitionOptions() as ESObject;
-    // 将 NAPI 返回的对象转换为 TransitionOptions 实例
-    const duration: number = (result['duration'] as number) || 0;
-    const delay: number = (result['delay'] as number) || 0;
-    return new TransitionOptions({ duration, delay });
+    if (this.destroyed) return { duration: 0, delay: 0 };
+    return this.nativeMapView.getTransitionOptions();
   }
 
   public setTransitionOptions(options: TransitionOptions): void {
@@ -479,12 +471,12 @@ export class MapLibreMap {
   }
 
   // 查询
-  public queryPointAnnotations(rect: Rect): number[] {
+  public queryPointAnnotations(rect: maplibre.Rect): number[] {
     if (this.destroyed) return [];
     return this.nativeMapView.queryPointAnnotations(rect);
   }
 
-  public queryShapeAnnotations(rect: Rect): number[] {
+  public queryShapeAnnotations(rect: maplibre.Rect): number[] {
     if (this.destroyed) return [];
     return this.nativeMapView.queryShapeAnnotations(rect);
   }

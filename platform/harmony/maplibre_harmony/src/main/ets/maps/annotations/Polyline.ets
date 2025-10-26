@@ -221,7 +221,11 @@ export class Polyline {
 
     let length = 0;
     for (let i = 1; i < this.points.length; i++) {
-      length += this.points[i - 1].distanceTo(this.points[i]);
+      const p1 = this.points[i - 1];
+      const p2 = this.points[i];
+      const dx = p2.longitude - p1.longitude;
+      const dy = p2.latitude - p1.latitude;
+      length += Math.sqrt(dx * dx + dy * dy) * 111000; // 简化的距离计算
     }
     return length;
   }

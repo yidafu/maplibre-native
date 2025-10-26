@@ -54,7 +54,7 @@ export class HillshadeLayer extends Layer {
   public setHillshadeIlluminationAnchor(anchor: string): void {
     if (this.nativePtr === 0) return;
     try {
-      maplibre.HillshadeLayer.setHillshadeIlluminationAnchor(this.nativePtr, anchor);
+      maplibre.HillshadeLayer.setHillshadeIlluminationAnchor(this.nativePtr, anchor as 'map' | 'viewport');
     } catch (error) {
       console.error(`Failed to set hillshade illumination anchor: ${error}`);
     }

@@ -50,21 +50,24 @@ export class LatLngBounds {
    * 获取东北角
    */
   public getNortheast(): LatLng {
-    return new LatLng(this.north, this.east);
+    return { latitude: this.north, longitude: this.east };
   }
 
   /**
    * 获取西南角
    */
   public getSouthwest(): LatLng {
-    return new LatLng(this.south, this.west);
+    return { latitude: this.south, longitude: this.west };
   }
 
   /**
    * 获取中心点
    */
   public getCenter(): LatLng {
-    return new LatLng((this.north + this.south) / 2, (this.east + this.west) / 2);
+    return { 
+      latitude: (this.north + this.south) / 2, 
+      longitude: (this.east + this.west) / 2 
+    };
   }
 
   /**

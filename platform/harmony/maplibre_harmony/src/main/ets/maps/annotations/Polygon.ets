@@ -231,7 +231,9 @@ export class Polygon {
     for (let i = 0; i < this.points.length; i++) {
       const current = this.points[i];
       const next = this.points[(i + 1) % this.points.length];
-      perimeter += current.distanceTo(next);
+      const dx = next.longitude - current.longitude;
+      const dy = next.latitude - current.latitude;
+      perimeter += Math.sqrt(dx * dx + dy * dy) * 111000; // 简化的距离计算
     }
     return perimeter;
   }
