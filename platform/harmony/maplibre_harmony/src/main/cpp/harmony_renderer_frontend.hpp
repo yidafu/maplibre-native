@@ -10,9 +10,15 @@
 #include <mbgl/actor/mailbox.hpp>
 #include <memory>
 #include <thread>
+#include <atomic>
+#include <chrono>
+#include <mutex>
 
 namespace mbgl {
 namespace harmony {
+
+// Forward declaration
+class HarmonyVSyncManager;
 
 class HarmonyRendererFrontend : public RendererFrontend {
 public:
@@ -49,11 +55,27 @@ private:
     
     // Renderer components
     std::unique_ptr<Renderer> renderer;
-    // Note: updateParams and updateAsyncTask removed - we now use runLoop->invoke() directly
     
-    // 🔧 修复闪烁：帧率限制器
+    // 🚀 请求队列机制（模拟 Android GLSurfaceView）
+    std::atomic<bool> renderRequested{false};  // 是否有渲染请求在队列中
+    std::atomic<int> pendingRequests{0};       // 待处理的请求计数
+    std::mutex updateParamsMutex;              // 保护 updateParams 的互斥锁
+    std::shared_ptr<UpdateParameters> updateParams;  // 存储最新的更新参数
+    
+    // 🎯 VSync 同步（系统级，替代手动节流）
+    std::unique_ptr<HarmonyVSyncManager> vsyncManager_;  // VSync 管理器
+    bool useVSync_ = true;  // 是否使用 VSync（如果创建失败则降级到手动节流）
+    
+    // 🔧 降级方案：手动节流（仅在 VSync 不可用时使用）
     std::chrono::steady_clock::time_point lastFrameTime{};
-    const std::chrono::milliseconds minFrameInterval{16};  // 60fps = 16.67ms
+    const std::chrono::milliseconds minFrameInterval{10};  // 100fps 上限
+    
+    // 🛡️ 错误处理
+    std::atomic<int> consecutiveErrors{0};     // 连续错误计数
+    
+    // 内部方法
+    void scheduleRender();  // 调度渲染（使用 VSync 或 RunLoop）
+    void performRender();   // 执行实际渲染
 };
 
 } // namespace harmony

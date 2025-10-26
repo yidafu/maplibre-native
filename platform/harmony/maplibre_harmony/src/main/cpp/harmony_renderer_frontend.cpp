@@ -1,5 +1,6 @@
 #include "harmony_renderer_frontend.hpp"
 #include "harmony_renderer_backend.hpp"
+#include "harmony_vsync_manager.hpp"
 #include "logger.h"
 
 #include <mbgl/gfx/backend_scope.hpp>
@@ -75,11 +76,38 @@ HarmonyRendererFrontend::HarmonyRendererFrontend(std::unique_ptr<gfx::Backend> b
     runLoopReadyFuture.wait();
     Logger::debug("HarmonyRendererFrontend", "RunLoop thread ready");
     
+    // 🎯 初始化 VSync 管理器（尝试使用系统级 VSync）
+    try {
+        Logger::info("HarmonyRendererFrontend", "Creating HarmonyVSyncManager...");
+        vsyncManager_ = std::make_unique<HarmonyVSyncManager>();
+        
+        if (vsyncManager_->isAvailable()) {
+            useVSync_ = true;
+            Logger::info("HarmonyRendererFrontend", "✅ VSync enabled - will use system-level frame synchronization");
+        } else {
+            Logger::warn("HarmonyRendererFrontend", "⚠️ VSync not available - falling back to manual throttling");
+            useVSync_ = false;
+            vsyncManager_.reset();
+        }
+    } catch (const std::exception& e) {
+        Logger::error("HarmonyRendererFrontend", "Failed to create VSync manager: %s - falling back to manual throttling", e.what());
+        useVSync_ = false;
+        vsyncManager_.reset();
+    }
+    
     Logger::info("HarmonyRendererFrontend", "========== Constructor END ==========");
 }
 
 HarmonyRendererFrontend::~HarmonyRendererFrontend() {
     Logger::info("HarmonyRendererFrontend", "========== Destructor START ==========");
+    
+    // Stop VSync manager if exists
+    if (vsyncManager_) {
+        Logger::debug("HarmonyRendererFrontend", "Stopping VSync manager...");
+        vsyncManager_->stop();
+        vsyncManager_.reset();
+        Logger::debug("HarmonyRendererFrontend", "VSync manager stopped and destroyed");
+    }
     
     // Stop the RunLoop if it exists
     if (runLoop) {
@@ -128,18 +156,104 @@ void HarmonyRendererFrontend::update(std::shared_ptr<UpdateParameters> params) {
         return;
     }
     
-    // 🔧 修复闪烁：帧率限制器 - 防止过度渲染导致的闪烁
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime);
-    
-    if (elapsed < minFrameInterval) {
-        return;  // 跳过此帧，防止过快渲染
+    // 🚀 请求队列机制：存储最新的参数，然后调度渲染
+    {
+        std::lock_guard<std::mutex> lock(updateParamsMutex);
+        updateParams = std::move(params);
     }
     
-    lastFrameTime = now;
+    // 增加待处理请求计数
+    pendingRequests++;
+    Logger::debug("HarmonyRendererFrontend", "update() called - pendingRequests=%d", pendingRequests.load());
     
-    if (!runLoop) {
-        Logger::error("HarmonyRendererFrontend", "Cannot update: RunLoop not initialized");
+    // 调度渲染（会自动防抖）
+    scheduleRender();
+}
+
+void HarmonyRendererFrontend::scheduleRender() {
+    // 🔧 防抖机制：如果已经有渲染请求在队列中，不重复添加
+    // 这类似于 Android 的 requestRender() 行为
+    bool expected = false;
+    if (!renderRequested.compare_exchange_strong(expected, true)) {
+        Logger::debug("HarmonyRendererFrontend", "scheduleRender() - already scheduled, skipping (防抖)");
+        return;
+    }
+    
+    Logger::debug("HarmonyRendererFrontend", "scheduleRender() - scheduling new render task (useVSync=%d)", useVSync_);
+    
+    // 🎯 使用 VSync 同步（优先）
+    if (useVSync_ && vsyncManager_) {
+        // 使用系统级 VSync 调度
+        vsyncManager_->requestFrame([this]() {
+            // 重置请求标志，允许下次调度
+            renderRequested = false;
+            
+            // 如果有待处理的请求，执行渲染
+            if (pendingRequests > 0) {
+                int count = pendingRequests.exchange(0);
+                Logger::debug("HarmonyRendererFrontend", "VSync triggered - processing %d requests", count);
+                performRender();
+            }
+        });
+    } else {
+        // 🔧 降级方案：使用 RunLoop 异步调度（手动节流）
+        if (!runLoop) {
+            Logger::error("HarmonyRendererFrontend", "Cannot schedule render: RunLoop not initialized");
+            renderRequested = false;  // 重置标志
+            return;
+        }
+        
+        runLoop->invoke([this]() {
+            // 重置请求标志，允许下次调度
+            renderRequested = false;
+            
+            // 如果有待处理的请求，执行渲染
+            if (pendingRequests > 0) {
+                int count = pendingRequests.exchange(0);
+                Logger::debug("HarmonyRendererFrontend", "RunLoop triggered - processing %d requests", count);
+                performRender();
+            }
+        });
+    }
+}
+
+void HarmonyRendererFrontend::performRender() {
+    // 检查是否暂停
+    if (renderingPaused) {
+        Logger::warn("HarmonyRendererFrontend", "performRender() - rendering paused, skipping");
+        return;
+    }
+    
+    // 🎯 VSync 模式：不需要手动节流（系统级同步）
+    // 🔧 降级模式：使用手动帧率限制
+    if (!useVSync_) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime);
+        
+        if (elapsed < minFrameInterval) {
+            Logger::debug("HarmonyRendererFrontend", "performRender() - frame throttled: elapsed=%lld ms < %lld ms", 
+                          elapsed.count(), minFrameInterval.count());
+            return;  // 跳过此帧
+        }
+        
+        lastFrameTime = now;
+    }
+    
+    // 🔧 重要：重置 needsRender 标志
+    if (needsRender) {
+        needsRender = false;
+        Logger::debug("HarmonyRendererFrontend", "✅ needsRender reset to false");
+    }
+    
+    // 获取最新的更新参数
+    std::shared_ptr<UpdateParameters> params;
+    {
+        std::lock_guard<std::mutex> lock(updateParamsMutex);
+        params = updateParams;
+    }
+    
+    if (!params || !renderer || !rendererBackend) {
+        Logger::warn("HarmonyRendererFrontend", "performRender() - missing params/renderer/backend");
         return;
     }
     
@@ -147,35 +261,45 @@ void HarmonyRendererFrontend::update(std::shared_ptr<UpdateParameters> params) {
     auto currentThreadId = std::this_thread::get_id();
     bool onRunLoopThread = (currentThreadId == runLoopThreadId);
     
-    // Define the rendering task
-    auto renderTask = [this, params]() {
-        if (params && renderer && rendererBackend) {
-            try {
-                // Activate the OpenGL context before rendering
-                auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
-                gfx::RendererBackend& backendImpl = harmonyBackend->getImpl();
-                gfx::BackendScope backendGuard{backendImpl};
-                
-                // HarmonyOS渲染时序优化 - 小延迟确保EGL上下文就绪
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                
-                renderer->render(params);
-            } catch (const std::runtime_error& e) {
-                // 🔧 修复闪退：捕获 swapBuffers 失败异常
-                Logger::error("HarmonyRendererFrontend", "Render failed: %s - Pausing to prevent crash", e.what());
-                renderingPaused = true;
-            } catch (const std::exception& e) {
-                Logger::error("HarmonyRendererFrontend", "Render failed: %s", e.what());
-            }
-        }
-    };
+    Logger::debug("HarmonyRendererFrontend", "🎨 performRender() - onRunLoopThread=%d", onRunLoopThread);
     
-    if (onRunLoopThread) {
-        // Execute directly to avoid deadlock
-        renderTask();
-    } else {
-        // Dispatch via invoke()
-        runLoop->invoke(std::move(renderTask));
+    // 执行渲染
+    try {
+        // Activate the OpenGL context before rendering
+        auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
+        gfx::RendererBackend& backendImpl = harmonyBackend->getImpl();
+        gfx::BackendScope backendGuard{backendImpl};
+        
+        // HarmonyOS渲染时序优化 - 小延迟确保EGL上下文就绪
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        
+        Logger::debug("HarmonyRendererFrontend", "🎨 Executing renderer->render()");
+        renderer->render(params);
+        Logger::debug("HarmonyRendererFrontend", "✅ renderer->render() completed");
+        
+        // 🔧 渲染成功，重置错误计数
+        consecutiveErrors = 0;
+        
+    } catch (const std::runtime_error& e) {
+        // 🔧 改进的错误处理：不要立即永久停止
+        consecutiveErrors++;
+        Logger::error("HarmonyRendererFrontend", "Render failed (%d/%d): %s", 
+                      consecutiveErrors.load(), 10, e.what());
+        
+        // 只有连续错误超过阈值才停止渲染
+        if (consecutiveErrors >= 10) {
+            Logger::error("HarmonyRendererFrontend", "Too many consecutive errors, pausing rendering");
+            renderingPaused = true;
+        }
+    } catch (const std::exception& e) {
+        consecutiveErrors++;
+        Logger::error("HarmonyRendererFrontend", "Render failed (%d/%d): %s", 
+                      consecutiveErrors.load(), 10, e.what());
+        
+        if (consecutiveErrors >= 10) {
+            Logger::error("HarmonyRendererFrontend", "Too many consecutive errors, pausing rendering");
+            renderingPaused = true;
+        }
     }
 }
 
@@ -250,6 +374,8 @@ void HarmonyRendererFrontend::resume() {
     Logger::info("HarmonyRendererFrontend", "resume() called");
     if (renderingPaused) {
         renderingPaused = false;
+        consecutiveErrors = 0;  // 重置错误计数
+        Logger::info("HarmonyRendererFrontend", "Rendering resumed, error count reset");
         if (map) {
             requestRender();
         }

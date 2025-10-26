@@ -83,6 +83,8 @@ add_library(maplibre_native
     harmony_renderer_backend.cpp
     harmony_renderer_frontend.hpp
     harmony_renderer_frontend.cpp
+    harmony_vsync_manager.hpp
+    harmony_vsync_manager.cpp
     harmony_renderer.hpp
     harmony_renderer.cpp
     Render.h
@@ -175,5 +177,6 @@ PUBLIC
     native_window
     vulkan
     native_display_manager
+    libnative_vsync.so
 )
 

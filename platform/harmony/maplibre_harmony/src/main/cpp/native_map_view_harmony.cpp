@@ -981,8 +981,16 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
     }
     
     try {
+        Logger::info("NativeMapView", "🔵 BEFORE map->cancelTransitions()");
         instance->map->cancelTransitions();
-        Logger::debug("NativeMapView", "cancelTransitions: Transitions cancelled successfully");
+        Logger::info("NativeMapView", "✅ map->cancelTransitions() returned");
+        
+        // 🔧 触发重绘以确保状态更新
+        Logger::info("NativeMapView", "🔵 BEFORE triggerRepaint() after cancelTransitions");
+        instance->map->triggerRepaint();
+        Logger::info("NativeMapView", "✅ triggerRepaint() completed after cancelTransitions");
+        
+        Logger::debug("NativeMapView", "cancelTransitions: Transitions cancelled successfully, repaint triggered");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "cancelTransitions: Failed - %s", e.what());
     }
@@ -1428,12 +1436,30 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     
     // 执行 flyTo 相机动画
     try {
+        Logger::info("NativeMapView", "🔵 BEFORE creating AnimationOptions, duration=%lu", (unsigned long)duration);
         mbgl::AnimationOptions animationOptions;
         if (duration > 0) {
             animationOptions.duration.emplace(mbgl::Milliseconds(duration));
+            Logger::info("NativeMapView", "✅ AnimationOptions.duration set to %lu ms", (unsigned long)duration);
+        } else {
+            Logger::warn("NativeMapView", "⚠️ Using default duration (no duration specified)");
         }
+        
+        Logger::info("NativeMapView", "🔵 BEFORE map->flyTo() call");
+        Logger::info("NativeMapView", "  → CameraOptions: center=(%f, %f), zoom=%f, bearing=%f, pitch=%f",
+            cameraOptions.center ? cameraOptions.center->latitude() : -999,
+            cameraOptions.center ? cameraOptions.center->longitude() : -999,
+            cameraOptions.zoom ? *cameraOptions.zoom : -999,
+            cameraOptions.bearing ? *cameraOptions.bearing : -999,
+            cameraOptions.pitch ? *cameraOptions.pitch : -999);
+        
         instance->map->flyTo(cameraOptions, animationOptions);
+        Logger::info("NativeMapView", "✅ map->flyTo() returned successfully");
+        
+        Logger::info("NativeMapView", "🔵 BEFORE triggerRepaint()");
         instance->map->triggerRepaint();
+        Logger::info("NativeMapView", "✅ triggerRepaint() completed");
+        
         Logger::info("NativeMapView", "flyTo: Camera flight started successfully");
         Logger::info("NativeMapView", "========== flyTo() END - SUCCESS ==========");
     } catch (const std::exception& e) {

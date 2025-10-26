@@ -270,6 +270,9 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
         return;
     }
     
+    // 🔒 线程安全：锁保护 multi_ 的访问
+    std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+    
     if (!eventLoop->multi_) {
         return;
     }
@@ -295,12 +298,15 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
         return;
     }
     
-    // 处理CURL消息
+    // 处理CURL消息（注意：这里已经持有锁）
     eventLoop->processCURLMessages();
 }
 
 void CURLEventLoop::onTimeout(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
+    
+    // 🔒 线程安全：锁保护 multi_ 的访问
+    std::lock_guard<std::mutex> lock(eventLoop->mutex_);
     
     if (!eventLoop->multi_) {
         return;
@@ -314,7 +320,7 @@ void CURLEventLoop::onTimeout(uv_timer_t* timer) {
         return;
     }
     
-    // 处理CURL消息
+    // 处理CURL消息（注意：这里已经持有锁）
     eventLoop->processCURLMessages();
 }
 
@@ -322,7 +328,14 @@ void CURLEventLoop::onTimeout(uv_timer_t* timer) {
 void CURLEventLoop::onPolling(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
     
-    if (!eventLoop->multi_ || eventLoop->stopping_.load()) {
+    if (eventLoop->stopping_.load()) {
+        return;
+    }
+    
+    // 🔒 线程安全：锁保护 multi_ 的访问
+    std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+    
+    if (!eventLoop->multi_) {
         return;
     }
     
@@ -335,7 +348,7 @@ void CURLEventLoop::onPolling(uv_timer_t* timer) {
         return;
     }
     
-    // 处理完成的请求
+    // 处理完成的请求（注意：这里已经持有锁）
     eventLoop->processCURLMessages();
 }
 
