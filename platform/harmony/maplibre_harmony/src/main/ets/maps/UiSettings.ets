@@ -56,6 +56,12 @@ export class UiSettings {
   // Quick Zoom 相关配置
   private quickZoomMaxChange: number = 4;  // Quick Zoom 最大缩放变化
 
+  // Zoom 相关配置
+  private zoomRate: number = 1.0;  // 缩放速率倍率（参考 Android UiSettings）
+
+  // Rotation 相关配置
+  private rotationRate: number = 1.0;  // 旋转速率倍率（控制旋转灵敏度）
+
   /**
    * 设置是否启用滚动手势（平移）
    */
@@ -388,6 +394,41 @@ export class UiSettings {
    */
   getQuickZoomMaxChange(): number {
     return this.quickZoomMaxChange;
+  }
+
+  // ==================== Zoom Rate 配置 ====================
+
+  /**
+   * 设置缩放速率倍率
+   * 参考 Android UiSettings.setZoomRate()
+   * @param rate 缩放速率倍率（默认 1.0）
+   */
+  setZoomRate(rate: number): void {
+    this.zoomRate = Math.max(0.1, Math.min(10.0, rate));
+  }
+
+  /**
+   * 获取缩放速率倍率
+   */
+  getZoomRate(): number {
+    return this.zoomRate;
+  }
+
+  // ==================== Rotation Rate 配置 ====================
+
+  /**
+   * 设置旋转速率倍率
+   * @param rate 旋转速率倍率（默认 1.0，越小旋转越慢）
+   */
+  setRotationRate(rate: number): void {
+    this.rotationRate = Math.max(0.1, Math.min(10.0, rate));
+  }
+
+  /**
+   * 获取旋转速率倍率
+   */
+  getRotationRate(): number {
+    return this.rotationRate;
   }
 }
 

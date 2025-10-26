@@ -18,6 +18,7 @@ import {
 import { UiSettings, FocalPoint } from '../UiSettings';
 import { VelocityTracker } from './VelocityTracker';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import display from '@ohos.display';
 import maplibre from 'libmaplibre_native.so';
 
 // 类型定义
@@ -25,6 +26,8 @@ type NativeMapViewType = maplibre.NativeMapView;
 
 const DOMAIN = 0xFF00;
 const TAG = 'MapGestureDetector';
+const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
+const ROTATION_RATE = 0.4;  // 旋转速率系数 - 调节旋转速度（越小越慢，0.4 = 40%原速）
 
 /**
  * 地图手势检测器类
@@ -49,20 +52,22 @@ export class MapGestureDetector {
   private isRotating: boolean = false;
   private isTilting: boolean = false;
   private isQuickZooming: boolean = false;
+  
+  // 手势互斥控制（参考 Android disableRotateWhenScaling）
+  private shouldIgnoreRotation: boolean = false;
 
   // 缩放相关状态
-  private initialZoom: number = 0;
   private currentScale: number = 1.0;
   private lastScale: number = 1.0;
+  private initialZoom: number = 0;
   private previousPinchCenterX: number = 0;
   private previousPinchCenterY: number = 0;
 
   // 旋转相关状态
   private lastRotation: number = 0;
   private totalRotation: number = 0;
-  private previousRotateCenterX: number = 0;
-  private previousRotateCenterY: number = 0;
-  private currentBearing: number = 0;
+  private rotationAnchorX: number = 0;  // 🔑 固定的旋转锚点X（手势开始时确定）
+  private rotationAnchorY: number = 0;  // 🔑 固定的旋转锚点Y（手势开始时确定）
 
   // 平移相关状态
   private lastPanX: number = 0;
@@ -89,8 +94,18 @@ export class MapGestureDetector {
   private scaleVelocityTracker: VelocityTracker = new VelocityTracker();
   private rotateVelocityTracker: VelocityTracker = new VelocityTracker();
 
+  // Android 的 Fling 系数（经过用户测试确定的经验值）
+  // 参考：platform/android/MapLibreAndroid/src/main/java/org/maplibre/android/maps/MapGestureDetector.java:444
+  // 目的：确保惯性动画的起始速度与松手瞬间的速度无缝衔接
+  private readonly FLING_VELOCITY_COEFFICIENT = 0.28;
+
+  // 缓存的设备像素比（初始化时获取一次，避免每帧查询）
+  private cachedPixelRatio: number = 1.0;
+
   constructor(uiSettings: UiSettings) {
     this.uiSettings = uiSettings;
+    // 初始化时获取并缓存 pixelRatio
+    this.cachedPixelRatio = this.initializePixelRatio();
   }
 
   /**
@@ -276,8 +291,12 @@ export class MapGestureDetector {
     hilog.debug(DOMAIN, TAG, 'Pan gesture started');
 
     this.isMoving = true;
-    this.lastPanX = 0;
-    this.lastPanY = 0;
+    
+    // ✅ 使用实际手指坐标初始化（与 onPanUpdate 保持一致）
+    const fingerX = event.fingerList && event.fingerList[0] ? event.fingerList[0].localX : event.offsetX;
+    const fingerY = event.fingerList && event.fingerList[0] ? event.fingerList[0].localY : event.offsetY;
+    this.lastPanX = fingerX;
+    this.lastPanY = fingerY;
 
     // 重置速度跟踪器
     this.panVelocityTracker.reset();
@@ -306,17 +325,32 @@ export class MapGestureDetector {
       return;
     }
 
-    // 获取增量位移
-    const deltaX = event.offsetX - this.lastPanX;
-    const deltaY = event.offsetY - this.lastPanY;
+    // ✅ HarmonyOS 关键修复：使用 fingerList[0] 的实际坐标
+    // event.offsetX/offsetY 是相对偏移，值太小
+    // fingerList[0].localX/localY 是手指在组件中的实际坐标（逻辑像素）
+    const fingerX = event.fingerList && event.fingerList[0] ? event.fingerList[0].localX : event.offsetX;
+    const fingerY = event.fingerList && event.fingerList[0] ? event.fingerList[0].localY : event.offsetY;
 
-    // 更新记录
-    this.lastPanX = event.offsetX;
-    this.lastPanY = event.offsetY;
+    // 计算原始增量（逻辑像素）
+    const rawDeltaX = fingerX - this.lastPanX;
+    const rawDeltaY = fingerY - this.lastPanY;
 
-    // 记录速度样本（用于惯性动画）
+    // 应用 pixelRatio 缩放（使用缓存的值，避免每帧查询）
+    const pixelRatio = this.getPixelRatio();
+    const deltaX = rawDeltaX * pixelRatio;
+    const deltaY = rawDeltaY * pixelRatio;
+
+    // 🔍 调试日志：输出原始和缩放后的 delta
+    hilog.debug(DOMAIN, TAG, `Pan: raw=(${rawDeltaX.toFixed(2)}, ${rawDeltaY.toFixed(2)}), ` +
+                            `scaled=(${deltaX.toFixed(2)}, ${deltaY.toFixed(2)}), ratio=${pixelRatio.toFixed(2)}`);
+
+    // 更新记录（使用实际手指坐标）
+    this.lastPanX = fingerX;
+    this.lastPanY = fingerY;
+
+    // 记录速度样本（使用实际手指坐标）
     const now = Date.now();
-    this.panVelocityTracker.addSample(event.offsetX, event.offsetY, now);
+    this.panVelocityTracker.addSample(fingerX, fingerY, now);
 
     // 检查水平滚动限制
     let actualDeltaX = deltaX;
@@ -324,11 +358,10 @@ export class MapGestureDetector {
       actualDeltaX = 0;
     }
 
-    // 移动地图（立即移动，不带动画）
-    // ✅ 参考 Android 实现：添加负号确保方向正确
-    // 手指向右滑 → 地图向左移（负方向）
+    // 移动地图（使用 pixelRatio 缩放后的 delta）
+    // ✅ HarmonyOS 手势语义：手指向右滑 → 地图向右移（跟随手指）
     if (this.mapController && (actualDeltaX !== 0 || deltaY !== 0)) {
-      this.mapController.moveBy(-actualDeltaX, -deltaY, 0);
+      this.mapController.moveBy(actualDeltaX, deltaY, 0);
     }
 
     // 通知监听器
@@ -337,6 +370,12 @@ export class MapGestureDetector {
 
   /**
    * 平移手势结束
+   * 
+   * 完全匹配 Android 实现（MapGestureDetector.java:416-463）
+   * 关键点：
+   * 1. pixelRatio 归一化速度，确保跨设备体验一致
+   * 2. 使用归一化速度计算 duration
+   * 3. 使用 0.28 系数（Android 经验值）
    */
   onPanEnd(event: GestureEvent): void {
     // 如果正在 Quick Zoom，转发到 Quick Zoom 处理
@@ -358,22 +397,34 @@ export class MapGestureDetector {
       const velocity = this.panVelocityTracker.getVelocity();
       const speed = this.panVelocityTracker.getSpeed();
       
+      // ⚠️ 注意：HarmonyOS 与 Android 的关键区别
+      // - Android: MotionEvent 返回物理像素坐标 → 需要除以 pixelRatio 归一化
+      // - HarmonyOS: GestureEvent 返回逻辑像素坐标（vp）→ 已经归一化，无需处理
+      // 因此 HarmonyOS 的速度已经是"逻辑像素/秒"，直接使用即可
+      
       hilog.debug(DOMAIN, TAG, `Pan velocity: vx=${velocity.vx.toFixed(2)}, vy=${velocity.vy.toFixed(2)}, speed=${speed.toFixed(2)}`);
       
       // 检查速度是否超过阈值
       if (speed >= this.uiSettings.getMinFlingVelocity()) {
-        // 计算动画参数（参考 Android 实现）
+        // 计算动画时长
         const duration = this.calculateFlingDuration(speed);
-        const offsetX = velocity.vx * duration * 0.28 / 1000;  // Android 的经验系数
-        const offsetY = velocity.vy * duration * 0.28 / 1000;
         
-        hilog.info(DOMAIN, TAG, `Fling animation: offset=(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)}), duration=${duration}ms`);
+        // 使用 Android 的 0.28 系数计算偏移量
+        // factor 1000: 单位转换（毫秒 → 秒）
+        // factor 0.28: 经过用户测试确定的经验值，确保惯性动画起始速度与松手瞬间速度无缝衔接
+        const offsetX = velocity.vx * duration * this.FLING_VELOCITY_COEFFICIENT / 1000;
+        const offsetY = velocity.vy * duration * this.FLING_VELOCITY_COEFFICIENT / 1000;
         
-        // 执行惯性动画（使用带动画时长的 moveBy）
-        // ✅ 参考 Android：添加负号确保方向正确
+        hilog.info(DOMAIN, TAG, `Fling animation: offset=(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)}), ` +
+                                `duration=${duration.toFixed(0)}ms, coefficient=${this.FLING_VELOCITY_COEFFICIENT}`);
+        
+        // ✅ 步骤 6：执行惯性动画（与 Android 第 463 行对应）
+        // HarmonyOS 手势语义：地图跟随手指方向（正号）
         if (this.mapController && this.mapController.moveBy) {
-          this.mapController.moveBy(-offsetX, -offsetY, duration);
+          this.mapController.moveBy(offsetX, offsetY, duration);
         }
+      } else {
+        hilog.debug(DOMAIN, TAG, `Fling ignored: speed ${speed.toFixed(2)} < threshold ${this.uiSettings.getMinFlingVelocity()}`);
       }
     }
 
@@ -396,79 +447,102 @@ export class MapGestureDetector {
       return;
     }
 
-    hilog.debug(DOMAIN, TAG, 'Pinch gesture started');
+    hilog.info(DOMAIN, TAG, '========== Pinch gesture started ==========');
 
     this.isScaling = true;
     this.lastScale = 1.0;
     this.currentScale = 1.0;
+    
+    // 🔑 参考 Android: 缩放时禁用旋转手势，避免手势冲突
+    this.shouldIgnoreRotation = true;
+    hilog.info(DOMAIN, TAG, '🚫 Rotation gestures disabled during scaling');
+
+    // 初始化缩放相关状态
+    if (this.mapController && this.mapController.getZoom) {
+      this.initialZoom = this.mapController.getZoom();
+      hilog.info(DOMAIN, TAG, `Initial zoom: ${this.initialZoom.toFixed(3)}`);
+    } else {
+      this.initialZoom = 0;
+    }
+    this.previousPinchCenterX = event.pinchCenterX;
+    this.previousPinchCenterY = event.pinchCenterY;
 
     // 重置速度跟踪器
     this.scaleVelocityTracker.reset();
 
-    // 获取当前缩放级别
+    // 取消动画并标记手势进行中
     if (this.mapController) {
-      this.initialZoom = this.mapController.getZoom();
       this.mapController.cancelTransitions();
       this.mapController.setGestureInProgress(true);
     }
 
-    // 获取焦点并保存（用于下一帧的补偿计算）
+    // 获取焦点并通知监听器
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
-    this.previousPinchCenterX = focalPoint.x;
-    this.previousPinchCenterY = focalPoint.y;
-
-    // 通知监听器
+    hilog.info(DOMAIN, TAG, `Focal point: (${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+                            `Pinch center from event: (${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)})`);
+    
     this.notifyScaleBegin(focalPoint.x, focalPoint.y);
   }
 
   /**
    * 缩放手势更新
-   * 参考 iOS handlePinchGesture 和 Android onScale 实现
+   * 参考 Android onScale 实现 - 使用增量式缩放计算
    */
   onPinchUpdate(event: GestureEvent): void {
     if (!this.uiSettings.isZoomGesturesEnabled() || !this.isScaling) {
       return;
     }
 
-    // 获取缩放比例
+    // 获取本帧的缩放因子（增量）
     this.currentScale = event.scale;
     const scaleFactor = this.currentScale / this.lastScale;
 
-    // 计算新的缩放级别
-    const newZoom = this.initialZoom + Math.log2(this.currentScale);
+    hilog.info(DOMAIN, TAG, `[Pinch Update] event.scale=${event.scale.toFixed(4)}, ` +
+                            `currentScale=${this.currentScale.toFixed(4)}, ` +
+                            `lastScale=${this.lastScale.toFixed(4)}, ` +
+                            `scaleFactor=${scaleFactor.toFixed(4)}`);
+
+    // Android 风格的增量式缩放计算
+    // 参考: MapGestureDetector.ScaleGestureListener.onScale()
+    const zoomBy = (Math.log(scaleFactor) / Math.log(Math.PI / 2)) * ZOOM_RATE * this.uiSettings.getZoomRate();
+
+    hilog.info(DOMAIN, TAG, `[Pinch Update] zoomBy=${zoomBy.toFixed(4)}, ` +
+                            `ZOOM_RATE=${ZOOM_RATE}, ` +
+                            `uiSettings.zoomRate=${this.uiSettings.getZoomRate()}`);
 
     // 记录速度样本（用于惯性动画）
     const now = Date.now();
     this.scaleVelocityTracker.addSample(this.currentScale, 0, now);
 
-    // 获取当前焦点
+    // 获取焦点
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    
+    hilog.info(DOMAIN, TAG, `[Pinch Update] Focal point: (${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+                            `Pinch center: (${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)})`);
 
-    // 应用缩放 - 使用锚点避免抖动
-    if (this.mapController) {
-      // 🔑 关键修复：使用 setZoom 的锚点参数（参考 iOS 和 Android）
-      // setZoom 参数：zoom, cx (锚点X), cy (锚点Y), duration
-      if (this.mapController.setZoom) {
-        this.mapController.setZoom(newZoom, focalPoint.x, focalPoint.y, 0);
-      }
-
-      // 🔑 iOS 关键技巧：补偿焦点移动造成的偏移
-      // 当焦点位置变化时，需要 moveBy 来保持地图内容在手指下方不移动
-      const deltaX = focalPoint.x - this.previousPinchCenterX;
-      const deltaY = focalPoint.y - this.previousPinchCenterY;
+    // 使用增量式缩放（类似 Android 的 transform.zoomBy）
+    if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
+      const currentZoom = this.mapController.getZoom();
+      const newZoom = currentZoom + zoomBy;
       
-      if ((Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) && this.mapController.moveBy) {
-        // 补偿焦点移动
-        this.mapController.moveBy(deltaX, deltaY, 0);
-      }
+      // 🔑 DPI 修复：将逻辑像素转换为物理像素
+      const pixelRatio = this.getPixelRatio();
+      const scaledAnchorX = focalPoint.x * pixelRatio;
+      const scaledAnchorY = focalPoint.y * pixelRatio;
+      
+      hilog.info(DOMAIN, TAG, `[Pinch Update] currentZoom=${currentZoom.toFixed(4)}, ` +
+                              `newZoom=${newZoom.toFixed(4)}, ` +
+                              `logicalAnchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+                              `pixelRatio=${pixelRatio.toFixed(2)}, ` +
+                              `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
+      
+      this.mapController.setZoom(newZoom, scaledAnchorX, scaledAnchorY, 0);
     }
 
     // 通知监听器
     this.notifyScale(scaleFactor, focalPoint.x, focalPoint.y);
 
-    // 保存当前焦点，用于下一帧的补偿计算
-    this.previousPinchCenterX = focalPoint.x;
-    this.previousPinchCenterY = focalPoint.y;
+    // 更新上一帧状态
     this.lastScale = this.currentScale;
   }
 
@@ -480,7 +554,7 @@ export class MapGestureDetector {
       return;
     }
 
-    hilog.debug(DOMAIN, TAG, `Pinch gesture ended, final scale: ${this.currentScale}`);
+    hilog.info(DOMAIN, TAG, `========== Pinch gesture ended, final scale: ${this.currentScale.toFixed(4)} ==========`);
 
     // 获取最终焦点（用于惯性动画）
     const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
@@ -492,30 +566,44 @@ export class MapGestureDetector {
       const velocity = this.scaleVelocityTracker.getVelocity();
       const scaleVelocity = velocity.vx;  // 只使用 X 分量
       
-      hilog.debug(DOMAIN, TAG, `Scale velocity: ${scaleVelocity.toFixed(3)}`);
+      hilog.info(DOMAIN, TAG, `[Pinch End] Scale velocity: ${scaleVelocity.toFixed(3)}`);
       
-      // 检查速度阈值（参考 iOS: -0.5 < velocity < 3，排除接近零的速度）
+      // 检查速度阈值
       if (Math.abs(scaleVelocity) >= this.uiSettings.getMinScaleVelocity() &&
           Math.abs(scaleVelocity) > 0.1) {
         
-        // 计算动画时长（参考 iOS）
-        const duration = (scaleVelocity > 0 ? 1 : 0.25) * this.uiSettings.getDecelerationRate() * 1000;
+        // 计算动画时长
+        const duration = this.uiSettings.getDecelerationRate() * 1000;
         
-        // 计算最终缩放级别
-        const finalScale = this.currentScale + scaleVelocity * duration / 1000 * 0.1;
-        const finalZoom = this.initialZoom + Math.log2(finalScale);
+        // Android 风格：计算缩放增量而非绝对值
+        const zoomDelta = scaleVelocity * duration / 1000 * ZOOM_RATE * this.uiSettings.getZoomRate();
         
-        hilog.info(DOMAIN, TAG, `Scale inertia animation: finalZoom=${finalZoom.toFixed(2)}, duration=${duration.toFixed(0)}ms`);
+        hilog.info(DOMAIN, TAG, `[Pinch End] Scale inertia animation: zoomDelta=${zoomDelta.toFixed(2)}, duration=${duration.toFixed(0)}ms`);
         
-        // 🔑 关键修复：执行缩放动画时也要传递锚点
-        if (this.mapController && this.mapController.setZoom) {
-          // setZoom 的参数：zoom, cx (锚点X), cy (锚点Y), duration
-          this.mapController.setZoom(finalZoom, focalPoint.x, focalPoint.y, duration);
+        // 执行缩放动画
+        if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
+          const currentZoom = this.mapController.getZoom();
+          const finalZoom = currentZoom + zoomDelta;
+          
+          // 🔑 DPI 修复：将逻辑像素转换为物理像素
+          const pixelRatio = this.getPixelRatio();
+          const scaledAnchorX = focalPoint.x * pixelRatio;
+          const scaledAnchorY = focalPoint.y * pixelRatio;
+          
+          hilog.info(DOMAIN, TAG, `[Pinch End] currentZoom=${currentZoom.toFixed(4)}, finalZoom=${finalZoom.toFixed(4)}, ` +
+                                  `logicalAnchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+                                  `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
+          
+          this.mapController.setZoom(finalZoom, scaledAnchorX, scaledAnchorY, duration);
         }
       }
     }
 
     this.isScaling = false;
+    
+    // 🔑 参考 Android: 缩放结束，重新启用旋转手势
+    this.shouldIgnoreRotation = false;
+    hilog.info(DOMAIN, TAG, '✅ Rotation gestures re-enabled after scaling');
 
     // 设置手势完成
     if (this.mapController) {
@@ -533,78 +621,137 @@ export class MapGestureDetector {
     if (!this.uiSettings.isRotateGesturesEnabled()) {
       return;
     }
+    
+    // 🔑 参考 Android: 如果正在缩放，忽略旋转手势（避免手势冲突）
+    if (this.shouldIgnoreRotation) {
+      hilog.info(DOMAIN, TAG, '🚫 Rotation gesture ignored - scaling in progress');
+      return;
+    }
 
-    hilog.debug(DOMAIN, TAG, 'Rotation gesture started');
+    hilog.info(DOMAIN, TAG, '========== Rotation gesture started ==========');
 
     this.isRotating = true;
-    this.lastRotation = 0;
+    this.lastRotation = 0;  // 重置上一帧角度
     this.totalRotation = 0;
 
     // 重置速度跟踪器
     this.rotateVelocityTracker.reset();
 
-    // 取消当前动画并获取当前bearing
+    // 取消动画并标记手势进行中
     if (this.mapController) {
       this.mapController.cancelTransitions();
       this.mapController.setGestureInProgress(true);
-      this.currentBearing = this.mapController.getBearing();
     }
 
-    // 获取焦点并保存
-    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
-    this.previousRotateCenterX = focalPoint.x;
-    this.previousRotateCenterY = focalPoint.y;
-
-    // 通知监听器
-    this.notifyRotateBegin(focalPoint.x, focalPoint.y);
+    // 🔑 关键修复：RotationGesture 需要从 fingerList 计算中心点
+    // pinchCenterX/Y 只存在于 PinchGesture，在 RotationGesture 中为 undefined
+    let centerX = 0;
+    let centerY = 0;
+    
+    if (event.fingerList && event.fingerList.length >= 2) {
+      const finger0X = event.fingerList[0].localX;
+      const finger0Y = event.fingerList[0].localY;
+      const finger1X = event.fingerList[1].localX;
+      const finger1Y = event.fingerList[1].localY;
+      
+      // 计算两指中心点
+      centerX = (finger0X + finger1X) / 2;
+      centerY = (finger0Y + finger1Y) / 2;
+      
+      hilog.info(DOMAIN, TAG, `🔍 Finger positions: finger0=(${finger0X.toFixed(1)}, ${finger0Y.toFixed(1)}), ` +
+                              `finger1=(${finger1X.toFixed(1)}, ${finger1Y.toFixed(1)})`);
+      hilog.info(DOMAIN, TAG, `🔍 Calculated rotation center: (${centerX.toFixed(1)}, ${centerY.toFixed(1)})`);
+    }
+    
+    const focalPoint = this.getFocalPoint(centerX, centerY);
+    
+    // 🔑 关键修复：保存固定的旋转锚点（参考 iOS - 整个旋转过程使用同一个锚点）
+    this.rotationAnchorX = focalPoint.x;
+    this.rotationAnchorY = focalPoint.y;
+    
+    hilog.info(DOMAIN, TAG, `Rotation anchor FIXED at: (${this.rotationAnchorX.toFixed(1)}, ${this.rotationAnchorY.toFixed(1)})`);
+    
+    this.notifyRotateBegin(this.rotationAnchorX, this.rotationAnchorY);
   }
 
   /**
    * 旋转手势更新
-   * 参考 iOS handleRotateGesture 和 Android 实现
+   * 参考 Android onRotate 实现 - 使用增量式计算
    */
   onRotateUpdate(event: GestureEvent): void {
     if (!this.uiSettings.isRotateGesturesEnabled() || !this.isRotating) {
       return;
     }
+    
+    // 🔑 如果正在缩放，忽略旋转更新
+    if (this.shouldIgnoreRotation) {
+      return;
+    }
 
     // 获取旋转角度（弧度转度）
     const currentRotation = event.angle * 180 / Math.PI;
-    const rotationDelta = currentRotation - this.lastRotation;
+    
+    // 🔑 关键修复：使用新的增量计算函数，处理跨越边界的情况
+    let rotationDelta = this.calculateAngleDelta(currentRotation, this.lastRotation);
+    
+    // 🔑 方向修复：反转旋转方向以匹配手指旋转方向（顺时针手势 → 地图顺时针旋转）
+    rotationDelta = -rotationDelta;
+    
+    // 🔑 优化：如果增量太小（< 0.1°），跳过此帧，避免抖动和重复计算
+    if (Math.abs(rotationDelta) < 0.1) {
+      hilog.debug(DOMAIN, TAG, `[Rotate Update] Skipping frame - rotationDelta too small: ${rotationDelta.toFixed(3)}°`);
+      // 仍然更新 lastRotation，避免下一帧计算错误
+      this.lastRotation = currentRotation;
+      return;
+    }
+    
     this.totalRotation += rotationDelta;
 
-    // 计算新的bearing
-    this.currentBearing += rotationDelta;
+    hilog.info(DOMAIN, TAG, `[Rotate Update] currentRotation=${currentRotation.toFixed(2)}°, ` +
+                            `lastRotation=${this.lastRotation.toFixed(2)}°, ` +
+                            `rotationDelta=${rotationDelta.toFixed(2)}°, ` +
+                            `totalRotation=${this.totalRotation.toFixed(2)}°`);
 
     // 记录速度样本（用于惯性动画）
     const now = Date.now();
     this.rotateVelocityTracker.addSample(currentRotation, 0, now);
 
-    // 获取当前焦点
-    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    // 🔑 关键修复：使用固定的旋转锚点（参考 iOS）
+    // 不要每帧重新计算，而是使用手势开始时保存的固定锚点
+    const anchorX = this.rotationAnchorX;
+    const anchorY = this.rotationAnchorY;
 
-    // 🔑 关键修复：应用旋转时使用锚点（参考 iOS 和 Android）
-    if (this.mapController) {
-      if (this.mapController.setBearingXY) {
-        // 使用 setBearingXY 方法，传递锚点参数
-        this.mapController.setBearingXY(this.currentBearing, focalPoint.x, focalPoint.y, 0);
-      }
-
-      // 🔑 iOS 关键技巧：补偿焦点移动造成的偏移
-      const deltaX = focalPoint.x - this.previousRotateCenterX;
-      const deltaY = focalPoint.y - this.previousRotateCenterY;
+    // 🔑 Android 风格：每帧从地图获取当前 bearing，加上增量
+    if (this.mapController && this.mapController.getBearing && this.mapController.setBearingXY) {
+      const currentBearing = this.mapController.getBearing();
       
-      if ((Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) && this.mapController.moveBy) {
-        this.mapController.moveBy(deltaX, deltaY, 0);
-      }
+      // 🔑 应用旋转速率系数，控制旋转速度
+      const adjustedRotationDelta = rotationDelta * ROTATION_RATE * this.uiSettings.getRotationRate();
+      let newBearing = currentBearing + adjustedRotationDelta;
+      
+      // 🔑 关键修复：归一化 bearing 到 [-180, 180]，避免跨越边界突变
+      newBearing = this.normalizeBearing(newBearing);
+      
+      // 🔑 DPI 修复：鸿蒙手势坐标是逻辑像素，需要乘以 pixelRatio 转换
+      const pixelRatio = this.getPixelRatio();
+      const scaledAnchorX = anchorX * pixelRatio;
+      const scaledAnchorY = anchorY * pixelRatio;
+      
+      hilog.info(DOMAIN, TAG, `[Rotate Update] currentBearing=${currentBearing.toFixed(2)}°, ` +
+                              `rotationDelta=${rotationDelta.toFixed(2)}°, ` +
+                              `adjustedDelta=${adjustedRotationDelta.toFixed(2)}° (×${ROTATION_RATE}), ` +
+                              `newBearing=${newBearing.toFixed(2)}°, ` +
+                              `logicalAnchor=(${anchorX.toFixed(1)}, ${anchorY.toFixed(1)}) [FIXED], ` +
+                              `pixelRatio=${pixelRatio.toFixed(2)}, ` +
+                              `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
+      
+      this.mapController.setBearingXY(newBearing, scaledAnchorX, scaledAnchorY, 0);
     }
 
     // 通知监听器
-    this.notifyRotate(rotationDelta, focalPoint.x, focalPoint.y);
+    this.notifyRotate(rotationDelta, anchorX, anchorY);
 
-    // 保存当前状态
-    this.previousRotateCenterX = focalPoint.x;
-    this.previousRotateCenterY = focalPoint.y;
+    // 保存当前角度，用于下一帧计算增量
     this.lastRotation = currentRotation;
   }
 
@@ -616,10 +763,11 @@ export class MapGestureDetector {
       return;
     }
 
-    hilog.debug(DOMAIN, TAG, `Rotation gesture ended, total rotation: ${this.totalRotation}`);
+    hilog.info(DOMAIN, TAG, `========== Rotation gesture ended, total rotation: ${this.totalRotation.toFixed(2)}° ==========`);
 
-    // 获取最终焦点（用于惯性动画）
-    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    // 🔑 关键修复：使用固定的旋转锚点（用于惯性动画）
+    const anchorX = this.rotationAnchorX;
+    const anchorY = this.rotationAnchorY;
 
     // 检查是否应该播放惯性动画
     if (this.uiSettings.isRotateVelocityAnimationEnabled() && 
@@ -628,27 +776,39 @@ export class MapGestureDetector {
       const velocity = this.rotateVelocityTracker.getVelocity();
       const angularVelocity = velocity.vx;  // 度/秒
       
-      hilog.debug(DOMAIN, TAG, `Rotate velocity: ${angularVelocity.toFixed(2)} deg/s`);
+      hilog.info(DOMAIN, TAG, `[Rotate End] Angular velocity: ${angularVelocity.toFixed(2)} deg/s`);
       
       // 检查速度阈值
       if (Math.abs(angularVelocity) >= this.uiSettings.getMinRotateVelocity()) {
         // 计算动画时长
         const duration = this.uiSettings.getDecelerationRate() * 1000;
         
-        // 计算最终角度（减半作为减速效果）
-        const deltaBearing = angularVelocity * duration / 1000 * 0.5;
+        // 计算最终角度增量（减半作为减速效果，并应用旋转速率系数）
+        const deltaBearing = angularVelocity * duration / 1000 * 0.5 * ROTATION_RATE * this.uiSettings.getRotationRate();
         
-        hilog.info(DOMAIN, TAG, `Rotate inertia animation: deltaBearing=${deltaBearing.toFixed(2)}°, duration=${duration.toFixed(0)}ms`);
+        hilog.info(DOMAIN, TAG, `[Rotate End] Rotate inertia animation: angularVelocity=${angularVelocity.toFixed(2)}°/s, ` +
+                                `deltaBearing=${deltaBearing.toFixed(2)}° (×${ROTATION_RATE}×${this.uiSettings.getRotationRate()}), ` +
+                                `duration=${duration.toFixed(0)}ms`);
         
-        // 🔑 关键修复：执行旋转动画时也使用锚点
-        if (this.mapController) {
+        // 执行旋转动画
+        if (this.mapController && this.mapController.getBearing && this.mapController.setBearingXY) {
           const currentBearing = this.mapController.getBearing();
-          const newBearing = (currentBearing + deltaBearing) % 360;
+          let newBearing = currentBearing + deltaBearing;
           
-          if (this.mapController.setBearingXY) {
-            // 使用 setBearingXY 方法传递锚点参数
-            this.mapController.setBearingXY(newBearing, focalPoint.x, focalPoint.y, duration);
-          }
+          // 归一化 bearing
+          newBearing = this.normalizeBearing(newBearing);
+          
+          // 🔑 DPI 修复：将逻辑像素转换为物理像素
+          const pixelRatio = this.getPixelRatio();
+          const scaledAnchorX = anchorX * pixelRatio;
+          const scaledAnchorY = anchorY * pixelRatio;
+          
+          hilog.info(DOMAIN, TAG, `[Rotate End] currentBearing=${currentBearing.toFixed(2)}°, ` +
+                                  `finalBearing=${newBearing.toFixed(2)}°, ` +
+                                  `logicalAnchor=(${anchorX.toFixed(1)}, ${anchorY.toFixed(1)}) [FIXED], ` +
+                                  `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
+          
+          this.mapController.setBearingXY(newBearing, scaledAnchorX, scaledAnchorY, duration);
         }
       }
     }
@@ -908,8 +1068,11 @@ export class MapGestureDetector {
 
   /**
    * 计算 Fling 动画时长
-   * 参考 Android 实现：duration = velocityXY / 7 / tiltFactor + baseTime
-   * @param speed 速度大小（像素/秒）
+   * 
+   * 参考 Android 实现（MapGestureDetector.java:440）：
+   * duration = velocityXY / 7 / tiltFactor + baseTime
+   * 
+   * @param speed 速度大小（逻辑像素/秒）
    * @returns 动画时长（毫秒）
    */
   private calculateFlingDuration(speed: number): number {
@@ -922,12 +1085,69 @@ export class MapGestureDetector {
   }
 
   /**
+   * 初始化设备像素比（只在构造时调用一次）
+   * 从 display API 获取，用于坐标转换
+   */
+  private initializePixelRatio(): number {
+    try {
+      const defaultDisplay = display.getDefaultDisplaySync();
+      if (defaultDisplay && defaultDisplay.densityDPI) {
+        const pixelRatio = defaultDisplay.densityDPI / 160.0;
+        hilog.info(DOMAIN, TAG, `Initialized pixelRatio: ${pixelRatio.toFixed(2)} (DPI: ${defaultDisplay.densityDPI})`);
+        return pixelRatio;
+      }
+    } catch (error) {
+      hilog.warn(DOMAIN, TAG, `Failed to get display DPI: ${error}, using pixelRatio=1.0`);
+    }
+    return 1.0;
+  }
+
+  /**
+   * 获取缓存的设备像素比（高性能，无需每次查询）
+   */
+  private getPixelRatio(): number {
+    return this.cachedPixelRatio;
+  }
+
+  /**
    * 归一化函数
    * 将值从一个范围映射到另一个范围
    */
   private normalize(value: number, min: number, max: number, newMin: number, newMax: number): number {
     if (max === min) return newMin;  // 避免除以零
     return ((value - min) / (max - min)) * (newMax - newMin) + newMin;
+  }
+
+  /**
+   * 归一化 bearing 到 [-180, 180] 范围
+   * 参考 Android: 处理角度跨越边界的问题
+   */
+  private normalizeBearing(bearing: number): number {
+    // 将角度归一化到 [-180, 180] 范围
+    while (bearing > 180) {
+      bearing -= 360;
+    }
+    while (bearing < -180) {
+      bearing += 360;
+    }
+    return bearing;
+  }
+
+  /**
+   * 计算角度增量，处理跨越边界的情况
+   * 例如：从 179° 到 -179° 实际是增加了 2°，而不是减少了 358°
+   */
+  private calculateAngleDelta(currentAngle: number, lastAngle: number): number {
+    let delta = currentAngle - lastAngle;
+    
+    // 如果增量超过 180°，说明跨越了边界，需要调整
+    if (delta > 180) {
+      delta -= 360;
+    } else if (delta < -180) {
+      delta += 360;
+    }
+    
+    return delta;
   }
 
   // ==================== 监听器通知方法 ====================
