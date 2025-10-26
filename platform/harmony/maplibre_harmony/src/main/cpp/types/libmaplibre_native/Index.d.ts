@@ -14,12 +14,6 @@
 export * from './NativeMapView';
 
 /**
- * PluginManager - XComponent 插件管理
- * 提供 Surface 管理和测试函数
- */
-export * from './PluginManager';
-
-/**
  * Style - 样式管理 API
  * 提供地图样式、数据源、图层、图像、光照和过渡效果的管理功能
  */

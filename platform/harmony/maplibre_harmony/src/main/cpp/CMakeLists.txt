@@ -72,8 +72,6 @@ add_library(maplibre_native
     napi_utils_ext.cpp
     napi_args.hpp
     napi_args.cpp
-    PluginManager.h
-    PluginManager.cpp
     logger.h
     logger.cpp
     curl_event_loop.hpp
@@ -94,6 +92,9 @@ add_library(maplibre_native
     common.h
     native_map_view_harmony.cpp
     native_map_view_harmony.hpp
+    # Annotation API 绑定
+    marker_napi.cpp
+    marker_napi.hpp
     # Geometry API 绑定
     geometry/lat_lng_harmony.hpp
     geometry/lat_lng_harmony.cpp
