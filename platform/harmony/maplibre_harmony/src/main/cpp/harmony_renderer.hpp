@@ -33,8 +33,8 @@ public:
     // 设置OHNativeWindow
     void setNativeWindow(OHNativeWindow* window);
     
-    // 设置地图
-    void setMap(std::shared_ptr<Map> map);
+    // 设置地图（接受裸指针，不持有所有权）
+    void setMap(Map* map);
     
     // 调整大小
     void resize(int width, int height);
@@ -74,7 +74,7 @@ public:
 private:
     std::unique_ptr<HarmonyRendererBackendImpl> rendererBackend;
     std::unique_ptr<HarmonyRendererFrontend> rendererFrontend;
-    std::shared_ptr<Map> map;
+    Map* map = nullptr;  // 不持有所有权，只保存引用
     int width = 0;
     int height = 0;
     float pixelRatio = 1.0f;

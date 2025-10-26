@@ -45,8 +45,9 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     
     width = width_;
     height = height_;
-    // 鸿蒙平台：统一使用逻辑像素，忽略传入的 pixelRatio_，固定为 1.0
-    pixelRatio = 1.0f;
+    // ✅ 使用传入的 pixelRatio（可能来自设备 DPI）
+    pixelRatio = pixelRatio_;
+    Logger::info("HarmonyRenderer", "Using pixelRatio: %.4f", pixelRatio);
     
     // Initialize FileSourceManager for network resource loading
     Logger::info("HarmonyRenderer", "Initializing FileSourceManager...");
@@ -111,14 +112,15 @@ void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
     Logger::info("HarmonyRenderer", "========== setNativeWindow() END ==========");
 }
 
-void HarmonyRenderer::setMap(std::shared_ptr<Map> map_) {
+void HarmonyRenderer::setMap(Map* map_) {
     if (!initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
         return;
     }
-    map = std::move(map_);
+    map = map_;
     if (map) {
-        rendererFrontend->setMap(map.get());
+        rendererFrontend->setMap(map);
+        Logger::info("HarmonyRenderer", "Map reference saved: %p", map);
     }
 }
 
@@ -131,32 +133,47 @@ void HarmonyRenderer::resize(int width_, int height_) {
     Logger::info("HarmonyRenderer", "========== resize() START ==========");
     Logger::info("HarmonyRenderer", "Resizing: %dx%d -> %dx%d (logical pixels)", 
                  width, height, width_, height_);
+    Logger::info("HarmonyRenderer", "PixelRatio: %.4f", pixelRatio);
     
     width = width_;
     height = height_;
     
+    // 🔧 关键修复：同时更新 framebuffer 和 Map Transform
     auto* backend = static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
     if (backend) {
         try {
+            // 1. 更新 framebuffer（会根据 pixelRatio 计算物理像素）
             backend->resizeFramebuffer(width, height);
-            Logger::info("HarmonyRenderer", "Framebuffer resized successfully");
-        } catch (const std::exception& e) {
-            Logger::error("HarmonyRenderer", "Failed to resize framebuffer: %s", e.what());
-            // 尝试恢复
-            try {
-                Logger::debug("HarmonyRenderer", "Attempting framebuffer resize recovery...");
-                backend->resizeFramebuffer(width, height);
-                Logger::info("HarmonyRenderer", "Framebuffer resize recovery successful");
-            } catch (const std::exception& e2) {
-                Logger::error("HarmonyRenderer", "Framebuffer resize recovery failed: %s", e2.what());
+            Logger::info("HarmonyRenderer", "✅ Framebuffer resized");
+            
+            // 2. ✅ 更新 Map Transform size（使用逻辑像素）
+            if (map) {
+                Logger::debug("HarmonyRenderer", "🔍 Before map->setSize:");
+                auto oldMapOptions = map->getMapOptions();
+                Logger::debug("HarmonyRenderer", "   Old Map size: %ux%u", 
+                            oldMapOptions.size().width, oldMapOptions.size().height);
+                Logger::debug("HarmonyRenderer", "   Old Map pixelRatio: %.4f", oldMapOptions.pixelRatio());
+                
+                map->setSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)});
+                
+                Logger::debug("HarmonyRenderer", "🔍 After map->setSize:");
+                auto newMapOptions = map->getMapOptions();
+                Logger::debug("HarmonyRenderer", "   New Map size: %ux%u", 
+                            newMapOptions.size().width, newMapOptions.size().height);
+                Logger::debug("HarmonyRenderer", "   New Map pixelRatio: %.4f", newMapOptions.pixelRatio());
+                
+                Logger::info("HarmonyRenderer", "✅ Map Transform size updated to: %dx%d (logical)", 
+                            width, height);
+            } else {
+                Logger::warn("HarmonyRenderer", "⚠️  Map is null, cannot update Transform size");
             }
+        } catch (const std::exception& e) {
+            Logger::error("HarmonyRenderer", "Failed to resize: %s", e.what());
         }
     } else {
         Logger::error("HarmonyRenderer", "Backend is null during resize");
     }
     
-    // Note: Map doesn't have a resize method, this needs to be handled differently
-    // The resize is handled by the renderer backend
     requestRender();
     Logger::info("HarmonyRenderer", "========== resize() END ==========");
 }
@@ -248,7 +265,7 @@ void HarmonyRenderer::cleanup() {
     
     rendererFrontend.reset();
     rendererBackend.reset();
-    map.reset();
+    map = nullptr;  // 清除引用（不持有所有权）
     initialized = false;
     Log::Info(Event::OpenGL, "HarmonyRenderer cleaned up successfully");
 }

@@ -29,6 +29,10 @@ public:
     void resizeFramebuffer(int width, int height) override;
     PremultipliedImage readFramebuffer() override;
     void swapBuffers();  // Call eglSwapBuffers to display frame
+    
+    // 新增：获取和更新 pixelRatio
+    float getPixelRatio() const { return pixelRatio_; }
+    void updatePixelRatioFromDevice();
 
     // gfx::RendererBackend pure virtual methods
     mbgl::gfx::Renderable& getDefaultRenderable() override { return *this; }
@@ -61,6 +65,7 @@ private:
     EGLContext eglContext_ = EGL_NO_CONTEXT;
     EGLNativeWindowType eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
     bool contextInitialized_ = false;  // 标记context是否已在渲染线程创建
+    float pixelRatio_ = 1.0f;  // 设备像素比
 };
 
 } // namespace harmony

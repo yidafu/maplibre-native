@@ -3,22 +3,48 @@
 #include <mbgl/gfx/backend_scope.hpp>
 #include <mbgl/gl/context.hpp>
 #include <mbgl/gl/renderable_resource.hpp>
-#include <mbgl/util/logging.hpp>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES3/gl3.h>
-#include <GLES2/gl2.h>
 #include <native_window/external_window.h>
+#include <window_manager/oh_display_manager.h>
 #include "logger.h"
 #include <cassert>
 #include <thread>
 #include <chrono>
 #include <stdexcept>  // for std::runtime_error
+#include <cmath>      // for std::abs
 
 using mbgl::harmony::Logger;
 
 namespace {
+
+// 获取设备 DPI
+// 参考：https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-oh-display-manager-h#oh_nativedisplaymanager_getdefaultdisplaydensitydpi
+float getDeviceDPI() {
+    int32_t densityDPI = 160;  // 默认 MDPI
+    
+    // 调用 Native API 获取 DPI
+    int32_t ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&densityDPI);
+    
+    if (ret == 0) {  // 0 表示成功
+        Logger::info("HarmonyGL", "✅ Got device DPI from Native API: %d", densityDPI);
+    } else {
+        Logger::warn("HarmonyGL", "⚠️  Failed to get DPI (error=%d), using default MDPI: %d", 
+                    ret, densityDPI);
+    }
+    
+    return static_cast<float>(densityDPI);
+}
+
+// 计算 pixelRatio (基于 MDPI = 160)
+float calculatePixelRatio(float dpi) {
+    float ratio = dpi / 160.0f;
+    Logger::info("HarmonyGL", "Calculated pixelRatio: %.4f (from DPI: %.0f)", ratio, dpi);
+    return ratio;
+}
+
 const char* eglErrorString(int error) {
     switch (error) {
         case EGL_SUCCESS: return "EGL_SUCCESS";
@@ -88,6 +114,25 @@ HarmonyGLRendererBackend::~HarmonyGLRendererBackend() {
 #endif
 }
 
+void HarmonyGLRendererBackend::updatePixelRatioFromDevice() {
+    Logger::info("HarmonyGLRendererBackend", "========== updatePixelRatioFromDevice() START ==========");
+    
+    // 使用 Native API 获取 DPI
+    float deviceDPI = getDeviceDPI();
+    float newPixelRatio = calculatePixelRatio(deviceDPI);
+    
+    if (std::abs(pixelRatio_ - newPixelRatio) > 0.01f) {
+        Logger::info("HarmonyGLRendererBackend", 
+                    "PixelRatio changed: %.4f → %.4f", 
+                    pixelRatio_, newPixelRatio);
+        pixelRatio_ = newPixelRatio;
+    } else {
+        Logger::debug("HarmonyGLRendererBackend", 
+                     "PixelRatio unchanged: %.4f", pixelRatio_);
+    }
+    
+    Logger::info("HarmonyGLRendererBackend", "========== updatePixelRatioFromDevice() END ==========");
+}
 
 void HarmonyGLRendererBackend::setNativeWindow(void* window) {
     Logger::info("HarmonyGLRendererBackend", "========== setNativeWindow() START ==========");
@@ -115,6 +160,15 @@ void HarmonyGLRendererBackend::setNativeWindow(void* window) {
         } else {
             Logger::info("OpenGL", "Successfully initialized EGL display and surface");
             Logger::info("HarmonyGLRendererBackend", "EGL context will be created on render thread");
+            
+            // ✅ 获取设备 DPI 和 pixelRatio
+            updatePixelRatioFromDevice();
+            
+            // 🔧 Note: buffer geometry 将在 resizeFramebuffer() 中设置
+            // 在 setNativeWindow 阶段太早调用可能导致崩溃
+            Logger::debug("HarmonyGLRendererBackend", 
+                        "Buffer geometry will be set in resizeFramebuffer()");
+            
             Logger::info("HarmonyGLRendererBackend", "========== setNativeWindow() END - SUCCESS ==========");
         }
     } else {
@@ -500,27 +554,79 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
         return;
     }
     
-    // 鸿蒙平台：统一使用逻辑像素渲染，不做DPI缩放
-    Logger::info("HarmonyGLRendererBackend", "resizeFramebuffer: %dx%d (logical pixels)", width, height);
+    Logger::info("HarmonyGLRendererBackend", "========== resizeFramebuffer() START ==========");
+    Logger::info("HarmonyGLRendererBackend", "Input (logical): %dx%d", width, height);
+    Logger::info("HarmonyGLRendererBackend", "PixelRatio: %.4f", pixelRatio_);
     
-    // 记录旧尺寸用于判断是否需要重新创建surface
+    // 记录旧尺寸
     Size oldSize = size;
     
-    // 直接使用逻辑像素尺寸
-    size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+    // 🌟 模式 B：使用物理像素（DPI 缩放）实现高清渲染
+    uint32_t physicalWidth = static_cast<uint32_t>(width * pixelRatio_);
+    uint32_t physicalHeight = static_cast<uint32_t>(height * pixelRatio_);
     
-    Logger::info("HarmonyGLRendererBackend", "New framebuffer size: %ux%u (logical pixels)", 
-                 size.width, size.height);
+    Logger::info("HarmonyGLRendererBackend", "Calculated (physical): %ux%u", 
+                physicalWidth, physicalHeight);
     
-    // 鸿蒙平台：使用逻辑像素渲染
-    // EGL Surface 会自动使用 Native Window 的尺寸，无需手动重新配置
-    // viewport 会在渲染线程的 updateAssumedState() 中自动更新
+    size = {physicalWidth, physicalHeight};
+    
+    // 🔧 关键修复：设置 Native Window buffer geometry
+    // 对比 Android：ANativeWindow 自动同步尺寸
+    // 鸿蒙平台：需要显式调用 OH_NativeWindow_NativeWindowHandleOpt
+    Logger::debug("HarmonyGLRendererBackend", "🔍 Preparing to set buffer geometry...");
+    Logger::debug("HarmonyGLRendererBackend", "   eglWindow_ = %p", eglWindow_);
+    
+    if (eglWindow_ != nullptr) {
+        Logger::debug("HarmonyGLRendererBackend", "   Converting to OHNativeWindow*...");
+        // eglWindow_ 是 void* (EGLNativeWindowType)，直接作为 OHNativeWindow* 使用
+        OHNativeWindow* nativeWindow = static_cast<OHNativeWindow*>(eglWindow_);
+        Logger::debug("HarmonyGLRendererBackend", "   nativeWindow = %p", nativeWindow);
+        
+        if (nativeWindow == nullptr) {
+            Logger::error("HarmonyGLRendererBackend", "   ❌ nativeWindow is NULL after cast!");
+        } else {
+            Logger::debug("HarmonyGLRendererBackend", "   ✅ nativeWindow is valid");
+            Logger::debug("HarmonyGLRendererBackend", "   Calling OH_NativeWindow_NativeWindowHandleOpt...");
+            Logger::debug("HarmonyGLRendererBackend", "   Parameters: code=%d, width=%d, height=%d", 
+                         SET_BUFFER_GEOMETRY, (int32_t)physicalWidth, (int32_t)physicalHeight);
+            
+            // 🛡️ 使用 try-catch 保护，避免崩溃
+            try {
+                int32_t code = SET_BUFFER_GEOMETRY;
+                int32_t ret = OH_NativeWindow_NativeWindowHandleOpt(
+                    nativeWindow, 
+                    code, 
+                    static_cast<int32_t>(physicalWidth), 
+                    static_cast<int32_t>(physicalHeight)
+                );
+                
+                Logger::debug("HarmonyGLRendererBackend", "   OH_NativeWindow_NativeWindowHandleOpt returned: %d", ret);
+                
+                if (ret == 0) {
+                    Logger::info("HarmonyGLRendererBackend", 
+                                "✅ Buffer geometry (physical): %ux%u", 
+                                physicalWidth, physicalHeight);
+                } else {
+                    Logger::error("HarmonyGLRendererBackend", 
+                                 "❌ Failed to set buffer geometry: error=%d", ret);
+                }
+            } catch (...) {
+                Logger::error("HarmonyGLRendererBackend", 
+                             "❌ Exception caught in OH_NativeWindow_NativeWindowHandleOpt!");
+            }
+        }
+    } else {
+        Logger::warn("HarmonyGLRendererBackend", 
+                    "⚠️  eglWindow_ is null, cannot set buffer geometry");
+    }
     
     if (oldSize.width != size.width || oldSize.height != size.height) {
         Logger::info("HarmonyGLRendererBackend", 
-                    "Size changed from %ux%u to %ux%u",
-                    oldSize.width, oldSize.height, size.width, size.height);
+                    "📏 Size changed: %ux%u → %ux%u (physical)",
+                    oldSize.width, oldSize.height, physicalWidth, physicalHeight);
     }
+    
+    Logger::info("HarmonyGLRendererBackend", "========== resizeFramebuffer() END ==========");
 }
 
 PremultipliedImage HarmonyGLRendererBackend::readFramebuffer() {
