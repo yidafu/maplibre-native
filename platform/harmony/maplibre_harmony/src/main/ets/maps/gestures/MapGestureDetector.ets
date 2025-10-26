@@ -325,8 +325,10 @@ export class MapGestureDetector {
     }
 
     // 移动地图（立即移动，不带动画）
+    // ✅ 参考 Android 实现：添加负号确保方向正确
+    // 手指向右滑 → 地图向左移（负方向）
     if (this.mapController && (actualDeltaX !== 0 || deltaY !== 0)) {
-      this.mapController.moveBy(actualDeltaX, deltaY, 0);
+      this.mapController.moveBy(-actualDeltaX, -deltaY, 0);
     }
 
     // 通知监听器
@@ -368,8 +370,9 @@ export class MapGestureDetector {
         hilog.info(DOMAIN, TAG, `Fling animation: offset=(${offsetX.toFixed(2)}, ${offsetY.toFixed(2)}), duration=${duration}ms`);
         
         // 执行惯性动画（使用带动画时长的 moveBy）
+        // ✅ 参考 Android：添加负号确保方向正确
         if (this.mapController && this.mapController.moveBy) {
-          this.mapController.moveBy(offsetX, offsetY, duration);
+          this.mapController.moveBy(-offsetX, -offsetY, duration);
         }
       }
     }
