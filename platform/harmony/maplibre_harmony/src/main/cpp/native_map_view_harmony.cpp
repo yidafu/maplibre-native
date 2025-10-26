@@ -177,8 +177,8 @@ void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int he
         Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
         this->nativeWindow = nativeWindow;
         
-        // ✅ pixelRatio 将在初始化渲染器时从设备获取
-        Logger::info("NativeMapView", "Native window set, pixelRatio will be determined from device");
+        // pixelRatio will be determined from device during renderer initialization
+        Logger::info("NativeMapView", "Native window set");
         
         Logger::info("NativeMapView", "Initializing with size %dx%d (logical pixels)", width, height);
         
@@ -567,29 +567,24 @@ void NativeMapView::initializeRenderer() {
                   nativeWindow ? "exists" : "null",
                   map ? "exists" : "null");
     
-    // ⚠️ 关键修复：在创建 Renderer 之前先获取真实的 DPI
-    // 这样 Renderer、Frontend 和 Map 都会使用正确的 pixelRatio
-    if (pixelRatio <= 1.01f) {  // 如果还是默认值
-        Logger::info("NativeMapView", "🔍 Pre-fetching device DPI before creating Renderer...");
+    // Pre-fetch device DPI before creating Renderer to ensure all components use correct pixelRatio
+    if (pixelRatio <= 1.01f) {  // If still default value
         int32_t densityDPI = 160;
         int32_t ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&densityDPI);
         if (ret == 0) {
             pixelRatio = static_cast<float>(densityDPI) / 160.0f;
-            Logger::info("NativeMapView", "✅ Pre-fetched DPI: %d, pixelRatio: %.4f", 
+            Logger::info("NativeMapView", "Pre-fetched DPI: %d, pixelRatio: %.2f", 
                         densityDPI, pixelRatio);
         } else {
             pixelRatio = 1.0f;
-            Logger::warn("NativeMapView", "⚠️  Failed to pre-fetch DPI, using 1.0");
+            Logger::warn("NativeMapView", "Failed to pre-fetch DPI, using 1.0");
         }
     }
     
-    // 1. 创建 HarmonyRenderer（如果不存在）
+    // Create HarmonyRenderer (if not exists)
     if (!harmonyRenderer) {
-        Logger::info("NativeMapView", "Creating HarmonyRenderer:");
-        Logger::info("NativeMapView", "  - Size: %dx%d (logical pixels)", width, height);
-        Logger::info("NativeMapView", "  - PixelRatio: %.4f (pre-fetched from device)", pixelRatio);
         harmonyRenderer = std::make_unique<HarmonyRenderer>();
-        harmonyRenderer->initialize(width, height, pixelRatio);  // ✅ 使用真实的 pixelRatio
+        harmonyRenderer->initialize(width, height, pixelRatio);
         
         Logger::info("NativeMapView", "HarmonyRenderer initialized successfully");
     } else {
@@ -659,36 +654,22 @@ void NativeMapView::initializeRenderer() {
             
             Logger::info("NativeMapView", "Map object created successfully: %p", map.get());
             
-            // DEBUG: Check if RunLoop exists on this thread
+            // Verify RunLoop exists for network requests
             auto* currentRunLoop = util::RunLoop::Get();
-            if (currentRunLoop) {
-                Logger::info("NativeMapView", "RunLoop EXISTS on current thread: %p", currentRunLoop);
-                printf("[MAP DEBUG] RunLoop verified: %p\n", currentRunLoop);
-                fflush(stdout);
-            } else {
-                Logger::error("NativeMapView", "RunLoop is NULL on current thread! Network requests will FAIL!");
-                Logger::error("NativeMapView", "CRITICAL: Map must be created on a thread with an active RunLoop");
-                printf("[MAP ERROR] RunLoop is NULL!\n");
-                fflush(stdout);
+            if (!currentRunLoop) {
+                Logger::error("NativeMapView", "RunLoop is NULL - network requests will fail!");
             }
-            
-            // DEBUG: Trigger style loading to test network
-            printf("[MAP DEBUG] About to call map->getStyle().loadURL()...\n");
-            fflush(stdout);
             
             // Connect Map to RendererFrontend
             auto* frontend = harmonyRenderer->getRendererFrontend();
             if (frontend) {
                 frontend->setMap(map.get());
-                Logger::info("NativeMapView", "Map connected to RendererFrontend");
             } else {
                 Logger::error("NativeMapView", "Failed to get RendererFrontend");
             }
             
-            // ✅ 关键修复：同时设置到 HarmonyRenderer（用于 resize 时更新 Transform）
+            // Connect Map to HarmonyRenderer (for Transform size updates during resize)
             harmonyRenderer->setMap(map.get());
-            Logger::info("NativeMapView", "Map connected to HarmonyRenderer");
-            Logger::debug("NativeMapView", "HarmonyRenderer now has map reference: %p", map.get());
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "Failed to create Map object: %s", e.what());
         }
@@ -828,31 +809,12 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     
     // 加载样式
     try {
-        printf("[STYLE DEBUG] Calling getStyle().loadURL('%s')...\n", styleUrl.c_str());
-        fflush(stdout);
-        
         instance->map->getStyle().loadURL(styleUrl);
-        
-        Logger::info("NativeMapView", "✅ loadURL() returned successfully");
-        Logger::info("NativeMapView", "📞 About to call triggerRepaint()...");
-        printf("[STYLE DEBUG] loadURL() returned successfully\n");
-        printf("[STYLE DEBUG] Calling triggerRepaint()...\n");
-        fflush(stdout);
-        
-        instance->map->triggerRepaint();  // Trigger rendering
-        
-        Logger::info("NativeMapView", "✅ triggerRepaint() returned successfully");
-        printf("[STYLE DEBUG] triggerRepaint() completed\n");
-        printf("[STYLE DEBUG] If no RunLoop::addWatch() was called, HTTP request was NOT initiated!\n");
-        fflush(stdout);
+        instance->map->triggerRepaint();
         
         Logger::info("NativeMapView", "setStyleUrl: Style URL set successfully");
-        Logger::info("NativeMapView", "========== setStyleUrl() END - SUCCESS ==========");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to load style: %s", e.what());
-        Logger::error("NativeMapView", "========== setStyleUrl() END - FAILED ==========");
-        printf("[STYLE ERROR] loadURL() exception: %s\n", e.what());
-        fflush(stdout);
     }
     
     return undefined;
@@ -4268,7 +4230,7 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
     nativeMapView->nativeWindow = nativeWindow;
     Logger::debug("NativeMapView", "Native window saved to NativeMapView");
     
-    // ✅ pixelRatio 将在初始化渲染器时从设备获取
+    // pixelRatio will be determined during renderer initialization from device
     Logger::info("NativeMapView", "pixelRatio will be determined from device DPI");
     
     // 初始化渲染器（如果尚未初始化）

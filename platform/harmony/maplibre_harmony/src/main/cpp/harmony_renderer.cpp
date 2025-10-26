@@ -34,20 +34,15 @@ HarmonyRenderer::~HarmonyRenderer() {
 }
 
 void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
-    Logger::info("HarmonyRenderer", "========== initialize() START ==========");
-    Logger::info("HarmonyRenderer", "Size: %dx%d (logical pixels)", width_, height_);
-    
     if (initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer already initialized");
-        Logger::warn("HarmonyRenderer", "Already initialized, skipping");
         return;
     }
     
     width = width_;
     height = height_;
-    // ✅ 使用传入的 pixelRatio（可能来自设备 DPI）
     pixelRatio = pixelRatio_;
-    Logger::info("HarmonyRenderer", "Using pixelRatio: %.4f", pixelRatio);
+    Logger::info("HarmonyRenderer", "Initializing: %dx%d, pixelRatio=%.2f", width_, height_, pixelRatio);
     
     // Initialize FileSourceManager for network resource loading
     Logger::info("HarmonyRenderer", "Initializing FileSourceManager...");
@@ -72,44 +67,23 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     
     initialized = true;
     Log::Info(Event::OpenGL, "HarmonyRenderer initialized successfully");
-    Logger::info("HarmonyRenderer", "========== initialize() END - SUCCESS ==========");
 }
 
 void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
-    Logger::info("HarmonyRenderer", "========== setNativeWindow() START ==========");
-    Logger::info("HarmonyRenderer", "Window pointer: %p", window);
-    Logger::debug("HarmonyRenderer", "Current state - initialized=%s, rendererFrontend=%s",
-                  initialized ? "true" : "false",
-                  rendererFrontend ? "exists" : "null");
-    
     if (!initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
-        Logger::error("HarmonyRenderer", "setNativeWindow called but renderer not initialized!");
         return;
     }
     
-    Logger::debug("HarmonyRenderer", "Getting renderer backend...");
     auto* backend = static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
-    Logger::debug("HarmonyRenderer", "Renderer backend: %p", backend);
     
     if (backend) {
-        Logger::info("HarmonyRenderer", "Setting native window to backend...");
         backend->setNativeWindow(window);
-        Logger::info("HarmonyRenderer", "Native window set to backend successfully");
         
         if (width > 0 && height > 0) {
-            // 鸿蒙平台：统一使用逻辑像素渲染
-            Logger::info("HarmonyRenderer", "Resizing framebuffer to %dx%d (logical pixels)", width, height);
             backend->resizeFramebuffer(width, height);
-            Logger::debug("HarmonyRenderer", "Framebuffer resized successfully");
-        } else {
-            Logger::warn("HarmonyRenderer", "Invalid size for framebuffer: %dx%d", width, height);
         }
-    } else {
-        Logger::error("HarmonyRenderer", "Backend is null! Cannot set native window!");
     }
-    
-    Logger::info("HarmonyRenderer", "========== setNativeWindow() END ==========");
 }
 
 void HarmonyRenderer::setMap(Map* map_) {
@@ -130,52 +104,26 @@ void HarmonyRenderer::resize(int width_, int height_) {
         return;
     }
     
-    Logger::info("HarmonyRenderer", "========== resize() START ==========");
-    Logger::info("HarmonyRenderer", "Resizing: %dx%d -> %dx%d (logical pixels)", 
-                 width, height, width_, height_);
-    Logger::info("HarmonyRenderer", "PixelRatio: %.4f", pixelRatio);
-    
     width = width_;
     height = height_;
     
-    // 🔧 关键修复：同时更新 framebuffer 和 Map Transform
+    // Update both framebuffer (physical pixels) and Map Transform (logical pixels)
     auto* backend = static_cast<HarmonyRendererBackendImpl*>(&rendererFrontend->getRendererBackend());
     if (backend) {
         try {
-            // 1. 更新 framebuffer（会根据 pixelRatio 计算物理像素）
+            // 1. Update framebuffer (will calculate physical pixels based on pixelRatio)
             backend->resizeFramebuffer(width, height);
-            Logger::info("HarmonyRenderer", "✅ Framebuffer resized");
             
-            // 2. ✅ 更新 Map Transform size（使用逻辑像素）
+            // 2. Update Map Transform size (using logical pixels)
             if (map) {
-                Logger::debug("HarmonyRenderer", "🔍 Before map->setSize:");
-                auto oldMapOptions = map->getMapOptions();
-                Logger::debug("HarmonyRenderer", "   Old Map size: %ux%u", 
-                            oldMapOptions.size().width, oldMapOptions.size().height);
-                Logger::debug("HarmonyRenderer", "   Old Map pixelRatio: %.4f", oldMapOptions.pixelRatio());
-                
                 map->setSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)});
-                
-                Logger::debug("HarmonyRenderer", "🔍 After map->setSize:");
-                auto newMapOptions = map->getMapOptions();
-                Logger::debug("HarmonyRenderer", "   New Map size: %ux%u", 
-                            newMapOptions.size().width, newMapOptions.size().height);
-                Logger::debug("HarmonyRenderer", "   New Map pixelRatio: %.4f", newMapOptions.pixelRatio());
-                
-                Logger::info("HarmonyRenderer", "✅ Map Transform size updated to: %dx%d (logical)", 
-                            width, height);
-            } else {
-                Logger::warn("HarmonyRenderer", "⚠️  Map is null, cannot update Transform size");
             }
         } catch (const std::exception& e) {
             Logger::error("HarmonyRenderer", "Failed to resize: %s", e.what());
         }
-    } else {
-        Logger::error("HarmonyRenderer", "Backend is null during resize");
     }
     
     requestRender();
-    Logger::info("HarmonyRenderer", "========== resize() END ==========");
 }
 
 
@@ -219,7 +167,6 @@ void HarmonyRenderer::resume() {
 }
 
 void HarmonyRenderer::stopAllRequests() {
-    Logger::info("HarmonyRenderer", "========== stopAllRequests START ==========");
     
     try {
         // 停止FileSourceManager的所有网络请求
@@ -252,7 +199,6 @@ void HarmonyRenderer::stopAllRequests() {
         Logger::error("HarmonyRenderer", "Unknown error stopping network requests");
     }
     
-    Logger::info("HarmonyRenderer", "========== stopAllRequests END ==========");
 }
 
 void HarmonyRenderer::cleanup() {

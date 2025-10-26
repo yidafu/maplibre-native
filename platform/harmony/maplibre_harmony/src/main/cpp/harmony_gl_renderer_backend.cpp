@@ -20,29 +20,23 @@ using mbgl::harmony::Logger;
 
 namespace {
 
-// 获取设备 DPI
-// 参考：https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-oh-display-manager-h#oh_nativedisplaymanager_getdefaultdisplaydensitydpi
+// Get device DPI using HarmonyOS Native API
+// Reference: https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-oh-display-manager-h#oh_nativedisplaymanager_getdefaultdisplaydensitydpi
 float getDeviceDPI() {
-    int32_t densityDPI = 160;  // 默认 MDPI
-    
-    // 调用 Native API 获取 DPI
+    int32_t densityDPI = 160;  // Default MDPI
     int32_t ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&densityDPI);
     
-    if (ret == 0) {  // 0 表示成功
-        Logger::info("HarmonyGL", "✅ Got device DPI from Native API: %d", densityDPI);
-    } else {
-        Logger::warn("HarmonyGL", "⚠️  Failed to get DPI (error=%d), using default MDPI: %d", 
+    if (ret != 0) {
+        Logger::warn("HarmonyGL", "Failed to get DPI (error=%d), using default MDPI: %d", 
                     ret, densityDPI);
     }
     
     return static_cast<float>(densityDPI);
 }
 
-// 计算 pixelRatio (基于 MDPI = 160)
+// Calculate pixelRatio based on MDPI baseline (160 DPI)
 float calculatePixelRatio(float dpi) {
-    float ratio = dpi / 160.0f;
-    Logger::info("HarmonyGL", "Calculated pixelRatio: %.4f (from DPI: %.0f)", ratio, dpi);
-    return ratio;
+    return dpi / 160.0f;
 }
 
 const char* eglErrorString(int error) {
@@ -82,7 +76,7 @@ public:
     }
 
     void swap() override {
-        // 🔧 修复闪退：检查BackendScope，避免 abort()
+        // Ensure BackendScope exists to avoid crashes
         if (!gfx::BackendScope::exists()) {
             throw std::runtime_error("BackendScope does not exist during swap operation");
         }
@@ -115,72 +109,35 @@ HarmonyGLRendererBackend::~HarmonyGLRendererBackend() {
 }
 
 void HarmonyGLRendererBackend::updatePixelRatioFromDevice() {
-    Logger::info("HarmonyGLRendererBackend", "========== updatePixelRatioFromDevice() START ==========");
-    
-    // 使用 Native API 获取 DPI
     float deviceDPI = getDeviceDPI();
     float newPixelRatio = calculatePixelRatio(deviceDPI);
     
     if (std::abs(pixelRatio_ - newPixelRatio) > 0.01f) {
-        Logger::info("HarmonyGLRendererBackend", 
-                    "PixelRatio changed: %.4f → %.4f", 
-                    pixelRatio_, newPixelRatio);
         pixelRatio_ = newPixelRatio;
-    } else {
-        Logger::debug("HarmonyGLRendererBackend", 
-                     "PixelRatio unchanged: %.4f", pixelRatio_);
     }
-    
-    Logger::info("HarmonyGLRendererBackend", "========== updatePixelRatioFromDevice() END ==========");
 }
 
 void HarmonyGLRendererBackend::setNativeWindow(void* window) {
-    Logger::info("HarmonyGLRendererBackend", "========== setNativeWindow() START ==========");
-    Logger::info("HarmonyGLRendererBackend", "Input window pointer: %p", window);
-    Logger::debug("HarmonyGLRendererBackend", "Current eglWindow_: %lu", eglWindow_);
-    
     if (reinterpret_cast<EGLNativeWindowType>(window) == eglWindow_) {
-        Logger::debug("HarmonyGLRendererBackend", "Window already set, skipping");
         return;
     }
     
-    Logger::debug("HarmonyGLRendererBackend", "Cleaning up existing EGL...");
     cleanupEGL();
-    Logger::debug("HarmonyGLRendererBackend", "EGL cleanup complete");
-    
     eglWindow_ = reinterpret_cast<EGLNativeWindowType>(window);
-    Logger::info("HarmonyGLRendererBackend", "Native window set: %lu", eglWindow_);
 
     if (eglWindow_) {
-        Logger::info("HarmonyGLRendererBackend", "Initializing EGL Display and Surface (main thread)...");
         if (!initializeEGLDisplay()) {
-            Logger::error("OpenGL", "Failed to initialize EGL display/surface");
-            Logger::error("HarmonyGLRendererBackend", "EGL display/surface initialization FAILED!");
+            Logger::error("HarmonyGL", "Failed to initialize EGL display/surface");
             eglWindow_ = 0;
         } else {
-            Logger::info("OpenGL", "Successfully initialized EGL display and surface");
-            Logger::info("HarmonyGLRendererBackend", "EGL context will be created on render thread");
-            
-            // ✅ 获取设备 DPI 和 pixelRatio
+            // Update device DPI and pixelRatio
             updatePixelRatioFromDevice();
-            
-            // 🔧 Note: buffer geometry 将在 resizeFramebuffer() 中设置
-            // 在 setNativeWindow 阶段太早调用可能导致崩溃
-            Logger::debug("HarmonyGLRendererBackend", 
-                        "Buffer geometry will be set in resizeFramebuffer()");
-            
-            Logger::info("HarmonyGLRendererBackend", "========== setNativeWindow() END - SUCCESS ==========");
         }
-    } else {
-        Logger::warn("HarmonyGLRendererBackend", "Window pointer is null, skipping EGL initialization");
     }
 }
 
 bool HarmonyGLRendererBackend::initializeEGLDisplay() {
-    Logger::info("HarmonyGLRendererBackend", "---------- initializeEGLDisplay() START (Main Thread) ----------");
-    Logger::debug("HarmonyGLRendererBackend", "eglWindow_: %lu", eglWindow_);
-    
-    // HarmonyOS优化的EGL配置 - 解决缓冲区刷新问题 + MSAA抗锯齿
+    // HarmonyOS optimized EGL configuration with MSAA anti-aliasing
     const EGLint attribList[] = {
         EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
         EGL_RED_SIZE, 8,
@@ -190,50 +147,37 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         EGL_DEPTH_SIZE, 16,
         EGL_STENCIL_SIZE, 8,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
-        // 🎨 添加MSAA抗锯齿配置（改善渲染质量）
+        // MSAA anti-aliasing configuration
         EGL_SAMPLE_BUFFERS, 1,
         EGL_SAMPLES, 4,  // 4x MSAA
-        // HarmonyOS特定配置
+        // HarmonyOS specific configuration
         EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
-        EGL_CONFIG_CAVEAT, EGL_NONE,  // 避免EGL_SLOW_CONFIG
+        EGL_CONFIG_CAVEAT, EGL_NONE,  // Avoid EGL_SLOW_CONFIG
         EGL_CONFORMANT, EGL_OPENGL_ES3_BIT,
         EGL_NONE
     };
 
-    Logger::debug("HarmonyGLRendererBackend", "Step 1/5: Getting EGL display...");
-    Logger::debug("HarmonyGLRendererBackend", "Calling eglGetDisplay(EGL_DEFAULT_DISPLAY)...");
-    
     eglDisplay_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    
     if (eglDisplay_ == EGL_NO_DISPLAY) {
         EGLint error = eglGetError();
-        Logger::error("OpenGL", "Failed to get EGL display: %s (error code: 0x%X)", 
+        Logger::error("HarmonyGL", "Failed to get EGL display: %s (0x%X)", 
                       eglErrorString(error), error);
-        Logger::error("HarmonyGLRendererBackend", "This may indicate EGL library loading issue");
-        Logger::error("HarmonyGLRendererBackend", "Common cause: /vendor/lib64/chipsetsdk/libEGL_impl.so not found");
-        Logger::error("HarmonyGLRendererBackend", "Solution: Check device EGL library path or use EGL_DEFAULT_DISPLAY variant");
         return false;
     }
-    Logger::info("HarmonyGLRendererBackend", "Step 1/5: EGL display obtained: %p", eglDisplay_);
 
-    Logger::debug("HarmonyGLRendererBackend", "Step 2/5: Initializing EGL...");
     EGLint majorVersion, minorVersion;
     if (!eglInitialize(eglDisplay_, &majorVersion, &minorVersion)) {
         EGLint error = eglGetError();
-        Logger::error("OpenGL", "Failed to initialize EGL: %s (error code: 0x%X)", 
+        Logger::error("HarmonyGL", "Failed to initialize EGL: %s (0x%X)", 
                       eglErrorString(error), error);
         return false;
     }
-    Logger::info("HarmonyGLRendererBackend", "Step 2/5: EGL initialized - version %d.%d", majorVersion, minorVersion);
 
-    Logger::debug("HarmonyGLRendererBackend", "Step 3/5: Binding OpenGL ES API...");
     if (!eglBindAPI(EGL_OPENGL_ES_API)) {
-        Logger::error("OpenGL", "Failed to bind OpenGL ES API");
+        Logger::error("HarmonyGL", "Failed to bind OpenGL ES API");
         return false;
     }
-    Logger::info("HarmonyGLRendererBackend", "Step 3/5: OpenGL ES API bound successfully");
 
-    Logger::debug("HarmonyGLRendererBackend", "Step 4/5: Choosing EGL config...");
     EGLint numConfigs;
     if (!eglChooseConfig(eglDisplay_, attribList, &eglConfig_, 1, &numConfigs) || numConfigs <= 0) {
         EGLint error = eglGetError();
@@ -243,61 +187,43 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
     }
     Logger::info("HarmonyGLRendererBackend", "Step 4/5: EGL config chosen (numConfigs=%d)", numConfigs);
     
-    // 🎨 验证MSAA配置
+    // Verify MSAA configuration
     EGLint samples = 0, sampleBuffers = 0;
     eglGetConfigAttrib(eglDisplay_, eglConfig_, EGL_SAMPLES, &samples);
     eglGetConfigAttrib(eglDisplay_, eglConfig_, EGL_SAMPLE_BUFFERS, &sampleBuffers);
-    Logger::info("HarmonyGLRendererBackend", "🎨 [MSAA] Config: sampleBuffers=%d, samples=%d", 
+    Logger::info("HarmonyGL", "MSAA Config: sampleBuffers=%d, samples=%d", 
                  sampleBuffers, samples);
     if (samples > 1) {
-        Logger::info("HarmonyGLRendererBackend", "  ✅ MSAA enabled: %dx anti-aliasing", samples);
+        Logger::info("HarmonyGL", "MSAA enabled: %dx anti-aliasing", samples);
     } else {
-        Logger::warn("HarmonyGLRendererBackend", "  ⚠️  MSAA not enabled (device may not support)");
+        Logger::warn("HarmonyGL", "MSAA not enabled (device may not support)");
     }
 
-    Logger::debug("HarmonyGLRendererBackend", "Step 5/5: Creating window surface (window=%lu)...", eglWindow_);
-    // 注意：Native Window buffer尺寸将在resizeFramebuffer()中设置，此时只创建初始surface
+    // Note: Native Window buffer size will be set in resizeFramebuffer()
     eglSurface_ = eglCreateWindowSurface(eglDisplay_, eglConfig_, eglWindow_, nullptr);
     if (eglSurface_ == EGL_NO_SURFACE) {
         EGLint error = eglGetError();
-        Logger::error("OpenGL", "Failed to create EGL surface: %s (error code: 0x%X)", 
+        Logger::error("HarmonyGL", "Failed to create EGL surface: %s (0x%X)", 
                       eglErrorString(error), error);
         return false;
     }
-    Logger::info("HarmonyGLRendererBackend", "Step 5/5: EGL surface created: %p", eglSurface_);
     
-    // 查询EGL surface的初始尺寸
-    EGLint surfaceWidth = 0, surfaceHeight = 0;
-    eglQuerySurface(eglDisplay_, eglSurface_, EGL_WIDTH, &surfaceWidth);
-    eglQuerySurface(eglDisplay_, eglSurface_, EGL_HEIGHT, &surfaceHeight);
-    Logger::info("HarmonyGLRendererBackend", "Initial EGL Surface size: %dx%d", 
-                 surfaceWidth, surfaceHeight);
-    
-    // 🔧 修复闪烁：启用 VSync
+    // Enable VSync to prevent flickering
     if (!eglSwapInterval(eglDisplay_, 1)) {
         EGLint error = eglGetError();
-        Logger::warn("HarmonyGLRendererBackend", 
-                     "Failed to set swap interval: %s - May cause flicker",
-                     eglErrorString(error));
+        Logger::warn("HarmonyGL", "Failed to set swap interval: %s", eglErrorString(error));
     }
-    
-    Logger::info("HarmonyGLRendererBackend", "---------- initializeEGLDisplay() END - SUCCESS ----------");
-    Logger::info("HarmonyGLRendererBackend", "EGL State: display=%p, surface=%p (context will be created on render thread)", 
-                 eglDisplay_, eglSurface_);
     
     return true;
 }
 
 bool HarmonyGLRendererBackend::initializeEGLContext() {
-    Logger::info("HarmonyGLRendererBackend", "---------- initializeEGLContext() START (Render Thread) ----------");
-    
     if (eglDisplay_ == EGL_NO_DISPLAY || eglSurface_ == EGL_NO_SURFACE) {
-        Logger::error("HarmonyGLRendererBackend", "Cannot create context: display or surface not initialized");
+        Logger::error("HarmonyGL", "Cannot create context: display or surface not initialized");
         return false;
     }
     
     if (eglContext_ != EGL_NO_CONTEXT) {
-        Logger::warn("HarmonyGLRendererBackend", "Context already created: %p", eglContext_);
         return true;
     }
     
@@ -306,18 +232,15 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
         EGL_NONE
     };
     
-    Logger::debug("HarmonyGLRendererBackend", "Creating EGL context on render thread...");
     eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, contextAttribs);
     if (eglContext_ == EGL_NO_CONTEXT) {
         EGLint error = eglGetError();
-        Logger::error("OpenGL", "Failed to create EGL context: %s (error code: 0x%X)", 
+        Logger::error("HarmonyGL", "Failed to create EGL context: %s (0x%X)", 
                       eglErrorString(error), error);
         return false;
     }
-    Logger::info("HarmonyGLRendererBackend", "EGL context created successfully: %p", eglContext_);
     
-    // 激活context以获取OpenGL信息
-    Logger::debug("HarmonyGLRendererBackend", "Making context current for initialization...");
+    // Activate context to get OpenGL information
     if (!eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_)) {
         EGLint error = eglGetError();
         Logger::error("OpenGL", "Failed to make context current: %s (error code: 0x%X)", 
@@ -325,8 +248,8 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
         return false;
     }
     
-    // 输出OpenGL版本和能力信息
-    Logger::info("OpenGL", "==================== OpenGL Info ====================");
+    // Output OpenGL version and capabilities
+    Logger::info("OpenGL", "OpenGL Info:");
     const GLubyte* version = glGetString(GL_VERSION);
     const GLubyte* glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
     const GLubyte* vendor = glGetString(GL_VENDOR);
@@ -361,21 +284,18 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
     Logger::info("OpenGL", "GL_VIEWPORT: x=%d, y=%d, width=%d, height=%d", 
                  viewport[0], viewport[1], viewport[2], viewport[3]);
     
-    Logger::info("OpenGL", "=====================================================");
     
     // 验证shader属性
     validateShaderAttributes();
     
     contextInitialized_ = true;
     
-    Logger::info("HarmonyGLRendererBackend", "---------- initializeEGLContext() END - SUCCESS ----------");
     Logger::info("HarmonyGLRendererBackend", "EGL Context: %p (bound to render thread)", eglContext_);
     
     return true;
 }
 
 void HarmonyGLRendererBackend::cleanupEGL() {
-    Logger::info("HarmonyGLRendererBackend", "========== cleanupEGL START ==========");
     
     try {
         if (eglDisplay_ != EGL_NO_DISPLAY) {
@@ -415,12 +335,10 @@ void HarmonyGLRendererBackend::cleanupEGL() {
         Logger::error("HarmonyGLRendererBackend", "Unknown error during EGL cleanup");
     }
     
-    Logger::info("HarmonyGLRendererBackend", "========== cleanupEGL END ==========");
 }
 
 // HarmonyOS OpenGL quirk handling methods
 void HarmonyGLRendererBackend::validateShaderAttributes() {
-    Logger::info("HarmonyGLRendererBackend", "========== validateShaderAttributes START ==========");
     
     if (eglGetCurrentContext() == EGL_NO_CONTEXT) {
         Logger::warn("HarmonyGLRendererBackend", "No current EGL context for shader validation");
@@ -441,7 +359,6 @@ void HarmonyGLRendererBackend::validateShaderAttributes() {
         Logger::info("HarmonyGLRendererBackend", "Detected ARM GPU - enabling HarmonyOS attribute binding workarounds");
     }
     
-    Logger::info("HarmonyGLRendererBackend", "========== validateShaderAttributes END ==========");
 }
 
 GLint HarmonyGLRendererBackend::bindAttributeWithFallback(GLuint program, GLuint index, const char* name) {
@@ -497,7 +414,7 @@ void HarmonyGLRendererBackend::logShaderInfo(GLuint program) {
         return;
     }
     
-    Logger::info("HarmonyGLRendererBackend", "========== Shader Program Info ==========");
+    Logger::info("HarmonyGL", "Shader Program Info:");
     Logger::info("HarmonyGLRendererBackend", "Program ID: %u", program);
     
     // Check if program is linked
@@ -538,7 +455,6 @@ void HarmonyGLRendererBackend::logShaderInfo(GLuint program) {
                      i, name.data(), type, size, location);
     }
     
-    Logger::info("HarmonyGLRendererBackend", "=========================================");
 }
 
 // getExtensionFunctionPointer is now implemented in the wrapper
@@ -554,43 +470,21 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
         return;
     }
     
-    Logger::info("HarmonyGLRendererBackend", "========== resizeFramebuffer() START ==========");
-    Logger::info("HarmonyGLRendererBackend", "Input (logical): %dx%d", width, height);
-    Logger::info("HarmonyGLRendererBackend", "PixelRatio: %.4f", pixelRatio_);
+    Logger::info("HarmonyGL", "Resizing framebuffer: logical %dx%d, pixelRatio=%.2f", 
+                 width, height, pixelRatio_);
     
-    // 记录旧尺寸
-    Size oldSize = size;
-    
-    // 🌟 模式 B：使用物理像素（DPI 缩放）实现高清渲染
+    // Calculate physical pixel dimensions (DPI scaled for high-resolution rendering)
     uint32_t physicalWidth = static_cast<uint32_t>(width * pixelRatio_);
     uint32_t physicalHeight = static_cast<uint32_t>(height * pixelRatio_);
     
-    Logger::info("HarmonyGLRendererBackend", "Calculated (physical): %ux%u", 
-                physicalWidth, physicalHeight);
-    
     size = {physicalWidth, physicalHeight};
     
-    // 🔧 关键修复：设置 Native Window buffer geometry
-    // 对比 Android：ANativeWindow 自动同步尺寸
-    // 鸿蒙平台：需要显式调用 OH_NativeWindow_NativeWindowHandleOpt
-    Logger::debug("HarmonyGLRendererBackend", "🔍 Preparing to set buffer geometry...");
-    Logger::debug("HarmonyGLRendererBackend", "   eglWindow_ = %p", eglWindow_);
-    
+    // Set Native Window buffer geometry 
+    // Note: Unlike Android's ANativeWindow which auto-syncs, HarmonyOS requires explicit call
     if (eglWindow_ != nullptr) {
-        Logger::debug("HarmonyGLRendererBackend", "   Converting to OHNativeWindow*...");
-        // eglWindow_ 是 void* (EGLNativeWindowType)，直接作为 OHNativeWindow* 使用
         OHNativeWindow* nativeWindow = static_cast<OHNativeWindow*>(eglWindow_);
-        Logger::debug("HarmonyGLRendererBackend", "   nativeWindow = %p", nativeWindow);
         
-        if (nativeWindow == nullptr) {
-            Logger::error("HarmonyGLRendererBackend", "   ❌ nativeWindow is NULL after cast!");
-        } else {
-            Logger::debug("HarmonyGLRendererBackend", "   ✅ nativeWindow is valid");
-            Logger::debug("HarmonyGLRendererBackend", "   Calling OH_NativeWindow_NativeWindowHandleOpt...");
-            Logger::debug("HarmonyGLRendererBackend", "   Parameters: code=%d, width=%d, height=%d", 
-                         SET_BUFFER_GEOMETRY, (int32_t)physicalWidth, (int32_t)physicalHeight);
-            
-            // 🛡️ 使用 try-catch 保护，避免崩溃
+        if (nativeWindow != nullptr) {
             try {
                 int32_t code = SET_BUFFER_GEOMETRY;
                 int32_t ret = OH_NativeWindow_NativeWindowHandleOpt(
@@ -600,33 +494,16 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
                     static_cast<int32_t>(physicalHeight)
                 );
                 
-                Logger::debug("HarmonyGLRendererBackend", "   OH_NativeWindow_NativeWindowHandleOpt returned: %d", ret);
-                
-                if (ret == 0) {
-                    Logger::info("HarmonyGLRendererBackend", 
-                                "✅ Buffer geometry (physical): %ux%u", 
-                                physicalWidth, physicalHeight);
-                } else {
-                    Logger::error("HarmonyGLRendererBackend", 
-                                 "❌ Failed to set buffer geometry: error=%d", ret);
+                if (ret != 0) {
+                    Logger::error("HarmonyGL", "Failed to set buffer geometry: error=%d", ret);
                 }
             } catch (...) {
-                Logger::error("HarmonyGLRendererBackend", 
-                             "❌ Exception caught in OH_NativeWindow_NativeWindowHandleOpt!");
+                Logger::error("HarmonyGL", "Exception in OH_NativeWindow_NativeWindowHandleOpt");
             }
         }
     } else {
-        Logger::warn("HarmonyGLRendererBackend", 
-                    "⚠️  eglWindow_ is null, cannot set buffer geometry");
+        Logger::warn("HarmonyGL", "eglWindow_ is null, cannot set buffer geometry");
     }
-    
-    if (oldSize.width != size.width || oldSize.height != size.height) {
-        Logger::info("HarmonyGLRendererBackend", 
-                    "📏 Size changed: %ux%u → %ux%u (physical)",
-                    oldSize.width, oldSize.height, physicalWidth, physicalHeight);
-    }
-    
-    Logger::info("HarmonyGLRendererBackend", "========== resizeFramebuffer() END ==========");
 }
 
 PremultipliedImage HarmonyGLRendererBackend::readFramebuffer() {
@@ -762,7 +639,7 @@ void HarmonyGLRendererBackend::swapBuffers() {
                           "eglSwapBuffers failed after %d attempts: %s", 
                           maxRetries, eglErrorString(error));
             
-            // 🔧 修复闪退：抛出异常，停止渲染
+            // Stop rendering on swap failure to prevent crashes
             throw std::runtime_error("eglSwapBuffers failed: EGL buffer allocation failed");
         }
     } else {
