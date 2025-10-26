@@ -1,0 +1,12 @@
+> hvigor [91mERROR: [31m00303217 Configuration Error
+Error Message: Invalid value of 'DEVECO_SDK_HOME' in the system environment path.
+
+* Try the following:
+  > Correct the value, run hvigorw --stop-daemon to stop the daemon process, and then try again.
+[39m
+
+[31m* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+[39m
+> hvigor [91mERROR: BUILD FAILED in 710 ms [39m

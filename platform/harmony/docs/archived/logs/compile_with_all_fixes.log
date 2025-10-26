@@ -1,0 +1,42 @@
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@PreBuild...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@CreateModuleInfo... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GenerateMetadata...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ConfigureCmake... after 51 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@MergeProfile...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@CreateBuildProfile...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@PreCheckSyscap... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessIntegratedHsp... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@MakePackInfo...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@SyscapTransform... after 9 ms [39m
+> hvigor [33mWARN: CMake Warning at /Users/yidafu/github/maplibre-native/vendor/freetype/builds/cmake/FindHarfBuzz.cmake:99 (message):
+  Required version (2.0.0) is higher than found version ()
+Call Stack (most recent call first):
+  /Users/yidafu/github/maplibre-native/vendor/freetype/CMakeLists.txt:258 (find_package)
+
+
+[39m
+> hvigor [33mWARN: WARNHarfBuzz has a Meson port and tries to migrate all the other build systems to it, please consider using it as we might remove our cmake port soon.
+[39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithCmake... after 3 s 656 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GeneratePkgContextInfo...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessProfile...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessRouterMap...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessShareConfig...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessStartupConfig... after 3 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessResource...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GenerateLoaderJson...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@CompileResource...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@CompileArkTS...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildJS... after 3 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithNinja... after 2 min 674 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessLibs... after 3 s 561 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@DoNativeStrip... after 98 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CacheNativeLibs... after 3 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@GeneratePkgModuleJson... after 2 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessCompiledResources... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@PackageHap... after 129 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@PackingCheck... after 4 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@SignHap... after 1 s 355 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CollectDebugSymbol... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:assembleHap... after 1 ms [39m
+> hvigor [32mBUILD SUCCESSFUL in 2 min 10 s 939 ms [39m

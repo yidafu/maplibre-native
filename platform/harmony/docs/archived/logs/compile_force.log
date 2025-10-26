@@ -1,0 +1,54 @@
+> hvigor [32mFinished :maplibre_harmony:default@PreBuild... after 54 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CreateModuleInfo... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@GenerateMetadata... after 2 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ConfigureCmake... after 7 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@MergeProfile... after 2 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CreateBuildProfile... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@PreCheckSyscap... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessIntegratedHsp... after 1 ms [39m
+> hvigor [33mWARN: CMake Warning at /Users/yidafu/github/maplibre-native/vendor/freetype/builds/cmake/FindHarfBuzz.cmake:99 (message):
+  Required version (2.0.0) is higher than found version ()
+Call Stack (most recent call first):
+  /Users/yidafu/github/maplibre-native/vendor/freetype/CMakeLists.txt:258 (find_package)
+
+
+[39m
+> hvigor [33mWARN: WARNHarfBuzz has a Meson port and tries to migrate all the other build systems to it, please consider using it as we might remove our cmake port soon.
+[39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithCmake... after 3 s 700 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@MakePackInfo... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@SyscapTransform... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithNinja... after 1 min 29 s 782 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@GeneratePkgContextInfo... after 53 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessLibs... after 3 s 183 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessProfile... after 54 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessRouterMap... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessShareConfig... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessStartupConfig... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@DoNativeStrip... after 89 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessResource... after 3 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@GenerateLoaderJson... after 3 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CacheNativeLibs... after 2 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CompileResource... after 146 ms [39m
+> hvigor [91mERROR: Failed :maplibre_harmony:default@CompileArkTS... [39m
+> hvigor [33mWARN: 
+[33m1 WARN: [33m[33mArkTS:WARN: For details about ArkTS syntax errors, see FAQs[39m[39m
+[33m2 WARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/NativeMapView.ets:2:22
+ Currently module for 'libmaplibre_native.so' is not verified. If you're importing napi, its verification will be enabled in later SDK version. Please make sure the corresponding .d.ts file is provided and the napis are correctly declared.
+[39m[39m[39m
+> hvigor [91mERROR: ArkTS Compiler Error
+[31m1 ERROR: [31m10605008 ArkTS Compiler Error
+Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/NativeMapView.ets:206:15
+[39m
+[39m
+[31m2 ERROR: [31m10605008 ArkTS Compiler Error
+Error Message: Use explicit types instead of "any", "unknown" (arkts-no-any-unknown) At File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/NativeMapView.ets:300:13
+[39m
+[39m
+[31mCOMPILE RESULT:FAIL {ERROR:3 WARN:2}[39m
+
+[31m* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+[39m
+> hvigor [91mERROR: BUILD FAILED in 1 min 39 s 622 ms [39m

@@ -1,0 +1,30 @@
+app打开后闪退问题还是存在的。重新分析导致问题的原因。崩溃日志：Device info:emulator
+Build info:emulator 5.1.0.212(SP2DEVC00E212R4P11)
+Fingerprint:85cbbaac4e2f252564d7ea4914ea83af651c3b27e5ebb0d7e2434aef1140886f
+Module name:org.maplibre.harmony
+Version:1.0.0
+VersionCode:1000000
+PreInstalled:No
+Foreground:Yes
+Timestamp:2025-10-20 17:10:34.227
+Pid:9295
+Uid:20020058
+Process name:org.maplibre.harmony
+Process life time:11s
+Reason:Signal:SIGSEGV(SEGV_MAPERR)@0x006b8feae56d6e3f
+Fault thread info:
+Tid:9475, Name:OnlineFileSourc
+#00 pc 0000000000fd5214 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#01 pc 0000000000fe9c78 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#02 pc 0000000000fe9be0 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#03 pc 0000000000fe9bb4 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#04 pc 0000000000fe9b6c /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#05 pc 0000000000fe9b48 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#06 pc 0000000000fe8b94 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#07 pc 0000000000750270 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#08 pc 000000000074d6cc /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#09 pc 0000000000ff1f14 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#10 pc 0000000000ff1e6c /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#11 pc 0000000000ff1d60 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#12 pc 0000000000f4126c /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)
+#13 pc 0000000000f47b78 /data/storage/el1/bundle/libs/arm64/libmaplibre_native.so(360f9cd7396b5d4315727e41077e7b47119ddd4d)

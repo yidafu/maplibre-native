@@ -1,0 +1,150 @@
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@PreBuild...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@CreateModuleInfo... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GenerateMetadata...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ConfigureCmake... after 12 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@MergeProfile...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@CreateBuildProfile...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@PreCheckSyscap... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessIntegratedHsp... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@MakePackInfo...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@SyscapTransform... after 9 ms [39m
+> hvigor [33mWARN: CMake Warning at /Users/yidafu/github/maplibre-native/vendor/freetype/builds/cmake/FindHarfBuzz.cmake:99 (message):
+  Required version (2.0.0) is higher than found version ()
+Call Stack (most recent call first):
+  /Users/yidafu/github/maplibre-native/vendor/freetype/CMakeLists.txt:258 (find_package)
+
+
+[39m
+> hvigor [33mWARN: WARNHarfBuzz has a Meson port and tries to migrate all the other build systems to it, please consider using it as we might remove our cmake port soon.
+[39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithCmake... after 3 s 542 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@GeneratePkgContextInfo... after 135 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessProfile... after 128 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessRouterMap... after 4 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessShareConfig... after 3 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessStartupConfig... after 2 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessResource... after 4 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@GenerateLoaderJson... after 10 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CompileResource... after 319 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildJS... after 2 ms [39m
+> hvigor [91mERROR: Failed :maplibre_harmony:default@BuildNativeWithNinja... [39m
+> hvigor [91mERROR: Exceptions happened while executing /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/build-tools/cmake/bin/ninja -C /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/.cxx/default/default/debug/arm64-v8a.
+[32mninja: Entering directory `/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/.cxx/default/default/debug/arm64-v8a'[32m[39m
+[32m[1/605] Building CXX object CMakeFiles/maplibre_native.dir/napi_utils.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[2/605] Building CXX object CMakeFiles/maplibre_native.dir/Render.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[3/605] Building CXX object CMakeFiles/maplibre_native.dir/EGLCore.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[4/605] Building CXX object CMakeFiles/maplibre_native.dir/logger.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[5/605] Building CXX object CMakeFiles/maplibre_native_loop.dir/Users/yidafu/github/maplibre-native/platform/default/src/mbgl/util/async_task.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[6/605] Building CXX object CMakeFiles/maplibre_native.dir/harmony_renderer_backend.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[7/605] Building CXX object CMakeFiles/maplibre_native_loop.dir/Users/yidafu/github/maplibre-native/platform/default/src/mbgl/util/timer.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[8/605] Building CXX object CMakeFiles/maplibre_native.dir/PluginManager.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[33m/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/PluginManager.cpp:57:13: warning: deleting pointer to incomplete type 'NativeWindow' may cause undefined behavior [-Wdelete-incomplete][33m[39m
+[33m            delete iter->second;[33m[39m
+[33m            ^      ~~~~~~~~~~~~[33m[39m
+[33m/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot/usr/include/ace/xcomponent/native_interface_xcomponent.h:1159:16: note: forward declaration of 'NativeWindow'[33m[39m
+[33mtypedef struct NativeWindow OHNativeWindow;[33m[39m
+[33m               ^[33m[39m
+[33m1 warning generated.[33m[39m
+[32m[9/605] Building CXX object CMakeFiles/maplibre_native.dir/curl_event_loop.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[10/605] Building CXX object CMakeFiles/maplibre_native_loop.dir/Users/yidafu/github/maplibre-native/platform/default/src/mbgl/util/run_loop.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[11/605] Linking CXX static library libmaplibre_native_loop.a[32m[39m
+[32m[12/605] Building CXX object CMakeFiles/maplibre_native.dir/http_file_source_harmony.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[13/605] Building CXX object CMakeFiles/maplibre_native.dir/napi_init.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[14/605] Building CXX object CMakeFiles/maplibre_native.dir/harmony_renderer.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[15/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/dynamic_texture.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[16/605] Building CXX object CMakeFiles/maplibre_native.dir/harmony_renderer_frontend.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[17/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/drawable.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[18/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/uniform_buffer.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[19/605] Building CXX object CMakeFiles/maplibre_native.dir/native_map_view_harmony.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[20/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/drawable_custom_layer_host_tweaker.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[21/605] Building CXX object CMakeFiles/maplibre_native.dir/harmony_vulkan_renderer_backend.cpp.o[32m[39m
+[31mFAILED: CMakeFiles/maplibre_native.dir/harmony_vulkan_renderer_backend.cpp.o [31m[39m
+[31m/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm/bin/clang++ --target=aarch64-linux-ohos --gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm --sysroot=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot -DMBGL_USE_BUILTIN_ICU -DMLN_RENDER_BACKEND_VULKAN=1 -DOHOS_PLATFORM -DRAPIDJSON_HAS_STDSTRING=1 -DVK_USE_PLATFORM_OHOS=1 -Dmaplibre_native_EXPORTS -I/Applications/DevEco-Studio.app/Contents/sdk/default/hms/native/sysroot/usr/include -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/include -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/../../../../../../src -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/../../../../../../include -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/../../../src -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/../../../../../default/include -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/../../../../../../vendor/maplibre-native-base/include -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/../../../../../../vendor/nunicode/include -I/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/arm64-v8a/include -I/Users/yidafu/github/maplibre-native/include -isystem /Users/yidafu/github/maplibre-native/vendor/freetype/include -isystem /Users/yidafu/github/maplibre-native/vendor/harfbuzz/src -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/extras/expected-lite/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/cheap-ruler-cpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/geojson-vt-cpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/geojson.hpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/geometry.hpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/jni.hpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/pixelmatch-cpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/shelf-pack-cpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/supercluster.hpp/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/deps/variant/include -isystem /Users/yidafu/github/maplibre-native/vendor/maplibre-native-base/extras/rapidjson/include -isystem /Users/yidafu/github/maplibre-native/vendor/unordered_dense/include -isystem /Users/yidafu/github/maplibre-native/vendor/Vulkan-Headers/include -isystem /Users/yidafu/github/maplibre-native/vendor/VulkanMemoryAllocator/include -isystem /Users/yidafu/github/maplibre-native/vendor/glslang/glslang/.. -isystem /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/.cxx/default/default/debug/arm64-v8a/include -isystem /Users/yidafu/github/maplibre-native/vendor/glslang/SPIRV/.. -isystem /Users/yidafu/github/maplibre-native/vendor/unique_resource -isystem /Users/yidafu/github/maplibre-native/vendor/nunicode/include -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -fno-addrsig -Wa,--noexecstack -Wformat -Werror=format-security  -std=c++20 -fexceptions -frtti -D__MUSL__ -std=c++20 -fPIC -Wno-error=unused-command-line-argument -frtti -O0 -g -fno-limit-debug-info  -std=c++20 -fPIC -pthread -MD -MT CMakeFiles/maplibre_native.dir/harmony_vulkan_renderer_backend.cpp.o -MF CMakeFiles/maplibre_native.dir/harmony_vulkan_renderer_backend.cpp.o.d -o CMakeFiles/maplibre_native.dir/harmony_vulkan_renderer_backend.cpp.o -c /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/harmony_vulkan_renderer_backend.cpp[31m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[31m/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/harmony_vulkan_renderer_backend.cpp:31:63: error: unknown type name 'VkSurfaceCreateInfoKHR'; did you mean 'VkOHOSSurfaceCreateInfoKHR'?[31m[39m
+[31musing PFN_vkCreateSurfaceKHR = VkResult (*)(VkInstance, const VkSurfaceCreateInfoKHR*, const VkAllocationCallbacks*, VkSurfaceKHR*);[31m[39m
+[31m                                                              ^~~~~~~~~~~~~~~~~~~~~~[31m[39m
+[31m                                                              VkOHOSSurfaceCreateInfoKHR[31m[39m
+[31m/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/harmony_vulkan_renderer_backend.cpp:23:8: note: 'VkOHOSSurfaceCreateInfoKHR' declared here[31m[39m
+[31mstruct VkOHOSSurfaceCreateInfoKHR {[31m[39m
+[31m       ^[31m[39m
+[31m/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/harmony_vulkan_renderer_backend.cpp:108:40: error: unknown type name 'VkSurfaceCreateInfoKHR'; did you mean 'VkOHOSSurfaceCreateInfoKHR'?[31m[39m
+[31m                reinterpret_cast<const VkSurfaceCreateInfoKHR*>(&createInfo),[31m[39m
+[31m                                       ^~~~~~~~~~~~~~~~~~~~~~[31m[39m
+[31m                                       VkOHOSSurfaceCreateInfoKHR[31m[39m
+[31m/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp/harmony_vulkan_renderer_backend.cpp:23:8: note: 'VkOHOSSurfaceCreateInfoKHR' declared here[31m[39m
+[31mstruct VkOHOSSurfaceCreateInfoKHR {[31m[39m
+[31m       ^[31m[39m
+[33m2 errors generated.[33m[39m
+[32m[22/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/dynamic_texture_atlas.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[23/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/drawable_builder.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[24/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/tile_layer_group.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[25/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/drawable_builder_impl.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[26/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/gpu_expression.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[27/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/drawable_atlases_tweaker.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[28/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/render_target.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[29/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/gfx/vertex_attribute.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[30/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/layer_tweaker.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[31/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/layers/background_layer_tweaker.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[32/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/layers/circle_layer_tweaker.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[33/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/change_request.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[32m[34/605] Building CXX object maplibre/CMakeFiles/mbgl-core.dir/src/mbgl/renderer/layer_group.cpp.o[32m[39m
+[33mclang++: warning: argument unused during compilation: '--gcc-toolchain=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/llvm' [-Wunused-command-line-argument][33m[39m
+[31mninja: build stopped: subcommand failed.[31m[39m
+[31mA 'unknown type name' error has occurred.
+* Try the following:
+  > Troubleshoot the errors according to the following guidelines.
+  > More info: https://developer.huawei.com/consumer/cn/doc/harmonyos-faqs/faqs-compiling-and-building-117[31m[39m
+
+[31m* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+[39m
+> hvigor [91mERROR: BUILD FAILED in 12 s 337 ms [39m
+> hvigor [33mWARN: [33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/Index.ets:161:12
+ 'pushUrl' has been deprecated.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/BasicMapPage.ets:25:20
+ 'back' has been deprecated.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/GestureTestPage.ets:36:20
+ 'back' has been deprecated.
+[39m[39m
+[39m
+> hvigor [91mERROR: maplibre_harmony:default@CompileArkTS is not an incremental task.
+
+[31m* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --debug option to get more log output.
+[39m

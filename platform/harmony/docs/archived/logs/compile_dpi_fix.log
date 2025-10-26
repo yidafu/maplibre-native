@@ -1,0 +1,77 @@
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@PreBuild...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@CreateModuleInfo... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GenerateMetadata...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ConfigureCmake... after 10 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@MergeProfile...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@CreateBuildProfile...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@PreCheckSyscap... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessIntegratedHsp... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithCmake... after 16 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@MakePackInfo...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@SyscapTransform... after 7 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildNativeWithNinja... after 4 s 778 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GeneratePkgContextInfo...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessLibs... after 6 s 220 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessProfile...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessRouterMap...  [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessShareConfig...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessStartupConfig... after 2 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@DoNativeStrip... after 117 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@ProcessResource...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@GenerateLoaderJson... after 4 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CacheNativeLibs... after 3 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@CompileResource...  [39m
+> hvigor [33mWARN: [33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/style/layers/Layer.ets:204:11
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/style/sources/Source.ets:419:20
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/geojson/Feature.ets:80:20
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/style/Style.ets:348:24
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/style/Style.ets:348:94
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/MapLibreMap.ets:330:31
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/MapLibreMap.ets:584:34
+ Usage of 'ESObject' type is restricted (arkts-limited-esobj)
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN: For details about ArkTS syntax errors, see FAQs[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/Index.ets:167:12
+ 'pushUrl' has been deprecated.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/MapLibreMap.ets:695:12
+ Function may throw exceptions. Special handling is required.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/maps/MapLibreMap.ets:706:12
+ Function may throw exceptions. Special handling is required.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/BasicMapPage.ets:59:20
+ 'back' has been deprecated.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/BasicMapPage.ets:403:5
+ Function may throw exceptions. Special handling is required.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/BasicMapPage.ets:403:18
+ 'showToast' has been deprecated.
+[39m[39m
+[33mWARN: [33m[33mArkTS:WARN File: /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/ets/pages/GestureTestPage.ets:36:20
+ 'back' has been deprecated.
+[39m[39m
+[39m
+> hvigor [32mFinished :maplibre_harmony:default@CompileArkTS... after 1 s 828 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@BuildJS... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :maplibre_harmony:default@GeneratePkgModuleJson...  [39m
+> hvigor [32mFinished :maplibre_harmony:default@ProcessCompiledResources... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@PackageHap... after 96 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@PackingCheck... after 4 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@SignHap... after 1 s 472 ms [39m
+> hvigor [32mFinished :maplibre_harmony:default@CollectDebugSymbol... after 1 ms [39m
+> hvigor [32mFinished :maplibre_harmony:assembleHap... after 1 ms [39m
+> hvigor [32mBUILD SUCCESSFUL in 15 s 821 ms [39m

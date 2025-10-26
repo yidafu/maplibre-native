@@ -1,0 +1,1114 @@
+10-20 11:50:51.262   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 8297608 speed 8099k/s API_num 9659
+10-20 11:51:00.024   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 17598542 speed 1961k/s API_num 23642
+10-20 11:51:07.997   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 38756 speed 4k/s API_num 338
+10-20 11:51:08.854   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:51:08.920   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:08.925   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:51:08.935   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:08.939   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:51:08.963   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:08.973   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:51:08.973   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:09.014   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:51:09.034   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:51:09.044   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:09.044   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 4267626 speed 3977k/s API_num 15705
+10-20 11:51:09.045   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:51:09.045   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:51:09.045   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:51:09.069   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:51:09.081   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:51:09.091   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:51:09.129   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:51:09.130   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:09.136   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:09.140   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:51:09.169   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c1 location remote -1
+10-20 11:51:09.197   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:51:10.835   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 8525397 speed 4649k/s API_num 16440
+10-20 11:51:29.481   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.c10-20 11:51:53.720 12507 12708 I A00000/MAPLIBRE: [INFO] {aplibre.harmony}[Style]: Style 'MapLibre' has 9 layers:
+10-20 11:51:53.720 12507 12708 I A00000/MAPLIBRE:   None: 7
+10-20 11:51:53.720 12507 12708 I A00000/MAPLIBRE:   Zoom: 2
+10-20 11:51:53.968   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:53.968   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:53.984   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:53.985   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.001   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.001   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.017   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.017   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.035   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.035   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.051   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.051   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.067   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.067   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.084   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.084   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.103   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.104   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.122   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.132   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.137   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.149   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.158   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.158   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.172   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.173   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.187   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.187   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.203   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.203   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.218   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.219   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.235   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.236   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.252   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.252   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.268   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.268   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.285   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.285   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.301   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.302   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.317   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.317   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.334   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.334   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.350   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.351   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.368   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.368   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.384   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.384   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.400   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.401   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.417   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.417   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.435   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.435   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.451   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.452   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.467   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.468   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.484   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.484   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.501   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.501   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.517   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.517   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.534   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.535   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.551   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.552   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.568   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.568   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.584   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.584   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.590 12507 12707 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 117264 speed 113k/s API_num 2677
+10-20 11:51:54.601   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.602   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.618   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.618   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.634   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.634   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.651   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.652   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.667   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.668   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.684   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.684   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.701   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.701   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.717   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.717   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.734   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.735   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.751   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.751   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.768   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.768   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.784   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.785   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.801   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.801   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.817   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.818   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.834   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.834   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.850   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 512888 speed 492k/s API_num 3599
+10-20 11:51:54.851   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.851   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.867   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.869   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.885   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.885   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.901   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.901   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.918   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.918   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.934   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.934   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.951   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.951   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:54.965 12507 12707 E C02515/DGLES: [d_glLinkProgram_special@glv3_status.cpp:1441] program_data_len is 0
+10-20 11:51:54.965 12507 12708 W A00000/MAPLIBRE: [WARNING] {aplibre.harmony}[Shader]: HarmonyOS: Program 3 has NO active attributes! This may cause rendering issues.
+10-20 11:51:54.965 12507 12707 E C02515/DGLES: [d_glGetAttribLocation_special@glv3_status.cpp:1503] attrib a_pos location remote -1
+10-20 11:51:54.965 12507 12707 E A00000/MAPLIBRE: [ERROR] {aplibre.harmony}[OpenGL]: HarmonyOS: First attribute 'a_pos' not found in program 3
+10-20 11:51:54.967   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:51:54.967   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:51:55.195   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c1 location remote -1
+10-20 11:52:00.031   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 13523813 speed 2549k/s API_num 15181
+10-20 11:52:01.858   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 331716 speed 177k/s API_num 668
+10-20 11:52:03.862   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 6728259 speed 3278k/s API_num 23014
+10-20 11:52:04.875   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 27637312 speed 26629k/s API_num 29158
+10-20 11:52:05.881   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 2850833 speed 2767k/s API_num 5458
+10-20 11:52:06.155   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:06.155   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:52:06.155   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.156   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.156   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.156   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.172   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.173   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.173   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.192   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:52:06.192   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.198   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:52:06.198   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.205   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:52:06.206   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.213   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.213   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.213   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.231   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.233   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.233   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.234   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.245   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S2 location remote -1
+10-20 11:52:06.249   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S3 location remote -1
+10-20 11:52:06.251   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:06.252   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.254   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.257   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:06.257   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.261   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S2 location remote -1
+10-20 11:52:06.264   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:06.264   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.268   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S3 location remote -1
+10-20 11:52:06.271   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.274   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.274   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.275   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.286   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:06.287   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.291   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:06.292   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.299   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.304   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.306   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.308   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:06.317   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:52:06.317   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:06.318   709   800 E C01402/2DGraphics: SetGPUContext: SkiaShaderEffect::SetGPUContext, gpuContext_ is overwritten!
+10-20 11:52:08.121   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 13951832 speed 6082k/s API_num 29245
+10-20 11:52:10.510   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 13509793 speed 5521k/s API_num 22329
+10-20 11:52:11.511   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 8084880 speed 7892k/s API_num 23280
+10-20 11:52:12.385   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:12.523   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 6176248 speed 5959k/s API_num 32486
+10-20 11:52:13.539   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 1978604 speed 1901k/s API_num 24862
+10-20 11:52:14.000   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.008   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0_c0 location remote -1
+10-20 11:52:14.009   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.021   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0_c0 location remote -1
+10-20 11:52:14.022   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0 location remote -1
+10-20 11:52:14.026   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0_c0 location remote -1
+10-20 11:52:14.026   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.038   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ulocalMatrix_S0 location remote -1
+10-20 11:52:14.038   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.075   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.124   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.223   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0_c0_c0 location remote -1
+10-20 11:52:14.223   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0_c0 location remote -1
+10-20 11:52:14.224   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.444   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1 location remote -1
+10-20 11:52:14.477   709   800 I C02515/DGLES: [d_glGetUniformLocation_special@glv3_status.cpp:1565] uniform ucornerPositionXY_S1_c0_c0 location remote -1
+10-20 11:52:14.477   709   800 I C02515/DGLES: [d_glGetUniformLocation_sp10-20 11:52:42.048 14162 14692 I A00000/MAPLIBRE: [INFO] {aplibre.harmony}[OpenGL]: HarmonyRenderer initialized successfully
+10-20 11:52:42.049 14162 14162 I C02515/DGLES: [dgles_init@context_common.cpp:924] load dgles fd 77
+10-20 11:52:42.051 14162 14162 I C02515/DGLES: [dgles_init@context_common.cpp:935] dgles use teleport(sleep_cnt 0)
+10-20 11:52:42.052 14162 14162 E C01400/OpenGLWrapper: Failed to find system config path
+10-20 11:52:42.052 14162 14162 E C01400/OpenGLWrapper: LoadLayers failed.
+10-20 11:52:42.052 14162 14162 E C01400/OpenGLWrapper: EglWrapperLayer Init Failed.
+10-20 11:52:42.052 14162 14162 E C01400/OpenGLWrapper: Failed to dlopen /system/lib64/libiGraphicsCore.z.so. error: Error loading shared library /system/lib64/libiGraphicsCore.z.so: No such file or directory.
+10-20 11:52:42.052 14162 14162 E C01400/OpenGLWrapper: EglWrapperHookLayer init Failed!
+10-20 11:52:42.052 14162 14162 I C02515/DGLES: [initialize@egl_display.cpp:118] Initialize display
+10-20 11:52:42.053 14162 14162 W C02515/DGLES: [recycle_resource_id@context_common.cpp:666] null gpu context, give up recycle ids
+10-20 11:52:42.053 14162 14162 W C02515/DGLES: [recycle_resource_id@context_common.cpp:666] null gpu context, give up recycle ids
+10-20 11:52:42.053 14162 14162 E C01400/OpenGLWrapper: eglSetBlobCacheFuncsANDROID not found.
+10-20 11:52:42.053 14162 14162 D A00000/HarmonyGLRendererBackend: Step 3/6: Binding OpenGL ES API...
+10-20 11:52:42.053 14162 14162 I A00000/HarmonyGLRendererBackend: Step 3/6: OpenGL ES API bound successfully
+10-20 11:52:42.056 14162 14162 W C02515/DGLES: [recycle_resource_id@context_common.cpp:666] null gpu context, give up recycle ids
+10-20 11:52:42.056 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:162] StaticValues size 56945
+10-20 11:52:42.058 14162 14162 W C02515/DGLES: [recycle_resource_id@context_common.cpp:666] null gpu context, give up recycle ids
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:178] static_values_local->major_version: 3:
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:179] static_values_local: ARM
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:180] static_values_local->vendor: ARM
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:181] static_values_local->version: OpenGL ES 3.0 (4.1 Metal - 89.4)
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:182] static_values_local->renderer: Mali-G77
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:183] static_values_local->num_extensions: 73
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:184] shading_language_version: OpenGL ES GLSL ES 3.0
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 0, value: GL_OES_EGL_image
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 1, value: GL_OES_EGL_image_external
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 2, value: GL_OES_EGL_sync
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 3, value: GL_OES_depth24
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 4, value: GL_OES_depth32
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 5, value: GL_OES_texture_float
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 6, value: GL_OES_texture_float_linear
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 7, value: GL_OES_texture_half_float
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 8, value: GL_OES_texture_half_float_linear
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 9, value: GL_OES_depth_texture
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 10, value: GL_OES_EGL_image_external_essl3
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 11, value: GL_KHR_texture_compression_astc_ldr
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 12, value: GL_KHR_texture_compression_astc_hdr
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 13, value: GL_OES_vertex_array_object
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 14, value: GL_EXT_color_buffer_float
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 15, value: GL_EXT_color_buffer_half_float
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 16, value: GL_OES_element_index_uint
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 17, value: GL_OES_texture_float_linear
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 18, value: GL_OES_compressed_paletted_texture
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 19, value: GL_OES_packed_depth_stencil
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 20, value: GL_OES_texture_npot
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 21, value: GL_OES_rgb8_rgba8
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 22, value: GL_OES_framebuffer_object
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 23, value: GL_ARB_texture_non_power_of_two
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 24, value: GL_OES_blend_func_separate
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 25, value: GL_OES_blend_equation_separate
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 26, value: GL_OES_blend_subtract
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 27, value: GL_OES_byte_coordinates
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 28, value: GL_OES_point_size_array
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 29, value: GL_OES_point_sprite
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 30, value: GL_OES_single_precision
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 31, value: GL_OES_stencil_wrap
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 32, value: GL_OES_texture_env_crossbar
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 33, value: GL_OES_texture_mirrored_repeat
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 34, value: GL_OES_texture_cube_map
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 35, value: GL_OES_draw_texture
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 36, value: GL_OES_fbo_render_mipmap
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 37, value: GL_OES_stencil8
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 38, value: GL_EXT_blend_minmax
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 39, value: GL_OES_standard_derivatives
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 40, value: GL_EXT_robustness
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 41, value: GL_EXT_copy_image
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 42, value: GL_EXT_texture_buffer
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 43, value: GL_OES_vertex_half_float
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 44, value: GL_KHR_blend_equation_advanced
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 45, value: GL_EXT_shader_io_blocks
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 46, value: GL_EXT_texture_sRGB_decode
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 47, value: GL_KHR_debug
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 48, value: GL_OES_sample_shading
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 49, value: GL_OES_sample_variables
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 50, value: GL_OES_texture_stencil8
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 51, value: GL_EXT_geometry_shader
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 52, value: GL_EXT_gpu_shader5
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 53, value: GL_OES_shader_multisample_interpolation
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 54, value: GL_EXT_tessellation_shader
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 55, value: GL_EXT_texture_border_clamp
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 56, value: GL_EXT_texture_cube_map_array
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 57, value: GL_OES_shader_image_atomic
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 58, value: GL_EXT_draw_buffers_indexed
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 59, value: GL_OES_texture_storage_multisample_2d_array
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 60, value: GL_EXT_primitive_bounding_box
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 61, value: GL_OES_primitive_bounding_box
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 62, value: GL_KHR_robustness
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 63, value: GL_KHR_robust_buffer_access_behavior
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 64, value: GL_OES_copy_image
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 65, value: GL_EXT_draw_elements_base_vertex
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 66, value: GL_OES_geometry_shader
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 67, value: GL_OES_shader_io_blocks
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 68, value: GL_OES_texture_border_clamp
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 69, value: GL_OES_texture_buffer
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 70, value: GL_OES_texture_cube_map_array
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 71, value: GL_OES_surfaceless_context
+10-20 11:52:42.058 14162 14162 I C02515/DGLES: [init_process_static_context_values@context_common.cpp:189] static_values_local->num_extensions index: 72, value: GL_OES_texture_compression_astc
+10-20 11:52:42.059 14162 14162 W C02515/DGLES: [recycle_resource_id@context_common.cpp:666] null gpu context, give up recycle ids
+10-20 11:52:42.070 14162 14162 I A00000/OpenGL: EGL context initialized successfully
+10-20 11:52:42.070 14162 14162 I A00000/OpenGL: Successfully set native window and initialized EGL
+10-20 11:52:42.070 14162 14692 I A00000/MAPLIBRE: [INFO] {aplibre.harmony}[General]: GPU Identifier: Mali-G77
+10-20 11:52:42.082 14162 14692 D A00000/MAPLIBRE: [DEBUG] {DatabaseFileSou}[Database]: 28attempt to open "/data/storage/el2/base/cache/mbgl_cache.db-journal" as file descriptor 0
+10-20 11:52:42.100 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:504] SwapBuffer NativeWindow err flush:50401000 request:0
+10-20 11:52:42.100 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:570] sync get ret 0 error 1 sync_fd 117
+10-20 11:52:42.113 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:570] sync get ret 0 error 1 sync_fd 120
+10-20 11:52:42.124 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:570] sync get ret 0 error 1 sync_fd 118
+10-20 11:52:42.124   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.124   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.140   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.140 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:570] sync get ret 0 error 1 sync_fd 123
+10-20 11:52:42.143   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.155   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.156   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.171   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.172   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.188   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.188   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.205   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.205   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.221   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.221   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.238   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.238   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.255   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 2033410 speed 1953k/s API_num 6299
+10-20 11:52:42.255   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.256   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.272   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.273   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.288   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.288   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.304   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.305   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.321   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.321   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.338   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.338   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.355   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.356   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.371   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.372   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.388   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.389   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.405   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.405   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.422   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.422   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.438   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.438   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.455   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.455   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.472   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.472   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.488   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.488   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.505   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.506   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.521   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.521   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.538   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.539   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.555   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.555   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.572   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.572   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.588   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.590   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.605   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.605   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.621   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.621   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.638   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.638   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.654   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.655   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.671   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.671   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.688   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.689   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:42.705   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:42.705   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.042   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.043   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.058   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.058   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.073   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.073   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.089   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.089   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.105 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 79663 speed 77k/s API_num 1830
+10-20 11:52:43.105   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.105   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.121   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.121   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.135   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.136   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.151   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.151   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.167   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.167   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.183   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.183   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.198   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.198   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.213   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.214   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.229   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.229   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.245   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.245   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.260   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 381793 speed 370k/s API_num 2981
+10-20 11:52:43.261   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.261   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.277   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.278   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.294   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.294   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.322   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.323   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.338   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.338   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.354   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.354   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.369   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.369   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.386   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.387   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.400   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.401   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.416   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.416   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.432   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.432   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.447   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.447   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.463   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.464   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.478   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.478   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.494   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.494   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.510   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.511   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.527   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.527   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.543   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.544   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.572   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.572   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.587   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.587   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.603   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.603   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.619   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.619   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.634   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.634   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.649   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.650   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.665   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.665   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.681   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.681   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.696   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.696   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.712   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.713   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.727   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.728   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.744   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.745   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.761   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.761   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.790   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.790   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.805   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.806   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.821   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.821   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.836   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.837   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.852   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.852   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.868   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.868   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.883   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.883   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.899   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.899   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.915   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.915   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.930   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.930   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.945   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.946   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.961   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.961   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.977   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.978   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:43.994   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:43.994   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.011   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.011   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.039   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.039   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.055   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.055   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.070   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.070   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.086   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.086   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.101   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.101   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.105 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 113685 speed 111k/s API_num 2604
+10-20 11:52:44.117   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.117   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.132   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.133   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.148   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.149   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.164   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.164   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.181   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.182   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.195   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.195   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.210   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.210   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.228   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.228   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.243   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.244   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.261   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 504423 speed 492k/s API_num 3538
+10-20 11:52:44.261   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.262   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.288   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.288   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.304   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.304   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.319   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.319   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.335   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.335   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.350   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.351   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.366   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.366   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.381   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.382   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.397   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.397   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.413   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.413   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.429   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.430   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.444   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.445   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.461   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.461   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.477   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.478   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.494   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.494   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.522   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.522   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.538   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.539   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.554   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.555   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.568   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.569   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.586   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.587   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.599   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.600   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.615   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.615   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.631   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.631   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.646   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.646   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.662   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.662   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.679   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.679   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.694   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.694   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.710   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.710   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.740   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.741   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.756   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.757   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.772   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.772   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.786   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.786   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.804   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.805   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.818   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.818   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.834   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.835   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.849   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.849   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.865   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.865   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.881   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.884   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.896   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.897   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.913   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.915   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.928   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.929   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.944   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.944   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.960   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.960   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:44.989   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:44.989   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.005   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.005   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.020   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.020   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.036   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.036   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.051   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.052   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.067   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.067   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.085   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.086   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.098   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.098   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.113   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.114   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.122 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 115669 speed 111k/s API_num 2650
+10-20 11:52:45.129   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.129   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.145   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.145   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.161   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.161   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.177   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.177   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.194   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.194   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.210   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.211   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.238   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.238   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.255   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.256   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.270   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.270   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.277   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 512888 speed 493k/s API_num 3599
+10-20 11:52:45.285   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.286   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.300   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.301   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.316   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.316   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.332   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.332   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.347   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.347   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.380   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.380   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.395   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.396   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.410   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.410   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.426   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.426   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.441   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.441   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.458   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.459   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.474   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.475   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.489   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.491   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.504   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.504   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.519   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.519   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.534   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.534   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.550   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.551   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.566   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.566   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.582   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.583   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.599   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.599   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.615   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.615   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.632   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.632   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.649   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.649   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.666   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.666   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.683   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.683   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.706   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.706   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.722   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.722   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.736   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.736   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.752   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.752   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.768   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.768   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.783   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.783   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.799   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.799   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.815   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.816   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.832   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.832   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.849   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.849   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.866   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.866   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.882   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.883   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.899   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.900   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.915   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.916   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.939   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.939   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.955   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.956   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.971   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.971   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:45.986   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:45.986   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.001   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.004   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.018   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.018   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.033   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.033   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.049   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.049   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.066   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.067   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.082   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.083   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.099   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.100   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.115   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.115   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.122 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 113750 speed 111k/s API_num 2606
+10-20 11:52:46.133   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.133   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.149   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.149   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.173   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.174   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.189   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.189   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.204   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.204   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.219   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.220   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.235   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.235   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.250   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.251   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.266   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.266   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.281   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 504537 speed 490k/s API_num 3542
+10-20 11:52:46.282   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.282   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.299   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.300   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.315   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.315   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.332   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.332   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.349   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.354   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.369   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.391   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.412   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.413   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.423   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.431   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.440   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.443   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.455   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.459   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.468   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.469   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.488   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.489   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.500   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.500   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.516   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.516   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.532   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.533   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.549   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.549   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.566   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.566   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.582   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.583   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.599   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.599   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.616   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.616   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.633   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.633   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.650   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.650   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.666   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.666   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.683   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.683   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.700   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.700   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.716   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.716   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.733   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.733   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.750   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.750   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.766   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.766   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.783   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.783   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.799   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.799   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.816   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.816   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.833   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.833   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.849   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.849   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.866   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.866   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.882   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.882   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.899   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.899   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.917   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.919   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.932   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.933   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.949   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.949   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.966   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.966   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.982   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.983   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:46.999   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:46.999   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.016   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.017   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.033   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.033   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.049   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.050   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.066   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.066   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.082   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.082   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.099   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.100   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.116   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.117   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.126 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 113750 speed 110k/s API_num 2606
+10-20 11:52:47.132   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.132   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.149   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.149   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.166   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.166   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.183   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.183   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.199   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.199   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.215   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.216   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.233   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.234   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.249   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.249   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.265   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.266   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.282   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 496015 speed 483k/s API_num 3479
+10-20 11:52:47.283   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.283   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.299   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.300   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.315   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.315   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.333   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.333   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.349   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.349   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.366   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.366   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.383   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.383   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.399   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.399   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.416   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.416   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.432   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.433   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.449   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.450   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.466   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.466   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.482   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.482   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.499   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.499   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.516   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.516   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.533   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.533   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.549   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.550   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.566   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.566   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.582   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.582   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.599   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.599   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.615   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.616   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.632   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.632   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.650   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.650   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.666   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.666   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.682   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.683   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.699   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.699   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.716   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.716   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.733   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.733   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.749   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.749   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.766   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.767   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.782   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.782   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.799   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.800   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.816   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.816   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.832   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.832   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.849   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.849   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.866   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.866   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.882   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.882   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.899   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.899   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.916   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.916   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.933   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.933   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.948   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.950   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.965   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.966   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.982   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.982   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:47.999   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:47.999   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.021   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.021   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.033   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.033   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.049   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.050   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.066   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.066   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.082   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.083   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.099   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.099   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.116   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.116   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.127 14162 14691 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 113750 speed 110k/s API_num 2606
+10-20 11:52:48.132   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.133   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.149   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.149   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.166   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.166   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.183   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.183   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.199   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.199   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.216   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.216   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.232   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.233   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.249   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.250   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.266   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.266   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.283   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.283   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.299   709   800 E C02515/DGLES: [d_eglSwapBuffers_special@egl_gpu.cpp:729] thread output size 512888 speed 492k/s API_num 3599
+10-20 11:52:48.299   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.301   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.316   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.322   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.333   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.333   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.349   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.349   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.365   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.366   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.383   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.383   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.399   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.400   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.416   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.416   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.432   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.433   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.449   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.450   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.466   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.467   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.482   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.482   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.499   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.499   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.515   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.516   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.532   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.532   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.549   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.549   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.566   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.566   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.582   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.584   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.599   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.599   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.616   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.616   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.632   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.632   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.649   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.649   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.666   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.666   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.682   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.682   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.699   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.699   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.715   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.716   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.733   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.733   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.750   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx null opengl_context 7fba493300
+10-20 11:52:48.750   709   800 E C02515/DGLES: [d_glBindTexture_special@glv3_status.cpp:692] bind external with nullptr gbuffer 0
+10-20 11:52:48.767   709   800 E C02515/DGLES: [d_eglCreateImage_special@egl_gpu.cpp:283] createimage with ctx nu
