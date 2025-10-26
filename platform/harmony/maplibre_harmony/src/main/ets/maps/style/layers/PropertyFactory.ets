@@ -1,11 +1,12 @@
 import { PropertyValue } from './PropertyValue';
 import { PaintPropertyValue } from './PaintPropertyValue';
 import { LayoutPropertyValue } from './LayoutPropertyValue';
+import { Expression } from '../expressions/Expression';
 
 /**
  * PropertyFactory - 属性工厂类
  * 
- * 为所有图层属性提供工厂方法
+ * 为所有图层属性提供工厂方法，支持常量值和 Expression
  */
 export class PropertyFactory {
   
@@ -20,454 +21,415 @@ export class PropertyFactory {
 
   // ==================== Fill 图层属性 ====================
   
-  /**
-   * 填充颜色
-   */
-  public static fillColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('fill-color', color);
+  public static fillColor(color: string): PaintPropertyValue<string>;
+  public static fillColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static fillColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('fill-color', value);
   }
 
-  /**
-   * 填充透明度
-   */
-  public static fillOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('fill-opacity', opacity);
+  public static fillOpacity(opacity: number): PaintPropertyValue<number>;
+  public static fillOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static fillOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('fill-opacity', value);
   }
 
-  /**
-   * 填充轮廓颜色
-   */
-  public static fillOutlineColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('fill-outline-color', color);
+  public static fillOutlineColor(color: string): PaintPropertyValue<string>;
+  public static fillOutlineColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static fillOutlineColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('fill-outline-color', value);
   }
 
-  /**
-   * 填充图案
-   */
-  public static fillPattern(pattern: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('fill-pattern', pattern);
+  public static fillPattern(pattern: string): PaintPropertyValue<string>;
+  public static fillPattern(expression: Expression<string>): PaintPropertyValue<string>;
+  public static fillPattern(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('fill-pattern', value);
   }
 
-  /**
-   * 填充抗锯齿
-   */
-  public static fillAntialias(antialias: boolean): PaintPropertyValue<boolean> {
-    return new PaintPropertyValue<boolean>('fill-antialias', antialias);
+  public static fillAntialias(antialias: boolean): PaintPropertyValue<boolean>;
+  public static fillAntialias(expression: Expression<boolean>): PaintPropertyValue<boolean>;
+  public static fillAntialias(value: boolean | Expression<boolean>): PaintPropertyValue<boolean> {
+    return PropertyFactory.createPaintProperty('fill-antialias', value);
   }
 
-  /**
-   * 填充偏移
-   */
-  public static fillTranslate(translate: number[]): PaintPropertyValue<number[]> {
-    return new PaintPropertyValue<number[]>('fill-translate', translate);
+  public static fillTranslate(translate: number[]): PaintPropertyValue<number[]>;
+  public static fillTranslate(expression: Expression<number[]>): PaintPropertyValue<number[]>;
+  public static fillTranslate(value: number[] | Expression<number[]>): PaintPropertyValue<number[]> {
+    return PropertyFactory.createPaintProperty('fill-translate', value);
   }
 
   // ==================== Line 图层属性 ====================
   
-  /**
-   * 线条颜色
-   */
-  public static lineColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('line-color', color);
+  public static lineColor(color: string): PaintPropertyValue<string>;
+  public static lineColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static lineColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('line-color', value);
   }
 
-  /**
-   * 线条宽度
-   */
-  public static lineWidth(width: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('line-width', width);
+  public static lineWidth(width: number): PaintPropertyValue<number>;
+  public static lineWidth(expression: Expression<number>): PaintPropertyValue<number>;
+  public static lineWidth(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('line-width', value);
   }
 
-  /**
-   * 线条透明度
-   */
-  public static lineOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('line-opacity', opacity);
+  public static lineOpacity(opacity: number): PaintPropertyValue<number>;
+  public static lineOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static lineOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('line-opacity', value);
   }
 
-  /**
-   * 线条图案
-   */
-  public static linePattern(pattern: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('line-pattern', pattern);
+  public static linePattern(pattern: string): PaintPropertyValue<string>;
+  public static linePattern(expression: Expression<string>): PaintPropertyValue<string>;
+  public static linePattern(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('line-pattern', value);
   }
 
-  /**
-   * 线条间隙宽度
-   */
-  public static lineGapWidth(gapWidth: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('line-gap-width', gapWidth);
+  public static lineGapWidth(gapWidth: number): PaintPropertyValue<number>;
+  public static lineGapWidth(expression: Expression<number>): PaintPropertyValue<number>;
+  public static lineGapWidth(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('line-gap-width', value);
   }
 
-  /**
-   * 线条虚线数组
-   */
-  public static lineDasharray(dasharray: number[]): PaintPropertyValue<number[]> {
-    return new PaintPropertyValue<number[]>('line-dasharray', dasharray);
+  public static lineDasharray(dasharray: number[]): PaintPropertyValue<number[]>;
+  public static lineDasharray(expression: Expression<number[]>): PaintPropertyValue<number[]>;
+  public static lineDasharray(value: number[] | Expression<number[]>): PaintPropertyValue<number[]> {
+    return PropertyFactory.createPaintProperty('line-dasharray', value);
   }
 
-  /**
-   * 线条模糊
-   */
-  public static lineBlur(blur: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('line-blur', blur);
+  public static lineBlur(blur: number): PaintPropertyValue<number>;
+  public static lineBlur(expression: Expression<number>): PaintPropertyValue<number>;
+  public static lineBlur(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('line-blur', value);
   }
 
-  /**
-   * 线条端点样式
-   */
-  public static lineCap(cap: 'butt' | 'round' | 'square'): LayoutPropertyValue<string> {
-    return new LayoutPropertyValue<string>('line-cap', cap);
+  public static lineCap(cap: 'butt' | 'round' | 'square'): LayoutPropertyValue<string>;
+  public static lineCap(expression: Expression<string>): LayoutPropertyValue<string>;
+  public static lineCap(value: 'butt' | 'round' | 'square' | Expression<string>): LayoutPropertyValue<string> {
+    return PropertyFactory.createLayoutProperty('line-cap', value);
   }
 
-  /**
-   * 线条连接样式
-   */
-  public static lineJoin(join: 'bevel' | 'round' | 'miter'): LayoutPropertyValue<string> {
-    return new LayoutPropertyValue<string>('line-join', join);
+  public static lineJoin(join: 'bevel' | 'round' | 'miter'): LayoutPropertyValue<string>;
+  public static lineJoin(expression: Expression<string>): LayoutPropertyValue<string>;
+  public static lineJoin(value: 'bevel' | 'round' | 'miter' | Expression<string>): LayoutPropertyValue<string> {
+    return PropertyFactory.createLayoutProperty('line-join', value);
   }
 
   // ==================== Circle 图层属性 ====================
   
-  /**
-   * 圆形半径
-   */
-  public static circleRadius(radius: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('circle-radius', radius);
+  public static circleRadius(radius: number): PaintPropertyValue<number>;
+  public static circleRadius(expression: Expression<number>): PaintPropertyValue<number>;
+  public static circleRadius(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('circle-radius', value);
   }
 
-  /**
-   * 圆形颜色
-   */
-  public static circleColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('circle-color', color);
+  public static circleColor(color: string): PaintPropertyValue<string>;
+  public static circleColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static circleColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('circle-color', value);
   }
 
-  /**
-   * 圆形透明度
-   */
-  public static circleOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('circle-opacity', opacity);
+  public static circleOpacity(opacity: number): PaintPropertyValue<number>;
+  public static circleOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static circleOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('circle-opacity', value);
   }
 
-  /**
-   * 圆形模糊
-   */
-  public static circleBlur(blur: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('circle-blur', blur);
+  public static circleBlur(blur: number): PaintPropertyValue<number>;
+  public static circleBlur(expression: Expression<number>): PaintPropertyValue<number>;
+  public static circleBlur(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('circle-blur', value);
   }
 
-  /**
-   * 圆形边框宽度
-   */
-  public static circleStrokeWidth(width: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('circle-stroke-width', width);
+  public static circleStrokeWidth(width: number): PaintPropertyValue<number>;
+  public static circleStrokeWidth(expression: Expression<number>): PaintPropertyValue<number>;
+  public static circleStrokeWidth(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('circle-stroke-width', value);
   }
 
-  /**
-   * 圆形边框颜色
-   */
-  public static circleStrokeColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('circle-stroke-color', color);
+  public static circleStrokeColor(color: string): PaintPropertyValue<string>;
+  public static circleStrokeColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static circleStrokeColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('circle-stroke-color', value);
   }
 
-  /**
-   * 圆形边框透明度
-   */
-  public static circleStrokeOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('circle-stroke-opacity', opacity);
+  public static circleStrokeOpacity(opacity: number): PaintPropertyValue<number>;
+  public static circleStrokeOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static circleStrokeOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('circle-stroke-opacity', value);
   }
 
   // ==================== Symbol 图层属性 ====================
   
-  /**
-   * 图标图片
-   */
-  public static iconImage(iconImage: string): LayoutPropertyValue<string> {
-    return new LayoutPropertyValue<string>('icon-image', iconImage);
+  public static iconImage(iconImage: string): LayoutPropertyValue<string>;
+  public static iconImage(expression: Expression<string>): LayoutPropertyValue<string>;
+  public static iconImage(value: string | Expression<string>): LayoutPropertyValue<string> {
+    return PropertyFactory.createLayoutProperty('icon-image', value);
   }
 
-  /**
-   * 图标大小
-   */
-  public static iconSize(size: number): LayoutPropertyValue<number> {
-    return new LayoutPropertyValue<number>('icon-size', size);
+  public static iconSize(size: number): LayoutPropertyValue<number>;
+  public static iconSize(expression: Expression<number>): LayoutPropertyValue<number>;
+  public static iconSize(value: number | Expression<number>): LayoutPropertyValue<number> {
+    return PropertyFactory.createLayoutProperty('icon-size', value);
   }
 
-  /**
-   * 图标旋转角度
-   */
-  public static iconRotate(rotate: number): LayoutPropertyValue<number> {
-    return new LayoutPropertyValue<number>('icon-rotate', rotate);
+  public static iconRotate(rotate: number): LayoutPropertyValue<number>;
+  public static iconRotate(expression: Expression<number>): LayoutPropertyValue<number>;
+  public static iconRotate(value: number | Expression<number>): LayoutPropertyValue<number> {
+    return PropertyFactory.createLayoutProperty('icon-rotate', value);
   }
 
-  /**
-   * 图标颜色
-   */
-  public static iconColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('icon-color', color);
+  public static iconColor(color: string): PaintPropertyValue<string>;
+  public static iconColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static iconColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('icon-color', value);
   }
 
-  /**
-   * 图标透明度
-   */
-  public static iconOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('icon-opacity', opacity);
+  public static iconOpacity(opacity: number): PaintPropertyValue<number>;
+  public static iconOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static iconOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('icon-opacity', value);
   }
 
-  /**
-   * 文本字段
-   */
-  public static textField(textField: string): LayoutPropertyValue<string> {
-    return new LayoutPropertyValue<string>('text-field', textField);
+  public static textField(textField: string): LayoutPropertyValue<string>;
+  public static textField(expression: Expression<string>): LayoutPropertyValue<string>;
+  public static textField(value: string | Expression<string>): LayoutPropertyValue<string> {
+    return PropertyFactory.createLayoutProperty('text-field', value);
   }
 
-  /**
-   * 文本大小
-   */
-  public static textSize(size: number): LayoutPropertyValue<number> {
-    return new LayoutPropertyValue<number>('text-size', size);
+  public static textSize(size: number): LayoutPropertyValue<number>;
+  public static textSize(expression: Expression<number>): LayoutPropertyValue<number>;
+  public static textSize(value: number | Expression<number>): LayoutPropertyValue<number> {
+    return PropertyFactory.createLayoutProperty('text-size', value);
   }
 
-  /**
-   * 文本字体
-   */
-  public static textFont(fonts: string[]): LayoutPropertyValue<string[]> {
-    return new LayoutPropertyValue<string[]>('text-font', fonts);
+  public static textFont(fonts: string[]): LayoutPropertyValue<string[]>;
+  public static textFont(expression: Expression<string[]>): LayoutPropertyValue<string[]>;
+  public static textFont(value: string[] | Expression<string[]>): LayoutPropertyValue<string[]> {
+    return PropertyFactory.createLayoutProperty('text-font', value);
   }
 
-  /**
-   * 文本偏移
-   */
-  public static textOffset(offset: number[]): LayoutPropertyValue<number[]> {
-    return new LayoutPropertyValue<number[]>('text-offset', offset);
+  public static textOffset(offset: number[]): LayoutPropertyValue<number[]>;
+  public static textOffset(expression: Expression<number[]>): LayoutPropertyValue<number[]>;
+  public static textOffset(value: number[] | Expression<number[]>): LayoutPropertyValue<number[]> {
+    return PropertyFactory.createLayoutProperty('text-offset', value);
   }
 
-  /**
-   * 文本锚点
-   */
-  public static textAnchor(anchor: string): LayoutPropertyValue<string> {
-    return new LayoutPropertyValue<string>('text-anchor', anchor);
+  public static textAnchor(anchor: string): LayoutPropertyValue<string>;
+  public static textAnchor(expression: Expression<string>): LayoutPropertyValue<string>;
+  public static textAnchor(value: string | Expression<string>): LayoutPropertyValue<string> {
+    return PropertyFactory.createLayoutProperty('text-anchor', value);
   }
 
-  /**
-   * 文本颜色
-   */
-  public static textColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('text-color', color);
+  public static textColor(color: string): PaintPropertyValue<string>;
+  public static textColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static textColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('text-color', value);
   }
 
-  /**
-   * 文本透明度
-   */
-  public static textOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('text-opacity', opacity);
+  public static textOpacity(opacity: number): PaintPropertyValue<number>;
+  public static textOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static textOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('text-opacity', value);
   }
 
-  /**
-   * 文本光晕颜色
-   */
-  public static textHaloColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('text-halo-color', color);
+  public static textHaloColor(color: string): PaintPropertyValue<string>;
+  public static textHaloColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static textHaloColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('text-halo-color', value);
   }
 
-  /**
-   * 文本光晕宽度
-   */
-  public static textHaloWidth(width: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('text-halo-width', width);
+  public static textHaloWidth(width: number): PaintPropertyValue<number>;
+  public static textHaloWidth(expression: Expression<number>): PaintPropertyValue<number>;
+  public static textHaloWidth(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('text-halo-width', value);
   }
 
   // ==================== Raster 图层属性 ====================
   
-  /**
-   * 栅格透明度
-   */
-  public static rasterOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('raster-opacity', opacity);
+  public static rasterOpacity(opacity: number): PaintPropertyValue<number>;
+  public static rasterOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static rasterOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('raster-opacity', value);
   }
 
-  /**
-   * 栅格色相旋转
-   */
-  public static rasterHueRotate(hueRotate: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('raster-hue-rotate', hueRotate);
+  public static rasterHueRotate(hueRotate: number): PaintPropertyValue<number>;
+  public static rasterHueRotate(expression: Expression<number>): PaintPropertyValue<number>;
+  public static rasterHueRotate(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('raster-hue-rotate', value);
   }
 
-  /**
-   * 栅格亮度最小值
-   */
-  public static rasterBrightnessMin(brightnessMin: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('raster-brightness-min', brightnessMin);
+  public static rasterBrightnessMin(brightnessMin: number): PaintPropertyValue<number>;
+  public static rasterBrightnessMin(expression: Expression<number>): PaintPropertyValue<number>;
+  public static rasterBrightnessMin(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('raster-brightness-min', value);
   }
 
-  /**
-   * 栅格亮度最大值
-   */
-  public static rasterBrightnessMax(brightnessMax: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('raster-brightness-max', brightnessMax);
+  public static rasterBrightnessMax(brightnessMax: number): PaintPropertyValue<number>;
+  public static rasterBrightnessMax(expression: Expression<number>): PaintPropertyValue<number>;
+  public static rasterBrightnessMax(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('raster-brightness-max', value);
   }
 
-  /**
-   * 栅格对比度
-   */
-  public static rasterContrast(contrast: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('raster-contrast', contrast);
+  public static rasterContrast(contrast: number): PaintPropertyValue<number>;
+  public static rasterContrast(expression: Expression<number>): PaintPropertyValue<number>;
+  public static rasterContrast(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('raster-contrast', value);
   }
 
-  /**
-   * 栅格饱和度
-   */
-  public static rasterSaturation(saturation: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('raster-saturation', saturation);
+  public static rasterSaturation(saturation: number): PaintPropertyValue<number>;
+  public static rasterSaturation(expression: Expression<number>): PaintPropertyValue<number>;
+  public static rasterSaturation(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('raster-saturation', value);
   }
 
   // ==================== Background 图层属性 ====================
   
-  /**
-   * 背景颜色
-   */
-  public static backgroundColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('background-color', color);
+  public static backgroundColor(color: string): PaintPropertyValue<string>;
+  public static backgroundColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static backgroundColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('background-color', value);
   }
 
-  /**
-   * 背景透明度
-   */
-  public static backgroundOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('background-opacity', opacity);
+  public static backgroundOpacity(opacity: number): PaintPropertyValue<number>;
+  public static backgroundOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static backgroundOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('background-opacity', value);
   }
 
-  /**
-   * 背景图案
-   */
-  public static backgroundPattern(pattern: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('background-pattern', pattern);
+  public static backgroundPattern(pattern: string): PaintPropertyValue<string>;
+  public static backgroundPattern(expression: Expression<string>): PaintPropertyValue<string>;
+  public static backgroundPattern(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('background-pattern', value);
   }
 
   // ==================== Heatmap 图层属性 ====================
   
-  /**
-   * 热力图权重
-   */
-  public static heatmapWeight(weight: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('heatmap-weight', weight);
+  public static heatmapWeight(weight: number): PaintPropertyValue<number>;
+  public static heatmapWeight(expression: Expression<number>): PaintPropertyValue<number>;
+  public static heatmapWeight(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('heatmap-weight', value);
   }
 
-  /**
-   * 热力图强度
-   */
-  public static heatmapIntensity(intensity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('heatmap-intensity', intensity);
+  public static heatmapIntensity(intensity: number): PaintPropertyValue<number>;
+  public static heatmapIntensity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static heatmapIntensity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('heatmap-intensity', value);
   }
 
-  /**
-   * 热力图半径
-   */
-  public static heatmapRadius(radius: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('heatmap-radius', radius);
+  public static heatmapRadius(radius: number): PaintPropertyValue<number>;
+  public static heatmapRadius(expression: Expression<number>): PaintPropertyValue<number>;
+  public static heatmapRadius(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('heatmap-radius', value);
   }
 
-  /**
-   * 热力图透明度
-   */
-  public static heatmapOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('heatmap-opacity', opacity);
+  public static heatmapOpacity(opacity: number): PaintPropertyValue<number>;
+  public static heatmapOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static heatmapOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('heatmap-opacity', value);
   }
 
   // ==================== Hillshade 图层属性 ====================
   
-  /**
-   * 山体阴影光照方向
-   */
-  public static hillshadeIlluminationDirection(direction: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('hillshade-illumination-direction', direction);
+  public static hillshadeIlluminationDirection(direction: number): PaintPropertyValue<number>;
+  public static hillshadeIlluminationDirection(expression: Expression<number>): PaintPropertyValue<number>;
+  public static hillshadeIlluminationDirection(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('hillshade-illumination-direction', value);
   }
 
-  /**
-   * 山体阴影光照锚点
-   */
-  public static hillshadeIlluminationAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('hillshade-illumination-anchor', anchor);
+  public static hillshadeIlluminationAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
+  public static hillshadeIlluminationAnchor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static hillshadeIlluminationAnchor(value: 'map' | 'viewport' | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('hillshade-illumination-anchor', value);
   }
 
-  /**
-   * 山体阴影夸张程度
-   */
-  public static hillshadeExaggeration(exaggeration: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('hillshade-exaggeration', exaggeration);
+  public static hillshadeExaggeration(exaggeration: number): PaintPropertyValue<number>;
+  public static hillshadeExaggeration(expression: Expression<number>): PaintPropertyValue<number>;
+  public static hillshadeExaggeration(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('hillshade-exaggeration', value);
   }
 
-  /**
-   * 山体阴影阴影颜色
-   */
-  public static hillshadeShadowColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('hillshade-shadow-color', color);
+  public static hillshadeShadowColor(color: string): PaintPropertyValue<string>;
+  public static hillshadeShadowColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static hillshadeShadowColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('hillshade-shadow-color', value);
   }
 
-  /**
-   * 山体阴影高光颜色
-   */
-  public static hillshadeHighlightColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('hillshade-highlight-color', color);
+  public static hillshadeHighlightColor(color: string): PaintPropertyValue<string>;
+  public static hillshadeHighlightColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static hillshadeHighlightColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('hillshade-highlight-color', value);
   }
 
-  /**
-   * 山体阴影强调颜色
-   */
-  public static hillshadeAccentColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('hillshade-accent-color', color);
+  public static hillshadeAccentColor(color: string): PaintPropertyValue<string>;
+  public static hillshadeAccentColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static hillshadeAccentColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('hillshade-accent-color', value);
   }
 
   // ==================== FillExtrusion 图层属性 ====================
   
+  public static fillExtrusionHeight(height: number): PaintPropertyValue<number>;
+  public static fillExtrusionHeight(expression: Expression<number>): PaintPropertyValue<number>;
+  public static fillExtrusionHeight(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-height', value);
+  }
+
+  public static fillExtrusionBase(base: number): PaintPropertyValue<number>;
+  public static fillExtrusionBase(expression: Expression<number>): PaintPropertyValue<number>;
+  public static fillExtrusionBase(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-base', value);
+  }
+
+  public static fillExtrusionColor(color: string): PaintPropertyValue<string>;
+  public static fillExtrusionColor(expression: Expression<string>): PaintPropertyValue<string>;
+  public static fillExtrusionColor(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-color', value);
+  }
+
+  public static fillExtrusionOpacity(opacity: number): PaintPropertyValue<number>;
+  public static fillExtrusionOpacity(expression: Expression<number>): PaintPropertyValue<number>;
+  public static fillExtrusionOpacity(value: number | Expression<number>): PaintPropertyValue<number> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-opacity', value);
+  }
+
+  public static fillExtrusionPattern(pattern: string): PaintPropertyValue<string>;
+  public static fillExtrusionPattern(expression: Expression<string>): PaintPropertyValue<string>;
+  public static fillExtrusionPattern(value: string | Expression<string>): PaintPropertyValue<string> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-pattern', value);
+  }
+
+  public static fillExtrusionTranslate(translate: number[]): PaintPropertyValue<number[]>;
+  public static fillExtrusionTranslate(expression: Expression<number[]>): PaintPropertyValue<number[]>;
+  public static fillExtrusionTranslate(value: number[] | Expression<number[]>): PaintPropertyValue<number[]> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-translate', value);
+  }
+
+  public static fillExtrusionVerticalGradient(verticalGradient: boolean): PaintPropertyValue<boolean>;
+  public static fillExtrusionVerticalGradient(expression: Expression<boolean>): PaintPropertyValue<boolean>;
+  public static fillExtrusionVerticalGradient(value: boolean | Expression<boolean>): PaintPropertyValue<boolean> {
+    return PropertyFactory.createPaintProperty('fill-extrusion-vertical-gradient', value);
+  }
+
+  // ==================== 辅助方法 ====================
+
   /**
-   * 拉伸高度
+   * 创建 Paint 属性
    */
-  public static fillExtrusionHeight(height: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('fill-extrusion-height', height);
+  private static createPaintProperty<T>(name: string, value: T | Expression<T>): PaintPropertyValue<T> {
+    if (value instanceof Expression) {
+      return new PaintPropertyValue<T>(name, null, value);
+    } else {
+      return new PaintPropertyValue<T>(name, value as T);
+    }
   }
 
   /**
-   * 拉伸基础高度
+   * 创建 Layout 属性
    */
-  public static fillExtrusionBase(base: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('fill-extrusion-base', base);
-  }
-
-  /**
-   * 拉伸颜色
-   */
-  public static fillExtrusionColor(color: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('fill-extrusion-color', color);
-  }
-
-  /**
-   * 拉伸透明度
-   */
-  public static fillExtrusionOpacity(opacity: number): PaintPropertyValue<number> {
-    return new PaintPropertyValue<number>('fill-extrusion-opacity', opacity);
-  }
-
-  /**
-   * 拉伸图案
-   */
-  public static fillExtrusionPattern(pattern: string): PaintPropertyValue<string> {
-    return new PaintPropertyValue<string>('fill-extrusion-pattern', pattern);
-  }
-
-  /**
-   * 拉伸偏移
-   */
-  public static fillExtrusionTranslate(translate: number[]): PaintPropertyValue<number[]> {
-    return new PaintPropertyValue<number[]>('fill-extrusion-translate', translate);
-  }
-
-  /**
-   * 拉伸垂直渐变
-   */
-  public static fillExtrusionVerticalGradient(verticalGradient: boolean): PaintPropertyValue<boolean> {
-    return new PaintPropertyValue<boolean>('fill-extrusion-vertical-gradient', verticalGradient);
+  private static createLayoutProperty<T>(name: string, value: T | Expression<T>): LayoutPropertyValue<T> {
+    if (value instanceof Expression) {
+      return new LayoutPropertyValue<T>(name, null, value);
+    } else {
+      return new LayoutPropertyValue<T>(name, value as T);
+    }
   }
 }
-

@@ -65,12 +65,6 @@ export class RasterSource extends Source {
     return this._tileSize;
   }
 
-  /**
-   * 获取原生指针
-   */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
 
   /**
    * 转换为字符串

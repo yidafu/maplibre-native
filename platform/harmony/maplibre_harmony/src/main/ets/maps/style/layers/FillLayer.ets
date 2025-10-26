@@ -1,173 +1,97 @@
-import { Layer, LayerOptions } from './Layer';
-import { PropertyValue } from './PropertyValue';
-import maplibre from 'libmaplibre_native.so';
-
 /**
  * FillLayer - 填充图层
  * 
- * 用于渲染多边形区域
+ * 支持 Expression 数据驱动样式
  */
+
+import { Layer } from './Layer';
+import { Expression } from '../expressions/Expression';
+
 export class FillLayer extends Layer {
-  private nativePtr: number = 0;
-
-  /**
-   * 创建填充图层
-   * 
-   * @param layerId 图层ID
-   * @param sourceId 数据源ID
-   */
-  constructor(layerId: string, sourceId: string) {
+  constructor(id: string, source: string) {
     super({
-      id: layerId,
+      id: id,
       type: 'fill',
-      source: sourceId
+      source: source,
+      layout: {},
+      paint: {}
     });
-    this.initialize(layerId, sourceId);
   }
-
+  
   /**
-   * 初始化native对象
+   * 设置填充颜色（字符串）
    */
-  private initialize(layerId: string, sourceId: string): void {
-    try {
-      this.nativePtr = maplibre.FillLayer.create(layerId, sourceId);
-    } catch (error) {
-      console.error(`Failed to initialize FillLayer: ${error}`);
+  public withFillColor(color: string): this;
+  
+  /**
+   * 设置填充颜色（Expression）
+   */
+  public withFillColor(expression: Expression<string>): this;
+  
+  public withFillColor(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.paint['fill-color'] = value;
+    } else {
+      this.paint['fill-color'] = value.toArray();
     }
-  }
-
-  /**
-   * 设置源图层
-   */
-  public withSourceLayer(sourceLayer: string): FillLayer {
-    this.setSourceLayer(sourceLayer);
     return this;
   }
-
+  
   /**
-   * 设置过滤器
+   * 设置填充透明度（数字）
    */
-  public withFilter(filter: Object): FillLayer {
-    this.setFilter(filter);
+  public withFillOpacity(opacity: number): this;
+  
+  /**
+   * 设置填充透明度（Expression）
+   */
+  public withFillOpacity(expression: Expression<number>): this;
+  
+  public withFillOpacity(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['fill-opacity'] = value;
+    } else {
+      this.paint['fill-opacity'] = value.toArray();
+    }
     return this;
   }
-
+  
   /**
-   * 设置填充颜色
+   * 设置填充轮廓颜色（字符串）
    */
-  public setFillColor(color: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.FillLayer.setFillColor(this.nativePtr, color);
-    } catch (error) {
-      console.error(`Failed to set fill color: ${error}`);
+  public withFillOutlineColor(color: string): this;
+  
+  /**
+   * 设置填充轮廓颜色（Expression）
+   */
+  public withFillOutlineColor(expression: Expression<string>): this;
+  
+  public withFillOutlineColor(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.paint['fill-outline-color'] = value;
+    } else {
+      this.paint['fill-outline-color'] = value.toArray();
     }
-  }
-
-  /**
-   * 设置填充透明度
-   */
-  public setFillOpacity(opacity: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.FillLayer.setFillOpacity(this.nativePtr, opacity);
-    } catch (error) {
-      console.error(`Failed to set fill opacity: ${error}`);
-    }
-  }
-
-  /**
-   * 设置填充轮廓颜色
-   */
-  public setFillOutlineColor(color: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.FillLayer.setFillOutlineColor(this.nativePtr, color);
-    } catch (error) {
-      console.error(`Failed to set fill outline color: ${error}`);
-    }
-  }
-
-  /**
-   * 设置填充图案
-   */
-  public setFillPattern(pattern: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.FillLayer.setFillPattern(this.nativePtr, pattern);
-    } catch (error) {
-      console.error(`Failed to set fill pattern: ${error}`);
-    }
-  }
-
-  /**
-   * 设置是否抗锯齿
-   */
-  public setFillAntialias(antialias: boolean): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.FillLayer.setFillAntialias(this.nativePtr, antialias);
-    } catch (error) {
-      console.error(`Failed to set fill antialias: ${error}`);
-    }
-  }
-
-  /**
-   * 设置填充偏移
-   */
-  public setFillTranslate(translate: number[]): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.FillLayer.setFillTranslate(this.nativePtr, translate);
-    } catch (error) {
-      console.error(`Failed to set fill translate: ${error}`);
-    }
-  }
-
-  /**
-   * 链式调用 - 设置填充颜色
-   */
-  public withFillColor(color: string): FillLayer {
-    this.setFillColor(color);
     return this;
   }
-
+  
   /**
-   * 链式调用 - 设置填充透明度
+   * 设置填充图案（字符串）
    */
-  public withFillOpacity(opacity: number): FillLayer {
-    this.setFillOpacity(opacity);
+  public withFillPattern(pattern: string): this;
+  
+  /**
+   * 设置填充图案（Expression）
+   */
+  public withFillPattern(expression: Expression<string>): this;
+  
+  public withFillPattern(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.paint['fill-pattern'] = value;
+    } else {
+      this.paint['fill-pattern'] = value.toArray();
+    }
     return this;
-  }
-
-  /**
-   * 链式调用 - 设置填充轮廓颜色
-   */
-  public withFillOutlineColor(color: string): FillLayer {
-    this.setFillOutlineColor(color);
-    return this;
-  }
-
-  /**
-   * 链式调用 - 设置填充图案
-   */
-  public withFillPattern(pattern: string): FillLayer {
-    this.setFillPattern(pattern);
-    return this;
-  }
-
-  /**
-   * 获取原生指针
-   */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
-
-  /**
-   * 转换为字符串
-   */
-  public override toString(): string {
-    return `FillLayer(id=${this.id}, source=${this.source})`;
   }
 }
 

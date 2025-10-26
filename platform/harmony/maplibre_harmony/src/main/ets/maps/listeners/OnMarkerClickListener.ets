@@ -1,4 +1,7 @@
-import { Marker } from '../annotations/Marker';
+import maplibre from 'libmaplibre_native.so';
+
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
 
 /**
  * OnMarkerClickListener - Marker 点击事件监听器

@@ -8,15 +8,26 @@
 export { Annotation } from './Annotation';
 export { AnnotationType } from './AnnotationType';
 
+// Icon 相关
+export { Icon } from './Icon';
+export { IconFactory } from './IconFactory';
+export { IconManager } from './IconManager';
+
 // Marker 相关
-export { Marker, IMarkerAnchor } from './Marker';
+// Marker 现在由 NAPI 提供，从 libmaplibre_native.so 导入
 export { MarkerOptions } from './MarkerOptions';
 export { MarkerDragState } from './MarkerDragState';
 export { MarkerManager } from './MarkerManager';
 
 // InfoWindow 相关
-export { InfoWindow } from './InfoWindow';
+export { InfoWindow, InfoWindowComponent } from './InfoWindow';
 export { InfoWindowAdapter } from './InfoWindowAdapter';
+export { InfoWindowManager } from './InfoWindowManager';
+
+// AnnotationView 相关
+export { AnnotationView } from './AnnotationView';
+export { AnnotationViewAdapter } from './AnnotationViewAdapter';
+export { AnnotationViewManager, AnnotationViewData } from './AnnotationViewManager';
 
 // 其他标注类型
 export { Polyline } from './Polyline';

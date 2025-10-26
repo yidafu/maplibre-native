@@ -66,35 +66,60 @@ target_include_directories(
 
 add_library(maplibre_native
     SHARED
-    napi_init.cpp
-    napi_utils.h
-    napi_utils.cpp
-    napi_utils_ext.cpp
-    napi_args.hpp
-    napi_args.cpp
-    logger.h
-    logger.cpp
-    curl_event_loop.hpp
-    curl_event_loop.cpp
-    http_file_source_harmony.cpp
-    harmony_renderer_backend.hpp
-    harmony_renderer_backend.cpp
-    harmony_renderer_frontend.hpp
-    harmony_renderer_frontend.cpp
-    harmony_vsync_manager.hpp
-    harmony_vsync_manager.cpp
-    harmony_renderer.hpp
-    harmony_renderer.cpp
-    Render.h
-    Render.cpp
-    EGLCore.h
-    EGLCore.cpp
-    common.h
-    native_map_view_harmony.cpp
-    native_map_view_harmony.hpp
-    # Annotation API 绑定
-    marker_napi.cpp
-    marker_napi.hpp
+    # Core module - MapView implementation
+    core/common.hpp
+    core/camera_change_tracker.cpp
+    core/camera_change_tracker.hpp
+    core/native_map_view/native_map_view_harmony.hpp
+    core/native_map_view/native_map_view_base.cpp
+    core/native_map_view/native_map_view_camera.cpp
+    core/native_map_view/native_map_view_style.cpp
+    core/native_map_view/native_map_view_annotations.cpp
+    core/native_map_view/native_map_view_query.cpp
+    core/native_map_view/native_map_view_observers.cpp
+    
+    # Rendering system
+    rendering/harmony_renderer.hpp
+    rendering/harmony_renderer.cpp
+    rendering/harmony_renderer_frontend.hpp
+    rendering/harmony_renderer_frontend.cpp
+    rendering/backends/harmony_renderer_backend.hpp
+    rendering/backends/harmony_renderer_backend.cpp
+    rendering/egl/Render.h
+    rendering/egl/Render.cpp
+    rendering/egl/EGLCore.h
+    rendering/egl/EGLCore.cpp
+    
+    # NAPI bindings
+    napi/core/napi_init.cpp
+    napi/core/napi_utils.h
+    napi/core/napi_utils.cpp
+    napi/core/napi_utils_ext.cpp
+    napi/core/napi_args.hpp
+    napi/core/napi_args.cpp
+    napi/bindings/style_builder_napi.hpp
+    napi/bindings/style_builder_napi.cpp
+    napi/bindings/marker/marker_napi.hpp
+    napi/bindings/marker/marker_napi_base.cpp
+    napi/bindings/marker/marker_napi_options.cpp
+    napi/bindings/style/style_napi.hpp
+    napi/bindings/style/style_napi_base.cpp
+    napi/bindings/style/style_napi_layers.cpp
+    napi/bindings/style/style_napi_sources.cpp
+    
+    # Network module
+    network/curl_event_loop.hpp
+    network/curl_event_loop.cpp
+    network/http_file_source_harmony.cpp
+    
+    # VSync management
+    vsync/harmony_vsync_manager.hpp
+    vsync/harmony_vsync_manager.cpp
+    
+    # Utils
+    utils/logger.h
+    utils/logger.cpp
+    
     # Geometry API 绑定
     geometry/lat_lng_harmony.hpp
     geometry/lat_lng_harmony.cpp
@@ -106,26 +131,66 @@ add_library(maplibre_native
     geometry/lat_lng_bounds_harmony.cpp
     geometry/rect_harmony.hpp
     geometry/rect_harmony.cpp
+    
     # Camera API 绑定
     camera/camera_position_harmony.hpp
     camera/camera_position_harmony.cpp
-    # Style API 绑定
-    style/style_harmony.hpp
-    style/style_harmony.cpp
+    
+    # Style API - value conversion
     style/transition_options_harmony.hpp
     style/transition_options_harmony.cpp
-    style/sources/geojson_source_harmony.hpp
-    style/sources/geojson_source_harmony.cpp
-    style/sources/vector_source_harmony.hpp
-    style/sources/vector_source_harmony.cpp
-    style/sources/raster_source_harmony.hpp
-    style/sources/raster_source_harmony.cpp
+    style/filter_conversion.hpp
+    style/filter_conversion.cpp
+    style/value_conversion.hpp
+    style/value_conversion.cpp
+    
+    # GeoJSON NAPI 转换层
+    geojson/util.hpp
+    geojson/util.cpp
+    geojson/geometry_napi.hpp
+    geojson/geometry_napi.cpp
+    geojson/point_napi.hpp
+    geojson/point_napi.cpp
+    geojson/line_string_napi.hpp
+    geojson/line_string_napi.cpp
+    geojson/polygon_napi.hpp
+    geojson/polygon_napi.cpp
+    geojson/multi_point_napi.hpp
+    geojson/multi_point_napi.cpp
+    geojson/multi_line_string_napi.hpp
+    geojson/multi_line_string_napi.cpp
+    geojson/multi_polygon_napi.hpp
+    geojson/multi_polygon_napi.cpp
+    geojson/geometry_collection_napi.hpp
+    geojson/geometry_collection_napi.cpp
+    geojson/feature_napi.hpp
+    geojson/feature_napi.cpp
+    geojson/feature_collection_napi.hpp
+    geojson/feature_collection_napi.cpp
+    
+    # Source NAPI 类
+    sources/geojson_source_napi.hpp
+    sources/geojson_source_napi.cpp
+    sources/vector_source_napi.hpp
+    sources/vector_source_napi.cpp
+    sources/raster_source_napi.hpp
+    sources/raster_source_napi.cpp
+    sources/raster_dem_source_napi.hpp
+    sources/raster_dem_source_napi.cpp
+    sources/image_source_napi.hpp
+    sources/image_source_napi.cpp
+    
+    # Style layers
     style/layers/fill_layer_harmony.hpp
     style/layers/fill_layer_harmony.cpp
     style/layers/line_layer_harmony.hpp
     style/layers/line_layer_harmony.cpp
     style/layers/circle_layer_harmony.hpp
     style/layers/circle_layer_harmony.cpp
+    style/layers/background_layer_harmony.hpp
+    style/layers/background_layer_harmony.cpp
+    style/layers/raster_layer_harmony.hpp
+    style/layers/raster_layer_harmony.cpp
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
 )
@@ -134,8 +199,8 @@ add_library(maplibre_native
 if(MLN_WITH_VULKAN)
     target_sources(
         maplibre_native PRIVATE
-            harmony_vulkan_renderer_backend.hpp
-            harmony_vulkan_renderer_backend.cpp
+            rendering/backends/harmony_vulkan_renderer_backend.hpp
+            rendering/backends/harmony_vulkan_renderer_backend.cpp
     )
     message(STATUS "HarmonyOS: Adding Vulkan renderer backend sources")
 endif()
@@ -143,8 +208,8 @@ endif()
 if(MLN_WITH_OPENGL)
     target_sources(
         maplibre_native PRIVATE
-            harmony_gl_renderer_backend.hpp
-            harmony_gl_renderer_backend.cpp
+            rendering/backends/harmony_gl_renderer_backend.hpp
+            rendering/backends/harmony_gl_renderer_backend.cpp
     )
     message(STATUS "HarmonyOS: Adding OpenGL renderer backend sources")
 endif()

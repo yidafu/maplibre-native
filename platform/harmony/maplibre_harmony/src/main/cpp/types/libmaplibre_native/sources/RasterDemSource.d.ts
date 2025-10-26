@@ -1,28 +1,33 @@
 /**
- * MapLibre Native for HarmonyOS - RasterDemSource Type Definitions
- * 栅格 DEM（数字高程模型）数据源 API
+ * RasterDemSource - 栅格 DEM 数据源
+ * 
+ * 用于加载数字高程模型数据
  */
-
-/**
- * DEM 编码类型
- */
-export type DemEncoding = 'mapbox' | 'terrarium';
-
-/**
- * 从 URL 创建栅格 DEM 数据源
- * @param id 数据源 ID
- * @param url 瓦片 URL
- * @param encoding DEM 编码类型
- * @returns 数据源原生指针
- */
-export function createWithUrl(id: string, url: string, encoding: DemEncoding): number;
-
-/**
- * 从 TileSet 创建栅格 DEM 数据源
- * @param id 数据源 ID
- * @param tileSetJson TileSet JSON 配置
- * @param encoding DEM 编码类型
- * @returns 数据源原生指针
- */
-export function createWithTileSet(id: string, tileSetJson: string, encoding: DemEncoding): number;
-
+export class RasterDemSource {
+    /**
+     * 构造栅格 DEM 数据源
+     * @param id 数据源 ID
+     * @param options 可选配置
+     */
+    constructor(id: string, options?: any);
+    
+    /**
+     * 获取数据源 ID
+     */
+    getId(): string;
+    
+    /**
+     * 获取原生指针（内部使用）
+     */
+    
+    /**
+     * 获取数据 URL
+     */
+    getUrl(): string;
+    
+    /**
+     * 设置数据 URL
+     * @param url 数据 URL
+     */
+    setUrl(url: string): void;
+}

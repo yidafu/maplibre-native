@@ -27,7 +27,7 @@ type NativeMapViewType = maplibre.NativeMapView;
 const DOMAIN = 0xFF00;
 const TAG = 'MapGestureDetector';
 const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
-const ROTATION_RATE = 0.4;  // 旋转速率系数 - 调节旋转速度（越小越慢，0.4 = 40%原速）
+const ROTATION_RATE = 0.2;  // 旋转速率系数 - 调节旋转速度（越小越慢，0.4 = 40%原速）
 
 /**
  * 地图手势检测器类

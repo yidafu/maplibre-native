@@ -1,48 +1,55 @@
 /**
  * MapLibre Native for HarmonyOS - HeatmapLayer Type Definitions
- * 热力图层 API
+ * 热力图层 API (NAPI 类)
  */
 
 /**
- * 创建热力图层
- * @param layerId 图层 ID
- * @param sourceId 数据源 ID
- * @returns 图层原生指针
+ * HeatmapLayer - 热力图层
+ * 用于渲染密度热力图
+ * 
+ * Note: 此为简化实现，完整功能待后续补充
  */
-export function create(layerId: string, sourceId: string): number;
+export class HeatmapLayer {
+    /**
+     * 创建热力图层
+     * @param layerId 图层 ID
+     * @param sourceId 数据源 ID
+     */
+    constructor(layerId: string, sourceId: string);
 
-/**
- * 设置热力图半径
- * @param layerPtr 图层指针
- * @param radius 半径（单位：像素）
- */
-export function setHeatmapRadius(layerPtr: number, radius: number): void;
+    /**
+     * 设置热力图半径
+     * @param radius 半径（单位：像素）
+     * @returns 返回 this 以支持链式调用
+     */
+    setHeatmapRadius(radius: number): this;
 
-/**
- * 设置热力图权重
- * @param layerPtr 图层指针
- * @param weight 权重（0.0 - 1.0）
- */
-export function setHeatmapWeight(layerPtr: number, weight: number): void;
+    /**
+     * 设置热力图强度
+     * @param intensity 强度值
+     * @returns 返回 this 以支持链式调用
+     */
+    setHeatmapIntensity(intensity: number): this;
 
-/**
- * 设置热力图强度
- * @param layerPtr 图层指针
- * @param intensity 强度倍数
- */
-export function setHeatmapIntensity(layerPtr: number, intensity: number): void;
+    /**
+     * 设置热力图不透明度
+     * @param opacity 不透明度（0.0 - 1.0）
+     * @returns 返回 this 以支持链式调用
+     */
+    setHeatmapOpacity(opacity: number): this;
 
-/**
- * 设置热力图颜色
- * @param layerPtr 图层指针
- * @param color 颜色表达式（如渐变色）
- */
-export function setHeatmapColor(layerPtr: number, color: string): void;
+    /**
+     * 获取图层 ID
+     */
+    getId(): string;
 
-/**
- * 设置热力图不透明度
- * @param layerPtr 图层指针
- * @param opacity 不透明度（0.0 - 1.0）
- */
-export function setHeatmapOpacity(layerPtr: number, opacity: number): void;
+    /**
+     * 获取图层类型
+     */
+    getType(): string;
 
+    /**
+     * 获取数据源 ID
+     */
+    getSourceId(): string;
+}

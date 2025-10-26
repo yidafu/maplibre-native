@@ -63,7 +63,7 @@ export class VectorSource extends Source {
     
     try {
       const filterJson = filter ? JSON.stringify(filter) : null;
-      const featuresJson = maplibre.VectorSource.querySourceFeatures(this.nativePtr, sourceLayerId, filterJson);
+      const featuresJson = maplibre.VectorSource.querySourceFeatures(this.nativePtr, sourceLayerId, filterJson) as string;
       return JSON.parse(featuresJson) as Feature[];
     } catch (error) {
       console.error(`Failed to query source features: ${error}`);
@@ -71,12 +71,6 @@ export class VectorSource extends Source {
     }
   }
 
-  /**
-   * 获取原生指针
-   */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
 
   /**
    * 转换为字符串

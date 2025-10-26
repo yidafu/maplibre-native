@@ -188,14 +188,6 @@ export abstract class Layer {
     this.metadata = metadata;
   }
 
-  /**
-   * 获取原生指针（用于NAPI调用）
-   */
-  public getNativePtr(): number {
-    // 这里应该返回实际的C++对象指针
-    // 在实际实现中，这应该是一个有效的指针值
-    return 0;
-  }
 
   /**
    * 转换为JSON

@@ -71,12 +71,6 @@ export class RasterDemSource extends Source {
     return this.encoding;
   }
 
-  /**
-   * 获取原生指针
-   */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
 
   /**
    * 转换为字符串

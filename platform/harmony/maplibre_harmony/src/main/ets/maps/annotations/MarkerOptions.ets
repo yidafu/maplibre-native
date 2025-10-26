@@ -1,23 +1,30 @@
 import { LatLng } from '../geometry/LatLng';
-import { Marker, IMarkerAnchor } from './Marker';
+import { Icon } from './Icon';
+import maplibre from 'libmaplibre_native.so';
+
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
 
 /**
  * MarkerOptions - Marker 构建器类
  * 
  * 使用构建器模式创建 Marker，支持链式调用
+ * 构建完成后通过 getMarker() 创建 NAPI Marker 实例
  * 
  * 参考:
  * - Android: org.maplibre.android.annotations.MarkerOptions
  * 
  * @example
  * ```typescript
+ * const iconFactory = IconFactory.getInstance();
+ * const customIcon = await iconFactory.fromResource($r('app.media.marker'));
+ * 
  * const marker = new MarkerOptions()
- *   .position(new LatLng(39.9042, 116.4074))
+ *   .position({ latitude: 39.9042, longitude: 116.4074 })
  *   .title("北京")
  *   .snippet("中国首都")
  *   .draggable(true)
- *   .icon("custom-marker")
- *   .anchor(0.5, 1.0)
+ *   .icon(customIcon)
  *   .rotation(45)
  *   .alpha(0.8)
  *   .zIndex(100)
@@ -28,14 +35,12 @@ export class MarkerOptions {
   private _position: LatLng | null = null;
   private _title?: string;
   private _snippet?: string;
-  private _icon?: string;
-  private _anchor?: IMarkerAnchor;
+  private _icon?: Icon;
   private _draggable: boolean = false;
   private _visible: boolean = true;
   private _alpha: number = 1.0;
   private _rotation: number = 0;
   private _zIndex: number = 0;
-  private _flat: boolean = false;
   
   /**
    * 设置 Marker 的位置
@@ -73,28 +78,14 @@ export class MarkerOptions {
   /**
    * 设置 Marker 的图标
    * 
-   * @param icon 图标 ID
+   * @param icon Icon 对象
    * @returns MarkerOptions 实例（支持链式调用）
    */
-  public icon(icon: string): MarkerOptions {
+  public icon(icon: Icon): MarkerOptions {
     this._icon = icon;
     return this;
   }
   
-  /**
-   * 设置 Marker 的锚点
-   * 
-   * 锚点决定图标相对于 Marker 位置的对齐方式
-   * (0.5, 1.0) 表示底部中心对齐（默认值）
-   * 
-   * @param x 水平锚点（0.0 - 1.0）
-   * @param y 垂直锚点（0.0 - 1.0）
-   * @returns MarkerOptions 实例（支持链式调用）
-   */
-  public anchor(x: number, y: number): MarkerOptions {
-    this._anchor = { x, y };
-    return this;
-  }
   
   /**
    * 设置 Marker 是否可拖拽
@@ -153,16 +144,6 @@ export class MarkerOptions {
     return this;
   }
   
-  /**
-   * 设置 Marker 是否平贴地面
-   * 
-   * @param flat true 表示平贴地面
-   * @returns MarkerOptions 实例（支持链式调用）
-   */
-  public flat(flat: boolean): MarkerOptions {
-    this._flat = flat;
-    return this;
-  }
   
   // ========== Getter 方法 ==========
   
@@ -190,16 +171,10 @@ export class MarkerOptions {
   /**
    * 获取图标
    */
-  public getIcon(): string | undefined {
+  public getIcon(): Icon | undefined {
     return this._icon;
   }
   
-  /**
-   * 获取锚点
-   */
-  public getAnchor(): IMarkerAnchor | undefined {
-    return this._anchor;
-  }
   
   /**
    * 是否可拖拽
@@ -236,17 +211,11 @@ export class MarkerOptions {
     return this._zIndex;
   }
   
-  /**
-   * 是否平贴地面
-   */
-  public isFlat(): boolean {
-    return this._flat;
-  }
   
   /**
    * 创建 Marker 实例
    * 
-   * @returns Marker 实例
+   * @returns NAPI Marker 实例
    * @throws Error 如果未设置位置
    */
   public getMarker(): Marker {
@@ -254,19 +223,46 @@ export class MarkerOptions {
       throw new Error('Marker position must be set');
     }
     
-    return new Marker({
-      position: this._position,
-      title: this._title,
-      snippet: this._snippet,
-      icon: this._icon,
-      anchor: this._anchor,
-      draggable: this._draggable,
-      visible: this._visible,
-      alpha: this._alpha,
-      rotation: this._rotation,
-      zIndex: this._zIndex,
-      flat: this._flat
-    });
+    // 构建 options 对象
+    const options: ESObject = {
+      position: this._position
+    };
+    
+    // 添加可选属性
+    if (this._icon !== undefined) {
+      // 传递 Icon 的 ID 到 Native 层
+      options.icon = this._icon.getId();
+    }
+    if (this._title !== undefined) {
+      options.title = this._title;
+    }
+    if (this._snippet !== undefined) {
+      options.snippet = this._snippet;
+    }
+    if (this._visible !== true) {
+      options.visible = this._visible;
+    }
+    if (this._alpha !== 1.0) {
+      options.alpha = this._alpha;
+    }
+    if (this._rotation !== 0) {
+      options.rotation = this._rotation;
+    }
+    if (this._draggable !== false) {
+      options.draggable = this._draggable;
+    }
+    if (this._zIndex !== 0) {
+      options.zIndex = this._zIndex;
+    }
+    
+    // [MarkerDebug] 记录 Marker 创建信息
+    const iconStatus = this._icon ? `"${this._icon.getId()}"` : 'null (⚠️ 可能导致不可见)';
+    console.info(`[MarkerDebug] ETS-Create: position={${this._position.latitude}, ${this._position.longitude}}, ` +
+                 `icon=${iconStatus}, visible=${this._visible}, alpha=${this._alpha}, ` +
+                 `rotation=${this._rotation}, zIndex=${this._zIndex}, draggable=${this._draggable}`);
+    
+    // 创建 NAPI Marker 实例
+    return new maplibre.Marker(options);
   }
 }
 

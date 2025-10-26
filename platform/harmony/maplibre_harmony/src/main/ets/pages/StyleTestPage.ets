@@ -3,27 +3,51 @@ import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { LatLng } from '../maps/geometry/LatLng';
 import { CameraPosition } from '../maps/camera/CameraPosition';
-import { GeoJsonOptionsBuilder } from '../maps/style/sources/GeoJsonOptions';
-import { RasterLayer } from '../maps/style/layers/RasterLayer';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
+// 暂时从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
-  Style, 
-  GeoJsonSource, 
-  VectorSource,
-  RasterSource,
   FillLayer, 
   LineLayer, 
   CircleLayer,
   SymbolLayer,
   HeatmapLayer,
   FillExtrusionLayer,
-  PropertyFactory
+  RasterLayer
 } from '../maps/style/index';
+
+// 使用 NAPI 对象
+type Style = maplibre.Style;
+type GeoJsonSource = maplibre.GeoJsonSource;
+type VectorSource = maplibre.VectorSource;
+type RasterSource = maplibre.RasterSource;
 
 const DOMAIN = 0x0000;
 const TAG = 'StyleTestPage';
+
+/**
+ * Style API 测试页面
+ * 
+ * 【重要】本页面已更新使用新的 NAPI API：
+ * 
+ * 1. Style - 使用 maplibre.Style NAPI 对象
+ *    - 旧: maplibre.Style.addSource(mapPtr, id, json, ptr)
+ *    - 新: style.addSource(source)
+ * 
+ * 2. Source - 使用 NAPI 构造函数
+ *    - 旧: GeoJsonSource.withData(id, data)
+ *    - 新: new maplibre.GeoJsonSource(id); source.setGeoJson(data)
+ * 
+ * 3. 生命周期管理
+ *    - Source 对象由 NAPI 自动管理
+ *    - 调用 style.addSource() 后所有权转移到 Style
+ * 
+ * 待完善功能：
+ * - GeoJsonOptions 参数解析（cluster, clusterRadius 等）
+ * - RasterSource.setTileSize()
+ * - Layer NAPI 重构（当前仍使用 ETS Layer）
+ */
 
 // 样式URL配置接口
 interface StyleUrlItem {
@@ -301,16 +325,18 @@ struct StyleTestPage {
         features: [feature]
       };
 
-      const source = GeoJsonSource.withData('fill-source', geojsonData);
+      // 使用新的 NAPI GeoJsonSource
+      const source = new maplibre.GeoJsonSource('fill-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
       // 创建填充图层
-      const layer = new FillLayer('fill-layer', 'fill-source')
+      const layer: FillLayer = new FillLayer('fill-layer', 'fill-source')
         .withFillColor('#ff0000')
         .withFillOpacity(0.5)
         .withFillOutlineColor('#000000');
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('GeoJSON Fill example added');
     } catch (error) {
@@ -354,16 +380,18 @@ struct StyleTestPage {
         features: [feature]
       };
 
-      const source = GeoJsonSource.withData('line-source', geojsonData);
+      // 使用新的 NAPI GeoJsonSource
+      const source = new maplibre.GeoJsonSource('line-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
       // 创建线条图层
-      const layer = new LineLayer('line-layer', 'line-source')
+      const layer: LineLayer = new LineLayer('line-layer', 'line-source')
         .withLineColor('#0000ff')
         .withLineWidth(4)
         .withLineDasharray([2, 2]);
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('GeoJSON Line example added');
     } catch (error) {
@@ -401,17 +429,19 @@ struct StyleTestPage {
         features: features
       };
 
-      const source = GeoJsonSource.withData('circle-source', geojsonData);
+      // 使用新的 NAPI GeoJsonSource
+      const source = new maplibre.GeoJsonSource('circle-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
       // 创建圆形图层
-      const layer = new CircleLayer('circle-layer', 'circle-source')
+      const layer: CircleLayer = new CircleLayer('circle-layer', 'circle-source')
         .withCircleRadius(15)
         .withCircleColor('#00ff00')
         .withCircleOpacity(0.8)
         .withCircleStroke(2, '#ffffff');
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('GeoJSON Circle example added');
     } catch (error) {
@@ -444,14 +474,16 @@ struct StyleTestPage {
         features: [feature]
       };
 
-      const source = GeoJsonSource.withData('symbol-source', geojsonData);
+      // 使用新的 NAPI GeoJsonSource
+      const source = new maplibre.GeoJsonSource('symbol-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
       // 创建符号图层
-      const layer = new SymbolLayer('symbol-layer', 'symbol-source')
+      const layer: SymbolLayer = new SymbolLayer('symbol-layer', 'symbol-source')
         .withText('{title}', 16, '#000000');
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('GeoJSON Symbol example added');
     } catch (error) {
@@ -494,23 +526,21 @@ struct StyleTestPage {
         features: features
       };
 
-      // 使用聚类选项
-      const options = new GeoJsonOptionsBuilder()
-        .withCluster(true)
-        .withClusterRadius(50)
-        .withClusterMaxZoom(14)
-        .build();
-
-      const source = GeoJsonSource.withData('cluster-source', geojsonData, options);
+      // 使用新的 NAPI GeoJsonSource（聚类功能）
+      // TODO: 完善 GeoJsonOptions 解析后可以传递聚类选项
+      const source = new maplibre.GeoJsonSource('cluster-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
+      
+      hilog.info(DOMAIN, TAG, 'Note: Cluster options parsing not yet implemented, using defaults');
 
       // 聚类圆形图层
-      const clusterLayer = new CircleLayer('cluster-layer', 'cluster-source')
+      const clusterLayer: CircleLayer = new CircleLayer('cluster-layer', 'cluster-source')
         .withCircleRadius(20)
         .withCircleColor('#ff6600')
         .withCircleOpacity(0.8);
       
-      style.addLayer(clusterLayer);
+      style.addLayer(clusterLayer as object);
 
       console.info('GeoJSON Cluster example added');
     } catch (error) {
@@ -553,16 +583,18 @@ struct StyleTestPage {
         features: features
       };
 
-      const source = GeoJsonSource.withData('heatmap-source', geojsonData);
+      // 使用新的 NAPI GeoJsonSource
+      const source = new maplibre.GeoJsonSource('heatmap-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
       // 热力图图层
-      const layer = new HeatmapLayer('heatmap-layer', 'heatmap-source')
+      const layer: HeatmapLayer = new HeatmapLayer('heatmap-layer', 'heatmap-source')
         .withHeatmapRadius(30)
         .withHeatmapIntensity(1.5)
         .withHeatmapOpacity(0.8);
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('Heatmap example added');
     } catch (error) {
@@ -608,16 +640,18 @@ struct StyleTestPage {
         features: [feature]
       };
 
-      const source = GeoJsonSource.withData('extrusion-source', geojsonData);
+      // 使用新的 NAPI GeoJsonSource
+      const source = new maplibre.GeoJsonSource('extrusion-source');
+      source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
       // 3D拉伸图层
-      const layer = new FillExtrusionLayer('extrusion-layer', 'extrusion-source')
+      const layer: FillExtrusionLayer = new FillExtrusionLayer('extrusion-layer', 'extrusion-source')
         .withFillExtrusionHeight(100, 0)
         .withFillExtrusionColor('#0080ff')
         .withFillExtrusionOpacity(0.9);
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('FillExtrusion example added');
     } catch (error) {
@@ -636,19 +670,17 @@ struct StyleTestPage {
     this.currentExample = '栅格图层';
 
     try {
-      // 使用示例栅格瓦片服务
-      const source = new RasterSource(
-        'raster-source',
-        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        256
-      );
+      // 使用新的 NAPI RasterSource
+      const source = new maplibre.RasterSource('raster-source');
+      source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+      // TODO: source.setTileSize(256) 待实现
       style.addSource(source);
 
       // 栅格图层
-      const layer = new RasterLayer('raster-layer', 'raster-source')
+      const layer: RasterLayer = new RasterLayer('raster-layer', 'raster-source')
         .withRasterOpacity(0.5);
       
-      style.addLayer(layer);
+      style.addLayer(layer as object);
 
       console.info('Raster example added');
     } catch (error) {

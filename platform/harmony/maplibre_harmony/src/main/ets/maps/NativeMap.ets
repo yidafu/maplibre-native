@@ -1,5 +1,7 @@
 import { Feature, Polygon, } from 'geojson';
-import { Marker } from './annotations/Marker';
+import maplibre from 'libmaplibre_native.so';
+// Marker 现在由 NAPI 提供
+type Marker = maplibre.Marker;
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
@@ -185,7 +187,6 @@ export interface NativeMap {
   getTopOffsetPixelsForAnnotationSymbol(symbolName: string): number;
   
   // 其他
-  getNativePtr(): number;
   isDestroyed(): boolean;
   setApiBaseUrl(baseUrl: string): void;
   setReachability(status: boolean): void;

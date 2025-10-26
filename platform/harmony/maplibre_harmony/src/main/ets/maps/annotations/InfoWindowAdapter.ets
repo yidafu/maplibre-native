@@ -1,5 +1,8 @@
-import { Marker } from './Marker';
-import { ComponentContent } from '@kit.ArkUI';
+import maplibre from 'libmaplibre_native.so';
+// import { ComponentContent } from '@kit.ArkUI';
+
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
 
 /**
  * InfoWindowAdapter - InfoWindow 适配器接口
@@ -26,7 +29,7 @@ export interface InfoWindowAdapter {
    * @param marker Marker 实例
    * @returns 自定义视图组件，如果返回 null 则使用默认 InfoWindow
    */
-  getInfoWindow(marker: Marker): ComponentContent<Object> | null;
+  getInfoWindow(marker: Marker): object | null;
 }
 
 

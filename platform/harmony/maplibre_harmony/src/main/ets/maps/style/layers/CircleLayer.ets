@@ -1,186 +1,85 @@
-import { Layer, LayerOptions } from './Layer';
-import { PropertyValue } from './PropertyValue';
-import maplibre from 'libmaplibre_native.so';
-
 /**
  * CircleLayer - 圆形图层
- * 
- * 用于渲染圆形点
  */
+
+import { Layer } from './Layer';
+import { Expression } from '../expressions/Expression';
+
 export class CircleLayer extends Layer {
-  private nativePtr: number = 0;
-
-  /**
-   * 创建圆形图层
-   * 
-   * @param layerId 图层ID
-   * @param sourceId 数据源ID
-   */
-  constructor(layerId: string, sourceId: string) {
+  constructor(id: string, source: string) {
     super({
-      id: layerId,
+      id: id,
       type: 'circle',
-      source: sourceId
+      source: source,
+      layout: {},
+      paint: {}
     });
-    this.initialize(layerId, sourceId);
   }
-
-  /**
-   * 初始化native对象
-   */
-  private initialize(layerId: string, sourceId: string): void {
-    try {
-      this.nativePtr = maplibre.CircleLayer.create(layerId, sourceId);
-    } catch (error) {
-      console.error(`Failed to initialize CircleLayer: ${error}`);
+  
+  public withCircleRadius(radius: number): this;
+  public withCircleRadius(expression: Expression<number>): this;
+  public withCircleRadius(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['circle-radius'] = value;
+    } else {
+      this.paint['circle-radius'] = value.toArray();
     }
-  }
-
-  /**
-   * 设置源图层
-   */
-  public withSourceLayer(sourceLayer: string): CircleLayer {
-    this.setSourceLayer(sourceLayer);
     return this;
   }
-
-  /**
-   * 设置过滤器
-   */
-  public withFilter(filter: Object): CircleLayer {
-    this.setFilter(filter);
+  
+  public withCircleColor(color: string): this;
+  public withCircleColor(expression: Expression<string>): this;
+  public withCircleColor(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.paint['circle-color'] = value;
+    } else {
+      this.paint['circle-color'] = value.toArray();
+    }
     return this;
   }
-
-  /**
-   * 设置圆形半径
-   */
-  public setCircleRadius(radius: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleRadius(this.nativePtr, radius);
-    } catch (error) {
-      console.error(`Failed to set circle radius: ${error}`);
+  
+  public withCircleOpacity(opacity: number): this;
+  public withCircleOpacity(expression: Expression<number>): this;
+  public withCircleOpacity(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['circle-opacity'] = value;
+    } else {
+      this.paint['circle-opacity'] = value.toArray();
     }
-  }
-
-  /**
-   * 设置圆形颜色
-   */
-  public setCircleColor(color: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleColor(this.nativePtr, color);
-    } catch (error) {
-      console.error(`Failed to set circle color: ${error}`);
-    }
-  }
-
-  /**
-   * 设置圆形透明度
-   */
-  public setCircleOpacity(opacity: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleOpacity(this.nativePtr, opacity);
-    } catch (error) {
-      console.error(`Failed to set circle opacity: ${error}`);
-    }
-  }
-
-  /**
-   * 设置圆形模糊
-   */
-  public setCircleBlur(blur: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleBlur(this.nativePtr, blur);
-    } catch (error) {
-      console.error(`Failed to set circle blur: ${error}`);
-    }
-  }
-
-  /**
-   * 设置圆形边框宽度
-   */
-  public setCircleStrokeWidth(width: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleStrokeWidth(this.nativePtr, width);
-    } catch (error) {
-      console.error(`Failed to set circle stroke width: ${error}`);
-    }
-  }
-
-  /**
-   * 设置圆形边框颜色
-   */
-  public setCircleStrokeColor(color: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleStrokeColor(this.nativePtr, color);
-    } catch (error) {
-      console.error(`Failed to set circle stroke color: ${error}`);
-    }
-  }
-
-  /**
-   * 设置圆形边框透明度
-   */
-  public setCircleStrokeOpacity(opacity: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.CircleLayer.setCircleStrokeOpacity(this.nativePtr, opacity);
-    } catch (error) {
-      console.error(`Failed to set circle stroke opacity: ${error}`);
-    }
-  }
-
-  /**
-   * 链式调用 - 设置圆形半径
-   */
-  public withCircleRadius(radius: number): CircleLayer {
-    this.setCircleRadius(radius);
     return this;
   }
-
-  /**
-   * 链式调用 - 设置圆形颜色
-   */
-  public withCircleColor(color: string): CircleLayer {
-    this.setCircleColor(color);
+  
+  public withCircleStrokeWidth(width: number): this;
+  public withCircleStrokeWidth(expression: Expression<number>): this;
+  public withCircleStrokeWidth(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['circle-stroke-width'] = value;
+    } else {
+      this.paint['circle-stroke-width'] = value.toArray();
+    }
     return this;
   }
-
-  /**
-   * 链式调用 - 设置圆形透明度
-   */
-  public withCircleOpacity(opacity: number): CircleLayer {
-    this.setCircleOpacity(opacity);
+  
+  public withCircleStrokeColor(color: string): this;
+  public withCircleStrokeColor(expression: Expression<string>): this;
+  public withCircleStrokeColor(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.paint['circle-stroke-color'] = value;
+    } else {
+      this.paint['circle-stroke-color'] = value.toArray();
+    }
     return this;
   }
-
-  /**
-   * 链式调用 - 设置圆形边框
-   */
-  public withCircleStroke(width: number, color: string): CircleLayer {
-    this.setCircleStrokeWidth(width);
-    this.setCircleStrokeColor(color);
+  
+  public withCircleBlur(blur: number): this;
+  public withCircleBlur(expression: Expression<number>): this;
+  public withCircleBlur(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['circle-blur'] = value;
+    } else {
+      this.paint['circle-blur'] = value.toArray();
+    }
     return this;
-  }
-
-  /**
-   * 获取原生指针
-   */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
-
-  /**
-   * 转换为字符串
-   */
-  public override toString(): string {
-    return `CircleLayer(id=${this.id}, source=${this.source})`;
   }
 }
 

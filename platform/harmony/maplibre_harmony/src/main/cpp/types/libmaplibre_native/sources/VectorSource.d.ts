@@ -1,30 +1,57 @@
 /**
- * MapLibre Native for HarmonyOS - VectorSource Type Definitions
- * 矢量瓦片数据源 API
+ * 矢量瓦片数据源选项
  */
+export interface VectorSourceOptions {
+    /** 瓦片 URL */
+    url?: string;
+    /** 瓦片 URL 列表 */
+    tiles?: string[];
+    /** 最小缩放级别 */
+    minzoom?: number;
+    /** 最大缩放级别 */
+    maxzoom?: number;
+    /** 瓦片坐标系统 */
+    scheme?: 'xyz' | 'tms';
+    /** 边界 [west, south, east, north] */
+    bounds?: [number, number, number, number];
+}
 
 /**
- * 从 URL 创建矢量数据源
- * @param id 数据源 ID
- * @param url 瓦片 URL
- * @returns 数据源原生指针
+ * VectorSource - 矢量瓦片数据源
+ * 
+ * 用于加载 Mapbox Vector Tiles (MVT) 格式的数据
  */
-export function createWithUrl(id: string, url: string): number;
-
-/**
- * 从 TileSet 创建矢量数据源
- * @param id 数据源 ID
- * @param tileSetJson TileSet JSON 配置
- * @returns 数据源原生指针
- */
-export function createWithTileSet(id: string, tileSetJson: string): number;
-
-/**
- * 查询数据源要素
- * @param sourcePtr 数据源指针
- * @param sourceLayerId 源图层 ID
- * @param filterJson 可选的过滤器 JSON 字符串
- * @returns 要素集合 JSON 字符串
- */
-export function querySourceFeatures(sourcePtr: number, sourceLayerId: string, filterJson: string | null): string;
-
+export class VectorSource {
+    /**
+     * 构造矢量瓦片数据源
+     * @param id 数据源 ID
+     * @param options 可选配置
+     */
+    constructor(id: string, options?: VectorSourceOptions);
+    
+    /**
+     * 获取数据源 ID
+     */
+    getId(): string;
+    
+    /**
+     * 获取原生指针（内部使用）
+     */
+    
+    /**
+     * 获取瓦片 URL
+     */
+    getUrl(): string;
+    
+    /**
+     * 设置瓦片 URL
+     * @param url 瓦片 URL
+     */
+    setUrl(url: string): void;
+    
+    /**
+     * 设置瓦片 URL 列表
+     * @param tiles 瓦片 URL 数组
+     */
+    setTiles(tiles: string[]): void;
+}

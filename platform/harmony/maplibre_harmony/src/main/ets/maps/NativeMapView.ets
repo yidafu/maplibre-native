@@ -1,5 +1,4 @@
-import { Marker } from './annotations/Marker';
-import maplibre from 'libmaplibre_native.so'
+import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { LatLng } from './geometry/LatLng';
 import { MapGestureDetector } from './gestures/MapGestureDetector';
@@ -15,6 +14,8 @@ import {
   OnQuickZoomListener
 } from './gestures/GestureListeners';
 
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
 

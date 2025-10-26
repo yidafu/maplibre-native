@@ -1,4 +1,5 @@
 import { PropertyValue } from './PropertyValue';
+import { Expression } from '../expressions/Expression';
 
 /**
  * LayoutPropertyValue - Layout 属性值封装类
@@ -6,7 +7,7 @@ import { PropertyValue } from './PropertyValue';
  * Layout属性影响图层的布局和几何形状
  */
 export class LayoutPropertyValue<T> extends PropertyValue<T> {
-  constructor(name: string, value: T | null = null, expression: Object | null = null) {
+  constructor(name: string, value: T | null = null, expression: Expression<T> | null = null) {
     super(name, value, expression);
   }
 
@@ -20,7 +21,7 @@ export class LayoutPropertyValue<T> extends PropertyValue<T> {
   /**
    * 创建表达式的Layout属性
    */
-  public static expression<T>(name: string, expression: Object): LayoutPropertyValue<T> {
+  public static expression<T>(name: string, expression: Expression<T>): LayoutPropertyValue<T> {
     return new LayoutPropertyValue<T>(name, null, expression);
   }
 }

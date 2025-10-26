@@ -89,12 +89,6 @@ export class ImageSource extends Source {
     return this.coordinates;
   }
 
-  /**
-   * 获取原生指针
-   */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
 
   /**
    * 转换为字符串

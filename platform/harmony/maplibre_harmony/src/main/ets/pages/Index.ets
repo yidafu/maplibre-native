@@ -47,10 +47,28 @@ struct Index {
       '📍'
     ),
     new TestPageItem(
-      'Style 样式测试',
-      '测试地图样式切换、图层、数据源等 Style API 功能',
+      'Style 样式综合测试',
+      '测试地图样式、图层、数据源等完整 Style API 功能',
       'pages/StyleTestPage',
       '🎨'
+    ),
+    new TestPageItem(
+      'Style URL 切换测试',
+      '测试不同地图样式 URL 的切换和样式信息获取',
+      'pages/StyleUrlTestPage',
+      '🔄'
+    ),
+    new TestPageItem(
+      'Source 数据源测试',
+      '测试 GeoJSON、Vector、Raster 等各种数据源类型 (NAPI)',
+      'pages/SourceTestPage',
+      '📊'
+    ),
+    new TestPageItem(
+      'Layer 图层测试',
+      '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
+      'pages/LayerTestPage',
+      '🔨'
     ),
   ];
 

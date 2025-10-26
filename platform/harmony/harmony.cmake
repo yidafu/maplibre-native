@@ -70,8 +70,8 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/string_util.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer/timer_original.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/logging_harmony.cpp
-        # logger.cpp is in libmaplibre_native.so (CMakeLists.txt)
-        # HTTP file source is implemented in libmaplibre_native.so (http_file_source_harmony.cpp)
+        # logger.cpp is in libmaplibre_native.so (utils/logger.cpp)
+        # HTTP file source is implemented in libmaplibre_native.so (network/http_file_source_harmony.cpp)
         # ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/http_file_source.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/text/local_glyph_rasterizer.cpp
         # HarmonyOS i18n implementation

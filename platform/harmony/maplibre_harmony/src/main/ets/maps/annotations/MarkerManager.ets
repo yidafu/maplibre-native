@@ -1,4 +1,4 @@
-import { Marker } from './Marker';
+import maplibre from 'libmaplibre_native.so';
 import { MarkerOptions } from './MarkerOptions';
 import { MarkerDragState } from './MarkerDragState';
 import { LatLng } from '../geometry/LatLng';
@@ -6,29 +6,56 @@ import { MapLibreMap } from '../MapLibreMap';
 import { OnMarkerClickListener } from '../listeners/OnMarkerClickListener';
 import { OnMarkerDragListener } from '../listeners/OnMarkerDragListener';
 import { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListener';
+import { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseListener';
+import { OnMarkerSelectListener } from '../listeners/OnMarkerSelectListener';
 import { InfoWindowAdapter } from './InfoWindowAdapter';
+import { InfoWindowManager } from './InfoWindowManager';
+import { AnnotationViewAdapter } from './AnnotationViewAdapter';
+import { AnnotationViewManager } from './AnnotationViewManager';
+import { Icon } from './Icon';
+import { IconManager } from './IconManager';
+import { IconFactory } from './IconFactory';
+import { MarkerLayerManager } from './MarkerLayerManager';
+
+// 使用 NAPI 类型
+type NativeMapView = maplibre.NativeMapView;
+
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
 
 /**
  * MarkerManager - Marker 管理器
  * 
- * 负责管理地图上的所有 Marker，包括添加、删除、选中、拖拽等操作
+ * 基于 GeoJSON Source + SymbolLayer 实现，支持所有高级功能
  * 
  * 参考:
- * - Android: AnnotationManager + MarkerContainer
+ * - Android Annotation Plugin: GeoJSON + SymbolLayer
+ * - iOS: MLNShapeSource + MLNSymbolStyleLayer
  */
 export class MarkerManager {
-  private markers: Map<number, Marker> = new Map();
+  private markerLayerManager: MarkerLayerManager;
   private selectedMarkers: Set<Marker> = new Set();
   private mapLibreMap: MapLibreMap;
+  private infoWindowManager: InfoWindowManager;
+  private annotationViewManager: AnnotationViewManager;
+  private iconManager: IconManager;
+  
+  // Marker ID -> Marker 映射
+  private markerMap: Map<number, Marker> = new Map();
+  
+  // Marker -> Icon 映射（用于引用计数管理）
+  private markerIconMap: Map<number, Icon> = new Map();
   
   // 事件监听器
   private onMarkerClickListener: OnMarkerClickListener | null = null;
   private onMarkerDragListener: OnMarkerDragListener | null = null;
   private onInfoWindowClickListener: OnInfoWindowClickListener | null = null;
+  private onMarkerSelectListener: OnMarkerSelectListener | null = null;
   private infoWindowAdapter: InfoWindowAdapter | null = null;
   
   // 拖拽相关
   private draggingMarker: Marker | null = null;
+  private draggingMarkerId: number | null = null;
   
   /**
    * 构造函数
@@ -37,6 +64,17 @@ export class MarkerManager {
    */
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
+    this.infoWindowManager = new InfoWindowManager();
+    this.annotationViewManager = new AnnotationViewManager();
+    
+    // 初始化 IconManager
+    const nativeMapView = mapLibreMap.getNativeMapView();
+    this.iconManager = new IconManager(nativeMapView, IconFactory.getInstance());
+    
+    // 初始化 MarkerLayerManager（GeoJSON + SymbolLayer）
+    this.markerLayerManager = new MarkerLayerManager(mapLibreMap);
+    
+    console.info('[MarkerManager] Initialized with MarkerLayerManager (GeoJSON + SymbolLayer)');
   }
   
   // ========== Marker 管理 ==========
@@ -48,26 +86,84 @@ export class MarkerManager {
    * @returns 创建的 Marker
    * @throws Error 如果 Marker 创建失败
    */
-  public addMarker(options: MarkerOptions): Marker {
+  public async addMarker(options: MarkerOptions): Promise<Marker> {
     try {
+      // 确保 MarkerLayerManager 已初始化
+      if (!this.markerLayerManager.isInitialized()) {
+        this.markerLayerManager.initialize();
+      }
+      
+      // 获取 Icon（如果有）并确保已加载到地图
+      const iconObj = options.getIcon();
+      if (iconObj) {
+        await this.ensureIconLoaded(iconObj);
+      }
+      
+      // 创建 Marker 对象
       const marker = options.getMarker();
       
-      // 调用 NAPI 添加 Marker
-      const ids = this.mapLibreMap.addMarkers([marker]);
+      // 添加到 MarkerLayerManager
+      const featureId = this.markerLayerManager.addMarker(marker);
       
-      if (ids.length > 0) {
-        const id = ids[0];
-        marker.setId(id);
-        marker.setMapLibreMap(this.mapLibreMap);
-        this.markers.set(id, marker);
+      // 设置 ID 和关联
+      marker.setId(featureId);
+      marker.setMapLibreMap(this.mapLibreMap);
+      this.markerMap.set(featureId, marker);
+      
+      // 保存 Marker -> Icon 映射
+      if (iconObj) {
+        this.markerIconMap.set(featureId, iconObj);
       }
+      
+      console.info(`[MarkerManager] Added marker with ID=${featureId}`);
+      
+      // 创建自定义视图（如果有适配器）
+      this.annotationViewManager.createOrUpdateView(marker);
       
       return marker;
     } catch (e) {
       const error = e as Error;
-      console.error(`MarkerManager: Failed to add marker - ${error.message}`);
+      console.error(`[MarkerManager] Failed to add marker: ${error.message}`);
       throw new Error(`Failed to add marker: ${error.message}`);
     }
+  }
+  
+  /**
+   * 确保 Icon 已加载到地图样式
+   */
+  private async ensureIconLoaded(icon: Icon): Promise<void> {
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        throw new Error('Style not loaded');
+      }
+      
+      // 检查 icon 是否已存在
+      const existingImage = style.getImage(icon.getId());
+      if (!existingImage) {
+        // 添加 icon 到 style
+        const bitmap = icon.getBitmap();
+        const width = bitmap.width;
+        const height = bitmap.height;
+        const pixelRatio = 1.0; // TODO: 从设备获取
+        
+        // 将 bitmap 转换为 Uint8Array
+        const pixels = this.bitmapToPixels(bitmap);
+        
+        style.addImage(icon.getId(), bitmap, pixelRatio, false);
+        console.info(`[MarkerManager] Icon added to style: ${icon.getId()}`);
+      }
+    } catch (error) {
+      console.warn(`[MarkerManager] Failed to ensure icon loaded: ${error}`);
+    }
+  }
+  
+  /**
+   * 将 PixelMap 转换为像素数据（临时实现）
+   */
+  private bitmapToPixels(bitmap: any): Uint8Array {
+    // TODO: 实现 PixelMap 到 Uint8Array 的转换
+    return new Uint8Array(0);
   }
   
   /**
@@ -77,33 +173,51 @@ export class MarkerManager {
    * @returns 创建的 Marker 数组
    * @throws Error 如果批量添加失败
    */
-  public addMarkers(optionsList: MarkerOptions[]): Marker[] {
+  public async addMarkers(optionsList: MarkerOptions[]): Promise<Marker[]> {
     try {
-      const markers: Marker[] = [];
+      // 确保 MarkerLayerManager 已初始化
+      if (!this.markerLayerManager.isInitialized()) {
+        this.markerLayerManager.initialize();
+      }
       
-      // 创建 Marker 对象
+      // 加载所有 icons
+      for (const options of optionsList) {
+        const iconObj = options.getIcon();
+        if (iconObj) {
+          await this.ensureIconLoaded(iconObj);
+        }
+      }
+      
+      // 创建 Marker 对象数组
+      const markers: Marker[] = [];
       for (const options of optionsList) {
         markers.push(options.getMarker());
       }
       
-      // 批量调用 NAPI
-      const ids = this.mapLibreMap.addMarkers(markers);
+      // 批量添加到 MarkerLayerManager
+      const featureIds = this.markerLayerManager.addMarkers(markers);
       
       // 设置 ID 并注册
       for (let i = 0; i < markers.length; i++) {
-        if (i < ids.length) {
-          const marker = markers[i];
-          const id = ids[i];
-          marker.setId(id);
-          marker.setMapLibreMap(this.mapLibreMap);
-          this.markers.set(id, marker);
+        const marker = markers[i];
+        const featureId = featureIds[i];
+        
+        marker.setId(featureId);
+        marker.setMapLibreMap(this.mapLibreMap);
+        this.markerMap.set(featureId, marker);
+        
+        const iconObj = optionsList[i].getIcon();
+        if (iconObj) {
+          this.markerIconMap.set(featureId, iconObj);
         }
       }
+      
+      console.info(`[MarkerManager] Batch added ${markers.length} markers`);
       
       return markers;
     } catch (e) {
       const error = e as Error;
-      console.error(`MarkerManager: Failed to add markers batch - ${error.message}`);
+      console.error(`[MarkerManager] Failed to add markers batch: ${error.message}`);
       throw new Error(`Failed to add markers batch: ${error.message}`);
     }
   }
@@ -129,12 +243,24 @@ export class MarkerManager {
       this.deselectMarker(marker);
     }
     
-    // 从地图移除
-    this.mapLibreMap.removeAnnotations([id]);
+    // 清理 Icon（减少引用计数）
+    const iconObj = this.markerIconMap.get(id);
+    if (iconObj) {
+      this.iconManager.iconCleanup(iconObj);
+      this.markerIconMap.delete(id);
+    }
+    
+    // 移除自定义视图
+    this.annotationViewManager.removeView(marker);
+    
+    // 从 MarkerLayerManager 移除
+    this.markerLayerManager.removeMarker(id);
     
     // 从管理器移除
-    this.markers.delete(id);
+    this.markerMap.delete(id);
     marker.setId(-1);
+    
+    console.info(`[MarkerManager] Removed marker ID=${id}`);
   }
   
   /**
@@ -156,24 +282,56 @@ export class MarkerManager {
           this.selectedMarkers.delete(marker);
         }
         
+        // 清理 Icon
+        const iconObj = this.markerIconMap.get(id);
+        if (iconObj) {
+          this.iconManager.iconCleanup(iconObj);
+          this.markerIconMap.delete(id);
+        }
+        
+        // 移除自定义视图
+        this.annotationViewManager.removeView(marker);
+        
         ids.push(id);
-        this.markers.delete(id);
+        this.markerMap.delete(id);
         marker.setId(-1);
       }
     }
     
-    // 批量从地图移除
+    // 批量从 MarkerLayerManager 移除
     if (ids.length > 0) {
-      this.mapLibreMap.removeAnnotations(ids);
+      this.markerLayerManager.removeMarkers(ids);
     }
+    
+    console.info(`[MarkerManager] Removed ${ids.length} markers`);
   }
   
   /**
    * 清除所有 Marker
    */
   public clear(): void {
-    const allMarkers = Array.from(this.markers.values());
-    this.removeMarkers(allMarkers);
+    // 清理所有状态
+    for (const marker of this.markerMap.values()) {
+      if (marker.isInfoWindowShown()) {
+        marker.hideInfoWindow();
+      }
+      marker.setId(-1);
+    }
+    
+    // 清理所有 Icons
+    for (const iconObj of this.markerIconMap.values()) {
+      this.iconManager.iconCleanup(iconObj);
+    }
+    
+    // 清空 MarkerLayerManager
+    this.markerLayerManager.clearMarkers();
+    
+    // 清空本地映射
+    this.markerMap.clear();
+    this.markerIconMap.clear();
+    this.selectedMarkers.clear();
+    
+    console.info('[MarkerManager] Cleared all markers');
   }
   
   // ========== 选中管理 ==========
@@ -192,6 +350,11 @@ export class MarkerManager {
     marker.setSelected(true);
     this.selectedMarkers.add(marker);
     
+    // 触发选中监听器
+    if (this.onMarkerSelectListener) {
+      this.onMarkerSelectListener.onMarkerSelect(marker);
+    }
+    
     // 显示 InfoWindow
     if (showInfoWindow && (marker.getTitle() || marker.getSnippet())) {
       marker.showInfoWindow();
@@ -204,9 +367,18 @@ export class MarkerManager {
    * @param marker 要取消选中的 Marker
    */
   public deselectMarker(marker: Marker): void {
+    if (!this.selectedMarkers.has(marker)) {
+      return;
+    }
+    
     marker.setSelected(false);
     marker.hideInfoWindow();
     this.selectedMarkers.delete(marker);
+    
+    // 触发取消选中监听器
+    if (this.onMarkerSelectListener) {
+      this.onMarkerSelectListener.onMarkerDeselect(marker);
+    }
   }
   
   /**
@@ -216,6 +388,11 @@ export class MarkerManager {
     for (const marker of this.selectedMarkers) {
       marker.setSelected(false);
       marker.hideInfoWindow();
+      
+      // 触发取消选中监听器
+      if (this.onMarkerSelectListener) {
+        this.onMarkerSelectListener.onMarkerDeselect(marker);
+      }
     }
     this.selectedMarkers.clear();
   }
@@ -238,7 +415,7 @@ export class MarkerManager {
    * @returns Marker 实例，如果不存在则返回 null
    */
   public getMarker(id: number): Marker | null {
-    return this.markers.get(id) || null;
+    return this.markerMap.get(id) || null;
   }
   
   /**
@@ -247,7 +424,7 @@ export class MarkerManager {
    * @returns Marker 数组
    */
   public getMarkers(): Marker[] {
-    return Array.from(this.markers.values());
+    return Array.from(this.markerMap.values());
   }
   
   // ========== 拖拽处理 ==========
@@ -258,7 +435,7 @@ export class MarkerManager {
    * @param marker 正在拖拽的 Marker
    */
   public handleDragStart(marker: Marker): void {
-    if (!marker.isDraggable()) {
+    if (!marker.getDraggable()) {
       return;
     }
     
@@ -377,12 +554,49 @@ export class MarkerManager {
   }
   
   /**
+   * 设置 Marker 选中监听器
+   * 
+   * @param listener 监听器实例
+   */
+  public setOnMarkerSelectListener(listener: OnMarkerSelectListener | null): void {
+    this.onMarkerSelectListener = listener;
+  }
+  
+  /**
+   * 获取 Marker 选中监听器
+   * 
+   * @returns 监听器实例
+   */
+  public getOnMarkerSelectListener(): OnMarkerSelectListener | null {
+    return this.onMarkerSelectListener;
+  }
+  
+  /**
    * 设置 InfoWindow 点击监听器
    * 
    * @param listener 监听器实例
    */
   public setOnInfoWindowClickListener(listener: OnInfoWindowClickListener | null): void {
     this.onInfoWindowClickListener = listener;
+    this.infoWindowManager.setOnClickListener(listener);
+  }
+  
+  /**
+   * 设置 InfoWindow 关闭监听器
+   * 
+   * @param listener 监听器实例
+   */
+  public setOnInfoWindowCloseListener(listener: OnInfoWindowCloseListener | null): void {
+    this.infoWindowManager.setOnCloseListener(listener);
+  }
+  
+  /**
+   * 获取 InfoWindow 关闭监听器
+   * 
+   * @returns 监听器实例
+   */
+  public getOnInfoWindowCloseListener(): OnInfoWindowCloseListener | null {
+    return this.infoWindowManager.getOnCloseListener();
   }
   
   /**
@@ -392,6 +606,7 @@ export class MarkerManager {
    */
   public setInfoWindowAdapter(adapter: InfoWindowAdapter | null): void {
     this.infoWindowAdapter = adapter;
+    this.infoWindowManager.setAdapter(adapter);
   }
   
   /**
@@ -401,6 +616,66 @@ export class MarkerManager {
    */
   public getInfoWindowAdapter(): InfoWindowAdapter | null {
     return this.infoWindowAdapter;
+  }
+  
+  /**
+   * 设置 AnnotationView 适配器
+   * 
+   * @param adapter 适配器实例
+   */
+  public setAnnotationViewAdapter(adapter: AnnotationViewAdapter | null): void {
+    this.annotationViewManager.setAdapter(adapter);
+  }
+  
+  /**
+   * 获取 AnnotationView 适配器
+   * 
+   * @returns 适配器实例
+   */
+  public getAnnotationViewAdapter(): AnnotationViewAdapter | null {
+    return this.annotationViewManager.getAdapter();
+  }
+  
+  /**
+   * 获取 AnnotationViewManager 实例（供 UI 层使用）
+   */
+  public getAnnotationViewManager(): AnnotationViewManager {
+    return this.annotationViewManager;
+  }
+  
+  /**
+   * 设置 Native MapView（用于坐标转换）
+   */
+  public setNativeMapView(mapView: object): void {
+    this.annotationViewManager.setNativeMapView(mapView as NativeMapView);
+  }
+  
+  /**
+   * 获取 InfoWindowManager 实例（供 UI 层使用）
+   */
+  public getInfoWindowManager(): InfoWindowManager {
+    return this.infoWindowManager;
+  }
+  
+  /**
+   * 显示 Marker 的 InfoWindow
+   */
+  public showInfoWindow(marker: Marker): void {
+    this.infoWindowManager.show(marker);
+  }
+  
+  /**
+   * 隐藏 Marker 的 InfoWindow
+   */
+  public hideInfoWindow(marker: Marker): void {
+    this.infoWindowManager.close(marker);
+  }
+  
+  /**
+   * 隐藏所有 InfoWindow
+   */
+  public hideAllInfoWindows(): void {
+    this.infoWindowManager.closeAll();
   }
 }
 

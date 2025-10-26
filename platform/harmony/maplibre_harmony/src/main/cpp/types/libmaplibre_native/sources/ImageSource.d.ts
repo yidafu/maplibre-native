@@ -1,35 +1,34 @@
 /**
- * MapLibre Native for HarmonyOS - ImageSource Type Definitions
- * 图像数据源 API
+ * ImageSource - 图像数据源
+ * 
+ * 用于在指定的地理坐标范围内显示单张图像
  */
-
-/**
- * 创建图像数据源
- * @param id 数据源 ID
- * @param coordinates 四角坐标 JSON 字符串 [[lon, lat], [lon, lat], [lon, lat], [lon, lat]]
- * @param imageData 可选的图像数据
- * @returns 数据源原生指针
- */
-export function create(id: string, coordinates: string, imageData: Uint8Array | null): number;
-
-/**
- * 设置图像 URL
- * @param sourcePtr 数据源指针
- * @param url 图像 URL
- */
-export function setUrl(sourcePtr: number, url: string): void;
-
-/**
- * 设置图像数据
- * @param sourcePtr 数据源指针
- * @param imageData 图像数据
- */
-export function setImage(sourcePtr: number, imageData: Uint8Array): void;
-
-/**
- * 设置四角坐标
- * @param sourcePtr 数据源指针
- * @param coordinates 四角坐标 JSON 字符串
- */
-export function setCoordinates(sourcePtr: number, coordinates: string): void;
-
+export class ImageSource {
+    /**
+     * 构造图像数据源
+     * @param id 数据源 ID
+     * @param options 可选配置
+     */
+    constructor(id: string, options?: any);
+    
+    /**
+     * 获取数据源 ID
+     */
+    getId(): string;
+    
+    /**
+     * 获取原生指针（内部使用）
+     */
+    
+    /**
+     * 设置图像 URL
+     * @param url 图像 URL
+     */
+    setUrl(url: string): void;
+    
+    /**
+     * 设置图像四个角的坐标
+     * @param coordinates 四个角的坐标数组 [[lon, lat], [lon, lat], [lon, lat], [lon, lat]]
+     */
+    setCoordinates(coordinates: [[number, number], [number, number], [number, number], [number, number]]): void;
+}

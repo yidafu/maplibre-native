@@ -1,209 +1,154 @@
-import { Layer, LayerOptions } from './Layer';
-import { PropertyValue } from './PropertyValue';
-import maplibre from 'libmaplibre_native.so';
-
 /**
  * LineLayer - 线条图层
  * 
- * 用于渲染线条和边界
+ * 支持 Expression 数据驱动样式
  */
+
+import { Layer } from './Layer';
+import { Expression } from '../expressions/Expression';
+
 export class LineLayer extends Layer {
-  private nativePtr: number = 0;
-
-  /**
-   * 创建线条图层
-   * 
-   * @param layerId 图层ID
-   * @param sourceId 数据源ID
-   */
-  constructor(layerId: string, sourceId: string) {
+  constructor(id: string, source: string) {
     super({
-      id: layerId,
+      id: id,
       type: 'line',
-      source: sourceId
+      source: source,
+      layout: {},
+      paint: {}
     });
-    this.initialize(layerId, sourceId);
   }
-
+  
   /**
-   * 初始化native对象
+   * 设置线条颜色（字符串）
    */
-  private initialize(layerId: string, sourceId: string): void {
-    try {
-      this.nativePtr = maplibre.LineLayer.create(layerId, sourceId);
-    } catch (error) {
-      console.error(`Failed to initialize LineLayer: ${error}`);
+  public withLineColor(color: string): this;
+  
+  /**
+   * 设置线条颜色（Expression）
+   */
+  public withLineColor(expression: Expression<string>): this;
+  
+  public withLineColor(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.paint['line-color'] = value;
+    } else {
+      this.paint['line-color'] = value.toArray();
     }
-  }
-
-  /**
-   * 设置源图层
-   */
-  public withSourceLayer(sourceLayer: string): LineLayer {
-    this.setSourceLayer(sourceLayer);
     return this;
   }
-
+  
   /**
-   * 设置过滤器
+   * 设置线条宽度（数字）
    */
-  public withFilter(filter: Object): LineLayer {
-    this.setFilter(filter);
+  public withLineWidth(width: number): this;
+  
+  /**
+   * 设置线条宽度（Expression）
+   */
+  public withLineWidth(expression: Expression<number>): this;
+  
+  public withLineWidth(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['line-width'] = value;
+    } else {
+      this.paint['line-width'] = value.toArray();
+    }
     return this;
   }
-
+  
   /**
-   * 设置线条颜色
+   * 设置线条透明度（数字）
    */
-  public setLineColor(color: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineColor(this.nativePtr, color);
-    } catch (error) {
-      console.error(`Failed to set line color: ${error}`);
+  public withLineOpacity(opacity: number): this;
+  
+  /**
+   * 设置线条透明度（Expression）
+   */
+  public withLineOpacity(expression: Expression<number>): this;
+  
+  public withLineOpacity(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['line-opacity'] = value;
+    } else {
+      this.paint['line-opacity'] = value.toArray();
     }
-  }
-
-  /**
-   * 设置线条宽度
-   */
-  public setLineWidth(width: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineWidth(this.nativePtr, width);
-    } catch (error) {
-      console.error(`Failed to set line width: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条透明度
-   */
-  public setLineOpacity(opacity: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineOpacity(this.nativePtr, opacity);
-    } catch (error) {
-      console.error(`Failed to set line opacity: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条图案
-   */
-  public setLinePattern(pattern: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLinePattern(this.nativePtr, pattern);
-    } catch (error) {
-      console.error(`Failed to set line pattern: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条间隙宽度
-   */
-  public setLineGapWidth(gapWidth: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineGapWidth(this.nativePtr, gapWidth);
-    } catch (error) {
-      console.error(`Failed to set line gap width: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条虚线数组
-   */
-  public setLineDasharray(dasharray: number[]): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineDasharray(this.nativePtr, dasharray);
-    } catch (error) {
-      console.error(`Failed to set line dasharray: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条模糊
-   */
-  public setLineBlur(blur: number): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineBlur(this.nativePtr, blur);
-    } catch (error) {
-      console.error(`Failed to set line blur: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条端点样式 ("butt" | "round" | "square")
-   */
-  public setLineCap(cap: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineCap(this.nativePtr, cap as 'butt' | 'round' | 'square');
-    } catch (error) {
-      console.error(`Failed to set line cap: ${error}`);
-    }
-  }
-
-  /**
-   * 设置线条连接样式 ("bevel" | "round" | "miter")
-   */
-  public setLineJoin(join: string): void {
-    if (this.nativePtr === 0) return;
-    try {
-      maplibre.LineLayer.setLineJoin(this.nativePtr, join as 'bevel' | 'round' | 'miter');
-    } catch (error) {
-      console.error(`Failed to set line join: ${error}`);
-    }
-  }
-
-  /**
-   * 链式调用 - 设置线条颜色
-   */
-  public withLineColor(color: string): LineLayer {
-    this.setLineColor(color);
     return this;
   }
-
+  
   /**
-   * 链式调用 - 设置线条宽度
+   * 设置线条间隙宽度（数字）
    */
-  public withLineWidth(width: number): LineLayer {
-    this.setLineWidth(width);
+  public withLineGapWidth(gapWidth: number): this;
+  
+  /**
+   * 设置线条间隙宽度（Expression）
+   */
+  public withLineGapWidth(expression: Expression<number>): this;
+  
+  public withLineGapWidth(value: number | Expression<number>): this {
+    if (typeof value === 'number') {
+      this.paint['line-gap-width'] = value;
+    } else {
+      this.paint['line-gap-width'] = value.toArray();
+    }
     return this;
   }
-
+  
   /**
-   * 链式调用 - 设置线条透明度
+   * 设置线条虚线数组（数组）
    */
-  public withLineOpacity(opacity: number): LineLayer {
-    this.setLineOpacity(opacity);
+  public withLineDasharray(dasharray: number[]): this;
+  
+  /**
+   * 设置线条虚线数组（Expression）
+   */
+  public withLineDasharray(expression: Expression<number[]>): this;
+  
+  public withLineDasharray(value: number[] | Expression<number[]>): this {
+    if (Array.isArray(value)) {
+      this.paint['line-dasharray'] = value;
+    } else {
+      this.paint['line-dasharray'] = value.toArray();
+    }
     return this;
   }
-
+  
   /**
-   * 链式调用 - 设置线条虚线
+   * 设置线条端点样式（字符串）
    */
-  public withLineDasharray(dasharray: number[]): LineLayer {
-    this.setLineDasharray(dasharray);
+  public withLineCap(cap: string): this;
+  
+  /**
+   * 设置线条端点样式（Expression）
+   */
+  public withLineCap(expression: Expression<string>): this;
+  
+  public withLineCap(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.layout['line-cap'] = value;
+    } else {
+      this.layout['line-cap'] = value.toArray();
+    }
     return this;
   }
-
+  
   /**
-   * 获取原生指针
+   * 设置线条连接样式（字符串）
    */
-  public override getNativePtr(): number {
-    return this.nativePtr;
-  }
-
+  public withLineJoin(join: string): this;
+  
   /**
-   * 转换为字符串
+   * 设置线条连接样式（Expression）
    */
-  public override toString(): string {
-    return `LineLayer(id=${this.id}, source=${this.source})`;
+  public withLineJoin(expression: Expression<string>): this;
+  
+  public withLineJoin(value: string | Expression<string>): this {
+    if (typeof value === 'string') {
+      this.layout['line-join'] = value;
+    } else {
+      this.layout['line-join'] = value.toArray();
+    }
+    return this;
   }
 }
 

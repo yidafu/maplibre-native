@@ -1,48 +1,167 @@
-import { Marker } from './Marker';
-import { ComponentContent } from '@kit.ArkUI';
+import maplibre from 'libmaplibre_native.so';
+import { LatLng } from '../geometry/LatLng';
+import { Point } from '../geometry/Point';
+// import { ComponentContent } from '@kit.ArkUI';
+
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
+
+/**
+ * InfoWindow 位置信息
+ */
+export interface InfoWindowPosition {
+  x: number;           // 屏幕 X 坐标
+  y: number;           // 屏幕 Y 坐标
+  arrowOffsetX: number; // 箭头相对于中心的偏移量
+}
+
+/**
+ * InfoWindow 样式配置
+ */
+export interface InfoWindowStyle {
+  backgroundColor?: string;
+  borderRadius?: number;
+  shadowRadius?: number;
+  shadowColor?: string;
+  titleFontSize?: number;
+  titleFontColor?: string;
+  snippetFontSize?: number;
+  snippetFontColor?: string;
+  padding?: number;
+  maxWidth?: number;
+  animated?: boolean;
+}
 
 /**
  * InfoWindow - 信息窗口类
  * 
- * 显示 Marker 的详细信息，通常包含标题和描述
+ * 显示 Marker 的详细信息，使用 Popup 组件实现
  * 
  * 参考:
  * - Android: InfoWindow.java
  * - iOS: MLNCalloutView
- * 
- * 注意：HarmonyOS 实现使用 Popup 或 Dialog 组件
  */
 export class InfoWindow {
   private marker: Marker;
-  private customView: ComponentContent<Object> | null = null;
+  private customView: object | null = null;
   private _isShown: boolean = false;
+  private _width: number = 0;
+  private _height: number = 0;
   
-  /**
-   * 构造函数
-   * 
-   * @param marker 关联的 Marker
-   */
+  // 位置和偏移量
+  private offsetX: number = 0;
+  private offsetY: number = 0;
+  private markerHeightOffset: number = 0;
+  private markerWidthOffset: number = 0;
+  private viewWidthOffset: number = 0;
+  private viewHeightOffset: number = 0;
+  private screenPosition: InfoWindowPosition | null = null;
+  
+  // 样式配置
+  private style: InfoWindowStyle = {};
+  
+  // 回调函数，用于通知外部需要显示/隐藏 InfoWindow
+  private onShowCallback?: (marker: Marker, position: InfoWindowPosition) => void;
+  private onCloseCallback?: (marker: Marker) => void;
+  private onUpdateCallback?: (marker: Marker, position: InfoWindowPosition) => void;
+  
   constructor(marker: Marker) {
     this.marker = marker;
   }
   
   /**
-   * 显示 InfoWindow
+   * 设置显示回调
    */
-  public show(): void {
+  public setOnShowCallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
+    this.onShowCallback = callback;
+  }
+  
+  /**
+   * 设置关闭回调
+   */
+  public setOnCloseCallback(callback: (marker: Marker) => void): void {
+    this.onCloseCallback = callback;
+  }
+  
+  /**
+   * 设置更新回调
+   */
+  public setOnUpdateCallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
+    this.onUpdateCallback = callback;
+  }
+  
+  /**
+   * 设置偏移量
+   */
+  public setOffset(offsetX: number, offsetY: number): void {
+    this.offsetX = offsetX;
+    this.offsetY = offsetY;
+  }
+  
+  /**
+   * 设置 InfoWindow 尺寸
+   */
+  public setSize(width: number, height: number): void {
+    this._width = width;
+    this._height = height;
+  }
+  
+  /**
+   * 获取 InfoWindow 宽度
+   */
+  public getWidth(): number {
+    return this._width;
+  }
+  
+  /**
+   * 获取 InfoWindow 高度
+   */
+  public getHeight(): number {
+    return this._height;
+  }
+  
+  /**
+   * 设置样式
+   */
+  public setStyle(style: InfoWindowStyle): void {
+    this.style = style;
+  }
+  
+  /**
+   * 获取样式
+   */
+  public getStyle(): InfoWindowStyle {
+    return this.style;
+  }
+  
+  /**
+   * 显示 InfoWindow
+   * @param screenWidth 屏幕宽度（用于边界检测）
+   * @param screenHeight 屏幕高度（用于边界检测）
+   * @param markerScreenPosition Marker 的屏幕坐标
+   */
+  public show(screenWidth: number, screenHeight: number, markerScreenPosition: Point): void {
     if (this._isShown) {
       return;
     }
     
-    // TODO: 实现 InfoWindow 显示逻辑
-    // 这需要与地图视图集成，创建一个浮动的 UI 组件
-    // 可能的实现方式：
-    // 1. 使用 Popup 组件
-    // 2. 使用 CustomDialog
-    // 3. 在地图视图上叠加一个绝对定位的组件
+    // 计算位置
+    const position = this.calculateScreenPosition(
+      markerScreenPosition,
+      screenWidth,
+      screenHeight
+    );
     
+    this.screenPosition = position;
     this._isShown = true;
-    console.log(`InfoWindow.show() for marker: ${this.marker.getId()}`);
+    this.marker.showInfoWindow();
+    
+    // 通知外部显示 UI
+    if (this.onShowCallback) {
+      this.onShowCallback(this.marker, position);
+    }
+    
+    console.log(`[InfoWindow] Showing for marker: ${this.marker.getId()} at (${position.x}, ${position.y})`);
   }
   
   /**
@@ -53,30 +172,47 @@ export class InfoWindow {
       return;
     }
     
-    // TODO: 实现 InfoWindow 关闭逻辑
-    
     this._isShown = false;
-    console.log(`InfoWindow.close() for marker: ${this.marker.getId()}`);
+    this.marker.hideInfoWindow();
+    
+    // 通知外部隐藏 UI
+    if (this.onCloseCallback) {
+      this.onCloseCallback(this.marker);
+    }
+    
+    console.log(`[InfoWindow] Closed for marker: ${this.marker.getId()}`);
   }
   
   /**
-   * 更新 InfoWindow 内容
-   * 
-   * 当 Marker 的 title 或 snippet 改变时调用
+   * 更新 InfoWindow 位置
+   * @param screenWidth 屏幕宽度
+   * @param screenHeight 屏幕高度
+   * @param markerScreenPosition Marker 的新屏幕坐标
    */
-  public update(): void {
+  public update(screenWidth: number, screenHeight: number, markerScreenPosition: Point): void {
     if (!this._isShown) {
       return;
     }
     
-    // TODO: 实现 InfoWindow 内容更新逻辑
-    console.log(`InfoWindow.update() for marker: ${this.marker.getId()}`);
+    // 重新计算位置
+    const position = this.calculateScreenPosition(
+      markerScreenPosition,
+      screenWidth,
+      screenHeight
+    );
+    
+    this.screenPosition = position;
+    
+    // 通知外部更新 UI
+    if (this.onUpdateCallback) {
+      this.onUpdateCallback(this.marker, position);
+    }
+    
+    console.log(`[InfoWindow] Updating for marker: ${this.marker.getId()} at (${position.x}, ${position.y})`);
   }
   
   /**
    * InfoWindow 是否正在显示
-   * 
-   * @returns true 如果正在显示
    */
   public isShown(): boolean {
     return this._isShown;
@@ -84,37 +220,20 @@ export class InfoWindow {
   
   /**
    * 设置自定义视图
-   * 
-   * @param view 自定义视图组件
    */
-  public setCustomView(view: ComponentContent<Object> | null): void {
+  public setCustomView(view: object | null): void {
     this.customView = view;
   }
   
   /**
    * 获取自定义视图
-   * 
-   * @returns 自定义视图组件，如果未设置则返回 null
    */
-  public getCustomView(): ComponentContent<Object> | null {
+  public getCustomView(): object | null {
     return this.customView;
   }
   
   /**
-   * 使用默认样式适配 Marker
-   * 
-   * @param marker Marker 实例
-   */
-  public adaptDefaultMarker(marker: Marker): void {
-    this.marker = marker;
-    // TODO: 创建默认的 InfoWindow 视图
-    // 包含 title 和 snippet
-  }
-  
-  /**
    * 获取关联的 Marker
-   * 
-   * @returns Marker 实例
    */
   public getMarker(): Marker {
     return this.marker;
@@ -122,8 +241,6 @@ export class InfoWindow {
   
   /**
    * 获取 InfoWindow 的标题
-   * 
-   * @returns 标题文本
    */
   public getTitle(): string {
     return this.marker.getTitle();
@@ -131,11 +248,206 @@ export class InfoWindow {
   
   /**
    * 获取 InfoWindow 的描述
-   * 
-   * @returns 描述文本
    */
   public getSnippet(): string {
     return this.marker.getSnippet();
+  }
+  
+  /**
+   * 获取当前屏幕位置
+   */
+  public getScreenPosition(): InfoWindowPosition | null {
+    return this.screenPosition;
+  }
+  
+  /**
+   * 计算 InfoWindow 的屏幕位置
+   * 参考 Android InfoWindow.java 的位置计算逻辑
+   * 
+   * @param markerScreenPosition Marker 的屏幕坐标
+   * @param screenWidth 屏幕宽度
+   * @param screenHeight 屏幕高度
+   * @returns 计算后的位置信息
+   */
+  private calculateScreenPosition(
+    markerScreenPosition: Point,
+    screenWidth: number,
+    screenHeight: number
+  ): InfoWindowPosition {
+    // 默认位置：居中在 Marker 上方
+    let x = markerScreenPosition.x - (this._width / 2) + this.offsetX;
+    let y = markerScreenPosition.y - this._height + this.offsetY;
+    
+    // 记录偏移量（用于后续更新）
+    this.markerHeightOffset = this.offsetY;
+    this.markerWidthOffset = -this.offsetX;
+    
+    // 计算视图偏移量
+    this.viewWidthOffset = x - markerScreenPosition.x - this.offsetX;
+    this.viewHeightOffset = -this._height + this.offsetY;
+    
+    // 箭头默认居中
+    let arrowOffsetX = 0;
+    
+    // 边界检测和调整
+    const margin = 16; // 边距（像素）
+    const arrowWidth = 20; // 箭头宽度
+    const tipViewOffset = arrowWidth / 2;
+    
+    // 检测右边界
+    const rightSide = x + this._width;
+    if (rightSide > screenWidth - margin) {
+      const overflow = rightSide - (screenWidth - margin);
+      x -= overflow;
+      arrowOffsetX += overflow;
+    }
+    
+    // 检测左边界
+    const leftSide = x;
+    if (leftSide < margin) {
+      const overflow = margin - leftSide;
+      x += overflow;
+      arrowOffsetX -= overflow;
+    }
+    
+    // 检测上边界
+    if (y < margin) {
+      y = margin;
+    }
+    
+    // 检测下边界（InfoWindow 显示在 Marker 下方）
+    if (y < 0) {
+      // 如果上方空间不够，考虑显示在 Marker 下方
+      y = markerScreenPosition.y + 10; // 10px 偏移
+    }
+    
+    return {
+      x: x,
+      y: y,
+      arrowOffsetX: arrowOffsetX
+    };
+  }
+}
+
+/**
+ * InfoWindowComponent - InfoWindow UI 组件
+ * 
+ * 使用 Popup 显示 Marker 信息
+ * 支持动态箭头、自定义样式、动画效果
+ */
+@Component
+export struct InfoWindowComponent {
+  @Prop marker: Marker;
+  @Prop arrowOffsetX: number = 0; // 箭头相对于中心的偏移量
+  @Prop customContent?: object;
+  @Prop customStyle?: InfoWindowStyle;
+  @State opacity: number = 0; // 用于动画
+  @State scale: number = 0.8; // 用于动画
+  
+  onClick?: () => void;
+  onLongClick?: () => void;
+  onClose?: () => void;
+  
+  aboutToAppear() {
+    // 显示动画
+    const animated = this.customStyle?.animated !== false;
+    if (animated) {
+      animateTo({ duration: 250, curve: Curve.EaseOut }, () => {
+        this.opacity = 1;
+        this.scale = 1;
+      });
+    } else {
+      this.opacity = 1;
+      this.scale = 1;
+    }
+  }
+  
+  build() {
+    Column() {
+      // 内容区域
+      Column() {
+        // 标题
+        if (this.marker.getTitle()) {
+          Text(this.marker.getTitle())
+            .fontSize(this.customStyle?.titleFontSize ?? 16)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.customStyle?.titleFontColor ?? '#333333')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .width('100%')
+        }
+        
+        // 描述
+        if (this.marker.getSnippet()) {
+          Text(this.marker.getSnippet())
+            .fontSize(this.customStyle?.snippetFontSize ?? 14)
+            .fontColor(this.customStyle?.snippetFontColor ?? '#666666')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .margin({ top: 4 })
+            .width('100%')
+        }
+        
+        // 自定义内容（TODO: 等待 SDK 支持）
+        // if (this.customContent) {
+        //   ContentSlot(this.customContent)
+        //     .margin({ top: 8 })
+        // }
+      }
+      .padding(this.customStyle?.padding ?? 12)
+      .backgroundColor(this.customStyle?.backgroundColor ?? Color.White)
+      .borderRadius(this.customStyle?.borderRadius ?? 8)
+      .shadow({
+        radius: this.customStyle?.shadowRadius ?? 8,
+        color: this.customStyle?.shadowColor ?? 'rgba(0, 0, 0, 0.2)',
+        offsetX: 0,
+        offsetY: 2
+      })
+      .maxWidth(this.customStyle?.maxWidth ?? 280)
+      
+      // 箭头指示器（指向 Marker）
+      // 根据 arrowOffsetX 调整箭头位置
+      Row() {
+        // 左侧占位
+        if (this.arrowOffsetX < 0) {
+          Blank()
+            .width(-this.arrowOffsetX)
+        }
+        
+        // 箭头
+        Polygon({ points: [[0, 0], [10, 10], [20, 0]] })
+          .fill(this.customStyle?.backgroundColor ?? Color.White)
+          .width(20)
+          .height(10)
+        
+        // 右侧占位
+        if (this.arrowOffsetX > 0) {
+          Blank()
+            .width(this.arrowOffsetX)
+        }
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.Center)
+      .margin({ top: -1 })
+    }
+    .alignItems(HorizontalAlign.Center)
+    .opacity(this.opacity)
+    .scale({ x: this.scale, y: this.scale })
+    .onClick(() => {
+      console.info('[InfoWindow] Content clicked for marker:', this.marker.getId());
+      if (this.onClick) {
+        this.onClick();
+      }
+    })
+    .gesture(
+      LongPressGesture({ repeat: false })
+        .onAction(() => {
+          console.info('[InfoWindow] Content long pressed for marker:', this.marker.getId());
+          if (this.onLongClick) {
+            this.onLongClick();
+          }
+        })
+    )
   }
 }
 

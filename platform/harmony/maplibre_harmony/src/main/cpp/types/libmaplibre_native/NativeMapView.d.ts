@@ -859,12 +859,67 @@ export class NativeMapView {
      * @param enabled 是否启用
      */
     enableRenderingStatsView(enabled: boolean): void;
-
-    // ========== Native Pointer ==========
     
     /**
-     * 获取原生指针（用于 Style API）
-     * @returns 原生指针
+     * 设置样式加载完成监听器
+     * @param callback 回调函数，当样式加载完成时触发
      */
-    getNativePtr?(): number;
+    setOnStyleLoadedListener(callback: (() => void) | null): void;
+    
+    /**
+     * 设置样式加载错误监听器
+     * @param callback 回调函数，当样式加载失败时触发
+     */
+    setOnStyleLoadErrorListener(callback: ((error: string) => void) | null): void;
+
+    // ========== Camera Listeners ==========
+    
+    /**
+     * 添加相机空闲监听器
+     * @param callback 回调函数
+     */
+    addOnCameraIdleListener(callback: () => void): void;
+    
+    /**
+     * 移除相机空闲监听器
+     * @param callback 回调函数
+     */
+    removeOnCameraIdleListener(callback: () => void): void;
+    
+    /**
+     * 添加相机开始移动监听器
+     * @param callback 回调函数，参数为移动原因
+     */
+    addOnCameraMoveStartedListener(callback: (reason: number) => void): void;
+    
+    /**
+     * 移除相机开始移动监听器
+     * @param callback 回调函数
+     */
+    removeOnCameraMoveStartedListener(callback: (reason: number) => void): void;
+    
+    /**
+     * 添加相机移动中监听器
+     * @param callback 回调函数
+     */
+    addOnCameraMoveListener(callback: () => void): void;
+    
+    /**
+     * 移除相机移动中监听器
+     * @param callback 回调函数
+     */
+    removeOnCameraMoveListener(callback: () => void): void;
+    
+    /**
+     * 添加相机移动取消监听器
+     * @param callback 回调函数
+     */
+    addOnCameraMoveCanceledListener(callback: () => void): void;
+    
+    /**
+     * 移除相机移动取消监听器
+     * @param callback 回调函数
+     */
+    removeOnCameraMoveCanceledListener(callback: () => void): void;
+
 }

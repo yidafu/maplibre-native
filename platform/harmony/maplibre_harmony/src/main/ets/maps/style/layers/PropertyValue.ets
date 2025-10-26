@@ -1,3 +1,5 @@
+import { Expression } from '../expressions/Expression';
+
 /**
  * PropertyValue - 图层属性值封装类
  * 
@@ -6,9 +8,9 @@
 export class PropertyValue<T> {
   public name: string;
   public value: T | null;
-  public expression: Object | null;
+  public expression: Expression<T> | null;
 
-  constructor(name: string, value: T | null = null, expression: Object | null = null) {
+  constructor(name: string, value: T | null = null, expression: Expression<T> | null = null) {
     this.name = name;
     this.value = value;
     this.expression = expression;
@@ -45,7 +47,7 @@ export class PropertyValue<T> {
   /**
    * 获取表达式
    */
-  public getExpression(): Object | null {
+  public getExpression(): Expression<T> | null {
     return this.expression;
   }
 
@@ -57,8 +59,8 @@ export class PropertyValue<T> {
     obj['name'] = this.name;
     if (this.isValue()) {
       obj['value'] = this.value;
-    } else if (this.isExpression()) {
-      obj['expression'] = this.expression;
+    } else if (this.isExpression() && this.expression !== null) {
+      obj['expression'] = this.expression.toArray();
     }
     return obj;
   }

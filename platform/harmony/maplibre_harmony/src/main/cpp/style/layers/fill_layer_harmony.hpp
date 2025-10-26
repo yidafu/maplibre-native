@@ -9,60 +9,78 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * FillLayer NAPI绑定类
+ * FillLayerNAPI - NAPI wrapper for FillLayer
  * 
- * 封装 mbgl::style::FillLayer
+ * This class wraps a FillLayer object and exposes it to ETS/TypeScript via NAPI.
+ * It manages the layer's state and properties in C++ layer.
  */
-class FillLayerHarmony {
+class FillLayerNAPI {
 public:
-    /**
-     * 初始化FillLayer类的NAPI绑定
-     */
+    // NAPI registration
     static napi_value Init(napi_env env, napi_value exports);
-
-    /**
-     * 创建FillLayer实例
-     * 参数: layerId, sourceId
-     */
-    static napi_value Create(napi_env env, napi_callback_info info);
-
-    /**
-     * 设置填充颜色
-     * 参数: layerPtr, color
-     */
+    
+    // Constructor callback
+    static napi_value New(napi_env env, napi_callback_info info);
+    
+    // Destructor callback
+    static void Destructor(napi_env env, void* nativeObject, void* hint);
+    
+    // Property setter methods
     static napi_value SetFillColor(napi_env env, napi_callback_info info);
-
-    /**
-     * 设置填充透明度
-     * 参数: layerPtr, opacity
-     */
     static napi_value SetFillOpacity(napi_env env, napi_callback_info info);
-
-    /**
-     * 设置填充轮廓颜色
-     * 参数: layerPtr, color
-     */
     static napi_value SetFillOutlineColor(napi_env env, napi_callback_info info);
-
-    /**
-     * 设置填充图案
-     * 参数: layerPtr, pattern
-     */
     static napi_value SetFillPattern(napi_env env, napi_callback_info info);
-
-    /**
-     * 设置抗锯齿
-     * 参数: layerPtr, antialias
-     */
     static napi_value SetFillAntialias(napi_env env, napi_callback_info info);
-
-    /**
-     * 设置填充偏移
-     * 参数: layerPtr, translate
-     */
     static napi_value SetFillTranslate(napi_env env, napi_callback_info info);
+    
+    // Getter methods
+    static napi_value GetFillColor(napi_env env, napi_callback_info info);
+    static napi_value GetFillOpacity(napi_env env, napi_callback_info info);
+    
+    // Layer base methods
+    static napi_value GetId(napi_env env, napi_callback_info info);
+    static napi_value GetType(napi_env env, napi_callback_info info);
+    static napi_value GetSourceId(napi_env env, napi_callback_info info);
+    
+    // Visibility control
+    static napi_value SetVisibility(napi_env env, napi_callback_info info);
+    static napi_value GetVisibility(napi_env env, napi_callback_info info);
+    
+    // Zoom range control
+    static napi_value SetMinZoom(napi_env env, napi_callback_info info);
+    static napi_value GetMinZoom(napi_env env, napi_callback_info info);
+    static napi_value SetMaxZoom(napi_env env, napi_callback_info info);
+    static napi_value GetMaxZoom(napi_env env, napi_callback_info info);
+    
+    // Source layer
+    static napi_value SetSourceLayer(napi_env env, napi_callback_info info);
+    static napi_value GetSourceLayer(napi_env env, napi_callback_info info);
+    
+    // Filter
+    static napi_value SetFilter(napi_env env, napi_callback_info info);
+    static napi_value GetFilter(napi_env env, napi_callback_info info);
+    
+    // Internal methods for Style API
+    std::string getId() const { return layer ? layer->getID() : ""; }
+    
+    // Release layer ownership (for Style.addLayer)
+    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+        if (!layer) {
+            throw std::runtime_error("Layer already added to style");
+        }
+        return std::move(layer);
+    }
+    
+    // Get native layer pointer (for property access after adding)
+    mbgl::style::FillLayer* getLayer() { return layer.get(); }
+
+private:
+    explicit FillLayerNAPI(const std::string& layerId, const std::string& sourceId);
+    ~FillLayerNAPI();
+    
+    static napi_ref constructor;
+    std::unique_ptr<mbgl::style::FillLayer> layer;
 };
 
 } // namespace harmony
 } // namespace mbgl
-

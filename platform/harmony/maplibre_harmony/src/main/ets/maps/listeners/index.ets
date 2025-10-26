@@ -7,5 +7,9 @@
 export { OnMarkerClickListener } from './OnMarkerClickListener';
 export { OnMarkerDragListener } from './OnMarkerDragListener';
 export { OnInfoWindowClickListener } from './OnInfoWindowClickListener';
+export { OnInfoWindowCloseListener } from './OnInfoWindowCloseListener';
+export { OnMarkerSelectListener } from './OnMarkerSelectListener';
+export { OnStyleLoadedListener } from './OnStyleLoadedListener';
+export { OnStyleLoadErrorListener } from './OnStyleLoadErrorListener';
 
 

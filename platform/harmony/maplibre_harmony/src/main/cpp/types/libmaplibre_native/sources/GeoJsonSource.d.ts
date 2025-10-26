@@ -1,75 +1,127 @@
 /**
- * MapLibre Native for HarmonyOS - GeoJsonSource Type Definitions
- * GeoJSON 数据源 API
+ * GeoJSON 数据源选项
  */
+export interface GeoJsonOptions {
+    /** 最大缩放级别 */
+    maxzoom?: number;
+    /** 瓦片缓冲区大小 */
+    buffer?: number;
+    /** 简化容差 */
+    tolerance?: number;
+    /** 是否启用聚类 */
+    cluster?: boolean;
+    /** 聚类半径 */
+    clusterRadius?: number;
+    /** 聚类最大缩放级别 */
+    clusterMaxZoom?: number;
+    /** 聚类最小点数 */
+    clusterMinPoints?: number;
+    /** 聚类属性 */
+    clusterProperties?: Record<string, any>;
+    /** 是否计算线段度量 */
+    lineMetrics?: boolean;
+    /** 是否生成要素 ID */
+    generateId?: boolean;
+}
+
+// GeoJSON 类型定义
+export interface Geometry {
+    type: string;
+    coordinates: any;
+}
+
+export interface Feature {
+    type: 'Feature';
+    id?: string | number;
+    geometry: Geometry | null;
+    properties: Record<string, any>;
+}
+
+export interface FeatureCollection {
+    type: 'FeatureCollection';
+    features: Feature[];
+}
+
+export type GeoJsonData = string | Geometry | Feature | FeatureCollection;
 
 /**
- * 创建 GeoJSON 数据源
- * @param id 数据源 ID
- * @param optionsJson 可选的配置 JSON 字符串
- * @returns 数据源原生指针
+ * GeoJsonSource - GeoJSON 数据源
+ * 
+ * 支持点、线、面等矢量要素，支持聚类功能
  */
-export function create(id: string, optionsJson: string | null): number;
-
-/**
- * 设置 GeoJSON 数据（异步）
- * @param sourcePtr 数据源指针
- * @param geoJsonString GeoJSON 字符串
- */
-export function setGeoJson(sourcePtr: number, geoJsonString: string): void;
-
-/**
- * 设置 GeoJSON 数据（同步）
- * @param sourcePtr 数据源指针
- * @param geoJsonString GeoJSON 字符串
- */
-export function setGeoJsonSync(sourcePtr: number, geoJsonString: string): void;
-
-/**
- * 设置数据 URL
- * @param sourcePtr 数据源指针
- * @param url 数据 URL
- */
-export function setUrl(sourcePtr: number, url: string): void;
-
-/**
- * 获取数据 URL
- * @param sourcePtr 数据源指针
- * @returns 数据 URL
- */
-export function getUrl(sourcePtr: number): string;
-
-/**
- * 查询数据源要素
- * @param sourcePtr 数据源指针
- * @param filterJson 可选的过滤器 JSON 字符串
- * @returns 要素集合 JSON 字符串
- */
-export function querySourceFeatures(sourcePtr: number, filterJson: string | null): string;
-
-/**
- * 获取聚类的子节点
- * @param sourcePtr 数据源指针
- * @param clusterJson 聚类 JSON 字符串
- * @returns 子节点要素集合 JSON 字符串
- */
-export function getClusterChildren(sourcePtr: number, clusterJson: string): string;
-
-/**
- * 获取聚类的叶子节点
- * @param sourcePtr 数据源指针
- * @param clusterJson 聚类 JSON 字符串
- * @param limit 返回数量限制
- * @param offset 偏移量
- * @returns 叶子节点要素集合 JSON 字符串
- */
-export function getClusterLeaves(sourcePtr: number, clusterJson: string, limit: number, offset: number): string;
-
-/**
- * 获取聚类展开的缩放级别
- * @param sourcePtr 数据源指针
- * @param clusterJson 聚类 JSON 字符串
- * @returns 展开缩放级别
- */
-export function getClusterExpansionZoom(sourcePtr: number, clusterJson: string): number;
-
+export class GeoJsonSource {
+    /**
+     * 构造 GeoJSON 数据源
+     * @param id 数据源 ID
+     * @param options 可选配置
+     */
+    constructor(id: string, options?: GeoJsonOptions);
+    
+    /**
+     * 获取数据源 ID
+     */
+    getId(): string;
+    
+    /**
+     * 设置 GeoJSON 数据（异步）
+     * 支持多种数据格式：
+     * - GeoJSON 字符串
+     * - Geometry 对象 (Point, LineString, Polygon, etc.)
+     * - Feature 对象
+     * - FeatureCollection 对象
+     * @param data GeoJSON 数据
+     */
+    setGeoJson(data: GeoJsonData): void;
+    
+    /**
+     * 设置 GeoJSON 数据（同步）
+     * 支持多种数据格式：
+     * - GeoJSON 字符串
+     * - Geometry 对象 (Point, LineString, Polygon, etc.)
+     * - Feature 对象
+     * - FeatureCollection 对象
+     * @param data GeoJSON 数据
+     */
+    setGeoJsonSync(data: GeoJsonData): void;
+    
+    /**
+     * 从 URL 加载 GeoJSON 数据
+     * @param url GeoJSON 数据 URL
+     */
+    setUrl(url: string): void;
+    
+    /**
+     * 获取数据 URL
+     */
+    getUrl(): string;
+    
+    /**
+     * 查询数据源要素
+     * @param filter 可选过滤器
+     * @returns Feature 数组
+     */
+    querySourceFeatures(filter?: any): Feature[];
+    
+    /**
+     * 获取聚类的子项
+     * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
+     * @returns 子 Feature 数组
+     */
+    getClusterChildren(clusterId: number | Feature): Feature[];
+    
+    /**
+     * 获取聚类的叶子节点
+     * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
+     * @param limit 限制数量，默认 10
+     * @param offset 偏移量，默认 0
+     * @returns 叶子 Feature 数组
+     */
+    getClusterLeaves(clusterId: number | Feature, limit?: number, offset?: number): Feature[];
+    
+    /**
+     * 获取聚类展开的缩放级别
+     * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
+     * @returns 目标缩放级别
+     */
+    getClusterExpansionZoom(clusterId: number | Feature): number;
+}

@@ -2,15 +2,23 @@ import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { MarkerOptions } from '../maps/annotations/MarkerOptions';
-import { Marker } from '../maps/annotations/Marker';
+import { InfoWindowComponent } from '../maps/annotations/InfoWindow';
+import { AnnotationView, AnnotationViewData, AnnotationViewAdapter } from '../maps/annotations';
+// Marker 现在由 NAPI 提供
 import { LatLng } from '../maps/geometry/LatLng';
 import { CameraPosition } from '../maps/camera/CameraPosition';
 import { OnMarkerClickListener } from '../maps/listeners/OnMarkerClickListener';
 import { OnMarkerDragListener } from '../maps/listeners/OnMarkerDragListener';
 import { OnInfoWindowClickListener } from '../maps/listeners/OnInfoWindowClickListener';
+import { OnInfoWindowCloseListener } from '../maps/listeners/OnInfoWindowCloseListener';
+import { OnMarkerSelectListener } from '../maps/listeners/OnMarkerSelectListener';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+// import { ComponentContent, wrapBuilder } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
+
+// 使用 NAPI Marker 类型
+type Marker = maplibre.Marker;
 
 const DOMAIN = 0x0000;
 const TAG = 'MarkerTestPage';
@@ -100,6 +108,87 @@ class InfoWindowClickListenerImpl implements OnInfoWindowClickListener {
   }
 }
 
+/**
+ * InfoWindow 关闭监听器实现
+ */
+class InfoWindowCloseListenerImpl implements OnInfoWindowCloseListener {
+  private testPage: MarkerTestPage;
+  
+  constructor(testPage: MarkerTestPage) {
+    this.testPage = testPage;
+  }
+  
+  onInfoWindowClose(marker: Marker): void {
+    this.testPage.message = `🔒 InfoWindow 关闭: ${marker.getTitle()}`;
+    console.info(`MarkerTestPage: InfoWindow closed - ${marker.getTitle()}`);
+  }
+}
+
+/**
+ * Marker 选中监听器实现
+ */
+class MarkerSelectListenerImpl implements OnMarkerSelectListener {
+  private testPage: MarkerTestPage;
+  
+  constructor(testPage: MarkerTestPage) {
+    this.testPage = testPage;
+  }
+  
+  onMarkerSelect(marker: Marker): void {
+    this.testPage.message = `✅ Marker 选中: ${marker.getTitle()}`;
+    console.info(`MarkerTestPage: Marker selected - ID=${marker.getId()}, Title=${marker.getTitle()}`);
+  }
+  
+  onMarkerDeselect(marker: Marker): void {
+    this.testPage.message = `⭕ Marker 取消选中: ${marker.getTitle()}`;
+    console.info(`MarkerTestPage: Marker deselected - ID=${marker.getId()}, Title=${marker.getTitle()}`);
+  }
+}
+
+/**
+ * 自定义 Marker 视图 Builder
+ */
+interface CustomMarkerParams {
+  marker: Marker;
+}
+
+@Builder
+function CustomMarkerBuilder(params: CustomMarkerParams) {
+  Column() {
+    // 自定义外观：圆形背景 + 标题
+    Stack() {
+      Circle({ width: 60, height: 60 })
+        .fill('#FF5722')
+        .opacity(0.9)
+      
+      Text(params.marker.getTitle())
+        .fontSize(14)
+        .fontColor(Color.White)
+        .fontWeight(FontWeight.Bold)
+    }
+    .width(60)
+    .height(60)
+  }
+}
+
+/**
+ * 自定义 AnnotationView 适配器
+ * 
+ * TODO: 等待 HarmonyOS SDK 支持 wrapBuilder 和 ComponentContent API
+ * 当前版本暂时不支持自定义视图
+ */
+class TestAnnotationViewAdapter implements AnnotationViewAdapter {
+  getAnnotationView(marker: Marker): object | null {
+    // TODO: 实现自定义视图
+    // 当前 HarmonyOS SDK 版本不支持 ComponentContent 和 wrapBuilder
+    return null;  // 暂时使用默认图标
+  }
+  
+  getReuseIdentifier(marker: Marker): string {
+    return marker.getIcon() || 'default';
+  }
+}
+
 
 @Entry
 @Component
@@ -112,6 +201,16 @@ struct MarkerTestPage {
   @State selectedMarkerId: number = -1;
   @State message: string = '等待地图加载...';
   @State lastMarkerPosition: string = '';
+  
+  // InfoWindow 显示状态
+  @State showInfoWindow: boolean = false;
+  @State infoWindowMarker: Marker | null = null;
+  @State infoWindowX: number = 0;
+  @State infoWindowY: number = 0;
+  
+  // AnnotationView 显示状态
+  @State annotationViews: AnnotationViewData[] = [];
+  @State useCustomView: boolean = false;
   
   // 测试用的位置
   private testLocations: LatLng[] = [
@@ -153,14 +252,30 @@ struct MarkerTestPage {
       const options = new MapLibreMapOptions();
       this.mapLibreMap = new MapLibreMap(mapView, options);
       
-      // 设置初始相机位置（中国中心）
-      this.mapLibreMap.jumpTo(0, 35.0, 105.0, 0, 4.0);
+      // 延迟设置初始相机位置，等待地图完全初始化
+      setTimeout(() => {
+        if (this.mapLibreMap && !this.mapLibreMap.isDestroyed()) {
+          try {
+            // 设置初始相机位置（中国中心）
+            this.mapLibreMap.jumpTo(0, 35.0, 105.0, 0, 4.0);
+            hilog.info(DOMAIN, TAG, 'Initial camera position set');
+          } catch (e) {
+            hilog.error(DOMAIN, TAG, `Failed to set initial camera: ${e.message}`);
+          }
+        }
+      }, 500);
       
       this.mapReady = true;
       this.message = '✅ 地图已就绪 - 可以开始测试';
       
       // 设置事件监听器
       this.setupEventListeners();
+      
+      // 设置 InfoWindow UI 回调
+      this.setupInfoWindowCallbacks();
+      
+      // 设置 AnnotationView Manager
+      this.setupAnnotationViewManager();
       
       hilog.info(DOMAIN, TAG, 'Map ready, setting up event listeners');
     } catch (error) {
@@ -180,13 +295,95 @@ struct MarkerTestPage {
     const markerClickListener = new MarkerClickListenerImpl(this);
     const markerDragListener = new MarkerDragListenerImpl(this);
     const infoWindowClickListener = new InfoWindowClickListenerImpl(this);
+    const infoWindowCloseListener = new InfoWindowCloseListenerImpl(this);
+    const markerSelectListener = new MarkerSelectListenerImpl(this);
     
     // 设置监听器
     this.mapLibreMap.setOnMarkerClickListener(markerClickListener);
     this.mapLibreMap.setOnMarkerDragListener(markerDragListener);
     this.mapLibreMap.setOnInfoWindowClickListener(infoWindowClickListener);
+    this.mapLibreMap.setOnInfoWindowCloseListener(infoWindowCloseListener);
+    this.mapLibreMap.setOnMarkerSelectListener(markerSelectListener);
     
     console.info('MarkerTestPage: Event listeners configured');
+  }
+  
+  /**
+   * 设置 InfoWindow UI 回调
+   */
+  setupInfoWindowCallbacks() {
+    if (!this.mapLibreMap) return;
+    
+    const infoWindowManager = this.mapLibreMap.getMarkerManager().getInfoWindowManager();
+    
+    // 设置显示回调
+    infoWindowManager.setOnShowUICallback((marker: Marker) => {
+      this.showInfoWindowUI(marker);
+    });
+    
+    // 设置隐藏回调
+    infoWindowManager.setOnHideUICallback((marker: Marker) => {
+      this.hideInfoWindowUI();
+    });
+    
+    console.info('MarkerTestPage: InfoWindow callbacks configured');
+  }
+  
+  /**
+   * 设置 AnnotationView Manager
+   */
+  setupAnnotationViewManager() {
+    if (!this.mapLibreMap || !this.nativeMapView) return;
+    
+    const markerManager = this.mapLibreMap.getMarkerManager();
+    
+    // 设置 Native MapView（用于坐标转换）
+    markerManager.setNativeMapView(this.nativeMapView);
+    
+    console.info('MarkerTestPage: AnnotationView manager configured');
+  }
+  
+  /**
+   * 显示 InfoWindow UI
+   */
+  showInfoWindowUI(marker: Marker) {
+    if (!this.nativeMapView) return;
+    
+    const pos = marker.getPosition();
+    
+    try {
+      // 转换地理坐标到屏幕坐标
+      const pixelCoord = this.nativeMapView.pixelForLatLng(pos.latitude, pos.longitude);
+      
+      // InfoWindow 显示在 Marker 上方
+      this.infoWindowX = pixelCoord.x - 100;  // 假设 InfoWindow 宽度 200，居中显示
+      this.infoWindowY = pixelCoord.y - 80;   // 向上偏移
+      this.infoWindowMarker = marker;
+      this.showInfoWindow = true;
+      
+      console.info(`[InfoWindow] Showing UI at (${this.infoWindowX}, ${this.infoWindowY})`);
+    } catch (e) {
+      console.error('[InfoWindow] Failed to show UI:', e);
+    }
+  }
+  
+  /**
+   * 隐藏 InfoWindow UI
+   */
+  hideInfoWindowUI() {
+    this.showInfoWindow = false;
+    this.infoWindowMarker = null;
+    console.info('[InfoWindow] Hiding UI');
+  }
+  
+  /**
+   * 更新 AnnotationView 显示
+   */
+  updateAnnotationViews() {
+    if (!this.mapLibreMap) return;
+    
+    const annotationViewManager = this.mapLibreMap.getMarkerManager().getAnnotationViewManager();
+    this.annotationViews = annotationViewManager.getVisibleViews();
   }
   
   /**
@@ -202,6 +399,25 @@ struct MarkerTestPage {
     const location = this.testLocations[locationIndex];
     
     try {
+      // [MarkerDebug] 记录地图当前状态
+      if (this.nativeMapView) {
+        const currentPos = this.nativeMapView.getLatLng();
+        const currentZoom = this.nativeMapView.getZoom();
+        console.info(`[MarkerDebug] TestPage: Current camera - lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
+        console.info(`[MarkerDebug] TestPage: Adding marker at lat=${location.latitude}, lng=${location.longitude}`);
+        
+        // 简单判断是否在视口范围内（粗略估算）
+        const latDiff = Math.abs(currentPos.latitude - location.latitude);
+        const lngDiff = Math.abs(currentPos.longitude - location.longitude);
+        const roughDistance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+        const viewportSize = Math.pow(2, 10 - currentZoom); // 粗略估算视口大小
+        
+        if (roughDistance > viewportSize) {
+          console.warn(`[MarkerDebug] TestPage: ⚠️ Marker may be outside viewport (distance=${roughDistance.toFixed(2)}, viewport~${viewportSize.toFixed(2)})`);
+          this.message = `⚠️ Marker 可能在视口外，请缩放或移动地图`;
+        }
+      }
+      
       // 创建带不同样式的 Marker
       const marker = this.mapLibreMap.addMarker(
         new MarkerOptions()
@@ -212,18 +428,19 @@ struct MarkerTestPage {
           .alpha(0.9)
           .rotation(this.markerCount * 15)  // 每个 Marker 不同的旋转角度
           .zIndex(this.markerCount)
+          // 注意：没有设置 icon，将使用空字符串，可能导致不可见！
       );
       
       this.testMarker = marker;
       this.markerList.push(marker);
       this.markerCount++;
       this.lastMarkerPosition = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
-      this.message = `➕ 添加成功: ${marker.getTitle()} (ID: ${marker.getId()})`;
+      this.message = `➕ 添加成功: ${marker.getTitle()} (ID: ${marker.getId()}) - 注意：未设置 icon`;
       
-      console.info(`MarkerTestPage: Added marker ${marker.getId()} at ${location.latitude}, ${location.longitude}`);
+      console.info(`[MarkerDebug] TestPage: Marker added with ID=${marker.getId()}`);
     } catch (e) {
       this.message = `❌ 添加失败: ${e.message}`;
-      console.error(`MarkerTestPage: Failed to add marker - ${e.message}`);
+      console.error(`[MarkerDebug] TestPage: ❌ Failed to add marker - ${e.message}`);
     }
   }
   
@@ -319,11 +536,15 @@ struct MarkerTestPage {
       longitude: currentPos.longitude + 0.5
     };
     
-    this.message = '开始动画...';
+    this.message = '开始位置动画...';
     
+    // 使用 animateToPosition API
     this.testMarker.animateToPosition(targetPos, 2000, () => {
-      this.message = '动画完成';
-      console.info('MarkerTestPage: Animation completed');
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(this.testMarker!);
+      }
+      this.message = '✅ 位置动画完成';
+      console.info('MarkerTestPage: Position animation completed');
     });
   }
   
@@ -339,8 +560,15 @@ struct MarkerTestPage {
     const currentAlpha = this.testMarker.getAlpha();
     const targetAlpha = currentAlpha > 0.5 ? 0.3 : 1.0;
     
+    this.message = '开始透明度动画...';
+    
+    // 使用 animateAlpha API
     this.testMarker.animateAlpha(targetAlpha, 1000, () => {
-      this.message = `透明度动画完成: ${targetAlpha}`;
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(this.testMarker!);
+      }
+      this.message = `✅ 透明度动画完成: ${targetAlpha}`;
+      console.info('MarkerTestPage: Alpha animation completed');
     });
   }
   
@@ -356,8 +584,15 @@ struct MarkerTestPage {
     const currentRotation = this.testMarker.getRotation();
     const targetRotation = currentRotation + 90;
     
+    this.message = '开始旋转动画...';
+    
+    // 使用 animateRotation API
     this.testMarker.animateRotation(targetRotation, 1000, () => {
-      this.message = `旋转动画完成: ${targetRotation}°`;
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(this.testMarker!);
+      }
+      this.message = `✅ 旋转动画完成: ${targetRotation}°`;
+      console.info('MarkerTestPage: Rotation animation completed');
     });
   }
   
@@ -421,7 +656,7 @@ struct MarkerTestPage {
         }
       }
       .width('100%')
-      .height(300)
+      .layoutWeight(1)
       .backgroundColor('#EEEEEE')
       
       // 状态信息区

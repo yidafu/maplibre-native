@@ -4,6 +4,9 @@
     "pages/BasicMapPage",
     "pages/GestureTestPage",
     "pages/MarkerTestPage",
-    "pages/StyleTestPage"
+    "pages/StyleTestPage",
+    "pages/StyleUrlTestPage",
+    "pages/SourceTestPage",
+    "pages/LayerTestPage"
   ]
 }

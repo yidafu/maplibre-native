@@ -1,74 +1,74 @@
 /**
  * MapLibre Native for HarmonyOS - RasterLayer Type Definitions
- * 栅格图层 API
+ * 栅格图层 API (NAPI 类)
  */
 
 /**
- * 重采样方式
+ * RasterLayer - 栅格图层
+ * 用于渲染栅格瓦片数据
  */
-export type RasterResampling = 'linear' | 'nearest';
+export class RasterLayer {
+    /**
+     * 创建栅格图层
+     * @param layerId 图层 ID
+     * @param sourceId 数据源 ID
+     */
+    constructor(layerId: string, sourceId: string);
 
-/**
- * 创建栅格图层
- * @param layerId 图层 ID
- * @param sourceId 数据源 ID
- * @returns 图层原生指针
- */
-export function create(layerId: string, sourceId: string): number;
+    /**
+     * 设置栅格不透明度
+     * @param opacity 不透明度（0.0 - 1.0）
+     * @returns 返回 this 以支持链式调用
+     */
+    setRasterOpacity(opacity: number): this;
 
-/**
- * 设置栅格不透明度
- * @param layerPtr 图层指针
- * @param opacity 不透明度（0.0 - 1.0）
- */
-export function setRasterOpacity(layerPtr: number, opacity: number): void;
+    /**
+     * 设置栅格色相旋转
+     * @param hueRotate 色相旋转角度（度）
+     * @returns 返回 this 以支持链式调用
+     */
+    setRasterHueRotate(hueRotate: number): this;
 
-/**
- * 设置栅格色相旋转
- * @param layerPtr 图层指针
- * @param hueRotate 色相旋转角度（度，0-360）
- */
-export function setRasterHueRotate(layerPtr: number, hueRotate: number): void;
+    /**
+     * 设置栅格最小亮度
+     * @param brightnessMin 最小亮度（0.0 - 1.0）
+     * @returns 返回 this 以支持链式调用
+     */
+    setRasterBrightnessMin(brightnessMin: number): this;
 
-/**
- * 设置栅格最小亮度
- * @param layerPtr 图层指针
- * @param brightnessMin 最小亮度（0.0 - 1.0）
- */
-export function setRasterBrightnessMin(layerPtr: number, brightnessMin: number): void;
+    /**
+     * 设置栅格最大亮度
+     * @param brightnessMax 最大亮度（0.0 - 1.0）
+     * @returns 返回 this 以支持链式调用
+     */
+    setRasterBrightnessMax(brightnessMax: number): this;
 
-/**
- * 设置栅格最大亮度
- * @param layerPtr 图层指针
- * @param brightnessMax 最大亮度（0.0 - 1.0）
- */
-export function setRasterBrightnessMax(layerPtr: number, brightnessMax: number): void;
+    /**
+     * 设置栅格饱和度
+     * @param saturation 饱和度（-1.0 - 1.0）
+     * @returns 返回 this 以支持链式调用
+     */
+    setRasterSaturation(saturation: number): this;
 
-/**
- * 设置栅格饱和度
- * @param layerPtr 图层指针
- * @param saturation 饱和度（-1.0 到 1.0，0 为无变化）
- */
-export function setRasterSaturation(layerPtr: number, saturation: number): void;
+    /**
+     * 设置栅格对比度
+     * @param contrast 对比度（-1.0 - 1.0）
+     * @returns 返回 this 以支持链式调用
+     */
+    setRasterContrast(contrast: number): this;
 
-/**
- * 设置栅格对比度
- * @param layerPtr 图层指针
- * @param contrast 对比度（-1.0 到 1.0，0 为无变化）
- */
-export function setRasterContrast(layerPtr: number, contrast: number): void;
+    /**
+     * 获取图层 ID
+     */
+    getId(): string;
 
-/**
- * 设置栅格淡入淡出持续时间
- * @param layerPtr 图层指针
- * @param fadeDuration 淡入淡出持续时间（毫秒）
- */
-export function setRasterFadeDuration(layerPtr: number, fadeDuration: number): void;
+    /**
+     * 获取图层类型
+     */
+    getType(): string;
 
-/**
- * 设置栅格重采样方式
- * @param layerPtr 图层指针
- * @param resampling 重采样方式
- */
-export function setRasterResampling(layerPtr: number, resampling: RasterResampling): void;
-
+    /**
+     * 获取数据源 ID
+     */
+    getSourceId(): string;
+}
