@@ -555,6 +555,18 @@ std::unique_ptr<gfx::Context> HarmonyGLRendererBackend::createContext() {
 }
 
 void HarmonyGLRendererBackend::activate() {
+    // 🛡️ 安全检查：如果渲染已停止，跳过激活
+    if (isStopped_) {
+        Logger::debug("HarmonyGLRendererBackend", "activate() - skipped (rendering stopped)");
+        return;
+    }
+    
+    // 🛡️ 安全检查：验证Surface有效性
+    if (!isSurfaceValid()) {
+        Logger::warn("HarmonyGLRendererBackend", "activate() - skipped (surface invalid)");
+        return;
+    }
+    
     // HarmonyOS渲染线程EGL Context管理
     // 首次调用时在渲染线程创建context，之后直接激活
     
@@ -588,6 +600,12 @@ void HarmonyGLRendererBackend::activate() {
             Logger::error("HarmonyGLRendererBackend", 
                          "activate() FAILED to make context current: %s (error code: 0x%X)", 
                          eglErrorString(error), error);
+            
+            // 🛡️ 如果是Surface相关错误，自动停止渲染防止崩溃
+            if (error == EGL_BAD_SURFACE || error == EGL_BAD_ACCESS || error == EGL_BAD_CURRENT_SURFACE) {
+                Logger::error("HarmonyGLRendererBackend", "Surface invalid - pausing rendering to prevent crash");
+                pauseRendering();
+            }
         } else {
             Logger::debug("HarmonyGLRendererBackend", "activate() - GL context successfully activated");
         }
@@ -610,6 +628,19 @@ void HarmonyGLRendererBackend::deactivate() {
 }
 
 void HarmonyGLRendererBackend::swapBuffers() {
+    // 🛡️ 安全检查：如果渲染已停止，跳过swapBuffers
+    if (isStopped_) {
+        Logger::debug("HarmonyGLRendererBackend", "swapBuffers() - skipped (rendering stopped)");
+        return;
+    }
+    
+    // 🛡️ 安全检查：验证Surface有效性
+    if (!isSurfaceValid()) {
+        Logger::warn("HarmonyGLRendererBackend", "swapBuffers() - skipped (surface invalid)");
+        pauseRendering();  // 自动停止渲染
+        return;
+    }
+    
     if (eglDisplay_ != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
         // HarmonyOS缓冲区刷新重试机制
         int retryCount = 0;
@@ -626,6 +657,12 @@ void HarmonyGLRendererBackend::swapBuffers() {
                             "eglSwapBuffers failed (attempt %d/%d): %s",
                             retryCount, maxRetries, eglErrorString(error));
                 
+                // 🛡️ 如果是Surface相关错误，立即停止重试
+                if (error == EGL_BAD_SURFACE || error == EGL_BAD_CURRENT_SURFACE) {
+                    Logger::error("HarmonyGLRendererBackend", "Surface invalid during swap - stopping retry");
+                    break;
+                }
+                
                 if (retryCount < maxRetries) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_);
@@ -639,8 +676,12 @@ void HarmonyGLRendererBackend::swapBuffers() {
                           "eglSwapBuffers failed after %d attempts: %s", 
                           maxRetries, eglErrorString(error));
             
-            // Stop rendering on swap failure to prevent crashes
-            throw std::runtime_error("eglSwapBuffers failed: EGL buffer allocation failed");
+            // 🛡️ Surface相关错误时停止渲染防止崩溃
+            if (error == EGL_BAD_SURFACE || error == EGL_BAD_CURRENT_SURFACE || error == EGL_BAD_ALLOC) {
+                Logger::error("HarmonyGLRendererBackend", "Pausing rendering to prevent crash");
+                pauseRendering();
+            }
+            // 不再抛出异常，而是优雅地停止渲染
         }
     } else {
         Logger::warn("HarmonyGLRendererBackend", 
@@ -651,6 +692,35 @@ void HarmonyGLRendererBackend::swapBuffers() {
 
 // assumeFramebufferBinding, assumeViewport, assumeScissorTest are inherited from gl::RendererBackend
 
+
+// 🛡️ 新增：检查Surface有效性
+bool HarmonyGLRendererBackend::isSurfaceValid() const {
+    if (eglDisplay_ == EGL_NO_DISPLAY || eglSurface_ == EGL_NO_SURFACE) {
+        return false;
+    }
+    
+    // 查询Surface属性来验证其有效性
+    EGLint width = 0, height = 0;
+    if (!eglQuerySurface(eglDisplay_, eglSurface_, EGL_WIDTH, &width) ||
+        !eglQuerySurface(eglDisplay_, eglSurface_, EGL_HEIGHT, &height)) {
+        return false;
+    }
+    
+    // 宽度和高度必须大于0
+    return (width > 0 && height > 0);
+}
+
+// 🛡️ 新增：暂停渲染（防止崩溃）
+void HarmonyGLRendererBackend::pauseRendering() {
+    Logger::info("HarmonyGLRendererBackend", "Pausing rendering to prevent crash");
+    isStopped_ = true;
+}
+
+// 🛡️ 新增：恢复渲染
+void HarmonyGLRendererBackend::resumeRendering() {
+    Logger::info("HarmonyGLRendererBackend", "Resuming rendering");
+    isStopped_ = false;
+}
 
 } // namespace harmony
 } // namespace mbgl

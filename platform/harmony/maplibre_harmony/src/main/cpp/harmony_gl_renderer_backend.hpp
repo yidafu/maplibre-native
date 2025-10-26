@@ -24,10 +24,10 @@ public:
     mbgl::gfx::RendererBackend& getImpl() override { return *this; }
 
     void setNativeWindow(void* window);
-    void updateViewPort() override;
-    void markContextLost() override;
-    void resizeFramebuffer(int width, int height) override;
-    PremultipliedImage readFramebuffer() override;
+    void updateViewPort();  // 移除了override - HarmonyRendererBackend的方法不是虚函数
+    void markContextLost();
+    void resizeFramebuffer(int width, int height);
+    PremultipliedImage readFramebuffer();
     void swapBuffers();  // Call eglSwapBuffers to display frame
     
     // 新增：获取和更新 pixelRatio
@@ -41,17 +41,24 @@ public:
     void updateAssumedState() override;
     mbgl::gl::ProcAddress getExtensionFunctionPointer(const char*) override;
 
+    // 新增：停止和恢复渲染（防止页面切换时崩溃）
+    void pauseRendering();
+    void resumeRendering();
+    bool isRenderingStopped() const { return isStopped_; }
+
 protected:
     void activate() override;
     void deactivate() override;
     std::unique_ptr<gfx::Context> createContext() override;
-
 
 private:
     // EGL初始化拆分为两阶段
     bool initializeEGLDisplay();  // 主线程：创建display和surface
     bool initializeEGLContext();  // 渲染线程：创建context
     void cleanupEGL();
+    
+    // 新增：检查Surface有效性
+    bool isSurfaceValid() const;
     
     // HarmonyOS OpenGL quirk handling
     void validateShaderAttributes();
@@ -66,6 +73,7 @@ private:
     EGLNativeWindowType eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
     bool contextInitialized_ = false;  // 标记context是否已在渲染线程创建
     float pixelRatio_ = 1.0f;  // 设备像素比
+    bool isStopped_ = false;  // 标记渲染是否已停止（防止崩溃）
 };
 
 } // namespace harmony
