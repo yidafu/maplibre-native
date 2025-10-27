@@ -17,7 +17,7 @@
 
 import { ValueExpression, ExpressionValue } from './ExpressionTypes';
 
-export class Expression<T = any> {
+export class Expression<T = Object> {
   protected operator: string;
   protected arguments: Expression[] | null;
 
@@ -50,14 +50,15 @@ export class Expression<T = any> {
    * 将表达式转换为 JSON 数组格式
    * 这是 MapLibre Style Spec 要求的格式
    */
-  public toArray(): Object[] {
-    const array: Object[] = [this.operator];
+  public toArray(): (Object | null)[] {
+    const array: (Object | null)[] = [this.operator];
     if (this.arguments !== null && this.arguments.length > 0) {
       for (const arg of this.arguments) {
-        if (this.isValueExpression(arg)) {
-          array.push((arg as any as ValueExpression).toValue());
+        if (arg.isValue()) {
+          // 使用虚方法判断，然后安全转换
+          array.push((arg as ExpressionLiteral).toValue());
         } else {
-          array.push(arg.toArray());
+          array.push(arg.toArray() as Object);
         }
       }
     }
@@ -65,10 +66,18 @@ export class Expression<T = any> {
   }
 
   /**
-   * 检查是否为 ValueExpression
+   * 检查当前表达式是否为值表达式
+   * 子类应覆盖此方法以返回正确的值
+   */
+  isValue(): boolean {
+    return false;
+  }
+
+  /**
+   * 检查表达式是否为 ValueExpression
    */
   protected isValueExpression(expr: Expression): boolean {
-    return typeof (expr as any).toValue === 'function';
+    return expr.isValue();
   }
 
   /**
@@ -148,7 +157,7 @@ export class Expression<T = any> {
    */
   public static literal(value: ExpressionValue): Expression {
     if (Array.isArray(value)) {
-      return new ExpressionLiteralArray(value);
+      return new ExpressionLiteralArray(value as (Object | null)[]);
     }
     return new ExpressionLiteral(value);
   }
@@ -173,15 +182,25 @@ export class Expression<T = any> {
   /**
    * 创建 RGB 颜色表达式
    */
-  public static rgb(red: Expression<number>, green: Expression<number>, blue: Expression<number>): Expression<string> {
-    return new Expression<string>('rgb', red, green, blue);
-  }
-
+  public static rgb(red: Expression<number>, green: Expression<number>, blue: Expression<number>): Expression<string>;
+  
   /**
    * 创建 RGB 颜色表达式（数字参数）
    */
-  public static rgb(red: number, green: number, blue: number): Expression<string> {
-    return Expression.rgb(Expression.literal(red), Expression.literal(green), Expression.literal(blue));
+  public static rgb(red: number, green: number, blue: number): Expression<string>;
+  
+  /**
+   * 创建 RGB 颜色表达式的实现
+   */
+  public static rgb(
+    red: Expression<number> | number,
+    green: Expression<number> | number,
+    blue: Expression<number> | number
+  ): Expression<string> {
+    const redExpr = typeof red === 'number' ? Expression.literal(red) : red;
+    const greenExpr = typeof green === 'number' ? Expression.literal(green) : green;
+    const blueExpr = typeof blue === 'number' ? Expression.literal(blue) : blue;
+    return new Expression<string>('rgb', redExpr, greenExpr, blueExpr);
   }
 
   /**
@@ -192,20 +211,27 @@ export class Expression<T = any> {
     green: Expression<number>,
     blue: Expression<number>,
     alpha: Expression<number>
-  ): Expression<string> {
-    return new Expression<string>('rgba', red, green, blue, alpha);
-  }
-
+  ): Expression<string>;
+  
   /**
    * 创建 RGBA 颜色表达式（数字参数）
    */
-  public static rgba(red: number, green: number, blue: number, alpha: number): Expression<string> {
-    return Expression.rgba(
-      Expression.literal(red),
-      Expression.literal(green),
-      Expression.literal(blue),
-      Expression.literal(alpha)
-    );
+  public static rgba(red: number, green: number, blue: number, alpha: number): Expression<string>;
+  
+  /**
+   * 创建 RGBA 颜色表达式的实现
+   */
+  public static rgba(
+    red: Expression<number> | number,
+    green: Expression<number> | number,
+    blue: Expression<number> | number,
+    alpha: Expression<number> | number
+  ): Expression<string> {
+    const redExpr = typeof red === 'number' ? Expression.literal(red) : red;
+    const greenExpr = typeof green === 'number' ? Expression.literal(green) : green;
+    const blueExpr = typeof blue === 'number' ? Expression.literal(blue) : blue;
+    const alphaExpr = typeof alpha === 'number' ? Expression.literal(alpha) : alpha;
+    return new Expression<string>('rgba', redExpr, greenExpr, blueExpr, alphaExpr);
   }
 
   /**
@@ -233,18 +259,14 @@ export class Expression<T = any> {
    * 
    * @param key 属性键（Expression）
    */
-  public static get<T = any>(key: Expression<string>): Expression<T> {
-    return new Expression<T>('get', key);
-  }
+  public static get<T = Object>(key: Expression<string>): Expression<T>;
 
   /**
    * 从当前要素的属性中获取指定键的值
    * 
    * @param key 属性键（字符串）
    */
-  public static get<T = any>(key: string): Expression<T> {
-    return Expression.get(Expression.literal(key));
-  }
+  public static get<T = Object>(key: string): Expression<T>;
 
   /**
    * 从对象中获取指定键的值
@@ -252,9 +274,7 @@ export class Expression<T = any> {
    * @param key 属性键（Expression）
    * @param object 对象表达式
    */
-  public static get<T = any>(key: Expression<string>, object: Expression<Object>): Expression<T> {
-    return new Expression<T>('get', key, object);
-  }
+  public static get<T = Object>(key: Expression<string>, object: Expression<Object>): Expression<T>;
 
   /**
    * 从对象中获取指定键的值
@@ -262,8 +282,20 @@ export class Expression<T = any> {
    * @param key 属性键（字符串）
    * @param object 对象表达式
    */
-  public static get<T = any>(key: string, object: Expression<Object>): Expression<T> {
-    return Expression.get(Expression.literal(key), object);
+  public static get<T = Object>(key: string, object: Expression<Object>): Expression<T>;
+
+  /**
+   * 从要素或对象中获取指定键的值的实现
+   */
+  public static get<T = Object>(
+    key: Expression<string> | string,
+    object?: Expression<Object>
+  ): Expression<T> {
+    const keyExpr = typeof key === 'string' ? Expression.literal(key) : key;
+    if (object === undefined) {
+      return new Expression<T>('get', keyExpr);
+    }
+    return new Expression<T>('get', keyExpr, object);
   }
 
   /**
@@ -271,18 +303,14 @@ export class Expression<T = any> {
    * 
    * @param key 属性键（Expression）
    */
-  public static has(key: Expression<string>): Expression<boolean> {
-    return new Expression<boolean>('has', key);
-  }
+  public static has(key: Expression<string>): Expression<boolean>;
 
   /**
    * 检查当前要素是否具有指定的属性
    * 
    * @param key 属性键（字符串）
    */
-  public static has(key: string): Expression<boolean> {
-    return Expression.has(Expression.literal(key));
-  }
+  public static has(key: string): Expression<boolean>;
 
   /**
    * 检查对象是否具有指定的属性
@@ -290,9 +318,7 @@ export class Expression<T = any> {
    * @param key 属性键（Expression）
    * @param object 对象表达式
    */
-  public static has(key: Expression<string>, object: Expression<Object>): Expression<boolean> {
-    return new Expression<boolean>('has', key, object);
-  }
+  public static has(key: Expression<string>, object: Expression<Object>): Expression<boolean>;
 
   /**
    * 检查对象是否具有指定的属性
@@ -300,8 +326,20 @@ export class Expression<T = any> {
    * @param key 属性键（字符串）
    * @param object 对象表达式
    */
-  public static has(key: string, object: Expression<Object>): Expression<boolean> {
-    return Expression.has(Expression.literal(key), object);
+  public static has(key: string, object: Expression<Object>): Expression<boolean>;
+
+  /**
+   * 检查要素或对象是否具有指定的属性的实现
+   */
+  public static has(
+    key: Expression<string> | string,
+    object?: Expression<Object>
+  ): Expression<boolean> {
+    const keyExpr = typeof key === 'string' ? Expression.literal(key) : key;
+    if (object === undefined) {
+      return new Expression<boolean>('has', keyExpr);
+    }
+    return new Expression<boolean>('has', keyExpr, object);
   }
 
   /**
@@ -355,9 +393,7 @@ export class Expression<T = any> {
    * @param index 索引（Expression）
    * @param array 数组表达式
    */
-  public static at<T = any>(index: Expression<number>, array: Expression<T[]>): Expression<T> {
-    return new Expression<T>('at', index, array);
-  }
+  public static at<T = Object>(index: Expression<number>, array: Expression<T[]>): Expression<T>;
 
   /**
    * 从数组中获取指定索引的元素
@@ -365,8 +401,17 @@ export class Expression<T = any> {
    * @param index 索引（数字）
    * @param array 数组表达式
    */
-  public static at<T = any>(index: number, array: Expression<T[]>): Expression<T> {
-    return Expression.at(Expression.literal(index), array);
+  public static at<T = Object>(index: number, array: Expression<T[]>): Expression<T>;
+
+  /**
+   * 从数组中获取指定索引的元素的实现
+   */
+  public static at<T = Object>(
+    index: Expression<number> | number,
+    array: Expression<T[]>
+  ): Expression<T> {
+    const indexExpr = typeof index === 'number' ? Expression.literal(index) : index;
+    return new Expression<T>('at', indexExpr, array);
   }
 
   /**
@@ -375,22 +420,29 @@ export class Expression<T = any> {
    * @param needle 要查找的值
    * @param haystack 数组或字符串
    */
-  public static in(needle: Expression, haystack: Expression): Expression<boolean> {
-    return new Expression<boolean>('in', needle, haystack);
-  }
+  public static in(needle: Expression, haystack: Expression): Expression<boolean>;
 
   /**
    * 检查数字是否在数组中
    */
-  public static in(needle: number, haystack: Expression): Expression<boolean> {
-    return Expression.in(Expression.literal(needle), haystack);
-  }
+  public static in(needle: number, haystack: Expression): Expression<boolean>;
 
   /**
    * 检查字符串是否在数组或字符串中
    */
-  public static in(needle: string, haystack: Expression): Expression<boolean> {
-    return Expression.in(Expression.literal(needle), haystack);
+  public static in(needle: string, haystack: Expression): Expression<boolean>;
+
+  /**
+   * 检查值是否在数组或字符串中的实现
+   */
+  public static in(
+    needle: Expression | number | string,
+    haystack: Expression
+  ): Expression<boolean> {
+    const needleExpr = (needle instanceof Expression) 
+      ? needle 
+      : Expression.literal(needle);
+    return new Expression<boolean>('in', needleExpr, haystack);
   }
 
   /**
@@ -399,9 +451,7 @@ export class Expression<T = any> {
    * @param keyword 要查找的值
    * @param input 数组或字符串
    */
-  public static indexOf(keyword: Expression, input: Expression): Expression<number> {
-    return new Expression<number>('index-of', keyword, input);
-  }
+  public static indexOf(keyword: Expression, input: Expression): Expression<number>;
 
   /**
    * 从指定位置开始查找值在数组或字符串中的索引
@@ -410,7 +460,19 @@ export class Expression<T = any> {
    * @param input 数组或字符串
    * @param fromIndex 开始位置
    */
-  public static indexOf(keyword: Expression, input: Expression, fromIndex: Expression<number>): Expression<number> {
+  public static indexOf(keyword: Expression, input: Expression, fromIndex: Expression<number>): Expression<number>;
+
+  /**
+   * 查找值在数组或字符串中的索引的实现
+   */
+  public static indexOf(
+    keyword: Expression,
+    input: Expression,
+    fromIndex?: Expression<number>
+  ): Expression<number> {
+    if (fromIndex === undefined) {
+      return new Expression<number>('index-of', keyword, input);
+    }
     return new Expression<number>('index-of', keyword, input, fromIndex);
   }
 
@@ -418,31 +480,65 @@ export class Expression<T = any> {
    * 数组或字符串切片
    * 
    * @param input 数组或字符串
-   * @param fromIndex 开始位置
+   * @param fromIndex 开始位置（Expression）
    */
-  public static slice<T = any>(input: Expression<T[] | string>, fromIndex: Expression<number>): Expression<T[] | string> {
-    return new Expression('slice', input, fromIndex);
-  }
+  public static slice<T = Object>(input: Expression<T[] | string>, fromIndex: Expression<number>): Expression<T[] | string>;
+
+  /**
+   * 数组或字符串切片
+   * 
+   * @param input 数组或字符串
+   * @param fromIndex 开始位置（数字）
+   */
+  public static slice<T = Object>(input: Expression<T[] | string>, fromIndex: number): Expression<T[] | string>;
 
   /**
    * 数组或字符串切片（指定范围）
    * 
    * @param input 数组或字符串
-   * @param fromIndex 开始位置
-   * @param toIndex 结束位置
+   * @param fromIndex 开始位置（Expression）
+   * @param toIndex 结束位置（Expression）
    */
-  public static slice<T = any>(
+  public static slice<T = Object>(
     input: Expression<T[] | string>,
     fromIndex: Expression<number>,
     toIndex: Expression<number>
+  ): Expression<T[] | string>;
+
+  /**
+   * 数组或字符串切片（指定范围）
+   * 
+   * @param input 数组或字符串
+   * @param fromIndex 开始位置（数字）
+   * @param toIndex 结束位置（数字）
+   */
+  public static slice<T = Object>(
+    input: Expression<T[] | string>,
+    fromIndex: number,
+    toIndex: number
+  ): Expression<T[] | string>;
+
+  /**
+   * 数组或字符串切片的实现
+   */
+  public static slice<T = Object>(
+    input: Expression<T[] | string>,
+    fromIndex: Expression<number> | number,
+    toIndex?: Expression<number> | number
   ): Expression<T[] | string> {
-    return new Expression('slice', input, fromIndex, toIndex);
+    const fromIndexExpr = typeof fromIndex === 'number' ? Expression.literal(fromIndex) : fromIndex;
+    if (toIndex === undefined) {
+      return new Expression('slice', input, fromIndexExpr);
+    }
+    const toIndexExpr = typeof toIndex === 'number' ? Expression.literal(toIndex) : toIndex;
+    return new Expression('slice', input, fromIndexExpr, toIndexExpr);
   }
 
   /**
    * 获取数组或字符串的长度
+   * 注意：重命名为 len 以避免与 Function.length 冲突
    */
-  public static length(input: Expression<any[] | string>): Expression<number> {
+  public static len(input: Expression<Object[] | string>): Expression<number> {
     return new Expression<number>('length', input);
   }
 
@@ -451,141 +547,179 @@ export class Expression<T = any> {
   /**
    * 等于比较（Expression）
    */
-  public static eq(compareOne: Expression, compareTwo: Expression): Expression<boolean> {
-    return new Expression<boolean>('==', compareOne, compareTwo);
-  }
+  public static eq(compareOne: Expression, compareTwo: Expression): Expression<boolean>;
 
   /**
    * 等于比较（Expression 和布尔值）
    */
-  public static eq(compareOne: Expression, compareTwo: boolean): Expression<boolean> {
-    return Expression.eq(compareOne, Expression.literal(compareTwo));
-  }
+  public static eq(compareOne: Expression, compareTwo: boolean): Expression<boolean>;
 
   /**
    * 等于比较（Expression 和字符串）
    */
-  public static eq(compareOne: Expression, compareTwo: string): Expression<boolean> {
-    return Expression.eq(compareOne, Expression.literal(compareTwo));
-  }
+  public static eq(compareOne: Expression, compareTwo: string): Expression<boolean>;
 
   /**
    * 等于比较（Expression 和数字）
    */
-  public static eq(compareOne: Expression, compareTwo: number): Expression<boolean> {
-    return Expression.eq(compareOne, Expression.literal(compareTwo));
+  public static eq(compareOne: Expression, compareTwo: number): Expression<boolean>;
+
+  /**
+   * 等于比较的实现
+   */
+  public static eq(
+    compareOne: Expression,
+    compareTwo: Expression | boolean | string | number
+  ): Expression<boolean> {
+    const compareTwoExpr = (compareTwo instanceof Expression)
+      ? compareTwo
+      : Expression.literal(compareTwo);
+    return new Expression<boolean>('==', compareOne, compareTwoExpr);
   }
 
   /**
    * 不等于比较（Expression）
    */
-  public static neq(compareOne: Expression, compareTwo: Expression): Expression<boolean> {
-    return new Expression<boolean>('!=', compareOne, compareTwo);
-  }
+  public static neq(compareOne: Expression, compareTwo: Expression): Expression<boolean>;
 
   /**
    * 不等于比较（Expression 和布尔值）
    */
-  public static neq(compareOne: Expression, compareTwo: boolean): Expression<boolean> {
-    return Expression.neq(compareOne, Expression.literal(compareTwo));
-  }
+  public static neq(compareOne: Expression, compareTwo: boolean): Expression<boolean>;
 
   /**
    * 不等于比较（Expression 和字符串）
    */
-  public static neq(compareOne: Expression, compareTwo: string): Expression<boolean> {
-    return Expression.neq(compareOne, Expression.literal(compareTwo));
-  }
+  public static neq(compareOne: Expression, compareTwo: string): Expression<boolean>;
 
   /**
    * 不等于比较（Expression 和数字）
    */
-  public static neq(compareOne: Expression, compareTwo: number): Expression<boolean> {
-    return Expression.neq(compareOne, Expression.literal(compareTwo));
+  public static neq(compareOne: Expression, compareTwo: number): Expression<boolean>;
+
+  /**
+   * 不等于比较的实现
+   */
+  public static neq(
+    compareOne: Expression,
+    compareTwo: Expression | boolean | string | number
+  ): Expression<boolean> {
+    const compareTwoExpr = (compareTwo instanceof Expression)
+      ? compareTwo
+      : Expression.literal(compareTwo);
+    return new Expression<boolean>('!=', compareOne, compareTwoExpr);
   }
 
   /**
    * 大于比较（Expression）
    */
-  public static gt(compareOne: Expression, compareTwo: Expression): Expression<boolean> {
-    return new Expression<boolean>('>', compareOne, compareTwo);
-  }
+  public static gt(compareOne: Expression, compareTwo: Expression): Expression<boolean>;
 
   /**
    * 大于比较（Expression 和数字）
    */
-  public static gt(compareOne: Expression, compareTwo: number): Expression<boolean> {
-    return Expression.gt(compareOne, Expression.literal(compareTwo));
-  }
+  public static gt(compareOne: Expression, compareTwo: number): Expression<boolean>;
 
   /**
    * 大于比较（Expression 和字符串）
    */
-  public static gt(compareOne: Expression, compareTwo: string): Expression<boolean> {
-    return Expression.gt(compareOne, Expression.literal(compareTwo));
+  public static gt(compareOne: Expression, compareTwo: string): Expression<boolean>;
+
+  /**
+   * 大于比较的实现
+   */
+  public static gt(
+    compareOne: Expression,
+    compareTwo: Expression | number | string
+  ): Expression<boolean> {
+    const compareTwoExpr = (compareTwo instanceof Expression)
+      ? compareTwo
+      : Expression.literal(compareTwo);
+    return new Expression<boolean>('>', compareOne, compareTwoExpr);
   }
 
   /**
    * 小于比较（Expression）
    */
-  public static lt(compareOne: Expression, compareTwo: Expression): Expression<boolean> {
-    return new Expression<boolean>('<', compareOne, compareTwo);
-  }
+  public static lt(compareOne: Expression, compareTwo: Expression): Expression<boolean>;
 
   /**
    * 小于比较（Expression 和数字）
    */
-  public static lt(compareOne: Expression, compareTwo: number): Expression<boolean> {
-    return Expression.lt(compareOne, Expression.literal(compareTwo));
-  }
+  public static lt(compareOne: Expression, compareTwo: number): Expression<boolean>;
 
   /**
    * 小于比较（Expression 和字符串）
    */
-  public static lt(compareOne: Expression, compareTwo: string): Expression<boolean> {
-    return Expression.lt(compareOne, Expression.literal(compareTwo));
+  public static lt(compareOne: Expression, compareTwo: string): Expression<boolean>;
+
+  /**
+   * 小于比较的实现
+   */
+  public static lt(
+    compareOne: Expression,
+    compareTwo: Expression | number | string
+  ): Expression<boolean> {
+    const compareTwoExpr = (compareTwo instanceof Expression)
+      ? compareTwo
+      : Expression.literal(compareTwo);
+    return new Expression<boolean>('<', compareOne, compareTwoExpr);
   }
 
   /**
    * 大于等于比较（Expression）
    */
-  public static gte(compareOne: Expression, compareTwo: Expression): Expression<boolean> {
-    return new Expression<boolean>('>=', compareOne, compareTwo);
-  }
+  public static gte(compareOne: Expression, compareTwo: Expression): Expression<boolean>;
 
   /**
    * 大于等于比较（Expression 和数字）
    */
-  public static gte(compareOne: Expression, compareTwo: number): Expression<boolean> {
-    return Expression.gte(compareOne, Expression.literal(compareTwo));
-  }
+  public static gte(compareOne: Expression, compareTwo: number): Expression<boolean>;
 
   /**
    * 大于等于比较（Expression 和字符串）
    */
-  public static gte(compareOne: Expression, compareTwo: string): Expression<boolean> {
-    return Expression.gte(compareOne, Expression.literal(compareTwo));
+  public static gte(compareOne: Expression, compareTwo: string): Expression<boolean>;
+
+  /**
+   * 大于等于比较的实现
+   */
+  public static gte(
+    compareOne: Expression,
+    compareTwo: Expression | number | string
+  ): Expression<boolean> {
+    const compareTwoExpr = (compareTwo instanceof Expression)
+      ? compareTwo
+      : Expression.literal(compareTwo);
+    return new Expression<boolean>('>=', compareOne, compareTwoExpr);
   }
 
   /**
    * 小于等于比较（Expression）
    */
-  public static lte(compareOne: Expression, compareTwo: Expression): Expression<boolean> {
-    return new Expression<boolean>('<=', compareOne, compareTwo);
-  }
+  public static lte(compareOne: Expression, compareTwo: Expression): Expression<boolean>;
 
   /**
    * 小于等于比较（Expression 和数字）
    */
-  public static lte(compareOne: Expression, compareTwo: number): Expression<boolean> {
-    return Expression.lte(compareOne, Expression.literal(compareTwo));
-  }
+  public static lte(compareOne: Expression, compareTwo: number): Expression<boolean>;
 
   /**
    * 小于等于比较（Expression 和字符串）
    */
-  public static lte(compareOne: Expression, compareTwo: string): Expression<boolean> {
-    return Expression.lte(compareOne, Expression.literal(compareTwo));
+  public static lte(compareOne: Expression, compareTwo: string): Expression<boolean>;
+
+  /**
+   * 小于等于比较的实现
+   */
+  public static lte(
+    compareOne: Expression,
+    compareTwo: Expression | number | string
+  ): Expression<boolean> {
+    const compareTwoExpr = (compareTwo instanceof Expression)
+      ? compareTwo
+      : Expression.literal(compareTwo);
+    return new Expression<boolean>('<=', compareOne, compareTwoExpr);
   }
 
   // ==================== 逻辑操作符 ====================
@@ -607,15 +741,19 @@ export class Expression<T = any> {
   /**
    * 逻辑非
    */
-  public static not(input: Expression<boolean>): Expression<boolean> {
-    return new Expression<boolean>('!', input);
-  }
+  public static not(input: Expression<boolean>): Expression<boolean>;
 
   /**
    * 逻辑非（布尔值）
    */
-  public static not(input: boolean): Expression<boolean> {
-    return Expression.not(Expression.literal(input));
+  public static not(input: boolean): Expression<boolean>;
+
+  /**
+   * 逻辑非的实现
+   */
+  public static not(input: Expression<boolean> | boolean): Expression<boolean> {
+    const inputExpr = typeof input === 'boolean' ? Expression.literal(input) : input;
+    return new Expression<boolean>('!', inputExpr);
   }
 
   // ==================== 条件操作符 ====================
@@ -655,29 +793,40 @@ export class Expression<T = any> {
   /**
    * 减法运算（二元）
    */
-  public static subtract(first: Expression<number>, second: Expression<number>): Expression<number> {
-    return new Expression<number>('-', first, second);
-  }
+  public static subtract(first: Expression<number>, second: Expression<number>): Expression<number>;
 
   /**
    * 减法运算（二元，数字参数）
    */
-  public static subtract(first: number, second: number): Expression<number> {
-    return Expression.subtract(Expression.literal(first), Expression.literal(second));
-  }
+  public static subtract(first: number, second: number): Expression<number>;
 
   /**
    * 取负（一元）
    */
-  public static subtract(value: Expression<number>): Expression<number> {
-    return new Expression<number>('-', value);
-  }
+  public static subtract(value: Expression<number>): Expression<number>;
 
   /**
    * 取负（一元，数字参数）
    */
-  public static subtract(value: number): Expression<number> {
-    return Expression.subtract(Expression.literal(value));
+  public static subtract(value: number): Expression<number>;
+
+  /**
+   * 减法运算的实现
+   */
+  public static subtract(
+    first: Expression<number> | number,
+    second?: Expression<number> | number
+  ): Expression<number> {
+    if (second === undefined) {
+      // 一元取负
+      const valueExpr = typeof first === 'number' ? Expression.literal(first) : first;
+      return new Expression<number>('-', valueExpr);
+    } else {
+      // 二元减法
+      const firstExpr = typeof first === 'number' ? Expression.literal(first) : first;
+      const secondExpr = typeof second === 'number' ? Expression.literal(second) : second;
+      return new Expression<number>('-', firstExpr, secondExpr);
+    }
   }
 
   /**
@@ -690,43 +839,67 @@ export class Expression<T = any> {
   /**
    * 除法运算
    */
-  public static divide(first: Expression<number>, second: Expression<number>): Expression<number> {
-    return new Expression<number>('/', first, second);
-  }
+  public static divide(first: Expression<number>, second: Expression<number>): Expression<number>;
 
   /**
    * 除法运算（数字参数）
    */
-  public static divide(first: number, second: number): Expression<number> {
-    return Expression.divide(Expression.literal(first), Expression.literal(second));
+  public static divide(first: number, second: number): Expression<number>;
+
+  /**
+   * 除法运算的实现
+   */
+  public static divide(
+    first: Expression<number> | number,
+    second: Expression<number> | number
+  ): Expression<number> {
+    const firstExpr = typeof first === 'number' ? Expression.literal(first) : first;
+    const secondExpr = typeof second === 'number' ? Expression.literal(second) : second;
+    return new Expression<number>('/', firstExpr, secondExpr);
   }
 
   /**
    * 取模运算
    */
-  public static mod(first: Expression<number>, second: Expression<number>): Expression<number> {
-    return new Expression<number>('%', first, second);
-  }
+  public static mod(first: Expression<number>, second: Expression<number>): Expression<number>;
 
   /**
    * 取模运算（数字参数）
    */
-  public static mod(first: number, second: number): Expression<number> {
-    return Expression.mod(Expression.literal(first), Expression.literal(second));
+  public static mod(first: number, second: number): Expression<number>;
+
+  /**
+   * 取模运算的实现
+   */
+  public static mod(
+    first: Expression<number> | number,
+    second: Expression<number> | number
+  ): Expression<number> {
+    const firstExpr = typeof first === 'number' ? Expression.literal(first) : first;
+    const secondExpr = typeof second === 'number' ? Expression.literal(second) : second;
+    return new Expression<number>('%', firstExpr, secondExpr);
   }
 
   /**
    * 幂运算
    */
-  public static pow(base: Expression<number>, exponent: Expression<number>): Expression<number> {
-    return new Expression<number>('^', base, exponent);
-  }
+  public static pow(base: Expression<number>, exponent: Expression<number>): Expression<number>;
 
   /**
    * 幂运算（数字参数）
    */
-  public static pow(base: number, exponent: number): Expression<number> {
-    return Expression.pow(Expression.literal(base), Expression.literal(exponent));
+  public static pow(base: number, exponent: number): Expression<number>;
+
+  /**
+   * 幂运算的实现
+   */
+  public static pow(
+    base: Expression<number> | number,
+    exponent: Expression<number> | number
+  ): Expression<number> {
+    const baseExpr = typeof base === 'number' ? Expression.literal(base) : base;
+    const exponentExpr = typeof exponent === 'number' ? Expression.literal(exponent) : exponent;
+    return new Expression<number>('^', baseExpr, exponentExpr);
   }
 
   // ==================== 数学函数 ====================
@@ -734,113 +907,145 @@ export class Expression<T = any> {
   /**
    * 平方根
    */
-  public static sqrt(value: Expression<number>): Expression<number> {
-    return new Expression<number>('sqrt', value);
-  }
+  public static sqrt(value: Expression<number>): Expression<number>;
 
   /**
    * 平方根（数字参数）
    */
-  public static sqrt(value: number): Expression<number> {
-    return Expression.sqrt(Expression.literal(value));
+  public static sqrt(value: number): Expression<number>;
+
+  /**
+   * 平方根的实现
+   */
+  public static sqrt(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('sqrt', valueExpr);
   }
 
   /**
    * 以 10 为底的对数
    */
-  public static log10(value: Expression<number>): Expression<number> {
-    return new Expression<number>('log10', value);
-  }
+  public static log10(value: Expression<number>): Expression<number>;
 
   /**
    * 以 10 为底的对数（数字参数）
    */
-  public static log10(value: number): Expression<number> {
-    return Expression.log10(Expression.literal(value));
+  public static log10(value: number): Expression<number>;
+
+  /**
+   * 以 10 为底的对数的实现
+   */
+  public static log10(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('log10', valueExpr);
   }
 
   /**
    * 以 2 为底的对数
    */
-  public static log2(value: Expression<number>): Expression<number> {
-    return new Expression<number>('log2', value);
-  }
+  public static log2(value: Expression<number>): Expression<number>;
 
   /**
    * 以 2 为底的对数（数字参数）
    */
-  public static log2(value: number): Expression<number> {
-    return Expression.log2(Expression.literal(value));
+  public static log2(value: number): Expression<number>;
+
+  /**
+   * 以 2 为底的对数的实现
+   */
+  public static log2(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('log2', valueExpr);
   }
 
   /**
    * 自然对数
    */
-  public static ln(value: Expression<number>): Expression<number> {
-    return new Expression<number>('ln', value);
-  }
+  public static ln(value: Expression<number>): Expression<number>;
 
   /**
    * 自然对数（数字参数）
    */
-  public static ln(value: number): Expression<number> {
-    return Expression.ln(Expression.literal(value));
+  public static ln(value: number): Expression<number>;
+
+  /**
+   * 自然对数的实现
+   */
+  public static ln(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('ln', valueExpr);
   }
 
   /**
    * 绝对值
    */
-  public static abs(value: Expression<number>): Expression<number> {
-    return new Expression<number>('abs', value);
-  }
+  public static abs(value: Expression<number>): Expression<number>;
 
   /**
    * 绝对值（数字参数）
    */
-  public static abs(value: number): Expression<number> {
-    return Expression.abs(Expression.literal(value));
+  public static abs(value: number): Expression<number>;
+
+  /**
+   * 绝对值的实现
+   */
+  public static abs(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('abs', valueExpr);
   }
 
   /**
    * 向上取整
    */
-  public static ceil(value: Expression<number>): Expression<number> {
-    return new Expression<number>('ceil', value);
-  }
+  public static ceil(value: Expression<number>): Expression<number>;
 
   /**
    * 向上取整（数字参数）
    */
-  public static ceil(value: number): Expression<number> {
-    return Expression.ceil(Expression.literal(value));
+  public static ceil(value: number): Expression<number>;
+
+  /**
+   * 向上取整的实现
+   */
+  public static ceil(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('ceil', valueExpr);
   }
 
   /**
    * 向下取整
    */
-  public static floor(value: Expression<number>): Expression<number> {
-    return new Expression<number>('floor', value);
-  }
+  public static floor(value: Expression<number>): Expression<number>;
 
   /**
    * 向下取整（数字参数）
    */
-  public static floor(value: number): Expression<number> {
-    return Expression.floor(Expression.literal(value));
+  public static floor(value: number): Expression<number>;
+
+  /**
+   * 向下取整的实现
+   */
+  public static floor(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('floor', valueExpr);
   }
 
   /**
    * 四舍五入
    */
-  public static round(value: Expression<number>): Expression<number> {
-    return new Expression<number>('round', value);
-  }
+  public static round(value: Expression<number>): Expression<number>;
 
   /**
    * 四舍五入（数字参数）
    */
-  public static round(value: number): Expression<number> {
-    return Expression.round(Expression.literal(value));
+  public static round(value: number): Expression<number>;
+
+  /**
+   * 四舍五入的实现
+   */
+  public static round(value: Expression<number> | number): Expression<number> {
+    const valueExpr = typeof value === 'number' ? Expression.literal(value) : value;
+    return new Expression<number>('round', valueExpr);
   }
 
   /**
@@ -925,29 +1130,37 @@ export class Expression<T = any> {
   /**
    * 转大写
    */
-  public static upcase(input: Expression<string>): Expression<string> {
-    return new Expression<string>('upcase', input);
-  }
+  public static upcase(input: Expression<string>): Expression<string>;
 
   /**
    * 转大写（字符串参数）
    */
-  public static upcase(input: string): Expression<string> {
-    return Expression.upcase(Expression.literal(input));
+  public static upcase(input: string): Expression<string>;
+
+  /**
+   * 转大写的实现
+   */
+  public static upcase(input: Expression<string> | string): Expression<string> {
+    const inputExpr = typeof input === 'string' ? Expression.literal(input) : input;
+    return new Expression<string>('upcase', inputExpr);
   }
 
   /**
    * 转小写
    */
-  public static downcase(input: Expression<string>): Expression<string> {
-    return new Expression<string>('downcase', input);
-  }
+  public static downcase(input: Expression<string>): Expression<string>;
 
   /**
    * 转小写（字符串参数）
    */
-  public static downcase(input: string): Expression<string> {
-    return Expression.downcase(Expression.literal(input));
+  public static downcase(input: string): Expression<string>;
+
+  /**
+   * 转小写的实现
+   */
+  public static downcase(input: Expression<string> | string): Expression<string> {
+    const inputExpr = typeof input === 'string' ? Expression.literal(input) : input;
+    return new Expression<string>('downcase', inputExpr);
   }
 
   // ==================== 类型转换操作符 ====================
@@ -990,8 +1203,8 @@ export class Expression<T = any> {
   /**
    * 断言为数组类型
    */
-  public static array(value: Expression): Expression<any[]> {
-    return new Expression<any[]>('array', value);
+  public static array(value: Expression): Expression<Object[]> {
+    return new Expression<Object[]>('array', value);
   }
 
   /**
@@ -1055,29 +1268,34 @@ export class Expression<T = any> {
    * @param defaultOutput 默认输出值
    * @param stops 停靠点（Expression 数组，格式为 [input1, output1, input2, output2, ...]）
    */
-  public static step(input: Expression<number>, defaultOutput: Expression, ...stops: Expression[]): Expression {
-    return new Expression('step', ...Expression.join([input, defaultOutput], stops));
-  }
+  public static step(input: Expression<number>, defaultOutput: Expression, ...stops: Expression[]): Expression;
 
   /**
    * 阶梯表达式（数字输入）
    */
-  public static step(input: number, defaultOutput: Expression, ...stops: Expression[]): Expression {
-    return Expression.step(Expression.literal(input), defaultOutput, ...stops);
-  }
+  public static step(input: number, defaultOutput: Expression, ...stops: Expression[]): Expression;
 
   /**
    * 阶梯表达式（数字默认输出）
    */
-  public static step(input: Expression<number>, defaultOutput: number, ...stops: Expression[]): Expression {
-    return Expression.step(input, Expression.literal(defaultOutput), ...stops);
-  }
+  public static step(input: Expression<number>, defaultOutput: number, ...stops: Expression[]): Expression;
 
   /**
    * 阶梯表达式（数字输入和默认输出）
    */
-  public static step(input: number, defaultOutput: number, ...stops: Expression[]): Expression {
-    return Expression.step(Expression.literal(input), Expression.literal(defaultOutput), ...stops);
+  public static step(input: number, defaultOutput: number, ...stops: Expression[]): Expression;
+
+  /**
+   * 阶梯表达式的实现
+   */
+  public static step(
+    input: Expression<number> | number,
+    defaultOutput: Expression | number,
+    ...stops: Expression[]
+  ): Expression {
+    const inputExpr = typeof input === 'number' ? Expression.literal(input) : input;
+    const defaultExpr = typeof defaultOutput === 'number' ? Expression.literal(defaultOutput) : defaultOutput;
+    return new Expression('step', ...Expression.join([inputExpr, defaultExpr], stops));
   }
 
   // ==================== 格式化表达式 ====================
@@ -1097,15 +1315,22 @@ export class Expression<T = any> {
    * @param number 要格式化的数字
    * @param options 格式化选项
    */
-  public static numberFormat(number: Expression<number>, ...options: Expression[]): Expression<string> {
-    return new Expression<string>('number-format', ...[number, ...options]);
-  }
+  public static numberFormat(number: Expression<number>, ...options: Expression[]): Expression<string>;
 
   /**
    * 数字格式化表达式（数字参数）
    */
-  public static numberFormat(number: number, ...options: Expression[]): Expression<string> {
-    return Expression.numberFormat(Expression.literal(number), ...options);
+  public static numberFormat(number: number, ...options: Expression[]): Expression<string>;
+
+  /**
+   * 数字格式化表达式的实现
+   */
+  public static numberFormat(
+    number: Expression<number> | number,
+    ...options: Expression[]
+  ): Expression<string> {
+    const numberExpr = typeof number === 'number' ? Expression.literal(number) : number;
+    return new Expression<string>('number-format', ...[numberExpr, ...options]);
   }
 
   /**
@@ -1113,15 +1338,19 @@ export class Expression<T = any> {
    * 
    * @param imageName 图像名称
    */
-  public static image(imageName: Expression<string>): Expression {
-    return new Expression('image', imageName);
-  }
+  public static image(imageName: Expression<string>): Expression;
 
   /**
    * 图像表达式（字符串参数）
    */
-  public static image(imageName: string): Expression {
-    return Expression.image(Expression.literal(imageName));
+  public static image(imageName: string): Expression;
+
+  /**
+   * 图像表达式的实现
+   */
+  public static image(imageName: Expression<string> | string): Expression {
+    const imageNameExpr = typeof imageName === 'string' ? Expression.literal(imageName) : imageName;
+    return new Expression('image', imageNameExpr);
   }
 
   // ==================== 空间操作符 ====================
@@ -1140,7 +1369,8 @@ export class Expression<T = any> {
    */
   public static within(polygon: Object): Expression<boolean> {
     const map = new Map<string, Expression>();
-    map.set('type', Expression.literal((polygon as any).type));
+    const polyObj = polygon as Record<string, Object>;
+    map.set('type', Expression.literal(polyObj['type']));
     map.set('json', Expression.literal(JSON.stringify(polygon)));
     return new Expression<boolean>('within', new ExpressionMap(map));
   }
@@ -1164,77 +1394,72 @@ export class Expression<T = any> {
   // ==================== Expression Converter ====================
 
   /**
-   * Converter - 从 JSON 转换为 Expression
+   * 从 JSON 数组转换为 Expression
+   * 
+   * @param json JSON 数组或值
+   * @return Expression 对象
    */
-  public static Converter = class {
-    /**
-     * 从 JSON 数组转换为 Expression
-     * 
-     * @param json JSON 数组或值
-     * @return Expression 对象
-     */
-    public static convert(json: any): Expression | null {
-      if (json === null || json === undefined) {
-        return null;
-      }
-
-      // 字面量值
-      if (typeof json === 'number' || typeof json === 'string' || typeof json === 'boolean') {
-        return Expression.literal(json);
-      }
-
-      // 数组表达式
-      if (Array.isArray(json)) {
-        if (json.length === 0) {
-          return Expression.literal([]);
-        }
-
-        const operator = json[0];
-        
-        // 特殊处理 literal 操作符
-        if (operator === 'literal') {
-          if (json.length === 2) {
-            return Expression.literal(json[1]);
-          }
-        }
-
-        // 递归转换参数
-        const args: Expression[] = [];
-        for (let i = 1; i < json.length; i++) {
-          const converted = this.convert(json[i]);
-          if (converted !== null) {
-            args.push(converted);
-          }
-        }
-
-        // 根据操作符创建 Expression
-        return new Expression(operator, ...args);
-      }
-
-      // 对象（用于 format, collator 等）
-      if (typeof json === 'object') {
-        return Expression.literal(json);
-      }
-
+  public static convertFromJson(json: Object | null): Expression | null {
+    if (json === null || json === undefined) {
       return null;
     }
 
-    /**
-     * 从 JSON 字符串转换为 Expression
-     * 
-     * @param jsonString JSON 字符串
-     * @return Expression 对象
-     */
-    public static fromString(jsonString: string): Expression | null {
-      try {
-        const json = JSON.parse(jsonString);
-        return this.convert(json);
-      } catch (e) {
-        console.error(`Failed to parse Expression from JSON: ${e}`);
-        return null;
-      }
+    // 字面量值
+    if (typeof json === 'number' || typeof json === 'string' || typeof json === 'boolean') {
+      return Expression.literal(json);
     }
-  };
+
+    // 数组表达式
+    if (Array.isArray(json)) {
+      if (json.length === 0) {
+        return Expression.literal([]);
+      }
+
+      const operator = json[0] as string;
+      
+      // 特殊处理 literal 操作符
+      if (operator === 'literal') {
+        if (json.length === 2) {
+          return Expression.literal(json[1]);
+        }
+      }
+
+      // 递归转换参数
+      const args: Expression[] = [];
+      for (let i = 1; i < json.length; i++) {
+        const converted = Expression.convertFromJson(json[i]);
+        if (converted !== null) {
+          args.push(converted);
+        }
+      }
+
+      // 根据操作符创建 Expression
+      return new Expression(operator, ...args);
+    }
+
+    // 对象（用于 format, collator 等）
+    if (typeof json === 'object') {
+      return Expression.literal(json);
+    }
+
+    return null;
+  }
+
+  /**
+   * 从 JSON 字符串转换为 Expression
+   * 
+   * @param jsonString JSON 字符串
+   * @return Expression 对象
+   */
+  public static fromJsonString(jsonString: string): Expression | null {
+    try {
+      const json: Object = JSON.parse(jsonString);
+      return Expression.convertFromJson(json);
+    } catch (e) {
+      console.error(`Failed to parse Expression from JSON: ${e}`);
+      return null;
+    }
+  }
 }
 
 /**
@@ -1248,6 +1473,13 @@ export class ExpressionLiteral extends Expression implements ValueExpression {
     this.literal = literal;
   }
 
+  /**
+   * 覆盖父类方法，标识这是一个值表达式
+   */
+  isValue(): boolean {
+    return true;
+  }
+
   public toValue(): Object | null {
     if (this.literal instanceof ExpressionLiteral) {
       return (this.literal as ExpressionLiteral).toValue();
@@ -1255,7 +1487,7 @@ export class ExpressionLiteral extends Expression implements ValueExpression {
     return this.literal;
   }
 
-  public toArray(): Object[] {
+  public toArray(): (Object | null)[] {
     if (typeof this.literal === 'string') {
       // 字符串字面量直接返回值，不需要 ["literal", "value"] 格式
       const unwrapped = this.unwrapStringLiteral(this.literal);
@@ -1266,7 +1498,7 @@ export class ExpressionLiteral extends Expression implements ValueExpression {
     }
     if (typeof this.literal === 'number' || typeof this.literal === 'boolean' || this.literal === null) {
       // 数字、布尔值和 null 可以直接作为字面量
-      return [this.literal];
+      return [this.literal as (Object | null)];
     }
     return ['literal', this.literal];
   }
@@ -1298,19 +1530,19 @@ export class ExpressionLiteral extends Expression implements ValueExpression {
  * ExpressionLiteralArray - 数组字面量表达式
  */
 export class ExpressionLiteralArray extends ExpressionLiteral {
-  private array: Object[];
+  private array: (Object | null)[];
 
-  constructor(array: Object[]) {
-    super(array);
+  constructor(array: (Object | null)[]) {
+    super(array as Object);
     this.array = array;
   }
 
-  public toArray(): Object[] {
-    return ['literal', this.array];
+  public toArray(): (Object | null)[] {
+    return ['literal', this.array as Object];
   }
 
   public toValue(): Object | null {
-    return this.array;
+    return this.array as Object;
   }
 }
 
@@ -1328,16 +1560,17 @@ export class ExpressionMap extends Expression implements ValueExpression {
   public toValue(): Object | null {
     const unwrappedMap: Record<string, Object | null> = {};
     this.map.forEach((value: Expression, key: string) => {
-      if (this.isValueExpression(value)) {
-        unwrappedMap[key] = (value as any as ValueExpression).toValue();
+      if (value.isValue()) {
+        // 使用虚方法判断，然后安全转换
+        unwrappedMap[key] = (value as ExpressionLiteral).toValue();
       } else {
-        unwrappedMap[key] = value.toArray();
+        unwrappedMap[key] = value.toArray() as Object;
       }
     });
     return unwrappedMap;
   }
 
-  public toArray(): Object[] {
+  public toArray(): (Object | null)[] {
     return [this.toValue()];
   }
 }

@@ -1,33 +1,9 @@
 /**
  * BackgroundLayer - 背景图层
+ * 
+ * 直接从 NAPI 层重新导出 BackgroundLayer 类
  */
+import type maplibre from 'libmaplibre_native.so';
 
-import { Layer } from './Layer';
-
-export class BackgroundLayer extends Layer {
-  constructor(id: string) {
-    super({
-      id: id,
-      type: 'background',
-      source: '', // Background layer 不需要 source
-      layout: {},
-      paint: {}
-    });
-  }
-  
-  public withBackgroundColor(color: string | Object): this {
-    this.paint['background-color'] = color;
-    return this;
-  }
-  
-  public withBackgroundOpacity(opacity: number | Object): this {
-    this.paint['background-opacity'] = opacity;
-    return this;
-  }
-  
-  public withBackgroundPattern(pattern: string | Object): this {
-    this.paint['background-pattern'] = pattern;
-    return this;
-  }
-}
-
+// 重新导出 NAPI 类型
+export type BackgroundLayer = maplibre.BackgroundLayer;

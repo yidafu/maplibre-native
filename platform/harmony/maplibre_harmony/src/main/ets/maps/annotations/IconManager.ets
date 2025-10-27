@@ -7,6 +7,14 @@ type Marker = maplibre.Marker;
 type NativeMapView = maplibre.NativeMapView;
 
 /**
+ * Icon 引用数据
+ */
+interface IconRefData {
+  icon: Icon;
+  refCount: number;
+}
+
+/**
  * IconManager - 图标管理器
  * 
  * 负责管理地图上的图标，包括：
@@ -28,18 +36,10 @@ type NativeMapView = maplibre.NativeMapView;
  */
 export class IconManager {
   private iconMap: Map<string, IconRefData> = new Map();
-  private nativeMapView: NativeMapView;
+  private nativeMapView!: NativeMapView;
   private highestIconWidth: number = 0;
   private highestIconHeight: number = 0;
-  private iconFactory: IconFactory;
-
-  /**
-   * Icon 引用数据
-   */
-  private interface IconRefData {
-    icon: Icon;
-    refCount: number;
-  }
+  private iconFactory!: IconFactory;
 
   /**
    * 构造函数
@@ -81,7 +81,7 @@ export class IconManager {
       return icon;
     } catch (error) {
       console.error('[IconManager] Failed to load icon for marker:', error);
-      throw error;
+      throw new Error('Failed to load icon for marker: ' + error);
     }
   }
 
@@ -158,7 +158,7 @@ export class IconManager {
       console.debug(`[IconManager] Icon ${iconId} loaded to native successfully`);
     } catch (error) {
       console.error(`[IconManager] Failed to load icon ${icon.getId()} to native:`, error);
-      throw error;
+      throw new Error(`Failed to load icon ${icon.getId()} to native: ` + error);
     }
   }
 
@@ -237,6 +237,18 @@ export class IconManager {
   }
 
   /**
+   * 公开方法：添加图标
+   * 
+   * @param icon Icon 实例
+   */
+  public async addIconIfNeeded(icon: Icon): Promise<void> {
+    const iconId = icon.getId();
+    if (!this.iconMap.has(iconId)) {
+      await this.addIcon(icon);
+    }
+  }
+
+  /**
    * 确保 Marker 的图标已加载
    * 
    * 用于 Marker 更新时确保图标存在
@@ -246,11 +258,7 @@ export class IconManager {
   public async ensureIconLoaded(marker: Marker): Promise<void> {
     const icon = this.getMarkerIcon(marker);
     if (icon) {
-      const iconId = icon.getId();
-      if (!this.iconMap.has(iconId)) {
-        // 图标不在缓存中，添加它
-        await this.addIcon(icon);
-      }
+      await this.addIconIfNeeded(icon);
     } else {
       // Marker 没有图标，加载默认图标
       await this.loadIconForMarker(marker);
@@ -265,8 +273,9 @@ export class IconManager {
    */
   public getTopOffsetPixelsForIcon(icon: Icon): number {
     try {
-      const pixelRatio = this.nativeMapView.getPixelRatio();
-      const topOffset = this.nativeMapView.getTopOffsetPixelsForAnnotationSymbol(icon.getId());
+      // TODO: NativeMapView 没有 getPixelRatio() 方法，使用默认值
+      const pixelRatio: number = 1.0;
+      const topOffset: number = this.nativeMapView.getTopOffsetPixelsForAnnotationSymbol(icon.getId());
       return topOffset * pixelRatio;
     } catch (error) {
       console.warn(`[IconManager] Failed to get top offset for icon ${icon.getId()}:`, error);
@@ -293,26 +302,30 @@ export class IconManager {
   }
 
   /**
-   * 更新最大图标尺寸
+   * 更新最大图标尺寸（Icon 版本）
    * 
-   * @param icon Icon 实例
+   * @param iconOrWidth Icon 实例或宽度
+   * @param height 高度（可选）
    */
-  private updateHighestIconSize(icon: Icon): void {
-    this.updateHighestIconSize(icon.getWidth(), icon.getHeight());
-  }
-
-  /**
-   * 更新最大图标尺寸
-   * 
-   * @param width 宽度
-   * @param height 高度
-   */
-  private updateHighestIconSize(width: number, height: number): void {
+  private updateHighestIconSize(iconOrWidth: Icon | number, height?: number): void {
+    let width: number;
+    let h: number;
+    
+    if (typeof iconOrWidth === 'number') {
+      // 直接传入 width 和 height
+      width = iconOrWidth;
+      h = height!;
+    } else {
+      // 传入 Icon 对象
+      width = iconOrWidth.getWidth();
+      h = iconOrWidth.getHeight();
+    }
+    
     if (width > this.highestIconWidth) {
       this.highestIconWidth = width;
     }
-    if (height > this.highestIconHeight) {
-      this.highestIconHeight = height;
+    if (h > this.highestIconHeight) {
+      this.highestIconHeight = h;
     }
   }
 
@@ -341,14 +354,14 @@ export class IconManager {
   public cleanup(): void {
     console.info('[IconManager] Cleaning up all icons...');
     
-    for (const [iconId, refData] of this.iconMap.entries()) {
+    this.iconMap.forEach((refData: IconRefData, iconId: string) => {
       try {
         this.nativeMapView.removeAnnotationIcon(iconId);
         refData.icon.release();
       } catch (error) {
         console.error(`[IconManager] Failed to cleanup icon ${iconId}:`, error);
       }
-    }
+    });
     
     this.iconMap.clear();
     this.highestIconWidth = 0;

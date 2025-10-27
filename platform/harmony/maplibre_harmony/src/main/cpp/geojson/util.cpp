@@ -1,5 +1,5 @@
 #include "util.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 #include <cstring>
 
 using mbgl::harmony::Logger;
@@ -78,6 +78,29 @@ std::vector<mbgl::LineString<double>> NapiArrayToLineStringVector(napi_env env, 
     return result;
 }
 
+std::vector<mbgl::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array) {
+    std::vector<mbgl::LinearRing<double>> result;
+    
+    if (!IsArray(env, array)) {
+        return result;
+    }
+    
+    uint32_t length = 0;
+    napi_get_array_length(env, array, &length);
+    result.reserve(length);
+    
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value element;
+        napi_get_element(env, array, i, &element);
+        
+        // 每个元素是坐标数组 (LinearRing is a vector<Point>)
+        mbgl::LinearRing<double> ring = NapiArrayToPointVector(env, element);
+        result.push_back(std::move(ring));
+    }
+    
+    return result;
+}
+
 std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array) {
     std::vector<mbgl::Polygon<double>> result;
     
@@ -93,8 +116,8 @@ std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_v
         napi_value element;
         napi_get_element(env, array, i, &element);
         
-        // 每个元素是 LinearRing 数组
-        result.push_back(NapiArrayToLineStringVector(env, element));
+        // 每个元素是 LinearRing 数组 (Polygon is a vector<LinearRing>)
+        result.push_back(NapiArrayToLinearRingVector(env, element));
     }
     
     return result;
@@ -145,12 +168,26 @@ napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mbgl::Lin
     return array;
 }
 
+napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mbgl::LinearRing<double>>& rings) {
+    napi_value array;
+    napi_create_array_with_length(env, rings.size(), &array);
+    
+    for (size_t i = 0; i < rings.size(); i++) {
+        // LinearRing is essentially a vector<Point>, same as LineString
+        napi_value ringArray = PointVectorToNapiArray(env, rings[i]);
+        napi_set_element(env, array, i, ringArray);
+    }
+    
+    return array;
+}
+
 napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mbgl::Polygon<double>>& polygons) {
     napi_value array;
     napi_create_array_with_length(env, polygons.size(), &array);
     
     for (size_t i = 0; i < polygons.size(); i++) {
-        napi_value polyArray = LineStringVectorToNapiArray(env, polygons[i]);
+        // Polygon is a vector<LinearRing>
+        napi_value polyArray = LinearRingVectorToNapiArray(env, polygons[i]);
         napi_set_element(env, array, i, polyArray);
     }
     

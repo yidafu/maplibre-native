@@ -1,6 +1,6 @@
 #include "camera_position_harmony.hpp"
-#include "../geometry/lat_lng_harmony.hpp"
-#include "../logger.h"
+#include "geometry/lat_lng_harmony.hpp"
+#include "utils/logger.h"
 
 namespace mbgl {
 namespace harmony {

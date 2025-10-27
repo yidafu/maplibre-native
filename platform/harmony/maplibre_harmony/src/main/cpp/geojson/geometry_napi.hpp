@@ -40,6 +40,7 @@ public:
     
     explicit GeometryEvaluator(napi_env e) : env(e) {}
     
+    napi_value operator()(const mbgl::EmptyGeometry& geometry) const;
     napi_value operator()(const mbgl::Point<double>& geometry) const;
     napi_value operator()(const mbgl::LineString<double>& geometry) const;
     napi_value operator()(const mbgl::Polygon<double>& geometry) const;

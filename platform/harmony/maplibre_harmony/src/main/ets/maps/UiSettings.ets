@@ -1,3 +1,7 @@
+import { CompassVisibility } from './widgets/CompassVisibility';
+import { CompassPosition } from './widgets/CompassPosition';
+import { ScaleBarUnit } from './widgets/ScaleBarView';
+
 /**
  * 焦点位置类型
  */
@@ -12,9 +16,26 @@ export class FocalPoint {
 }
 
 /**
+ * 指南针边距配置
+ */
+export class CompassMargins {
+  left: number = 0;
+  top: number = 0;
+  right: number = 0;
+  bottom: number = 0;
+
+  constructor(left: number = 10, top: number = 10, right: number = 10, bottom: number = 10) {
+    this.left = left;
+    this.top = top;
+    this.right = right;
+    this.bottom = bottom;
+  }
+}
+
+/**
  * UI 设置类
  * 
- * 管理地图的手势启用/禁用配置
+ * 管理地图的手势启用/禁用配置和 UI 组件配置
  * 参考 Android UiSettings 和 iOS MLNMapView 属性
  */
 
@@ -61,6 +82,62 @@ export class UiSettings {
 
   // Rotation 相关配置
   private rotationRate: number = 1.0;  // 旋转速率倍率（控制旋转灵敏度）
+
+  // ==================== 指南针配置 ====================
+  
+  // 指南针启用状态
+  private compassEnabled: boolean = true;
+  
+  // 指南针可见性模式
+  private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
+  
+  // 正北时是否淡出
+  private compassFadeWhenFacingNorth: boolean = true;
+  
+  // 指南针边距
+  private compassMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  
+  // 指南针位置
+  private compassPosition: CompassPosition = CompassPosition.TopRight;
+  
+  // 指南针更新回调（由 MapLibreMap 注入）
+  public onCompassConfigChanged?: () => void;
+
+  // ==================== Logo 配置 ====================
+  
+  // Logo 启用状态
+  private logoEnabled: boolean = true;
+  
+  // Logo 边距
+  private logoMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  
+  // Logo 位置
+  private logoPosition: CompassPosition = CompassPosition.BottomLeft;
+  
+  // Logo 更新回调
+  public onLogoConfigChanged?: () => void;
+
+  // ==================== ScaleBar 配置 ====================
+  
+  // ScaleBar 启用状态
+  private scaleBarEnabled: boolean = false;  // 默认不启用
+  
+  // ScaleBar 单位系统
+  private scaleBarUnit: ScaleBarUnit = ScaleBarUnit.Metric;
+  
+  // ScaleBar 是否使用深色样式
+  private scaleBarUseDarkStyles: boolean = false;
+  
+  // ScaleBar 边距
+  private scaleBarMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  
+  // ScaleBar 位置
+  private scaleBarPosition: CompassPosition = CompassPosition.TopLeft;
+  
+  // ScaleBar 更新回调
+  public onScaleBarConfigChanged?: () => void;
+
+  // ==================== 手势配置 ====================
 
   /**
    * 设置是否启用滚动手势（平移）
@@ -429,6 +506,285 @@ export class UiSettings {
    */
   getRotationRate(): number {
     return this.rotationRate;
+  }
+
+  // ==================== 指南针配置方法 ====================
+
+  /**
+   * 设置指南针启用状态
+   * @param enabled 是否启用指南针
+   */
+  setCompassEnabled(enabled: boolean): void {
+    if (this.compassEnabled !== enabled) {
+      this.compassEnabled = enabled;
+      this.notifyCompassConfigChanged();
+    }
+  }
+
+  /**
+   * 获取指南针启用状态
+   */
+  isCompassEnabled(): boolean {
+    return this.compassEnabled;
+  }
+
+  /**
+   * 设置指南针可见性模式
+   * @param visibility 可见性模式
+   */
+  setCompassVisibility(visibility: CompassVisibility): void {
+    if (this.compassVisibility !== visibility) {
+      this.compassVisibility = visibility;
+      this.notifyCompassConfigChanged();
+    }
+  }
+
+  /**
+   * 获取指南针可见性模式
+   */
+  getCompassVisibility(): CompassVisibility {
+    return this.compassVisibility;
+  }
+
+  /**
+   * 设置指南针在正北时是否淡出
+   * @param fade 是否淡出
+   */
+  setCompassFadeFacingNorth(fade: boolean): void {
+    if (this.compassFadeWhenFacingNorth !== fade) {
+      this.compassFadeWhenFacingNorth = fade;
+      this.notifyCompassConfigChanged();
+    }
+  }
+
+  /**
+   * 获取指南针在正北时是否淡出
+   */
+  isCompassFadeWhenFacingNorth(): boolean {
+    return this.compassFadeWhenFacingNorth;
+  }
+
+  /**
+   * 设置指南针边距
+   * @param left 左边距
+   * @param top 上边距
+   * @param right 右边距
+   * @param bottom 下边距
+   */
+  setCompassMargins(left: number, top: number, right: number, bottom: number): void {
+    this.compassMargins.left = left;
+    this.compassMargins.top = top;
+    this.compassMargins.right = right;
+    this.compassMargins.bottom = bottom;
+    this.notifyCompassConfigChanged();
+  }
+
+  /**
+   * 获取指南针边距
+   */
+  getCompassMargins(): CompassMargins {
+    return this.compassMargins;
+  }
+
+  /**
+   * 设置指南针位置
+   * @param position 位置枚举
+   */
+  setCompassPosition(position: CompassPosition): void {
+    if (this.compassPosition !== position) {
+      this.compassPosition = position;
+      this.notifyCompassConfigChanged();
+    }
+  }
+
+  /**
+   * 获取指南针位置
+   */
+  getCompassPosition(): CompassPosition {
+    return this.compassPosition;
+  }
+
+  /**
+   * 通知指南针配置变更
+   */
+  private notifyCompassConfigChanged(): void {
+    if (this.onCompassConfigChanged) {
+      this.onCompassConfigChanged();
+    }
+  }
+
+  // ==================== Logo 配置方法 ====================
+
+  /**
+   * 设置 Logo 启用状态
+   * @param enabled 是否启用 Logo
+   */
+  setLogoEnabled(enabled: boolean): void {
+    if (this.logoEnabled !== enabled) {
+      this.logoEnabled = enabled;
+      this.notifyLogoConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 Logo 启用状态
+   */
+  isLogoEnabled(): boolean {
+    return this.logoEnabled;
+  }
+
+  /**
+   * 设置 Logo 位置
+   * @param position 位置枚举
+   */
+  setLogoPosition(position: CompassPosition): void {
+    if (this.logoPosition !== position) {
+      this.logoPosition = position;
+      this.notifyLogoConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 Logo 位置
+   */
+  getLogoPosition(): CompassPosition {
+    return this.logoPosition;
+  }
+
+  /**
+   * 设置 Logo 边距
+   * @param left 左边距
+   * @param top 上边距
+   * @param right 右边距
+   * @param bottom 下边距
+   */
+  setLogoMargins(left: number, top: number, right: number, bottom: number): void {
+    this.logoMargins.left = left;
+    this.logoMargins.top = top;
+    this.logoMargins.right = right;
+    this.logoMargins.bottom = bottom;
+    this.notifyLogoConfigChanged();
+  }
+
+  /**
+   * 获取 Logo 边距
+   */
+  getLogoMargins(): CompassMargins {
+    return this.logoMargins;
+  }
+
+  /**
+   * 通知 Logo 配置变更
+   */
+  private notifyLogoConfigChanged(): void {
+    if (this.onLogoConfigChanged) {
+      this.onLogoConfigChanged();
+    }
+  }
+
+  // ==================== ScaleBar 配置方法 ====================
+
+  /**
+   * 设置 ScaleBar 启用状态
+   * @param enabled 是否启用 ScaleBar
+   */
+  setScaleBarEnabled(enabled: boolean): void {
+    if (this.scaleBarEnabled !== enabled) {
+      this.scaleBarEnabled = enabled;
+      this.notifyScaleBarConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 ScaleBar 启用状态
+   */
+  isScaleBarEnabled(): boolean {
+    return this.scaleBarEnabled;
+  }
+
+  /**
+   * 设置 ScaleBar 单位系统
+   * @param unit 单位系统（公制/英制）
+   */
+  setScaleBarUnit(unit: ScaleBarUnit): void {
+    if (this.scaleBarUnit !== unit) {
+      this.scaleBarUnit = unit;
+      this.notifyScaleBarConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 ScaleBar 单位系统
+   */
+  getScaleBarUnit(): ScaleBarUnit {
+    return this.scaleBarUnit;
+  }
+
+  /**
+   * 设置 ScaleBar 是否使用深色样式
+   * @param useDarkStyles 是否使用深色样式
+   */
+  setScaleBarUseDarkStyles(useDarkStyles: boolean): void {
+    if (this.scaleBarUseDarkStyles !== useDarkStyles) {
+      this.scaleBarUseDarkStyles = useDarkStyles;
+      this.notifyScaleBarConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 ScaleBar 是否使用深色样式
+   */
+  isScaleBarUseDarkStyles(): boolean {
+    return this.scaleBarUseDarkStyles;
+  }
+
+  /**
+   * 设置 ScaleBar 位置
+   * @param position 位置枚举
+   */
+  setScaleBarPosition(position: CompassPosition): void {
+    if (this.scaleBarPosition !== position) {
+      this.scaleBarPosition = position;
+      this.notifyScaleBarConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 ScaleBar 位置
+   */
+  getScaleBarPosition(): CompassPosition {
+    return this.scaleBarPosition;
+  }
+
+  /**
+   * 设置 ScaleBar 边距
+   * @param left 左边距
+   * @param top 上边距
+   * @param right 右边距
+   * @param bottom 下边距
+   */
+  setScaleBarMargins(left: number, top: number, right: number, bottom: number): void {
+    this.scaleBarMargins.left = left;
+    this.scaleBarMargins.top = top;
+    this.scaleBarMargins.right = right;
+    this.scaleBarMargins.bottom = bottom;
+    this.notifyScaleBarConfigChanged();
+  }
+
+  /**
+   * 获取 ScaleBar 边距
+   */
+  getScaleBarMargins(): CompassMargins {
+    return this.scaleBarMargins;
+  }
+
+  /**
+   * 通知 ScaleBar 配置变更
+   */
+  private notifyScaleBarConfigChanged(): void {
+    if (this.onScaleBarConfigChanged) {
+      this.onScaleBarConfigChanged();
+    }
   }
 }
 

@@ -1,16 +1,9 @@
-#include "style/style_napi.hpp"
-#include "../../napi/core/napi_args.hpp"
-#include "../../napi/core/napi_utils.h"
-#include "../../utils/logger.h"
+#include "style_napi.hpp"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/source.hpp>
-#include <mbgl/style/layer.hpp>
-// Source NAPI 类
-#include "sources/geojson_source_napi.hpp"
-#include "sources/vector_source_napi.hpp"
-#include "sources/raster_source_napi.hpp"
-#include "sources/raster_dem_source_napi.hpp"
-#include "sources/image_source_napi.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -18,188 +11,9 @@ using mbgl::harmony::Logger;
 namespace maplibre {
 namespace harmony {
 
-// Static member initialization
-napi_ref StyleNAPI::constructor = nullptr;
+// ==================== Source 管理 ====================
 
-StyleNAPI::StyleNAPI(mbgl::Map* map)
-    : map(map), fullyLoaded(false) {
-    Logger::info("StyleNAPI", "StyleNAPI instance created");
-}
-
-StyleNAPI::~StyleNAPI() {
-    Logger::info("StyleNAPI", "StyleNAPI instance destroyed");
-}
-
-void StyleNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("StyleNAPI", "Destructor called");
-    StyleNAPI* style = static_cast<StyleNAPI*>(nativeObject);
-    delete style;
-}
-
-napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
-    Logger::info("StyleNAPI", "Initializing Style NAPI class");
-    
-    napi_property_descriptor properties[] = {
-        // Getters
-        { "getUri", nullptr, GetUri, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getJson", nullptr, GetJson, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "isFullyLoaded", nullptr, IsFullyLoaded, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-        // Source 管理
-        { "addSource", nullptr, AddSource, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "removeSource", nullptr, RemoveSource, nullptr, nullptr, nullptr, napi_default, nullptr },
-        if (status == napi_ok && backgroundLayer) {
-            try {
-                layerId = backgroundLayer->getId();
-                auto layer = backgroundLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                style->map->getStyle().addLayer(std::move(layer));
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayer (BackgroundLayer): %s", layerId.c_str());
-            } catch (const std::exception& e) {
-                Logger::error("StyleNAPI", "AddLayer (BackgroundLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-    
-    // 5. RasterLayer
-    if (!layerAdded) {
-        RasterLayerNAPI* rasterLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&rasterLayer));
-        if (status == napi_ok && rasterLayer) {
-            try {
-                layerId = rasterLayer->getId();
-                auto layer = rasterLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                style->map->getStyle().addLayer(std::move(layer));
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayer (RasterLayer): %s", layerId.c_str());
-            } catch (const std::exception& e) {
-                Logger::error("StyleNAPI", "AddLayer (RasterLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-    
-    if (!layerAdded) {
-        napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-        return nullptr;
-    }
-    
-    return nullptr;
-}
-
-napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    StyleNAPI* style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
-    
-    if (!style || !style->map) {
-        napi_throw_error(env, nullptr, "Invalid style instance");
-        return nullptr;
-    }
-    
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "AddLayerBelow requires 2 arguments: layer, belowLayerId");
-        return nullptr;
-    }
-    
-    napi_value layerValue = args[0];
-    std::string belowLayerId = GetStringFromValue(env, args[1]);
-    std::string layerId;
-    std::unique_ptr<mbgl::style::Layer> layer;
-    
-    // Try to unwrap different layer types
-    FillLayerNAPI* fillLayer = nullptr;
-    napi_status status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&fillLayer));
-    if (status == napi_ok && fillLayer) {
-        layerId = fillLayer->getId();
-        layer = fillLayer->releaseLayer();
-    }
-    
-    if (!layer) {
-        LineLayerNAPI* lineLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&lineLayer));
-        if (status == napi_ok && lineLayer) {
-            layerId = lineLayer->getId();
-            layer = lineLayer->releaseLayer();
-        }
-    }
-    
-    if (!layer) {
-        CircleLayerNAPI* circleLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&circleLayer));
-        if (status == napi_ok && circleLayer) {
-            layerId = circleLayer->getId();
-            layer = circleLayer->releaseLayer();
-        }
-    }
-    
-    if (!layer) {
-        BackgroundLayerNAPI* backgroundLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&backgroundLayer));
-        if (status == napi_ok && backgroundLayer) {
-            layerId = backgroundLayer->getId();
-            layer = backgroundLayer->releaseLayer();
-        }
-    }
-    
-    if (!layer) {
-        RasterLayerNAPI* rasterLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&rasterLayer));
-        if (status == napi_ok && rasterLayer) {
-            layerId = rasterLayer->getId();
-            layer = rasterLayer->releaseLayer();
-        }
-    }
-    
-    if (!layer) {
-        napi_throw_error(env, nullptr, "Invalid layer type or layer already added");
-        return nullptr;
-    }
-    
-    try {
-        style->map->getStyle().addLayer(std::move(layer), belowLayerId);
-        style->layers[layerId] = true;
-        Logger::info("StyleNAPI", "AddLayerBelow: %s (below: %s)", layerId.c_str(), belowLayerId.c_str());
-    } catch (const std::exception& e) {
-        Logger::error("StyleNAPI", "AddLayerBelow failed: %s", e.what());
-        napi_throw_error(env, nullptr, e.what());
-        return nullptr;
-    }
-    
-    return nullptr;
-}
-
-napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
-    // TODO: MapLibre Core doesn't have direct addLayerAbove
-    // For now, treat as regular addLayer (adds to top)
-    Logger::warn("StyleNAPI", "AddLayerAbove not fully implemented, adding to top");
-    return AddLayer(env, info);
-}
-
-napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
-    // TODO: Need to convert index to layer ID
-    Logger::warn("StyleNAPI", "AddLayerAt not fully implemented, adding to top");
-    return AddLayer(env, info);
-}
-
-napi_value StyleNAPI::RemoveLayer(napi_env env, napi_callback_info info) {
+napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     size_t argc = 1;
     napi_value args[1];
@@ -209,88 +23,199 @@ napi_value StyleNAPI::RemoveLayer(napi_env env, napi_callback_info info) {
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
     if (!style || !style->map) {
-        return CreateBoolValue(env, false);
+        Logger::error("StyleNAPI", "RemoveSource: Invalid style or map");
+        napi_throw_error(env, nullptr, "Invalid style instance");
+        return nullptr;
     }
     
     if (argc < 1) {
-        return CreateBoolValue(env, false);
+        napi_throw_error(env, nullptr, "RemoveSource requires sourceId argument");
+        return nullptr;
     }
     
-    std::string layerId = GetStringFromValue(env, args[0]);
+    // 获取 sourceId
+    std::string sourceId = GetStringFromValue(env, args[0]);
+    if (sourceId.empty()) {
+        napi_throw_error(env, nullptr, "sourceId cannot be empty");
+        return nullptr;
+    }
     
     try {
-        style->map->getStyle().removeLayer(layerId);
-        style->layers.erase(layerId);
-        Logger::info("StyleNAPI", "RemoveLayer: %s", layerId.c_str());
-        return CreateBoolValue(env, true);
+        // 从样式中移除 source
+        mbgl::style::Source* source = style->map->getStyle().getSource(sourceId);
+        if (!source) {
+            Logger::error("StyleNAPI", "RemoveSource: Source not found: %s", sourceId.c_str());
+            napi_throw_error(env, nullptr, "Source not found");
+            return nullptr;
+        }
+        
+        style->map->getStyle().removeSource(sourceId);
+        style->sources.erase(sourceId);
+        
+        Logger::info("StyleNAPI", "RemoveSource: %s", sourceId.c_str());
+        
+        napi_value result;
+        napi_get_undefined(env, &result);
+        return result;
     } catch (const std::exception& e) {
-        Logger::error("StyleNAPI", "RemoveLayer failed: %s", e.what());
-        return CreateBoolValue(env, false);
+        Logger::error("StyleNAPI", "RemoveSource failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return nullptr;
     }
 }
 
-napi_value StyleNAPI::RemoveLayerAt(napi_env env, napi_callback_info info) {
-    // TODO: 实现移除指定索引的图层
-    return CreateBoolValue(env, false);
+napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
+    napi_value jsThis;
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    
+    StyleNAPI* style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
+    
+    if (!style || !style->map) {
+        Logger::error("StyleNAPI", "GetSource: Invalid style or map");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "GetSource requires sourceId argument");
+        return nullptr;
+    }
+    
+    // 获取 sourceId
+    std::string sourceId = GetStringFromValue(env, args[0]);
+    if (sourceId.empty()) {
+        napi_throw_error(env, nullptr, "sourceId cannot be empty");
+        return nullptr;
+    }
+    
+    try {
+        // 从样式获取 source
+        mbgl::style::Source* source = style->map->getStyle().getSource(sourceId);
+        if (!source) {
+            Logger::info("StyleNAPI", "GetSource: Source not found: %s", sourceId.c_str());
+            napi_value result;
+            napi_get_null(env, &result);
+            return result;
+        }
+        
+        // TODO: 返回对应的 Source NAPI wrapper
+        // 目前返回一个简单的对象，包含基本信息
+        napi_value result;
+        napi_create_object(env, &result);
+        
+        napi_value idValue = CreateStringValue(env, source->getID());
+        napi_set_named_property(env, result, "id", idValue);
+        
+        // 获取 source 类型
+        std::string typeStr;
+        switch (source->getType()) {
+            case mbgl::style::SourceType::Vector:
+                typeStr = "vector";
+                break;
+            case mbgl::style::SourceType::Raster:
+                typeStr = "raster";
+                break;
+            case mbgl::style::SourceType::RasterDEM:
+                typeStr = "raster-dem";
+                break;
+            case mbgl::style::SourceType::GeoJSON:
+                typeStr = "geojson";
+                break;
+            case mbgl::style::SourceType::Image:
+                typeStr = "image";
+                break;
+            default:
+                typeStr = "unknown";
+                break;
+        }
+        
+        napi_value typeValue = CreateStringValue(env, typeStr);
+        napi_set_named_property(env, result, "type", typeValue);
+        
+        Logger::debug("StyleNAPI", "GetSource: %s (type: %s)", sourceId.c_str(), typeStr.c_str());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("StyleNAPI", "GetSource failed: %s", e.what());
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
 }
 
-napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
-    // TODO: 实现获取图层
-    napi_value result;
-    napi_get_null(env, &result);
-    return result;
-}
-
-napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
-    // TODO: 实现获取所有图层
-    napi_value result;
-    napi_create_array(env, &result);
-    return result;
-}
-
-// ==================== Image 管理 ====================
-
-napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
-    // TODO: 实现添加图片
-    return nullptr;
-}
-
-napi_value StyleNAPI::RemoveImage(napi_env env, napi_callback_info info) {
-    // TODO: 实现移除图片
-    return CreateBoolValue(env, false);
-}
-
-napi_value StyleNAPI::GetImage(napi_env env, napi_callback_info info) {
-    // TODO: 实现获取图片
-    napi_value result;
-    napi_get_null(env, &result);
-    return result;
-}
-
-// ==================== Light & Transition ====================
-
-napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
-    // TODO: 实现获取光照
-    napi_value result;
-    napi_get_null(env, &result);
-    return result;
-}
-
-napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
-    // TODO: 实现设置光照
-    return nullptr;
-}
-
-napi_value StyleNAPI::GetTransition(napi_env env, napi_callback_info info) {
-    // TODO: 实现获取过渡选项
-    napi_value result;
-    napi_get_null(env, &result);
-    return result;
-}
-
-napi_value StyleNAPI::SetTransition(napi_env env, napi_callback_info info) {
-    // TODO: 实现设置过渡选项
-    return nullptr;
+napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
+    napi_value jsThis;
+    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    
+    StyleNAPI* style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
+    
+    if (!style || !style->map) {
+        Logger::error("StyleNAPI", "GetSources: Invalid style or map");
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+    
+    try {
+        // 获取所有 sources
+        const auto& sources = style->map->getStyle().getSources();
+        
+        // 创建结果数组
+        napi_value result;
+        napi_create_array_with_length(env, sources.size(), &result);
+        
+        size_t index = 0;
+        for (const auto& source : sources) {
+            if (!source) continue;
+            
+            // 创建 source 信息对象
+            napi_value sourceObj;
+            napi_create_object(env, &sourceObj);
+            
+            napi_value idValue = CreateStringValue(env, source->getID());
+            napi_set_named_property(env, sourceObj, "id", idValue);
+            
+            // 获取 source 类型
+            std::string typeStr;
+            switch (source->getType()) {
+                case mbgl::style::SourceType::Vector:
+                    typeStr = "vector";
+                    break;
+                case mbgl::style::SourceType::Raster:
+                    typeStr = "raster";
+                    break;
+                case mbgl::style::SourceType::RasterDEM:
+                    typeStr = "raster-dem";
+                    break;
+                case mbgl::style::SourceType::GeoJSON:
+                    typeStr = "geojson";
+                    break;
+                case mbgl::style::SourceType::Image:
+                    typeStr = "image";
+                    break;
+                default:
+                    typeStr = "unknown";
+                    break;
+            }
+            
+            napi_value typeValue = CreateStringValue(env, typeStr);
+            napi_set_named_property(env, sourceObj, "type", typeValue);
+            
+            napi_set_element(env, result, index++, sourceObj);
+        }
+        
+        Logger::debug("StyleNAPI", "GetSources: found %zu sources", sources.size());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("StyleNAPI", "GetSources failed: %s", e.what());
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
 }
 
 } // namespace harmony

@@ -106,6 +106,7 @@ add_library(maplibre_native
     napi/bindings/style/style_napi_base.cpp
     napi/bindings/style/style_napi_layers.cpp
     napi/bindings/style/style_napi_sources.cpp
+    napi/bindings/style/style_napi_images.cpp
     
     # Network module
     network/curl_event_loop.hpp
@@ -191,6 +192,9 @@ add_library(maplibre_native
     style/layers/background_layer_harmony.cpp
     style/layers/raster_layer_harmony.hpp
     style/layers/raster_layer_harmony.cpp
+    # symbol_layer_harmony.cpp has compilation errors, temporarily disabled
+    # style/layers/symbol_layer_harmony.hpp
+    # style/layers/symbol_layer_harmony.cpp
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
 )

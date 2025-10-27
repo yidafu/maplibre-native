@@ -1,5 +1,5 @@
 #include "harmony_vsync_manager.hpp"
-#include "logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 

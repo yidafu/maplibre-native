@@ -1,7 +1,7 @@
 #include "harmony_renderer_frontend.hpp"
 #include "backends/harmony_renderer_backend.hpp"
-#include "../vsync/harmony_vsync_manager.hpp"
-#include "logger.h"
+#include "vsync/harmony_vsync_manager.hpp"
+#include "utils/logger.h"
 
 #include <mbgl/gfx/backend_scope.hpp>
 #include <mbgl/gl/renderer_backend.hpp>

@@ -68,15 +68,31 @@ export class Stop {
       // 处理输入值
       if (inputValue instanceof Expression) {
         expressions.push(inputValue);
-      } else {
-        expressions.push(Expression.literal(inputValue as ExpressionValue));
+      } else if (Array.isArray(inputValue)) {
+        expressions.push(Expression.literal(inputValue as (Object | null)[]));
+      } else if (typeof inputValue === 'number') {
+        expressions.push(Expression.literal(inputValue));
+      } else if (typeof inputValue === 'string') {
+        expressions.push(Expression.literal(inputValue));
+      } else if (typeof inputValue === 'boolean') {
+        expressions.push(Expression.literal(inputValue));
+      } else if (inputValue !== null) {
+        expressions.push(Expression.literal(inputValue as Object));
       }
 
       // 处理输出值
       if (outputValue instanceof Expression) {
         expressions.push(outputValue);
-      } else {
-        expressions.push(Expression.literal(outputValue as ExpressionValue));
+      } else if (Array.isArray(outputValue)) {
+        expressions.push(Expression.literal(outputValue as (Object | null)[]));
+      } else if (typeof outputValue === 'number') {
+        expressions.push(Expression.literal(outputValue));
+      } else if (typeof outputValue === 'string') {
+        expressions.push(Expression.literal(outputValue));
+      } else if (typeof outputValue === 'boolean') {
+        expressions.push(Expression.literal(outputValue));
+      } else if (outputValue !== null) {
+        expressions.push(Expression.literal(outputValue as Object));
       }
     }
 

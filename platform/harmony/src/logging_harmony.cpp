@@ -2,7 +2,7 @@
 #include <mbgl/util/enum.hpp>
 
 // 包含新的 Logger 类
-#include "../maplibre_harmony/src/main/cpp/logger.h"
+#include "../maplibre_harmony/src/main/cpp/utils/logger.h"
 
 namespace mbgl {
 

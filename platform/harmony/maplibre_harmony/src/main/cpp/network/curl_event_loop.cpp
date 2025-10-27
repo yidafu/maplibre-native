@@ -1,5 +1,5 @@
 #include "curl_event_loop.hpp"
-#include "../utils/logger.h"
+#include "utils/logger.h"
 
 #include <mbgl/util/logging.hpp>
 #include <mbgl/util/string.hpp>

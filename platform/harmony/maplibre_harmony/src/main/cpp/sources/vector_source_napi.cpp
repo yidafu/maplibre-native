@@ -1,7 +1,7 @@
 #include "vector_source_napi.hpp"
-#include "../napi_args.hpp"
-#include "../napi_utils.h"
-#include "../logger.h"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -177,8 +177,67 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
-    // TODO: 实现 setTiles
-    Logger::warn("VectorSourceNAPI", "SetTiles not implemented yet");
+    napi_value jsThis;
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    
+    VectorSourceNAPI* sourceNapi = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    
+    if (!sourceNapi || !sourceNapi->source) {
+        napi_throw_error(env, nullptr, "Invalid VectorSource instance");
+        return nullptr;
+    }
+    
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "SetTiles requires tiles array argument");
+        return nullptr;
+    }
+    
+    // 解析 tiles 数组
+    bool isArray = false;
+    napi_is_array(env, args[0], &isArray);
+    if (!isArray) {
+        napi_throw_error(env, nullptr, "tiles argument must be an array");
+        return nullptr;
+    }
+    
+    uint32_t arrayLength = 0;
+    napi_get_array_length(env, args[0], &arrayLength);
+    
+    std::vector<std::string> tiles;
+    tiles.reserve(arrayLength);
+    
+    for (uint32_t i = 0; i < arrayLength; ++i) {
+        napi_value element;
+        napi_get_element(env, args[0], i, &element);
+        
+        size_t strSize;
+        napi_get_value_string_utf8(env, element, nullptr, 0, &strSize);
+        std::string tile(strSize + 1, '\0');
+        napi_get_value_string_utf8(env, element, &tile[0], strSize + 1, &strSize);
+        tile.resize(strSize);
+        
+        tiles.push_back(tile);
+    }
+    
+    try {
+        // 获取当前的 source 并更新 tiles
+        auto* vectorSource = sourceNapi->source.get()->as<mbgl::style::VectorSource>();
+        if (vectorSource) {
+            vectorSource->setTiles(tiles);
+            Logger::info("VectorSourceNAPI", "SetTiles: %s (%zu tiles)", sourceNapi->id.c_str(), tiles.size());
+        } else {
+            napi_throw_error(env, nullptr, "Source is not a VectorSource");
+            return nullptr;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("VectorSourceNAPI", "SetTiles failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return nullptr;
+    }
+    
     return nullptr;
 }
 

@@ -7,8 +7,7 @@
 import { NativeMapView } from '../maps/NativeMapView';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
-
-const DOMAIN = 0xFF00;
+import { DOMAIN } from '../constants/HiLogConstants';
 const TAG = 'GestureTestPage';
 
 @Entry

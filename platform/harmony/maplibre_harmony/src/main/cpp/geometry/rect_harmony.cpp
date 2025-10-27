@@ -1,5 +1,5 @@
 #include "rect_harmony.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 
 namespace mbgl {
 namespace harmony {

@@ -5,8 +5,7 @@
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
-
-const DOMAIN = 0x0000;
+import { DOMAIN } from '../constants/HiLogConstants';
 
 // 测试页面配置
 class TestPageItem {

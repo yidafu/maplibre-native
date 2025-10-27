@@ -1,8 +1,8 @@
 #ifndef MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 #define MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 
-#include "../../rendering/backends/harmony_renderer_backend.hpp"
-#include "../camera_change_tracker.hpp"
+#include "rendering/backends/harmony_renderer_backend.hpp"
+#include "core/camera_change_tracker.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/run_loop.hpp>

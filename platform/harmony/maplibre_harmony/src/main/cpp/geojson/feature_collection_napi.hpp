@@ -2,6 +2,7 @@
 
 #include <napi/native_api.h>
 #include <mbgl/util/feature.hpp>
+#include <mbgl/util/geojson.hpp>
 
 namespace maplibre {
 namespace harmony {

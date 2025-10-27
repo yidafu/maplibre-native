@@ -2,7 +2,7 @@
  * Style Sources - 数据源模块导出
  */
 
-export { Source, SourceOptions } from './Source';
+export { SourceOptions } from './Source';
 export { GeoJsonSource, GeoJsonData } from './GeoJsonSource';
 export { VectorSource } from './VectorSource';
 export { RasterSource } from './RasterSource';

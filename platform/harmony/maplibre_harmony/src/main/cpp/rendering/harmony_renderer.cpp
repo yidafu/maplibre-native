@@ -8,7 +8,7 @@
 #endif
 
 #include "harmony_renderer_frontend.hpp"
-#include "../utils/logger.h"
+#include "utils/logger.h"
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/logging.hpp>

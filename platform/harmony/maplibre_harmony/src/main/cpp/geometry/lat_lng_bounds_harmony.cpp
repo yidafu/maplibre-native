@@ -1,5 +1,5 @@
 #include "lat_lng_bounds_harmony.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 
 namespace mbgl {
 namespace harmony {

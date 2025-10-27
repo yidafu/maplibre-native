@@ -4,7 +4,7 @@
 
 // 核心样式类（现在由 NAPI 提供）
 // Style 类型从 libmaplibre_native.so 导入
-// 使用: import maplibre from 'libmaplibre_native.so'; type Style = maplibre.Style;
+// 使用: import maplibre from 'maplibre_harmony'; type Style = maplibre.Style;
 
 // 数据源
 export * from './sources/index';

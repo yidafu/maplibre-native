@@ -6,7 +6,7 @@
 #include <mbgl/util/logging.hpp>
 
 #include <cassert>
-#include "../../utils/logger.h"
+#include "utils/logger.h"
 
 // HarmonyOS Vulkan surface extension definitions
 // These may need to be adjusted based on the actual HarmonyOS Vulkan SDK

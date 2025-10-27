@@ -1,7 +1,7 @@
 #include "feature_collection_napi.hpp"
 #include "feature_napi.hpp"
 #include "util.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 

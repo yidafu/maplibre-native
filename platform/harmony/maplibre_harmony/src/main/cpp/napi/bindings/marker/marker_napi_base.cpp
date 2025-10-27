@@ -1,6 +1,6 @@
-#include "marker/marker_napi.hpp"
-#include "../../utils/logger.h"
-#include "../../napi/core/napi_args.hpp"
+#include "marker_napi.hpp"
+#include "utils/logger.h"
+#include "napi/core/napi_args.hpp"
 
 namespace maplibre {
 namespace harmony {
@@ -448,3 +448,14 @@ napi_value MarkerNAPI::SetVisible(napi_env env, napi_callback_info info) {
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
     
     if (!marker) return nullptr;
+    
+    marker->visible = args.GetBool(0);
+    Logger::debug("MarkerNAPI", "Marker visible set to %d", marker->visible);
+    
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+} // namespace harmony
+} // namespace maplibre

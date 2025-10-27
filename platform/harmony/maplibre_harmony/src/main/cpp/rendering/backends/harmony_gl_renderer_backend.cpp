@@ -9,7 +9,7 @@
 #include <GLES3/gl3.h>
 #include <native_window/external_window.h>
 #include <window_manager/oh_display_manager.h>
-#include "../../utils/logger.h"
+#include "utils/logger.h"
 #include <cassert>
 #include <thread>
 #include <chrono>

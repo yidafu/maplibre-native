@@ -1,6 +1,6 @@
-#include "marker/marker_napi.hpp"
-#include "../../utils/logger.h"
-#include "../../napi/core/napi_args.hpp"
+#include "marker_napi.hpp"
+#include "utils/logger.h"
+#include "napi/core/napi_args.hpp"
 
 namespace maplibre {
 namespace harmony {
@@ -9,62 +9,7 @@ namespace harmony {
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
 
-// Static member initialization
-napi_ref MarkerNAPI::constructor = nullptr;
-
-MarkerNAPI::MarkerNAPI()
-    : annotationId(-1),
-      position(0.0, 0.0),
-      iconId(""),
-      title(""),
-      snippet(""),
-      visible(true),
-      alpha(1.0),
-      rotation(0.0),
-      draggable(false),
-      zIndex(0),
-      infoWindowShown(false),
-      selected(false),
-      dragState(0),
-      mapLibreMapRef(nullptr),
-      anchorU(0.5),  // 默认底部中心
-      anchorV(1.0) {
-    Logger::debug("MarkerNAPI", "MarkerNAPI instance created");
-}
-
-MarkerNAPI::~MarkerNAPI() {
-    Logger::debug("MarkerNAPI", "MarkerNAPI instance destroyed, ID=%lld", annotationId);
-}
-
-void MarkerNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("MarkerNAPI", "Destructor called");
-    MarkerNAPI* marker = static_cast<MarkerNAPI*>(nativeObject);
-    delete marker;
-}
-
-napi_value MarkerNAPI::Init(napi_env env, napi_value exports) {
-    Logger::info("MarkerNAPI", "Initializing Marker NAPI class");
-    
-    napi_property_descriptor properties[] = {
-        // Getter methods
-        { "getPosition", nullptr, GetPosition, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getIcon", nullptr, GetIcon, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getTitle", nullptr, GetTitle, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSnippet", nullptr, GetSnippet, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getVisible", nullptr, GetVisible, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getAlpha", nullptr, GetAlpha, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getRotation", nullptr, GetRotation, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getDraggable", nullptr, GetDraggable, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getZIndex", nullptr, GetZIndex, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
-    
-    marker->visible = args.GetBool(0, "visible");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
+// Note: Static member initialization, Constructor, Destructor, and Init function are defined in marker_napi_base.cpp
 
 napi_value MarkerNAPI::SetAlpha(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);

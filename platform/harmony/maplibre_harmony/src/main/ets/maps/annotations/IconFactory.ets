@@ -5,6 +5,16 @@ import { Icon } from './Icon';
 import { TooManyIconsException } from '../exceptions/TooManyIconsException';
 
 /**
+ * 颜色信息接口
+ */
+interface ColorInfo {
+  red: number;
+  green: number;
+  blue: number;
+  alpha: number;
+}
+
+/**
  * IconFactory - 图标工厂类（单例）
  * 
  * 用于创建 Icon 实例的工厂类，支持从多种来源创建图标：
@@ -286,7 +296,7 @@ export class IconFactory {
       // 创建一个简单的红色圆形作为默认 marker
       const width = 48;
       const height = 48;
-      const color = { red: 255, green: 0, blue: 0, alpha: 255 }; // 红色
+      const color: ColorInfo = { red: 255, green: 0, blue: 0, alpha: 255 }; // 红色
       
       // 创建 PixelMap
       const pixelMap = await image.createPixelMap(

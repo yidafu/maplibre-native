@@ -4,8 +4,9 @@ import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
 import { Point } from './geometry/Point';
-import { Layer } from './style/layers/Layer';
-import { Source } from './style/sources/Source';
+// Layer 和 Source 现在通过 maplibre.XXXLayer / maplibre.XXXSource 访问
+// import { Layer } from './style/layers/Layer';
+// import { Source } from './style/sources/Source';
 import { Image } from './style/images/Image';
 import { Feature } from './geojson/Feature';
 import { TransitionOptions } from './style/layers/TransitionOptions';
@@ -32,6 +33,8 @@ import { CameraChangeDispatcher } from './camera/CameraChangeDispatcher';
 import { OnCameraIdleListener, OnCameraMoveStartedListener, 
          OnCameraMoveListener, OnCameraMoveCanceledListener } from './camera/CameraListener';
 import { CameraMoveReason } from './camera/CameraMoveReason';
+import { UiSettings } from './UiSettings';
+import { LocationComponent } from './location/LocationComponent';
 
 // Marker 和 Style 现在由 NAPI 提供
 type Marker = maplibre.Marker;
@@ -57,12 +60,28 @@ export class MapLibreMap {
   private styleLoaded: boolean = false;
   private cameraChangeDispatcher: CameraChangeDispatcher = new CameraChangeDispatcher();
   
+  // UI 设置
+  private uiSettings: UiSettings = new UiSettings();
+  
+  // 位置组件
+  private locationComponent: LocationComponent;
+  
+  // 视图尺寸（用于 InfoWindow 等功能）
+  private viewWidth: number = 0;
+  private viewHeight: number = 0;
+  
   // Style 监听器
   private styleLoadedListeners: OnStyleLoadedListener[] = [];
   private styleLoadErrorListeners: OnStyleLoadErrorListener[] = [];
   
   // 操作队列 - 在样式加载前缓存操作
   private pendingOperations: PendingOperation[] = [];
+  
+  // Compass 更新回调（由外部 UI 层注入）
+  public onCompassUpdate?: (bearing: number) => void;
+  
+  // ScaleBar 更新回调（由外部 UI 层注入）
+  public onScaleBarUpdate?: (metersPerPixel: number) => void;
 
   constructor(nativeMapView: maplibre.NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
@@ -70,6 +89,7 @@ export class MapLibreMap {
     this.markerManager = new MarkerManager(this);
     this.infoWindowManager = new InfoWindowManager();
     this.annotationViewManager = new AnnotationViewManager();
+    this.locationComponent = new LocationComponent(this);
     
     // 设置 AnnotationViewManager 的 NativeMapView
     this.annotationViewManager.setNativeMapView(nativeMapView);
@@ -82,6 +102,12 @@ export class MapLibreMap {
     
     // 设置相机移动监听器，自动更新 AnnotationView 位置
     this.setupAnnotationViewCameraListener();
+    
+    // 设置相机移动监听器，自动更新 Compass
+    this.setupCompassCameraListener();
+    
+    // 设置相机移动监听器，自动更新 ScaleBar
+    this.setupScaleBarCameraListener();
   }
   
   /**
@@ -108,22 +134,28 @@ export class MapLibreMap {
    * @private
    */
   private setupInfoWindowCameraListener(): void {
-    this.cameraChangeDispatcher.addOnCameraMoveListener({
-      onCameraMove: () => {
+    class InfoWindowMoveListenerImpl implements OnCameraMoveListener {
+      parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
+      }
+      
+      onCameraMove(): void {
         // 地图相机移动时，更新所有 InfoWindow 的位置
-        const screenWidth = this.nativeMapView.getWidth();
-        const screenHeight = this.nativeMapView.getHeight();
-        
-        this.infoWindowManager.updatePositions(
-          screenWidth,
-          screenHeight,
+        // 使用内部维护的尺寸（通过 resizeView 更新）
+        this.parent.infoWindowManager.updatePositions(
+          this.parent.viewWidth,
+          this.parent.viewHeight,
           (marker: Marker) => {
             const pos = marker.getPosition();
-            return this.pixelForLatLng(pos.latitude, pos.longitude);
+            return this.parent.pixelForLatLng(pos.latitude, pos.longitude);
           }
         );
       }
-    });
+    }
+    const infoWindowMoveListener = new InfoWindowMoveListenerImpl(this);
+    this.cameraChangeDispatcher.addOnCameraMoveListener(infoWindowMoveListener);
   }
   
   /**
@@ -132,12 +164,87 @@ export class MapLibreMap {
    * @private
    */
   private setupAnnotationViewCameraListener(): void {
-    this.cameraChangeDispatcher.addOnCameraMoveListener({
-      onCameraMove: () => {
-        // 地图相机移动时，更新所有 AnnotationView 的位置
-        this.annotationViewManager.updateAllPositions();
+    class AnnotationViewMoveListenerImpl implements OnCameraMoveListener {
+      parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
       }
-    });
+      
+      onCameraMove(): void {
+        // 地图相机移动时，更新所有 AnnotationView 的位置
+        this.parent.annotationViewManager.updateAllPositions();
+      }
+    }
+    const annotationViewMoveListener = new AnnotationViewMoveListenerImpl(this);
+    this.cameraChangeDispatcher.addOnCameraMoveListener(annotationViewMoveListener);
+  }
+  
+  /**
+   * 设置 Compass 相机移动监听器
+   * 当地图旋转时，自动更新指南针方向
+   * @private
+   */
+  private setupCompassCameraListener(): void {
+    class CompassMoveListenerImpl implements OnCameraMoveListener {
+      parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
+      }
+      
+      onCameraMove(): void {
+        // 地图相机移动时，更新指南针
+        if (this.parent.onCompassUpdate) {
+          const bearing = this.parent.getBearing();
+          this.parent.onCompassUpdate(bearing);
+        }
+      }
+    }
+    this.cameraChangeDispatcher.addOnCameraMoveListener(new CompassMoveListenerImpl(this));
+  }
+  
+  /**
+   * 设置 ScaleBar 相机移动监听器
+   * 当地图缩放或移动时，自动更新比例尺
+   * @private
+   */
+  private setupScaleBarCameraListener(): void {
+    class ScaleBarMoveListenerImpl implements OnCameraMoveListener {
+      parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
+      }
+      
+      onCameraMove(): void {
+        // 地图相机移动时，更新比例尺
+        if (this.parent.onScaleBarUpdate) {
+          const metersPerPixel = this.parent.getMetersPerPixelAtLatitude(this.parent.getLatLng().latitude);
+          this.parent.onScaleBarUpdate(metersPerPixel);
+        }
+      }
+    }
+    this.cameraChangeDispatcher.addOnCameraMoveListener(new ScaleBarMoveListenerImpl(this));
+  }
+  
+  /**
+   * 计算指定纬度下每像素代表的米数（使用当前缩放级别）
+   * @param latitude 纬度
+   * @returns 每像素米数
+   */
+  public getMetersPerPixelAtLatitude(latitude: number): number;
+  /**
+   * 计算指定纬度和缩放级别下每像素代表的米数
+   * @param latitude 纬度
+   * @param zoom 缩放级别
+   * @returns 每像素米数
+   */
+  public getMetersPerPixelAtLatitude(latitude: number, zoom: number): number;
+  public getMetersPerPixelAtLatitude(latitude: number, zoom?: number): number {
+    if (this.destroyed) return 0;
+    const actualZoom = zoom !== undefined ? zoom : this.getZoom();
+    return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, actualZoom);
   }
 
   /**
@@ -145,9 +252,6 @@ export class MapLibreMap {
    */
   public onStyleLoaded(): void {
     this.styleLoaded = true;
-    
-    // 获取样式对象
-    const style = this.getStyle();
     
     // 执行队列中的操作
     if (this.pendingOperations.length > 0) {
@@ -163,11 +267,13 @@ export class MapLibreMap {
     }
     
     // 触发监听器
-    if (style && this.styleLoadedListeners.length > 0) {
+    if (this.styleLoadedListeners.length > 0) {
       console.info(`MapLibreMap: Notifying ${this.styleLoadedListeners.length} style loaded listeners`);
       this.styleLoadedListeners.forEach(listener => {
         try {
-          listener.onStyleLoaded(style);
+          // 注意: Style 对象暂时传 null，因为 NativeMapView 没有 getStyle() 方法
+          // 监听器可以直接使用 NativeMapView 的 layer/source 方法
+          listener.onStyleLoaded(null);
         } catch (error) {
           console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
         }
@@ -209,6 +315,10 @@ export class MapLibreMap {
       return;
     }
     this.destroyed = true;
+    
+    // 销毁位置组件
+    this.locationComponent.onDestroy();
+    
     // NativeMapView 没有 destroy 方法，资源由系统管理
     // this.nativeMapView.destroy();
   }
@@ -219,12 +329,30 @@ export class MapLibreMap {
   public isDestroyed(): boolean {
     return this.destroyed;
   }
+  
+  /**
+   * 获取 UI 设置
+   */
+  public getUiSettings(): UiSettings {
+    return this.uiSettings;
+  }
+
+  /**
+   * 获取位置组件
+   * 用于显示和跟踪用户位置
+   */
+  public getLocationComponent(): LocationComponent {
+    return this.locationComponent;
+  }
 
   /**
    * 调整视图大小
    */
   public resizeView(width: number, height: number): void {
     if (this.destroyed) return;
+    // 保存尺寸
+    this.viewWidth = width;
+    this.viewHeight = height;
     this.nativeMapView.resizeView(width, height);
   }
 
@@ -256,21 +384,17 @@ export class MapLibreMap {
   /**
    * 获取样式对象
    * 
-   * @returns Style对象（NAPI 对象），如果样式未加载则返回null
+   * 注意: NativeMapView 当前不提供 getStyle() 方法
+   * 使用 layer/source 操作时，直接调用 NativeMapView 的对应方法
+   * 
+   * @returns 暂时返回 null
    */
   public getStyle(): Style | null {
     if (this.destroyed) return null;
-    try {
-      // 从 NativeMapView 获取 Style NAPI 对象
-      const style = this.nativeMapView.getStyle() as Style;
-      if (!this.styleLoaded) {
-        console.warn('Style is not fully loaded yet');
-      }
-      return style;
-    } catch (error) {
-      console.error(`Failed to get style: ${error}`);
-      return null;
-    }
+    // TODO: 等待 C++ 层添加 getStyle() 方法
+    // 或者通过其他方式创建 Style 对象
+    console.warn('getStyle() is not yet implemented in NativeMapView');
+    return null;
   }
 
   /**
@@ -441,9 +565,10 @@ export class MapLibreMap {
     return this.nativeMapView.getBearing();
   }
 
-  public resetNorth(): void {
+  public resetNorth(duration: number = 150): void {
     if (this.destroyed) return;
-    this.nativeMapView.resetNorth();
+    // 使用动画方式归正北（参考 Android TIME_MAP_NORTH_ANIMATION = 150ms）
+    this.nativeMapView.setBearing(0, duration);
   }
 
   // 坐标边界
@@ -474,7 +599,14 @@ export class MapLibreMap {
   // 注解
   public updateMarker(marker: Marker): void {
     if (this.destroyed) return;
-    this.nativeMapView.updateMarker(marker);
+    const position = marker.getPosition();
+    const icon = marker.getIcon();
+    this.nativeMapView.updateMarker(
+      marker.getId(),
+      position.latitude,
+      position.longitude,
+      icon ?? ''
+    );
   }
 
   public addMarkers(markers: Marker[]): number[] {
@@ -580,11 +712,6 @@ export class MapLibreMap {
   }
 
   // 坐标转换
-  public getMetersPerPixelAtLatitude(latitude: number, zoom: number): number {
-    if (this.destroyed) return 0;
-    return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, zoom);
-  }
-
   public projectedMetersForLatLng(latitude: number, longitude: number): maplibre.ProjectedMeters {
     if (this.destroyed) return { northing: 0, easting: 0 };
     return this.nativeMapView.projectedMetersForLatLng(latitude, longitude);
@@ -656,28 +783,28 @@ export class MapLibreMap {
     return result as Light;
   }
 
-  // 图层
-  public getLayers(): Layer[] {
+  // 图层（使用 any 类型因为 Layer 类型未导出）
+  public getLayers(): object[] {
     if (this.destroyed) return [];
     return this.nativeMapView.getLayers();
   }
 
-  public getLayer(layerId: string): Layer | null {
+  public getLayer(layerId: string): object | null {
     if (this.destroyed) return null;
     return this.nativeMapView.getLayer(layerId);
   }
 
-  public addLayer(layer: Layer): void {
+  public addLayer(layer: object): void {
     if (this.destroyed) return;
     this.nativeMapView.addLayer(layer);
   }
 
-  public addLayerAbove(layer: Layer, aboveLayerId: string): void {
+  public addLayerAbove(layer: object, aboveLayerId: string): void {
     if (this.destroyed) return;
     this.nativeMapView.addLayerAbove(layer, aboveLayerId);
   }
 
-  public addLayerAt(layer: Layer, index: number): void {
+  public addLayerAt(layer: object, index: number): void {
     if (this.destroyed) return;
     this.nativeMapView.addLayerAt(layer, index);
   }
@@ -687,28 +814,28 @@ export class MapLibreMap {
     return this.nativeMapView.removeLayerAt(index);
   }
 
-  public removeLayer(layer: Layer): boolean {
+  public removeLayer(layer: object): boolean {
     if (this.destroyed) return false;
     return this.nativeMapView.removeLayer(layer);
   }
 
-  // 数据源
-  public getSources(): Source[] {
+  // 数据源（使用 object 类型因为 Source 类型未导出）
+  public getSources(): object[] {
     if (this.destroyed) return [];
     return this.nativeMapView.getSources();
   }
 
-  public getSource(sourceId: string): Source | null {
+  public getSource(sourceId: string): object | null {
     if (this.destroyed) return null;
     return this.nativeMapView.getSource(sourceId);
   }
 
-  public addSource(source: Source): void {
+  public addSource(source: object): void {
     if (this.destroyed) return;
     this.nativeMapView.addSource(source);
   }
 
-  public removeSource(source: Source): boolean {
+  public removeSource(source: object): boolean {
     if (this.destroyed) return false;
     return this.nativeMapView.removeSource(source);
   }
@@ -1097,13 +1224,11 @@ export class MapLibreMap {
       
       // 如果样式已经加载，立即触发回调
       if (this.styleLoaded) {
-        const style = this.getStyle();
-        if (style) {
-          try {
-            listener.onStyleLoaded(style);
-          } catch (error) {
-            console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
-          }
+        try {
+          // 注意: Style 对象暂时传 null
+          listener.onStyleLoaded(null);
+        } catch (error) {
+          console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
         }
       }
     }
@@ -1368,112 +1493,6 @@ export class MapLibreMap {
     this.cameraChangeDispatcher.notifyCameraIdle();
   }
   
-  // ========== InfoWindow 管理方法 ==========
-  
-  /**
-   * 获取 InfoWindowManager 实例
-   * @returns InfoWindowManager 实例
-   */
-  public getInfoWindowManager(): InfoWindowManager {
-    return this.infoWindowManager;
-  }
-  
-  /**
-   * 设置 InfoWindowAdapter
-   * 用于自定义 InfoWindow 的显示内容
-   * 
-   * @param adapter InfoWindowAdapter 实例，传 null 则使用默认样式
-   */
-  public setInfoWindowAdapter(adapter: InfoWindowAdapter | null): void {
-    if (this.destroyed) return;
-    this.infoWindowManager.setAdapter(adapter);
-  }
-  
-  /**
-   * 获取 InfoWindowAdapter
-   * @returns InfoWindowAdapter 实例或 null
-   */
-  public getInfoWindowAdapter(): InfoWindowAdapter | null {
-    if (this.destroyed) return null;
-    return this.infoWindowManager.getAdapter();
-  }
-  
-  /**
-   * 设置 InfoWindow 点击监听器
-   * 
-   * @param listener OnInfoWindowClickListener 实例
-   */
-  public setOnInfoWindowClickListener(listener: OnInfoWindowClickListener | null): void {
-    if (this.destroyed) return;
-    this.infoWindowManager.setOnClickListener(listener);
-  }
-  
-  /**
-   * 获取 InfoWindow 点击监听器
-   * @returns OnInfoWindowClickListener 实例或 null
-   */
-  public getOnInfoWindowClickListener(): OnInfoWindowClickListener | null {
-    if (this.destroyed) return null;
-    return this.infoWindowManager.getOnClickListener();
-  }
-  
-  /**
-   * 设置 InfoWindow 长按监听器
-   * 
-   * @param listener OnInfoWindowLongClickListener 实例
-   */
-  public setOnInfoWindowLongClickListener(listener: OnInfoWindowLongClickListener | null): void {
-    if (this.destroyed) return;
-    this.infoWindowManager.setOnLongClickListener(listener);
-  }
-  
-  /**
-   * 获取 InfoWindow 长按监听器
-   * @returns OnInfoWindowLongClickListener 实例或 null
-   */
-  public getOnInfoWindowLongClickListener(): OnInfoWindowLongClickListener | null {
-    if (this.destroyed) return null;
-    return this.infoWindowManager.getOnLongClickListener();
-  }
-  
-  /**
-   * 设置 InfoWindow 关闭监听器
-   * 
-   * @param listener OnInfoWindowCloseListener 实例
-   */
-  public setOnInfoWindowCloseListener(listener: OnInfoWindowCloseListener | null): void {
-    if (this.destroyed) return;
-    this.infoWindowManager.setOnCloseListener(listener);
-  }
-  
-  /**
-   * 获取 InfoWindow 关闭监听器
-   * @returns OnInfoWindowCloseListener 实例或 null
-   */
-  public getOnInfoWindowCloseListener(): OnInfoWindowCloseListener | null {
-    if (this.destroyed) return null;
-    return this.infoWindowManager.getOnCloseListener();
-  }
-  
-  /**
-   * 设置是否允许多个 InfoWindow 同时显示
-   * 
-   * @param allow true 表示允许多个同时显示，false 表示同时只能显示一个
-   */
-  public setAllowConcurrentMultipleInfoWindows(allow: boolean): void {
-    if (this.destroyed) return;
-    this.infoWindowManager.setAllowConcurrentMultiple(allow);
-  }
-  
-  /**
-   * 是否允许多个 InfoWindow 同时显示
-   * @returns true 表示允许多个同时显示
-   */
-  public isAllowConcurrentMultipleInfoWindows(): boolean {
-    if (this.destroyed) return false;
-    return this.infoWindowManager.isAllowConcurrentMultiple();
-  }
-  
   // ========== AnnotationView 管理方法 ==========
   
   /**
@@ -1614,3 +1633,4 @@ export class MapLibreMap {
     return this.annotationViewManager.isAnnotationSelected(marker);
   }
 }
+

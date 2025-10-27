@@ -1,5 +1,6 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { describe, beforeAll, beforeEach, afterEach, afterAll, it, expect } from '@ohos/hypium';
+import { DOMAIN } from '../../../main/ets/constants/HiLogConstants';
 
 export default function abilityTest() {
   describe('ActsAbilityTest', () => {
@@ -24,7 +25,7 @@ export default function abilityTest() {
     })
     it('assertContain', 0, () => {
       // Defines a test case. This API supports three parameters: test case name, filter parameter, and test case function.
-      hilog.info(0x0000, 'testTag', '%{public}s', 'it begin');
+      hilog.info(DOMAIN, 'testTag', '%{public}s', 'it begin');
       let a = 'abc';
       let b = 'b';
       // Defines a variety of assertion methods, which are used to declare expected boolean conditions.

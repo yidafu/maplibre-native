@@ -80,17 +80,21 @@ export class FormatOption extends Option {
    * 
    * @param scale 缩放比例（Expression）
    */
-  public static fontScale(scale: Expression<number>): FormatOption {
-    return new FormatOption('font-scale', scale);
-  }
+  public static fontScale(scale: Expression<number>): FormatOption;
 
   /**
    * 设置字体缩放比例
    * 
    * @param scale 缩放比例（数字）
    */
-  public static fontScale(scale: number): FormatOption {
-    return FormatOption.fontScale(Expression.literal(scale));
+  public static fontScale(scale: number): FormatOption;
+
+  /**
+   * 设置字体缩放比例的实现
+   */
+  public static fontScale(scale: Expression<number> | number): FormatOption {
+    const scaleExpr = typeof scale === 'number' ? Expression.literal(scale) : scale;
+    return new FormatOption('font-scale', scaleExpr);
   }
 
   /**
@@ -98,17 +102,21 @@ export class FormatOption extends Option {
    * 
    * @param fonts 字体数组（Expression）
    */
-  public static textFont(fonts: Expression<string[]>): FormatOption {
-    return new FormatOption('text-font', fonts);
-  }
+  public static textFont(fonts: Expression<string[]>): FormatOption;
 
   /**
    * 设置文本字体
    * 
    * @param fonts 字体数组
    */
-  public static textFont(fonts: string[]): FormatOption {
-    return FormatOption.textFont(Expression.literal(fonts));
+  public static textFont(fonts: string[]): FormatOption;
+
+  /**
+   * 设置文本字体的实现
+   */
+  public static textFont(fonts: Expression<string[]> | string[]): FormatOption {
+    const fontsExpr = Array.isArray(fonts) ? Expression.literal(fonts) : fonts;
+    return new FormatOption('text-font', fontsExpr);
   }
 
   /**
@@ -116,17 +124,21 @@ export class FormatOption extends Option {
    * 
    * @param color 颜色（Expression）
    */
-  public static textColor(color: Expression<string>): FormatOption {
-    return new FormatOption('text-color', color);
-  }
+  public static textColor(color: Expression<string>): FormatOption;
 
   /**
    * 设置文本颜色
    * 
    * @param color 颜色字符串
    */
-  public static textColor(color: string): FormatOption {
-    return FormatOption.textColor(Expression.literal(color));
+  public static textColor(color: string): FormatOption;
+
+  /**
+   * 设置文本颜色的实现
+   */
+  public static textColor(color: Expression<string> | string): FormatOption {
+    const colorExpr = typeof color === 'string' ? Expression.literal(color) : color;
+    return new FormatOption('text-color', colorExpr);
   }
 }
 
@@ -143,17 +155,21 @@ export class NumberFormatOption extends Option {
    * 
    * @param locale BCP 47 语言标签（Expression）
    */
-  public static locale(locale: Expression<string>): NumberFormatOption {
-    return new NumberFormatOption('locale', locale);
-  }
+  public static locale(locale: Expression<string>): NumberFormatOption;
 
   /**
    * 设置区域设置
    * 
    * @param locale BCP 47 语言标签
    */
-  public static locale(locale: string): NumberFormatOption {
-    return NumberFormatOption.locale(Expression.literal(locale));
+  public static locale(locale: string): NumberFormatOption;
+
+  /**
+   * 设置区域设置的实现
+   */
+  public static locale(locale: Expression<string> | string): NumberFormatOption {
+    const localeExpr = typeof locale === 'string' ? Expression.literal(locale) : locale;
+    return new NumberFormatOption('locale', localeExpr);
   }
 
   /**
@@ -161,17 +177,21 @@ export class NumberFormatOption extends Option {
    * 
    * @param currency ISO 4217 货币代码（Expression）
    */
-  public static currency(currency: Expression<string>): NumberFormatOption {
-    return new NumberFormatOption('currency', currency);
-  }
+  public static currency(currency: Expression<string>): NumberFormatOption;
 
   /**
    * 设置货币代码
    * 
    * @param currency ISO 4217 货币代码
    */
-  public static currency(currency: string): NumberFormatOption {
-    return NumberFormatOption.currency(Expression.literal(currency));
+  public static currency(currency: string): NumberFormatOption;
+
+  /**
+   * 设置货币代码的实现
+   */
+  public static currency(currency: Expression<string> | string): NumberFormatOption {
+    const currencyExpr = typeof currency === 'string' ? Expression.literal(currency) : currency;
+    return new NumberFormatOption('currency', currencyExpr);
   }
 
   /**
@@ -179,17 +199,21 @@ export class NumberFormatOption extends Option {
    * 
    * @param digits 最小小数位数（Expression）
    */
-  public static minFractionDigits(digits: Expression<number>): NumberFormatOption {
-    return new NumberFormatOption('min-fraction-digits', digits);
-  }
+  public static minFractionDigits(digits: Expression<number>): NumberFormatOption;
 
   /**
    * 设置最小小数位数
    * 
    * @param digits 最小小数位数
    */
-  public static minFractionDigits(digits: number): NumberFormatOption {
-    return NumberFormatOption.minFractionDigits(Expression.literal(digits));
+  public static minFractionDigits(digits: number): NumberFormatOption;
+
+  /**
+   * 设置最小小数位数的实现
+   */
+  public static minFractionDigits(digits: Expression<number> | number): NumberFormatOption {
+    const digitsExpr = typeof digits === 'number' ? Expression.literal(digits) : digits;
+    return new NumberFormatOption('min-fraction-digits', digitsExpr);
   }
 
   /**
@@ -197,17 +221,21 @@ export class NumberFormatOption extends Option {
    * 
    * @param digits 最大小数位数（Expression）
    */
-  public static maxFractionDigits(digits: Expression<number>): NumberFormatOption {
-    return new NumberFormatOption('max-fraction-digits', digits);
-  }
+  public static maxFractionDigits(digits: Expression<number>): NumberFormatOption;
 
   /**
    * 设置最大小数位数
    * 
    * @param digits 最大小数位数
    */
-  public static maxFractionDigits(digits: number): NumberFormatOption {
-    return NumberFormatOption.maxFractionDigits(Expression.literal(digits));
+  public static maxFractionDigits(digits: number): NumberFormatOption;
+
+  /**
+   * 设置最大小数位数的实现
+   */
+  public static maxFractionDigits(digits: Expression<number> | number): NumberFormatOption {
+    const digitsExpr = typeof digits === 'number' ? Expression.literal(digits) : digits;
+    return new NumberFormatOption('max-fraction-digits', digitsExpr);
   }
 }
 

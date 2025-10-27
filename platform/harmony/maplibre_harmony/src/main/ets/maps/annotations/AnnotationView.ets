@@ -29,6 +29,14 @@ export interface CenterOffset {
 }
 
 /**
+ * ViewPosition - 视图位置
+ */
+interface ViewPosition {
+  x: number;
+  y: number;
+}
+
+/**
  * AnnotationView 状态
  */
 export class AnnotationViewState {
@@ -78,8 +86,8 @@ export struct AnnotationView {
   @Prop marker: Marker;
   @Prop reuseIdentifier: string | null = null;
   @State private viewState: AnnotationViewState = new AnnotationViewState();
-  @State private opacity: number = 1;
-  @State private scale: number = 1;
+  @State private viewOpacity: number = 1; // 重命名避免冲突
+  @State private viewScale: number = 1; // 重命名避免冲突
   @State private rotation: number = 0;
   
   // 位置信息（屏幕坐标）
@@ -112,12 +120,12 @@ export struct AnnotationView {
   @Prop mapPitch: number = 0;
   @Prop screenHeight: number = 800;
   
-  // 回调
+  // 回调（重命名避免与 CustomComponent 方法冲突）
   onSelect?: (marker: Marker) => void;
   onDeselect?: (marker: Marker) => void;
-  onDragStart?: (marker: Marker) => void;
+  onMarkerDragStart?: (marker: Marker) => void; // 重命名
   onDrag?: (marker: Marker, screenX: number, screenY: number) => void;
-  onDragEnd?: (marker: Marker, screenX: number, screenY: number) => void;
+  onMarkerDragEnd?: (marker: Marker, screenX: number, screenY: number) => void; // 重命名
   
   /**
    * 准备复用（重置状态）
@@ -125,8 +133,8 @@ export struct AnnotationView {
   public prepareForReuse(): void {
     this.viewState.selected = false;
     this.viewState.dragState = DragState.None;
-    this.opacity = 1;
-    this.scale = 1;
+    this.viewOpacity = 1;
+    this.viewScale = 1;
     this.rotation = 0;
   }
   
@@ -142,12 +150,12 @@ export struct AnnotationView {
     
     if (animated) {
       animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
-        this.scale = selected ? 1.2 : 1.0;
-        this.opacity = selected ? 1.0 : 0.8;
+        this.viewScale = selected ? 1.2 : 1.0;
+        this.viewOpacity = selected ? 1.0 : 0.8;
       });
     } else {
-      this.scale = selected ? 1.2 : 1.0;
-      this.opacity = selected ? 1.0 : 0.8;
+      this.viewScale = selected ? 1.2 : 1.0;
+      this.viewOpacity = selected ? 1.0 : 0.8;
     }
     
     // 触发回调
@@ -168,11 +176,11 @@ export struct AnnotationView {
     if (animated) {
       animateTo({ duration: 150, curve: Curve.EaseOut }, () => {
         if (state === DragState.Dragging) {
-          this.scale = 1.3;
-          this.opacity = 0.9;
+          this.viewScale = 1.3;
+          this.viewOpacity = 0.9;
         } else if (state === DragState.None) {
-          this.scale = 1.0;
-          this.opacity = 1.0;
+          this.viewScale = 1.0;
+          this.viewOpacity = 1.0;
         }
       });
     }
@@ -181,27 +189,29 @@ export struct AnnotationView {
   /**
    * 计算实际位置（考虑锚点和中心偏移）
    */
-  private calculatePosition(): { x: number, y: number } {
+  private calculatePosition(): ViewPosition {
     // 拖拽中使用拖拽位置
     if (this.viewState.dragState === DragState.Dragging) {
-      return {
+      const pos: ViewPosition = {
         x: this.currentDragX - (this.viewWidth * this.anchorU) + this.centerOffset.dx,
         y: this.currentDragY - (this.viewHeight * this.anchorV) + this.centerOffset.dy
       };
+      return pos;
     }
     
     // 正常情况
-    return {
+    const pos: ViewPosition = {
       x: this.screenX - (this.viewWidth * this.anchorU) + this.centerOffset.dx,
       y: this.screenY - (this.viewHeight * this.anchorV) + this.centerOffset.dy
     };
+    return pos;
   }
   
   /**
    * 计算缩放比例（根据距离）
    */
   private calculateScale(): number {
-    let baseScale = this.scale;
+    let baseScale = this.viewScale;
     
     if (this.viewState.scalesWithViewingDistance && this.mapPitch > 0) {
       // 根据地图倾斜角度和位置计算缩放
@@ -283,9 +293,9 @@ export struct AnnotationView {
     this.currentDragX = this.screenX;
     this.currentDragY = this.screenY;
     
-    if (this.onDragStart) {
-      this.onDragStart(this.marker);
-    }
+      if (this.onMarkerDragStart) {
+        this.onMarkerDragStart(this.marker);
+      }
     
     // 短暂延迟后进入拖拽状态
     setTimeout(() => {
@@ -322,9 +332,9 @@ export struct AnnotationView {
     
     this.setDragState(DragState.Ending, true);
     
-    if (this.onDragEnd) {
-      this.onDragEnd(this.marker, this.currentDragX, this.currentDragY);
-    }
+      if (this.onMarkerDragEnd) {
+        this.onMarkerDragEnd(this.marker, this.currentDragX, this.currentDragY);
+      }
     
     // 结束后恢复正常状态
     setTimeout(() => {
@@ -376,7 +386,7 @@ export struct AnnotationView {
       }
     }
     .position({ x: pos.x, y: pos.y })
-    .opacity(this.opacity * this.marker.getAlpha())
+    .opacity(this.viewOpacity * this.marker.getAlpha())
     .scale({ x: finalScale, y: finalScale })
     .rotate({ angle: finalRotation })
     .gesture(this.createGestures())

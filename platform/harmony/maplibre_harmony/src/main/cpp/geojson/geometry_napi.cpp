@@ -7,7 +7,8 @@
 #include "multi_polygon_napi.hpp"
 #include "geometry_collection_napi.hpp"
 #include "util.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
+#include <mapbox/variant.hpp>
 
 using mbgl::harmony::Logger;
 
@@ -17,7 +18,7 @@ namespace geojson {
 
 napi_value GeometryNAPI::New(napi_env env, const mbgl::Geometry<double>& geometry) {
     GeometryEvaluator evaluator(env);
-    return mbgl::Geometry<double>::visit(geometry, evaluator);
+    return mapbox::util::apply_visitor(evaluator, geometry);
 }
 
 mbgl::Geometry<double> GeometryNAPI::convert(napi_env env, napi_value value) {
@@ -54,6 +55,12 @@ std::string GeometryNAPI::getType(napi_env env, napi_value obj) {
 }
 
 // GeometryEvaluator implementations
+
+napi_value GeometryEvaluator::operator()(const mbgl::EmptyGeometry&) const {
+    napi_value result;
+    napi_get_null(env, &result);
+    return result;
+}
 
 napi_value GeometryEvaluator::operator()(const mbgl::Point<double>& geometry) const {
     return PointNAPI::New(env, geometry);

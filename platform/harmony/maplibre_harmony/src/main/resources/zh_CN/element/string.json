@@ -1,0 +1,29 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "MapLibre Native 鸿蒙模块"
+    },
+    {
+      "name": "MaplibreAbility_desc",
+      "value": "MapLibre Native 地图应用"
+    },
+    {
+      "name": "MaplibreAbility_label",
+      "value": "MapLibre Native"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "从网络加载地图样式、瓦片和资源"
+    },
+    {
+      "name": "network_info_permission_reason",
+      "value": "检查网络连接以加载地图数据"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "在地图上显示您的当前位置并提供基于位置的服务"
+    }
+  ]
+}
+

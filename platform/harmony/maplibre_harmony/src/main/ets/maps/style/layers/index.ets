@@ -2,7 +2,7 @@
  * Style Layers - 图层模块导出
  */
 
-export { Layer, LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMetadata } from './Layer';
+export { LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMetadata } from './Layer';
 export { FillLayer } from './FillLayer';
 export { LineLayer } from './LineLayer';
 export { CircleLayer } from './CircleLayer';

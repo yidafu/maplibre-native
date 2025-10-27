@@ -8,11 +8,10 @@ import { NativeMapView } from '../maps/NativeMapView';
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
+import { DOMAIN } from '../constants/HiLogConstants';
 
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
-
-const DOMAIN = 0x0000;
 const TAG = 'BasicMapPage';
 
 // 全局地图视图引用（用于测试）

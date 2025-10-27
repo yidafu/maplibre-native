@@ -1,7 +1,7 @@
 #include "image_source_napi.hpp"
-#include "../napi_args.hpp"
-#include "../napi_utils.h"
-#include "../logger.h"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 #include <mbgl/util/geo.hpp>
 
 using namespace mbgl::harmony::napi;
@@ -80,12 +80,60 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // TODO: 解析 coordinates 参数
-        // 使用默认坐标创建
-        std::array<mbgl::LatLng, 4> coords = {{
-            mbgl::LatLng{0, 0}, mbgl::LatLng{0, 0},
-            mbgl::LatLng{0, 0}, mbgl::LatLng{0, 0}
-        }};
+        // 解析 coordinates 参数 (4个 LatLng 坐标，按顺时针顺序: 左上, 右上, 右下, 左下)
+        std::array<mbgl::LatLng, 4> coords;
+        
+        if (napiArgs.Count() >= 2) {
+            napi_value coordsValue = napiArgs.GetValue(1);
+            bool isArray = false;
+            napi_is_array(env, coordsValue, &isArray);
+            
+            if (isArray) {
+                uint32_t arrayLength = 0;
+                napi_get_array_length(env, coordsValue, &arrayLength);
+                
+                if (arrayLength == 4) {
+                    for (uint32_t i = 0; i < 4; ++i) {
+                        napi_value coordValue;
+                        napi_get_element(env, coordsValue, i, &coordValue);
+                        
+                        // 每个 coord 应该是 [lng, lat] 数组
+                        bool isCoordArray = false;
+                        napi_is_array(env, coordValue, &isCoordArray);
+                        
+                        if (isCoordArray) {
+                            napi_value lngValue, latValue;
+                            napi_get_element(env, coordValue, 0, &lngValue);
+                            napi_get_element(env, coordValue, 1, &latValue);
+                            
+                            double lng = 0.0, lat = 0.0;
+                            napi_get_value_double(env, lngValue, &lng);
+                            napi_get_value_double(env, latValue, &lat);
+                            
+                            coords[i] = mbgl::LatLng{lat, lng};
+                        }
+                    }
+                } else {
+                    Logger::warn("ImageSourceNAPI", "Coordinates array must have 4 elements, using default");
+                    coords = {{
+                        mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
+                        mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
+                    }};
+                }
+            } else {
+                Logger::warn("ImageSourceNAPI", "Coordinates must be an array, using default");
+                coords = {{
+                    mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
+                    mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
+                }};
+            }
+        } else {
+            // 使用默认坐标创建
+            coords = {{
+                mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
+                mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
+            }};
+        }
         
         auto source = std::make_unique<mbgl::style::ImageSource>(sourceId, coords);
         ImageSourceNAPI* sourceNapi = new ImageSourceNAPI(sourceId, std::move(source));
@@ -151,8 +199,83 @@ napi_value ImageSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info) {
-    // TODO: 实现坐标设置
-    Logger::warn("ImageSourceNAPI", "SetCoordinates not implemented yet");
+    napi_value jsThis;
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    
+    ImageSourceNAPI* sourceNapi = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    
+    if (!sourceNapi || !sourceNapi->source) {
+        napi_throw_error(env, nullptr, "Invalid ImageSource instance");
+        return nullptr;
+    }
+    
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "SetCoordinates requires coordinates argument");
+        return nullptr;
+    }
+    
+    // 解析 coordinates 参数 (4个 LatLng 坐标)
+    std::array<mbgl::LatLng, 4> coords;
+    
+    napi_value coordsValue = args[0];
+    bool isArray = false;
+    napi_is_array(env, coordsValue, &isArray);
+    
+    if (!isArray) {
+        napi_throw_error(env, nullptr, "coordinates must be an array");
+        return nullptr;
+    }
+    
+    uint32_t arrayLength = 0;
+    napi_get_array_length(env, coordsValue, &arrayLength);
+    
+    if (arrayLength != 4) {
+        napi_throw_error(env, nullptr, "coordinates array must have exactly 4 elements");
+        return nullptr;
+    }
+    
+    for (uint32_t i = 0; i < 4; ++i) {
+        napi_value coordValue;
+        napi_get_element(env, coordsValue, i, &coordValue);
+        
+        // 每个 coord 应该是 [lng, lat] 数组
+        bool isCoordArray = false;
+        napi_is_array(env, coordValue, &isCoordArray);
+        
+        if (!isCoordArray) {
+            napi_throw_error(env, nullptr, "Each coordinate must be a [lng, lat] array");
+            return nullptr;
+        }
+        
+        napi_value lngValue, latValue;
+        napi_get_element(env, coordValue, 0, &lngValue);
+        napi_get_element(env, coordValue, 1, &latValue);
+        
+        double lng = 0.0, lat = 0.0;
+        napi_get_value_double(env, lngValue, &lng);
+        napi_get_value_double(env, latValue, &lat);
+        
+        coords[i] = mbgl::LatLng{lat, lng};
+    }
+    
+    try {
+        auto* imageSource = sourceNapi->source.get()->as<mbgl::style::ImageSource>();
+        if (imageSource) {
+            imageSource->setCoordinates(coords);
+            Logger::info("ImageSourceNAPI", "SetCoordinates: %s", sourceNapi->id.c_str());
+        } else {
+            napi_throw_error(env, nullptr, "Source is not an ImageSource");
+            return nullptr;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("ImageSourceNAPI", "SetCoordinates failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return nullptr;
+    }
+    
     return nullptr;
 }
 

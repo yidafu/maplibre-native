@@ -4,6 +4,7 @@ import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
+import { DOMAIN } from '../constants/HiLogConstants';
 
 // 从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
@@ -17,7 +18,6 @@ import {
   BackgroundLayer
 } from '../maps/style/index';
 
-const DOMAIN = 0x0000;
 const TAG = 'LayerTestPage';
 
 /**
@@ -331,10 +331,10 @@ struct LayerTestPage {
     this.currentLayer = 'FillLayer';
 
     try {
-      const layer: FillLayer = new FillLayer('fill-test-layer', 'test-data')
-        .withFillColor('#ff0000')
-        .withFillOpacity(0.6)
-        .withFillOutlineColor('#000000');
+      const layer: FillLayer = new maplibre.FillLayer('fill-test-layer', 'test-data')
+          .setFillColor('#ff0000')
+        .setFillOpacity(0.6)
+        .setFillOutlineColor('#000000');
       
       style.addLayer(layer as object);
 
@@ -359,10 +359,10 @@ struct LayerTestPage {
     this.currentLayer = 'LineLayer';
 
     try {
-      const layer: LineLayer = new LineLayer('line-test-layer', 'test-data')
-        .withLineColor('#0000ff')
-        .withLineWidth(4)
-        .withLineDasharray([2, 2]);
+      const layer: LineLayer = new maplibre.LineLayer('line-test-layer', 'test-data')
+          .setLineColor('#0000ff')
+        .setLineWidth(4)
+        .setLineDasharray([2, 2]);
       
       style.addLayer(layer as object);
 
@@ -387,11 +387,12 @@ struct LayerTestPage {
     this.currentLayer = 'CircleLayer';
 
     try {
-      const layer: CircleLayer = new CircleLayer('circle-test-layer', 'test-data')
-        .withCircleRadius(15)
-        .withCircleColor('#00ff00')
-        .withCircleOpacity(0.8)
-        .withCircleStroke(2, '#ffffff');
+      const layer: CircleLayer = new maplibre.CircleLayer('circle-test-layer', 'test-data')
+          .setCircleRadius(15)
+        .setCircleColor('#00ff00')
+        .setCircleOpacity(0.8)
+        .setCircleStrokeWidth(2)
+        .setCircleStrokeColor('#ffffff');
       
       style.addLayer(layer as object);
 
@@ -416,8 +417,10 @@ struct LayerTestPage {
     this.currentLayer = 'SymbolLayer';
 
     try {
-      const layer: SymbolLayer = new SymbolLayer('symbol-test-layer', 'test-data')
-        .withText('{name}', 16, '#000000');
+      const layer: SymbolLayer = new maplibre.SymbolLayer('symbol-test-layer', 'test-data');
+      layer.setTextField('{name}');
+      layer.setTextSize(16);
+      layer.setTextColor('#000000');
       
       style.addLayer(layer as object);
 
@@ -466,10 +469,10 @@ struct LayerTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer = new HeatmapLayer('heatmap-test-layer', 'heatmap-source')
-        .withHeatmapRadius(30)
-        .withHeatmapIntensity(1.5)
-        .withHeatmapOpacity(0.8);
+      const layer = new maplibre.HeatmapLayer('heatmap-test-layer', 'heatmap-source')
+          .setHeatmapRadius(30)
+        .setHeatmapIntensity(1.5)
+        .setHeatmapOpacity(0.8);
       
       style.addLayer(layer as object);
 
@@ -531,10 +534,11 @@ struct LayerTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer = new FillExtrusionLayer('extrusion-test-layer', 'extrusion-source')
-        .withFillExtrusionHeight(100, 0)
-        .withFillExtrusionColor('#0080ff')
-        .withFillExtrusionOpacity(0.9);
+      const layer = new maplibre.FillExtrusionLayer('extrusion-test-layer', 'extrusion-source')
+          .setFillExtrusionHeight(100)
+          .setFillExtrusionBase(0)
+        .setFillExtrusionColor('#0080ff')
+        .setFillExtrusionOpacity(0.9);
       
       style.addLayer(layer as object);
 
@@ -567,8 +571,8 @@ struct LayerTestPage {
       source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
       style.addSource(source);
 
-      const layer: RasterLayer = new RasterLayer('raster-test-layer', 'raster-test-source')
-        .withRasterOpacity(0.5);
+      const layer: RasterLayer = new maplibre.RasterLayer('raster-test-layer', 'raster-test-source')
+          .setRasterOpacity(0.5);
       
       style.addLayer(layer as object);
 
@@ -592,9 +596,9 @@ struct LayerTestPage {
     this.currentLayer = 'BackgroundLayer';
 
     try {
-      const layer: object = new BackgroundLayer('background-test-layer')
-        .withBackgroundColor('#ffcccc')
-        .withBackgroundOpacity(0.8);
+      const layer: object = new maplibre.BackgroundLayer('background-test-layer')
+          .setBackgroundColor('#ffcccc')
+        .setBackgroundOpacity(0.8);
       
       // 背景图层应该添加到最底层
       style.addLayer(layer as object);

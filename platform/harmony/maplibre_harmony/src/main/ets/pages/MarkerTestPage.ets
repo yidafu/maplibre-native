@@ -13,6 +13,7 @@ import { OnInfoWindowClickListener } from '../maps/listeners/OnInfoWindowClickLi
 import { OnInfoWindowCloseListener } from '../maps/listeners/OnInfoWindowCloseListener';
 import { OnMarkerSelectListener } from '../maps/listeners/OnMarkerSelectListener';
 import { router } from '@kit.ArkUI';
+import { DOMAIN } from '../constants/HiLogConstants';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 // import { ComponentContent, wrapBuilder } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
@@ -20,7 +21,6 @@ import maplibre from 'libmaplibre_native.so';
 // 使用 NAPI Marker 类型
 type Marker = maplibre.Marker;
 
-const DOMAIN = 0x0000;
 const TAG = 'MarkerTestPage';
 
 /**

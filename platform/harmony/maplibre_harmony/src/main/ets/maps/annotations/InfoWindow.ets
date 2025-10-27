@@ -341,10 +341,10 @@ export struct InfoWindowComponent {
   @Prop arrowOffsetX: number = 0; // 箭头相对于中心的偏移量
   @Prop customContent?: object;
   @Prop customStyle?: InfoWindowStyle;
-  @State opacity: number = 0; // 用于动画
-  @State scale: number = 0.8; // 用于动画
+  @State windowOpacity: number = 0; // 用于动画（重命名避免与 CustomComponent.opacity 冲突）
+  @State windowScale: number = 0.8; // 用于动画（重命名避免与 CustomComponent.scale 冲突）
   
-  onClick?: () => void;
+  onWindowClick?: () => void; // 重命名避免与 CustomComponent.onClick 冲突
   onLongClick?: () => void;
   onClose?: () => void;
   
@@ -353,12 +353,12 @@ export struct InfoWindowComponent {
     const animated = this.customStyle?.animated !== false;
     if (animated) {
       animateTo({ duration: 250, curve: Curve.EaseOut }, () => {
-        this.opacity = 1;
-        this.scale = 1;
+        this.windowOpacity = 1;
+        this.windowScale = 1;
       });
     } else {
-      this.opacity = 1;
-      this.scale = 1;
+      this.windowOpacity = 1;
+      this.windowScale = 1;
     }
   }
   
@@ -403,7 +403,7 @@ export struct InfoWindowComponent {
         offsetX: 0,
         offsetY: 2
       })
-      .maxWidth(this.customStyle?.maxWidth ?? 280)
+      .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 280 })
       
       // 箭头指示器（指向 Marker）
       // 根据 arrowOffsetX 调整箭头位置
@@ -415,7 +415,8 @@ export struct InfoWindowComponent {
         }
         
         // 箭头
-        Polygon({ points: [[0, 0], [10, 10], [20, 0]] })
+        Polygon()
+          .points([[0, 0], [10, 10], [20, 0]])
           .fill(this.customStyle?.backgroundColor ?? Color.White)
           .width(20)
           .height(10)
@@ -431,12 +432,12 @@ export struct InfoWindowComponent {
       .margin({ top: -1 })
     }
     .alignItems(HorizontalAlign.Center)
-    .opacity(this.opacity)
-    .scale({ x: this.scale, y: this.scale })
+    .opacity(this.windowOpacity)
+    .scale({ x: this.windowScale, y: this.windowScale })
     .onClick(() => {
       console.info('[InfoWindow] Content clicked for marker:', this.marker.getId());
-      if (this.onClick) {
-        this.onClick();
+      if (this.onWindowClick) {
+        this.onWindowClick();
       }
     })
     .gesture(

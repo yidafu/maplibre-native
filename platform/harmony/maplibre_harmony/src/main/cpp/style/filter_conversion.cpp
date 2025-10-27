@@ -1,6 +1,6 @@
 #include "filter_conversion.hpp"
 #include "value_conversion.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 #include <mbgl/style/conversion/filter.hpp>
 #include <mbgl/style/conversion/json.hpp>
 

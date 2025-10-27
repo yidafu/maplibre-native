@@ -3,7 +3,7 @@
 //
 
 #include "napi_args.hpp"
-#include "logger.h"
+#include "utils/logger.h"
 #include <sstream>
 
 using mbgl::harmony::Logger;

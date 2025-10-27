@@ -19,6 +19,10 @@
     {
       "name": "network_info_permission_reason",
       "value": "Check network connectivity for map data loading"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "Display your current location on the map and provide location-based services"
     }
   ]
 }

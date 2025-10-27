@@ -27,9 +27,6 @@ export class TooManyIconsException extends Error {
   constructor(message?: string) {
     super(message || 'Too many icons created. Maximum icon count exceeded.');
     this.name = 'TooManyIconsException';
-    
-    // 设置原型链，确保 instanceof 正常工作
-    Object.setPrototypeOf(this, TooManyIconsException.prototype);
   }
 }
 

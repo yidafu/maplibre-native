@@ -1,7 +1,7 @@
 #include "raster_dem_source_napi.hpp"
-#include "../napi_args.hpp"
-#include "../napi_utils.h"
-#include "../logger.h"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;

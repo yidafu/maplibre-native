@@ -8,9 +8,10 @@
 /**
  * 经纬度坐标
  */
-export interface LatLng {
-    latitude: number;
-    longitude: number;
+export class LatLng {
+    constructor(latitude: number, longitude: number);
+    readonly latitude: number;
+    readonly longitude: number;
 }
 
 /**

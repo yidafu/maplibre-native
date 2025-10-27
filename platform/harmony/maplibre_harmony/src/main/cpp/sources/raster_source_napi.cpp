@@ -1,7 +1,7 @@
 #include "raster_source_napi.hpp"
-#include "../napi_args.hpp"
-#include "../napi_utils.h"
-#include "../logger.h"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -176,8 +176,36 @@ napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) {
-    // TODO: 实现 setTileSize
-    Logger::warn("RasterSourceNAPI", "SetTileSize not implemented yet");
+    napi_value jsThis;
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    
+    RasterSourceNAPI* sourceNapi = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    
+    if (!sourceNapi || !sourceNapi->source) {
+        napi_throw_error(env, nullptr, "Invalid RasterSource instance");
+        return nullptr;
+    }
+    
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "SetTileSize requires tileSize argument");
+        return nullptr;
+    }
+    
+    uint32_t tileSize = 0;
+    napi_get_value_uint32(env, args[0], &tileSize);
+    
+    if (tileSize == 0 || tileSize > 1024) {
+        napi_throw_error(env, nullptr, "Invalid tile size (must be between 1 and 1024)");
+        return nullptr;
+    }
+    
+    // Note: RasterSource does not support changing tile size after creation.
+    // Tile size must be specified in the constructor.
+    Logger::info("RasterSourceNAPI", "SetTileSize not supported - tile size is immutable after source creation");
+    napi_throw_error(env, nullptr, "RasterSource does not support changing tile size after creation. Please recreate the source with the desired tile size.");
     return nullptr;
 }
 

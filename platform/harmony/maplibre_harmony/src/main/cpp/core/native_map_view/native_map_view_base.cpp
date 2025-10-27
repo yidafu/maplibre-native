@@ -1,6 +1,6 @@
 #include "native_map_view_harmony.hpp"
-#include "../../napi/bindings/marker/marker_napi.hpp"
-#include "../../napi/bindings/style/style_napi.hpp"
+#include "napi/bindings/marker/marker_napi.hpp"
+#include "napi/bindings/style/style_napi.hpp"
 
 #include <js_native_api_types.h>
 #include <mbgl/map/map.hpp>
@@ -20,13 +20,13 @@
 #include <napi/native_api.h>
 
 // 添加Harmony渲染器头文件
-#include "../../rendering/harmony_renderer.hpp"
-#include "../../rendering/harmony_renderer_frontend.hpp"
-#include "../../rendering/backends/harmony_renderer_backend.hpp"
-#include "../../rendering/backends/harmony_gl_renderer_backend.hpp"
-#include "../../napi/core/napi_utils.h"
-#include "../../napi/core/napi_args.hpp"
-#include "../../utils/logger.h"
+#include "rendering/harmony_renderer.hpp"
+#include "rendering/harmony_renderer_frontend.hpp"
+#include "rendering/backends/harmony_renderer_backend.hpp"
+#include "rendering/backends/harmony_gl_renderer_backend.hpp"
+#include "napi/core/napi_utils.h"
+#include "napi/core/napi_args.hpp"
+#include "utils/logger.h"
 
 // 几何类型转换
 #include "geometry/lat_lng_harmony.hpp"
@@ -423,200 +423,7 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
-// MapObserver 方法实现
-void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onCameraWillChange");
-}
-void NativeMapView::onCameraIsChanging() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onCameraIsChanging");
-}
-void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode) {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onCameraDidChange");
-    
-    // MapLibre 内部已经处理渲染时机（通过 triggerRepaint）
-    // 不需要在这里额外请求渲染，否则会造成过度渲染
-}
-void NativeMapView::onWillStartLoadingMap() {
-    Logger::info("NativeMapView", "========== onWillStartLoadingMap ==========");
-    Logger::info("NativeMapView", "Map loading started");
-    Logger::info("NativeMapView", "This is triggered when:");
-    Logger::info("NativeMapView", "  - Style URL/JSON is set");
-    Logger::info("NativeMapView", "  - Map starts loading resources");
-    Logger::info("NativeMapView", "===========================================");
-}
-void NativeMapView::onDidFinishLoadingMap() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    
-    auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    
-    Logger::warn("NativeMapView", "🗺️ [%lld ms] onDidFinishLoadingMap", elapsed);
-    
-    // MapLibre内部已自动处理渲染，不需要额外请求
-    // 移除此处的 requestRender() 避免重复渲染
-}
-void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& errorMsg) {
-    Logger::error("NativeMapView", "========== onDidFailLoadingMap ==========");
-    
-    // 根据错误类型输出不同的信息
-    const char* errorType = "Unknown";
-    const char* suggestion = "";
-    
-    switch (error) {
-        case MapLoadError::StyleParseError:
-            errorType = "StyleParseError";
-            suggestion = "Check if the style JSON is valid. Validate at: https://maplibre.org/maplibre-style-spec/";
-            break;
-        case MapLoadError::StyleLoadError:
-            errorType = "StyleLoadError";
-            suggestion = "Check if the style URL is accessible and the network connection is working";
-            break;
-        case MapLoadError::NotFoundError:
-            errorType = "NotFoundError";
-            suggestion = "The style file or resource was not found. Check the URL and file paths";
-            break;
-        case MapLoadError::UnknownError:
-            errorType = "UnknownError";
-            suggestion = "An unknown error occurred. Check the error message for details";
-            break;
-    }
-    
-    Logger::error("NativeMapView", "Map loading failed!");
-    Logger::error("NativeMapView", "  Error Type: %s", errorType);
-    Logger::error("NativeMapView", "  Error Message: %s", errorMsg.c_str());
-    Logger::info("NativeMapView", "  Suggestion: %s", suggestion);
-    Logger::error("NativeMapView", "=========================================");
-    
-    // 通知样式加载错误
-    std::string fullError = std::string(errorType) + ": " + errorMsg;
-    notifyStyleLoadError(fullError);
-}
-void NativeMapView::onWillStartRenderingFrame() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onWillStartRenderingFrame");
-}
-void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStatus& status) {
-    if (isDestroying.load(std::memory_order_acquire)) {
-        return;
-    }
-    
-    // Network I/O is now handled by the renderer thread's RunLoop
-}
-void NativeMapView::onWillStartRenderingMap() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onWillStartRenderingMap");
-}
-void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
-    // 立即检查对象是否正在析构
-    if (isDestroying.load(std::memory_order_acquire)) {
-        return;
-    }
-    
-    try {
-        Logger::debug("NativeMapView", "onDidFinishRenderingMap");
-        // 渲染已完成，不需要再次请求渲染
-        // onCameraDidChange 已经处理了渲染请求
-    } catch (...) {
-        // 忽略所有异常，避免崩溃
-    }
-}
-void NativeMapView::onDidBecomeIdle() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onDidBecomeIdle");
-}
-void NativeMapView::onDidFinishLoadingStyle() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    
-    auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    
-    Logger::warn("NativeMapView", "🎨 [%lld ms] onDidFinishLoadingStyle", elapsed);
-    
-    // 通知样式加载完成
-    notifyStyleLoaded();
-    
-    if (map) {
-        try {
-            // 获取样式URL和名称
-            std::string styleUrl = map->getStyle().getURL();
-            std::string styleName = map->getStyle().getName();
-            
-            Logger::info("NativeMapView", "Style loaded successfully:");
-            Logger::info("NativeMapView", "  - URL: %s", styleUrl.empty() ? "(inline JSON)" : styleUrl.c_str());
-            Logger::info("NativeMapView", "  - Name: %s", styleName.empty() ? "(unnamed)" : styleName.c_str());
-            
-            // 获取Sources列表
-            auto sources = map->getStyle().getSources();
-            Logger::info("NativeMapView", "  - Sources count: %zu", sources.size());
-            for (const auto* source : sources) {
-                if (source) {
-                    Logger::debug("NativeMapView", "    * Source: %s (type: %d)", 
-                                  source->getID().c_str(), static_cast<int>(source->getType()));
-                }
-            }
-            
-            // 获取Layers列表
-            auto layers = map->getStyle().getLayers();
-            Logger::info("NativeMapView", "  - Layers count: %zu", layers.size());
-            for (const auto* layer : layers) {
-                if (layer) {
-                    Logger::debug("NativeMapView", "    * Layer: %s (source: %s)", 
-                                  layer->getID().c_str(), layer->getSourceID().c_str());
-                }
-            }
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "Error inspecting loaded style: %s", e.what());
-        }
-    } else {
-        Logger::warn("NativeMapView", "Map object is null");
-    }
-    
-    Logger::info("NativeMapView", "=============================================");
-    
-    // MapLibre内部已自动处理渲染，不需要额外请求
-    // 移除此处的 requestRender() 避免重复渲染
-}
-void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    
-    int count = ++sourceChangedCount;
-    auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    
-    Logger::warn("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d)", 
-                 elapsed, count, source.getID().c_str(), static_cast<int>(source.getType()));
-    
-    // MapLibre内部已自动处理渲染，不需要额外请求
-    // 移除此处的 requestRender() 避免重复渲染导致无限循环
-}
-void NativeMapView::onStyleImageMissing(const std::string& id) {
-    Logger::warn("NativeMapView", "========== onStyleImageMissing ==========");
-    Logger::warn("NativeMapView", "[MarkerDebug] Style-Missing: Icon \"%s\" not found in style", id.c_str());
-    Logger::warn("NativeMapView", "[MarkerDebug] ⚠️ CRITICAL: This will cause markers with this icon to be INVISIBLE!");
-    Logger::info("NativeMapView", "");
-    Logger::info("NativeMapView", "[MarkerDebug] Solutions:");
-    Logger::info("NativeMapView", "[MarkerDebug]   1. Add custom icon using addAnnotationIcon():");
-    Logger::info("NativeMapView", "[MarkerDebug]      mapView.addAnnotationIcon(\"icon-name\", width, height, scale, pixelData)");
-    Logger::info("NativeMapView", "[MarkerDebug]   2. Use a style that includes the icon in sprite sheet");
-    Logger::info("NativeMapView", "[MarkerDebug]   3. Specify an existing icon name when creating marker");
-    Logger::info("NativeMapView", "");
-    if (id.empty()) {
-        Logger::warn("NativeMapView", "[MarkerDebug] ⚠️ Icon ID is EMPTY - did you forget to set icon when creating Marker?");
-        Logger::info("NativeMapView", "[MarkerDebug]    Example: new MarkerOptions().position(latLng).icon(\"my-icon\").getMarker()");
-    }
-    Logger::warn("NativeMapView", "=========================================");
-}
-
-bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
-    Logger::debug("NativeMapView", "onCanRemoveUnusedStyleImage: %s - returning false (keep image)", id.c_str());
-    return false;
-}
+// MapObserver 方法实现已全部移至 native_map_view_observers.cpp
 
 void NativeMapView::initializeRenderer() {
     Logger::debug("NativeMapView", "initializeRenderer() called - harmonyRenderer=%s, nativeWindow=%s, map=%s", 

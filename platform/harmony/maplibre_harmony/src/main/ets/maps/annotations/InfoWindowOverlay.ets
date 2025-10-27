@@ -57,7 +57,7 @@ export struct InfoWindowOverlay {
             marker: infoWindowState.marker,
             arrowOffsetX: infoWindowState.position.arrowOffsetX,
             customStyle: infoWindowState.style,
-            onClick: () => {
+            onWindowClick: () => {
               console.info('[InfoWindowOverlay] InfoWindow clicked:', infoWindowState.marker.getId());
               if (this.onInfoWindowClick) {
                 this.onInfoWindowClick(infoWindowState.marker);

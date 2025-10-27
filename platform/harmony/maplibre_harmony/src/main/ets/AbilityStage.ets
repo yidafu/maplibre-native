@@ -1,7 +1,6 @@
 import { AbilityStage } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-
-const DOMAIN = 0x0000;
+import { DOMAIN } from './constants/HiLogConstants';
 
 export default class MyAbilityStage extends AbilityStage {
   onCreate(): void {

@@ -130,7 +130,13 @@ export class Icon {
     try {
       // 读取 PixelMap 的像素数据（同步）
       const buffer = new ArrayBuffer(this.width * this.height * 4); // RGBA
-      this.pixelMap.readPixelsSync(buffer);
+      const area: image.PositionArea = {
+        pixels: buffer,
+        offset: 0,
+        stride: this.width * 4,
+        region: { size: { height: this.height, width: this.width }, x: 0, y: 0 }
+      };
+      this.pixelMap.readPixelsSync(area);
       return new Uint8Array(buffer);
     } catch (error) {
       throw new Error(`Failed to convert PixelMap to bytes: ${error}`);

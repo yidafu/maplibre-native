@@ -15,10 +15,41 @@ import maplibre from 'libmaplibre_native.so';
 import { MapLibreMap } from '../MapLibreMap';
 import { LatLng } from '../geometry/LatLng';
 import { GeoJsonSource } from '../style/sources/GeoJsonSource';
+import { GeoJsonOptions } from '../style/sources/GeoJsonOptions';
 import { SymbolLayer } from '../style/layers/SymbolLayer';
 import { Expression } from '../style/expressions/Expression';
 
 type Marker = maplibre.Marker;
+
+/**
+ * MarkerGeometry - Marker 几何对象接口
+ */
+interface MarkerGeometry {
+  type: 'Point';
+  coordinates: [number, number]; // [longitude, latitude]
+}
+
+/**
+ * MarkerProperties - Marker 属性接口
+ */
+interface MarkerProperties {
+  // 基础属性
+  icon: string;
+  title?: string;
+  snippet?: string;
+  
+  // 高级属性
+  rotation: number;        // 旋转角度
+  alpha: number;           // 透明度 0-1
+  zIndex: number;          // 显示层级
+  anchorU: number;         // 锚点 U (0-1)
+  anchorV: number;         // 锚点 V (0-1)
+  draggable: boolean;      // 是否可拖拽
+  visible: boolean;        // 是否可见
+  
+  // 内部使用
+  __markerId: number;      // Marker 对象的唯一标识
+}
 
 /**
  * MarkerFeature - Marker 的 GeoJSON Feature 表示
@@ -26,28 +57,8 @@ type Marker = maplibre.Marker;
 interface MarkerFeature {
   type: 'Feature';
   id: string | number;
-  geometry: {
-    type: 'Point';
-    coordinates: [number, number]; // [longitude, latitude]
-  };
-  properties: {
-    // 基础属性
-    icon: string;
-    title?: string;
-    snippet?: string;
-    
-    // 高级属性
-    rotation: number;        // 旋转角度
-    alpha: number;           // 透明度 0-1
-    zIndex: number;          // 显示层级
-    anchorU: number;         // 锚点 U (0-1)
-    anchorV: number;         // 锚点 V (0-1)
-    draggable: boolean;      // 是否可拖拽
-    visible: boolean;        // 是否可见
-    
-    // 内部使用
-    __markerId: number;      // Marker 对象的唯一标识
-  };
+  geometry: MarkerGeometry;
+  properties: MarkerProperties;
 }
 
 /**
@@ -66,8 +77,8 @@ export class MarkerLayerManager {
   private static readonly LAYER_ID = 'maplibre-marker-layer';
   
   private mapLibreMap: MapLibreMap;
-  private source: GeoJsonSource | null = null;
-  private layer: SymbolLayer | null = null;
+  private source: maplibre.GeoJsonSource | null = null;
+  private layer: maplibre.SymbolLayer | null = null;
   private markers: Map<number, Marker> = new Map();
   private features: Map<number, MarkerFeature> = new Map();
   private nextFeatureId: number = 1;
@@ -105,18 +116,22 @@ export class MarkerLayerManager {
         features: []
       };
       
-      this.source = new GeoJsonSource(MarkerLayerManager.SOURCE_ID, {
-        data: emptyFeatureCollection,
+      // 创建 GeoJsonSource（使用 NAPI 类）
+      const options: GeoJsonOptions = {
         cluster: false,
         tolerance: 0.375,
         buffer: 128
-      });
+      };
+      this.source = new maplibre.GeoJsonSource(MarkerLayerManager.SOURCE_ID, options);
+      
+      // 设置初始数据
+      this.source.setGeoJsonSync(emptyFeatureCollection);
       
       // 添加 Source 到 Style
       style.addSource(this.source);
       
-      // 创建 SymbolLayer 使用数据驱动样式
-      this.layer = new SymbolLayer(
+      // 创建 SymbolLayer 使用数据驱动样式（使用 NAPI 类）
+      this.layer = new maplibre.SymbolLayer(
         MarkerLayerManager.LAYER_ID,
         MarkerLayerManager.SOURCE_ID
       );
@@ -125,32 +140,34 @@ export class MarkerLayerManager {
       this.configureLayer(this.layer);
       
       // 添加 Layer 到 Style
-      style.addLayer(this.layer as object);
+      style.addLayer(this.layer);
       
       this.initialized = true;
       console.info('MarkerLayerManager initialized successfully');
     } catch (error) {
       console.error(`Failed to initialize MarkerLayerManager: ${error}`);
-      throw error;
+      throw new Error(String(error));
     }
   }
   
   /**
    * 配置 SymbolLayer 的数据驱动样式
    */
-  private configureLayer(layer: SymbolLayer): void {
+  private configureLayer(layer: maplibre.SymbolLayer): void {
     console.info('MarkerLayerManager: Configuring SymbolLayer with data-driven styling');
     
     // ========== Icon 布局属性 ==========
     
-    // Icon 图像：从 properties.icon 读取（数据驱动）
-    layer.setIconImage(Expression.get<string>('icon'));
+    // Icon 图像：TODO: 等待 NAPI 支持 Expression，暂时使用默认值
+    // 理想: layer.setIconImage(Expression.get<string>('icon'));
+    layer.setIconImage('marker-default');
     
     // Icon 大小：默认 1.0
     layer.setIconSize(1.0);
     
-    // Icon 旋转角度：从 properties.rotation 读取（数据驱动）
-    layer.setIconRotate(Expression.get<number>('rotation'));
+    // Icon 旋转角度：TODO: 等待 NAPI 支持 Expression
+    // 理想: layer.setIconRotate(Expression.get<number>('rotation'));
+    layer.setIconRotate(0);
     
     // Icon 锚点：默认 bottom（底部中心）
     layer.setIconAnchor('bottom');
@@ -160,8 +177,9 @@ export class MarkerLayerManager {
     
     // ========== Icon 绘制属性 ==========
     
-    // Icon 透明度：从 properties.alpha 读取（数据驱动）
-    layer.setIconOpacity(Expression.get<number>('alpha'));
+    // Icon 透明度：TODO: 等待 NAPI 支持 Expression
+    // 理想: layer.setIconOpacity(Expression.get<number>('alpha'));
+    layer.setIconOpacity(1.0);
     
     console.info('MarkerLayerManager: SymbolLayer configured successfully');
   }
@@ -276,27 +294,33 @@ export class MarkerLayerManager {
     const draggable = marker.getDraggable();
     const visible = marker.getVisible();
     
-    return {
+    const geometry: MarkerGeometry = {
+      type: 'Point',
+      coordinates: [position.longitude, position.latitude]
+    };
+    
+    const properties: MarkerProperties = {
+      icon: icon,
+      title: title,
+      snippet: snippet,
+      rotation: rotation,
+      alpha: alpha,
+      zIndex: zIndex,
+      anchorU: anchor.u,
+      anchorV: anchor.v,
+      draggable: draggable,
+      visible: visible,
+      __markerId: featureId
+    };
+    
+    const feature: MarkerFeature = {
       type: 'Feature',
       id: featureId,
-      geometry: {
-        type: 'Point',
-        coordinates: [position.longitude, position.latitude]
-      },
-      properties: {
-        icon: icon,
-        title: title,
-        snippet: snippet,
-        rotation: rotation,
-        alpha: alpha,
-        zIndex: zIndex,
-        anchorU: anchor.u,
-        anchorV: anchor.v,
-        draggable: draggable,
-        visible: visible,
-        __markerId: featureId
-      }
+      geometry: geometry,
+      properties: properties
     };
+    
+    return feature;
   }
   
   /**

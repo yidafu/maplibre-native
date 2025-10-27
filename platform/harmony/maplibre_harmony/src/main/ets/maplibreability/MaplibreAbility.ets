@@ -1,8 +1,7 @@
 import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
-
-const DOMAIN = 0x0000;
+import { DOMAIN } from '../constants/HiLogConstants';
 
 export default class MaplibreAbility extends UIAbility {
   private isDestroyed: boolean = false;

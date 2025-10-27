@@ -1,6 +1,6 @@
 #include "polygon_napi.hpp"
 #include "util.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 
@@ -18,7 +18,8 @@ napi_value PolygonNAPI::New(napi_env env, const mbgl::Polygon<double>& polygon) 
     napi_set_named_property(env, obj, "type", type);
     
     // 设置 coordinates (外环 + 内环)
-    napi_value coordinates = LineStringVectorToNapiArray(env, polygon);
+    // Polygon is a vector<LinearRing>, so use LinearRingVectorToNapiArray
+    napi_value coordinates = LinearRingVectorToNapiArray(env, polygon);
     napi_set_named_property(env, obj, "coordinates", coordinates);
     
     return obj;
@@ -36,7 +37,8 @@ mbgl::Polygon<double> PolygonNAPI::convert(napi_env env, napi_value value) {
         throw std::runtime_error("Polygon coordinates must be an array");
     }
     
-    return NapiArrayToLineStringVector(env, coordinates);
+    // Polygon is a vector<LinearRing>, so use NapiArrayToLinearRingVector
+    return NapiArrayToLinearRingVector(env, coordinates);
 }
 
 } // namespace geojson

@@ -1,6 +1,6 @@
 #include "multi_polygon_napi.hpp"
 #include "util.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 

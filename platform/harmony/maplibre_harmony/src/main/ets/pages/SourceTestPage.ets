@@ -4,6 +4,7 @@ import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
+import { DOMAIN } from '../constants/HiLogConstants';
 
 // 暂时从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
@@ -11,8 +12,6 @@ import {
   LineLayer, 
   CircleLayer
 } from '../maps/style/index';
-
-const DOMAIN = 0x0000;
 const TAG = 'SourceTestPage';
 
 /**
@@ -275,10 +274,10 @@ struct SourceTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer: CircleLayer = new CircleLayer('point-layer', 'point-source')
-        .withCircleRadius(15)
-        .withCircleColor('#ff0000')
-        .withCircleOpacity(0.8);
+      const layer: CircleLayer = new maplibre.CircleLayer('point-layer', 'point-source')
+          .setCircleRadius(15)
+        .setCircleColor('#ff0000')
+        .setCircleOpacity(0.8);
       
       style.addLayer(layer as object);
 
@@ -324,9 +323,9 @@ struct SourceTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer: LineLayer = new LineLayer('line-layer', 'line-source')
-        .withLineColor('#0000ff')
-        .withLineWidth(4);
+      const layer: LineLayer = new maplibre.LineLayer('line-layer', 'line-source')
+          .setLineColor('#0000ff')
+        .setLineWidth(4);
       
       style.addLayer(layer as object);
 
@@ -374,10 +373,10 @@ struct SourceTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer: FillLayer = new FillLayer('polygon-layer', 'polygon-source')
-        .withFillColor('#00ff00')
-        .withFillOpacity(0.5)
-        .withFillOutlineColor('#000000');
+      const layer: FillLayer = new maplibre.FillLayer('polygon-layer', 'polygon-source')
+          .setFillColor('#00ff00')
+        .setFillOpacity(0.5)
+        .setFillOutlineColor('#000000');
       
       style.addLayer(layer as object);
 
@@ -427,10 +426,10 @@ struct SourceTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer: CircleLayer = new CircleLayer('cluster-layer', 'cluster-source')
-        .withCircleRadius(10)
-        .withCircleColor('#ff6600')
-        .withCircleOpacity(0.8);
+      const layer: CircleLayer = new maplibre.CircleLayer('cluster-layer', 'cluster-source')
+          .setCircleRadius(10)
+        .setCircleColor('#ff6600')
+        .setCircleOpacity(0.8);
       
       style.addLayer(layer as object);
 
@@ -459,10 +458,10 @@ struct SourceTestPage {
       source.setUrl('https://raw.githubusercontent.com/maplibre/maplibre-gl-js/main/test/integration/data/countries.geojson');
       style.addSource(source);
 
-      const layer: FillLayer = new FillLayer('url-layer', 'url-source')
-        .withFillColor('#0080ff')
-        .withFillOpacity(0.3)
-        .withFillOutlineColor('#000000');
+      const layer: FillLayer = new maplibre.FillLayer('url-layer', 'url-source')
+          .setFillColor('#0080ff')
+        .setFillOpacity(0.3)
+        .setFillOutlineColor('#000000');
       
       style.addLayer(layer as object);
 

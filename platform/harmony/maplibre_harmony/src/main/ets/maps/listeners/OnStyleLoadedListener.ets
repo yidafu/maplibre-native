@@ -9,8 +9,8 @@ export interface OnStyleLoadedListener {
   /**
    * 样式加载完成回调
    * 
-   * @param style 已加载的样式对象
+   * @param style 已加载的样式对象（可能为 null，表示使用 NativeMapView 直接操作）
    */
-  onStyleLoaded(style: Style): void;
+  onStyleLoaded(style: Style | null): void;
 }
 

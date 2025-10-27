@@ -1,25 +1,30 @@
 #include "napi/native_api.h"
-#include "../../core/native_map_view/native_map_view_harmony.hpp"
-#include "../bindings/marker/marker_napi.hpp"
+#include "core/native_map_view/native_map_view_harmony.hpp"
+#include "napi/bindings/marker/marker_napi.hpp"
+// Geometry types
+#include "geometry/lat_lng_harmony.hpp"
 // Style API bindings (NAPI 对象)
-#include "../bindings/style/style_napi.hpp"
-#include "../bindings/style_builder_napi.hpp"
+#include "napi/bindings/style/style_napi.hpp"
+#include "napi/bindings/style_builder_napi.hpp"
 // Source NAPI 类
-#include "../../sources/geojson_source_napi.hpp"
-#include "../../sources/vector_source_napi.hpp"
-#include "../../sources/raster_source_napi.hpp"
-#include "../../sources/raster_dem_source_napi.hpp"
-#include "../../sources/image_source_napi.hpp"
+#include "sources/geojson_source_napi.hpp"
+#include "sources/vector_source_napi.hpp"
+#include "sources/raster_source_napi.hpp"
+#include "sources/raster_dem_source_napi.hpp"
+#include "sources/image_source_napi.hpp"
 // Layer bindings
-#include "../../style/layers/fill_layer_harmony.hpp"
-#include "../../style/layers/line_layer_harmony.hpp"
-#include "../../style/layers/circle_layer_harmony.hpp"
-#include "../../style/layers/background_layer_harmony.hpp"
-#include "../../style/layers/raster_layer_harmony.hpp"
-#include "../../style/layers/symbol_layer_harmony.hpp"
+#include "style/layers/fill_layer_harmony.hpp"
+#include "style/layers/line_layer_harmony.hpp"
+#include "style/layers/circle_layer_harmony.hpp"
+#include "style/layers/background_layer_harmony.hpp"
+#include "style/layers/raster_layer_harmony.hpp"
+#include "style/layers/symbol_layer_harmony.hpp"
 
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
+    // 初始化 Geometry 类
+    mbgl::harmony::LatLngNapi::Init(env, exports);
+    
     // 初始化 NativeMapView 类
     mbgl::harmony::NativeMapView::Init(env, exports);
     
@@ -43,7 +48,8 @@ static napi_value Init(napi_env env, napi_value exports) {
     mbgl::harmony::CircleLayerNAPI::Init(env, exports);
     mbgl::harmony::BackgroundLayerNAPI::Init(env, exports);
     mbgl::harmony::RasterLayerNAPI::Init(env, exports);
-    maplibre::harmony::SymbolLayerNAPI::Init(env, exports);
+    // TODO: SymbolLayerNAPI has compilation errors, temporarily disabled
+    // maplibre::harmony::SymbolLayerNAPI::Init(env, exports);
     // TODO: HeatmapLayerHarmony::Init(env, exports);
     // TODO: HillshadeLayerHarmony::Init(env, exports);
     // TODO: FillExtrusionLayerHarmony::Init(env, exports);

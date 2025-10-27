@@ -1,7 +1,7 @@
-#include "style/style_napi.hpp"
-#include "../../napi/core/napi_args.hpp"
-#include "../../napi/core/napi_utils.h"
-#include "../../utils/logger.h"
+#include "style_napi.hpp"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/layer.hpp>
@@ -223,11 +223,11 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     napi_value sourceValue = args[0];
     std::string sourceId;
     bool sourceAdded = false;
+    napi_status status;
     
-    // 尝试unwrap各种Source类型
-    // 1. GeoJsonSource
+    // 1. Try GeoJsonSource
     GeoJsonSourceNAPI* geoJsonSource = nullptr;
-    napi_status status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&geoJsonSource));
+    status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&geoJsonSource));
     if (status == napi_ok && geoJsonSource) {
         try {
             sourceId = geoJsonSource->getId();
@@ -240,6 +240,9 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
             style->sources[sourceId] = true;
             sourceAdded = true;
             Logger::info("StyleNAPI", "AddSource (GeoJsonSource): %s", sourceId.c_str());
+            napi_value result;
+            napi_get_undefined(env, &result);
+            return result;
         } catch (const std::exception& e) {
             Logger::error("StyleNAPI", "AddSource (GeoJsonSource) failed: %s", e.what());
             napi_throw_error(env, nullptr, e.what());
@@ -247,4 +250,125 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 2. VectorSource
+    // 2. Try VectorSource
+    if (!sourceAdded) {
+        VectorSourceNAPI* vectorSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&vectorSource));
+        if (status == napi_ok && vectorSource) {
+            try {
+                sourceId = vectorSource->getId();
+                auto source = vectorSource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addSource(std::move(source));
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+                Logger::info("StyleNAPI", "AddSource (VectorSource): %s", sourceId.c_str());
+                napi_value result;
+                napi_get_undefined(env, &result);
+                return result;
+            } catch (const std::exception& e) {
+                Logger::error("StyleNAPI", "AddSource (VectorSource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+    
+    // 3. RasterSource
+    if (!sourceAdded) {
+        RasterSourceNAPI* rasterSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&rasterSource));
+        if (status == napi_ok && rasterSource) {
+            try {
+                sourceId = rasterSource->getId();
+                auto source = rasterSource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addSource(std::move(source));
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+                Logger::info("StyleNAPI", "AddSource (RasterSource): %s", sourceId.c_str());
+                napi_value result;
+                napi_get_undefined(env, &result);
+                return result;
+            } catch (const std::exception& e) {
+                Logger::error("StyleNAPI", "AddSource (RasterSource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+    
+    // 4. RasterDemSource
+    if (!sourceAdded) {
+        RasterDemSourceNAPI* rasterDemSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&rasterDemSource));
+        if (status == napi_ok && rasterDemSource) {
+            try {
+                sourceId = rasterDemSource->getId();
+                auto source = rasterDemSource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addSource(std::move(source));
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+                Logger::info("StyleNAPI", "AddSource (RasterDemSource): %s", sourceId.c_str());
+                napi_value result;
+                napi_get_undefined(env, &result);
+                return result;
+            } catch (const std::exception& e) {
+                Logger::error("StyleNAPI", "AddSource (RasterDemSource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+    
+    // 5. ImageSource
+    if (!sourceAdded) {
+        ImageSourceNAPI* imageSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&imageSource));
+        if (status == napi_ok && imageSource) {
+            try {
+                sourceId = imageSource->getId();
+                auto source = imageSource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addSource(std::move(source));
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+                Logger::info("StyleNAPI", "AddSource (ImageSource): %s", sourceId.c_str());
+                napi_value result;
+                napi_get_undefined(env, &result);
+                return result;
+            } catch (const std::exception& e) {
+                Logger::error("StyleNAPI", "AddSource (ImageSource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+    
+    // 如果没有成功添加任何source类型
+    if (!sourceAdded) {
+        Logger::error("StyleNAPI", "AddSource: Unknown source type or source is null");
+        napi_throw_error(env, nullptr, "Unknown source type or source object");
+        return nullptr;
+    }
+    
+    napi_value result;
+    napi_get_undefined(env, &result);
+    return result;
+}
+
+} // namespace harmony
+} // namespace mbgl

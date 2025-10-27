@@ -4,8 +4,7 @@ import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
-
-const DOMAIN = 0x0000;
+import { DOMAIN } from '../constants/HiLogConstants';
 const TAG = 'StyleUrlTestPage';
 
 /**

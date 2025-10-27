@@ -8,6 +8,12 @@
 // ========== 核心组件 ==========
 
 /**
+ * LatLng - 经纬度坐标类
+ * NAPI 类，表示地理坐标
+ */
+export { LatLng } from './NativeMapView';
+
+/**
  * NativeMapView - 地图视图主类
  * 提供地图渲染、相机控制、图层管理等核心功能
  */

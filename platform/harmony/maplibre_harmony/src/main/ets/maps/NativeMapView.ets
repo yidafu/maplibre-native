@@ -1,6 +1,7 @@
 import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { LatLng } from './geometry/LatLng';
+import { DOMAIN } from '../constants/HiLogConstants';
 import { MapGestureDetector } from './gestures/MapGestureDetector';
 import { UiSettings } from './UiSettings';
 import {
@@ -19,8 +20,6 @@ type Marker = maplibre.Marker;
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
 
-// 日志域名
-const DOMAIN = 0xFF00;
 
 type NullableNativeMapView = maplibre.NativeMapView | null
 

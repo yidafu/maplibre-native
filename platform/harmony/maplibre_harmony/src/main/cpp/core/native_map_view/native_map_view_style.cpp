@@ -1,7 +1,7 @@
 #include "native_map_view_harmony.hpp"
-#include "../../napi/bindings/style/style_napi.hpp"
-#include "../../napi/core/napi_args.hpp"
-#include "../../utils/logger.h"
+#include "napi/bindings/style/style_napi.hpp"
+#include "napi/core/napi_args.hpp"
+#include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/image.hpp>
@@ -191,7 +191,8 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
         Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (no argument)");
         return undefined;
     }
-    
+}
+
 napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
     // Debug 可视化功能未在 Harmony 平台实现
     // Debug visualization not implemented for Harmony platform
@@ -396,58 +397,6 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
     return undefined;
 }
 
-napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryPointAnnotations() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: 需要渲染器前端支持 queryPointAnnotations
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:936-955
-    Logger::warn("NativeMapView", "queryPointAnnotations: Not implemented - requires renderer frontend support");
-    
-    return undefined;
-}
-
-napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryShapeAnnotations() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: 需要渲染器前端支持 queryShapeAnnotations
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:957-975
-    Logger::warn("NativeMapView", "queryShapeAnnotations: Not implemented - requires renderer frontend support");
-    
-    return undefined;
-}
-
-napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: 需要实现 Feature 的 NAPI 包装类和渲染器前端支持
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:977-993
-    Logger::warn("NativeMapView", "queryRenderedFeaturesForPoint: Not implemented - requires Feature wrapper class and renderer support");
-    
-    return undefined;
-}
-
-napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryRenderedFeaturesForBox() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: 需要实现 Feature 的 NAPI 包装类和渲染器前端支持
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:995-1014
-    Logger::warn("NativeMapView", "queryRenderedFeaturesForBox: Not implemented - requires Feature wrapper class and renderer support");
-    
-    return undefined;
-}
-
 napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getLight() called");
     
@@ -648,6 +597,25 @@ napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "removeImage: Map not initialized");
+        return undefined;
+    }
+    
+    // 获取图片名称
+    size_t nameLength = 0;
+    napi_get_value_string_utf8(env, args[0], nullptr, 0, &nameLength);
+    std::string name(nameLength, '\0');
+    napi_get_value_string_utf8(env, args[0], &name[0], nameLength + 1, &nameLength);
+    name.resize(nameLength);
+    
+    try {
+        instance->map->getStyle().removeImage(name);
+        Logger::info("NativeMapView", "removeImage: Removed image '%s'", name.c_str());
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "removeImage: Failed - %s", e.what());
+    }
+    
+    return undefined;
+}
 
 } // namespace harmony
 } // namespace mbgl

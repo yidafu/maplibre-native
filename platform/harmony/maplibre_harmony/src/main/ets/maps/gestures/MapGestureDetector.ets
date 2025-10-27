@@ -5,6 +5,7 @@
  * 参考 Android MapGestureDetector 和 iOS MLNMapView 手势处理
  */
 
+import { DOMAIN } from '../../constants/HiLogConstants';
 import {
   OnMoveListener,
   OnScaleListener,
@@ -24,7 +25,6 @@ import maplibre from 'libmaplibre_native.so';
 // 类型定义
 type NativeMapViewType = maplibre.NativeMapView;
 
-const DOMAIN = 0xFF00;
 const TAG = 'MapGestureDetector';
 const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
 const ROTATION_RATE = 0.2;  // 旋转速率系数 - 调节旋转速度（越小越慢，0.4 = 40%原速）

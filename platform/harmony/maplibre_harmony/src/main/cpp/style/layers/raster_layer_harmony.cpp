@@ -1,6 +1,6 @@
 #include "raster_layer_harmony.hpp"
-#include "../../napi_args.hpp"
-#include "../../logger.h"
+#include "napi/core/napi_args.hpp"
+#include "utils/logger.h"
 #include <mbgl/style/layers/raster_layer.hpp>
 #include <mbgl/style/property_value.hpp>
 

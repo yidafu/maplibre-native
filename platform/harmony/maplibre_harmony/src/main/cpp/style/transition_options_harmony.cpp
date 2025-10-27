@@ -1,5 +1,5 @@
 #include "transition_options_harmony.hpp"
-#include "../logger.h"
+#include "utils/logger.h"
 #include <mbgl/util/chrono.hpp>
 
 namespace mbgl {

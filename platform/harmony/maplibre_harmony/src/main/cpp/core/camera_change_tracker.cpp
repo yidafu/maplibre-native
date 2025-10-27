@@ -1,6 +1,8 @@
 #include "camera_change_tracker.hpp"
-#include "logger.hpp"
+#include "utils/logger.h"
 #include <algorithm>
+
+using mbgl::harmony::Logger;
 
 namespace maplibre {
 namespace harmony {

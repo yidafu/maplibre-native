@@ -1,6 +1,6 @@
 /**
  * LatLng - 经纬度坐标
- * 使用 NAPI 模块中的类型定义
+ * 使用 NAPI 模块中的类定义
  */
 import maplibre from 'libmaplibre_native.so';
 
@@ -10,7 +10,7 @@ export type LatLng = maplibre.LatLng;
  * 创建 LatLng 对象
  */
 export function createLatLng(latitude: number, longitude: number): LatLng {
-  return { latitude, longitude };
+  return new maplibre.LatLng(latitude, longitude);
 }
 
 /**

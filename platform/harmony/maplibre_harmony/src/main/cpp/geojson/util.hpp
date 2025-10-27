@@ -26,6 +26,11 @@ std::vector<mbgl::Point<double>> NapiArrayToPointVector(napi_env env, napi_value
 std::vector<mbgl::LineString<double>> NapiArrayToLineStringVector(napi_env env, napi_value array);
 
 /**
+ * 将 NAPI 数组转换为 LinearRing 向量 (用于单个 Polygon)
+ */
+std::vector<mbgl::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array);
+
+/**
  * 将 NAPI 数组转换为 Polygon 向量
  */
 std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array);
@@ -44,6 +49,11 @@ napi_value PointVectorToNapiArray(napi_env env, const std::vector<mbgl::Point<do
  * 将 LineString 向量转换为 NAPI 数组
  */
 napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mbgl::LineString<double>>& lineStrings);
+
+/**
+ * 将 LinearRing 向量转换为 NAPI 数组 (用于单个 Polygon 的环)
+ */
+napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mbgl::LinearRing<double>>& rings);
 
 /**
  * 将 Polygon 向量转换为 NAPI 数组

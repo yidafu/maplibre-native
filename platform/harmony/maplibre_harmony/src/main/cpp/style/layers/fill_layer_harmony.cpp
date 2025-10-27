@@ -1,7 +1,7 @@
 #include "fill_layer_harmony.hpp"
-#include "../../napi_args.hpp"
-#include "../../logger.h"
-#include "../filter_conversion.hpp"
+#include "napi/core/napi_args.hpp"
+#include "utils/logger.h"
+#include "style/filter_conversion.hpp"
 #include <mbgl/style/layers/fill_layer.hpp>
 #include <mbgl/style/property_value.hpp>
 #include <mbgl/style/expression/image.hpp>

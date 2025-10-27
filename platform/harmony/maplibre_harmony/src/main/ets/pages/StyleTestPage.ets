@@ -6,6 +6,7 @@ import { CameraPosition } from '../maps/camera/CameraPosition';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
+import { DOMAIN } from '../constants/HiLogConstants';
 // 暂时从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
   FillLayer, 
@@ -23,7 +24,6 @@ type GeoJsonSource = maplibre.GeoJsonSource;
 type VectorSource = maplibre.VectorSource;
 type RasterSource = maplibre.RasterSource;
 
-const DOMAIN = 0x0000;
 const TAG = 'StyleTestPage';
 
 /**
@@ -331,10 +331,10 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 创建填充图层
-      const layer: FillLayer = new FillLayer('fill-layer', 'fill-source')
-        .withFillColor('#ff0000')
-        .withFillOpacity(0.5)
-        .withFillOutlineColor('#000000');
+      const layer = new maplibre.FillLayer('fill-layer', 'fill-source')
+          .setFillColor('#ff0000')
+        .setFillOpacity(0.5)
+        .setFillOutlineColor('#000000');
       
       style.addLayer(layer as object);
 
@@ -386,10 +386,10 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 创建线条图层
-      const layer: LineLayer = new LineLayer('line-layer', 'line-source')
-        .withLineColor('#0000ff')
-        .withLineWidth(4)
-        .withLineDasharray([2, 2]);
+      const layer = new maplibre.LineLayer('line-layer', 'line-source')
+          .setLineColor('#0000ff')
+        .setLineWidth(4)
+        .setLineDasharray([2, 2]);
       
       style.addLayer(layer as object);
 
@@ -435,11 +435,12 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 创建圆形图层
-      const layer: CircleLayer = new CircleLayer('circle-layer', 'circle-source')
-        .withCircleRadius(15)
-        .withCircleColor('#00ff00')
-        .withCircleOpacity(0.8)
-        .withCircleStroke(2, '#ffffff');
+      const layer = new maplibre.CircleLayer('circle-layer', 'circle-source')
+          .setCircleRadius(15)
+        .setCircleColor('#00ff00')
+        .setCircleOpacity(0.8)
+        .setCircleStrokeWidth(2)
+        .setCircleStrokeColor('#ffffff');
       
       style.addLayer(layer as object);
 
@@ -480,8 +481,10 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 创建符号图层
-      const layer: SymbolLayer = new SymbolLayer('symbol-layer', 'symbol-source')
-        .withText('{title}', 16, '#000000');
+      const layer = new maplibre.SymbolLayer('symbol-layer', 'symbol-source');
+      layer.setTextField('{title}');
+      layer.setTextSize(16);
+      layer.setTextColor('#000000');
       
       style.addLayer(layer as object);
 
@@ -535,10 +538,10 @@ struct StyleTestPage {
       hilog.info(DOMAIN, TAG, 'Note: Cluster options parsing not yet implemented, using defaults');
 
       // 聚类圆形图层
-      const clusterLayer: CircleLayer = new CircleLayer('cluster-layer', 'cluster-source')
-        .withCircleRadius(20)
-        .withCircleColor('#ff6600')
-        .withCircleOpacity(0.8);
+      const clusterLayer = new maplibre.CircleLayer('cluster-layer', 'cluster-source')
+          .setCircleRadius(20)
+        .setCircleColor('#ff6600')
+        .setCircleOpacity(0.8);
       
       style.addLayer(clusterLayer as object);
 
@@ -589,10 +592,10 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 热力图图层
-      const layer: HeatmapLayer = new HeatmapLayer('heatmap-layer', 'heatmap-source')
-        .withHeatmapRadius(30)
-        .withHeatmapIntensity(1.5)
-        .withHeatmapOpacity(0.8);
+      const layer = new maplibre.HeatmapLayer('heatmap-layer', 'heatmap-source')
+          .setHeatmapRadius(30)
+        .setHeatmapIntensity(1.5)
+        .setHeatmapOpacity(0.8);
       
       style.addLayer(layer as object);
 
@@ -646,10 +649,11 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 3D拉伸图层
-      const layer: FillExtrusionLayer = new FillExtrusionLayer('extrusion-layer', 'extrusion-source')
-        .withFillExtrusionHeight(100, 0)
-        .withFillExtrusionColor('#0080ff')
-        .withFillExtrusionOpacity(0.9);
+      const layer = new maplibre.FillExtrusionLayer('extrusion-layer', 'extrusion-source')
+          .setFillExtrusionHeight(100)
+          .setFillExtrusionBase(0)
+        .setFillExtrusionColor('#0080ff')
+        .setFillExtrusionOpacity(0.9);
       
       style.addLayer(layer as object);
 
@@ -677,8 +681,8 @@ struct StyleTestPage {
       style.addSource(source);
 
       // 栅格图层
-      const layer: RasterLayer = new RasterLayer('raster-layer', 'raster-source')
-        .withRasterOpacity(0.5);
+      const layer = new maplibre.RasterLayer('raster-layer', 'raster-source')
+          .setRasterOpacity(0.5);
       
       style.addLayer(layer as object);
 

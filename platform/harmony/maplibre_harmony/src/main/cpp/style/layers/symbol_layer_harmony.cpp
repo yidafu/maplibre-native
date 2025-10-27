@@ -1,8 +1,8 @@
 #include "symbol_layer_harmony.hpp"
-#include "../napi_args.hpp"
-#include "../napi_utils.h"
-#include "../logger.h"
-#include "../value_conversion.hpp"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
+#include "style/value_conversion.hpp"
 #include <mbgl/style/layers/symbol_layer.hpp>
 
 using namespace mbgl::harmony::napi;

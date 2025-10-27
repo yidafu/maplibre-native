@@ -1,8 +1,10 @@
 #include "native_map_view_harmony.hpp"
-#include "../../napi/core/napi_args.hpp"
-#include "../../utils/logger.h"
+#include "napi/core/napi_args.hpp"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
+#include "rendering/harmony_renderer.hpp"
 #include <mbgl/gfx/shader_registry.hpp>
-#include <mbgl/shaders/shaders.hpp>
+#include <mbgl/style/style.hpp>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -204,26 +206,7 @@ bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
     return false;
 }
 
-void NativeMapView::initializeRenderer() {
-        return undefined;
-    }
-    
-    // 获取图片名称
-    size_t nameLength = 0;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &nameLength);
-    std::string name(nameLength, '\0');
-    napi_get_value_string_utf8(env, args[0], &name[0], nameLength + 1, &nameLength);
-    name.resize(nameLength);
-    
-    try {
-        instance->map->getStyle().removeImage(name);
-        Logger::info("NativeMapView", "removeImage: Removed image '%s'", name.c_str());
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "removeImage: Failed - %s", e.what());
-    }
-    
-    return undefined;
-}
+// Note: initializeRenderer is defined in native_map_view_base.cpp
 
 napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getImage() called");
@@ -1286,9 +1269,6 @@ void NativeMapView::notifyStyleLoadError(const std::string& error) {
     
     Logger::debug("NativeMapView", "notifyStyleLoadError: Listener called successfully");
 }
-
-} // namespace harmony
-} // namespace mbgl
 
 } // namespace harmony
 } // namespace mbgl

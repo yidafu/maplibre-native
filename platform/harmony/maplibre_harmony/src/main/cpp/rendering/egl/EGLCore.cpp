@@ -30,7 +30,7 @@
 #include <cstdio>
 
 #include "Render.h"
-#include "../../utils/logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 

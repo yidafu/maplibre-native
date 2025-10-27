@@ -1,6 +1,6 @@
 #include "native_map_view_harmony.hpp"
-#include "../../napi/core/napi_args.hpp"
-#include "../../utils/logger.h"
+#include "napi/core/napi_args.hpp"
+#include "utils/logger.h"
 #include "geometry/lat_lng_harmony.hpp"
 #include "geometry/point_harmony.hpp"
 #include "geometry/projected_meters_harmony.hpp"

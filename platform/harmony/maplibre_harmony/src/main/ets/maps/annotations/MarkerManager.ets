@@ -86,7 +86,7 @@ export class MarkerManager {
    * @returns 创建的 Marker
    * @throws Error 如果 Marker 创建失败
    */
-  public async addMarker(options: MarkerOptions): Promise<Marker> {
+  public addMarker(options: MarkerOptions): Marker {
     try {
       // 确保 MarkerLayerManager 已初始化
       if (!this.markerLayerManager.isInitialized()) {
@@ -96,7 +96,7 @@ export class MarkerManager {
       // 获取 Icon（如果有）并确保已加载到地图
       const iconObj = options.getIcon();
       if (iconObj) {
-        await this.ensureIconLoaded(iconObj);
+        this.ensureIconLoaded(iconObj);
       }
       
       // 创建 Marker 对象
@@ -130,40 +130,18 @@ export class MarkerManager {
   
   /**
    * 确保 Icon 已加载到地图样式
+   * 
+   * 注意: 当前实现简化，因为 Style 对象无法从 NativeMapView 获取
+   * Icon 加载通过 IconManager 处理
    */
   private async ensureIconLoaded(icon: Icon): Promise<void> {
     try {
-      const style = this.mapLibreMap.getStyle();
-      if (!style) {
-        throw new Error('Style not loaded');
-      }
-      
-      // 检查 icon 是否已存在
-      const existingImage = style.getImage(icon.getId());
-      if (!existingImage) {
-        // 添加 icon 到 style
-        const bitmap = icon.getBitmap();
-        const width = bitmap.width;
-        const height = bitmap.height;
-        const pixelRatio = 1.0; // TODO: 从设备获取
-        
-        // 将 bitmap 转换为 Uint8Array
-        const pixels = this.bitmapToPixels(bitmap);
-        
-        style.addImage(icon.getId(), bitmap, pixelRatio, false);
-        console.info(`[MarkerManager] Icon added to style: ${icon.getId()}`);
-      }
+      // 使用 IconManager 确保 Icon 已加载
+      await this.iconManager.addIconIfNeeded(icon);
+      console.info(`[MarkerManager] Icon loaded: ${icon.getId()}`);
     } catch (error) {
       console.warn(`[MarkerManager] Failed to ensure icon loaded: ${error}`);
     }
-  }
-  
-  /**
-   * 将 PixelMap 转换为像素数据（临时实现）
-   */
-  private bitmapToPixels(bitmap: any): Uint8Array {
-    // TODO: 实现 PixelMap 到 Uint8Array 的转换
-    return new Uint8Array(0);
   }
   
   /**
@@ -173,7 +151,7 @@ export class MarkerManager {
    * @returns 创建的 Marker 数组
    * @throws Error 如果批量添加失败
    */
-  public async addMarkers(optionsList: MarkerOptions[]): Promise<Marker[]> {
+  public addMarkers(optionsList: MarkerOptions[]): Marker[] {
     try {
       // 确保 MarkerLayerManager 已初始化
       if (!this.markerLayerManager.isInitialized()) {
@@ -184,7 +162,7 @@ export class MarkerManager {
       for (const options of optionsList) {
         const iconObj = options.getIcon();
         if (iconObj) {
-          await this.ensureIconLoaded(iconObj);
+          this.ensureIconLoaded(iconObj);
         }
       }
       
@@ -457,7 +435,7 @@ export class MarkerManager {
    * @param newPosition 新位置
    */
   public handleDrag(marker: Marker, newPosition: LatLng): void {
-    if (!marker.isDraggable() || marker.getDragState() !== MarkerDragState.Dragging) {
+    if (!marker.getDraggable() || marker.getDragState() !== MarkerDragState.Dragging) {
       return;
     }
     
@@ -476,7 +454,7 @@ export class MarkerManager {
    * @param marker 完成拖拽的 Marker
    */
   public handleDragEnd(marker: Marker): void {
-    if (!marker.isDraggable() || this.draggingMarker !== marker) {
+    if (!marker.getDraggable() || this.draggingMarker !== marker) {
       return;
     }
     
@@ -659,9 +637,12 @@ export class MarkerManager {
   
   /**
    * 显示 Marker 的 InfoWindow
+   * 注意：此方法需要屏幕坐标信息，应从外部调用 InfoWindowManager.show
    */
   public showInfoWindow(marker: Marker): void {
-    this.infoWindowManager.show(marker);
+    // InfoWindowManager.show 需要屏幕坐标等参数
+    // 此方法应由外部调用，这里只提供接口
+    console.warn('[MarkerManager] showInfoWindow should be called from external with screen coordinates');
   }
   
   /**

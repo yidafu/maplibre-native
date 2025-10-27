@@ -630,3 +630,4 @@ mapLibreMap.updateMarker(id, 40.0, 116.0, marker.getIcon());
 
 **Marker NAPI 绑定已完全实现，可立即使用！** 🚀
 
+

@@ -25,7 +25,7 @@
 
 // HarmonyOS独立CURL事件循环
 #include "curl_event_loop.hpp"
-#include "../utils/logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 

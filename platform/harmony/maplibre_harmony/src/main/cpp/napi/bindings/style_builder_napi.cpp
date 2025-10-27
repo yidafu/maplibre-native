@@ -1,6 +1,6 @@
 #include "style_builder_napi.hpp"
-#include "../../napi/core/napi_utils.h"
-#include "../../utils/logger.h"
+#include "napi/core/napi_utils.h"
+#include "utils/logger.h"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;

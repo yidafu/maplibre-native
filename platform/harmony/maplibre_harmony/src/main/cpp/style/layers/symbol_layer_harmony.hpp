@@ -26,6 +26,17 @@ public:
     // Get native layer
     mbgl::style::SymbolLayer* getLayer() { return layer.get(); }
     
+    // Internal methods for Style API
+    std::string getId() const { return layer ? layer->getID() : ""; }
+    
+    // Release layer ownership (for Style.addLayer)
+    std::unique_ptr<mbgl::style::Layer> releaseLayer() {
+        if (!layer) {
+            throw std::runtime_error("Layer already added to style");
+        }
+        return std::move(layer);
+    }
+    
 private:
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     

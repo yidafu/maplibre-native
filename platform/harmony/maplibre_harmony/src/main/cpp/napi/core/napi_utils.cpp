@@ -6,7 +6,7 @@
 #include "stdint.h"
 #include <js_native_api.h>
 #include "napi_args.hpp"
-#include "logger.h"
+#include "utils/logger.h"
 
 using mbgl::harmony::Logger;
 

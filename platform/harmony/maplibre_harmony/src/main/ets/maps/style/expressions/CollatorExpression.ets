@@ -4,13 +4,13 @@
  * 用于在字符串比较操作中指定区域设置特定的比较规则
  */
 
-import { Expression } from './Expression';
-import { CollatorOptions } from './ExpressionTypes';
+import { Expression, ExpressionLiteral } from './Expression';
+import { CollatorOptions, ValueExpression } from './ExpressionTypes';
 
 /**
  * Collator 表达式类
  */
-export class CollatorExpression extends Expression<any> {
+export class CollatorExpression extends Expression<Object> {
   /**
    * 创建 Collator 表达式
    * 
@@ -22,31 +22,44 @@ export class CollatorExpression extends Expression<any> {
     caseSensitive: Expression<boolean>,
     diacriticSensitive: Expression<boolean>,
     locale: Expression<string>
-  ): CollatorExpression {
-    const options = new Map<string, Expression>();
-    options.set('case-sensitive', caseSensitive);
-    options.set('diacritic-sensitive', diacriticSensitive);
-    options.set('locale', locale);
-    
-    return new CollatorExpression('collator', new CollatorOptionsExpression(options));
-  }
+  ): CollatorExpression;
 
   /**
    * 创建 Collator 表达式（使用选项对象）
    * 
    * @param options Collator 选项
    */
-  public static collator(options: CollatorOptions): CollatorExpression {
+  public static collator(options: CollatorOptions): CollatorExpression;
+
+  /**
+   * 创建 Collator 表达式的实现
+   */
+  public static collator(
+    caseSensitiveOrOptions: Expression<boolean> | CollatorOptions,
+    diacriticSensitive?: Expression<boolean>,
+    locale?: Expression<string>
+  ): CollatorExpression {
     const optionsMap = new Map<string, Expression>();
     
-    if (options.caseSensitive !== undefined) {
-      optionsMap.set('case-sensitive', Expression.literal(options.caseSensitive));
-    }
-    if (options.diacriticSensitive !== undefined) {
-      optionsMap.set('diacritic-sensitive', Expression.literal(options.diacriticSensitive));
-    }
-    if (options.locale !== undefined) {
-      optionsMap.set('locale', Expression.literal(options.locale));
+    // 判断是否使用选项对象
+    if (diacriticSensitive === undefined && locale === undefined) {
+      // 使用选项对象
+      const options = caseSensitiveOrOptions as CollatorOptions;
+      
+      if (options.caseSensitive !== undefined) {
+        optionsMap.set('case-sensitive', Expression.literal(options.caseSensitive));
+      }
+      if (options.diacriticSensitive !== undefined) {
+        optionsMap.set('diacritic-sensitive', Expression.literal(options.diacriticSensitive));
+      }
+      if (options.locale !== undefined) {
+        optionsMap.set('locale', Expression.literal(options.locale));
+      }
+    } else {
+      // 使用三个 Expression 参数
+      optionsMap.set('case-sensitive', caseSensitiveOrOptions as Expression<boolean>);
+      optionsMap.set('diacritic-sensitive', diacriticSensitive!);
+      optionsMap.set('locale', locale!);
     }
     
     return new CollatorExpression('collator', new CollatorOptionsExpression(optionsMap));
@@ -64,13 +77,14 @@ class CollatorOptionsExpression extends Expression<Object> {
     this.options = options;
   }
 
-  public toArray(): Object[] {
+  public toArray(): (Object | null)[] {
     const result: Record<string, Object | null> = {};
     this.options.forEach((value: Expression, key: string) => {
-      if (this.isValueExpression(value)) {
-        result[key] = (value as any).toValue();
+      if (value.isValue()) {
+        // 使用虚方法判断，然后安全转换
+        result[key] = (value as ExpressionLiteral).toValue();
       } else {
-        result[key] = value.toArray();
+        result[key] = value.toArray() as Object;
       }
     });
     return [result];
