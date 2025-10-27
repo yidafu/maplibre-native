@@ -56,22 +56,21 @@ private:
     napi_env env_;
     std::mutex mutex_;
 
-    // 监听器列表（使用 vector 存储 napi_ref）
-    std::vector<napi_ref> idle_listeners_;
-    std::vector<napi_ref> move_started_listeners_;
-    std::vector<napi_ref> move_listeners_;
-    std::vector<napi_ref> canceled_listeners_;
+    // 监听器列表（使用 vector 存储 napi_threadsafe_function，实现线程安全）
+    std::vector<napi_threadsafe_function> idle_listeners_;
+    std::vector<napi_threadsafe_function> move_started_listeners_;
+    std::vector<napi_threadsafe_function> move_listeners_;
+    std::vector<napi_threadsafe_function> canceled_listeners_;
 
     // 状态追踪
     bool is_idle_ = true;
     int move_reason_ = REASON_UNKNOWN;
 
     // 辅助方法
-    void addListenerToVector(std::vector<napi_ref>& vec, napi_value callback);
-    void removeListenerFromVector(std::vector<napi_ref>& vec, napi_value callback);
-    void callListeners(const std::vector<napi_ref>& listeners, napi_value* args = nullptr, size_t argc = 0);
-    void clearListenerVector(std::vector<napi_ref>& vec);
-    bool areCallbacksEqual(napi_value callback1, napi_value callback2);
+    void addListenerToVector(std::vector<napi_threadsafe_function>& vec, napi_value callback, const char* resource_name);
+    void removeListenerFromVector(std::vector<napi_threadsafe_function>& vec, napi_value callback);
+    void clearListenerVector(std::vector<napi_threadsafe_function>& vec);
+    bool areCallbacksEqual(napi_env env, napi_value callback1, napi_threadsafe_function tsfn);
 };
 
 } // namespace harmony

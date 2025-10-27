@@ -2,13 +2,16 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include "style/value_conversion.hpp"
+#include "style/filter_conversion.hpp"
+#include "style/layers/layer_property_utils.hpp"
 #include <mbgl/style/layers/symbol_layer.hpp>
+#include <mbgl/style/expression/formatted.hpp>
+#include <mbgl/style/expression/image.hpp>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // Static member initialization
@@ -50,7 +53,7 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // Layout properties - Icon
+        // Layout properties - Icon (支持 Expression)
         { "setIconImage", nullptr, SetIconImage, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getIconImage", nullptr, GetIconImage, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setIconSize", nullptr, SetIconSize, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -64,7 +67,7 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setIconAllowOverlap", nullptr, SetIconAllowOverlap, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getIconAllowOverlap", nullptr, GetIconAllowOverlap, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // Layout properties - Text
+        // Layout properties - Text (支持 Expression)
         { "setTextField", nullptr, SetTextField, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getTextField", nullptr, GetTextField, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setTextFont", nullptr, SetTextFont, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -80,7 +83,7 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setTextAllowOverlap", nullptr, SetTextAllowOverlap, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getTextAllowOverlap", nullptr, GetTextAllowOverlap, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // Paint properties - Icon
+        // Paint properties - Icon (支持 Expression)
         { "setIconOpacity", nullptr, SetIconOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getIconOpacity", nullptr, GetIconOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setIconColor", nullptr, SetIconColor, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -90,7 +93,7 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setIconHaloWidth", nullptr, SetIconHaloWidth, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getIconHaloWidth", nullptr, GetIconHaloWidth, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // Paint properties - Text
+        // Paint properties - Text (支持 Expression)
         { "setTextOpacity", nullptr, SetTextOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getTextOpacity", nullptr, GetTextOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setTextColor", nullptr, SetTextColor, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -127,1144 +130,956 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value SymbolLayerNAPI::New(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "SymbolLayer requires layerId and sourceId arguments");
-        return nullptr;
-    }
-    
-    NapiArgs napiArgs(env, info);
-    std::string layerId = napiArgs.GetString(0, "layerId");
-    std::string sourceId = napiArgs.GetString(1, "sourceId");
-    
-    if (napiArgs.HasError()) {
-        napi_throw_error(env, nullptr, "Failed to parse arguments");
-        return nullptr;
-    }
-    
-    try {
-        SymbolLayerNAPI* layerNapi = new SymbolLayerNAPI(layerId, sourceId);
-        
-        napi_status status = napi_wrap(env, jsThis, layerNapi, Destructor, nullptr, nullptr);
-        if (status != napi_ok) {
-            delete layerNapi;
-            napi_throw_error(env, nullptr, "Failed to wrap SymbolLayer object");
-            return nullptr;
-        }
-        
-        Logger::info("SymbolLayerNAPI", "SymbolLayer created: %s", layerId.c_str());
-        return jsThis;
-    } catch (const std::exception& e) {
-        Logger::error("SymbolLayerNAPI", "Failed to create SymbolLayer: %s", e.what());
-        napi_throw_error(env, nullptr, e.what());
-        return nullptr;
-    }
-}
-
-// ==================== Basic Methods ====================
-
-napi_value SymbolLayerNAPI::GetId(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
-    
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "");
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        return nullptr;
     }
     
-    return CreateStringValue(env, layerNapi->layer->getID());
+    std::string layerId = args.GetString(0, "layerId");
+    std::string sourceId = args.GetString(1, "sourceId");
+    if (args.HasError()) {
+        return nullptr;
+    }
+    
+    SymbolLayerNAPI* layerObj = new SymbolLayerNAPI(layerId, sourceId);
+    napi_wrap(env, jsThis, layerObj, Destructor, nullptr, nullptr);
+    return jsThis;
+}
+
+// ============================================================================
+// Basic Layer Methods
+// ============================================================================
+
+napi_value SymbolLayerNAPI::GetId(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+    
+    std::string id = layerObj->layer->getID();
+    napi_value result;
+    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
 }
 
 napi_value SymbolLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    return CreateStringValue(env, "symbol");
+    napi_value result;
+    napi_create_string_utf8(env, "symbol", NAPI_AUTO_LENGTH, &result);
+    return result;
 }
 
 napi_value SymbolLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "");
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
     }
     
-    return CreateStringValue(env, layerNapi->layer->getSourceID());
+    std::string sourceId = layerObj->layer->getSourceID();
+    napi_value result;
+    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
 }
 
 napi_value SymbolLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
-    
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
-    
     NapiArgs args(env, info);
-    std::string sourceLayer = args.GetString(0, "sourceLayer");
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    if (args.HasError()) {
-        return nullptr;
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) return thisVar;
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        std::string sourceLayer = args.GetString(0, "sourceLayer");
+        layerObj->layer->setSourceLayer(sourceLayer);
     }
-    
-    layerNapi->layer->setSourceLayer(sourceLayer);
-    return nullptr;
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "");
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
     }
     
-    return CreateStringValue(env, layerNapi->layer->getSourceLayer());
+    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    napi_value result;
+    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
 }
 
 napi_value SymbolLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
-    
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
-    
     NapiArgs args(env, info);
-    float minZoom = args.GetFloat(0, "minZoom");
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    if (args.HasError()) {
-        return nullptr;
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) return thisVar;
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
+        layerObj->layer->setMinZoom(minZoom);
     }
-    
-    layerNapi->layer->setMinZoom(minZoom);
-    return nullptr;
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 0.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
     }
     
-    return CreateNumberValue(env, layerNapi->layer->getMinZoom());
+    float minZoom = layerObj->layer->getMinZoom();
+    napi_value result;
+    napi_create_double(env, minZoom, &result);
+    return result;
 }
 
 napi_value SymbolLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
-    
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
-    
     NapiArgs args(env, info);
-    float maxZoom = args.GetFloat(0, "maxZoom");
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    if (args.HasError()) {
-        return nullptr;
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) return thisVar;
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
+        layerObj->layer->setMaxZoom(maxZoom);
     }
-    
-    layerNapi->layer->setMaxZoom(maxZoom);
-    return nullptr;
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 22.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
     }
     
-    return CreateNumberValue(env, layerNapi->layer->getMaxZoom());
+    float maxZoom = layerObj->layer->getMaxZoom();
+    napi_value result;
+    napi_create_double(env, maxZoom, &result);
+    return result;
 }
 
-// ==================== Layout Properties - Icon ====================
+// ============================================================================
+// Layout Properties - Icon (支持 Expression)
+// ============================================================================
 
 napi_value SymbolLayerNAPI::SetIconImage(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string iconImage = args.GetString(0, "iconImage");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setIconImage(mbgl::style::PropertyValue<std::string>(iconImage));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Image>(
+        env, layerObj->layer.get(), argv[0], "icon-image",
+        &mbgl::style::SymbolLayer::setIconImage
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconImage(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "");
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconImage();
-    if (value.isConstant()) {
-        return CreateStringValue(env, value.asConstant());
-    }
-    
-    return CreateStringValue(env, "");
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Image>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconImage
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconSize(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float size = args.GetFloat(0, "iconSize");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setIconSize(mbgl::style::PropertyValue<float>(size));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "icon-size",
+        &mbgl::style::SymbolLayer::setIconSize
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconSize(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 1.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconSize();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 1.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconSize
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconRotate(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float rotate = args.GetFloat(0, "iconRotate");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setIconRotate(mbgl::style::PropertyValue<float>(rotate));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "icon-rotate",
+        &mbgl::style::SymbolLayer::setIconRotate
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconRotate(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 0.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconRotate();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 0.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconRotate
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconOffset(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    // Expecting [x, y] array
-    // For simplicity, we'll accept two separate arguments
-    float x = args.GetFloat(0, "offsetX");
-    float y = args.GetFloat(1, "offsetY");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    std::array<float, 2> offset = {x, y};
-    layerNapi->layer->setIconOffset(mbgl::style::PropertyValue<std::array<float, 2>>(offset));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
+        env, layerObj->layer.get(), argv[0], "icon-offset",
+        &mbgl::style::SymbolLayer::setIconOffset
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconOffset(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_value array;
-        napi_create_array_with_length(env, 2, &array);
-        napi_value zero;
-        napi_create_double(env, 0.0, &zero);
-        napi_set_element(env, array, 0, zero);
-        napi_set_element(env, array, 1, zero);
-        return array;
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconOffset();
-    if (value.isConstant()) {
-        auto offset = value.asConstant();
-        napi_value array;
-        napi_create_array_with_length(env, 2, &array);
-        napi_value x, y;
-        napi_create_double(env, offset[0], &x);
-        napi_create_double(env, offset[1], &y);
-        napi_set_element(env, array, 0, x);
-        napi_set_element(env, array, 1, y);
-        return array;
-    }
-    
-    napi_value array;
-    napi_create_array_with_length(env, 2, &array);
-    napi_value zero;
-    napi_create_double(env, 0.0, &zero);
-    napi_set_element(env, array, 0, zero);
-    napi_set_element(env, array, 1, zero);
-    return array;
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconOffset
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconAnchor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string anchor = args.GetString(0, "iconAnchor");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    // Convert string to enum
-    mbgl::style::SymbolAnchorType anchorType = mbgl::style::SymbolAnchorType::Center;
-    if (anchor == "center") anchorType = mbgl::style::SymbolAnchorType::Center;
-    else if (anchor == "left") anchorType = mbgl::style::SymbolAnchorType::Left;
-    else if (anchor == "right") anchorType = mbgl::style::SymbolAnchorType::Right;
-    else if (anchor == "top") anchorType = mbgl::style::SymbolAnchorType::Top;
-    else if (anchor == "bottom") anchorType = mbgl::style::SymbolAnchorType::Bottom;
-    else if (anchor == "top-left") anchorType = mbgl::style::SymbolAnchorType::TopLeft;
-    else if (anchor == "top-right") anchorType = mbgl::style::SymbolAnchorType::TopRight;
-    else if (anchor == "bottom-left") anchorType = mbgl::style::SymbolAnchorType::BottomLeft;
-    else if (anchor == "bottom-right") anchorType = mbgl::style::SymbolAnchorType::BottomRight;
-    
-    layerNapi->layer->setIconAnchor(mbgl::style::PropertyValue<mbgl::style::SymbolAnchorType>(anchorType));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
+        env, layerObj->layer.get(), argv[0], "icon-anchor",
+        &mbgl::style::SymbolLayer::setIconAnchor
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconAnchor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "center");
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconAnchor();
-    if (value.isConstant()) {
-        auto anchor = value.asConstant();
-        switch (anchor) {
-            case mbgl::style::SymbolAnchorType::Center: return CreateStringValue(env, "center");
-            case mbgl::style::SymbolAnchorType::Left: return CreateStringValue(env, "left");
-            case mbgl::style::SymbolAnchorType::Right: return CreateStringValue(env, "right");
-            case mbgl::style::SymbolAnchorType::Top: return CreateStringValue(env, "top");
-            case mbgl::style::SymbolAnchorType::Bottom: return CreateStringValue(env, "bottom");
-            case mbgl::style::SymbolAnchorType::TopLeft: return CreateStringValue(env, "top-left");
-            case mbgl::style::SymbolAnchorType::TopRight: return CreateStringValue(env, "top-right");
-            case mbgl::style::SymbolAnchorType::BottomLeft: return CreateStringValue(env, "bottom-left");
-            case mbgl::style::SymbolAnchorType::BottomRight: return CreateStringValue(env, "bottom-right");
-        }
-    }
-    
-    return CreateStringValue(env, "center");
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconAnchor
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    bool allowOverlap = args.GetBoolean(0, "iconAllowOverlap");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setIconAllowOverlap(mbgl::style::PropertyValue<bool>(allowOverlap));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
+        env, layerObj->layer.get(), argv[0], "icon-allow-overlap",
+        &mbgl::style::SymbolLayer::setIconAllowOverlap
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateBooleanValue(env, false);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconAllowOverlap();
-    if (value.isConstant()) {
-        return CreateBooleanValue(env, value.asConstant());
-    }
-    
-    return CreateBooleanValue(env, false);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconAllowOverlap
+    );
 }
 
-// ==================== Layout Properties - Text ====================
+// ============================================================================
+// Layout Properties - Text (支持 Expression)
+// ============================================================================
 
 napi_value SymbolLayerNAPI::SetTextField(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string textField = args.GetString(0, "textField");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    // TODO: Support Formatted text
-    layerNapi->layer->setTextField(mbgl::style::PropertyValue<std::string>(textField));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Formatted>(
+        env, layerObj->layer.get(), argv[0], "text-field",
+        &mbgl::style::SymbolLayer::setTextField
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextField(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "");
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    // TODO: Handle Formatted text
-    return CreateStringValue(env, "");
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Formatted>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextField
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextFont(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    // TODO: Accept array of font names
-    NapiArgs args(env, info);
-    std::string font = args.GetString(0, "textFont");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    std::vector<std::string> fonts = {font};
-    layerNapi->layer->setTextFont(mbgl::style::PropertyValue<std::vector<std::string>>(fonts));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::vector<std::string>>(
+        env, layerObj->layer.get(), argv[0], "text-font",
+        &mbgl::style::SymbolLayer::setTextFont
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextFont(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_value array;
-        napi_create_array_with_length(env, 0, &array);
-        return array;
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextFont();
-    if (value.isConstant()) {
-        auto fonts = value.asConstant();
-        napi_value array;
-        napi_create_array_with_length(env, fonts.size(), &array);
-        for (size_t i = 0; i < fonts.size(); i++) {
-            napi_value font = CreateStringValue(env, fonts[i]);
-            napi_set_element(env, array, i, font);
-        }
-        return array;
-    }
-    
-    napi_value array;
-    napi_create_array_with_length(env, 0, &array);
-    return array;
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::vector<std::string>>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextFont
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextSize(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float size = args.GetFloat(0, "textSize");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setTextSize(mbgl::style::PropertyValue<float>(size));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "text-size",
+        &mbgl::style::SymbolLayer::setTextSize
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextSize(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 16.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextSize();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 16.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextSize
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextMaxWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float maxWidth = args.GetFloat(0, "textMaxWidth");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setTextMaxWidth(mbgl::style::PropertyValue<float>(maxWidth));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "text-max-width",
+        &mbgl::style::SymbolLayer::setTextMaxWidth
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextMaxWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 10.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextMaxWidth();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 10.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextMaxWidth
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextOffset(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float x = args.GetFloat(0, "offsetX");
-    float y = args.GetFloat(1, "offsetY");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    std::array<float, 2> offset = {x, y};
-    layerNapi->layer->setTextOffset(mbgl::style::PropertyValue<std::array<float, 2>>(offset));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
+        env, layerObj->layer.get(), argv[0], "text-offset",
+        &mbgl::style::SymbolLayer::setTextOffset
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextOffset(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_value array;
-        napi_create_array_with_length(env, 2, &array);
-        napi_value zero;
-        napi_create_double(env, 0.0, &zero);
-        napi_set_element(env, array, 0, zero);
-        napi_set_element(env, array, 1, zero);
-        return array;
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextOffset();
-    if (value.isConstant()) {
-        auto offset = value.asConstant();
-        napi_value array;
-        napi_create_array_with_length(env, 2, &array);
-        napi_value x, y;
-        napi_create_double(env, offset[0], &x);
-        napi_create_double(env, offset[1], &y);
-        napi_set_element(env, array, 0, x);
-        napi_set_element(env, array, 1, y);
-        return array;
-    }
-    
-    napi_value array;
-    napi_create_array_with_length(env, 2, &array);
-    napi_value zero;
-    napi_create_double(env, 0.0, &zero);
-    napi_set_element(env, array, 0, zero);
-    napi_set_element(env, array, 1, zero);
-    return array;
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextOffset
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextAnchor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string anchor = args.GetString(0, "textAnchor");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    mbgl::style::SymbolAnchorType anchorType = mbgl::style::SymbolAnchorType::Center;
-    if (anchor == "center") anchorType = mbgl::style::SymbolAnchorType::Center;
-    else if (anchor == "left") anchorType = mbgl::style::SymbolAnchorType::Left;
-    else if (anchor == "right") anchorType = mbgl::style::SymbolAnchorType::Right;
-    else if (anchor == "top") anchorType = mbgl::style::SymbolAnchorType::Top;
-    else if (anchor == "bottom") anchorType = mbgl::style::SymbolAnchorType::Bottom;
-    else if (anchor == "top-left") anchorType = mbgl::style::SymbolAnchorType::TopLeft;
-    else if (anchor == "top-right") anchorType = mbgl::style::SymbolAnchorType::TopRight;
-    else if (anchor == "bottom-left") anchorType = mbgl::style::SymbolAnchorType::BottomLeft;
-    else if (anchor == "bottom-right") anchorType = mbgl::style::SymbolAnchorType::BottomRight;
-    
-    layerNapi->layer->setTextAnchor(mbgl::style::PropertyValue<mbgl::style::SymbolAnchorType>(anchorType));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
+        env, layerObj->layer.get(), argv[0], "text-anchor",
+        &mbgl::style::SymbolLayer::setTextAnchor
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextAnchor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "center");
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextAnchor();
-    if (value.isConstant()) {
-        auto anchor = value.asConstant();
-        switch (anchor) {
-            case mbgl::style::SymbolAnchorType::Center: return CreateStringValue(env, "center");
-            case mbgl::style::SymbolAnchorType::Left: return CreateStringValue(env, "left");
-            case mbgl::style::SymbolAnchorType::Right: return CreateStringValue(env, "right");
-            case mbgl::style::SymbolAnchorType::Top: return CreateStringValue(env, "top");
-            case mbgl::style::SymbolAnchorType::Bottom: return CreateStringValue(env, "bottom");
-            case mbgl::style::SymbolAnchorType::TopLeft: return CreateStringValue(env, "top-left");
-            case mbgl::style::SymbolAnchorType::TopRight: return CreateStringValue(env, "top-right");
-            case mbgl::style::SymbolAnchorType::BottomLeft: return CreateStringValue(env, "bottom-left");
-            case mbgl::style::SymbolAnchorType::BottomRight: return CreateStringValue(env, "bottom-right");
-        }
-    }
-    
-    return CreateStringValue(env, "center");
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextAnchor
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    bool allowOverlap = args.GetBoolean(0, "textAllowOverlap");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setTextAllowOverlap(mbgl::style::PropertyValue<bool>(allowOverlap));
-    return nullptr;
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
+        env, layerObj->layer.get(), argv[0], "text-allow-overlap",
+        &mbgl::style::SymbolLayer::setTextAllowOverlap
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateBooleanValue(env, false);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextAllowOverlap();
-    if (value.isConstant()) {
-        return CreateBooleanValue(env, value.asConstant());
-    }
-    
-    return CreateBooleanValue(env, false);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextAllowOverlap
+    );
 }
 
-// ==================== Paint Properties - Icon ====================
+// ============================================================================
+// Paint Properties - Icon (支持 Expression)
+// ============================================================================
 
 napi_value SymbolLayerNAPI::SetIconOpacity(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float opacity = args.GetFloat(0, "iconOpacity");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setIconOpacity(mbgl::style::PropertyValue<float>(opacity));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "icon-opacity",
+        &mbgl::style::SymbolLayer::setIconOpacity
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconOpacity(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 1.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconOpacity();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 1.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconOpacity
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string colorStr = args.GetString(0, "iconColor");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    // Parse color string (simple implementation, supports "#RRGGBB" format)
-    mbgl::Color color = mbgl::Color::black();
-    // TODO: Implement proper color parsing
-    
-    layerNapi->layer->setIconColor(mbgl::style::PropertyValue<mbgl::Color>(color));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), argv[0], "icon-color",
+        &mbgl::style::SymbolLayer::setIconColor
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateStringValue(env, "#000000");
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    // TODO: Convert color to string
-    return CreateStringValue(env, "#000000");
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconColor
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconHaloColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string colorStr = args.GetString(0, "iconHaloColor");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    mbgl::Color color = mbgl::Color::black();
-    // TODO: Parse color
-    
-    layerNapi->layer->setIconHaloColor(mbgl::style::PropertyValue<mbgl::Color>(color));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), argv[0], "icon-halo-color",
+        &mbgl::style::SymbolLayer::setIconHaloColor
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconHaloColor(napi_env env, napi_callback_info info) {
-    return CreateStringValue(env, "#000000");
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconHaloColor
+    );
 }
 
 napi_value SymbolLayerNAPI::SetIconHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float width = args.GetFloat(0, "iconHaloWidth");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setIconHaloWidth(mbgl::style::PropertyValue<float>(width));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "icon-halo-width",
+        &mbgl::style::SymbolLayer::setIconHaloWidth
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetIconHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 0.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getIconHaloWidth();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 0.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getIconHaloWidth
+    );
 }
 
-// ==================== Paint Properties - Text ====================
+// ============================================================================
+// Paint Properties - Text (支持 Expression)
+// ============================================================================
 
 napi_value SymbolLayerNAPI::SetTextOpacity(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float opacity = args.GetFloat(0, "textOpacity");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setTextOpacity(mbgl::style::PropertyValue<float>(opacity));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "text-opacity",
+        &mbgl::style::SymbolLayer::setTextOpacity
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextOpacity(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 1.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextOpacity();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 1.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextOpacity
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string colorStr = args.GetString(0, "textColor");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    mbgl::Color color = mbgl::Color::black();
-    // TODO: Parse color
-    
-    layerNapi->layer->setTextColor(mbgl::style::PropertyValue<mbgl::Color>(color));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), argv[0], "text-color",
+        &mbgl::style::SymbolLayer::setTextColor
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextColor(napi_env env, napi_callback_info info) {
-    return CreateStringValue(env, "#000000");
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextColor
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextHaloColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    std::string colorStr = args.GetString(0, "textHaloColor");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    mbgl::Color color = mbgl::Color::black();
-    // TODO: Parse color
-    
-    layerNapi->layer->setTextHaloColor(mbgl::style::PropertyValue<mbgl::Color>(color));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), argv[0], "text-halo-color",
+        &mbgl::style::SymbolLayer::setTextHaloColor
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextHaloColor(napi_env env, napi_callback_info info) {
-    return CreateStringValue(env, "#000000");
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextHaloColor
+    );
 }
 
 napi_value SymbolLayerNAPI::SetTextHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        napi_throw_error(env, nullptr, "Invalid layer");
-        return nullptr;
-    }
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
     
-    NapiArgs args(env, info);
-    float width = args.GetFloat(0, "textHaloWidth");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
-    
-    layerNapi->layer->setTextHaloWidth(mbgl::style::PropertyValue<float>(width));
-    return nullptr;
+    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), argv[0], "text-halo-width",
+        &mbgl::style::SymbolLayer::setTextHaloWidth
+    );
+    return thisVar;
 }
 
 napi_value SymbolLayerNAPI::GetTextHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&layerNapi));
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerNapi || !layerNapi->layer) {
-        return CreateNumberValue(env, 0.0f);
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    auto value = layerNapi->layer->getTextHaloWidth();
-    if (value.isConstant()) {
-        return CreateNumberValue(env, value.asConstant());
-    }
-    
-    return CreateNumberValue(env, 0.0f);
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextHaloWidth
+    );
 }
 
 } // namespace harmony
-} // namespace maplibre
-
+} // namespace mbgl

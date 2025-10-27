@@ -8,7 +8,7 @@ import { Point } from './geometry/Point';
 // import { Layer } from './style/layers/Layer';
 // import { Source } from './style/sources/Source';
 import { Image } from './style/images/Image';
-import { Feature } from './geojson/Feature';
+import { Feature } from './geojson';
 import { TransitionOptions } from './style/layers/TransitionOptions';
 import { Light } from './style/light/Light';
 import { Polyline } from './annotations/Polyline';
@@ -384,17 +384,18 @@ export class MapLibreMap {
   /**
    * 获取样式对象
    * 
-   * 注意: NativeMapView 当前不提供 getStyle() 方法
-   * 使用 layer/source 操作时，直接调用 NativeMapView 的对应方法
-   * 
-   * @returns 暂时返回 null
+   * @returns Style 对象，如果地图未初始化或样式未加载则返回 null
    */
   public getStyle(): Style | null {
     if (this.destroyed) return null;
-    // TODO: 等待 C++ 层添加 getStyle() 方法
-    // 或者通过其他方式创建 Style 对象
-    console.warn('getStyle() is not yet implemented in NativeMapView');
-    return null;
+    if (!this.nativeMapView) return null;
+    
+    try {
+      return this.nativeMapView.getStyle();
+    } catch (error) {
+      console.error('Failed to get style:', error);
+      return null;
+    }
   }
 
   /**

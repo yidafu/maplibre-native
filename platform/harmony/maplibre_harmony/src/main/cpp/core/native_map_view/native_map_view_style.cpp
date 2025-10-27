@@ -291,11 +291,29 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
+    // 检查 Style 构造函数引用是否已初始化
+    if (maplibre::harmony::StyleNAPI::constructor == nullptr) {
+        Logger::error("NativeMapView", "getStyle: StyleNAPI::constructor is nullptr - Style class not initialized");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
     // 获取 Style 构造函数
     napi_value styleConstructor;
     napi_status status = napi_get_reference_value(env, maplibre::harmony::StyleNAPI::constructor, &styleConstructor);
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "getStyle: Failed to get Style constructor");
+        Logger::error("NativeMapView", "getStyle: Failed to get Style constructor reference, status=%d", status);
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 检查构造函数是否有效
+    napi_valuetype constructorType;
+    napi_typeof(env, styleConstructor, &constructorType);
+    if (constructorType != napi_function) {
+        Logger::error("NativeMapView", "getStyle: Style constructor is not a function, type=%d", constructorType);
         napi_value result;
         napi_get_null(env, &result);
         return result;
@@ -305,12 +323,13 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
     napi_value args[1];
     int64_t mapPtr = reinterpret_cast<int64_t>(instance->map.get());
     napi_create_int64(env, mapPtr, &args[0]);
+    Logger::debug("NativeMapView", "getStyle: Creating Style instance with mapPtr=%p", instance->map.get());
     
     // 创建 StyleNAPI 实例
     napi_value styleInstance;
     status = napi_new_instance(env, styleConstructor, 1, args, &styleInstance);
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "getStyle: Failed to create Style instance");
+        Logger::error("NativeMapView", "getStyle: Failed to create Style instance, status=%d", status);
         napi_value result;
         napi_get_null(env, &result);
         return result;

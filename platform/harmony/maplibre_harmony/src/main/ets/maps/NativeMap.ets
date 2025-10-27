@@ -1,4 +1,4 @@
-import { Feature, Polygon, } from 'geojson';
+import { Feature, Polygon } from './geojson';
 import maplibre from 'libmaplibre_native.so';
 // Marker 现在由 NAPI 提供
 type Marker = maplibre.Marker;

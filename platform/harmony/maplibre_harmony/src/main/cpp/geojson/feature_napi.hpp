@@ -8,34 +8,48 @@ namespace harmony {
 namespace geojson {
 
 /**
- * FeatureNAPI - Feature NAPI 转换
+ * FeatureNAPI - Feature NAPI 类
  */
 class FeatureNAPI {
 public:
+    FeatureNAPI();
+    explicit FeatureNAPI(const mbgl::GeoJSONFeature& feature);
+    ~FeatureNAPI();
+    
     static constexpr const char* Type() { return "Feature"; }
     
-    /**
-     * 将 mbgl::GeoJSONFeature 转换为 NAPI 对象
-     */
-    static napi_value New(napi_env env, const mbgl::GeoJSONFeature& feature);
+    // NAPI 注册
+    static napi_value Init(napi_env env, napi_value exports);
+    static napi_value New(napi_env env, napi_callback_info info);
+    static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
-    /**
-     * 将 NAPI 对象转换为 mbgl::GeoJSONFeature
-     */
+    // 实例方法
+    static napi_value GetId(napi_env env, napi_callback_info info);
+    static napi_value SetId(napi_env env, napi_callback_info info);
+    static napi_value GetProperties(napi_env env, napi_callback_info info);
+    static napi_value SetProperties(napi_env env, napi_callback_info info);
+    static napi_value GetGeometry(napi_env env, napi_callback_info info);
+    static napi_value SetGeometry(napi_env env, napi_callback_info info);
+    static napi_value ToJSON(napi_env env, napi_callback_info info);
+    
+    // 静态工厂方法
+    static napi_value FromMbglFeature(napi_env env, const mbgl::GeoJSONFeature& feature);
+    static napi_value FromMbglFeature(napi_env env, const mbgl::Feature& feature);
+    
+    // 转换方法
     static mbgl::GeoJSONFeature convert(napi_env env, napi_value value);
-    
-    /**
-     * 将 mbgl::Feature 向量转换为 NAPI 数组
-     */
     static napi_value NewArray(napi_env env, const std::vector<mbgl::Feature>& features);
-    
-    /**
-     * 将 mbgl::GeoJSONFeature 向量转换为 NAPI 数组
-     */
     static napi_value NewArray(napi_env env, const std::vector<mbgl::GeoJSONFeature>& features);
+    
+    // 内部方法
+    mbgl::GeoJSONFeature toMbglFeature() const { return feature_; }
+    
+    static napi_ref constructor;
+    
+private:
+    mbgl::GeoJSONFeature feature_;
 };
 
 } // namespace geojson
 } // namespace harmony
 } // namespace maplibre
-

@@ -89,16 +89,16 @@ void NativeMapView::cleanupAllResources() {
     Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
     
     try {
-        // 0. 清理样式监听器
-        if (styleLoadedListener_ != nullptr) {
-            Logger::debug("NativeMapView", "Deleting styleLoadedListener reference...");
-            napi_delete_reference(env_, styleLoadedListener_);
-            styleLoadedListener_ = nullptr;
+        // 0. 清理样式监听器（线程安全函数）
+        if (styleLoadedTsfn_ != nullptr) {
+            Logger::debug("NativeMapView", "Releasing styleLoadedTsfn (threadsafe function)...");
+            napi_release_threadsafe_function(styleLoadedTsfn_, napi_tsfn_abort);
+            styleLoadedTsfn_ = nullptr;
         }
-        if (styleLoadErrorListener_ != nullptr) {
-            Logger::debug("NativeMapView", "Deleting styleLoadErrorListener reference...");
-            napi_delete_reference(env_, styleLoadErrorListener_);
-            styleLoadErrorListener_ = nullptr;
+        if (styleLoadErrorTsfn_ != nullptr) {
+            Logger::debug("NativeMapView", "Releasing styleLoadErrorTsfn (threadsafe function)...");
+            napi_release_threadsafe_function(styleLoadErrorTsfn_, napi_tsfn_abort);
+            styleLoadErrorTsfn_ = nullptr;
         }
         
         // 1. 清理相机监听器

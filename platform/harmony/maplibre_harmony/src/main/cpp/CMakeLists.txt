@@ -90,6 +90,16 @@ add_library(maplibre_native
     rendering/egl/EGLCore.h
     rendering/egl/EGLCore.cpp
     
+    # Style conversion system
+    style/napi_value_wrapper.hpp
+    style/napi_value_wrapper.cpp
+    style/conversion/harmony_conversion.hpp
+    style/conversion/constant.hpp
+    style/conversion/constant.cpp
+    style/conversion/property_expression.hpp
+    style/conversion/property_value.hpp
+    style/layers/layer_property_utils.hpp
+    
     # NAPI bindings
     napi/core/napi_init.cpp
     napi/core/napi_utils.h
@@ -133,6 +143,10 @@ add_library(maplibre_native
     geometry/rect_harmony.hpp
     geometry/rect_harmony.cpp
     
+    # Bitmap API 绑定
+    bitmap/bitmap_harmony.hpp
+    bitmap/bitmap_harmony.cpp
+    
     # Camera API 绑定
     camera/camera_position_harmony.hpp
     camera/camera_position_harmony.cpp
@@ -144,6 +158,10 @@ add_library(maplibre_native
     style/filter_conversion.cpp
     style/value_conversion.hpp
     style/value_conversion.cpp
+    
+    # Style components - Light
+    style/light_harmony.hpp
+    style/light_harmony.cpp
     
     # GeoJSON NAPI 转换层
     geojson/util.hpp
@@ -192,9 +210,17 @@ add_library(maplibre_native
     style/layers/background_layer_harmony.cpp
     style/layers/raster_layer_harmony.hpp
     style/layers/raster_layer_harmony.cpp
-    # symbol_layer_harmony.cpp has compilation errors, temporarily disabled
-    # style/layers/symbol_layer_harmony.hpp
-    # style/layers/symbol_layer_harmony.cpp
+    style/layers/symbol_layer_harmony.hpp
+    style/layers/symbol_layer_harmony.cpp
+    
+    # Additional layer types
+    style/layers/heatmap_layer_harmony.hpp
+    style/layers/heatmap_layer_harmony.cpp
+    style/layers/hillshade_layer_harmony.hpp
+    style/layers/hillshade_layer_harmony.cpp
+    style/layers/fill_extrusion_layer_harmony.hpp
+    style/layers/fill_extrusion_layer_harmony.cpp
+    
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
 )
@@ -248,5 +274,6 @@ PUBLIC
     vulkan
     native_display_manager
     libnative_vsync.so
+    pixelmap_ndk.z
 )
 

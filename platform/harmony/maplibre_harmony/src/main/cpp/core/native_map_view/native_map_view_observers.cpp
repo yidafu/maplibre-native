@@ -12,6 +12,11 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
+// 用于线程安全传递错误信息的结构体
+struct StyleErrorData {
+    std::string error;
+};
+
 void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraWillChange");
@@ -1113,10 +1118,10 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
         return undefined;
     }
     
-    // 删除旧的监听器引用
-    if (instance->styleLoadedListener_ != nullptr) {
-        napi_delete_reference(env, instance->styleLoadedListener_);
-        instance->styleLoadedListener_ = nullptr;
+    // 清理旧的线程安全函数
+    if (instance->styleLoadedTsfn_ != nullptr) {
+        napi_release_threadsafe_function(instance->styleLoadedTsfn_, napi_tsfn_abort);
+        instance->styleLoadedTsfn_ = nullptr;
     }
     
     // 检查是否为null（移除监听器）
@@ -1133,14 +1138,36 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
         return undefined;
     }
     
-    // 创建新的监听器引用
-    napi_status status = napi_create_reference(env, args[0], 1, &instance->styleLoadedListener_);
+    // 创建线程安全函数
+    napi_value resourceName;
+    napi_create_string_utf8(env, "StyleLoadedCallback", NAPI_AUTO_LENGTH, &resourceName);
+    
+    napi_status status = napi_create_threadsafe_function(
+        env,
+        args[0],  // JS callback
+        nullptr,  // async_resource
+        resourceName,  // async_resource_name
+        0,  // max_queue_size (0 = unlimited)
+        1,  // initial_thread_count
+        nullptr,  // thread_finalize_data
+        nullptr,  // thread_finalize_cb
+        nullptr,  // context
+        [](napi_env env, napi_value js_callback, void* context, void* data) {
+            // 调用 JS 回调（已在主线程）
+            napi_value global;
+            napi_get_global(env, &global);
+            napi_value result;
+            napi_call_function(env, global, js_callback, 0, nullptr, &result);
+        },
+        &instance->styleLoadedTsfn_
+    );
+    
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to create reference");
+        Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to create threadsafe function");
         return undefined;
     }
     
-    Logger::debug("NativeMapView", "setOnStyleLoadedListener: Listener added");
+    Logger::debug("NativeMapView", "setOnStyleLoadedListener: Listener added (thread-safe)");
     return undefined;
 }
 
@@ -1166,10 +1193,10 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 删除旧的监听器引用
-    if (instance->styleLoadErrorListener_ != nullptr) {
-        napi_delete_reference(env, instance->styleLoadErrorListener_);
-        instance->styleLoadErrorListener_ = nullptr;
+    // 清理旧的线程安全函数
+    if (instance->styleLoadErrorTsfn_ != nullptr) {
+        napi_release_threadsafe_function(instance->styleLoadErrorTsfn_, napi_tsfn_abort);
+        instance->styleLoadErrorTsfn_ = nullptr;
     }
     
     // 检查是否为null（移除监听器）
@@ -1186,88 +1213,90 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 创建新的监听器引用
-    napi_status status = napi_create_reference(env, args[0], 1, &instance->styleLoadErrorListener_);
+    // 创建线程安全函数
+    napi_value resourceName;
+    napi_create_string_utf8(env, "StyleLoadErrorCallback", NAPI_AUTO_LENGTH, &resourceName);
+    
+    napi_status status = napi_create_threadsafe_function(
+        env,
+        args[0],  // JS callback
+        nullptr,  // async_resource
+        resourceName,  // async_resource_name
+        0,  // max_queue_size (0 = unlimited)
+        1,  // initial_thread_count
+        nullptr,  // thread_finalize_data
+        nullptr,  // thread_finalize_cb
+        nullptr,  // context
+        [](napi_env env, napi_value js_callback, void* context, void* data) {
+            // 调用 JS 回调（已在主线程），传递错误信息
+            auto* errorData = static_cast<StyleErrorData*>(data);
+            if (errorData) {
+                napi_value errorArg;
+                napi_create_string_utf8(env, errorData->error.c_str(), NAPI_AUTO_LENGTH, &errorArg);
+                
+                napi_value global;
+                napi_get_global(env, &global);
+                napi_value result;
+                napi_value args[1] = {errorArg};
+                napi_call_function(env, global, js_callback, 1, args, &result);
+                
+                delete errorData;  // 清理数据
+            }
+        },
+        &instance->styleLoadErrorTsfn_
+    );
+    
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to create reference");
+        Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to create threadsafe function");
         return undefined;
     }
     
-    Logger::debug("NativeMapView", "setOnStyleLoadErrorListener: Listener added");
+    Logger::debug("NativeMapView", "setOnStyleLoadErrorListener: Listener added (thread-safe)");
     return undefined;
 }
 
 void NativeMapView::notifyStyleLoaded() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    if (styleLoadedListener_ == nullptr) return;
+    if (styleLoadedTsfn_ == nullptr) return;
     
-    Logger::debug("NativeMapView", "notifyStyleLoaded: Calling listener");
+    Logger::debug("NativeMapView", "notifyStyleLoaded: Calling listener (thread-safe)");
     
-    // 获取回调函数
-    napi_value callback;
-    napi_status status = napi_get_reference_value(env_, styleLoadedListener_, &callback);
+    // 调用线程安全函数（自动调度到主线程）
+    napi_status status = napi_call_threadsafe_function(
+        styleLoadedTsfn_,
+        nullptr,  // 无需传递数据
+        napi_tsfn_nonblocking
+    );
+    
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoaded: Failed to get callback reference");
-        return;
+        Logger::error("NativeMapView", "notifyStyleLoaded: Failed to call threadsafe function, status=%d", status);
+    } else {
+        Logger::debug("NativeMapView", "notifyStyleLoaded: Threadsafe function called successfully");
     }
-    
-    // 获取 global 对象作为 this
-    napi_value global;
-    status = napi_get_global(env_, &global);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoaded: Failed to get global");
-        return;
-    }
-    
-    // 调用回调函数 (无参数)
-    napi_value result;
-    status = napi_call_function(env_, global, callback, 0, nullptr, &result);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoaded: Failed to call callback");
-    }
-    
-    Logger::debug("NativeMapView", "notifyStyleLoaded: Listener called successfully");
 }
 
 void NativeMapView::notifyStyleLoadError(const std::string& error) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    if (styleLoadErrorListener_ == nullptr) return;
+    if (styleLoadErrorTsfn_ == nullptr) return;
     
-    Logger::debug("NativeMapView", "notifyStyleLoadError: Calling listener with error: %s", error.c_str());
+    Logger::debug("NativeMapView", "notifyStyleLoadError: Calling listener (thread-safe) with error: %s", error.c_str());
     
-    // 获取回调函数
-    napi_value callback;
-    napi_status status = napi_get_reference_value(env_, styleLoadErrorListener_, &callback);
+    // 创建错误数据副本
+    auto* data = new StyleErrorData{error};
+    
+    // 调用线程安全函数（自动调度到主线程）
+    napi_status status = napi_call_threadsafe_function(
+        styleLoadErrorTsfn_,
+        data,
+        napi_tsfn_nonblocking
+    );
+    
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoadError: Failed to get callback reference");
-        return;
+        Logger::error("NativeMapView", "notifyStyleLoadError: Failed to call threadsafe function, status=%d", status);
+        delete data;  // 清理未使用的数据
+    } else {
+        Logger::debug("NativeMapView", "notifyStyleLoadError: Threadsafe function called successfully");
     }
-    
-    // 创建错误字符串参数
-    napi_value errorArg;
-    status = napi_create_string_utf8(env_, error.c_str(), NAPI_AUTO_LENGTH, &errorArg);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoadError: Failed to create error string");
-        return;
-    }
-    
-    // 获取 global 对象作为 this
-    napi_value global;
-    status = napi_get_global(env_, &global);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoadError: Failed to get global");
-        return;
-    }
-    
-    // 调用回调函数
-    napi_value result;
-    napi_value args[1] = { errorArg };
-    status = napi_call_function(env_, global, callback, 1, args, &result);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoadError: Failed to call callback");
-    }
-    
-    Logger::debug("NativeMapView", "notifyStyleLoadError: Listener called successfully");
 }
 
 } // namespace harmony

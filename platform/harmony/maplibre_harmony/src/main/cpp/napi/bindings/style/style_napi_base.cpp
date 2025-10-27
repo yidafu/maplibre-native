@@ -37,7 +37,7 @@ void StyleNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint
 }
 
 napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
-    Logger::info("StyleNAPI", "Initializing Style NAPI class");
+    Logger::info("StyleNAPI", "========== Initializing Style NAPI class ==========");
     
     napi_property_descriptor properties[] = {
         // Getters
@@ -73,30 +73,34 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
         { "setTransition", nullptr, SetTransition, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
+    Logger::info("StyleNAPI", "Defining Style class with %zu methods", sizeof(properties) / sizeof(properties[0]));
+    
     napi_value cons;
     napi_status status = napi_define_class(env, "Style", NAPI_AUTO_LENGTH, New, nullptr,
                                            sizeof(properties) / sizeof(properties[0]), properties, &cons);
     
     if (status != napi_ok) {
-        Logger::error("StyleNAPI", "Failed to define Style class");
+        Logger::error("StyleNAPI", "Failed to define Style class, status=%d", status);
         return nullptr;
     }
+    Logger::info("StyleNAPI", "Style class defined successfully");
     
     // 创建构造函数引用
     status = napi_create_reference(env, cons, 1, &constructor);
     if (status != napi_ok) {
-        Logger::error("StyleNAPI", "Failed to create constructor reference");
+        Logger::error("StyleNAPI", "Failed to create constructor reference, status=%d", status);
         return nullptr;
     }
+    Logger::info("StyleNAPI", "Constructor reference created: %p", constructor);
     
     // 将构造函数添加到 exports
     status = napi_set_named_property(env, exports, "Style", cons);
     if (status != napi_ok) {
-        Logger::error("StyleNAPI", "Failed to set Style property");
+        Logger::error("StyleNAPI", "Failed to set Style property, status=%d", status);
         return nullptr;
     }
     
-    Logger::info("StyleNAPI", "Style NAPI class initialized successfully");
+    Logger::info("StyleNAPI", "========== Style NAPI class initialized successfully ==========");
     return exports;
 }
 

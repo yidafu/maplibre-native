@@ -4,8 +4,7 @@ import { LocationComponentConstants } from './LocationComponentConstants';
 import { RenderMode } from './modes/RenderMode';
 import { OnRenderModeChangedListener } from './listeners/OnRenderModeChangedListener';
 import { LatLng } from '../geometry/LatLng';
-import { Point as GeometryPoint } from '../geojson/Point';
-import { Feature } from '../geojson/Feature';
+import { Point as GeometryPoint, Feature } from '../geojson';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -67,14 +66,14 @@ export class LocationLayerController {
 
     try {
       // 创建数据源
-      const sourceFeature: Feature = new Feature({
-        geometry: new GeometryPoint([0, 0])
+      const sourceFeature: Feature = new maplibre.Feature({
+        geometry: new maplibre.Point([0, 0])
       });
       
       const geoJsonSource = new maplibre.GeoJsonSource(
         LocationComponentConstants.LOCATION_SOURCE
       );
-      geoJsonSource.setGeoJson(JSON.stringify(sourceFeature));
+      geoJsonSource.setGeoJson(JSON.stringify(sourceFeature.toJSON()));
       this.style.addSource(geoJsonSource);
 
       // 添加精度圈图层
@@ -153,8 +152,8 @@ export class LocationLayerController {
 
     try {
       // 更新数据源位置
-      const sourceFeature: Feature = new Feature({
-        geometry: new GeometryPoint([location.longitude, location.latitude])
+      const sourceFeature: Feature = new maplibre.Feature({
+        geometry: new maplibre.Point([location.longitude, location.latitude])
       });
       
       const source = this.style.getSource(LocationComponentConstants.LOCATION_SOURCE) as GeoJsonSource;

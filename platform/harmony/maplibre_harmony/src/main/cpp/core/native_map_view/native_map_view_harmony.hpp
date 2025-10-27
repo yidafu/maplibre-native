@@ -232,9 +232,9 @@ private:
     // 相机变化追踪器
     std::unique_ptr<maplibre::harmony::CameraChangeTracker> cameraChangeTracker;
     
-    // Style listeners (using napi_ref to persist callbacks)
-    napi_ref styleLoadedListener_ = nullptr;
-    napi_ref styleLoadErrorListener_ = nullptr;
+    // Style listeners (using napi_threadsafe_function for thread safety)
+    napi_threadsafe_function styleLoadedTsfn_ = nullptr;
+    napi_threadsafe_function styleLoadErrorTsfn_ = nullptr;
     
     // Ensure these are initialised last
     std::unique_ptr<mbgl::Map> map;

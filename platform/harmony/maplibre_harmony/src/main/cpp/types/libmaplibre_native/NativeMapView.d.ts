@@ -3,6 +3,8 @@
  * NativeMapView C++ NAPI Bindings
  */
 
+import type { Style } from './Style';
+
 // ==================== Type Definitions ====================
 
 /**
@@ -147,6 +149,12 @@ export class NativeMapView {
      * @param json 样式 JSON 字符串
      */
     setStyleJson(json: string): void;
+    
+    /**
+     * 获取样式对象
+     * @returns Style 对象，如果样式未加载则返回 null
+     */
+    getStyle(): Style | null;
     
     /**
      * 设置经纬度边界

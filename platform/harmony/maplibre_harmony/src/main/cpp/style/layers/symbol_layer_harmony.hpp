@@ -6,7 +6,7 @@
 #include <memory>
 #include <js_native_api.h>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -108,7 +108,7 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 
 #endif // MAPLIBREHARMONY_SYMBOL_LAYER_HARMONY_HPP
 

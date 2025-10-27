@@ -154,7 +154,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
     
     // 4. SymbolLayer
     if (!layerAdded) {
-        SymbolLayerNAPI* symbolLayer = nullptr;
+        mbgl::harmony::SymbolLayerNAPI* symbolLayer = nullptr;
         status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&symbolLayer));
         if (status == napi_ok && symbolLayer) {
             try {
@@ -336,7 +336,7 @@ napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
     
     // 4. SymbolLayer
     if (!layerAdded) {
-        maplibre::harmony::SymbolLayerNAPI* symbolLayer = nullptr;
+        mbgl::harmony::SymbolLayerNAPI* symbolLayer = nullptr;
         status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&symbolLayer));
         if (status == napi_ok && symbolLayer) {
             try {
@@ -626,7 +626,7 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
         }
         
         if (!layerAdded) {
-            SymbolLayerNAPI* symbolLayer = nullptr;
+            mbgl::harmony::SymbolLayerNAPI* symbolLayer = nullptr;
             status = napi_unwrap(env, layerValue, reinterpret_cast<void**>(&symbolLayer));
             if (status == napi_ok && symbolLayer) {
                 layerId = symbolLayer->getId();

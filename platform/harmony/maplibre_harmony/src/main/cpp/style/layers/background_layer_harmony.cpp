@@ -1,6 +1,7 @@
 #include "background_layer_harmony.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
+#include "style/layers/layer_property_utils.hpp"
 #include <mbgl/style/layers/background_layer.hpp>
 #include <mbgl/style/property_value.hpp>
 #include <mbgl/style/expression/image.hpp>
@@ -33,12 +34,12 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("BackgroundLayerNAPI", "Initializing BackgroundLayer NAPI class");
     
     napi_property_descriptor properties[] = {
-        // Setter methods
+        // Setter methods (support Expression)
         { "setBackgroundColor", nullptr, SetBackgroundColor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setBackgroundOpacity", nullptr, SetBackgroundOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setBackgroundPattern", nullptr, SetBackgroundPattern, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // Getter methods
+        // Getter methods (return constant or Expression)
         { "getBackgroundColor", nullptr, GetBackgroundColor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getBackgroundOpacity", nullptr, GetBackgroundOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
         
@@ -78,7 +79,6 @@ napi_value BackgroundLayerNAPI::New(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    // Require 1 argument: layerId
     args.RequireMinArgs(1);
     if (args.HasError()) {
         return nullptr;
@@ -89,10 +89,8 @@ napi_value BackgroundLayerNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // Create BackgroundLayerNAPI instance
     BackgroundLayerNAPI* layerObj = new BackgroundLayerNAPI(layerId);
     
-    // Wrap native object
     napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete layerObj;
@@ -103,153 +101,104 @@ napi_value BackgroundLayerNAPI::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
+// ============================================================================
+// Paint Property Setters (支持 Expression)
+// ============================================================================
+
 napi_value BackgroundLayerNAPI::SetBackgroundColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     BackgroundLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("BackgroundLayerNAPI", "Failed to unwrap BackgroundLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, mbgl::Color>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "background-color",
+        &mbgl::style::BackgroundLayer::setBackgroundColor
+    );
     
-    std::string colorStr = args.GetString(0, "color");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        auto color = mbgl::Color::parse(colorStr);
-        if (color) {
-            layerObj->layer->setBackgroundColor(mbgl::style::PropertyValue<mbgl::Color>(*color));
-            Logger::debug("BackgroundLayerNAPI", "BackgroundColor set to %s", colorStr.c_str());
-        } else {
-            Logger::error("BackgroundLayerNAPI", "Invalid color format: %s", colorStr.c_str());
-        }
-    } catch (const std::exception& e) {
-        Logger::error("BackgroundLayerNAPI", "setBackgroundColor failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value BackgroundLayerNAPI::SetBackgroundOpacity(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     BackgroundLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("BackgroundLayerNAPI", "Failed to unwrap BackgroundLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "background-opacity",
+        &mbgl::style::BackgroundLayer::setBackgroundOpacity
+    );
     
-    double opacity = args.GetDouble(0, "opacity");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setBackgroundOpacity(mbgl::style::PropertyValue<float>(static_cast<float>(opacity)));
-        Logger::debug("BackgroundLayerNAPI", "BackgroundOpacity set to %f", opacity);
-    } catch (const std::exception& e) {
-        Logger::error("BackgroundLayerNAPI", "setBackgroundOpacity failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value BackgroundLayerNAPI::SetBackgroundPattern(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     BackgroundLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("BackgroundLayerNAPI", "Failed to unwrap BackgroundLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, mbgl::style::expression::Image>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "background-pattern",
+        &mbgl::style::BackgroundLayer::setBackgroundPattern
+    );
     
-    std::string pattern = args.GetString(0, "pattern");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setBackgroundPattern(mbgl::style::PropertyValue<mbgl::style::expression::Image>(
-            mbgl::style::expression::Image(pattern)));
-        Logger::debug("BackgroundLayerNAPI", "BackgroundPattern set to %s", pattern.c_str());
-    } catch (const std::exception& e) {
-        Logger::error("BackgroundLayerNAPI", "setBackgroundPattern failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
+
+// ============================================================================
+// Property Getters (返回常量或 Expression)
+// ============================================================================
 
 napi_value BackgroundLayerNAPI::GetBackgroundColor(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     BackgroundLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const auto& value = layerObj->layer->getBackgroundColor();
-    if (value.isConstant()) {
-        const auto& color = value.asConstant();
-        std::string colorStr = color.stringify();
-        napi_value result;
-        napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return mbgl::harmony::getProperty<mbgl::style::BackgroundLayer, mbgl::Color>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::BackgroundLayer::getBackgroundColor
+    );
 }
 
 napi_value BackgroundLayerNAPI::GetBackgroundOpacity(napi_env env, napi_callback_info info) {
@@ -257,38 +206,39 @@ napi_value BackgroundLayerNAPI::GetBackgroundOpacity(napi_env env, napi_callback
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     BackgroundLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const auto& value = layerObj->layer->getBackgroundOpacity();
-    if (value.isConstant()) {
-        napi_value result;
-        napi_create_double(env, static_cast<double>(value.asConstant()), &result);
-        return result;
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return mbgl::harmony::getProperty<mbgl::style::BackgroundLayer, float>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::BackgroundLayer::getBackgroundOpacity
+    );
 }
+
+// ============================================================================
+// Base Layer Methods
+// ============================================================================
 
 napi_value BackgroundLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     BackgroundLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const std::string& id = layerObj->layer->getID();
+    std::string id = layerObj->layer->getID();
     napi_value result;
     napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -302,4 +252,3 @@ napi_value BackgroundLayerNAPI::GetType(napi_env env, napi_callback_info info) {
 
 } // namespace harmony
 } // namespace mbgl
-

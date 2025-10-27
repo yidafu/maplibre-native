@@ -356,7 +356,7 @@ export class MarkerLayerManager {
       if (features && features.length > 0) {
         // 获取第一个 feature 的 ID
         const feature = features[0];
-        const featureId = feature.id;
+        const featureId = feature.getId();
         
         if (typeof featureId === 'number' && this.markers.has(featureId)) {
           return this.markers.get(featureId)!;

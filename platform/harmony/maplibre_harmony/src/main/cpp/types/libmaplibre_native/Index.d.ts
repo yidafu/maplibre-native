@@ -34,6 +34,14 @@ export { Marker, MarkerOptions } from './Marker';
  */
 export { Style, StyleBuilder } from './Style';
 
+// ========== GeoJSON 类型 (NAPI 类) ==========
+
+/**
+ * GeoJSON 类型
+ * 所有 GeoJSON 几何体和特征类型都由 C++ NAPI 层实现
+ */
+export * from './geojson';
+
 // ========== 数据源 (Sources) - NAPI 类 ==========
 
 /**

@@ -2,6 +2,7 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
+#include "style/layers/layer_property_utils.hpp"
 #include <mbgl/style/layers/line_layer.hpp>
 #include <mbgl/style/property_value.hpp>
 #include <mbgl/style/expression/image.hpp>
@@ -35,7 +36,7 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("LineLayerNAPI", "Initializing LineLayer NAPI class");
     
     napi_property_descriptor properties[] = {
-        // Setter methods
+        // Setter methods (support Expression)
         { "setLineColor", nullptr, SetLineColor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setLineWidth", nullptr, SetLineWidth, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setLineOpacity", nullptr, SetLineOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -47,7 +48,7 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setLineCap", nullptr, SetLineCap, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setLineJoin", nullptr, SetLineJoin, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // Getter methods
+        // Getter methods (return constant or Expression)
         { "getLineColor", nullptr, GetLineColor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getLineWidth", nullptr, GetLineWidth, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getLineOpacity", nullptr, GetLineOpacity, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -56,6 +57,18 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getType", nullptr, GetType, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getSourceId", nullptr, GetSourceId, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Visibility, zoom, source layer, filter - common to all layers
+        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setMinZoom", nullptr, SetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setSourceLayer", nullptr, SetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -89,7 +102,6 @@ napi_value LineLayerNAPI::New(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    // Require 2 arguments: layerId and sourceId
     args.RequireMinArgs(2);
     if (args.HasError()) {
         return nullptr;
@@ -101,10 +113,8 @@ napi_value LineLayerNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // Create LineLayerNAPI instance
     LineLayerNAPI* layerObj = new LineLayerNAPI(layerId, sourceId);
     
-    // Wrap native object
     napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete layerObj;
@@ -115,452 +125,276 @@ napi_value LineLayerNAPI::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
+// ============================================================================
+// Paint Property Setters (支持 Expression)
+// ============================================================================
+
 napi_value LineLayerNAPI::SetLineColor(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, mbgl::Color>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-color",
+        &mbgl::style::LineLayer::setLineColor
+    );
     
-    std::string colorStr = args.GetString(0, "color");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        auto color = mbgl::Color::parse(colorStr);
-        if (color) {
-            layerObj->layer->setLineColor(mbgl::style::PropertyValue<mbgl::Color>(*color));
-            Logger::debug("LineLayerNAPI", "LineColor set to %s", colorStr.c_str());
-        } else {
-            Logger::error("LineLayerNAPI", "Invalid color format: %s", colorStr.c_str());
-        }
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineColor failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineWidth(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-width",
+        &mbgl::style::LineLayer::setLineWidth
+    );
     
-    double width = args.GetDouble(0, "width");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setLineWidth(mbgl::style::PropertyValue<float>(static_cast<float>(width)));
-        Logger::debug("LineLayerNAPI", "LineWidth set to %f", width);
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineWidth failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineOpacity(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-opacity",
+        &mbgl::style::LineLayer::setLineOpacity
+    );
     
-    double opacity = args.GetDouble(0, "opacity");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setLineOpacity(mbgl::style::PropertyValue<float>(static_cast<float>(opacity)));
-        Logger::debug("LineLayerNAPI", "LineOpacity set to %f", opacity);
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineOpacity failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLinePattern(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, mbgl::style::expression::Image>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-pattern",
+        &mbgl::style::LineLayer::setLinePattern
+    );
     
-    std::string pattern = args.GetString(0, "pattern");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setLinePattern(mbgl::style::PropertyValue<mbgl::style::expression::Image>(
-            mbgl::style::expression::Image(pattern)));
-        Logger::debug("LineLayerNAPI", "LinePattern set to %s", pattern.c_str());
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLinePattern failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineGapWidth(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-gap-width",
+        &mbgl::style::LineLayer::setLineGapWidth
+    );
     
-    double gapWidth = args.GetDouble(0, "gapWidth");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setLineGapWidth(mbgl::style::PropertyValue<float>(static_cast<float>(gapWidth)));
-        Logger::debug("LineLayerNAPI", "LineGapWidth set to %f", gapWidth);
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineGapWidth failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineDasharray(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, std::vector<float>>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-dasharray",
+        &mbgl::style::LineLayer::setLineDasharray
+    );
     
-    napi_value arrayValue = args.GetArray(0, "dasharray");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        uint32_t length;
-        napi_get_array_length(env, arrayValue, &length);
-        
-        std::vector<float> dasharray;
-        for (uint32_t i = 0; i < length; i++) {
-            napi_value elem;
-            napi_get_element(env, arrayValue, i, &elem);
-            double value;
-            napi_get_value_double(env, elem, &value);
-            dasharray.push_back(static_cast<float>(value));
-        }
-        
-        layerObj->layer->setLineDasharray(mbgl::style::PropertyValue<std::vector<float>>(dasharray));
-        Logger::debug("LineLayerNAPI", "LineDasharray set with %u elements", length);
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineDasharray failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineBlur(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-blur",
+        &mbgl::style::LineLayer::setLineBlur
+    );
     
-    double blur = args.GetDouble(0, "blur");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setLineBlur(mbgl::style::PropertyValue<float>(static_cast<float>(blur)));
-        Logger::debug("LineLayerNAPI", "LineBlur set to %f", blur);
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineBlur failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineOffset(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-offset",
+        &mbgl::style::LineLayer::setLineOffset
+    );
     
-    double offset = args.GetDouble(0, "offset");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        layerObj->layer->setLineOffset(mbgl::style::PropertyValue<float>(static_cast<float>(offset)));
-        Logger::debug("LineLayerNAPI", "LineOffset set to %f", offset);
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineOffset failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
+// ============================================================================
+// Layout Property Setters
+// ============================================================================
+
 napi_value LineLayerNAPI::SetLineCap(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, mbgl::style::LineCapType>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-cap",
+        &mbgl::style::LineLayer::setLineCap
+    );
     
-    std::string capStr = args.GetString(0, "cap");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        mbgl::style::LineCapType capType = mbgl::style::LineCapType::Butt;
-        if (capStr == "round") {
-            capType = mbgl::style::LineCapType::Round;
-        } else if (capStr == "square") {
-            capType = mbgl::style::LineCapType::Square;
-        }
-        
-        layerObj->layer->setLineCap(mbgl::style::PropertyValue<mbgl::style::LineCapType>(capType));
-        Logger::debug("LineLayerNAPI", "LineCap set to %s", capStr.c_str());
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineCap failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
 
 napi_value LineLayerNAPI::SetLineJoin(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    
     napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        Logger::error("LineLayerNAPI", "Failed to unwrap LineLayer object");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
     }
     
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, mbgl::style::LineJoinType>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-join",
+        &mbgl::style::LineLayer::setLineJoin
+    );
     
-    std::string joinStr = args.GetString(0, "join");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    try {
-        mbgl::style::LineJoinType joinType = mbgl::style::LineJoinType::Miter;
-        if (joinStr == "round") {
-            joinType = mbgl::style::LineJoinType::Round;
-        } else if (joinStr == "bevel") {
-            joinType = mbgl::style::LineJoinType::Bevel;
-        }
-        
-        layerObj->layer->setLineJoin(mbgl::style::PropertyValue<mbgl::style::LineJoinType>(joinType));
-        Logger::debug("LineLayerNAPI", "LineJoin set to %s", joinStr.c_str());
-    } catch (const std::exception& e) {
-        Logger::error("LineLayerNAPI", "setLineJoin failed: %s", e.what());
-    }
-    
-    return thisVar;  // Return this for chaining
+    return thisVar;
 }
+
+// ============================================================================
+// Property Getters (返回常量或 Expression)
+// ============================================================================
 
 napi_value LineLayerNAPI::GetLineColor(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const auto& value = layerObj->layer->getLineColor();
-    if (value.isConstant()) {
-        const auto& color = value.asConstant();
-        std::string colorStr = color.stringify();
-        napi_value result;
-        napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, mbgl::Color>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineColor
+    );
 }
 
 napi_value LineLayerNAPI::GetLineWidth(napi_env env, napi_callback_info info) {
@@ -568,23 +402,19 @@ napi_value LineLayerNAPI::GetLineWidth(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const auto& value = layerObj->layer->getLineWidth();
-    if (value.isConstant()) {
-        napi_value result;
-        napi_create_double(env, static_cast<double>(value.asConstant()), &result);
-        return result;
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineWidth
+    );
 }
 
 napi_value LineLayerNAPI::GetLineOpacity(napi_env env, napi_callback_info info) {
@@ -592,38 +422,39 @@ napi_value LineLayerNAPI::GetLineOpacity(napi_env env, napi_callback_info info) 
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const auto& value = layerObj->layer->getLineOpacity();
-    if (value.isConstant()) {
-        napi_value result;
-        napi_create_double(env, static_cast<double>(value.asConstant()), &result);
-        return result;
-    }
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineOpacity
+    );
 }
+
+// ============================================================================
+// Base Layer Methods (common to all layers)
+// ============================================================================
 
 napi_value LineLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const std::string& id = layerObj->layer->getID();
+    std::string id = layerObj->layer->getID();
     napi_value result;
     napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -640,17 +471,225 @@ napi_value LineLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
     LineLayerNAPI* layerObj;
-    napi_status status = napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
-    if (status != napi_ok || !layerObj) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
     }
     
-    const std::string& sourceId = layerObj->layer->getSourceID();
+    std::string sourceId = layerObj->layer->getSourceID();
     napi_value result;
     napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
+}
+
+napi_value LineLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return thisVar;
+    }
+    
+    std::string visibility = args.GetString(0, "visibility");
+    if (visibility == "visible") {
+        layerObj->layer->setVisibility(mbgl::style::VisibilityType::Visible);
+    } else if (visibility == "none") {
+        layerObj->layer->setVisibility(mbgl::style::VisibilityType::None);
+    }
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    auto visibility = layerObj->layer->getVisibility();
+    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    
+    napi_value result;
+    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+napi_value LineLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
+        layerObj->layer->setMinZoom(minZoom);
+    }
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+    
+    float minZoom = layerObj->layer->getMinZoom();
+    napi_value result;
+    napi_create_double(env, minZoom, &result);
+    return result;
+}
+
+napi_value LineLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
+        layerObj->layer->setMaxZoom(maxZoom);
+    }
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+    
+    float maxZoom = layerObj->layer->getMaxZoom();
+    napi_value result;
+    napi_create_double(env, maxZoom, &result);
+    return result;
+}
+
+napi_value LineLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        std::string sourceLayer = args.GetString(0, "sourceLayer");
+        layerObj->layer->setSourceLayer(sourceLayer);
+    }
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+    
+    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    napi_value result;
+    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+napi_value LineLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    auto filter = napiArrayToFilter(env, argv[0]);
+    if (filter) {
+        layerObj->layer->setFilter(*filter);
+        Logger::debug("LineLayerNAPI", "Filter set successfully");
+    }
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+    
+    const auto& filter = layerObj->layer->getFilter();
+    return filterToNapiArray(env, filter);
 }
 
 } // namespace harmony
