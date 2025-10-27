@@ -74,7 +74,19 @@ public:
     }
     
     // Get native layer pointer (for property access after adding)
-    mbgl::style::CircleLayer* getLayer() { return layer.get(); }
+    mbgl::style::CircleLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::CircleLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::CircleLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
+    }
 
 private:
     explicit CircleLayerNAPI(const std::string& layerId, const std::string& sourceId);
@@ -82,6 +94,7 @@ private:
     
     static napi_ref constructor;
     std::unique_ptr<mbgl::style::CircleLayer> layer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };
 
 } // namespace harmony

@@ -531,17 +531,12 @@ void HarmonyGLRendererBackend::updateAssumedState() {
     // GL commands may be processed asynchronously, causing glGet* functions to return stale values
     // immediately after setting state. Base class methods call assert() which fails in this scenario.
     
-    Logger::debug("HarmonyGLRendererBackend", "updateAssumedState: viewport=(0, 0, %u, %u) logical pixels", 
-                  size.width, size.height);
-    
     // Set framebuffer binding directly (skip assumeFramebufferBinding which asserts)
     // Note: 0 != ImplicitFramebufferBinding, so assumeFramebufferBinding(0) would assert
     getContext<gl::Context>().bindFramebuffer.setCurrentValue(0);
     
     // Set viewport directly (skip setViewport which asserts)
     getContext<gl::Context>().viewport = {0, 0, size};
-    
-    Logger::debug("HarmonyGLRendererBackend", "updateAssumedState complete");
 }
 
 // initShaders is inherited from gl::RendererBackend
@@ -587,13 +582,8 @@ void HarmonyGLRendererBackend::activate() {
         // 检查context是否已经current（性能优化）
         EGLContext currentContext = eglGetCurrentContext();
         if (currentContext == eglContext_) {
-            Logger::debug("HarmonyGLRendererBackend", "activate() - context already current");
             return;
         }
-        
-        Logger::debug("HarmonyGLRendererBackend", 
-                     "activate() - making context current (display=%p, surface=%p, context=%p)",
-                     eglDisplay_, eglSurface_, eglContext_);
         
         if (!eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_)) {
             EGLint error = eglGetError();
@@ -606,8 +596,6 @@ void HarmonyGLRendererBackend::activate() {
                 Logger::error("HarmonyGLRendererBackend", "Surface invalid - pausing rendering to prevent crash");
                 pauseRendering();
             }
-        } else {
-            Logger::debug("HarmonyGLRendererBackend", "activate() - GL context successfully activated");
         }
     } else {
         Logger::warn("HarmonyGLRendererBackend", 
@@ -620,8 +608,6 @@ void HarmonyGLRendererBackend::deactivate() {
     // HarmonyOS渲染线程单线程优化
     // 由于context只在渲染线程创建和使用，不需要频繁释放
     // 这是一个性能优化：保持context current避免频繁的bind/unbind开销
-    
-    Logger::debug("HarmonyGLRendererBackend", "deactivate() - keeping context current for performance (single-thread mode)");
     
     // 注意：如果未来需要多线程访问GL资源，需要在这里真正释放context
     // 当前架构下，context只属于渲染线程，所以可以保持current

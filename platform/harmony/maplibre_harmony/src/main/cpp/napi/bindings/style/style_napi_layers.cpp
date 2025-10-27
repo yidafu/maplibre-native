@@ -96,6 +96,13 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
             style->map->getStyle().addLayer(std::move(layer));
             style->layers[layerId] = true;
             layerAdded = true;
+            
+            // 创建 WeakPtr
+            auto* styleLayer = style->map->getStyle().getLayer(layerId);
+            if (auto* fillStyleLayer = dynamic_cast<mbgl::style::FillLayer*>(styleLayer)) {
+                fillLayer->attachToStyle(fillStyleLayer);
+            }
+            
             Logger::info("StyleNAPI", "AddLayer (FillLayer): %s", layerId.c_str());
         } catch (const std::exception& e) {
             Logger::error("StyleNAPI", "AddLayer (FillLayer) failed: %s", e.what());
@@ -119,6 +126,13 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addLayer(std::move(layer));
                 style->layers[layerId] = true;
                 layerAdded = true;
+                
+                // 创建 WeakPtr
+                auto* styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto* lineStyleLayer = dynamic_cast<mbgl::style::LineLayer*>(styleLayer)) {
+                    lineLayer->attachToStyle(lineStyleLayer);
+                }
+                
                 Logger::info("StyleNAPI", "AddLayer (LineLayer): %s", layerId.c_str());
             } catch (const std::exception& e) {
                 Logger::error("StyleNAPI", "AddLayer (LineLayer) failed: %s", e.what());
@@ -143,6 +157,13 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addLayer(std::move(layer));
                 style->layers[layerId] = true;
                 layerAdded = true;
+                
+                // 创建 WeakPtr
+                auto* styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto* circleStyleLayer = dynamic_cast<mbgl::style::CircleLayer*>(styleLayer)) {
+                    circleLayer->attachToStyle(circleStyleLayer);
+                }
+                
                 Logger::info("StyleNAPI", "AddLayer (CircleLayer): %s", layerId.c_str());
             } catch (const std::exception& e) {
                 Logger::error("StyleNAPI", "AddLayer (CircleLayer) failed: %s", e.what());
@@ -167,6 +188,13 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addLayer(std::move(layer));
                 style->layers[layerId] = true;
                 layerAdded = true;
+                
+                // 创建 WeakPtr
+                auto* styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto* symbolStyleLayer = dynamic_cast<mbgl::style::SymbolLayer*>(styleLayer)) {
+                    symbolLayer->attachToStyle(symbolStyleLayer);
+                }
+                
                 Logger::info("StyleNAPI", "AddLayer (SymbolLayer): %s", layerId.c_str());
             } catch (const std::exception& e) {
                 Logger::error("StyleNAPI", "AddLayer (SymbolLayer) failed: %s", e.what());
@@ -191,6 +219,13 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addLayer(std::move(layer));
                 style->layers[layerId] = true;
                 layerAdded = true;
+                
+                // 创建 WeakPtr
+                auto* styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto* backgroundStyleLayer = dynamic_cast<mbgl::style::BackgroundLayer*>(styleLayer)) {
+                    backgroundLayer->attachToStyle(backgroundStyleLayer);
+                }
+                
                 Logger::info("StyleNAPI", "AddLayer (BackgroundLayer): %s", layerId.c_str());
             } catch (const std::exception& e) {
                 Logger::error("StyleNAPI", "AddLayer (BackgroundLayer) failed: %s", e.what());

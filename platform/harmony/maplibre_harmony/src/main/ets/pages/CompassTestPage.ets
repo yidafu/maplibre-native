@@ -13,8 +13,10 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
+import { CameraPosition, createCameraPosition } from '../maps/camera/CameraPosition';
 import { CompassView } from '../maps/widgets/CompassView';
 import { CompassVisibility } from '../maps/widgets/CompassVisibility';
 import { CompassPosition } from '../maps/widgets/CompassPosition';
@@ -24,9 +26,6 @@ import { UiSettings } from '../maps/UiSettings';
 @Entry
 @Component
 struct CompassTestPage {
-  // XComponent 控制器
-  private xComponentController: XComponentController = new XComponentController();
-  
   // 地图相关
   @State private mapLibreMap: MapLibreMap | null = null;
   @State private isMapReady: boolean = false;
@@ -59,45 +58,43 @@ struct CompassTestPage {
   }
   
   /**
-   * 地图初始化
+   * 地图准备回调
    */
-  private initMap(surfaceId: string): void {
+  private onMapReady(nativeMapView?: maplibre.NativeMapView): void {
     try {
-      hilog.info(DOMAIN, 'CompassTestPage', `Initializing map with surfaceId: ${surfaceId}`);
+      hilog.info(DOMAIN, 'CompassTestPage', 'Initializing map');
       
-      // 创建 NativeMapView
-      const nativeMapView = new maplibre.NativeMapView(surfaceId);
+      if (!nativeMapView) {
+        hilog.error(DOMAIN, 'CompassTestPage', 'NativeMapView is null');
+        return;
+      }
       
-      // 创建地图选项
+      const latLng = new maplibre.LatLng(30.2741, 120.1551);
+      const cameraPos = createCameraPosition(latLng, 12, 0, 0);
       const options = new MapLibreMapOptions();
+      options.cameraPosition = cameraPos;
       options.styleUrl = 'https://demotiles.maplibre.org/style.json';
       
-      // 创建 MapLibreMap
-      const map = new MapLibreMap(nativeMapView, options);
-      this.mapLibreMap = map;
-      
-      // 设置初始视图
-      map.setLatLng(30.2741, 120.1551, undefined, 0);
-      map.setZoom(12, undefined, undefined, 0);
+      this.mapLibreMap = new MapLibreMap(nativeMapView, options);
       
       // 设置指南针更新回调
-      map.onCompassUpdate = (bearing: number) => {
+      this.mapLibreMap.onCompassUpdate = (bearing: number) => {
         this.currentBearing = bearing;
         hilog.info(DOMAIN, 'CompassTestPage', `Bearing updated: ${bearing}`);
       };
       
       // 配置 UiSettings
-      const uiSettings = map.getUiSettings();
+      const uiSettings = this.mapLibreMap.getUiSettings();
       this.setupUiSettings(uiSettings);
       
       // 初始化指南针方向
-      this.currentBearing = map.getBearing();
+      this.currentBearing = this.mapLibreMap.getBearing();
       
       this.isMapReady = true;
       hilog.info(DOMAIN, 'CompassTestPage', 'Map initialized successfully');
       
     } catch (error) {
-      hilog.error(DOMAIN, 'CompassTestPage', `Failed to initialize map: ${error.message}`);
+      hilog.error(DOMAIN, 'CompassTestPage', `Failed to initialize map: ${error}`);
     }
   }
   
@@ -169,32 +166,55 @@ struct CompassTestPage {
   }
   
   /**
-   * 获取指南针位置样式
+   * 获取指南针位置的 x 偏移
    */
-  private getCompassPositionStyle(): Position {
-    const positionStyle: Position = {};
+  private getCompassX(): number {
     const margin = 10;
-    
     switch (this.compassPosition) {
       case CompassPosition.TopLeft:
-        positionStyle.top = margin;
-        positionStyle.left = margin;
-        break;
-      case CompassPosition.TopRight:
-        positionStyle.top = margin;
-        positionStyle.right = margin;
-        break;
       case CompassPosition.BottomLeft:
-        positionStyle.bottom = margin + 60; // 避开控制面板
-        positionStyle.left = margin;
-        break;
+        return margin;
+      case CompassPosition.TopRight:
       case CompassPosition.BottomRight:
-        positionStyle.bottom = margin + 60; // 避开控制面板
-        positionStyle.right = margin;
-        break;
+        return -margin;
+      default:
+        return margin;
     }
-    
-    return positionStyle;
+  }
+  
+  /**
+   * 获取指南针位置的 y 偏移
+   */
+  private getCompassY(): number {
+    const margin = 10;
+    switch (this.compassPosition) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.TopRight:
+        return margin;
+      case CompassPosition.BottomLeft:
+      case CompassPosition.BottomRight:
+        return -margin - 60; // 避开控制面板
+      default:
+        return margin;
+    }
+  }
+  
+  /**
+   * 获取指南针对齐方式
+   */
+  private getCompassAlignment(): Alignment {
+    switch (this.compassPosition) {
+      case CompassPosition.TopLeft:
+        return Alignment.TopStart;
+      case CompassPosition.TopRight:
+        return Alignment.TopEnd;
+      case CompassPosition.BottomLeft:
+        return Alignment.BottomStart;
+      case CompassPosition.BottomRight:
+        return Alignment.BottomEnd;
+      default:
+        return Alignment.TopEnd;
+    }
   }
   
   build() {
@@ -203,132 +223,152 @@ struct CompassTestPage {
       Row() {
         Button('返回')
           .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
           .onClick(() => {
             router.back();
           })
+          .margin({ left: 5 })
         
         Text('指南针测试')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
-        
-        // 占位保持居中
-        Row().width(60)
+          .margin({ right: 60 })
       }
       .width('100%')
       .height(56)
-      .padding({ left: 10, right: 10 })
-      .backgroundColor('#2196F3')
-      .justifyContent(FlexAlign.SpaceBetween)
+      .backgroundColor('#F5F5F5')
       
       // 地图容器
       Stack() {
-        // XComponent 地图视图
-        XComponent({
-          id: 'compass-test-map',
-          type: XComponentType.SURFACE,
-          controller: this.xComponentController
+        // 地图视图
+        NativeMapView({
+          onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+            this.onMapReady(nativeMapView);
+          }
         })
           .width('100%')
           .height('100%')
-          .onLoad(() => {
-            hilog.info(DOMAIN, 'CompassTestPage', 'XComponent loaded');
-            const surfaceId = this.xComponentController.getXComponentSurfaceId();
-            this.initMap(surfaceId);
-          })
         
         // 指南针组件
         if (this.compassEnabled && this.isMapReady) {
           CompassView({
-            enabled: this.compassEnabled,
+            compassEnabled: this.compassEnabled,
             compassVisibility: this.compassVisibility,
             fadeWhenFacingNorth: this.compassFadeWhenFacingNorth,
             onCompassClick: () => {
               this.handleCompassClick();
             }
           })
-            .position(this.getCompassPositionStyle())
+            .offset({ x: this.getCompassX(), y: this.getCompassY() })
         }
-        
-        // 控制面板
+      }
+      .width('100%')
+      .height('60%')
+      .alignContent(this.getCompassAlignment())
+      
+      // 测试按钮区域（40%，可滚动）
+      Scroll() {
         Column() {
+          // 状态信息
           Text(`方位角: ${this.currentBearing.toFixed(1)}°`)
             .fontSize(14)
-            .fontColor(Color.White)
-            .backgroundColor('#000000AA')
-            .padding(8)
-            .borderRadius(4)
-            .margin({ bottom: 10 })
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#F8F8F8')
+            .margin({ bottom: 8 })
           
           // 旋转控制
+          Text('旋转测试')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+          
           Row() {
             Button('0°')
               .fontSize(12)
-              .padding(6)
+              .layoutWeight(1)
               .onClick(() => this.rotateTo(0))
+              .margin({ right: 4 })
             Button('45°')
               .fontSize(12)
-              .padding(6)
+              .layoutWeight(1)
               .onClick(() => this.rotateTo(45))
+              .margin({ right: 4 })
             Button('90°')
               .fontSize(12)
-              .padding(6)
+              .layoutWeight(1)
               .onClick(() => this.rotateTo(90))
+              .margin({ right: 4 })
             Button('180°')
               .fontSize(12)
-              .padding(6)
+              .layoutWeight(1)
               .onClick(() => this.rotateTo(180))
           }
           .width('100%')
-          .justifyContent(FlexAlign.SpaceEvenly)
-          .margin({ bottom: 10 })
+          .margin({ bottom: 12 })
           
-          // 配置控制
-          Column() {
-            Row() {
-              Text('启用指南针:')
-                .fontSize(14)
-                .layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.compassEnabled })
-                .onChange((isOn: boolean) => {
-                  this.compassEnabled = isOn;
-                  if (this.mapLibreMap) {
-                    this.mapLibreMap.getUiSettings().setCompassEnabled(isOn);
-                  }
-                })
-            }
+          Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
+          
+          // 指南针配置
+          Text('指南针配置')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
             .width('100%')
-            .padding(8)
-            
-            Row() {
-              Text('正北淡出:')
-                .fontSize(14)
-                .layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.compassFadeWhenFacingNorth })
-                .onChange((isOn: boolean) => {
-                  this.compassFadeWhenFacingNorth = isOn;
-                  if (this.mapLibreMap) {
-                    this.mapLibreMap.getUiSettings().setCompassFadeFacingNorth(isOn);
-                  }
-                })
-            }
-            .width('100%')
-            .padding(8)
-            
-            Button(`可见性: ${this.getVisibilityName()}`)
+            .margin({ bottom: 8 })
+          
+          Row() {
+            Text('启用指南针:')
               .fontSize(14)
-              .width('100%')
-              .onClick(() => this.toggleVisibility())
+              .layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.compassEnabled })
+              .onChange((isOn: boolean) => {
+                this.compassEnabled = isOn;
+                if (this.mapLibreMap) {
+                  this.mapLibreMap.getUiSettings().setCompassEnabled(isOn);
+                }
+              })
           }
-          .backgroundColor('#FFFFFFDD')
-          .borderRadius(8)
-          .padding(10)
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#FFFFFF')
+          .border({ width: 1, color: '#E0E0E0' })
+          .borderRadius(4)
+          .margin({ bottom: 8 })
+          
+          Row() {
+            Text('正北淡出:')
+              .fontSize(14)
+              .layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.compassFadeWhenFacingNorth })
+              .onChange((isOn: boolean) => {
+                this.compassFadeWhenFacingNorth = isOn;
+                if (this.mapLibreMap) {
+                  this.mapLibreMap.getUiSettings().setCompassFadeFacingNorth(isOn);
+                }
+              })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#FFFFFF')
+          .border({ width: 1, color: '#E0E0E0' })
+          .borderRadius(4)
+          .margin({ bottom: 8 })
+          
+          Button(`可见性: ${this.getVisibilityName()}`)
+            .fontSize(14)
+            .width('100%')
+            .onClick(() => this.toggleVisibility())
         }
-        .width('90%')
-        .position({ bottom: 10, left: '5%' })
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .width('100%')
       }
-      .layoutWeight(1)
+      .width('100%')
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')

@@ -49,7 +49,19 @@ public:
         return std::move(layer);
     }
     
-    mbgl::style::FillExtrusionLayer* getLayer() { return layer.get(); }
+    mbgl::style::FillExtrusionLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::FillExtrusionLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::FillExtrusionLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
+    }
 
 private:
     explicit FillExtrusionLayerNAPI(const std::string& layerId, const std::string& sourceId);
@@ -57,6 +69,7 @@ private:
     
     static napi_ref constructor;
     std::unique_ptr<mbgl::style::FillExtrusionLayer> layer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };
 
 } // namespace harmony

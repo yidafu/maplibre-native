@@ -175,7 +175,13 @@ napi_value ImageSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     ImageSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
@@ -188,7 +194,7 @@ napi_value ImageSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     }
     
     try {
-        sourceNapi->source->setURL(url);
+        source->setURL(url);
         Logger::info("ImageSourceNAPI", "SetUrl: %s -> %s", sourceNapi->id.c_str(), url.c_str());
     } catch (const std::exception& e) {
         Logger::error("ImageSourceNAPI", "SetUrl failed: %s", e.what());
@@ -207,8 +213,14 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     ImageSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
-        napi_throw_error(env, nullptr, "Invalid ImageSource instance");
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
+        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -262,14 +274,8 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
     }
     
     try {
-        auto* imageSource = sourceNapi->source.get()->as<mbgl::style::ImageSource>();
-        if (imageSource) {
-            imageSource->setCoordinates(coords);
-            Logger::info("ImageSourceNAPI", "SetCoordinates: %s", sourceNapi->id.c_str());
-        } else {
-            napi_throw_error(env, nullptr, "Source is not an ImageSource");
-            return nullptr;
-        }
+        source->setCoordinates(coords);
+        Logger::info("ImageSourceNAPI", "SetCoordinates: %s", sourceNapi->id.c_str());
     } catch (const std::exception& e) {
         Logger::error("ImageSourceNAPI", "SetCoordinates failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());

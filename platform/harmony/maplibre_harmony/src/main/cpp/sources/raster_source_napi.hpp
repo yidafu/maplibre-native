@@ -33,11 +33,24 @@ public:
     
     // 内部方法
     std::string getId() const { return id; }
-    mbgl::style::RasterSource* getSource() const { return source.get(); }
+    mbgl::style::RasterSource* getSource() const { 
+        if (!source && weakSource) {
+            return static_cast<mbgl::style::RasterSource*>(weakSource.get());
+        }
+        return source.get(); 
+    }
     
     // 释放所有权
     std::unique_ptr<mbgl::style::Source> releaseSource() {
+        ownsSource = false;
         return std::move(source);
+    }
+    
+    // 在 addSource 后调用，创建 WeakPtr
+    void attachToStyle(mbgl::style::RasterSource* sourcePtr) {
+        if (sourcePtr) {
+            weakSource = sourcePtr->makeWeakPtr();
+        }
     }
     
     static napi_ref constructor;
@@ -46,6 +59,7 @@ private:
     std::string id;
     std::unique_ptr<mbgl::style::RasterSource> source;
     bool ownsSource;
+    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;
 };
 
 } // namespace harmony

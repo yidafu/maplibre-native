@@ -90,7 +90,6 @@ void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& e
 }
 void NativeMapView::onWillStartRenderingFrame() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onWillStartRenderingFrame");
 }
 void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStatus& status) {
     if (isDestroying.load(std::memory_order_acquire)) {

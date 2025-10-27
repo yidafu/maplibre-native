@@ -129,12 +129,17 @@ napi_value RasterDemSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
     RasterDemSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        return CreateStringValue(env, "");
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         return CreateStringValue(env, "");
     }
     
     try {
-        auto url = sourceNapi->source->getURL();
+        auto url = source->getURL();
         if (url) {
             return CreateStringValue(env, *url);
         }

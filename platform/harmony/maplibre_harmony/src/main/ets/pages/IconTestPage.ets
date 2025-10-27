@@ -1,6 +1,10 @@
-import { MapViewComponentController } from '../maps/MapViewComponentController';
+import { NativeMapView } from '../maps/NativeMapView';
 import { LatLng } from '../maps/geometry/LatLng';
 import { Icon, IconFactory, MarkerOptions } from '../maps/annotations/index';
+import { MapLibreMap } from '../maps/MapLibreMap';
+import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
+import { CameraPosition, createCameraPosition } from '../maps/camera/CameraPosition';
+import { router } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
 import resourceManager from '@ohos.resourceManager';
 
@@ -20,7 +24,7 @@ struct IconTestPage {
   @State testStatus: string = '等待测试...';
   @State iconCount: number = 0;
   
-  private mapController: MapViewComponentController = new MapViewComponentController();
+  private mapLibreMap: MapLibreMap | null = null;
   private iconFactory: IconFactory | null = null;
   private markers: maplibre.Marker[] = [];
   private testIcon: Icon | null = null;
@@ -79,8 +83,7 @@ struct IconTestPage {
         .title('默认图标测试')
         .icon(defaultIcon);
 
-      const marker = markerOptions.getMarker();
-      this.mapController.getMap().addMarker(marker);
+      const marker = await this.mapLibreMap!.addMarker(markerOptions);
       this.markers.push(marker);
 
       this.testStatus = `默认图标测试成功 - ${defaultIcon.toString()}`;
@@ -120,8 +123,7 @@ struct IconTestPage {
         .snippet('使用自定义图标')
         .icon(this.testIcon);
 
-      const marker = markerOptions.getMarker();
-      this.mapController.getMap().addMarker(marker);
+      const marker = await this.mapLibreMap!.addMarker(markerOptions);
       this.markers.push(marker);
 
       this.testStatus = `自定义图标测试成功 - ${this.testIcon.toString()}`;
@@ -157,8 +159,7 @@ struct IconTestPage {
           .title(`共享图标 Marker ${i + 1}`)
           .icon(this.testIcon!);
 
-        const marker = markerOptions.getMarker();
-        this.mapController.getMap().addMarker(marker);
+        const marker = await this.mapLibreMap!.addMarker(markerOptions);
         this.markers.push(marker);
       }
 
@@ -182,7 +183,7 @@ struct IconTestPage {
       // 删除所有 Marker
       const removedCount = this.markers.length;
       for (const marker of this.markers) {
-        this.mapController.getMap().removeMarker(marker);
+        this.mapLibreMap?.removeMarker(marker);
       }
       this.markers = [];
 
@@ -203,16 +204,16 @@ struct IconTestPage {
     console.info('[IconTestPage] Running all tests...');
 
     await this.testDefaultIcon();
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
 
     await this.testCustomIcon();
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
 
     await this.testSharedIcon();
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
 
     this.testCleanup();
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
 
     this.testStatus = '所有测试完成！';
     console.info('[IconTestPage] All tests completed');
@@ -225,7 +226,7 @@ struct IconTestPage {
     try {
       // 删除所有 Marker
       for (const marker of this.markers) {
-        this.mapController.getMap().removeMarker(marker);
+        this.mapLibreMap?.removeMarker(marker);
       }
       this.markers = [];
 
@@ -250,74 +251,129 @@ struct IconTestPage {
     Column() {
       // 标题栏
       Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+        
         Text(this.message)
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
-          .margin({ left: 16 })
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
       }
       .width('100%')
       .height(56)
-      .backgroundColor('#1976D2')
-      .alignItems(VerticalAlign.Center)
-
-      // 状态信息
-      Column() {
-        Text(`状态: ${this.testStatus}`)
-          .fontSize(14)
-          .margin({ top: 8, bottom: 4 })
-
-        Text(`当前 Marker 数量: ${this.iconCount}`)
-          .fontSize(14)
-          .margin({ bottom: 8 })
-      }
-      .width('100%')
-      .padding(16)
       .backgroundColor('#F5F5F5')
 
-      // 测试按钮区域
-      Column({ space: 8 }) {
-        Button('测试默认图标')
-          .width('90%')
-          .onClick(() => {
-            this.testDefaultIcon();
-          })
+      // 地图区域（60%）
+      NativeMapView({
+        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+          this.onMapReady(nativeMapView);
+        }
+      })
+        .width('100%')
+        .height('60%')
 
-        Button('测试自定义图标')
-          .width('90%')
-          .onClick(() => {
-            this.testCustomIcon();
-          })
+      // 测试按钮区域（40%，可滚动）
+      Scroll() {
+        Column() {
+          // 状态信息
+          Column() {
+            Text(`状态: ${this.testStatus}`)
+              .fontSize(14)
+              .margin({ bottom: 4 })
 
-        Button('测试共享图标')
-          .width('90%')
-          .onClick(() => {
-            this.testSharedIcon();
-          })
+            Text(`当前 Marker 数量: ${this.iconCount}`)
+              .fontSize(14)
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F8F8F8')
+          .margin({ bottom: 8 })
 
-        Button('测试清理')
-          .width('90%')
-          .onClick(() => {
-            this.testCleanup();
-          })
+          // 测试按钮
+          Text('Icon 测试')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
 
-        Button('运行全部测试')
-          .width('90%')
-          .backgroundColor('#4CAF50')
-          .onClick(() => {
-            this.runAllTests();
-          })
+          Button('测试默认图标')
+            .width('100%')
+            .onClick(() => {
+              this.testDefaultIcon();
+            })
+            .margin({ bottom: 8 })
+
+          Button('测试自定义图标')
+            .width('100%')
+            .onClick(() => {
+              this.testCustomIcon();
+            })
+            .margin({ bottom: 8 })
+
+          Button('测试共享图标')
+            .width('100%')
+            .onClick(() => {
+              this.testSharedIcon();
+            })
+            .margin({ bottom: 8 })
+
+          Button('测试清理')
+            .width('100%')
+            .onClick(() => {
+              this.testCleanup();
+            })
+            .margin({ bottom: 8 })
+
+          Button('运行全部测试')
+            .width('100%')
+            .backgroundColor('#4CAF50')
+            .onClick(() => {
+              this.runAllTests();
+            })
+        }
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .width('100%')
       }
       .width('100%')
-      .padding(16)
-
-      // 地图视图
-      MapViewComponentController({ controller: this.mapController })
-        .width('100%')
-        .layoutWeight(1)
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FFFFFF')
+  }
+
+  private onMapReady(nativeMapView?: maplibre.NativeMapView) {
+    try {
+      if (!nativeMapView) {
+        console.error('[IconTestPage] NativeMapView is null');
+        this.testStatus = 'NativeMapView is null';
+        return;
+      }
+      
+      const latLng = new maplibre.LatLng(39.9042, 116.4074);
+      const cameraPos = createCameraPosition(latLng, 12, 0, 0);
+      const options = new MapLibreMapOptions();
+      options.cameraPosition = cameraPos;
+      options.styleUrl = 'https://demotiles.maplibre.org/style.json';
+      
+      this.mapLibreMap = new MapLibreMap(nativeMapView, options);
+      
+      // 立即初始化 Icon 系统（不需要等待样式加载）
+      this.initIconSystem();
+      
+      console.info('[IconTestPage] Map initialized successfully');
+    } catch (error) {
+      console.error('[IconTestPage] Map initialization failed:', error);
+      this.testStatus = `地图初始化失败: ${error}`;
+    }
   }
 }
 

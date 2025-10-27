@@ -29,7 +29,8 @@ type Marker = maplibre.Marker;
  * 基于 GeoJSON Source + SymbolLayer 实现，支持所有高级功能
  * 
  * 参考:
- * - Android Annotation Plugin: GeoJSON + SymbolLayer
+ * - Android: AnnotationManager + MarkerContainer + IconManager
+ *   使用Icon对象引用计数，Marker直接持有Icon
  * - iOS: MLNShapeSource + MLNSymbolStyleLayer
  */
 export class MarkerManager {
@@ -43,7 +44,8 @@ export class MarkerManager {
   // Marker ID -> Marker 映射
   private markerMap: Map<number, Marker> = new Map();
   
-  // Marker -> Icon 映射（用于引用计数管理）
+  // Marker ID -> Icon 映射（因为NAPI Marker不持有Icon对象引用）
+  // 注意：虽然保留此映射，但IconManager使用Icon对象作为key，确保引用计数正确
   private markerIconMap: Map<number, Icon> = new Map();
   
   // 事件监听器
@@ -83,24 +85,41 @@ export class MarkerManager {
    * 添加单个 Marker
    * 
    * @param options MarkerOptions 实例
-   * @returns 创建的 Marker
+   * @returns Promise<Marker> 创建的 Marker
    * @throws Error 如果 Marker 创建失败
    */
-  public addMarker(options: MarkerOptions): Marker {
+  public async addMarker(options: MarkerOptions): Promise<Marker> {
     try {
       // 确保 MarkerLayerManager 已初始化
       if (!this.markerLayerManager.isInitialized()) {
         this.markerLayerManager.initialize();
       }
       
-      // 获取 Icon（如果有）并确保已加载到地图
-      const iconObj = options.getIcon();
-      if (iconObj) {
-        this.ensureIconLoaded(iconObj);
+      // 获取Icon对象（优先使用复用标识符）
+      let icon = options.getIcon();
+      const reuseIdentifier = options.getReuseIdentifier();
+      
+      if (!icon && reuseIdentifier) {
+        // 尝试从复用队列获取图标
+        const reusedIcon = this.iconManager.dequeueReusableIcon(reuseIdentifier);
+        if (reusedIcon) {
+          icon = reusedIcon;
+          console.info(`[MarkerManager] Reusing icon with identifier: ${reuseIdentifier}`);
+        }
       }
       
-      // 创建 Marker 对象
+      if (!icon) {
+        // 如果没有设置图标，加载默认图标
+        console.info('[MarkerManager] No icon set, loading default marker icon');
+        icon = await this.iconManager.iconFactory.defaultMarker();
+        options.icon(icon);
+      }
+      
+      // 创建 Marker 对象（getMarker()会将icon.getId()传给NAPI层）
       const marker = options.getMarker();
+      
+      // 添加Icon到IconManager（marker已经设置了iconId）
+      await this.iconManager.addIconToManager(icon);
       
       // 添加到 MarkerLayerManager
       const featureId = this.markerLayerManager.addMarker(marker);
@@ -110,12 +129,10 @@ export class MarkerManager {
       marker.setMapLibreMap(this.mapLibreMap);
       this.markerMap.set(featureId, marker);
       
-      // 保存 Marker -> Icon 映射
-      if (iconObj) {
-        this.markerIconMap.set(featureId, iconObj);
-      }
+      // 保存Marker -> Icon映射（因为NAPI Marker只存储iconId字符串）
+      this.markerIconMap.set(featureId, icon);
       
-      console.info(`[MarkerManager] Added marker with ID=${featureId}`);
+      console.info(`[MarkerManager] Added marker with ID=${featureId}, icon=${icon.getId()}`);
       
       // 创建自定义视图（如果有适配器）
       this.annotationViewManager.createOrUpdateView(marker);
@@ -128,48 +145,42 @@ export class MarkerManager {
     }
   }
   
-  /**
-   * 确保 Icon 已加载到地图样式
-   * 
-   * 注意: 当前实现简化，因为 Style 对象无法从 NativeMapView 获取
-   * Icon 加载通过 IconManager 处理
-   */
-  private async ensureIconLoaded(icon: Icon): Promise<void> {
-    try {
-      // 使用 IconManager 确保 Icon 已加载
-      await this.iconManager.addIconIfNeeded(icon);
-      console.info(`[MarkerManager] Icon loaded: ${icon.getId()}`);
-    } catch (error) {
-      console.warn(`[MarkerManager] Failed to ensure icon loaded: ${error}`);
-    }
-  }
   
   /**
    * 批量添加 Marker
    * 
    * @param optionsList MarkerOptions 数组
-   * @returns 创建的 Marker 数组
+   * @returns Promise<Marker[]> 创建的 Marker 数组
    * @throws Error 如果批量添加失败
    */
-  public addMarkers(optionsList: MarkerOptions[]): Marker[] {
+  public async addMarkers(optionsList: MarkerOptions[]): Promise<Marker[]> {
     try {
       // 确保 MarkerLayerManager 已初始化
       if (!this.markerLayerManager.isInitialized()) {
         this.markerLayerManager.initialize();
       }
       
-      // 加载所有 icons
-      for (const options of optionsList) {
-        const iconObj = options.getIcon();
-        if (iconObj) {
-          this.ensureIconLoaded(iconObj);
-        }
-      }
-      
-      // 创建 Marker 对象数组
+      // 创建 Marker 对象数组，同时加载icons
       const markers: Marker[] = [];
+      const icons: Icon[] = [];
+      
       for (const options of optionsList) {
-        markers.push(options.getMarker());
+        // 获取Icon对象（从MarkerOptions）
+        let icon = options.getIcon();
+        if (!icon) {
+          console.info('[MarkerManager] No icon set in batch, loading default marker icon');
+          icon = await this.iconManager.iconFactory.defaultMarker();
+          options.icon(icon);
+        }
+        
+        icons.push(icon);
+        
+        const marker = options.getMarker();
+        
+        // 添加Icon到IconManager（marker已经设置了iconId）
+        await this.iconManager.addIconToManager(icon);
+        
+        markers.push(marker);
       }
       
       // 批量添加到 MarkerLayerManager
@@ -179,15 +190,14 @@ export class MarkerManager {
       for (let i = 0; i < markers.length; i++) {
         const marker = markers[i];
         const featureId = featureIds[i];
+        const icon = icons[i];
         
         marker.setId(featureId);
         marker.setMapLibreMap(this.mapLibreMap);
         this.markerMap.set(featureId, marker);
         
-        const iconObj = optionsList[i].getIcon();
-        if (iconObj) {
-          this.markerIconMap.set(featureId, iconObj);
-        }
+        // 保存Marker -> Icon映射
+        this.markerIconMap.set(featureId, icon);
       }
       
       console.info(`[MarkerManager] Batch added ${markers.length} markers`);
@@ -222,9 +232,10 @@ export class MarkerManager {
     }
     
     // 清理 Icon（减少引用计数）
-    const iconObj = this.markerIconMap.get(id);
-    if (iconObj) {
-      this.iconManager.iconCleanup(iconObj);
+    // 由于NAPI Marker不持有Icon对象，从markerIconMap获取
+    const icon = this.markerIconMap.get(id);
+    if (icon) {
+      this.iconManager.iconCleanup(icon);
       this.markerIconMap.delete(id);
     }
     
@@ -261,9 +272,9 @@ export class MarkerManager {
         }
         
         // 清理 Icon
-        const iconObj = this.markerIconMap.get(id);
-        if (iconObj) {
-          this.iconManager.iconCleanup(iconObj);
+        const icon = this.markerIconMap.get(id);
+        if (icon) {
+          this.iconManager.iconCleanup(icon);
           this.markerIconMap.delete(id);
         }
         
@@ -285,20 +296,90 @@ export class MarkerManager {
   }
   
   /**
+   * 更新 Marker
+   * 
+   * 更新 Marker 的所有属性到地图显示（位置、图标、透明度、旋转等）
+   * 
+   * @param marker 要更新的 Marker
+   */
+  public updateMarker(marker: Marker): void {
+    try {
+      const markerId = marker.getId();
+      if (markerId < 0 || !this.markerMap.has(markerId)) {
+        console.warn(`[MarkerManager] updateMarker: Marker ${markerId} not found in manager`);
+        return;
+      }
+      
+      // 更新 MarkerLayerManager 中的特征（更新 GeoJSON）
+      this.markerLayerManager.updateMarker(markerId, marker);
+      
+      console.debug(`[MarkerManager] Updated marker ${markerId}`);
+    } catch (e) {
+      const error = e as Error;
+      console.error(`[MarkerManager] Failed to update marker: ${error.message}`);
+    }
+  }
+
+  /**
+   * 更新 Marker 的图标
+   * 
+   * 自动处理旧图标的引用计数和新图标的加载
+   * 
+   * @param marker 要更新的 Marker
+   * @param newIcon 新的 Icon 实例
+   */
+  public async updateMarkerIcon(marker: Marker, newIcon: Icon): Promise<void> {
+    try {
+      const markerId = marker.getId();
+      if (markerId < 0 || !this.markerMap.has(markerId)) {
+        throw new Error('Marker not found in manager');
+      }
+      
+      // 获取旧图标
+      const oldIcon = this.markerIconMap.get(markerId) || null;
+      
+      // 使用 IconManager 更新图标（自动处理引用计数）
+      await this.iconManager.updateMarkerIcon(marker, oldIcon, newIcon);
+      
+      // 更新本地映射
+      this.markerIconMap.set(markerId, newIcon);
+      
+      // 更新 MarkerLayerManager 中的特征
+      this.markerLayerManager.updateMarker(markerId, marker);
+      
+      // 更新自定义视图
+      this.annotationViewManager.createOrUpdateView(marker);
+      
+      console.info(`[MarkerManager] Updated marker ${markerId} icon to ${newIcon.getId()}`);
+    } catch (e) {
+      const error = e as Error;
+      console.error(`[MarkerManager] Failed to update marker icon: ${error.message}`);
+      throw new Error(`Failed to update marker icon: ${error.message}`);
+    }
+  }
+
+  /**
    * 清除所有 Marker
+   * 
+   * 匹配Android实现：对每个marker的icon调用cleanup
+   * IconManager使用Icon对象作为key，确保引用计数正确（即使多个markers共享同一Icon）
    */
   public clear(): void {
-    // 清理所有状态
+    // 清理每个marker
     for (const marker of this.markerMap.values()) {
       if (marker.isInfoWindowShown()) {
         marker.hideInfoWindow();
       }
+      
+      // Icon cleanup
+      // 从markerIconMap获取Icon对象（因为NAPI Marker不持有Icon引用）
+      const icon = this.markerIconMap.get(marker.getId());
+      if (icon) {
+        // iconCleanup使用Icon对象作为key，多个markers共享同一Icon时正确处理
+        this.iconManager.iconCleanup(icon);
+      }
+      
       marker.setId(-1);
-    }
-    
-    // 清理所有 Icons
-    for (const iconObj of this.markerIconMap.values()) {
-      this.iconManager.iconCleanup(iconObj);
     }
     
     // 清空 MarkerLayerManager

@@ -77,7 +77,19 @@ public:
     }
     
     // Get native layer pointer (for property access after adding)
-    mbgl::style::LineLayer* getLayer() { return layer.get(); }
+    mbgl::style::LineLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::LineLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::LineLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
+    }
 
 private:
     explicit LineLayerNAPI(const std::string& layerId, const std::string& sourceId);
@@ -85,6 +97,7 @@ private:
     
     static napi_ref constructor;
     std::unique_ptr<mbgl::style::LineLayer> layer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };
 
 } // namespace harmony

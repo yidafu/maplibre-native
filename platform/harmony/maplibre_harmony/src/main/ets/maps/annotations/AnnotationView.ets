@@ -120,6 +120,12 @@ export struct AnnotationView {
   @Prop mapPitch: number = 0;
   @Prop screenHeight: number = 800;
   
+  // 计算后的位置和变换（用于 build 方法）
+  @State private computedPosX: number = 0;
+  @State private computedPosY: number = 0;
+  @State private computedScale: number = 1;
+  @State private computedRotation: number = 0;
+  
   // 回调（重命名避免与 CustomComponent 方法冲突）
   onSelect?: (marker: Marker) => void;
   onDeselect?: (marker: Marker) => void;
@@ -158,6 +164,8 @@ export struct AnnotationView {
       this.viewOpacity = selected ? 1.0 : 0.8;
     }
     
+    this.updateComputedProperties();
+    
     // 触发回调
     if (selected && this.onSelect) {
       this.onSelect(this.marker);
@@ -184,6 +192,8 @@ export struct AnnotationView {
         }
       });
     }
+    
+    this.updateComputedProperties();
   }
   
   /**
@@ -205,6 +215,21 @@ export struct AnnotationView {
       y: this.screenY - (this.viewHeight * this.anchorV) + this.centerOffset.dy
     };
     return pos;
+  }
+  
+  /**
+   * 更新计算后的属性
+   */
+  private updateComputedProperties(): void {
+    const pos = this.calculatePosition();
+    this.computedPosX = pos.x;
+    this.computedPosY = pos.y;
+    this.computedScale = this.calculateScale();
+    this.computedRotation = this.calculateRotation();
+  }
+  
+  aboutToAppear() {
+    this.updateComputedProperties();
   }
   
   /**
@@ -355,45 +380,31 @@ export struct AnnotationView {
     }, 150);
   }
   
-  /**
-   * 默认图标视图
-   */
-  @Builder
-  private defaultIconView() {
-    Image(this.marker.getIcon() || $r('app.media.maplibre_marker_icon_default'))
-      .width(this.viewWidth)
-      .height(this.viewHeight)
-      .opacity(this.marker.getAlpha())
-      .objectFit(ImageFit.Contain)
-  }
-  
   build() {
-    if (!this.visible) {
-      return;
-    }
-    
-    const pos = this.calculatePosition();
-    const finalScale = this.calculateScale();
-    const finalRotation = this.calculateRotation();
-    
     Stack() {
       if (this.customContentBuilder) {
         // 自定义内容
         this.customContentBuilder()
       } else {
         // 默认图标
-        this.defaultIconView()
+        Image(this.marker.getIcon() || $r('app.media.startIcon'))
+          .width(this.viewWidth)
+          .height(this.viewHeight)
+          .opacity(this.marker.getAlpha())
+          .objectFit(ImageFit.Contain)
       }
     }
-    .position({ x: pos.x, y: pos.y })
+    .position({ x: this.computedPosX, y: this.computedPosY })
     .opacity(this.viewOpacity * this.marker.getAlpha())
-    .scale({ x: finalScale, y: finalScale })
-    .rotate({ angle: finalRotation })
+    .scale({ x: this.computedScale, y: this.computedScale })
+    .rotate({ angle: this.computedRotation })
+    .visibility(this.visible ? Visibility.Visible : Visibility.None)
     .gesture(this.createGestures())
     .onAreaChange((oldValue: Area, newValue: Area) => {
       // 更新视图尺寸
       this.viewWidth = Number(newValue.width);
       this.viewHeight = Number(newValue.height);
+      this.updateComputedProperties();
     })
   }
 }

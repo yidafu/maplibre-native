@@ -1,5 +1,7 @@
-import { MapViewComponentController } from '../maps/MapViewComponentController';
+import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
+import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
+import { CameraPosition, createCameraPosition } from '../maps/camera/CameraPosition';
 import { LocationComponent } from '../maps/location/LocationComponent';
 import { LocationComponentOptions } from '../maps/location/LocationComponentOptions';
 import { CameraMode } from '../maps/location/modes/CameraMode';
@@ -8,6 +10,70 @@ import { LatLng } from '../maps/geometry/LatLng';
 import { router } from '@kit.ArkUI';
 import abilityAccessCtrl, { Permissions } from '@ohos.abilityAccessCtrl';
 import { BusinessError } from '@kit.BasicServicesKit';
+import maplibre from 'libmaplibre_native.so';
+import { OnStyleLoadedListener } from '../maps/listeners/OnStyleLoadedListener';
+import { OnCameraTrackingChangedListener } from '../maps/location/listeners/OnCameraTrackingChangedListener';
+import { OnRenderModeChangedListener } from '../maps/location/listeners/OnRenderModeChangedListener';
+import { OnLocationStaleListener } from '../maps/location/listeners/OnLocationStaleListener';
+
+// 样式加载监听器实现
+class StyleLoadedListenerImpl implements OnStyleLoadedListener {
+  private testPage: LocationComponentTestPage;
+
+  constructor(testPage: LocationComponentTestPage) {
+    this.testPage = testPage;
+  }
+
+  onStyleLoaded(): void {
+    console.info('LocationComponentTestPage: Style loaded, initializing LocationComponent');
+    this.testPage.initializeLocationComponent();
+  }
+}
+
+// 相机跟踪监听器实现
+class CameraTrackingListenerImpl implements OnCameraTrackingChangedListener {
+  private testPage: LocationComponentTestPage;
+
+  constructor(testPage: LocationComponentTestPage) {
+    this.testPage = testPage;
+  }
+
+  onCameraTrackingChanged(mode: number): void {
+    this.testPage.currentMode = CameraMode.getName(mode);
+    console.info(`Camera tracking mode changed: ${this.testPage.currentMode}`);
+  }
+
+  onCameraTrackingDismissed(): void {
+    console.info('Camera tracking dismissed by user');
+  }
+}
+
+// 渲染模式监听器实现
+class RenderModeListenerImpl implements OnRenderModeChangedListener {
+  private testPage: LocationComponentTestPage;
+
+  constructor(testPage: LocationComponentTestPage) {
+    this.testPage = testPage;
+  }
+
+  onRenderModeChanged(mode: number): void {
+    this.testPage.currentRenderMode = RenderMode.getName(mode);
+    console.info(`Render mode changed: ${this.testPage.currentRenderMode}`);
+  }
+}
+
+// 位置陈旧监听器实现
+class StaleListenerImpl implements OnLocationStaleListener {
+  private testPage: LocationComponentTestPage;
+
+  constructor(testPage: LocationComponentTestPage) {
+    this.testPage = testPage;
+  }
+
+  onStaleStateChange(isStale: boolean): void {
+    console.info(`Location stale state: ${isStale}`);
+  }
+}
 
 /**
  * LocationComponent 测试页面
@@ -16,11 +82,10 @@ import { BusinessError } from '@kit.BasicServicesKit';
 @Entry
 @Component
 struct LocationComponentTestPage {
-  @State mapController: MapViewComponentController = new MapViewComponentController();
-  @State locationEnabled: boolean = false;
-  @State currentMode: string = 'NONE';
-  @State currentRenderMode: string = 'NORMAL';
-  @State hasPermission: boolean = false;
+  @State public locationEnabled: boolean = false;
+  @State public currentMode: string = 'NONE';
+  @State public currentRenderMode: string = 'NORMAL';
+  @State public hasPermission: boolean = false;
 
   private maplibreMap?: MapLibreMap;
   private locationComponent?: LocationComponent;
@@ -71,23 +136,30 @@ struct LocationComponentTestPage {
   }
 
   /**
-   * 地图加载完成回调
+   * 地图准备回调
    */
-  onMapReady(map: MapLibreMap) {
-    console.info('LocationComponentTestPage: Map ready');
-    this.maplibreMap = map;
-
-    // 设置地图中心到北京
-    map.setCenterCoordinate(new LatLng(39.9042, 116.4074));
-    map.setZoom(15);
-
-    // 等待样式加载完成后初始化 LocationComponent
-    map.addOnStyleLoadedListener({
-      onStyleLoaded: () => {
-        console.info('LocationComponentTestPage: Style loaded, initializing LocationComponent');
-        this.initializeLocationComponent();
+  private onMapReady(nativeMapView?: maplibre.NativeMapView) {
+    try {
+      if (!nativeMapView) {
+        console.error('LocationComponentTestPage: NativeMapView is null');
+        return;
       }
-    });
+      
+      const latLng = new maplibre.LatLng(39.9042, 116.4074);
+      const cameraPos = createCameraPosition(latLng, 15, 0, 0);
+      const options = new MapLibreMapOptions();
+      options.cameraPosition = cameraPos;
+      options.styleUrl = 'https://demotiles.maplibre.org/style.json';
+      
+      this.maplibreMap = new MapLibreMap(nativeMapView, options);
+      console.info('LocationComponentTestPage: Map ready');
+
+      // 等待样式加载完成后初始化 LocationComponent
+      const styleLoadedListener = new StyleLoadedListenerImpl(this);
+      this.maplibreMap.addOnStyleLoadedListener(styleLoadedListener);
+    } catch (error) {
+      console.error('LocationComponentTestPage: Map initialization failed:', error);
+    }
   }
 
   /**
@@ -118,28 +190,14 @@ struct LocationComponentTestPage {
       this.locationComponent.activateLocationComponent(options);
 
       // 添加监听器
-      this.locationComponent.addOnCameraTrackingChangedListener({
-        onCameraTrackingChanged: (mode: number) => {
-          this.currentMode = CameraMode.getName(mode);
-          console.info(`Camera tracking mode changed: ${this.currentMode}`);
-        },
-        onCameraTrackingDismissed: () => {
-          console.info('Camera tracking dismissed by user');
-        }
-      });
+      const cameraTrackingListener = new CameraTrackingListenerImpl(this);
+      this.locationComponent.addOnCameraTrackingChangedListener(cameraTrackingListener);
 
-      this.locationComponent.addOnRenderModeChangedListener({
-        onRenderModeChanged: (mode: number) => {
-          this.currentRenderMode = RenderMode.getName(mode);
-          console.info(`Render mode changed: ${this.currentRenderMode}`);
-        }
-      });
+      const renderModeListener = new RenderModeListenerImpl(this);
+      this.locationComponent.addOnRenderModeChangedListener(renderModeListener);
 
-      this.locationComponent.addOnLocationStaleListener({
-        onStaleStateChange: (isStale: boolean) => {
-          console.info(`Location stale state: ${isStale}`);
-        }
-      });
+      const staleListener = new StaleListenerImpl(this);
+      this.locationComponent.addOnLocationStaleListener(staleListener);
 
       console.info('LocationComponent initialized successfully');
     } catch (err) {
@@ -212,30 +270,32 @@ struct LocationComponentTestPage {
     Column() {
       // 标题栏
       Row() {
-        Text('LocationComponent 测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .margin({ left: 16 })
-
-        Blank()
-
         Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
           .onClick(() => {
             router.back();
           })
-          .margin({ right: 16 })
+          .margin({ left: 5 })
+
+        Text('LocationComponent 测试')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
       }
       .width('100%')
       .height(56)
       .backgroundColor('#F5F5F5')
 
-      // 地图视图
+      // 地图区域（60%）
       Stack() {
-        MapViewComponent({
-          controller: this.mapController,
-          onMapReady: (map: MapLibreMap) => {
-            this.onMapReady(map);
-          }
+        NativeMapView({
+        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+          this.onMapReady(nativeMapView);
+        }
         })
           .width('100%')
           .height('100%')
@@ -268,10 +328,12 @@ struct LocationComponentTestPage {
         .alignItems(HorizontalAlign.Start)
         .margin({ top: 16, left: 16 })
       }
-      .layoutWeight(1)
+      .width('100%')
+      .height('60%')
 
-      // 控制面板
-      Column() {
+      // 测试按钮区域（40%，可滚动）
+      Scroll() {
+        Column() {
         // 基础控制
         Row() {
           Button(this.locationEnabled ? '关闭定位' : '开启定位')
@@ -369,33 +431,16 @@ struct LocationComponentTestPage {
         }
         .width('100%')
         .padding(8)
+        }
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .width('100%')
       }
       .width('100%')
-      .backgroundColor(Color.White)
-      .borderRadius({ topLeft: 16, topRight: 16 })
-      .shadow({ radius: 8, color: 'rgba(0,0,0,0.1)' })
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F5F5')
-  }
-}
-
-// 注意：MapViewComponent 是一个占位符，实际实现需要根据项目的 MapView 组件来定义
-@Component
-struct MapViewComponent {
-  controller: MapViewComponentController = new MapViewComponentController();
-  onMapReady?: (map: MapLibreMap) => void;
-
-  build() {
-    Stack() {
-      Text('地图视图占位')
-        .fontSize(16)
-        .fontColor(Color.Gray)
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#E8E8E8')
   }
 }
 

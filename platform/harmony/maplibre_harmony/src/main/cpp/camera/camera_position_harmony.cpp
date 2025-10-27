@@ -81,7 +81,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
     status = napi_get_named_property(env, value, "target", &targetValue);
     if (status == napi_ok) {
         mbgl::LatLng center;
-        if (LatLngHarmony::ParseLatLng(env, targetValue, center)) {
+        if (LatLngNapi::ParseLatLng(env, targetValue, center)) {
             outOptions.center = center;
         }
     }

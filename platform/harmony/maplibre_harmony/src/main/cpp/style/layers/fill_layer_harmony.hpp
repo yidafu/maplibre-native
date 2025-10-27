@@ -72,7 +72,19 @@ public:
     }
     
     // Get native layer pointer (for property access after adding)
-    mbgl::style::FillLayer* getLayer() { return layer.get(); }
+    mbgl::style::FillLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::FillLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::FillLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
+    }
 
 private:
     explicit FillLayerNAPI(const std::string& layerId, const std::string& sourceId);
@@ -80,6 +92,7 @@ private:
     
     static napi_ref constructor;
     std::unique_ptr<mbgl::style::FillLayer> layer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };
 
 } // namespace harmony

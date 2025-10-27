@@ -131,12 +131,17 @@ napi_value RasterSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
     RasterSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        return CreateStringValue(env, "");
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         return CreateStringValue(env, "");
     }
     
     try {
-        auto url = sourceNapi->source->getURL();
+        auto url = source->getURL();
         if (url) {
             return CreateStringValue(env, *url);
         }
@@ -184,8 +189,14 @@ napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) 
     RasterSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
-        napi_throw_error(env, nullptr, "Invalid RasterSource instance");
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
+        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     

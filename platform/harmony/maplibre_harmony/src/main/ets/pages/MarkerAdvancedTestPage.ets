@@ -10,8 +10,10 @@
  * - Animations（动画）
  */
 
+import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
+import { CameraPosition, createCameraPosition } from '../maps/camera/CameraPosition';
 import { MarkerLayerManager } from '../maps/annotations/MarkerLayerManager';
 import { MarkerOptions } from '../maps/annotations/MarkerOptions';
 import { IconFactory } from '../maps/annotations/IconFactory';
@@ -29,92 +31,129 @@ struct MarkerAdvancedTestPage {
   
   build() {
     Column() {
-      // 返回按钮
+      // 标题栏
       Row() {
         Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
           .onClick(() => {
             router.back();
           })
-          .margin(10)
+          .margin({ left: 5 })
+
+        Text('Marker 高级功能测试')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
       }
       .width('100%')
-      .justifyContent(FlexAlign.Start)
+      .height(56)
+      .backgroundColor('#F5F5F5')
       
-      // 地图容器
-      XComponent({
-        id: 'xcomponent',
-        type: XComponentType.SURFACE,
-        libraryname: 'maplibre_native'
+      // 地图区域（60%）
+      NativeMapView({
+        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+          this.onMapReady(nativeMapView);
+        }
       })
-        .onLoad((context) => {
-          this.onMapReady(context);
-        })
         .width('100%')
         .height('60%')
       
-      // 测试控制面板
-      Column() {
-        Text('Marker 高级功能测试')
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .margin(10)
-        
-        Text(this.currentTest)
-          .fontSize(14)
-          .margin(5)
-        
-        // 测试按钮
-        Button('测试 1: 旋转角度')
-          .onClick(() => this.testRotation())
-          .margin(5)
-        
-        Button('测试 2: 透明度')
-          .onClick(() => this.testAlpha())
-          .margin(5)
-        
-        Button('测试 3: 批量添加')
-          .onClick(() => this.testBatchAdd())
-          .margin(5)
-        
-        Button('测试 4: 更新属性')
-          .onClick(() => this.testUpdateProperties())
-          .margin(5)
-        
-        Button('清除所有')
-          .onClick(() => this.clearAll())
-          .margin(5)
-        
-        // 测试结果
-        List() {
-          ForEach(this.testResults, (result: string, index: number) => {
-            ListItem() {
+      // 测试按钮区域（40%，可滚动）
+      Scroll() {
+        Column() {
+          // 当前测试状态
+          Text(this.currentTest)
+            .fontSize(14)
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#F8F8F8')
+            .margin({ bottom: 8 })
+          
+          // 测试按钮
+          Text('测试项目')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+
+          Button('测试 1: 旋转角度')
+            .onClick(() => this.testRotation())
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Button('测试 2: 透明度')
+            .onClick(() => this.testAlpha())
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Button('测试 3: 批量添加')
+            .onClick(() => this.testBatchAdd())
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Button('测试 4: 更新属性')
+            .onClick(() => this.testUpdateProperties())
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Button('清除所有')
+            .onClick(() => this.clearAll())
+            .width('100%')
+            .backgroundColor('#FF6B6B')
+            .margin({ bottom: 12 })
+          
+          Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
+          
+          // 测试结果
+          Text('测试结果')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Column() {
+            ForEach(this.testResults, (result: string, index: number) => {
               Text(result)
                 .fontSize(12)
-                .padding(5)
-            }
-          })
+                .padding(8)
+                .width('100%')
+                .backgroundColor(index % 2 === 0 ? '#FFFFFF' : '#F9F9F9')
+                .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+            }, (result: string, index: number) => `${index}-${result}`)
+          }
+          .width('100%')
+          .border({ width: 1, color: '#E0E0E0' })
+          .borderRadius(4)
         }
-        .height('200px')
-        .border({ width: 1, color: '#ccc' })
-        .margin(10)
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .width('100%')
       }
       .width('100%')
-      .padding(10)
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')
   }
   
-  private onMapReady(context: ESObject) {
+  private onMapReady(nativeMapView?: maplibre.NativeMapView) {
     try {
-      const surfaceId = context.surfaceId as BigInt;
+      if (!nativeMapView) {
+        console.error('MarkerAdvancedTestPage: NativeMapView is null');
+        return;
+      }
       
-      const options = new MapLibreMapOptions()
-        .center({ latitude: 39.9042, longitude: 116.4074 })
-        .zoom(12)
-        .styleUrl('https://demotiles.maplibre.org/style.json');
+      const latLng = new maplibre.LatLng(39.9042, 116.4074);
+      const cameraPos = createCameraPosition(latLng, 12, 0, 0);
+      const options = new MapLibreMapOptions();
+      options.cameraPosition = cameraPos;
+      options.styleUrl = 'https://demotiles.maplibre.org/style.json';
       
-      this.mapLibreMap = new MapLibreMap(surfaceId, options);
+      this.mapLibreMap = new MapLibreMap(nativeMapView, options);
       
       // 等待样式加载
       setTimeout(() => {
@@ -146,7 +185,8 @@ struct MarkerAdvancedTestPage {
   private async addDefaultIcon() {
     try {
       const iconFactory = IconFactory.getInstance();
-      const icon = await iconFactory.fromResource($r('app.media.maplibre_marker_icon_default'));
+      // 使用 startIcon 作为默认图标
+      const icon = await iconFactory.fromResource($r('app.media.startIcon'));
       
       if (this.mapLibreMap && icon) {
         // 将 icon 添加到 style（注意：MarkerLayerManager 需要 icon 已经注册）
@@ -181,7 +221,7 @@ struct MarkerAdvancedTestPage {
         const lon = 116.4074;
         
         const marker = new MarkerOptions()
-          .position({ latitude: lat, longitude: lon })
+          .position(new maplibre.LatLng(lat, lon))
           .rotation(rotation)
           .title(`旋转 ${rotation}°`)
           .getMarker();
@@ -217,7 +257,7 @@ struct MarkerAdvancedTestPage {
         const lon = 116.4074 + (i - 5) * 0.01;
         
         const marker = new MarkerOptions()
-          .position({ latitude: lat, longitude: lon })
+          .position(new maplibre.LatLng(lat, lon))
           .alpha(alpha)
           .title(`Alpha ${alpha.toFixed(1)}`)
           .getMarker();
@@ -254,7 +294,7 @@ struct MarkerAdvancedTestPage {
         const lon = 116.4074 + (Math.random() - 0.5) * 0.1;
         
         const marker = new MarkerOptions()
-          .position({ latitude: lat, longitude: lon })
+          .position(new maplibre.LatLng(lat, lon))
           .rotation(Math.random() * 360)
           .alpha(0.5 + Math.random() * 0.5)
           .title(`Marker ${i}`)
@@ -290,7 +330,7 @@ struct MarkerAdvancedTestPage {
     try {
       // 添加一个 marker
       const marker = new MarkerOptions()
-        .position({ latitude: 39.9042, longitude: 116.4074 })
+        .position(new maplibre.LatLng(39.9042, 116.4074))
         .rotation(0)
         .alpha(1.0)
         .title('测试 Marker')

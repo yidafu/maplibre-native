@@ -19,10 +19,12 @@ import image from '@ohos.multimedia.image';
  */
 export class Icon {
   private id: string;
+  private reuseIdentifier: string;
   private pixelMap: image.PixelMap | null;
   private width: number;
   private height: number;
   private pixelRatio: number;
+  private enabled: boolean = true;
 
   /**
    * 构造函数（内部使用，通过 IconFactory 创建）
@@ -30,9 +32,11 @@ export class Icon {
    * @param id 图标唯一标识符
    * @param pixelMap PixelMap 图像对象
    * @param pixelRatio 像素密度比例
+   * @param reuseIdentifier 复用标识符（可选，默认与 id 相同）
    */
-  constructor(id: string, pixelMap: image.PixelMap | null, pixelRatio: number = 1.0) {
+  constructor(id: string, pixelMap: image.PixelMap | null, pixelRatio: number = 1.0, reuseIdentifier?: string) {
     this.id = id;
+    this.reuseIdentifier = reuseIdentifier || id;
     this.pixelMap = pixelMap;
     this.pixelRatio = pixelRatio;
     
@@ -53,6 +57,17 @@ export class Icon {
    */
   public getId(): string {
     return this.id;
+  }
+
+  /**
+   * 获取复用标识符
+   * 
+   * 用于图标复用队列管理，相同 reuseIdentifier 的图标可以共享
+   * 
+   * @returns 复用标识符
+   */
+  public getReuseIdentifier(): string {
+    return this.reuseIdentifier;
   }
 
   /**
@@ -91,6 +106,24 @@ export class Icon {
    */
   public getScale(): number {
     return this.pixelRatio;
+  }
+
+  /**
+   * 获取图标是否可交互
+   * 
+   * @returns true 表示图标可交互（响应点击等事件）
+   */
+  public isEnabled(): boolean {
+    return this.enabled;
+  }
+
+  /**
+   * 设置图标是否可交互
+   * 
+   * @param enabled true 表示可交互，false 表示禁用交互
+   */
+  public setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
   }
 
   /**

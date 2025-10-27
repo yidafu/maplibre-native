@@ -165,7 +165,13 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
@@ -190,7 +196,7 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
             auto geoJson = mbgl::style::conversion::convertJSON<mbgl::GeoJSON>(geoJsonString, error);
             
             if (geoJson) {
-                sourceNapi->source->setGeoJSON(std::move(*geoJson));
+                source->setGeoJSON(std::move(*geoJson));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (string): %s", sourceNapi->id.c_str());
             } else {
                 napi_throw_error(env, nullptr, error.message.c_str());
@@ -216,17 +222,17 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
                     collection.push_back(std::move(f));
                 }
                 
-                sourceNapi->source->setGeoJSON(mbgl::GeoJSON{std::move(collection)});
+                source->setGeoJSON(mbgl::GeoJSON{std::move(collection)});
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (FeatureCollection): %s", sourceNapi->id.c_str());
             } else if (type == "Feature") {
                 // Feature 对象
                 auto feature = FeatureNAPI::convert(env, args[0]);
-                sourceNapi->source->setGeoJSON(mbgl::GeoJSON{std::move(feature)});
+                source->setGeoJSON(mbgl::GeoJSON{std::move(feature)});
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Feature): %s", sourceNapi->id.c_str());
             } else {
                 // Geometry 对象
                 auto geometry = GeometryNAPI::convert(env, args[0]);
-                sourceNapi->source->setGeoJSON(mbgl::GeoJSON{std::move(geometry)});
+                source->setGeoJSON(mbgl::GeoJSON{std::move(geometry)});
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Geometry): %s, type: %s", 
                            sourceNapi->id.c_str(), type.c_str());
             }
@@ -253,7 +259,13 @@ napi_value GeoJsonSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
@@ -266,7 +278,7 @@ napi_value GeoJsonSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     }
     
     try {
-        sourceNapi->source->setURL(url);
+        source->setURL(url);
         Logger::info("GeoJsonSourceNAPI", "SetUrl: %s -> %s", sourceNapi->id.c_str(), url.c_str());
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "SetUrl failed: %s", e.what());
@@ -283,12 +295,17 @@ napi_value GeoJsonSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        return CreateStringValue(env, "");
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         return CreateStringValue(env, "");
     }
     
     try {
-        auto url = sourceNapi->source->getURL();
+        auto url = source->getURL();
         if (url) {
             return CreateStringValue(env, *url);
         }
@@ -310,7 +327,14 @@ napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_in
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_value result;
         napi_create_array(env, &result);
         return result;

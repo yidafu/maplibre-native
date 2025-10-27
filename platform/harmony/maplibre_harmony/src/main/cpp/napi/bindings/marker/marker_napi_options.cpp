@@ -1,6 +1,7 @@
 #include "marker_napi.hpp"
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
+#include "geometry/lat_lng_harmony.hpp"
 
 namespace maplibre {
 namespace harmony {
@@ -101,10 +102,37 @@ napi_value MarkerNAPI::Remove(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 重置 annotation ID（标记为已移除）
-    // 实际的移除操作由 MapLibreMap.removeMarker() 调用 removeAnnotations() 完成
     Logger::info("MarkerNAPI", "[MarkerDebug] Marker.remove() called for ID=%ld", marker->annotationId);
-    marker->annotationId = -1;
+    
+    // 如果 Marker 已关联 MapLibreMap，调用其 removeMarker 方法
+    if (marker->mapLibreMapRef) {
+        napi_value mapLibreMapValue;
+        napi_status status = napi_get_reference_value(env, marker->mapLibreMapRef, &mapLibreMapValue);
+        
+        if (status == napi_ok && mapLibreMapValue != nullptr) {
+            // 获取 removeMarker 方法
+            napi_value removeMarkerFunc;
+            status = napi_get_named_property(env, mapLibreMapValue, "removeMarker", &removeMarkerFunc);
+            
+            if (status == napi_ok) {
+                // 调用 mapLibreMap.removeMarker(this)
+                napi_value argv[] = { thisVar };
+                napi_value result;
+                napi_call_function(env, mapLibreMapValue, removeMarkerFunc, 1, argv, &result);
+                Logger::debug("MarkerNAPI", "Marker.remove() called mapLibreMap.removeMarker()");
+            } else {
+                Logger::warn("MarkerNAPI", "Remove: removeMarker method not found on MapLibreMap");
+                // 如果方法不存在，至少重置 ID
+                marker->annotationId = -1;
+            }
+        } else {
+            Logger::warn("MarkerNAPI", "Remove: MapLibreMap reference is invalid");
+            marker->annotationId = -1;
+        }
+    } else {
+        Logger::warn("MarkerNAPI", "Remove: Marker not associated with MapLibreMap");
+        marker->annotationId = -1;
+    }
     
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -270,11 +298,13 @@ napi_value MarkerNAPI::AnimateToPosition(napi_env env, napi_callback_info info) 
     // 解析目标位置
     napi_value targetPosValue = args.GetObject(0, "targetPosition");
     if (!args.HasError()) {
-        double lat = args.GetDoubleProperty(targetPosValue, "latitude", 0.0);
-        double lon = args.GetDoubleProperty(targetPosValue, "longitude", 0.0);
-        marker->position = mbgl::Point<double>(lon, lat);
-        
-        Logger::info("MarkerNAPI", "[Animation] animateToPosition: target=(%f, %f)", lat, lon);
+        mbgl::LatLng latLng;
+        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, targetPosValue, latLng)) {
+            marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+            Logger::info("MarkerNAPI", "[Animation] animateToPosition: target=(%f, %f)", latLng.latitude(), latLng.longitude());
+        } else {
+            Logger::error("MarkerNAPI", "AnimateToPosition: Failed to parse target LatLng");
+        }
     }
     
     // duration 和 callback 由 ETS 层处理
@@ -296,8 +326,16 @@ napi_value MarkerNAPI::AnimateAlpha(napi_env env, napi_callback_info info) {
     
     if (!marker) return nullptr;
     
-    marker->alpha = args.GetDouble(0, "targetAlpha");
-    Logger::info("MarkerNAPI", "[Animation] animateAlpha: target=%f", marker->alpha);
+    // 获取目标透明度
+    double targetAlpha = args.GetDouble(0, "targetAlpha");
+    
+    // duration 和 callback 参数被忽略
+    // 动画逻辑应该在 ETS 层实现（使用 animateTo 或定时器）
+    // NAPI 层只负责设置最终值
+    
+    marker->alpha = targetAlpha;
+    Logger::info("MarkerNAPI", "[Animation] animateAlpha: set target=%f (animation should be handled in ETS layer)", 
+                 marker->alpha);
     
     napi_value undefined;
     napi_get_undefined(env, &undefined);

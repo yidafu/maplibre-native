@@ -2,11 +2,21 @@
   "src": [
     "pages/Index",
     "pages/BasicMapPage",
+    "pages/CameraListenerTestPage",
+    "pages/CompassTestPage",
+    "pages/ExpressionPerformanceTest",
+    "pages/ExpressionRealWorldExamples",
+    "pages/ExpressionTestPage",
     "pages/GestureTestPage",
+    "pages/IconTestPage",
+    "pages/LayerTestPage",
+    "pages/LocationComponentTestPage",
+    "pages/LogoScaleBarTestPage",
+    "pages/MarkerAdvancedTestPage",
     "pages/MarkerTestPage",
+    "pages/SourceTestPage",
     "pages/StyleTestPage",
     "pages/StyleUrlTestPage",
-    "pages/SourceTestPage",
-    "pages/LayerTestPage"
+    "pages/SymbolLayerExpressionExample"
   ]
 }

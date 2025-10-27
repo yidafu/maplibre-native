@@ -73,7 +73,19 @@ public:
     }
     
     // Get native layer pointer (for property access after adding)
-    mbgl::style::HeatmapLayer* getLayer() { return layer.get(); }
+    mbgl::style::HeatmapLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::HeatmapLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::HeatmapLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
+    }
 
 private:
     explicit HeatmapLayerNAPI(const std::string& layerId, const std::string& sourceId);
@@ -81,6 +93,7 @@ private:
     
     static napi_ref constructor;
     std::unique_ptr<mbgl::style::HeatmapLayer> layer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };
 
 } // namespace harmony

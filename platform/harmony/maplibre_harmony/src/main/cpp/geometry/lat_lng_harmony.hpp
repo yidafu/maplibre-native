@@ -46,7 +46,9 @@ private:
 };
 
 /**
- * LatLng NAPI 转换辅助类（保留向后兼容）
+ * LatLng NAPI 转换辅助类
+ * @deprecated 只保留CreateLatLngObject，解析方法已废弃，请使用LatLngNapi::ParseLatLng
+ * 注意：LatLngNapi::ParseLatLng 现在只支持LatLng NAPI类实例，不再支持普通JavaScript对象
  */
 class LatLngHarmony {
 public:

@@ -39,6 +39,9 @@ export class IconFactory {
   private static readonly ICON_ID_PREFIX = 'com.maplibre.icons.icon_';
   private static readonly MAX_ICONS = 1000000; // 防止 ID 溢出
   
+  // 默认图标名称 - 用于SymbolLayer引用
+  public static readonly DEFAULT_MARKER_ICON_ID = 'com.maplibre.marker.default';
+  
   private static instance: IconFactory | null = null;
   
   private nextId: number = 0;
@@ -100,23 +103,44 @@ export class IconFactory {
    * 从 PixelMap 创建图标
    * 
    * @param pixelMap PixelMap 对象
+   * @param iconId 可选的图标ID，如果不提供则自动生成
    * @returns Icon 实例
    * @throws Error 如果创建失败或 ID 溢出
    */
-  public fromPixelMap(pixelMap: image.PixelMap): Icon {
+  public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): Icon {
+    let id: string;
+    if (iconId) {
+      id = iconId;
+    } else {
+      this.checkIdOverflow();
+      id = this.generateIconId();
+    }
+    return new Icon(id, pixelMap, this.pixelRatio);
+  }
+
+  /**
+   * 从 PixelMap 创建图标（带复用标识符）
+   * 
+   * @param pixelMap PixelMap 对象
+   * @param reuseIdentifier 复用标识符
+   * @returns Icon 实例
+   * @throws Error 如果创建失败或 ID 溢出
+   */
+  public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): Icon {
     this.checkIdOverflow();
     const id = this.generateIconId();
-    return new Icon(id, pixelMap, this.pixelRatio);
+    return new Icon(id, pixelMap, this.pixelRatio, reuseIdentifier);
   }
 
   /**
    * 从资源 ID 创建图标
    * 
    * @param resource 资源对象 (例如 $r('app.media.marker'))
+   * @param reuseIdentifier 可选的复用标识符
    * @returns Promise<Icon> Icon 实例
    * @throws Error 如果资源不存在或加载失败
    */
-  public async fromResource(resource: Resource): Promise<Icon> {
+  public async fromResource(resource: Resource, reuseIdentifier?: string): Promise<Icon> {
     if (!this.resourceMgr) {
       throw new Error('ResourceManager not set. Call setResourceManager() first or pass it to getInstance()');
     }
@@ -136,6 +160,9 @@ export class IconFactory {
       // 释放 ImageSource
       imageSource.release();
       
+      if (reuseIdentifier) {
+        return this.fromPixelMapWithIdentifier(pixelMap, reuseIdentifier);
+      }
       return this.fromPixelMap(pixelMap);
     } catch (error) {
       throw new Error(`Failed to load icon from resource: ${error}`);
@@ -146,10 +173,11 @@ export class IconFactory {
    * 从文件路径创建图标
    * 
    * @param absolutePath 文件的绝对路径
+   * @param reuseIdentifier 可选的复用标识符
    * @returns Promise<Icon> Icon 实例
    * @throws Error 如果文件不存在或加载失败
    */
-  public async fromPath(absolutePath: string): Promise<Icon> {
+  public async fromPath(absolutePath: string, reuseIdentifier?: string): Promise<Icon> {
     try {
       // 检查文件是否存在
       const stat = fs.statSync(absolutePath);
@@ -176,6 +204,9 @@ export class IconFactory {
       // 释放 ImageSource
       imageSource.release();
       
+      if (reuseIdentifier) {
+        return this.fromPixelMapWithIdentifier(pixelMap, reuseIdentifier);
+      }
       return this.fromPixelMap(pixelMap);
     } catch (error) {
       throw new Error(`Failed to load icon from path ${absolutePath}: ${error}`);
@@ -186,10 +217,11 @@ export class IconFactory {
    * 从 rawfile 创建图标
    * 
    * @param fileName rawfile 文件名 (例如 'marker.png')
+   * @param iconId 可选的图标ID，如果不提供则自动生成
    * @returns Promise<Icon> Icon 实例
    * @throws Error 如果资源不存在或加载失败
    */
-  public async fromRawfile(fileName: string): Promise<Icon> {
+  public async fromRawfile(fileName: string, iconId?: string): Promise<Icon> {
     if (!this.resourceMgr) {
       throw new Error('ResourceManager not set. Call setResourceManager() first or pass it to getInstance()');
     }
@@ -209,7 +241,7 @@ export class IconFactory {
       // 释放 ImageSource
       imageSource.release();
       
-      return this.fromPixelMap(pixelMap);
+      return this.fromPixelMap(pixelMap, iconId);
     } catch (error) {
       throw new Error(`Failed to load icon from rawfile ${fileName}: ${error}`);
     }
@@ -233,7 +265,8 @@ export class IconFactory {
       // 注意：需要确保 resources/base/media/ 目录下有 maplibre_marker_icon_default.png
       if (this.resourceMgr) {
         try {
-          this.defaultMarkerIcon = await this.fromRawfile('maplibre_marker_icon_default.png');
+          // 使用固定的默认图标ID
+          this.defaultMarkerIcon = await this.fromRawfile('maplibre_marker_icon_default.png', IconFactory.DEFAULT_MARKER_ICON_ID);
           console.info('[IconFactory] Default marker icon loaded from rawfile');
           return this.defaultMarkerIcon;
         } catch (rawfileError) {
@@ -258,10 +291,11 @@ export class IconFactory {
    * 
    * @param iconId Icon 标识符
    * @param pixelMap PixelMap 对象
+   * @param reuseIdentifier 可选的复用标识符
    * @returns Icon 实例
    */
-  public recreate(iconId: string, pixelMap: image.PixelMap): Icon {
-    return new Icon(iconId, pixelMap, this.pixelRatio);
+  public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): Icon {
+    return new Icon(iconId, pixelMap, this.pixelRatio, reuseIdentifier);
   }
 
   /**
@@ -339,7 +373,8 @@ export class IconFactory {
 
       await pixelMap.writeBufferToPixels(buffer);
       
-      return this.fromPixelMap(pixelMap);
+      // 使用固定的默认图标ID
+      return this.fromPixelMap(pixelMap, IconFactory.DEFAULT_MARKER_ICON_ID);
     } catch (error) {
       throw new Error(`Failed to create fallback marker icon: ${error}`);
     }

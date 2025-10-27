@@ -47,11 +47,25 @@ public:
     
     // 内部方法
     std::string getId() const { return id; }
-    mbgl::style::GeoJSONSource* getSource() const { return source.get(); }
+    mbgl::style::GeoJSONSource* getSource() const { 
+        // 如果所有权已转移，使用 WeakPtr
+        if (!source && weakSource) {
+            return static_cast<mbgl::style::GeoJSONSource*>(weakSource.get());
+        }
+        return source.get(); 
+    }
     
     // 释放所有权（用于 Style.addSource）
     std::unique_ptr<mbgl::style::Source> releaseSource() {
+        ownsSource = false;
         return std::move(source);
+    }
+    
+    // 在 addSource 后调用，创建 WeakPtr（类似 iOS 方案）
+    void attachToStyle(mbgl::style::GeoJSONSource* sourcePtr) {
+        if (sourcePtr) {
+            weakSource = sourcePtr->makeWeakPtr();
+        }
     }
     
     // 构造函数引用
@@ -61,6 +75,7 @@ private:
     std::string id;
     std::unique_ptr<mbgl::style::GeoJSONSource> source;
     bool ownsSource;  // 标记是否拥有 source 所有权
+    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;  // WeakPtr，在所有权转移后使用
 };
 
 } // namespace harmony

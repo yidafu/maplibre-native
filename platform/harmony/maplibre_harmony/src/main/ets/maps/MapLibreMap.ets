@@ -443,7 +443,7 @@ export class MapLibreMap {
 
   // 位置和相机
   public getLatLng(): LatLng {
-    if (this.destroyed) return { latitude: 0, longitude: 0 };
+    if (this.destroyed) return new maplibre.LatLng(0, 0);
     return this.nativeMapView.getLatLng();
   }
 
@@ -598,16 +598,26 @@ export class MapLibreMap {
   }
 
   // 注解
+  /**
+   * 更新 Marker
+   * 
+   * 注意：使用 MarkerManager 的 GeoJSON 更新，支持所有属性（alpha, rotation, zIndex 等）
+   * 不再使用 Native 的 updateMarker（它只支持位置和图标）
+   * 
+   * @param marker 要更新的 Marker
+   */
   public updateMarker(marker: Marker): void {
     if (this.destroyed) return;
-    const position = marker.getPosition();
-    const icon = marker.getIcon();
-    this.nativeMapView.updateMarker(
-      marker.getId(),
-      position.latitude,
-      position.longitude,
-      icon ?? ''
-    );
+    
+    try {
+      // 使用 MarkerManager 的公共方法更新
+      // 这样可以更新所有属性：position, icon, alpha, rotation, zIndex 等
+      this.markerManager.updateMarker(marker);
+      
+      console.debug(`[MapLibreMap] updateMarker: Updated marker ${marker.getId()}`);
+    } catch (error) {
+      console.error('[MapLibreMap] updateMarker: Failed -', error);
+    }
   }
 
   public addMarkers(markers: Marker[]): number[] {
@@ -729,12 +739,12 @@ export class MapLibreMap {
   }
 
   public latLngForProjectedMeters(northing: number, easting: number): LatLng {
-    if (this.destroyed) return { latitude: 0, longitude: 0 };
+    if (this.destroyed) return new maplibre.LatLng(0, 0);
     return this.nativeMapView.latLngForProjectedMeters(northing, easting);
   }
 
   public latLngForPixel(x: number, y: number): LatLng {
-    if (this.destroyed) return { latitude: 0, longitude: 0 };
+    if (this.destroyed) return new maplibre.LatLng(0, 0);
     return this.nativeMapView.latLngForPixel(x, y);
   }
 
@@ -962,24 +972,24 @@ export class MapLibreMap {
    * 添加单个 Marker
    * 
    * @param options MarkerOptions 实例
-   * @returns 创建的 Marker
+   * @returns Promise<Marker> 创建的 Marker
    */
-  public addMarker(options: MarkerOptions): Marker {
+  public async addMarker(options: MarkerOptions): Promise<Marker> {
     if (this.destroyed) {
       throw new Error('Map has been destroyed');
     }
-    return this.markerManager.addMarker(options);
+    return await this.markerManager.addMarker(options);
   }
   
   /**
    * 批量添加 Marker
    * 
    * @param optionsList MarkerOptions 数组
-   * @returns 创建的 Marker 数组
+   * @returns Promise<Marker[]> 创建的 Marker 数组
    */
-  public addMarkersBatch(optionsList: MarkerOptions[]): Marker[] {
+  public async addMarkersBatch(optionsList: MarkerOptions[]): Promise<Marker[]> {
     if (this.destroyed) return [];
-    return this.markerManager.addMarkers(optionsList);
+    return await this.markerManager.addMarkers(optionsList);
   }
   
   /**

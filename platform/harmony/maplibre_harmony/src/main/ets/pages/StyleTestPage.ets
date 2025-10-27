@@ -120,10 +120,10 @@ struct StyleTestPage {
           .margin({ right: 60 })
       }
       .width('100%')
-      .height(50)
-      .backgroundColor('#f5f5f5')
+      .height(56)
+      .backgroundColor('#F5F5F5')
 
-      // 地图容器
+      // 地图区域（60%）
       Stack() {
         NativeMapView({
           styleUrl: this.styleUrls[0].url,
@@ -157,20 +157,19 @@ struct StyleTestPage {
           .backgroundColor('rgba(255, 255, 255, 0.8)')
         }
       }
-      .layoutWeight(1)
-
-      // 当前状态显示
-      Row() {
-        Text(`当前样式: ${this.currentStyleName} | 示例: ${this.currentExample}`)
-          .fontSize(14)
-          .padding(8)
-      }
       .width('100%')
-      .backgroundColor('#e0e0e0')
+      .height('60%')
 
-      // 控制面板
+      // 测试按钮区域（40%，可滚动）
       Scroll() {
         Column({ space: 8 }) {
+          // 当前状态显示
+          Text(`当前样式: ${this.currentStyleName} | 示例: ${this.currentExample}`)
+            .fontSize(14)
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#F8F8F8')
+            .margin({ bottom: 8 })
           // 地图样式切换区域
           Text('地图样式切换')
             .fontSize(16)
@@ -239,11 +238,11 @@ struct StyleTestPage {
             .backgroundColor(Color.Red)
         }
         .width('100%')
-        .padding(16)
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
       }
-      .height(200)
       .width('100%')
-      .backgroundColor(Color.White)
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')

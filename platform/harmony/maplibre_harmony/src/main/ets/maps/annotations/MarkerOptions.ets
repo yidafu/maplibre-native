@@ -19,8 +19,9 @@ type Marker = maplibre.Marker;
  * const iconFactory = IconFactory.getInstance();
  * const customIcon = await iconFactory.fromResource($r('app.media.marker'));
  * 
+ * // 注意：必须使用 new maplibre.LatLng() 创建位置
  * const marker = new MarkerOptions()
- *   .position({ latitude: 39.9042, longitude: 116.4074 })
+ *   .position(new maplibre.LatLng(39.9042, 116.4074))
  *   .title("北京")
  *   .snippet("中国首都")
  *   .draggable(true)
@@ -36,6 +37,7 @@ export class MarkerOptions {
   private _title?: string;
   private _snippet?: string;
   private _icon?: Icon;
+  private _reuseIdentifier?: string;
   private _draggable: boolean = false;
   private _visible: boolean = true;
   private _alpha: number = 1.0;
@@ -83,6 +85,32 @@ export class MarkerOptions {
    */
   public icon(icon: Icon): MarkerOptions {
     this._icon = icon;
+    return this;
+  }
+
+  /**
+   * 设置 Marker 的图标和复用标识符
+   * 
+   * @param icon Icon 对象
+   * @param reuseIdentifier 复用标识符
+   * @returns MarkerOptions 实例（支持链式调用）
+   */
+  public iconWithIdentifier(icon: Icon, reuseIdentifier: string): MarkerOptions {
+    this._icon = icon;
+    this._reuseIdentifier = reuseIdentifier;
+    return this;
+  }
+
+  /**
+   * 通过复用标识符设置图标
+   * 
+   * 注意：需要确保 IconManager 中已存在该标识符的图标
+   * 
+   * @param reuseIdentifier 复用标识符
+   * @returns MarkerOptions 实例（支持链式调用）
+   */
+  public iconFromReusableIdentifier(reuseIdentifier: string): MarkerOptions {
+    this._reuseIdentifier = reuseIdentifier;
     return this;
   }
   
@@ -173,6 +201,13 @@ export class MarkerOptions {
    */
   public getIcon(): Icon | undefined {
     return this._icon;
+  }
+
+  /**
+   * 获取复用标识符
+   */
+  public getReuseIdentifier(): string | undefined {
+    return this._reuseIdentifier;
   }
   
   

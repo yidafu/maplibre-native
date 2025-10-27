@@ -164,7 +164,6 @@ void HarmonyRendererFrontend::update(std::shared_ptr<UpdateParameters> params) {
     
     // 增加待处理请求计数
     pendingRequests++;
-    Logger::debug("HarmonyRendererFrontend", "update() called - pendingRequests=%d", pendingRequests.load());
     
     // 调度渲染（会自动防抖）
     scheduleRender();
@@ -175,11 +174,8 @@ void HarmonyRendererFrontend::scheduleRender() {
     // 这类似于 Android 的 requestRender() 行为
     bool expected = false;
     if (!renderRequested.compare_exchange_strong(expected, true)) {
-        Logger::debug("HarmonyRendererFrontend", "scheduleRender() - already scheduled, skipping (防抖)");
         return;
     }
-    
-    Logger::debug("HarmonyRendererFrontend", "scheduleRender() - scheduling new render task (useVSync=%d)", useVSync_);
     
     // 🎯 使用 VSync 同步（优先）
     if (useVSync_ && vsyncManager_) {
@@ -190,8 +186,7 @@ void HarmonyRendererFrontend::scheduleRender() {
             
             // 如果有待处理的请求，执行渲染
             if (pendingRequests > 0) {
-                int count = pendingRequests.exchange(0);
-                Logger::debug("HarmonyRendererFrontend", "VSync triggered - processing %d requests", count);
+                pendingRequests.exchange(0);
                 performRender();
             }
         });
@@ -209,8 +204,7 @@ void HarmonyRendererFrontend::scheduleRender() {
             
             // 如果有待处理的请求，执行渲染
             if (pendingRequests > 0) {
-                int count = pendingRequests.exchange(0);
-                Logger::debug("HarmonyRendererFrontend", "RunLoop triggered - processing %d requests", count);
+                pendingRequests.exchange(0);
                 performRender();
             }
         });
@@ -231,8 +225,6 @@ void HarmonyRendererFrontend::performRender() {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime);
         
         if (elapsed < minFrameInterval) {
-            Logger::debug("HarmonyRendererFrontend", "performRender() - frame throttled: elapsed=%lld ms < %lld ms", 
-                          elapsed.count(), minFrameInterval.count());
             return;  // 跳过此帧
         }
         
@@ -242,7 +234,6 @@ void HarmonyRendererFrontend::performRender() {
     // 🔧 重要：重置 needsRender 标志
     if (needsRender) {
         needsRender = false;
-        Logger::debug("HarmonyRendererFrontend", "✅ needsRender reset to false");
     }
     
     // 获取最新的更新参数
@@ -261,8 +252,6 @@ void HarmonyRendererFrontend::performRender() {
     auto currentThreadId = std::this_thread::get_id();
     bool onRunLoopThread = (currentThreadId == runLoopThreadId);
     
-    Logger::debug("HarmonyRendererFrontend", "🎨 performRender() - onRunLoopThread=%d", onRunLoopThread);
-    
     // 执行渲染
     try {
         // Activate the OpenGL context before rendering
@@ -273,9 +262,7 @@ void HarmonyRendererFrontend::performRender() {
         // HarmonyOS渲染时序优化 - 小延迟确保EGL上下文就绪
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         
-        Logger::debug("HarmonyRendererFrontend", "🎨 Executing renderer->render()");
         renderer->render(params);
-        Logger::debug("HarmonyRendererFrontend", "✅ renderer->render() completed");
         
         // 🔧 渲染成功，重置错误计数
         consecutiveErrors = 0;
@@ -343,12 +330,10 @@ void HarmonyRendererFrontend::requestRender() {
     // 防抖：如果已经有待处理的渲染请求，忽略新请求
     // 这可以防止过度的渲染请求堆积
     if (needsRender) {
-        Logger::debug("HarmonyRendererFrontend", "requestRender() ignored - already pending");
         return;
     }
     
     needsRender = true;
-    Logger::debug("HarmonyRendererFrontend", "requestRender() accepted");
     
     // Note: Rendering is triggered through the update() mechanism
     // No need to explicitly trigger rendering here

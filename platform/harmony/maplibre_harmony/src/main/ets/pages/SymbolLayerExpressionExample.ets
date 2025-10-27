@@ -4,6 +4,7 @@
  * 演示如何在 SymbolLayer 中使用 Expression 实现数据驱动样式
  */
 
+import { router } from '@kit.ArkUI';
 import { SymbolLayer } from '../maps/style/layers/SymbolLayer';
 import { Expression, Interpolator } from '../maps/style/expressions';
 
@@ -35,203 +36,169 @@ struct SymbolLayerExpressionExample {
    * 示例 1：基本 Expression 使用
    */
   private example1_BasicExpression(): string {
-    const layer = new SymbolLayer('poi-labels', 'poi-source');
+    // 注意：SymbolLayer 现在只是 NAPI 类型别名，需要通过地图 API 创建
+    // 这里只展示 Expression 的创建
     
-    // 使用 get 表达式获取要素属性作为文本内容
-    layer.setTextField(Expression.get<string>('name'));
+    // 创建 Expression：获取要素属性作为文本内容
+    const textFieldExpr = Expression.get('name');
     
-    // 使用常量值设置文本大小
-    layer.setTextSize(14);
-    
-    return '✅ 示例 1：基本 Expression - 使用 get 表达式获取要素属性';
+    return `✅ 示例 1：基本 Expression - 使用 get('name') 获取要素属性`;
   }
 
   /**
    * 示例 2：根据数据属性动态调整图标大小
    */
   private example2_DataDrivenIconSize(): string {
-    const layer = new SymbolLayer('icons', 'icon-source');
-    
-    // 根据 importance 属性设置图标大小
-    // importance 值越大，图标越大
-    layer.setIconSize(
-      Expression.multiply(
-        Expression.get<number>('importance'),
-        Expression.literal(0.5)
-      )
+    // 创建 Expression：图标大小根据 importance 属性动态调整
+    const iconSizeExpr = Expression.multiply(
+      Expression.get('importance'),
+      Expression.literal(0.5)
     );
     
-    layer.setIconImage('marker');
-    
-    return '✅ 示例 2：数据驱动图标大小 - 根据 importance 属性动态调整';
+    return `✅ 示例 2：数据驱动图标大小 - multiply(get('importance'), 0.5)`;
   }
 
   /**
    * 示例 3：根据缩放级别调整文本大小
    */
   private example3_ZoomBasedTextSize(): string {
-    const layer = new SymbolLayer('city-labels', 'city-source');
-    
-    // 使用插值表达式根据缩放级别平滑过渡文本大小
-    layer.setTextSize(
-      Expression.interpolate(
-        Interpolator.linear(),
-        Expression.zoom(),
-        Expression.literal(8), Expression.literal(10),   // zoom 8 → 10px
-        Expression.literal(12), Expression.literal(14),  // zoom 12 → 14px
-        Expression.literal(16), Expression.literal(18)   // zoom 16 → 18px
-      )
+    // 创建 Expression：文本大小根据缩放级别插值
+    const textSizeExpr = Expression.interpolate(
+      Interpolator.linear(),
+      Expression.zoom(),
+      Expression.literal(8), Expression.literal(10),
+      Expression.literal(12), Expression.literal(14),
+      Expression.literal(16), Expression.literal(18)
     );
     
-    layer.setTextField(Expression.get('name'));
-    
-    return '✅ 示例 3：缩放级别驱动 - 根据地图缩放级别调整文本大小';
+    return `✅ 示例 3：缩放级别驱动 - interpolate(zoom(), 8→10px, 12→14px, 16→18px)`;
   }
 
   /**
    * 示例 4：根据属性条件显示不同图标
    */
   private example4_ConditionalIconImage(): string {
-    const layer = new SymbolLayer('poi-icons', 'poi-source');
-    
-    // 根据 category 属性选择不同的图标
-    layer.setIconImage(
-      Expression.match(
-        Expression.get('category'),
-        Expression.literal('restaurant'), Expression.literal('icon-restaurant'),
-        Expression.literal('hotel'), Expression.literal('icon-hotel'),
-        Expression.literal('park'), Expression.literal('icon-park'),
-        Expression.literal('museum'), Expression.literal('icon-museum'),
-        Expression.literal('icon-default')  // 默认图标
-      )
+    // 创建 Expression：根据类别选择不同图标
+    const iconImageExpr = Expression.match(
+      Expression.get('category'),
+      Expression.literal('restaurant'), Expression.literal('icon-restaurant'),
+      Expression.literal('hotel'), Expression.literal('icon-hotel'),
+      Expression.literal('park'), Expression.literal('icon-park'),
+      Expression.literal('museum'), Expression.literal('icon-museum'),
+      Expression.literal('icon-default')
     );
     
-    layer.setIconSize(1.2);
-    
-    return '✅ 示例 4：条件图标 - 根据类别显示不同图标';
+    return `✅ 示例 4：条件图标 - match(category, restaurant→icon-restaurant, ...)`;
   }
 
   /**
    * 示例 5：根据属性值设置文本颜色
    */
   private example5_ColorByProperty(): string {
-    const layer = new SymbolLayer('status-labels', 'status-source');
-    
-    // 根据 status 属性设置不同的文本颜色
-    layer.setTextColor(
-      Expression.match(
-        Expression.get('status'),
-        Expression.literal('active'), Expression.literal('#00ff00'),    // 绿色
-        Expression.literal('inactive'), Expression.literal('#ff0000'),  // 红色
-        Expression.literal('pending'), Expression.literal('#ffaa00'),   // 橙色
-        Expression.literal('#808080')  // 默认灰色
-      )
+    // 创建 Expression：根据状态设置文本颜色
+    const textColorExpr = Expression.match(
+      Expression.get('status'),
+      Expression.literal('active'), Expression.literal('#00ff00'),
+      Expression.literal('inactive'), Expression.literal('#ff0000'),
+      Expression.literal('pending'), Expression.literal('#ffaa00'),
+      Expression.literal('#808080')
     );
     
-    layer.setTextField(Expression.get('label'));
-    layer.setTextSize(16);
-    
-    return '✅ 示例 5：属性驱动颜色 - 根据状态设置不同颜色';
+    return `✅ 示例 5：属性驱动颜色 - match(status, active→绿色, inactive→红色, ...)`;
   }
 
   /**
    * 示例 6：组合多个 Expression
    */
   private example6_CombinedExpressions(): string {
-    const layer = new SymbolLayer('places', 'places-source');
-    
-    // 文本内容：名称 + 人口数量
-    layer.setTextField(
-      Expression.concat(
-        Expression.get<string>('name'),
-        Expression.literal(' ('),
-        Expression.toString(Expression.get('population')),
-        Expression.literal(')')
-      )
+    // 创建组合 Expression：文本内容 = 名称 + 人口数量
+    const textFieldExpr = Expression.concat(
+      Expression.get('name'),
+      Expression.literal(' ('),
+      Expression.toString(Expression.get('population')),
+      Expression.literal(')')
     );
     
-    // 文本大小：同时受缩放级别和重要性影响
-    layer.setTextSize(
-      Expression.multiply(
-        Expression.interpolate(
-          Interpolator.linear(),
-          Expression.zoom(),
-          Expression.literal(8), Expression.literal(1.0),
-          Expression.literal(16), Expression.literal(1.5)
-        ),
-        Expression.add(
-          Expression.literal(10),
-          Expression.multiply(
-            Expression.get<number>('importance'),
-            Expression.literal(2)
-          )
+    // 文本大小：缩放级别 × (10 + importance × 2)
+    const textSizeExpr = Expression.multiply(
+      Expression.interpolate(
+        Interpolator.linear(),
+        Expression.zoom(),
+        Expression.literal(8), Expression.literal(1.0),
+        Expression.literal(16), Expression.literal(1.5)
+      ),
+      Expression.add(
+        Expression.literal(10),
+        Expression.multiply(
+          Expression.get('importance'),
+          Expression.literal(2)
         )
       )
     );
     
-    // 文本透明度：根据人口数量
-    layer.setTextOpacity(
-      Expression.interpolate(
-        Interpolator.linear(),
-        Expression.get<number>('population'),
-        Expression.literal(1000), Expression.literal(0.3),
-        Expression.literal(100000), Expression.literal(1.0)
-      )
-    );
-    
-    return '✅ 示例 6：组合表达式 - 多个 Expression 组合使用';
+    return `✅ 示例 6：组合表达式 - concat + multiply + interpolate 组合使用`;
   }
 
   /**
    * 示例 7：高级文本格式化
    */
   private example7_TextFormatting(): string {
-    const layer = new SymbolLayer('labels', 'data-source');
-    
-    // 根据条件显示不同的文本
-    layer.setTextField(
-      Expression.switchCase(
-        Expression.has('name_en'),
-        Expression.get<string>('name_en'),  // 如果有英文名称，使用英文
-        Expression.has('name'),
-        Expression.get<string>('name'),     // 否则使用默认名称
-        Expression.literal('Unnamed')       // 如果都没有，显示 "Unnamed"
-      )
+    // 创建 Expression：条件文本
+    const textFieldExpr = Expression.switchCase(
+      Expression.has('name_en'),
+      Expression.get('name_en'),
+      Expression.has('name'),
+      Expression.get('name'),
+      Expression.literal('Unnamed')
     );
     
-    // 图标旋转角度：根据方向属性
-    layer.setIconRotate(
-      Expression.coalesce(
-        Expression.get<number>('direction'),  // 优先使用 direction 属性
-        Expression.literal(0)                  // 默认为 0
-      )
+    // 创建 Expression：图标旋转角度
+    const iconRotateExpr = Expression.coalesce(
+      Expression.get('direction'),
+      Expression.literal(0)
     );
     
-    // 图标透明度：距离越远越透明
-    layer.setIconOpacity(
-      Expression.step(
-        Expression.get<number>('distance'),
-        Expression.literal(1.0),      // < 1000m: 完全不透明
-        Expression.literal(1000), Expression.literal(0.8),   // 1000-5000m: 80%
-        Expression.literal(5000), Expression.literal(0.5),   // 5000-10000m: 50%
-        Expression.literal(10000), Expression.literal(0.2)   // > 10000m: 20%
-      )
+    // 创建 Expression：图标透明度阶梯
+    const iconOpacityExpr = Expression.step(
+      Expression.get('distance'),
+      Expression.literal(1.0),
+      Expression.literal(1000), Expression.literal(0.8),
+      Expression.literal(5000), Expression.literal(0.5),
+      Expression.literal(10000), Expression.literal(0.2)
     );
     
-    return '✅ 示例 7：高级格式化 - 复杂的文本和样式逻辑';
+    return `✅ 示例 7：高级格式化 - switchCase + coalesce + step 组合`;
   }
 
   build() {
     Column() {
-      Text('SymbolLayer Expression 示例')
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .margin({ top: 20, bottom: 20 })
+      // 标题栏
+      Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+        
+        Text('SymbolLayer Expression 示例')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#F5F5F5')
       
       Text('以下示例展示了如何在 SymbolLayer 中使用 Expression 实现各种数据驱动样式')
         .fontSize(14)
         .fontColor('#666666')
-        .margin({ bottom: 20 })
+        .margin({ top: 10, bottom: 10 })
+        .padding({ left: 16, right: 16 })
       
       List() {
         ForEach(this.examples, (example: string, index: number) => {

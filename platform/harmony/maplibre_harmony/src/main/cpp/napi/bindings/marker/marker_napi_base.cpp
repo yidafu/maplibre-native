@@ -1,6 +1,7 @@
 #include "marker_napi.hpp"
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
+#include "geometry/lat_lng_harmony.hpp"
 
 namespace maplibre {
 namespace harmony {
@@ -142,9 +143,13 @@ napi_value MarkerNAPI::New(napi_env env, napi_callback_info info) {
         // Parse position (required)
         napi_value posValue;
         if (napi_get_named_property(env, optionsObj, "position", &posValue) == napi_ok) {
-            double lat = args.GetDoubleProperty(posValue, "latitude", 0.0);
-            double lon = args.GetDoubleProperty(posValue, "longitude", 0.0);
-            marker->position = mbgl::Point<double>(lon, lat);  // Note: Point is (x, y) = (lon, lat)
+            mbgl::LatLng latLng;
+            if (mbgl::harmony::LatLngNapi::ParseLatLng(env, posValue, latLng)) {
+                // LatLng解析成功，转换为Point (注意: Point是(x, y) = (lon, lat))
+                marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+            } else {
+                Logger::error("MarkerNAPI", "[MarkerDebug] Failed to parse position from options");
+            }
         }
         
         // Parse icon (optional)
@@ -370,9 +375,12 @@ napi_value MarkerNAPI::SetPosition(napi_env env, napi_callback_info info) {
     // Parse LatLng object
     napi_value posValue = args.GetObject(0, "position");
     if (!args.HasError()) {
-        double lat = args.GetDoubleProperty(posValue, "latitude", 0.0);
-        double lon = args.GetDoubleProperty(posValue, "longitude", 0.0);
-        marker->position = mbgl::Point<double>(lon, lat);
+        mbgl::LatLng latLng;
+        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, posValue, latLng)) {
+            marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
+        } else {
+            Logger::error("MarkerNAPI", "SetPosition: Failed to parse LatLng");
+        }
     }
     
     napi_value undefined;

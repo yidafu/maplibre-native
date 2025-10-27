@@ -4,6 +4,7 @@
  * 测试各种 Expression 操作符的功能
  */
 
+import { router } from '@kit.ArkUI';
 import { Expression, Interpolator, Stop } from '../maps/style/expressions';
 import { CircleLayer } from '../maps/style/layers/CircleLayer';
 import { PropertyFactory } from '../maps/style/layers/PropertyFactory';
@@ -209,43 +210,39 @@ struct ExpressionTestPage {
    */
   private testLayerIntegration() {
     this.addTest('Layer Integration', () => {
-      // 创建一个使用 Expression 的 CircleLayer
-      const layer = new CircleLayer('test-layer', 'test-source');
+      // 注意：CircleLayer 现在只是 NAPI 类型别名，需要通过 NAPI 创建
+      // 这里只测试 Expression 和 PropertyFactory 的功能
       
-      // 使用 Expression 设置半径（根据缩放级别插值）
-      layer.withCircleRadius(
-        Expression.interpolate(
-          Interpolator.linear(),
-          Expression.zoom(),
-          Expression.literal(5), Expression.literal(2),
-          Expression.literal(10), Expression.literal(8)
-        )
+      // 创建半径 Expression（根据缩放级别插值）
+      const radiusExpression = Expression.interpolate(
+        Interpolator.linear(),
+        Expression.zoom(),
+        Expression.literal(5), Expression.literal(2),
+        Expression.literal(10), Expression.literal(8)
       );
       
-      // 使用 Expression 设置颜色（根据属性值）
-      layer.withCircleColor(
-        Expression.match(
-          Expression.get('type'),
-          Expression.literal('A'), Expression.literal('#ff0000'),
-          Expression.literal('B'), Expression.literal('#00ff00'),
-          Expression.literal('#0000ff')
-        )
+      // 创建颜色 Expression（根据属性值）
+      const colorExpression = Expression.match(
+        Expression.get('type'),
+        Expression.literal('A'), Expression.literal('#ff0000'),
+        Expression.literal('B'), Expression.literal('#00ff00'),
+        Expression.literal('#0000ff')
       );
       
-      // 使用 PropertyFactory
+      // 使用 PropertyFactory 创建属性
       const radiusProperty = PropertyFactory.circleRadius(
-        Expression.multiply(Expression.get<number>('size'), Expression.literal(10))
+        Expression.multiply(Expression.get('size'), Expression.literal(10))
       );
       
       const colorProperty = PropertyFactory.circleColor(
         Expression.rgb(
-          Expression.get<number>('red'),
-          Expression.get<number>('green'),
-          Expression.get<number>('blue')
+          Expression.get('red'),
+          Expression.get('green'),
+          Expression.get('blue')
         )
       );
       
-      return `Layer created successfully with Expression properties. ` +
+      return `Expression 属性创建成功. ` +
              `radiusProperty: ${radiusProperty.toString()}, ` +
              `colorProperty: ${colorProperty.toString()}`;
     });
@@ -265,16 +262,33 @@ struct ExpressionTestPage {
 
   build() {
     Column() {
-      Text('Expression 系统测试')
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .margin({ top: 20, bottom: 20 })
+      // 标题栏
+      Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+        
+        Text('Expression 系统测试')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#F5F5F5')
       
       Button('重新运行测试')
         .onClick(() => {
           this.runTests();
         })
-        .margin({ bottom: 20 })
+        .margin({ top: 10, bottom: 10 })
       
       List() {
         ForEach(this.testResults, (result: string, index: number) => {

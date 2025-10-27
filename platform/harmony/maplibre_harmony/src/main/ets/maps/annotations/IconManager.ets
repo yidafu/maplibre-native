@@ -7,7 +7,7 @@ type Marker = maplibre.Marker;
 type NativeMapView = maplibre.NativeMapView;
 
 /**
- * Icon 引用数据
+ * 图标引用数据
  */
 interface IconRefData {
   icon: Icon;
@@ -18,28 +18,31 @@ interface IconRefData {
  * IconManager - 图标管理器
  * 
  * 负责管理地图上的图标，包括：
- * - 图标的引用计数缓存
+ * - 图标的引用计数缓存（使用图标ID字符串作为key）
  * - 图标的加载和卸载
  * - 与 Native 层的图标同步
  * - 跟踪图标尺寸（用于手势检测）
+ * - 图标复用队列管理
  * 
- * 参考:
- * - Android: org.maplibre.android.maps.IconManager
+ * 注意：HarmonyOS 版本使用字符串ID作为key，因为 NAPI Marker.getIcon() 返回 string | null
  * 
  * @example
  * ```typescript
  * const iconManager = new IconManager(nativeMapView);
- * const icon = iconManager.loadIconForMarker(marker);
+ * const icon = await iconManager.loadIconForMarker(marker);
  * // ... 使用 marker
  * iconManager.iconCleanup(icon); // 引用计数减1，为0时自动清理
  * ```
  */
 export class IconManager {
+  // 使用字符串ID作为key，存储Icon对象和引用计数
   private iconMap: Map<string, IconRefData> = new Map();
+  // 使用 reuseIdentifier 作为 key，存储可复用的图标
+  private reuseIdentifierMap: Map<string, Icon> = new Map();
   private nativeMapView!: NativeMapView;
   private highestIconWidth: number = 0;
   private highestIconHeight: number = 0;
-  private iconFactory!: IconFactory;
+  public iconFactory!: IconFactory;
 
   /**
    * 构造函数
@@ -63,14 +66,24 @@ export class IconManager {
    */
   public async loadIconForMarker(marker: Marker): Promise<Icon> {
     try {
-      // 尝试获取 Marker 的图标
-      let icon: Icon | null = this.getMarkerIcon(marker);
+      // 尝试获取 Marker 的图标ID
+      let iconId: string | null = marker.getIcon();
+      let icon: Icon;
       
-      if (!icon) {
+      if (!iconId) {
         // 如果没有图标，使用默认图标
         console.info('[IconManager] Marker has no icon, loading default marker icon');
         icon = await this.loadDefaultIconForMarker(marker);
+        iconId = icon.getId();
       } else {
+        // 从缓存获取或创建新的Icon对象
+        const cached = this.iconMap.get(iconId);
+        if (cached) {
+          icon = cached.icon;
+        } else {
+          // 这种情况不应该发生，因为图标应该先通过addIcon添加
+          throw new Error(`Icon ${iconId} not found in cache`);
+        }
         // 更新最大图标尺寸
         this.updateHighestIconSize(icon);
       }
@@ -99,9 +112,8 @@ export class IconManager {
     const height = icon.getHeight() / 2; // Android 的默认图标高度除以2
     this.updateHighestIconSize(width, height);
     
-    // 将默认图标设置到 Marker（如果可能）
-    // 注意：这里需要 Marker 提供 setIcon 方法
-    // this.setMarkerIcon(marker, icon);
+    // 将默认图标ID设置到 Marker
+    marker.setIcon(icon.getId());
     
     return icon;
   }
@@ -112,28 +124,128 @@ export class IconManager {
    * 增加引用计数，如果是首次添加则加载到 Native 层
    * 
    * @param icon Icon 实例
-   * @param addToNative 是否添加到 Native 层（默认 true）
+   * @param addIconToMap 是否添加到 Native 层（默认 true）
    */
-  private async addIcon(icon: Icon, addToNative: boolean = true): Promise<void> {
+  private async addIcon(icon: Icon, addIconToMap: boolean = true): Promise<void> {
     const iconId = icon.getId();
-    const existing = this.iconMap.get(iconId);
+    const cached = this.iconMap.get(iconId);
     
-    if (existing) {
-      // 图标已存在，增加引用计数
-      existing.refCount++;
-      console.debug(`[IconManager] Icon ${iconId} refCount increased to ${existing.refCount}`);
-    } else {
+    if (!cached) {
       // 首次添加图标
-      this.iconMap.set(iconId, {
-        icon: icon,
-        refCount: 1
-      });
-      
-      if (addToNative) {
+      const refData: IconRefData = { icon: icon, refCount: 1 };
+      this.iconMap.set(iconId, refData);
+      if (addIconToMap) {
         await this.loadIconToNative(icon);
       }
-      
       console.debug(`[IconManager] Icon ${iconId} added with refCount=1`);
+    } else {
+      // 图标已存在，增加引用计数
+      cached.refCount++;
+      console.debug(`[IconManager] Icon ${iconId} refCount increased to ${cached.refCount}`);
+    }
+  }
+
+  /**
+   * 添加已有的Icon到管理器
+   * 
+   * 用于Marker已经设置了iconId，需要将Icon对象加入管理
+   * 
+   * @param icon Icon 实例
+   */
+  public async addIconToManager(icon: Icon): Promise<void> {
+    await this.addIcon(icon, true);
+    // 同时添加到复用标识符映射
+    const reuseId = icon.getReuseIdentifier();
+    if (reuseId && !this.reuseIdentifierMap.has(reuseId)) {
+      this.reuseIdentifierMap.set(reuseId, icon);
+    }
+  }
+
+  /**
+   * 通过复用标识符获取已缓存的图标
+   * 
+   * 类似 iOS 的 dequeueReusableAnnotationImageWithIdentifier
+   * 
+   * @param reuseIdentifier 复用标识符
+   * @returns Icon 实例，如果不存在返回 null
+   */
+  public dequeueReusableIcon(reuseIdentifier: string): Icon | null {
+    const icon = this.reuseIdentifierMap.get(reuseIdentifier);
+    return icon || null;
+  }
+
+  /**
+   * 获取或加载 Marker 的图标
+   * 
+   * 自动处理图标复用和默认图标加载
+   * 
+   * @param marker Marker 实例
+   * @param defaultIconProvider 可选的默认图标提供函数
+   * @returns Promise<Icon> Icon 实例
+   */
+  public async getOrLoadIcon(marker: Marker, defaultIconProvider?: () => Promise<Icon>): Promise<Icon> {
+    try {
+      let iconId: string | null = marker.getIcon();
+      let icon: Icon;
+      
+      if (!iconId) {
+        // 如果没有图标，使用默认图标或提供的图标
+        if (defaultIconProvider) {
+          icon = await defaultIconProvider();
+        } else {
+          icon = await this.iconFactory.defaultMarker();
+        }
+        marker.setIcon(icon.getId());
+        iconId = icon.getId();
+      } else {
+        // 检查缓存中是否已存在
+        const cached = this.iconMap.get(iconId);
+        if (cached) {
+          icon = cached.icon;
+        } else {
+          throw new Error(`Icon ${iconId} not found in cache`);
+        }
+      }
+      
+      // 更新最大图标尺寸
+      this.updateHighestIconSize(icon);
+      
+      return icon;
+    } catch (error) {
+      console.error('[IconManager] Failed to get or load icon:', error);
+      throw new Error('Failed to get or load icon: ' + error);
+    }
+  }
+
+  /**
+   * 更新 Marker 的图标
+   * 
+   * 自动处理旧图标的引用计数减少和新图标的引用计数增加
+   * 
+   * @param marker Marker 实例
+   * @param oldIcon 旧的 Icon 实例（可为 null）
+   * @param newIcon 新的 Icon 实例
+   */
+  public async updateMarkerIcon(marker: Marker, oldIcon: Icon | null, newIcon: Icon): Promise<void> {
+    try {
+      // 减少旧图标的引用计数
+      if (oldIcon) {
+        this.iconCleanup(oldIcon);
+      }
+      
+      // 更新 Marker 的图标 ID
+      marker.setIcon(newIcon.getId());
+      
+      // 添加新图标（增加引用计数）
+      await this.addIconToManager(newIcon);
+      
+      // 更新最大图标尺寸
+      this.updateHighestIconSize(newIcon);
+      
+      console.info(`[IconManager] Updated marker icon from ${oldIcon?.getId() || 'null'} to ${newIcon.getId()}`);
+    } catch (error) {
+      console.error('[IconManager] Failed to update marker icon:', error);
+      throw new Error('Failed to update marker icon: ' + error);
     }
   }
 
@@ -167,23 +279,24 @@ export class IconManager {
    * 
    * 减少引用计数，如果引用计数为 0 则从缓存和 Native 层删除
    * 
-   * @param icon Icon 实例
+   * @param iconOrId Icon 实例或图标ID字符串
    */
-  public iconCleanup(icon: Icon): void {
-    const iconId = icon.getId();
-    const refData = this.iconMap.get(iconId);
+  public iconCleanup(iconOrId: Icon | string): void {
+    const iconId = typeof iconOrId === 'string' ? iconOrId : iconOrId.getId();
+    const cached = this.iconMap.get(iconId);
     
-    if (!refData) {
+    if (!cached) {
       console.warn(`[IconManager] Icon ${iconId} not found in cache, cannot cleanup`);
       return;
     }
     
-    refData.refCount--;
-    console.debug(`[IconManager] Icon ${iconId} refCount decreased to ${refData.refCount}`);
-    
-    if (refData.refCount <= 0) {
-      // 引用计数为 0，删除图标
-      this.removeIcon(icon);
+    if (cached.refCount === 1) {
+      // 引用计数为1，清理后变为0，直接删除
+      this.remove(cached.icon);
+    } else {
+      // 引用计数大于1，递减
+      cached.refCount--;
+      console.debug(`[IconManager] Icon ${iconId} refCount decreased to ${cached.refCount}`);
     }
   }
 
@@ -192,8 +305,9 @@ export class IconManager {
    * 
    * @param icon Icon 实例
    */
-  private removeIcon(icon: Icon): void {
+  private remove(icon: Icon): void {
     const iconId = icon.getId();
+    const reuseId = icon.getReuseIdentifier();
     
     try {
       // 从 Native 层删除
@@ -203,6 +317,12 @@ export class IconManager {
       // 从缓存中删除
       this.iconMap.delete(iconId);
       console.debug(`[IconManager] Icon ${iconId} removed from cache`);
+      
+      // 从复用标识符映射中删除
+      if (reuseId && this.reuseIdentifierMap.get(reuseId) === icon) {
+        this.reuseIdentifierMap.delete(reuseId);
+        console.debug(`[IconManager] Icon ${iconId} removed from reuse map (${reuseId})`);
+      }
       
       // 释放 Icon 资源
       icon.release();
@@ -219,33 +339,20 @@ export class IconManager {
   public async reloadIcons(): Promise<void> {
     console.info('[IconManager] Reloading all icons...');
     
-    const icons = Array.from(this.iconMap.values());
     let successCount = 0;
     let failCount = 0;
     
-    for (const refData of icons) {
+    for (const cached of this.iconMap.values()) {
       try {
-        await this.loadIconToNative(refData.icon);
+        await this.loadIconToNative(cached.icon);
         successCount++;
       } catch (error) {
-        console.error(`[IconManager] Failed to reload icon ${refData.icon.getId()}:`, error);
+        console.error(`[IconManager] Failed to reload icon ${cached.icon.getId()}:`, error);
         failCount++;
       }
     }
     
     console.info(`[IconManager] Icons reloaded: ${successCount} success, ${failCount} failed`);
-  }
-
-  /**
-   * 公开方法：添加图标
-   * 
-   * @param icon Icon 实例
-   */
-  public async addIconIfNeeded(icon: Icon): Promise<void> {
-    const iconId = icon.getId();
-    if (!this.iconMap.has(iconId)) {
-      await this.addIcon(icon);
-    }
   }
 
   /**
@@ -256,12 +363,17 @@ export class IconManager {
    * @param marker Marker 实例
    */
   public async ensureIconLoaded(marker: Marker): Promise<void> {
-    const icon = this.getMarkerIcon(marker);
-    if (icon) {
-      await this.addIconIfNeeded(icon);
+    const iconId = marker.getIcon();
+    if (!iconId) {
+      const icon = await this.loadDefaultIconForMarker(marker);
+      marker.setIcon(icon.getId());
+      await this.addIcon(icon);
     } else {
-      // Marker 没有图标，加载默认图标
-      await this.loadIconForMarker(marker);
+      // 图标ID存在，检查是否已加载
+      const cached = this.iconMap.get(iconId);
+      if (cached) {
+        await this.addIcon(cached.icon);
+      }
     }
   }
 
@@ -329,22 +441,6 @@ export class IconManager {
     }
   }
 
-  /**
-   * 获取 Marker 的 Icon
-   * 
-   * @param marker Marker 实例
-   * @returns Icon 实例或 null
-   */
-  private getMarkerIcon(marker: Marker): Icon | null {
-    try {
-      // 注意：这里需要 Marker 提供 getIcon() 方法
-      // 由于 NAPI Marker 可能没有这个方法，我们返回 null
-      // 在实际使用时需要根据 Marker 的实现来调整
-      return null;
-    } catch (error) {
-      return null;
-    }
-  }
 
   /**
    * 清理所有图标
@@ -354,16 +450,18 @@ export class IconManager {
   public cleanup(): void {
     console.info('[IconManager] Cleaning up all icons...');
     
-    this.iconMap.forEach((refData: IconRefData, iconId: string) => {
+    // 遍历所有图标进行清理
+    this.iconMap.forEach((cached: IconRefData, iconId: string) => {
       try {
         this.nativeMapView.removeAnnotationIcon(iconId);
-        refData.icon.release();
+        cached.icon.release();
       } catch (error) {
         console.error(`[IconManager] Failed to cleanup icon ${iconId}:`, error);
       }
     });
     
     this.iconMap.clear();
+    this.reuseIdentifierMap.clear();
     this.highestIconWidth = 0;
     this.highestIconHeight = 0;
     
@@ -382,12 +480,12 @@ export class IconManager {
   /**
    * 获取指定图标的引用计数
    * 
-   * @param iconId Icon ID
+   * @param icon Icon 对象
    * @returns 引用计数，如果图标不存在返回 0
    */
-  public getRefCount(iconId: string): number {
-    const refData = this.iconMap.get(iconId);
-    return refData ? refData.refCount : 0;
+  public getRefCount(icon: Icon): number {
+    const cached = this.iconMap.get(icon.getId());
+    return cached ? cached.refCount : 0;
   }
 }
 

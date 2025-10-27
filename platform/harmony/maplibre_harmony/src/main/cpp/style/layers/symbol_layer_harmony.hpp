@@ -24,7 +24,12 @@ public:
     ~SymbolLayerNAPI();
     
     // Get native layer
-    mbgl::style::SymbolLayer* getLayer() { return layer.get(); }
+    mbgl::style::SymbolLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::SymbolLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
     
     // Internal methods for Style API
     std::string getId() const { return layer ? layer->getID() : ""; }
@@ -34,7 +39,15 @@ public:
         if (!layer) {
             throw std::runtime_error("Layer already added to style");
         }
+        ownsLayer = false;
         return std::move(layer);
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::SymbolLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
     }
     
 private:
@@ -103,6 +116,7 @@ private:
 private:
     std::unique_ptr<mbgl::style::SymbolLayer> layer;
     bool ownsLayer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
     
     static napi_ref constructor;
 };

@@ -11,22 +11,19 @@ export struct LogoView {
   @Prop logoImage: Resource = $r('app.media.maplibre_logo_helmet');
   
   // 是否启用
-  @Prop enabled: boolean = true;
+  @Prop logoEnabled: boolean = true;
   
   // Logo 尺寸（默认自适应）
   @Prop logoWidth: number | string = 'auto';
   @Prop logoHeight: number | string = 'auto';
   
   build() {
-    if (!this.enabled) {
-      // 禁用时不渲染
-      return;
+    if (this.logoEnabled) {
+      Image(this.logoImage)
+        .width(this.logoWidth)
+        .height(this.logoHeight)
+        .objectFit(ImageFit.Contain)
     }
-    
-    Image(this.logoImage)
-      .width(this.logoWidth)
-      .height(this.logoHeight)
-      .objectFit(ImageFit.Contain)
   }
 }
 

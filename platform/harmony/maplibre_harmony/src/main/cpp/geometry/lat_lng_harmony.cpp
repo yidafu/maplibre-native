@@ -178,7 +178,7 @@ napi_value LatLngNapi::GetLongitudeProperty(napi_env env, napi_callback_info inf
 }
 
 bool LatLngNapi::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& outLatLng) {
-    // 尝试从 LatLngNapi 类实例解析
+    // 只支持 LatLngNapi 类实例解析
     LatLngNapi* obj;
     napi_status status = napi_unwrap(env, value, reinterpret_cast<void**>(&obj));
     if (status == napi_ok && obj != nullptr) {
@@ -186,8 +186,9 @@ bool LatLngNapi::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& outLa
         return true;
     }
     
-    // 回退到普通对象解析（向后兼容）
-    return LatLngHarmony::ParseLatLng(env, value, outLatLng);
+    // 不再支持普通对象解析
+    Logger::error("LatLngNapi", "ParseLatLng failed: value is not a LatLng NAPI instance");
+    return false;
 }
 
 // ==================== LatLngHarmony 辅助类实现 ====================

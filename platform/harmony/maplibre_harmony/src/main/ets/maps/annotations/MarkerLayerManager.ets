@@ -18,6 +18,7 @@ import { GeoJsonSource } from '../style/sources/GeoJsonSource';
 import { GeoJsonOptions } from '../style/sources/GeoJsonOptions';
 import { SymbolLayer } from '../style/layers/SymbolLayer';
 import { Expression } from '../style/expressions/Expression';
+import { IconFactory } from './IconFactory';
 
 type Marker = maplibre.Marker;
 
@@ -99,8 +100,8 @@ export class MarkerLayerManager {
    * 初始化 Marker Layer（创建 Source 和 Layer）
    */
   public initialize(): void {
-    if (this.initialized) {
-      console.warn('MarkerLayerManager already initialized');
+    if (this.initialized && this.source && this.layer) {
+      console.warn('[MarkerLayerManager] Already initialized with valid source/layer');
       return;
     }
     
@@ -108,6 +109,18 @@ export class MarkerLayerManager {
       const style = this.mapLibreMap.getStyle();
       if (!style) {
         throw new Error('Style not loaded');
+      }
+      
+      // 如果 source 或 layer 已存在于 style 中，先移除
+      try {
+        // 尝试移除可能存在的旧 layer 和 source
+        // 不检查是否存在，直接尝试移除，失败时会被 catch 捕获
+        style.removeLayer(MarkerLayerManager.LAYER_ID);
+        style.removeSource(MarkerLayerManager.SOURCE_ID);
+        console.warn('[MarkerLayerManager] Removed existing source/layer before re-initialization');
+      } catch (e) {
+        // 如果不存在则忽略错误，继续初始化
+        // 这是正常情况，不需要额外处理
       }
       
       // 创建空的 GeoJSON Source
@@ -143,9 +156,12 @@ export class MarkerLayerManager {
       style.addLayer(this.layer);
       
       this.initialized = true;
-      console.info('MarkerLayerManager initialized successfully');
+      console.info('[MarkerLayerManager] Initialized successfully');
     } catch (error) {
-      console.error(`Failed to initialize MarkerLayerManager: ${error}`);
+      console.error(`[MarkerLayerManager] Failed to initialize: ${error}`);
+      this.initialized = false;
+      this.source = null;
+      this.layer = null;
       throw new Error(String(error));
     }
   }
@@ -160,7 +176,8 @@ export class MarkerLayerManager {
     
     // Icon 图像：TODO: 等待 NAPI 支持 Expression，暂时使用默认值
     // 理想: layer.setIconImage(Expression.get<string>('icon'));
-    layer.setIconImage('marker-default');
+    // 使用 IconFactory 中定义的默认图标ID
+    layer.setIconImage(IconFactory.DEFAULT_MARKER_ICON_ID);
     
     // Icon 大小：默认 1.0
     layer.setIconSize(1.0);
@@ -188,7 +205,10 @@ export class MarkerLayerManager {
    * 添加 Marker
    */
   public addMarker(marker: Marker): number {
-    if (!this.initialized) {
+    // 确保已初始化且 source/layer 存在
+    if (!this.initialized || !this.source || !this.layer) {
+      console.warn('[MarkerLayerManager] Re-initializing due to missing source/layer');
+      this.initialized = false;  // 重置标志以便重新初始化
       this.initialize();
     }
     
@@ -208,7 +228,10 @@ export class MarkerLayerManager {
    * 批量添加 Markers
    */
   public addMarkers(markers: Marker[]): number[] {
-    if (!this.initialized) {
+    // 确保已初始化且 source/layer 存在
+    if (!this.initialized || !this.source || !this.layer) {
+      console.warn('[MarkerLayerManager] Re-initializing due to missing source/layer');
+      this.initialized = false;  // 重置标志以便重新初始化
       this.initialize();
     }
     
@@ -328,7 +351,8 @@ export class MarkerLayerManager {
    */
   private updateSource(): void {
     if (!this.source) {
-      console.error('Source not initialized');
+      console.error('[MarkerLayerManager] Source not initialized, resetting initialized flag');
+      this.initialized = false;  // 重置标志，下次添加时会重新初始化
       return;
     }
     

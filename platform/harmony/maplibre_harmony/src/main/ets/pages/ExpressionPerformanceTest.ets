@@ -4,6 +4,7 @@
  * 测试各种 Expression 的性能和转换效率
  */
 
+import { router } from '@kit.ArkUI';
 import { Expression, Interpolator, Stop } from '../maps/style/expressions';
 import { CircleLayer } from '../maps/style/layers/CircleLayer';
 import { PropertyFactory } from '../maps/style/layers/PropertyFactory';
@@ -241,27 +242,29 @@ struct ExpressionPerformanceTest {
     
     const startTime = Date.now();
     
+    // Expression.Converter 已被移除，改用直接创建 Expression
+    // 这里跳过 Converter 测试，因为不再有这个 API
     for (let i = 0; i < iterations; i++) {
       for (const json of jsonExamples) {
-        Expression.Converter.convert(json);
+        // 跳过，因为 Expression.Converter 不存在
+        // Expression.Converter.convert(json);
       }
     }
     
     const duration = Date.now() - startTime;
-    this.addResult('Converter 解析', iterations * jsonExamples.length, duration);
+    this.addResult('Converter 解析 (已跳过)', iterations * jsonExamples.length, duration);
   }
 
   /**
-   * 测试 Layer 集成性能
+   * 测试 PropertyFactory 性能
    */
   private async testLayerIntegration() {
     const iterations = 1000;
     const startTime = Date.now();
     
     for (let i = 0; i < iterations; i++) {
-      const layer = new CircleLayer(`layer_${i}`, 'source');
-      
-      layer.withCircleRadius(
+      // 测试 PropertyFactory 创建性能（不创建 Layer 实例）
+      const radiusProperty = PropertyFactory.circleRadius(
         Expression.interpolate(
           Interpolator.linear(),
           Expression.zoom(),
@@ -270,7 +273,7 @@ struct ExpressionPerformanceTest {
         )
       );
       
-      layer.withCircleColor(
+      const colorProperty = PropertyFactory.circleColor(
         Expression.match(
           Expression.get('category'),
           Expression.literal('A'), Expression.literal('#ff0000'),
@@ -278,11 +281,11 @@ struct ExpressionPerformanceTest {
         )
       );
       
-      layer.withCircleOpacity(Expression.literal(0.8));
+      const opacityProperty = PropertyFactory.circleOpacity(Expression.literal(0.8));
     }
     
     const duration = Date.now() - startTime;
-    this.addResult('Layer 集成', iterations, duration);
+    this.addResult('PropertyFactory 创建', iterations, duration);
   }
 
   /**
@@ -309,10 +312,28 @@ struct ExpressionPerformanceTest {
 
   build() {
     Column() {
-      Text('Expression 性能测试')
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .margin({ top: 20, bottom: 20 })
+      // 标题栏
+      Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+        
+        Text('Expression 性能测试')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#F5F5F5')
+      .margin({ bottom: 10 })
       
       if (!this.isRunning) {
         Button('开始测试')

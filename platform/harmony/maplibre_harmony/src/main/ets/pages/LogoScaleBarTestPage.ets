@@ -12,8 +12,10 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
+import { CameraPosition, createCameraPosition } from '../maps/camera/CameraPosition';
 import { LogoView } from '../maps/widgets/LogoView';
 import { ScaleBarView, ScaleBarUnit } from '../maps/widgets/ScaleBarView';
 import { CompassPosition } from '../maps/widgets/CompassPosition';
@@ -23,9 +25,6 @@ import { UiSettings } from '../maps/UiSettings';
 @Entry
 @Component
 struct LogoScaleBarTestPage {
-  // XComponent 控制器
-  private xComponentController: XComponentController = new XComponentController();
-  
   // 地图相关
   @State private mapLibreMap: MapLibreMap | null = null;
   @State private isMapReady: boolean = false;
@@ -52,38 +51,40 @@ struct LogoScaleBarTestPage {
     }
   }
   
-  private initMap(surfaceId: string): void {
+  private onMapReady(nativeMapView?: maplibre.NativeMapView): void {
     try {
-      hilog.info(DOMAIN, 'LogoScaleBarTestPage', `Initializing map with surfaceId: ${surfaceId}`);
+      hilog.info(DOMAIN, 'LogoScaleBarTestPage', 'Initializing map');
       
-      const nativeMapView = new maplibre.NativeMapView(surfaceId);
+      if (!nativeMapView) {
+        hilog.error(DOMAIN, 'LogoScaleBarTestPage', 'NativeMapView is null');
+        return;
+      }
+      
+      const latLng = new maplibre.LatLng(30.2741, 120.1551);
+      const cameraPos = createCameraPosition(latLng, 12, 0, 0);
       const options = new MapLibreMapOptions();
+      options.cameraPosition = cameraPos;
       options.styleUrl = 'https://demotiles.maplibre.org/style.json';
       
-      const map = new MapLibreMap(nativeMapView, options);
-      this.mapLibreMap = map;
-      
-      // 设置初始视图
-      map.setLatLng(30.2741, 120.1551, undefined, 0);
-      map.setZoom(12, undefined, undefined, 0);
+      this.mapLibreMap = new MapLibreMap(nativeMapView, options);
       
       // 设置 ScaleBar 更新回调
-      map.onScaleBarUpdate = (metersPerPixel: number) => {
+      this.mapLibreMap.onScaleBarUpdate = (metersPerPixel: number) => {
         this.metersPerPixel = metersPerPixel;
       };
       
       // 配置 UiSettings
-      const uiSettings = map.getUiSettings();
+      const uiSettings = this.mapLibreMap.getUiSettings();
       this.setupUiSettings(uiSettings);
       
       // 初始化 ScaleBar
-      this.metersPerPixel = map.getMetersPerPixelAtLatitude(map.getLatLng().latitude);
+      this.metersPerPixel = this.mapLibreMap.getMetersPerPixelAtLatitude(this.mapLibreMap.getLatLng().latitude);
       
       this.isMapReady = true;
       hilog.info(DOMAIN, 'LogoScaleBarTestPage', 'Map initialized successfully');
       
     } catch (error) {
-      hilog.error(DOMAIN, 'LogoScaleBarTestPage', `Failed to initialize map: ${error.message}`);
+      hilog.error(DOMAIN, 'LogoScaleBarTestPage', `Failed to initialize map: ${error}`);
     }
   }
   
@@ -112,56 +113,90 @@ struct LogoScaleBarTestPage {
     };
   }
   
-  private getLogoPositionStyle(): Position {
-    const positionStyle: Position = {};
+  private getLogoX(): number {
     const margin = 10;
-    
     switch (this.logoPosition) {
       case CompassPosition.TopLeft:
-        positionStyle.top = margin;
-        positionStyle.left = margin;
-        break;
-      case CompassPosition.TopRight:
-        positionStyle.top = margin;
-        positionStyle.right = margin;
-        break;
       case CompassPosition.BottomLeft:
-        positionStyle.bottom = margin + 80;
-        positionStyle.left = margin;
-        break;
+        return margin;
+      case CompassPosition.TopRight:
       case CompassPosition.BottomRight:
-        positionStyle.bottom = margin + 80;
-        positionStyle.right = margin;
-        break;
+        return -margin;
+      default:
+        return margin;
     }
-    
-    return positionStyle;
   }
   
-  private getScaleBarPositionStyle(): Position {
-    const positionStyle: Position = {};
+  private getLogoY(): number {
     const margin = 10;
-    
+    switch (this.logoPosition) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.TopRight:
+        return margin;
+      case CompassPosition.BottomLeft:
+      case CompassPosition.BottomRight:
+        return -margin - 80;
+      default:
+        return margin;
+    }
+  }
+  
+  private getLogoAlignment(): Alignment {
+    switch (this.logoPosition) {
+      case CompassPosition.TopLeft:
+        return Alignment.TopStart;
+      case CompassPosition.TopRight:
+        return Alignment.TopEnd;
+      case CompassPosition.BottomLeft:
+        return Alignment.BottomStart;
+      case CompassPosition.BottomRight:
+        return Alignment.BottomEnd;
+      default:
+        return Alignment.BottomStart;
+    }
+  }
+  
+  private getScaleBarX(): number {
+    const margin = 10;
     switch (this.scaleBarPosition) {
       case CompassPosition.TopLeft:
-        positionStyle.top = margin;
-        positionStyle.left = margin;
-        break;
-      case CompassPosition.TopRight:
-        positionStyle.top = margin;
-        positionStyle.right = margin;
-        break;
       case CompassPosition.BottomLeft:
-        positionStyle.bottom = margin + 80;
-        positionStyle.left = margin;
-        break;
+        return margin;
+      case CompassPosition.TopRight:
       case CompassPosition.BottomRight:
-        positionStyle.bottom = margin + 80;
-        positionStyle.right = margin;
-        break;
+        return -margin;
+      default:
+        return margin;
     }
-    
-    return positionStyle;
+  }
+  
+  private getScaleBarY(): number {
+    const margin = 10;
+    switch (this.scaleBarPosition) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.TopRight:
+        return margin;
+      case CompassPosition.BottomLeft:
+      case CompassPosition.BottomRight:
+        return -margin - 80;
+      default:
+        return margin;
+    }
+  }
+  
+  private getScaleBarAlignment(): Alignment {
+    switch (this.scaleBarPosition) {
+      case CompassPosition.TopLeft:
+        return Alignment.TopStart;
+      case CompassPosition.TopRight:
+        return Alignment.TopEnd;
+      case CompassPosition.BottomLeft:
+        return Alignment.BottomStart;
+      case CompassPosition.BottomRight:
+        return Alignment.BottomEnd;
+      default:
+        return Alignment.BottomEnd;
+    }
   }
   
   build() {
@@ -170,150 +205,163 @@ struct LogoScaleBarTestPage {
       Row() {
         Button('返回')
           .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
           .onClick(() => {
             router.back();
           })
+          .margin({ left: 5 })
         
         Text('Logo & ScaleBar 测试')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
-        
-        Row().width(60)
+          .margin({ right: 60 })
       }
       .width('100%')
       .height(56)
-      .padding({ left: 10, right: 10 })
-      .backgroundColor('#2196F3')
-      .justifyContent(FlexAlign.SpaceBetween)
+      .backgroundColor('#F5F5F5')
       
-      // 地图容器
+      // 地图区域（60%）
       Stack() {
         // 地图视图
-        XComponent({
-          id: 'logo-scalebar-test-map',
-          type: XComponentType.SURFACE,
-          controller: this.xComponentController
+        NativeMapView({
+        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+          this.onMapReady(nativeMapView);
+        }
         })
           .width('100%')
           .height('100%')
-          .onLoad(() => {
-            hilog.info(DOMAIN, 'LogoScaleBarTestPage', 'XComponent loaded');
-            const surfaceId = this.xComponentController.getXComponentSurfaceId();
-            this.initMap(surfaceId);
-          })
         
         // Logo 组件
         if (this.logoEnabled && this.isMapReady) {
           LogoView({
-            enabled: this.logoEnabled,
+            logoEnabled: this.logoEnabled,
             logoWidth: 50,
             logoHeight: 30
           })
-            .position(this.getLogoPositionStyle())
+            .offset({ x: this.getLogoX(), y: this.getLogoY() })
         }
         
         // ScaleBar 组件
         if (this.scaleBarEnabled && this.isMapReady) {
           ScaleBarView({
-            enabled: this.scaleBarEnabled,
+            isEnabled: this.scaleBarEnabled,
             metersPerPixel: this.metersPerPixel,
             unitSystem: this.scaleBarUnit,
             useDarkStyles: this.scaleBarUseDarkStyles
           })
-            .position(this.getScaleBarPositionStyle())
+            .offset({ x: this.getScaleBarX(), y: this.getScaleBarY() })
         }
-        
-        // 控制面板
+      }
+      .width('100%')
+      .height('60%')
+      .alignContent(this.getLogoAlignment())
+      
+      // 测试按钮区域（40%，可滚动）
+      Scroll() {
         Column() {
+          // 状态信息
           Text(`比例: 1 px = ${this.metersPerPixel.toFixed(2)} m`)
-            .fontSize(12)
-            .fontColor(Color.White)
-            .backgroundColor('#000000AA')
-            .padding(6)
-            .borderRadius(4)
-            .margin({ bottom: 10 })
+            .fontSize(14)
+            .width('100%')
+            .padding(12)
+            .backgroundColor('#F8F8F8')
+            .margin({ bottom: 8 })
           
-          Column() {
-            Text('Logo 配置')
+          // Logo 配置
+          Text('Logo 配置')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Row() {
+            Text('显示 Logo:')
               .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .margin({ bottom: 8 })
-            
-            Row() {
-              Text('显示 Logo:')
-                .fontSize(12)
-                .layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.logoEnabled })
-                .onChange((isOn: boolean) => {
-                  this.logoEnabled = isOn;
-                  if (this.mapLibreMap) {
-                    this.mapLibreMap.getUiSettings().setLogoEnabled(isOn);
-                  }
-                })
-            }
-            .width('100%')
-            .padding(4)
-            
-            Divider().margin({ top: 8, bottom: 8 })
-            
-            Text('ScaleBar 配置')
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .margin({ bottom: 8 })
-            
-            Row() {
-              Text('显示比例尺:')
-                .fontSize(12)
-                .layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.scaleBarEnabled })
-                .onChange((isOn: boolean) => {
-                  this.scaleBarEnabled = isOn;
-                  if (this.mapLibreMap) {
-                    this.mapLibreMap.getUiSettings().setScaleBarEnabled(isOn);
-                  }
-                })
-            }
-            .width('100%')
-            .padding(4)
-            
-            Row() {
-              Text('深色样式:')
-                .fontSize(12)
-                .layoutWeight(1)
-              Toggle({ type: ToggleType.Switch, isOn: this.scaleBarUseDarkStyles })
-                .onChange((isOn: boolean) => {
-                  this.scaleBarUseDarkStyles = isOn;
-                  if (this.mapLibreMap) {
-                    this.mapLibreMap.getUiSettings().setScaleBarUseDarkStyles(isOn);
-                  }
-                })
-            }
-            .width('100%')
-            .padding(4)
-            
-            Button(`单位: ${this.scaleBarUnit === ScaleBarUnit.Metric ? '公制' : '英制'}`)
-              .fontSize(12)
-              .width('100%')
-              .margin({ top: 8 })
-              .onClick(() => {
-                this.scaleBarUnit = this.scaleBarUnit === ScaleBarUnit.Metric 
-                  ? ScaleBarUnit.Imperial 
-                  : ScaleBarUnit.Metric;
+              .layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.logoEnabled })
+              .onChange((isOn: boolean) => {
+                this.logoEnabled = isOn;
                 if (this.mapLibreMap) {
-                  this.mapLibreMap.getUiSettings().setScaleBarUnit(this.scaleBarUnit);
+                  this.mapLibreMap.getUiSettings().setLogoEnabled(isOn);
                 }
               })
           }
-          .backgroundColor('#FFFFFFDD')
-          .borderRadius(8)
+          .width('100%')
           .padding(12)
+          .backgroundColor('#FFFFFF')
+          .border({ width: 1, color: '#E0E0E0' })
+          .borderRadius(4)
+          .margin({ bottom: 12 })
+          
+          Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
+          
+          // ScaleBar 配置
+          Text('ScaleBar 配置')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+            .margin({ bottom: 8 })
+          
+          Row() {
+            Text('显示比例尺:')
+              .fontSize(14)
+              .layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.scaleBarEnabled })
+              .onChange((isOn: boolean) => {
+                this.scaleBarEnabled = isOn;
+                if (this.mapLibreMap) {
+                  this.mapLibreMap.getUiSettings().setScaleBarEnabled(isOn);
+                }
+              })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#FFFFFF')
+          .border({ width: 1, color: '#E0E0E0' })
+          .borderRadius(4)
+          .margin({ bottom: 8 })
+          
+          Row() {
+            Text('深色样式:')
+              .fontSize(14)
+              .layoutWeight(1)
+            Toggle({ type: ToggleType.Switch, isOn: this.scaleBarUseDarkStyles })
+              .onChange((isOn: boolean) => {
+                this.scaleBarUseDarkStyles = isOn;
+                if (this.mapLibreMap) {
+                  this.mapLibreMap.getUiSettings().setScaleBarUseDarkStyles(isOn);
+                }
+              })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#FFFFFF')
+          .border({ width: 1, color: '#E0E0E0' })
+          .borderRadius(4)
+          .margin({ bottom: 8 })
+          
+          Button(`单位: ${this.scaleBarUnit === ScaleBarUnit.Metric ? '公制' : '英制'}`)
+            .fontSize(14)
+            .width('100%')
+            .margin({ top: 4 })
+            .onClick(() => {
+              this.scaleBarUnit = this.scaleBarUnit === ScaleBarUnit.Metric 
+                ? ScaleBarUnit.Imperial 
+                : ScaleBarUnit.Metric;
+              if (this.mapLibreMap) {
+                this.mapLibreMap.getUiSettings().setScaleBarUnit(this.scaleBarUnit);
+              }
+            })
         }
-        .width('90%')
-        .position({ bottom: 10, left: '5%' })
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .width('100%')
       }
-      .layoutWeight(1)
+      .width('100%')
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')

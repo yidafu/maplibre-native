@@ -4,11 +4,18 @@
  * 展示 Expression 在实际地图应用中的典型使用场景
  */
 
+import { router } from '@kit.ArkUI';
 import { Expression, Interpolator } from '../maps/style/expressions';
 import { CircleLayer } from '../maps/style/layers/CircleLayer';
 import { SymbolLayer } from '../maps/style/layers/SymbolLayer';
 import { FillLayer } from '../maps/style/layers/FillLayer';
 import { LineLayer } from '../maps/style/layers/LineLayer';
+
+// 示例项接口
+interface ExampleItem {
+  title: string;
+  description: string;
+}
 
 @Entry
 @Component
@@ -16,7 +23,7 @@ struct ExpressionRealWorldExamples {
   @State selectedExample: number = 0;
   @State exampleCode: string = '';
 
-  private examples = [
+  private examples: ExampleItem[] = [
     { title: '🏙️ 城市人口地图', description: '根据人口数量显示不同大小和颜色的城市标记' },
     { title: '🚗 实时交通状态', description: '根据交通状况显示不同颜色的道路' },
     { title: '🏪 POI 分类显示', description: '根据类型显示不同图标和样式的兴趣点' },
@@ -69,42 +76,8 @@ struct ExpressionRealWorldExamples {
    * 场景 1：城市人口地图
    */
   private getCityPopulationExample(): string {
-    const layer = new CircleLayer('cities', 'cities-source');
-    
-    // 圆圈大小根据人口数量插值
-    layer.withCircleRadius(
-      Expression.interpolate(
-        Interpolator.exponential(Expression.literal(1.5)),
-        Expression.get<number>('population'),
-        Expression.literal(10000), Expression.literal(4),      // 1万人 → 4px
-        Expression.literal(100000), Expression.literal(8),     // 10万人 → 8px
-        Expression.literal(1000000), Expression.literal(16),   // 100万人 → 16px
-        Expression.literal(10000000), Expression.literal(32)   // 1000万人 → 32px
-      )
-    );
-    
-    // 颜色根据人口阶梯变化
-    layer.withCircleColor(
-      Expression.step(
-        Expression.get<number>('population'),
-        Expression.literal('#ffffb2'),         // < 10万：浅黄
-        Expression.literal(100000), Expression.literal('#fecc5c'),   // 10-50万：黄
-        Expression.literal(500000), Expression.literal('#fd8d3c'),   // 50-100万：橙
-        Expression.literal(1000000), Expression.literal('#f03b20'),  // 100-500万：红
-        Expression.literal(5000000), Expression.literal('#bd0026')   // > 500万：深红
-      )
-    );
-    
-    // 透明度随缩放级别变化
-    layer.withCircleOpacity(
-      Expression.interpolate(
-        Interpolator.linear(),
-        Expression.zoom(),
-        Expression.literal(4), Expression.literal(0.3),   // zoom 4 → 30%
-        Expression.literal(8), Expression.literal(0.8),   // zoom 8 → 80%
-        Expression.literal(12), Expression.literal(1.0)   // zoom 12 → 100%
-      )
-    );
+    // 注意：CircleLayer 现在只是 NAPI 类型别名，需要通过地图 API 创建
+    // 这里只返回示例代码字符串
     
     return `// 🏙️ 城市人口地图示例
 // 根据人口数量动态调整标记大小、颜色和透明度
@@ -573,14 +546,32 @@ ratingLayer.setIconSize(
 
   build() {
     Column() {
-      Text('Expression 真实场景示例')
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .margin({ top: 20, bottom: 20 })
+      // 标题栏
+      Row() {
+        Button('返回')
+          .fontSize(16)
+          .backgroundColor(Color.Transparent)
+          .fontColor('#2196F3')
+          .onClick(() => {
+            router.back();
+          })
+          .margin({ left: 5 })
+        
+        Text('Expression 真实场景示例')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .layoutWeight(1)
+          .textAlign(TextAlign.Center)
+          .margin({ right: 60 })
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#F5F5F5')
+      .margin({ bottom: 10 })
       
       // 场景选择列表
       List() {
-        ForEach(this.examples, (example: { title: string, description: string }, index: number) => {
+        ForEach(this.examples, (example: ExampleItem, index: number) => {
           ListItem() {
             Column() {
               Text(example.title)
@@ -607,7 +598,7 @@ ratingLayer.setIconSize(
             this.generateExampleCode(index);
           })
           .margin({ bottom: 10 })
-        }, (example: { title: string }, index: number) => `${index}`)
+        }, (example: ExampleItem, index: number) => `${index}`)
       }
       .width('100%')
       .height('40%')

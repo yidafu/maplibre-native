@@ -57,7 +57,6 @@ void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
     // 防抖：如果已经有待处理的帧请求，忽略新请求
     bool expected = false;
     if (!frameRequested_.compare_exchange_strong(expected, true)) {
-        Logger::debug("HarmonyVSyncManager", "requestFrame() - 已有待处理的帧请求，跳过（防抖）");
         return;
     }
     
@@ -79,8 +78,6 @@ void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
         frameRequested_ = false;  // 重置标志
         return;
     }
-    
-    Logger::debug("HarmonyVSyncManager", "✅ VSync frame requested successfully");
 }
 
 void HarmonyVSyncManager::stop() {
@@ -103,8 +100,6 @@ void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
         return;
     }
     
-    Logger::debug("HarmonyVSyncManager", "⏰ VSync callback fired - timestamp=%lld ns", timestamp);
-    
     // 重置帧请求标志
     manager->frameRequested_ = false;
     
@@ -125,9 +120,7 @@ void HarmonyVSyncManager::executeCallback() {
     // 执行回调
     if (callback) {
         try {
-            Logger::debug("HarmonyVSyncManager", "🎬 Executing VSync callback");
             callback();
-            Logger::debug("HarmonyVSyncManager", "✅ VSync callback completed");
         } catch (const std::exception& e) {
             Logger::error("HarmonyVSyncManager", "Exception in VSync callback: %s", e.what());
         }

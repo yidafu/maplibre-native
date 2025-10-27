@@ -29,6 +29,15 @@ const TAG = 'MapGestureDetector';
 const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
 const ROTATION_RATE = 0.2;  // 旋转速率系数 - 调节旋转速度（越小越慢，0.4 = 40%原速）
 
+// Android 缩放惯性动画常量（参考 MapLibreConstants.java）
+const MAX_ABSOLUTE_SCALE_VELOCITY_CHANGE = 2.5;  // 最大缩放速度变化
+const SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER = 150;  // 动画时长乘数（毫秒）
+const MIN_SCALE_VELOCITY_THRESHOLD = 0.5;  // 最小速度阈值，低于此值不触发惯性
+
+// Android 旋转惯性动画常量（参考 MapLibreConstants.java）
+const MAXIMUM_ANGULAR_VELOCITY = 30;  // 最大角速度（度/秒）
+const MIN_ANGULAR_VELOCITY_THRESHOLD = 5;  // 最小角速度阈值（度/秒）
+
 /**
  * 地图手势检测器类
  */
@@ -55,6 +64,10 @@ export class MapGestureDetector {
   
   // 手势互斥控制（参考 Android disableRotateWhenScaling）
   private shouldIgnoreRotation: boolean = false;
+  
+  // 缩放结束时间戳（用于判断 Pan Fling 是否应该被禁用）
+  private lastScaleEndTimestamp: number = 0;
+  private readonly SCALE_END_GRACE_PERIOD = 100; // 缩放结束后 100ms 内禁用 Pan Fling
 
   // 缩放相关状态
   private currentScale: number = 1.0;
@@ -390,6 +403,23 @@ export class MapGestureDetector {
 
     hilog.debug(DOMAIN, TAG, 'Pan gesture ended');
 
+    // 🔧 关键修复：如果正在缩放或刚刚完成缩放，禁用 Pan 的 Fling 动画
+    // 避免缩放时的手指移动被误认为是平移手势，触发不必要的 Fling
+    const timeSinceScaleEnd = Date.now() - this.lastScaleEndTimestamp;
+    if (this.isScaling || timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD) {
+      hilog.info(DOMAIN, TAG, `Pan Fling ignored - scaling ${this.isScaling ? 'in progress' : `ended ${timeSinceScaleEnd}ms ago`}`);
+      this.isMoving = false;
+      
+      // 设置手势完成
+      if (this.mapController) {
+        this.mapController.setGestureInProgress(false);
+      }
+      
+      // 通知监听器
+      this.notifyMoveEnd();
+      return;
+    }
+
     // 检查是否应该播放惯性动画（Fling）
     if (this.uiSettings.isFlingVelocityAnimationEnabled() && 
         this.panVelocityTracker.hasEnoughData()) {
@@ -514,11 +544,12 @@ export class MapGestureDetector {
     const now = Date.now();
     this.scaleVelocityTracker.addSample(this.currentScale, 0, now);
 
-    // 获取焦点
-    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    // 🔧 修复漂移问题：使用缩放开始时的固定初始焦点，整个缩放过程保持锚点不变
+    // 避免因手指移动导致的锚点偏移
+    const focalPoint = this.getFocalPoint(this.previousPinchCenterX, this.previousPinchCenterY);
     
-    hilog.info(DOMAIN, TAG, `[Pinch Update] Focal point: (${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
-                            `Pinch center: (${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)})`);
+    hilog.info(DOMAIN, TAG, `[Pinch Update] FIXED anchor: (${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+                            `Current pinch center: (${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)})`);
 
     // 使用增量式缩放（类似 Android 的 transform.zoomBy）
     if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
@@ -532,7 +563,7 @@ export class MapGestureDetector {
       
       hilog.info(DOMAIN, TAG, `[Pinch Update] currentZoom=${currentZoom.toFixed(4)}, ` +
                               `newZoom=${newZoom.toFixed(4)}, ` +
-                              `logicalAnchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+                              `fixedAnchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
                               `pixelRatio=${pixelRatio.toFixed(2)}, ` +
                               `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
       
@@ -547,6 +578,69 @@ export class MapGestureDetector {
   }
 
   /**
+   * 计算缩放惯性动画的 zoom 增量
+   * 参考 Android MapGestureDetector.calculateScale()
+   * @param velocityXY 速度大小（绝对值）
+   * @param isScalingOut 是否缩小
+   * @returns zoom 增量
+   */
+  private calculateScaleZoomDelta(velocityXY: number, isScalingOut: boolean): number {
+    // 对数计算，速度越大增量越大，但增长率递减
+    // log(velocityXY / 4 + 1) * ZOOM_RATE
+    let zoomAddition = Math.log(velocityXY / 4 + 1) * ZOOM_RATE;
+    
+    if (isScalingOut) {
+      zoomAddition = -zoomAddition;
+    }
+    
+    // 限制最大/最小变化量（参考 Android MathUtils.clamp）
+    return Math.max(-MAX_ABSOLUTE_SCALE_VELOCITY_CHANGE, 
+                    Math.min(MAX_ABSOLUTE_SCALE_VELOCITY_CHANGE, zoomAddition));
+  }
+
+  /**
+   * 计算缩放惯性动画时长
+   * 参考 Android MapGestureDetector.onScaleEnd()
+   * @param zoomDelta zoom 增量
+   * @returns 动画时长（毫秒）
+   */
+  private calculateScaleAnimationDuration(zoomDelta: number): number {
+    // (log(|zoomDelta| + 1/e^2) + 2) * SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER
+    const duration = (Math.log(Math.abs(zoomDelta) + 1 / Math.pow(Math.E, 2)) + 2) 
+                     * SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER;
+    
+    // 限制在合理范围 100ms - 1000ms
+    return Math.max(100, Math.min(1000, duration));
+  }
+
+  /**
+   * 限制角速度到合理范围
+   * 参考 Android MathUtils.clamp
+   * @param angularVelocity 角速度（度/秒）
+   * @returns 限制后的角速度
+   */
+  private clampAngularVelocity(angularVelocity: number): number {
+    return Math.max(-MAXIMUM_ANGULAR_VELOCITY, 
+                    Math.min(MAXIMUM_ANGULAR_VELOCITY, angularVelocity));
+  }
+
+  /**
+   * 计算旋转惯性动画时长
+   * 参考 Android MapGestureDetector.onRotateEnd()
+   * @param angularVelocity 角速度（度/秒）
+   * @returns 动画时长（毫秒）
+   */
+  private calculateRotateAnimationDuration(angularVelocity: number): number {
+    // 使用与缩放相同的对数公式
+    // (log(|angularVelocity| + 1/e^2) + 2) * SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER
+    const duration = (Math.log(Math.abs(angularVelocity) + 1 / Math.pow(Math.E, 2)) + 2) 
+                     * SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER;
+    
+    // 限制在合理范围 100ms - 1000ms
+    return Math.max(100, Math.min(1000, duration));
+  }
+
+  /**
    * 缩放手势结束
    */
   onPinchEnd(event: GestureEvent): void {
@@ -556,29 +650,36 @@ export class MapGestureDetector {
 
     hilog.info(DOMAIN, TAG, `========== Pinch gesture ended, final scale: ${this.currentScale.toFixed(4)} ==========`);
 
-    // 获取最终焦点（用于惯性动画）
-    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    // 🔧 修复漂移问题：使用缩放开始时的初始焦点，而不是结束时的焦点
+    // 避免因手指在缩放过程中移动导致的锚点偏移
+    const focalPoint = this.getFocalPoint(this.previousPinchCenterX, this.previousPinchCenterY);
 
-    // 检查是否应该播放惯性动画
+    // 🔧 Android 风格的缩放惯性动画（完整重写）
+    // 参考：MapGestureDetector.java onScaleEnd() 方法
     if (this.uiSettings.isScaleVelocityAnimationEnabled() && 
         this.scaleVelocityTracker.hasEnoughData()) {
       
       const velocity = this.scaleVelocityTracker.getVelocity();
-      const scaleVelocity = velocity.vx;  // 只使用 X 分量
+      const scaleVelocity = velocity.vx;  // 使用 X 分量表示缩放速度
       
       hilog.info(DOMAIN, TAG, `[Pinch End] Scale velocity: ${scaleVelocity.toFixed(3)}`);
       
-      // 检查速度阈值
-      if (Math.abs(scaleVelocity) >= this.uiSettings.getMinScaleVelocity() &&
-          Math.abs(scaleVelocity) > 0.1) {
+      // ✅ Android 风格：检查速度阈值（使用常量而非 UiSettings）
+      if (Math.abs(scaleVelocity) < MIN_SCALE_VELOCITY_THRESHOLD) {
+        hilog.info(DOMAIN, TAG, `[Pinch End] Velocity too small (${Math.abs(scaleVelocity).toFixed(3)} < ${MIN_SCALE_VELOCITY_THRESHOLD}), skipping inertia`);
+      } else {
+        // ✅ 判断是放大还是缩小
+        const isScalingOut = scaleVelocity < 0;
+        const velocityXY = Math.abs(scaleVelocity);
         
-        // 计算动画时长
-        const duration = this.uiSettings.getDecelerationRate() * 1000;
+        // ✅ 使用 Android 算法计算 zoom 增量（对数缩放）
+        const zoomDelta = this.calculateScaleZoomDelta(velocityXY, isScalingOut);
         
-        // Android 风格：计算缩放增量而非绝对值
-        const zoomDelta = scaleVelocity * duration / 1000 * ZOOM_RATE * this.uiSettings.getZoomRate();
+        // ✅ 使用 Android 算法计算动画时长（根据缩放量动态调整）
+        const duration = this.calculateScaleAnimationDuration(zoomDelta);
         
-        hilog.info(DOMAIN, TAG, `[Pinch End] Scale inertia animation: zoomDelta=${zoomDelta.toFixed(2)}, duration=${duration.toFixed(0)}ms`);
+        hilog.info(DOMAIN, TAG, `[Pinch End] Android-style animation: zoomDelta=${zoomDelta.toFixed(3)}, ` +
+                                `duration=${duration.toFixed(0)}ms, isScalingOut=${isScalingOut}`);
         
         // 执行缩放动画
         if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
@@ -590,8 +691,9 @@ export class MapGestureDetector {
           const scaledAnchorX = focalPoint.x * pixelRatio;
           const scaledAnchorY = focalPoint.y * pixelRatio;
           
-          hilog.info(DOMAIN, TAG, `[Pinch End] currentZoom=${currentZoom.toFixed(4)}, finalZoom=${finalZoom.toFixed(4)}, ` +
-                                  `logicalAnchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
+          hilog.info(DOMAIN, TAG, `[Pinch End] currentZoom=${currentZoom.toFixed(4)}, ` +
+                                  `finalZoom=${finalZoom.toFixed(4)}, ` +
+                                  `fixedAnchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)}), ` +
                                   `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
           
           this.mapController.setZoom(finalZoom, scaledAnchorX, scaledAnchorY, duration);
@@ -600,6 +702,9 @@ export class MapGestureDetector {
     }
 
     this.isScaling = false;
+    
+    // 🔧 记录缩放结束时间戳，用于禁用紧随其后的 Pan Fling
+    this.lastScaleEndTimestamp = Date.now();
     
     // 🔑 参考 Android: 缩放结束，重新启用旋转手势
     this.shouldIgnoreRotation = false;
@@ -769,26 +874,33 @@ export class MapGestureDetector {
     const anchorX = this.rotationAnchorX;
     const anchorY = this.rotationAnchorY;
 
-    // 检查是否应该播放惯性动画
+    // 🔧 Android 风格的旋转惯性动画（完整重写）
+    // 参考：MapGestureDetector.java onRotateEnd() 方法
     if (this.uiSettings.isRotateVelocityAnimationEnabled() && 
         this.rotateVelocityTracker.hasEnoughData()) {
       
       const velocity = this.rotateVelocityTracker.getVelocity();
-      const angularVelocity = velocity.vx;  // 度/秒
+      let angularVelocity = velocity.vx;  // 度/秒
       
-      hilog.info(DOMAIN, TAG, `[Rotate End] Angular velocity: ${angularVelocity.toFixed(2)} deg/s`);
+      hilog.info(DOMAIN, TAG, `[Rotate End] Raw angular velocity: ${angularVelocity.toFixed(2)} deg/s`);
       
-      // 检查速度阈值
-      if (Math.abs(angularVelocity) >= this.uiSettings.getMinRotateVelocity()) {
-        // 计算动画时长
-        const duration = this.uiSettings.getDecelerationRate() * 1000;
+      // ✅ Android 风格：限制角速度到 ±30°/s（参考 MAXIMUM_ANGULAR_VELOCITY）
+      angularVelocity = this.clampAngularVelocity(angularVelocity);
+      
+      hilog.info(DOMAIN, TAG, `[Rotate End] Clamped angular velocity: ${angularVelocity.toFixed(2)} deg/s`);
+      
+      // ✅ 检查速度阈值（使用常量而非 UiSettings）
+      if (Math.abs(angularVelocity) < MIN_ANGULAR_VELOCITY_THRESHOLD) {
+        hilog.info(DOMAIN, TAG, `[Rotate End] Velocity too small (${Math.abs(angularVelocity).toFixed(2)} < ${MIN_ANGULAR_VELOCITY_THRESHOLD}), skipping inertia`);
+      } else {
+        // ✅ 使用 Android 算法计算动画时长（对数公式）
+        const duration = this.calculateRotateAnimationDuration(angularVelocity);
         
-        // 计算最终角度增量（减半作为减速效果，并应用旋转速率系数）
-        const deltaBearing = angularVelocity * duration / 1000 * 0.5 * ROTATION_RATE * this.uiSettings.getRotationRate();
+        // ✅ 计算角度增量（iOS 风格：velocity * duration * 0.1）
+        const deltaBearing = angularVelocity * duration / 1000 * 0.1;
         
-        hilog.info(DOMAIN, TAG, `[Rotate End] Rotate inertia animation: angularVelocity=${angularVelocity.toFixed(2)}°/s, ` +
-                                `deltaBearing=${deltaBearing.toFixed(2)}° (×${ROTATION_RATE}×${this.uiSettings.getRotationRate()}), ` +
-                                `duration=${duration.toFixed(0)}ms`);
+        hilog.info(DOMAIN, TAG, `[Rotate End] Android-style animation: deltaBearing=${deltaBearing.toFixed(2)}°, ` +
+                                `duration=${duration.toFixed(0)}ms, angularVelocity=${angularVelocity.toFixed(2)}°/s`);
         
         // 执行旋转动画
         if (this.mapController && this.mapController.getBearing && this.mapController.setBearingXY) {
@@ -805,7 +917,7 @@ export class MapGestureDetector {
           
           hilog.info(DOMAIN, TAG, `[Rotate End] currentBearing=${currentBearing.toFixed(2)}°, ` +
                                   `finalBearing=${newBearing.toFixed(2)}°, ` +
-                                  `logicalAnchor=(${anchorX.toFixed(1)}, ${anchorY.toFixed(1)}) [FIXED], ` +
+                                  `fixedAnchor=(${anchorX.toFixed(1)}, ${anchorY.toFixed(1)}), ` +
                                   `scaledAnchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
           
           this.mapController.setBearingXY(newBearing, scaledAnchorX, scaledAnchorY, duration);

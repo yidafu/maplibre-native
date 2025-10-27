@@ -44,7 +44,19 @@ public:
         return std::move(layer);
     }
     
-    mbgl::style::HillshadeLayer* getLayer() { return layer.get(); }
+    mbgl::style::HillshadeLayer* getLayer() { 
+        if (!layer && weakLayer) {
+            return static_cast<mbgl::style::HillshadeLayer*>(weakLayer.get());
+        }
+        return layer.get(); 
+    }
+    
+    // Attach to style after adding (creates WeakPtr)
+    void attachToStyle(mbgl::style::HillshadeLayer* layerPtr) {
+        if (layerPtr) {
+            weakLayer = layerPtr->makeWeakPtr();
+        }
+    }
 
 private:
     explicit HillshadeLayerNAPI(const std::string& layerId, const std::string& sourceId);
@@ -52,6 +64,7 @@ private:
     
     static napi_ref constructor;
     std::unique_ptr<mbgl::style::HillshadeLayer> layer;
+    mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };
 
 } // namespace harmony

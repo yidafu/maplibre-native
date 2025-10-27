@@ -212,14 +212,47 @@ struct MarkerTestPage {
   @State annotationViews: AnnotationViewData[] = [];
   @State useCustomView: boolean = false;
   
-  // 测试用的位置
-  private testLocations: LatLng[] = [
-    { latitude: 39.9042, longitude: 116.4074 },  // 北京
-    { latitude: 31.2304, longitude: 121.4737 },  // 上海
-    { latitude: 22.3193, longitude: 114.1694 },  // 深圳
-    { latitude: 30.5728, longitude: 104.0668 },  // 成都
-    { latitude: 34.2634, longitude: 108.9463 },  // 西安
+  // 测试用的位置（使用 LatLng NAPI 类）
+  private testLocations: maplibre.LatLng[] = [
+    new maplibre.LatLng(39.9042, 116.4074),  // 北京
+    new maplibre.LatLng(31.2304, 121.4737),  // 上海
+    new maplibre.LatLng(22.3193, 114.1694),  // 深圳
+    new maplibre.LatLng(30.5728, 104.0668),  // 成都
+    new maplibre.LatLng(34.2634, 108.9463),  // 西安
   ];
+  
+  /**
+   * 生成中国境内的随机经纬度
+   * 中国地理范围约为：
+   * 纬度：18°N - 54°N
+   * 经度：73°E - 135°E
+   */
+  private generateRandomLocationInChina(): maplibre.LatLng {
+    // 中国的大致边界
+    const minLat = 18.0;   // 最南端（海南岛）
+    const maxLat = 54.0;   // 最北端（黑龙江）
+    const minLng = 73.0;   // 最西端（新疆）
+    const maxLng = 135.0;  // 最东端（黑龙江）
+    
+    // 生成随机经纬度
+    const lat = minLat + Math.random() * (maxLat - minLat);
+    const lng = minLng + Math.random() * (maxLng - minLng);
+    
+    return new maplibre.LatLng(lat, lng);
+  }
+  
+  /**
+   * 获取随机中国城市名称
+   */
+  private getRandomCityName(): string {
+    const cities = [
+      '北京', '上海', '广州', '深圳', '杭州', '南京', '苏州', '武汉',
+      '成都', '重庆', '西安', '郑州', '济南', '青岛', '长沙', '福州',
+      '厦门', '昆明', '贵阳', '南宁', '海口', '太原', '石家庄', '哈尔滨',
+      '长春', '沈阳', '大连', '天津', '宁波', '温州', '合肥', '南昌'
+    ];
+    return cities[Math.floor(Math.random() * cities.length)];
+  }
   
   private testMarker: Marker | null = null;
   private markerList: Marker[] = [];
@@ -389,14 +422,15 @@ struct MarkerTestPage {
   /**
    * 添加单个 Marker
    */
-  addSingleMarker() {
+  async addSingleMarker() {
     if (!this.mapLibreMap) {
       this.message = '❌ 地图未初始化';
       return;
     }
     
-    const locationIndex = this.markerCount % this.testLocations.length;
-    const location = this.testLocations[locationIndex];
+    // 使用随机位置而不是固定位置
+    const location = this.generateRandomLocationInChina();
+    const cityName = this.getRandomCityName();
     
     try {
       // [MarkerDebug] 记录地图当前状态
@@ -404,40 +438,29 @@ struct MarkerTestPage {
         const currentPos = this.nativeMapView.getLatLng();
         const currentZoom = this.nativeMapView.getZoom();
         console.info(`[MarkerDebug] TestPage: Current camera - lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
-        console.info(`[MarkerDebug] TestPage: Adding marker at lat=${location.latitude}, lng=${location.longitude}`);
-        
-        // 简单判断是否在视口范围内（粗略估算）
-        const latDiff = Math.abs(currentPos.latitude - location.latitude);
-        const lngDiff = Math.abs(currentPos.longitude - location.longitude);
-        const roughDistance = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
-        const viewportSize = Math.pow(2, 10 - currentZoom); // 粗略估算视口大小
-        
-        if (roughDistance > viewportSize) {
-          console.warn(`[MarkerDebug] TestPage: ⚠️ Marker may be outside viewport (distance=${roughDistance.toFixed(2)}, viewport~${viewportSize.toFixed(2)})`);
-          this.message = `⚠️ Marker 可能在视口外，请缩放或移动地图`;
-        }
+        console.info(`[MarkerDebug] TestPage: Adding random marker at lat=${location.latitude}, lng=${location.longitude}`);
       }
       
-      // 创建带不同样式的 Marker
-      const marker = this.mapLibreMap.addMarker(
+      // 创建带不同样式的 Marker（不设置 icon，将自动使用默认图标）
+      const marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(location)
-          .title(`Marker ${this.markerCount + 1}`)
+          .title(`${cityName} #${this.markerCount + 1}`)
           .snippet(`位置: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`)
           .draggable(true)
-          .alpha(0.9)
-          .rotation(this.markerCount * 15)  // 每个 Marker 不同的旋转角度
+          .alpha(0.85 + Math.random() * 0.15)  // 随机透明度 0.85-1.0
+          .rotation(Math.random() * 360)  // 随机旋转角度
           .zIndex(this.markerCount)
-          // 注意：没有设置 icon，将使用空字符串，可能导致不可见！
+          // ✅ 注意：不设置 icon，将自动使用默认的红色 pin 图标
       );
       
       this.testMarker = marker;
       this.markerList.push(marker);
       this.markerCount++;
       this.lastMarkerPosition = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
-      this.message = `➕ 添加成功: ${marker.getTitle()} (ID: ${marker.getId()}) - 注意：未设置 icon`;
+      this.message = `✅ 添加成功: ${marker.getTitle()} (ID: ${marker.getId()})`;
       
-      console.info(`[MarkerDebug] TestPage: Marker added with ID=${marker.getId()}`);
+      console.info(`[MarkerDebug] TestPage: Random marker added with ID=${marker.getId()} at (${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)})`);
     } catch (e) {
       this.message = `❌ 添加失败: ${e.message}`;
       console.error(`[MarkerDebug] TestPage: ❌ Failed to add marker - ${e.message}`);
@@ -447,7 +470,7 @@ struct MarkerTestPage {
   /**
    * 批量添加 Marker
    */
-  addBatchMarkers() {
+  async addBatchMarkers() {
     if (!this.mapLibreMap) {
       this.message = '❌ 地图未初始化';
       return;
@@ -455,30 +478,35 @@ struct MarkerTestPage {
     
     try {
       const options: MarkerOptions[] = [];
-      const cities = ['北京', '上海', '深圳', '成都', '西安'];
+      const batchSize = 5;  // 每次批量添加5个
       
-      for (let i = 0; i < this.testLocations.length; i++) {
+      // 生成随机位置的markers
+      for (let i = 0; i < batchSize; i++) {
+        const location = this.generateRandomLocationInChina();
+        const cityName = this.getRandomCityName();
+        
         options.push(
           new MarkerOptions()
-            .position(this.testLocations[i])
-            .title(cities[i])
-            .snippet(`批量添加 - ${cities[i]}`)
-            .alpha(0.85)
-            .rotation(i * 72) // 均匀分布旋转角度
-            .zIndex(100 + i)  // 更高的 Z-index
+            .position(location)
+            .title(`${cityName} #${this.markerCount + i + 1}`)
+            .snippet(`批量 - ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`)
+            .alpha(0.85 + Math.random() * 0.15)  // 随机透明度
+            .rotation(Math.random() * 360)  // 随机旋转
+            .zIndex(100 + this.markerCount + i)
             .draggable(true)
+            // ✅ 不设置 icon，将自动使用默认的红色 pin 图标
         );
       }
       
       const startTime = Date.now();
-      const markers = this.mapLibreMap.addMarkersBatch(options);
+      const markers = await this.mapLibreMap.addMarkersBatch(options);
       const endTime = Date.now();
       
       this.markerList.push(...markers);
       this.markerCount += markers.length;
-      this.message = `🚀 批量添加成功: ${markers.length} 个 Marker (耗时: ${endTime - startTime}ms)`;
+      this.message = `✅ 批量添加成功: ${markers.length} 个随机位置 Marker (耗时: ${endTime - startTime}ms)`;
       
-      console.info(`MarkerTestPage: Batch added ${markers.length} markers in ${endTime - startTime}ms`);
+      console.info(`MarkerTestPage: Batch added ${markers.length} markers at random locations in ${endTime - startTime}ms`);
     } catch (e) {
       this.message = `❌ 批量添加失败: ${e.message}`;
       console.error(`MarkerTestPage: Failed to add batch markers - ${e.message}`);
@@ -531,10 +559,10 @@ struct MarkerTestPage {
     }
     
     const currentPos = this.testMarker.getPosition();
-    const targetPos: LatLng = {
-      latitude: currentPos.latitude + 0.5,
-      longitude: currentPos.longitude + 0.5
-    };
+    const targetPos = new maplibre.LatLng(
+      currentPos.latitude + 0.5,
+      currentPos.longitude + 0.5
+    );
     
     this.message = '开始位置动画...';
     
@@ -552,48 +580,98 @@ struct MarkerTestPage {
    * 测试透明度动画
    */
   testAlphaAnimation() {
-    if (!this.testMarker) {
+    if (!this.testMarker || !this.mapLibreMap) {
       this.message = '请先添加一个 Marker';
       return;
     }
     
-    const currentAlpha = this.testMarker.getAlpha();
+    const marker = this.testMarker;
+    const currentAlpha = marker.getAlpha();
     const targetAlpha = currentAlpha > 0.5 ? 0.3 : 1.0;
+    const duration = 1000;  // 1 秒
+    const fps = 60;
+    const steps = Math.floor(duration / (1000 / fps));
+    const deltaAlpha = targetAlpha - currentAlpha;
     
-    this.message = '开始透明度动画...';
+    this.message = `开始透明度动画: ${currentAlpha.toFixed(2)} → ${targetAlpha.toFixed(2)}`;
     
-    // 使用 animateAlpha API
-    this.testMarker.animateAlpha(targetAlpha, 1000, () => {
-      if (this.mapLibreMap) {
-        this.mapLibreMap.updateMarker(this.testMarker!);
+    let currentStep = 0;
+    
+    // 使用定时器实现平滑动画
+    const intervalId = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / steps;
+      
+      if (progress >= 1.0) {
+        // 动画完成
+        marker.setAlpha(targetAlpha);
+        if (this.mapLibreMap) {
+          this.mapLibreMap.updateMarker(marker);
+        }
+        clearInterval(intervalId);
+        this.message = `✅ 透明度动画完成: ${targetAlpha.toFixed(2)}`;
+        console.info('MarkerTestPage: Alpha animation completed');
+        return;
       }
-      this.message = `✅ 透明度动画完成: ${targetAlpha}`;
-      console.info('MarkerTestPage: Alpha animation completed');
-    });
+      
+      // 线性插值
+      const newAlpha = currentAlpha + deltaAlpha * progress;
+      marker.setAlpha(newAlpha);
+      
+      // 更新地图显示
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(marker);
+      }
+    }, 1000 / fps);
   }
   
   /**
    * 测试旋转动画
    */
   testRotationAnimation() {
-    if (!this.testMarker) {
+    if (!this.testMarker || !this.mapLibreMap) {
       this.message = '请先添加一个 Marker';
       return;
     }
     
-    const currentRotation = this.testMarker.getRotation();
+    const marker = this.testMarker;
+    const currentRotation = marker.getRotation();
     const targetRotation = currentRotation + 90;
+    const duration = 1000;  // 1 秒
+    const fps = 60;
+    const steps = Math.floor(duration / (1000 / fps));
+    const deltaRotation = targetRotation - currentRotation;
     
-    this.message = '开始旋转动画...';
+    this.message = `开始旋转动画: ${currentRotation.toFixed(1)}° → ${targetRotation.toFixed(1)}°`;
     
-    // 使用 animateRotation API
-    this.testMarker.animateRotation(targetRotation, 1000, () => {
-      if (this.mapLibreMap) {
-        this.mapLibreMap.updateMarker(this.testMarker!);
+    let currentStep = 0;
+    
+    // 使用定时器实现平滑动画
+    const intervalId = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / steps;
+      
+      if (progress >= 1.0) {
+        // 动画完成
+        marker.setRotation(targetRotation);
+        if (this.mapLibreMap) {
+          this.mapLibreMap.updateMarker(marker);
+        }
+        clearInterval(intervalId);
+        this.message = `✅ 旋转动画完成: ${targetRotation.toFixed(1)}°`;
+        console.info('MarkerTestPage: Rotation animation completed');
+        return;
       }
-      this.message = `✅ 旋转动画完成: ${targetRotation}°`;
-      console.info('MarkerTestPage: Rotation animation completed');
-    });
+      
+      // 线性插值
+      const newRotation = currentRotation + deltaRotation * progress;
+      marker.setRotation(newRotation);
+      
+      // 更新地图显示
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(marker);
+      }
+    }, 1000 / fps);
   }
   
   build() {
@@ -603,7 +681,7 @@ struct MarkerTestPage {
         Button('返回')
           .fontSize(16)
           .backgroundColor(Color.Transparent)
-          .fontColor('#1E88E5')
+          .fontColor('#2196F3')
           .onClick(() => {
             router.back();
           })
@@ -612,17 +690,15 @@ struct MarkerTestPage {
         Text('Marker 功能测试')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
-          .fontColor(Color.White)
           .layoutWeight(1)
           .textAlign(TextAlign.Center)
           .margin({ right: 60 })
       }
       .width('100%')
-      .height(50)
-      .backgroundColor('#1E88E5')
-      .justifyContent(FlexAlign.Start)
+      .height(56)
+      .backgroundColor('#F5F5F5')
       
-      // 地图视图容器
+      // 地图区域（60%）
       Stack() {
         // 使用 NativeMapView 组件
         NativeMapView({
@@ -643,7 +719,7 @@ struct MarkerTestPage {
             LoadingProgress()
               .width(50)
               .height(50)
-              .color('#1E88E5')
+              .color('#2196F3')
             
             Text('地图加载中...')
               .fontSize(16)
@@ -656,46 +732,44 @@ struct MarkerTestPage {
         }
       }
       .width('100%')
-      .layoutWeight(1)
-      .backgroundColor('#EEEEEE')
+      .height('60%')
       
-      // 状态信息区
-      Column({ space: 5 }) {
-        Text(this.message)
-          .fontSize(13)
-          .fontColor('#333333')
-          .width('100%')
-          .padding({ left: 10, right: 10 })
-        
-        Row({ space: 20 }) {
-          Text(`Marker 数量: ${this.markerCount}`)
-            .fontSize(12)
-            .fontColor('#1E88E5')
-          
-          if (this.selectedMarkerId >= 0) {
-            Text(`选中 ID: ${this.selectedMarkerId}`)
-              .fontSize(12)
-              .fontColor('#43A047')
-          }
-        }
-        .width('100%')
-        .padding({ left: 10, right: 10 })
-        
-        if (this.lastMarkerPosition) {
-          Text(`坐标: ${this.lastMarkerPosition}`)
-            .fontSize(11)
-            .fontColor('#757575')
-            .width('100%')
-            .padding({ left: 10, right: 10 })
-        }
-      }
-      .width('100%')
-      .padding({ top: 8, bottom: 8 })
-      .backgroundColor('#F5F5F5')
-      
-      // 控制按钮区
+      // 测试按钮区域（40%，可滚动）
       Scroll() {
         Column({ space: 10 }) {
+          // 状态信息
+          Column({ space: 5 }) {
+            Text(this.message)
+              .fontSize(13)
+              .fontColor('#333333')
+              .width('100%')
+            
+            Row({ space: 20 }) {
+              Text(`Marker 数量: ${this.markerCount}`)
+                .fontSize(12)
+                .fontColor('#2196F3')
+              
+              if (this.selectedMarkerId >= 0) {
+                Text(`选中 ID: ${this.selectedMarkerId}`)
+                  .fontSize(12)
+                  .fontColor('#43A047')
+              }
+            }
+            .width('100%')
+            
+            if (this.lastMarkerPosition) {
+              Text(`坐标: ${this.lastMarkerPosition}`)
+                .fontSize(11)
+                .fontColor('#757575')
+                .width('100%')
+            }
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F8F8F8')
+          .margin({ bottom: 8 })
+          
+          // 控制按钮
           // 基础操作
           Text('基础操作')
             .fontSize(14)
@@ -764,6 +838,47 @@ struct MarkerTestPage {
             .borderRadius(8)
             .backgroundColor('#AB47BC')
           
+          // Position 解析测试 (NEW)
+          Text('Position 解析测试')
+            .fontSize(14)
+            .fontWeight(FontWeight.Bold)
+            .margin({ top: 10 })
+            .fontColor('#E53935')
+          
+          Row({ space: 8 }) {
+            Button('🧪 LatLng类')
+              .onClick(() => this.testLatLngClass())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#E53935')
+            
+            Button('📝 构造函数')
+              .onClick(() => this.testPlainObject())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#E53935')
+          }
+          .width('100%')
+          
+          Row({ space: 8 }) {
+            Button('🔄 更新Position')
+              .onClick(() => this.testUpdatePosition())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#F4511E')
+            
+            Button('📊 显示信息')
+              .onClick(() => this.showMarkerInfo())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#F4511E')
+          }
+          .width('100%')
+          
           // 高级功能
           Text('高级功能')
             .fontSize(14)
@@ -787,37 +902,106 @@ struct MarkerTestPage {
           }
           .width('100%')
           
-          // 说明
-          Text('功能说明')
+          Row({ space: 8 }) {
+            Button('💬 InfoWindow')
+              .onClick(() => this.testInfoWindow())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#26A69A')
+            
+            Button('🎨 自定义图标')
+              .onClick(() => this.testCustomIcon())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#5C6BC0')
+          }
+          .width('100%')
+          
+          // 样式控制
+          Text('样式控制')
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
             .margin({ top: 10 })
           
-          Text('✅ Marker 基础功能\n' +
-            '• 单个/批量添加和删除\n' +
-            '• 自定义样式（透明度、旋转、Z-index）\n\n' +
-            '✅ 事件监听\n' +
-            '• 点击事件（显示 InfoWindow）\n' +
-            '• 拖拽事件（开始、进行中、结束）\n\n' +
-            '✅ 动画效果\n' +
-            '• 位置平滑移动\n' +
-            '• 透明度渐变\n' +
-            '• 旋转动画\n\n' +
-            '✅ 选中管理\n' +
-            '• 选中/取消选中\n' +
-            '• InfoWindow 显示控制')
-            .fontSize(11)
-            .fontColor('#616161')
-            .lineHeight(18)
+          Row({ space: 8 }) {
+            Button('👁️ 切换可见')
+              .onClick(() => this.toggleVisibility())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#7E57C2')
+            
+            Button('🔍 聚焦Marker')
+              .onClick(() => this.focusMarker())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#7E57C2')
+          }
+          .width('100%')
+          
+          Row({ space: 8 }) {
+            Button('💧 透明度+')
+              .onClick(() => this.increaseAlpha())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#5C6BC0')
+            
+            Button('💧 透明度-')
+              .onClick(() => this.decreaseAlpha())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#5C6BC0')
+          }
+          .width('100%')
+          
+          Row({ space: 8 }) {
+            Button('🚫 关闭所有InfoWindow')
+              .onClick(() => this.closeAllInfoWindows())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#8D6E63')
+          }
+          .width('100%')
+          
+          // 批量操作
+          Text('批量操作')
+            .fontSize(14)
+            .fontWeight(FontWeight.Bold)
+            .margin({ top: 10 })
+          
+          Row({ space: 8 }) {
+            Button('🔄 全部旋转90°')
+              .onClick(() => this.rotateAllMarkers())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#FF7043')
+            
+            Button('👻 切换全部可见')
+              .onClick(() => this.toggleAllVisibility())
+              .flexGrow(1)
+              .type(ButtonType.Normal)
+              .borderRadius(8)
+              .backgroundColor('#FF7043')
+          }
+          .width('100%')
+          
+          
         }
         .padding(12)
       }
-      .layoutWeight(1)
       .width('100%')
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FAFAFA')
   }
   
   /**
@@ -854,6 +1038,466 @@ struct MarkerTestPage {
     this.selectedMarkerId = -1;
     this.message = '❌ 已取消所有选中';
     console.info('MarkerTestPage: Deselected all markers');
+  }
+  
+  // ==================== Position 解析测试 (NEW) ====================
+  
+  /**
+   * 测试使用 LatLng NAPI 类实例创建 Marker
+   */
+  async testLatLngClass() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      // 使用 LatLng NAPI 类创建位置（通过构造函数）
+      const position = new maplibre.LatLng(39.9042, 116.4074);
+      
+      console.info(`[MarkerDebug] TestLatLngClass: Creating marker with LatLng instance`);
+      console.info(`[MarkerDebug] TestLatLngClass: position.latitude=${position.latitude}, position.longitude=${position.longitude}`);
+      
+      const marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('LatLng 类测试')
+          .snippet(`使用 LatLng NAPI 类创建\n纬度: ${position.latitude}\n经度: ${position.longitude}`)
+          .draggable(true)
+          .alpha(1.0)
+          .rotation(0)
+          .zIndex(200)
+          // ✅ 不设置 icon，将自动使用默认的红色 pin 图标
+      );
+      
+      this.markerList.push(marker);
+      this.markerCount++;
+      this.testMarker = marker;
+      
+      const resultPos = marker.getPosition();
+      this.message = `✅ LatLng类测试成功\n` +
+        `输入: (${position.latitude}, ${position.longitude})\n` +
+        `结果: (${resultPos.latitude}, ${resultPos.longitude})\n` +
+        `ID: ${marker.getId()} - 使用默认图标`;
+      
+      console.info(`[MarkerDebug] TestLatLngClass: Success - Marker ID=${marker.getId()}`);
+    } catch (e) {
+      this.message = `❌ LatLng类测试失败: ${e.message}`;
+      console.error(`[MarkerDebug] TestLatLngClass: Failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 测试使用构造函数创建 Marker
+   */
+  async testPlainObject() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      // 使用 new LatLng() 构造函数创建位置
+      const position = new maplibre.LatLng(31.2304, 121.4737);
+      
+      console.info(`[MarkerDebug] TestConstructor: Creating marker with constructor`);
+      console.info(`[MarkerDebug] TestConstructor: position=(${position.latitude}, ${position.longitude})`);
+      
+      const marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('构造函数测试')
+          .snippet(`使用构造函数创建\n纬度: ${position.latitude}\n经度: ${position.longitude}`)
+          .draggable(true)
+          .alpha(0.9)
+          .rotation(45)
+          .zIndex(201)
+          // ✅ 不设置 icon，将自动使用默认的红色 pin 图标
+      );
+      
+      this.markerList.push(marker);
+      this.markerCount++;
+      this.testMarker = marker;
+      
+      const resultPos = marker.getPosition();
+      this.message = `✅ 构造函数测试成功\n` +
+        `输入: new LatLng(${position.latitude}, ${position.longitude})\n` +
+        `结果: (${resultPos.latitude}, ${resultPos.longitude})\n` +
+        `ID: ${marker.getId()} - 使用默认图标`;
+      
+      console.info(`[MarkerDebug] TestConstructor: Success - Marker ID=${marker.getId()}`);
+    } catch (e) {
+      this.message = `❌ 构造函数测试失败: ${e.message}`;
+      console.error(`[MarkerDebug] TestConstructor: Failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 测试更新 Marker 的 Position
+   */
+  testUpdatePosition() {
+    if (!this.mapLibreMap || !this.testMarker) {
+      this.message = '❌ 请先创建一个 Marker';
+      return;
+    }
+    
+    try {
+      const oldPos = this.testMarker.getPosition();
+      
+      // 测试使用 LatLng 类实例更新
+      const newPosition = new maplibre.LatLng(
+        oldPos.latitude + 1.0,
+        oldPos.longitude + 1.0
+      );
+      
+      console.info(`[MarkerDebug] TestUpdatePosition: Updating marker ${this.testMarker.getId()}`);
+      console.info(`[MarkerDebug] TestUpdatePosition: Old position=(${oldPos.latitude}, ${oldPos.longitude})`);
+      console.info(`[MarkerDebug] TestUpdatePosition: New position=(${newPosition.latitude}, ${newPosition.longitude})`);
+      
+      this.testMarker.setPosition(newPosition);
+      
+      // 更新到地图
+      this.mapLibreMap.updateMarker(this.testMarker);
+      
+      const resultPos = this.testMarker.getPosition();
+      this.message = `✅ Position更新成功\n` +
+        `旧位置: (${oldPos.latitude.toFixed(4)}, ${oldPos.longitude.toFixed(4)})\n` +
+        `新位置: (${resultPos.latitude.toFixed(4)}, ${resultPos.longitude.toFixed(4)})`;
+      
+      console.info(`[MarkerDebug] TestUpdatePosition: Success - New position=(${resultPos.latitude}, ${resultPos.longitude})`);
+    } catch (e) {
+      this.message = `❌ Position更新失败: ${e.message}`;
+      console.error(`[MarkerDebug] TestUpdatePosition: Failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 显示 Marker 的详细信息
+   */
+  showMarkerInfo() {
+    if (!this.testMarker) {
+      this.message = '❌ 请先创建一个 Marker';
+      return;
+    }
+    
+    try {
+      const pos = this.testMarker.getPosition();
+      const id = this.testMarker.getId();
+      const title = this.testMarker.getTitle();
+      const snippet = this.testMarker.getSnippet();
+      const visible = this.testMarker.getVisible();
+      const alpha = this.testMarker.getAlpha();
+      const rotation = this.testMarker.getRotation();
+      const zIndex = this.testMarker.getZIndex();
+      const draggable = this.testMarker.getDraggable();
+      const icon = this.testMarker.getIcon();
+      
+      this.message = `📊 Marker 详细信息\n` +
+        `═══════════════════\n` +
+        `ID: ${id}\n` +
+        `标题: ${title}\n` +
+        `位置: (${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)})\n` +
+        `图标: ${icon || '(无)'}\n` +
+        `可见: ${visible ? '是' : '否'}\n` +
+        `透明度: ${alpha.toFixed(2)}\n` +
+        `旋转角度: ${rotation.toFixed(1)}°\n` +
+        `Z-Index: ${zIndex}\n` +
+        `可拖拽: ${draggable ? '是' : '否'}`;
+      
+      console.info(`[MarkerDebug] ShowMarkerInfo: Marker ${id} details displayed`);
+      console.info(`[MarkerDebug] Position: (${pos.latitude}, ${pos.longitude})`);
+    } catch (e) {
+      this.message = `❌ 获取信息失败: ${e.message}`;
+      console.error(`[MarkerDebug] ShowMarkerInfo: Failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 测试 InfoWindow 功能
+   */
+  async testInfoWindow() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      // 创建一个带有详细 InfoWindow 内容的 Marker
+      const position = new maplibre.LatLng(40.0, 116.0);
+      
+      const marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('InfoWindow 测试')
+          .snippet('这是一个详细的描述信息\n可以包含多行文本\n用于展示 InfoWindow 功能')
+          .draggable(false)
+          .alpha(1.0)
+          .zIndex(300)
+      );
+      
+      this.testMarker = marker;
+      this.markerList.push(marker);
+      this.markerCount++;
+      
+      // 自动显示 InfoWindow
+      marker.showInfoWindow();
+      
+      this.message = `✅ InfoWindow 测试创建成功\n` +
+        `标题: ${marker.getTitle()}\n` +
+        `描述: ${marker.getSnippet()}\n` +
+        `💡 点击 Marker 可以显示/隐藏 InfoWindow`;
+      
+      console.info(`[MarkerDebug] InfoWindow test marker created with ID=${marker.getId()}`);
+    } catch (e) {
+      this.message = `❌ InfoWindow 测试失败: ${e.message}`;
+      console.error(`[MarkerDebug] InfoWindow test failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 测试自定义图标功能
+   */
+  async testCustomIcon() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      const position = new maplibre.LatLng(38.0, 115.0);
+      
+      // 尝试加载自定义图标
+      // 注意：这里需要先在 rawfile 目录准备自定义图标文件
+      // 作为示例，我们先创建一个使用默认图标但带特殊标记的 Marker
+      this.message = '⏳ 正在创建自定义图标 Marker...';
+      
+      const marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('自定义图标测试')
+          .snippet('演示自定义图标功能\n当前使用默认图标')
+          .draggable(true)
+          .alpha(0.95)
+          .rotation(45)  // 旋转 45 度以区分
+          .zIndex(400)
+      );
+      
+      this.testMarker = marker;
+      this.markerList.push(marker);
+      this.markerCount++;
+      
+      this.message = `✅ 自定义图标 Marker 创建成功\n` +
+        `ID: ${marker.getId()}\n` +
+        `位置: (${position.latitude}, ${position.longitude})\n` +
+        `旋转: 45°\n` +
+        `💡 提示: 当前使用默认图标\n` +
+        `要使用自定义图标，请使用 IconFactory.fromRawfile()`;
+      
+      console.info(`[MarkerDebug] Custom icon test marker created with ID=${marker.getId()}`);
+      
+      // 显示如何使用自定义图标的提示
+      setTimeout(() => {
+        this.message += `\n\n📝 代码示例:\n` +
+          `const iconFactory = IconFactory.getInstance();\n` +
+          `const customIcon = await iconFactory.fromRawfile('my_icon.png');\n` +
+          `options.icon(customIcon);`;
+      }, 2000);
+      
+    } catch (e) {
+      this.message = `❌ 自定义图标测试失败: ${e.message}`;
+      console.error(`[MarkerDebug] Custom icon test failed - ${e.message}`);
+    }
+  }
+  
+  // ==================== 样式控制测试 ====================
+  
+  /**
+   * 切换 Marker 可见性
+   */
+  toggleVisibility() {
+    if (!this.testMarker) {
+      this.message = '❌ 请先创建一个 Marker';
+      return;
+    }
+    
+    try {
+      const currentVisible = this.testMarker.getVisible();
+      this.testMarker.setVisible(!currentVisible);
+      
+      // 更新到地图
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(this.testMarker);
+      }
+      
+      this.message = `✅ 可见性已切换: ${!currentVisible ? '显示' : '隐藏'}`;
+      console.info(`[MarkerDebug] Marker visibility toggled to ${!currentVisible}`);
+    } catch (e) {
+      this.message = `❌ 切换可见性失败: ${e.message}`;
+      console.error(`[MarkerDebug] Toggle visibility failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 聚焦到 Marker 位置
+   */
+  focusMarker() {
+    if (!this.testMarker || !this.mapLibreMap) {
+      this.message = '❌ 请先创建一个 Marker';
+      return;
+    }
+    
+    try {
+      const pos = this.testMarker.getPosition();
+      
+      // 移动相机到 Marker 位置，缩放到合适级别
+      this.mapLibreMap.flyTo({
+        center: pos,
+        zoom: 10,
+        bearing: 0,
+        pitch: 45
+      }, 2000);
+      
+      this.message = `✅ 正在聚焦到 Marker\n位置: (${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)})`;
+      console.info(`[MarkerDebug] Focusing on marker at (${pos.latitude}, ${pos.longitude})`);
+    } catch (e) {
+      this.message = `❌ 聚焦失败: ${e.message}`;
+      console.error(`[MarkerDebug] Focus marker failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 增加 Marker 透明度
+   */
+  increaseAlpha() {
+    if (!this.testMarker) {
+      this.message = '❌ 请先创建一个 Marker';
+      return;
+    }
+    
+    try {
+      const currentAlpha = this.testMarker.getAlpha();
+      const newAlpha = Math.min(1.0, currentAlpha + 0.1);
+      
+      this.testMarker.setAlpha(newAlpha);
+      
+      // 更新到地图
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(this.testMarker);
+      }
+      
+      this.message = `✅ 透明度增加\n当前: ${newAlpha.toFixed(2)} (${(newAlpha * 100).toFixed(0)}%)`;
+      console.info(`[MarkerDebug] Alpha increased to ${newAlpha}`);
+    } catch (e) {
+      this.message = `❌ 调整透明度失败: ${e.message}`;
+      console.error(`[MarkerDebug] Increase alpha failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 减少 Marker 透明度
+   */
+  decreaseAlpha() {
+    if (!this.testMarker) {
+      this.message = '❌ 请先创建一个 Marker';
+      return;
+    }
+    
+    try {
+      const currentAlpha = this.testMarker.getAlpha();
+      const newAlpha = Math.max(0.0, currentAlpha - 0.1);
+      
+      this.testMarker.setAlpha(newAlpha);
+      
+      // 更新到地图
+      if (this.mapLibreMap) {
+        this.mapLibreMap.updateMarker(this.testMarker);
+      }
+      
+      this.message = `✅ 透明度减少\n当前: ${newAlpha.toFixed(2)} (${(newAlpha * 100).toFixed(0)}%)`;
+      console.info(`[MarkerDebug] Alpha decreased to ${newAlpha}`);
+    } catch (e) {
+      this.message = `❌ 调整透明度失败: ${e.message}`;
+      console.error(`[MarkerDebug] Decrease alpha failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 关闭所有 InfoWindow
+   */
+  closeAllInfoWindows() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      const markerManager = this.mapLibreMap.getMarkerManager();
+      markerManager.hideAllInfoWindows();
+      
+      this.message = '✅ 已关闭所有 InfoWindow';
+      console.info('[MarkerDebug] All InfoWindows closed');
+    } catch (e) {
+      this.message = `❌ 关闭 InfoWindow 失败: ${e.message}`;
+      console.error(`[MarkerDebug] Close all InfoWindows failed - ${e.message}`);
+    }
+  }
+  
+  // ==================== 批量操作测试 ====================
+  
+  /**
+   * 旋转所有 Marker
+   */
+  rotateAllMarkers() {
+    if (!this.mapLibreMap || this.markerList.length === 0) {
+      this.message = '❌ 没有可操作的 Marker';
+      return;
+    }
+    
+    try {
+      let updateCount = 0;
+      
+      for (const marker of this.markerList) {
+        const currentRotation = marker.getRotation();
+        marker.setRotation(currentRotation + 90);
+        this.mapLibreMap.updateMarker(marker);
+        updateCount++;
+      }
+      
+      this.message = `✅ 已旋转 ${updateCount} 个 Marker\n每个旋转 +90°`;
+      console.info(`[MarkerDebug] Rotated ${updateCount} markers by 90 degrees`);
+    } catch (e) {
+      this.message = `❌ 批量旋转失败: ${e.message}`;
+      console.error(`[MarkerDebug] Rotate all markers failed - ${e.message}`);
+    }
+  }
+  
+  /**
+   * 切换所有 Marker 可见性
+   */
+  toggleAllVisibility() {
+    if (!this.mapLibreMap || this.markerList.length === 0) {
+      this.message = '❌ 没有可操作的 Marker';
+      return;
+    }
+    
+    try {
+      // 检查第一个 marker 的状态，然后应用相反的状态到所有 marker
+      const firstVisible = this.markerList[0].getVisible();
+      const newVisible = !firstVisible;
+      let updateCount = 0;
+      
+      for (const marker of this.markerList) {
+        marker.setVisible(newVisible);
+        this.mapLibreMap.updateMarker(marker);
+        updateCount++;
+      }
+      
+      this.message = `✅ 已更新 ${updateCount} 个 Marker\n状态: ${newVisible ? '显示' : '隐藏'}`;
+      console.info(`[MarkerDebug] Toggled visibility for ${updateCount} markers to ${newVisible}`);
+    } catch (e) {
+      this.message = `❌ 批量切换可见性失败: ${e.message}`;
+      console.error(`[MarkerDebug] Toggle all visibility failed - ${e.message}`);
+    }
   }
 }
 

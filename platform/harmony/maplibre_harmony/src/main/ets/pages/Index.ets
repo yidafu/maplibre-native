@@ -22,53 +22,161 @@ class TestPageItem {
   }
 }
 
+// 测试页面分组
+class TestPageGroup {
+  groupName: string = '';
+  groupIcon: string = '';
+  pages: TestPageItem[] = [];
+  
+  constructor(groupName: string, groupIcon: string, pages: TestPageItem[]) {
+    this.groupName = groupName;
+    this.groupIcon = groupIcon;
+    this.pages = pages;
+  }
+}
+
 @Entry
 @Component
 struct Index {
-  // 测试页面列表
-  private testPages: TestPageItem[] = [
-    new TestPageItem(
-      '基础地图测试',
-      '测试地图渲染、标记添加、相机跳转等基础功能',
-      'pages/BasicMapPage',
-      '🗺️'
-    ),
-    new TestPageItem(
-      '手势系统测试',
-      '测试平移、缩放、旋转等手势功能和惯性动画',
-      'pages/GestureTestPage',
-      '👆'
-    ),
-    new TestPageItem(
-      'Marker 功能测试',
-      '测试 Marker 添加、删除、事件、动画、拖拽、InfoWindow 等完整功能',
-      'pages/MarkerTestPage',
-      '📍'
-    ),
-    new TestPageItem(
-      'Style 样式综合测试',
-      '测试地图样式、图层、数据源等完整 Style API 功能',
-      'pages/StyleTestPage',
-      '🎨'
-    ),
-    new TestPageItem(
-      'Style URL 切换测试',
-      '测试不同地图样式 URL 的切换和样式信息获取',
-      'pages/StyleUrlTestPage',
-      '🔄'
-    ),
-    new TestPageItem(
-      'Source 数据源测试',
-      '测试 GeoJSON、Vector、Raster 等各种数据源类型 (NAPI)',
-      'pages/SourceTestPage',
-      '📊'
-    ),
-    new TestPageItem(
-      'Layer 图层测试',
-      '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
-      'pages/LayerTestPage',
-      '🔨'
-    ),
+  // 按功能模块分组的测试页面
+  private testPageGroups: TestPageGroup[] = [
+    // 🗺️ 基础功能
+    new TestPageGroup('基础功能', '🗺️', [
+      new TestPageItem(
+        '基础地图测试',
+        '测试地图渲染、初始化、基础交互等核心功能',
+        'pages/BasicMapPage',
+        '🗺️'
+      ),
+      new TestPageItem(
+        '相机监听器测试',
+        '测试相机移动、空闲等各种相机事件监听器功能',
+        'pages/CameraListenerTestPage',
+        '📷'
+      ),
+    ]),
+    
+    // 👆 手势与交互
+    new TestPageGroup('手势与交互', '👆', [
+      new TestPageItem(
+        '手势系统测试',
+        '测试平移、缩放、旋转、倾斜等手势功能和惯性动画',
+        'pages/GestureTestPage',
+        '👆'
+      ),
+    ]),
+    
+    // 📍 Marker 与注解
+    new TestPageGroup('Marker 与注解', '📍', [
+      new TestPageItem(
+        'Marker 功能测试',
+        '测试 Marker 添加、删除、事件、动画、拖拽、InfoWindow 等完整功能',
+        'pages/MarkerTestPage',
+        '📍'
+      ),
+      new TestPageItem(
+        'Marker 高级功能测试',
+        '测试 Marker 的高级功能和复杂场景应用',
+        'pages/MarkerAdvancedTestPage',
+        '⭐'
+      ),
+      new TestPageItem(
+        'Icon 管理测试',
+        '测试 Icon 创建、共享、引用计数和自动清理功能',
+        'pages/IconTestPage',
+        '🎯'
+      ),
+    ]),
+    
+    // 🎨 样式系统
+    new TestPageGroup('样式系统', '🎨', [
+      new TestPageItem(
+        'Style 样式综合测试',
+        '测试地图样式、图层、数据源等完整 Style API 功能',
+        'pages/StyleTestPage',
+        '🎨'
+      ),
+      new TestPageItem(
+        'Style URL 切换',
+        '测试不同地图样式 URL 的动态切换和样式信息获取',
+        'pages/StyleUrlTestPage',
+        '🔄'
+      ),
+    ]),
+    
+    // 🔨 图层系统
+    new TestPageGroup('图层系统', '🔨', [
+      new TestPageItem(
+        'Layer 图层测试',
+        '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
+        'pages/LayerTestPage',
+        '🔨'
+      ),
+    ]),
+    
+    // 📊 数据源系统
+    new TestPageGroup('数据源系统', '📊', [
+      new TestPageItem(
+        'Source 数据源测试',
+        '测试 GeoJSON、Vector、Raster 等各种数据源类型',
+        'pages/SourceTestPage',
+        '📊'
+      ),
+    ]),
+    
+    // 🧮 表达式系统
+    new TestPageGroup('表达式系统', '🧮', [
+      new TestPageItem(
+        'Expression 测试',
+        '测试各种 Expression 操作符的功能',
+        'pages/ExpressionTestPage',
+        '🧮'
+      ),
+      new TestPageItem(
+        'Expression 性能测试',
+        '测试 Expression 系统的性能和优化效果',
+        'pages/ExpressionPerformanceTest',
+        '⚡'
+      ),
+      new TestPageItem(
+        'Expression 实际案例',
+        '展示 Expression 在实际场景中的应用示例',
+        'pages/ExpressionRealWorldExamples',
+        '💡'
+      ),
+      new TestPageItem(
+        'SymbolLayer Expression 示例',
+        '演示 Symbol 图层中 Expression 的应用',
+        'pages/SymbolLayerExpressionExample',
+        '🔤'
+      ),
+    ]),
+    
+    // 📍 定位功能
+    new TestPageGroup('定位功能', '📍', [
+      new TestPageItem(
+        'LocationComponent 测试',
+        '测试用户定位功能、追踪模式和渲染模式',
+        'pages/LocationComponentTestPage',
+        '🧭'
+      ),
+    ]),
+    
+    // 🎛️ UI 组件
+    new TestPageGroup('UI 组件', '🎛️', [
+      new TestPageItem(
+        '指南针测试',
+        '测试指南针组件的显示和交互功能',
+        'pages/CompassTestPage',
+        '🧭'
+      ),
+      new TestPageItem(
+        'Logo 和比例尺测试',
+        '测试地图 Logo 和比例尺组件的显示和配置',
+        'pages/LogoScaleBarTestPage',
+        '📏'
+      ),
+    ]),
   ];
 
   build() {
@@ -100,17 +208,39 @@ struct Index {
       .width('100%')
       .padding(15)
 
-      // 测试页面列表
-      List({ space: 15 }) {
-        ForEach(this.testPages, (item: TestPageItem) => {
-          ListItem() {
-            this.buildTestPageCard(item)
+      // 测试页面列表（分组显示）
+      List({ space: 10 }) {
+        ForEach(this.testPageGroups, (group: TestPageGroup, groupIndex: number) => {
+          ListItemGroup() {
+            // 分组标题
+            ListItem() {
+              Row() {
+                Text(group.groupIcon)
+                  .fontSize(20)
+                  .margin({ right: 8 })
+                
+                Text(group.groupName)
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor('#333333')
+              }
+              .width('100%')
+              .padding({ left: 5, top: 15, bottom: 8 })
+            }
+            
+            // 分组内的测试页面
+            ForEach(group.pages, (item: TestPageItem) => {
+              ListItem() {
+                this.buildTestPageCard(item)
+              }
+            })
           }
         })
       }
       .width('100%')
       .layoutWeight(1)
       .padding({ left: 15, right: 15 })
+      .sticky(StickyStyle.Header)
 
       // 底部信息
       Column() {

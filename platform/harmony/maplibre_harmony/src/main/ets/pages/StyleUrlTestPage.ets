@@ -91,10 +91,10 @@ struct StyleUrlTestPage {
           .margin({ right: 60 })
       }
       .width('100%')
-      .height(50)
-      .backgroundColor('#f5f5f5')
+      .height(56)
+      .backgroundColor('#F5F5F5')
 
-      // 地图容器
+      // 地图区域（60%）
       Stack() {
         NativeMapView({
           styleUrl: this.styleUrls[0].url,
@@ -128,34 +128,35 @@ struct StyleUrlTestPage {
           .backgroundColor('rgba(255, 255, 255, 0.8)')
         }
       }
-      .layoutWeight(1)
-
-      // 样式信息显示
-      Column() {
-        Text(`当前样式: ${this.currentStyleName}`)
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .width('100%')
-        
-        Text(`URL: ${this.currentStyleUrl}`)
-          .fontSize(12)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .width('100%')
-          .margin({ top: 4 })
-        
-        Text(`Style JSON 大小: ${this.styleJsonLength} 字符`)
-          .fontSize(12)
-          .width('100%')
-          .margin({ top: 4 })
-      }
       .width('100%')
-      .padding(10)
-      .backgroundColor('#e0e0e0')
+      .height('60%')
 
-      // 控制面板
+      // 测试按钮区域（40%，可滚动）
       Scroll() {
         Column({ space: 8 }) {
+          // 样式信息显示
+          Column() {
+            Text(`当前样式: ${this.currentStyleName}`)
+              .fontSize(14)
+              .fontWeight(FontWeight.Bold)
+              .width('100%')
+            
+            Text(`URL: ${this.currentStyleUrl}`)
+              .fontSize(12)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .width('100%')
+              .margin({ top: 4 })
+            
+            Text(`Style JSON 大小: ${this.styleJsonLength} 字符`)
+              .fontSize(12)
+              .width('100%')
+              .margin({ top: 4 })
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F8F8F8')
+          .margin({ bottom: 8 })
           Text('选择地图样式')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
@@ -187,11 +188,11 @@ struct StyleUrlTestPage {
             .backgroundColor('#FF9800')
         }
         .width('100%')
-        .padding(16)
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
       }
-      .height(300)
       .width('100%')
-      .backgroundColor(Color.White)
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')

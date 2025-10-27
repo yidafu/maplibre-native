@@ -20,10 +20,10 @@ export struct CompassView {
   @State private rotation: number = 0;
   
   // 透明度
-  @State private opacity: number = 0;
+  @State private compassOpacity: number = 0;
   
   // 是否启用
-  @Prop enabled: boolean = true;
+  @Prop compassEnabled: boolean = true;
   
   // 可见性模式
   @Prop compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
@@ -48,7 +48,7 @@ export struct CompassView {
     // 取反作为旋转角度（参考 iOS 实现）
     this.rotation = -bearing;
     
-    if (!this.enabled) {
+    if (!this.compassEnabled) {
       return;
     }
     
@@ -94,10 +94,10 @@ export struct CompassView {
         duration: TIME_FADE_ANIMATION,
         curve: Curve.EaseInOut
       }, () => {
-        this.opacity = 1.0;
+        this.compassOpacity = 1.0;
       });
     } else {
-      this.opacity = 1.0;
+      this.compassOpacity = 1.0;
     }
   }
   
@@ -111,10 +111,10 @@ export struct CompassView {
         duration: TIME_FADE_ANIMATION,
         curve: Curve.EaseInOut
       }, () => {
-        this.opacity = 0;
+        this.compassOpacity = 0;
       });
     } else {
-      this.opacity = 0;
+      this.compassOpacity = 0;
     }
   }
   
@@ -157,7 +157,7 @@ export struct CompassView {
    * 设置启用状态
    */
   setEnabled(enabled: boolean): void {
-    this.enabled = enabled;
+    this.compassEnabled = enabled;
     
     if (enabled) {
       // 重新计算可见性
@@ -168,27 +168,24 @@ export struct CompassView {
   }
   
   build() {
-    if (!this.enabled) {
-      // 禁用时不渲染
-      return;
+    if (this.compassEnabled) {
+      Image(this.compassImage)
+        .width(48)
+        .height(48)
+        .opacity(this.compassOpacity)
+        .rotate({
+          angle: this.rotation,
+          centerX: '50%',
+          centerY: '50%'
+        })
+        .onClick(() => {
+          this.handleClick();
+        })
+        .transition({
+          type: TransitionType.All,
+          opacity: 1
+        })
     }
-    
-    Image(this.compassImage)
-      .width(48)
-      .height(48)
-      .opacity(this.opacity)
-      .rotate({
-        angle: this.rotation,
-        centerX: '50%',
-        centerY: '50%'
-      })
-      .onClick(() => {
-        this.handleClick();
-      })
-      .transition({
-        type: TransitionType.All,
-        opacity: 1
-      })
   }
 }
 

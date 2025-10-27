@@ -39,7 +39,6 @@ interface ButtonAction {
 struct BasicMapPage {
   @State mapReady: boolean = false;
   @State currentInfo: string = '北京 - 天安门';
-  @State showControlPanel: boolean = true;
   
   // 测试位置列表
   private testLocations: TestLocation[] = [
@@ -71,77 +70,49 @@ struct BasicMapPage {
           .margin({ right: 60 })
       }
       .width('100%')
-      .height(50)
-      .backgroundColor('#F0F0F0')
+      .height(56)
+      .backgroundColor('#F5F5F5')
 
-      // 信息栏
-      Row() {
-        Text(`📍 ${this.currentInfo}`)
-          .fontSize(14)
-          .fontColor('#333333')
-          .layoutWeight(1)
-        
-        Text(this.mapReady ? '✅ 已加载' : '⏳ 加载中...')
-          .fontSize(12)
-          .fontColor(this.mapReady ? '#4CAF50' : '#FF9800')
-          .margin({ right: 10 })
-        
-        Button(this.showControlPanel ? '隐藏面板' : '显示面板')
-          .fontSize(12)
-          .height(30)
-          .onClick(() => {
-            this.showControlPanel = !this.showControlPanel;
-          })
-      }
-      .width('100%')
-      .padding(10)
-      .backgroundColor('#F8F8F8')
-
-      // 地图容器 - 移除加载遮罩层，避免遮挡地图渲染
-      Stack() {
-        // 地图视图 - 使用 NativeMapView 组件
-        NativeMapView({
-          styleUrl: "https://demotiles.maplibre.org/style.json",
-          initialLatitude: 39.9042,
-          initialLongitude: 116.4074,
-          initialZoom: 6,
-          initialBearing: 0,
-          initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            if (mapView) {
-              globalMapView = mapView;
-              this.mapReady = true;
-              hilog.info(DOMAIN, TAG, 'Map ready and saved');
-            } else {
-              hilog.error(DOMAIN, TAG, 'Map ready callback received null mapView');
-            }
+      // 地图区域（60%）
+      NativeMapView({
+        styleUrl: "https://demotiles.maplibre.org/style.json",
+        initialLatitude: 39.9042,
+        initialLongitude: 116.4074,
+        initialZoom: 6,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          if (mapView) {
+            globalMapView = mapView;
+            this.mapReady = true;
+            hilog.info(DOMAIN, TAG, 'Map ready and saved');
+          } else {
+            hilog.error(DOMAIN, TAG, 'Map ready callback received null mapView');
           }
-        })
-          .width('100%')
-          .height('100%')
-
-        // 控制面板 - 浮动在地图上方
-        if (this.mapReady && this.showControlPanel) {
-          Column() {
-            this.buildControlPanel()
-          }
-          .width('100%')
-          .height('100%')
-          .justifyContent(FlexAlign.End)
-          .padding({ bottom: 20 })
         }
-      }
-      .layoutWeight(1)
-    }
-    .width('100%')
-    .height('100%')
-  }
+      })
+        .width('100%')
+        .height('60%')
 
-  @Builder
-  buildControlPanel() {
-    Column() {
+      // 测试按钮区域（40%，可滚动）
       Scroll() {
-        Column({ space: 10 }) {
+        Column() {
+          // 状态信息
+          Row() {
+            Text(`📍 ${this.currentInfo}`)
+              .fontSize(14)
+              .fontColor('#333333')
+              .layoutWeight(1)
+            
+            Text(this.mapReady ? '✅ 已加载' : '⏳ 加载中...')
+              .fontSize(12)
+              .fontColor(this.mapReady ? '#4CAF50' : '#FF9800')
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F8F8F8')
+          .margin({ bottom: 8 })
+
           // 相机跳转控制
           this.buildSection('🎯 相机跳转 (jumpTo)', [
             { title: '北京', action: (): void => this.jumpToLocation(0) },
@@ -181,21 +152,14 @@ struct BasicMapPage {
             { title: '获取倾斜角度', action: (): void => this.getCurrentPitch() },
           ] as ButtonAction[])
         }
-        .padding(10)
+        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
       }
       .width('100%')
-      .layoutWeight(1)
+      .height('40%')
+      .backgroundColor('#FFFFFF')
     }
-    .width('90%')
-    .height('70%')
-    .backgroundColor('rgba(255, 255, 255, 0.95)')
-    .borderRadius(10)
-    .shadow({
-      radius: 10,
-      color: 'rgba(0, 0, 0, 0.2)',
-      offsetX: 0,
-      offsetY: 2
-    })
+    .width('100%')
+    .height('100%')
   }
 
   @Builder

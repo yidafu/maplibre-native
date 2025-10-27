@@ -129,12 +129,17 @@ napi_value VectorSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
     VectorSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        return CreateStringValue(env, "");
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         return CreateStringValue(env, "");
     }
     
     try {
-        auto url = sourceNapi->source->getURL();
+        auto url = source->getURL();
         if (url) {
             return CreateStringValue(env, *url);
         }
@@ -152,7 +157,13 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     VectorSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
@@ -166,7 +177,7 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     
     // VectorSource 支持 setTiles 方法
     try {
-        sourceNapi->source->setTiles({url});
+        source->setTiles({url});
         Logger::info("VectorSourceNAPI", "SetUrl: %s -> %s", sourceNapi->id.c_str(), url.c_str());
     } catch (const std::exception& e) {
         Logger::error("VectorSourceNAPI", "SetUrl failed: %s", e.what());
@@ -185,8 +196,14 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
     VectorSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
-        napi_throw_error(env, nullptr, "Invalid VectorSource instance");
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
+        napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
@@ -223,15 +240,9 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 获取当前的 source 并更新 tiles
-        auto* vectorSource = sourceNapi->source.get()->as<mbgl::style::VectorSource>();
-        if (vectorSource) {
-            vectorSource->setTiles(tiles);
-            Logger::info("VectorSourceNAPI", "SetTiles: %s (%zu tiles)", sourceNapi->id.c_str(), tiles.size());
-        } else {
-            napi_throw_error(env, nullptr, "Source is not a VectorSource");
-            return nullptr;
-        }
+        // 更新 tiles
+        source->setTiles(tiles);
+        Logger::info("VectorSourceNAPI", "SetTiles: %s (%zu tiles)", sourceNapi->id.c_str(), tiles.size());
     } catch (const std::exception& e) {
         Logger::error("VectorSourceNAPI", "SetTiles failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
