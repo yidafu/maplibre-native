@@ -34,11 +34,28 @@ export struct CompassView {
   // 指南针图像资源
   @Prop compassImage: Resource = $r('app.media.compass_icon');
   
+  // 外部传入的 bearing（地图方向）
+  @Prop @Watch('onBearingChanged') bearing: number = 0;
+  
   // 点击回调
   onCompassClick?: () => void;
   
   // 淡出定时器
   private fadeTimer: number = -1;
+  
+  /**
+   * Bearing 变化监听器
+   */
+  onBearingChanged(): void {
+    this.update(this.bearing);
+  }
+  
+  /**
+   * 组件初始化
+   */
+  aboutToAppear(): void {
+    this.update(this.bearing);
+  }
 
   /**
    * 更新指南针方向

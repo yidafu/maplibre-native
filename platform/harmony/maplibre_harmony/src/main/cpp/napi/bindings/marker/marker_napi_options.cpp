@@ -159,7 +159,45 @@ napi_value MarkerNAPI::SetId(napi_env env, napi_callback_info info) {
 }
 
 napi_value MarkerNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
-    // 占位实现 - 暂时不需要保存 MapLibreMap 引用
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    MarkerNAPI* marker = nullptr;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&marker));
+    
+    if (!marker) {
+        Logger::error("MarkerNAPI", "SetMapLibreMap: Failed to unwrap marker");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 获取 MapLibreMap 对象
+    napi_value mapLibreMapValue = args.GetObject(0, "mapLibreMap");
+    if (args.HasError()) {
+        Logger::error("MarkerNAPI", "SetMapLibreMap: Failed to get mapLibreMap argument");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // 删除旧的引用（如果存在）
+    if (marker->mapLibreMapRef) {
+        napi_delete_reference(env, marker->mapLibreMapRef);
+        marker->mapLibreMapRef = nullptr;
+    }
+    
+    // 创建新的引用
+    napi_status status = napi_create_reference(env, mapLibreMapValue, 1, &marker->mapLibreMapRef);
+    if (status != napi_ok) {
+        Logger::error("MarkerNAPI", "SetMapLibreMap: Failed to create reference");
+    } else {
+        Logger::debug("MarkerNAPI", "SetMapLibreMap: Successfully set MapLibreMap reference for marker ID=%ld", marker->annotationId);
+    }
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;

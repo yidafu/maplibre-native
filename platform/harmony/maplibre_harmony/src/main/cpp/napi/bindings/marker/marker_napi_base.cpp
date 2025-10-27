@@ -40,6 +40,14 @@ MarkerNAPI::~MarkerNAPI() {
 void MarkerNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
     Logger::debug("MarkerNAPI", "Destructor called");
     MarkerNAPI* marker = static_cast<MarkerNAPI*>(nativeObject);
+    
+    // 清理 MapLibreMap 引用
+    if (marker->mapLibreMapRef) {
+        napi_delete_reference(env, marker->mapLibreMapRef);
+        marker->mapLibreMapRef = nullptr;
+        Logger::debug("MarkerNAPI", "Cleaned up MapLibreMap reference in destructor");
+    }
+    
     delete marker;
 }
 

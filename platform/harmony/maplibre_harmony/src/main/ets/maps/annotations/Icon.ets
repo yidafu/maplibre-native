@@ -6,6 +6,13 @@ import image from '@ohos.multimedia.image';
  * Icon 是 Marker 的视觉表现形式，包含图标的位图数据和元信息。
  * 可以通过 IconFactory 创建 Icon 实例。
  * 
+ * **重要提示：Icon 生命周期管理**
+ * - Icon 对象由 IconManager 管理，使用引用计数跟踪使用情况
+ * - 当调用 markerManager.clear() 或 marker.remove() 时，Icon 的引用计数会减少
+ * - 当引用计数降为 0 时，Icon 会被自动释放（调用 release()），PixelMap 资源会被回收
+ * - **已释放的 Icon 不能被复用**，必须创建新的 Icon 实例
+ * - 如果需要在清除后重新添加相同的图标，请创建新的 Icon 对象
+ * 
  * 参考:
  * - Android: org.maplibre.android.annotations.Icon
  * - iOS: MLNAnnotationImage
@@ -15,6 +22,14 @@ import image from '@ohos.multimedia.image';
  * const factory = IconFactory.getInstance();
  * const icon = await factory.fromResource($r('app.media.marker'));
  * marker.setIcon(icon);
+ * 
+ * // 错误用法：清除后复用
+ * markerManager.clear(); // Icon 会被释放
+ * marker2.setIcon(icon); // ❌ 错误！Icon 已释放
+ * 
+ * // 正确用法：创建新的 Icon
+ * const icon2 = await factory.fromResource($r('app.media.marker'));
+ * marker2.setIcon(icon2); // ✓ 正确
  * ```
  */
 export class Icon {
@@ -127,6 +142,18 @@ export class Icon {
   }
 
   /**
+   * 检查 Icon 是否已被释放
+   * 
+   * 当 Icon 被释放后（调用 release() 或引用计数降为0），PixelMap 会被设置为 null
+   * 已释放的 Icon 不能再使用，必须创建新的 Icon 实例
+   * 
+   * @returns true 表示已释放，false 表示可用
+   */
+  public isReleased(): boolean {
+    return this.pixelMap === null;
+  }
+
+  /**
    * 将 PixelMap 转换为字节数组
    * 
    * 用于传递给 Native 层进行渲染
@@ -136,7 +163,11 @@ export class Icon {
    */
   public async toBytes(): Promise<Uint8Array> {
     if (!this.pixelMap) {
-      throw new Error('PixelMap is null, cannot convert to bytes');
+      throw new Error(
+        `Icon '${this.id}' has been released and cannot be reused. ` +
+        'After calling markerManager.clear() or marker.remove(), ' +
+        'you must create a new Icon instead of reusing the old one.'
+      );
     }
 
     try {
@@ -157,7 +188,11 @@ export class Icon {
    */
   public toBytesSync(): Uint8Array {
     if (!this.pixelMap) {
-      throw new Error('PixelMap is null, cannot convert to bytes');
+      throw new Error(
+        `Icon '${this.id}' has been released and cannot be reused. ` +
+        'After calling markerManager.clear() or marker.remove(), ' +
+        'you must create a new Icon instead of reusing the old one.'
+      );
     }
 
     try {
@@ -223,7 +258,11 @@ export class Icon {
   /**
    * 释放资源
    * 
-   * 释放 PixelMap 占用的内存
+   * 释放 PixelMap 占用的内存。此方法通常由 IconManager 自动调用，
+   * 当 Icon 的引用计数降为 0 时（例如所有使用该 Icon 的 Marker 都被移除）。
+   * 
+   * **警告**：释放后的 Icon 不能再使用，尝试使用会抛出错误。
+   * 如果需要再次使用相同的图标，必须创建新的 Icon 实例。
    */
   public release(): void {
     if (this.pixelMap) {

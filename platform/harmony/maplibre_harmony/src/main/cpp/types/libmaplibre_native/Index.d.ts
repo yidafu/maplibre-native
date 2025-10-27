@@ -100,6 +100,15 @@ export { CircleLayer } from './layers/CircleLayer';
  */
 export { SymbolLayer } from './layers/SymbolLayer';
 
+// ========== 离线地图 (Offline) ==========
+
+/**
+ * OfflineManager - 离线地图管理器
+ * OfflineRegion - 离线区域
+ * 离线地图下载、管理和使用功能
+ */
+export * from './offline';
+
 /**
  * RasterLayer - 栅格图层
  * 用于渲染栅格瓦片数据

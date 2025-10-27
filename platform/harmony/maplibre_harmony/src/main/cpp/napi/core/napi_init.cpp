@@ -13,6 +13,9 @@
 #include "geojson/geometry_collection_napi.hpp"
 #include "geojson/feature_napi.hpp"
 #include "geojson/feature_collection_napi.hpp"
+// Offline API
+#include "offline/offline_manager_napi.hpp"
+#include "offline/offline_region_napi.hpp"
 // Style API bindings (NAPI 对象)
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/bindings/style_builder_napi.hpp"
@@ -50,6 +53,10 @@ static napi_value Init(napi_env env, napi_value exports) {
     maplibre::harmony::geojson::GeometryCollectionNAPI::Init(env, exports);
     maplibre::harmony::geojson::FeatureNAPI::Init(env, exports);
     maplibre::harmony::geojson::FeatureCollectionNAPI::Init(env, exports);
+    
+    // 初始化离线地图 API
+    maplibre::harmony::OfflineManagerNAPI::Init(env, exports);
+    maplibre::harmony::OfflineRegionNAPI::Init(env, exports);
     
     // 初始化 NativeMapView 类
     mbgl::harmony::NativeMapView::Init(env, exports);

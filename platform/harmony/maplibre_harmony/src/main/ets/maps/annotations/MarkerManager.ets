@@ -361,8 +361,28 @@ export class MarkerManager {
   /**
    * 清除所有 Marker
    * 
-   * 匹配Android实现：对每个marker的icon调用cleanup
-   * IconManager使用Icon对象作为key，确保引用计数正确（即使多个markers共享同一Icon）
+   * 移除地图上所有的 Marker 并释放相关资源。
+   * 
+   * **重要提示**：
+   * - 此方法会减少所有 Icon 的引用计数
+   * - 当 Icon 的引用计数降为 0 时，Icon 会被自动释放（PixelMap 资源被回收）
+   * - **已释放的 Icon 不能被复用**
+   * - 清除后如需再次添加相同图标的 Marker，必须创建新的 Icon 实例
+   * 
+   * @example
+   * ```typescript
+   * // 清除所有 marker
+   * markerManager.clear();
+   * 
+   * // 错误用法：复用旧的 Icon
+   * const oldIcon = marker.getIcon();
+   * const newMarker = new MarkerOptions().position(latLng).icon(oldIcon); // ❌ 错误！
+   * 
+   * // 正确用法：创建新的 Icon
+   * const factory = IconFactory.getInstance();
+   * const newIcon = await factory.fromResource($r('app.media.marker')); // ✓ 正确
+   * const newMarker = new MarkerOptions().position(latLng).icon(newIcon);
+   * ```
    */
   public clear(): void {
     // 清理每个marker

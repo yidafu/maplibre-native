@@ -151,8 +151,18 @@ export class IconManager {
    * 用于Marker已经设置了iconId，需要将Icon对象加入管理
    * 
    * @param icon Icon 实例
+   * @throws Error 如果 Icon 已被释放
    */
   public async addIconToManager(icon: Icon): Promise<void> {
+    // 检查Icon是否已释放
+    if (icon.isReleased()) {
+      throw new Error(
+        `Cannot add released Icon '${icon.getId()}'. ` +
+        'After calling markerManager.clear() or marker.remove(), ' +
+        'you must create a new Icon instead of reusing the old one.'
+      );
+    }
+    
     await this.addIcon(icon, true);
     // 同时添加到复用标识符映射
     const reuseId = icon.getReuseIdentifier();
@@ -167,10 +177,19 @@ export class IconManager {
    * 类似 iOS 的 dequeueReusableAnnotationImageWithIdentifier
    * 
    * @param reuseIdentifier 复用标识符
-   * @returns Icon 实例，如果不存在返回 null
+   * @returns Icon 实例，如果不存在或已释放则返回 null
    */
   public dequeueReusableIcon(reuseIdentifier: string): Icon | null {
     const icon = this.reuseIdentifierMap.get(reuseIdentifier);
+    
+    // 检查图标是否存在且未被释放
+    if (icon && icon.isReleased()) {
+      // 如果图标已释放，从复用映射中移除并返回 null
+      console.warn(`[IconManager] Reusable icon '${reuseIdentifier}' was released, removing from reuse map`);
+      this.reuseIdentifierMap.delete(reuseIdentifier);
+      return null;
+    }
+    
     return icon || null;
   }
 
@@ -253,9 +272,18 @@ export class IconManager {
    * 加载图标到 Native 层
    * 
    * @param icon Icon 实例
+   * @throws Error 如果 Icon 已被释放或加载失败
    */
   private async loadIconToNative(icon: Icon): Promise<void> {
     try {
+      // 检查Icon是否已释放
+      if (icon.isReleased()) {
+        throw new Error(
+          `Cannot load released Icon '${icon.getId()}' to native. ` +
+          'Icon has been released and cannot be reused.'
+        );
+      }
+      
       const iconId = icon.getId();
       const width = icon.getWidth();
       const height = icon.getHeight();
@@ -277,7 +305,10 @@ export class IconManager {
   /**
    * 清理图标
    * 
-   * 减少引用计数，如果引用计数为 0 则从缓存和 Native 层删除
+   * 减少引用计数，如果引用计数为 0 则从缓存和 Native 层删除。
+   * 
+   * **重要**：当引用计数降为 0 时，Icon 会被释放（调用 release()），
+   * PixelMap 资源会被回收。已释放的 Icon 不能再使用，必须创建新的 Icon 实例。
    * 
    * @param iconOrId Icon 实例或图标ID字符串
    */

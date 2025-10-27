@@ -9,6 +9,7 @@
 #include <mbgl/gl/renderer_backend.hpp>
 #include "harmony_renderer_backend.hpp"
 #include <memory>
+#include <thread>
 
 namespace mbgl {
 namespace harmony {
@@ -74,6 +75,10 @@ private:
     bool contextInitialized_ = false;  // 标记context是否已在渲染线程创建
     float pixelRatio_ = 1.0f;  // 设备像素比
     bool isStopped_ = false;  // 标记渲染是否已停止（防止崩溃）
+    
+    // 🔄 线程绑定（Android 风格）：确保 EGL Context 只在创建线程使用
+    std::thread::id contextThreadId_;    // Context 创建的线程 ID
+    bool contextThreadBound_ = false;    // 是否已绑定到特定线程
 };
 
 } // namespace harmony

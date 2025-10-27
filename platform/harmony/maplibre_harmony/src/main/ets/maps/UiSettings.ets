@@ -86,7 +86,7 @@ export class UiSettings {
   // ==================== 指南针配置 ====================
   
   // 指南针启用状态
-  private compassEnabled: boolean = true;
+  private compassEnabled: boolean = false;
   
   // 指南针可见性模式
   private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
@@ -106,7 +106,7 @@ export class UiSettings {
   // ==================== Logo 配置 ====================
   
   // Logo 启用状态
-  private logoEnabled: boolean = true;
+  private logoEnabled: boolean = false;
   
   // Logo 边距
   private logoMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);

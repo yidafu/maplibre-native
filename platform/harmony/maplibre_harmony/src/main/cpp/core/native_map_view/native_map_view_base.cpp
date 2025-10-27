@@ -49,6 +49,8 @@
 #include <thread>
 #include <chrono>
 #include <vector>
+#include <mutex>
+#include <set>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -57,6 +59,12 @@ namespace mbgl {
 namespace harmony {
 
 NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
+    // 实例标识（全局计数器，用于多实例调试）
+    static int globalInstanceCounter = 0;
+    static std::map<void*, int> globalInstanceIds;
+    globalInstanceIds[this] = ++globalInstanceCounter;
+    int instanceId = globalInstanceIds[this];
+    
     // 创建包装器引用
     napi_create_reference(env, wrapper, 1, &wrapper_);
     
@@ -69,23 +77,36 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
     // 初始化相机变化追踪器
     cameraChangeTracker = std::make_unique<maplibre::harmony::CameraChangeTracker>(env);
     
-    Logger::info("NativeMapView", "NativeMapView constructed");
+    Logger::info("NativeMapView", "========== 🗺️ [Instance #%d] NativeMapView constructed (this=%p) ==========", instanceId, this);
+    Logger::info("NativeMapView", "[Instance #%d] Total active instances: %d", instanceId, globalInstanceCounter);
+    Logger::info("NativeMapView", "[Instance #%d] 多实例支持：每个实例都有独立的 EGL Context 和 Surface", instanceId);
+    Logger::info("NativeMapView", "[Instance #%d] 共享资源：所有实例共享进程级别的 EGL Display", instanceId);
 }
 
 NativeMapView::~NativeMapView() {
-    Logger::info("NativeMapView", "========== Destructor START ==========");
+    // 实例标识
+    static std::map<void*, int> globalInstanceIds;
+    int instanceId = globalInstanceIds[this];
+    
+    Logger::info("NativeMapView", "========== [Instance #%d] Destructor START (this=%p) ==========", instanceId, this);
     
     // 立即标记对象正在析构，防止回调访问
     isDestroying.store(true, std::memory_order_release);
-    Logger::debug("NativeMapView", "Marked isDestroying=true");
+    Logger::debug("NativeMapView", "[Instance #%d] Marked isDestroying=true", instanceId);
     
     // 确保资源按正确顺序清理
     cleanupAllResources();
     
-    Logger::info("NativeMapView", "========== Destructor END ==========");
+    Logger::info("NativeMapView", "========== [Instance #%d] Destructor END ==========", instanceId);
 }
 
 void NativeMapView::cleanupAllResources() {
+    // 防止重复清理
+    if (resourcesCleaned_.exchange(true)) {
+        Logger::warn("NativeMapView", "Resources already cleaned, skipping");
+        return;
+    }
+    
     Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
     
     try {
@@ -337,6 +358,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"enableRenderingStatsView", nullptr, enableRenderingStatsView, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setNativeWindow", nullptr, setNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setNativeWindowWithSize", nullptr, setNativeWindowWithSize, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"destroy", nullptr, destroy, nullptr, nullptr, nullptr, napi_default, nullptr},
         
         // 相机监听器方法
         {"addOnCameraIdleListener", nullptr, addOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -494,12 +516,30 @@ void NativeMapView::initializeRenderer() {
                         static_cast<int>(height * pixelRatio));
             
             // Configure ResourceOptions
+            // 🔧 关键架构：使用统一的 platformContext，使所有实例共享 FileSource
+            // 参考 Android 和 iOS 的实现：
+            // - Android: FileSource.getInstance() 单例，所有 MapView 共享
+            // - iOS: MLNOfflineStorage.sharedOfflineStorage，所有 MapView 共享
+            // 
+            // 共享 FileSource 的优势：
+            // 1. 第一个实例下载并缓存资源
+            // 2. 后续实例直接使用缓存，快速加载
+            // 3. 减少内存占用和网络请求
+            // 4. FileSourceManager 内部有互斥锁，保证线程安全
             ResourceOptions resourceOptions;
             std::string cachePath = "/data/storage/el2/base/cache";
+            
+            // 使用统一的标识：进程级别的单例指针
+            // 这样所有 Map 实例都会使用相同的 FileSource 实例和缓存
+            static void* sharedPlatformContext = reinterpret_cast<void*>(0x1);
+            
             resourceOptions.withCachePath(cachePath + "/mbgl_cache.db")
                           .withAssetPath(cachePath)
-                          .withPlatformContext(reinterpret_cast<void*>(this)); // Enable platform context
-            Logger::debug("NativeMapView", "ResourceOptions configured with cache path and platform context");
+                          .withPlatformContext(sharedPlatformContext); // 统一的 context，共享 FileSource
+            
+            Logger::info("NativeMapView", "ResourceOptions configured with SHARED FileSource (Android/iOS pattern)");
+            Logger::debug("NativeMapView", "  Cache path: %s/mbgl_cache.db", cachePath.c_str());
+            Logger::debug("NativeMapView", "  Shared context: %p (all instances use same FileSource)", sharedPlatformContext);
             
             // Configure ClientOptions
             ClientOptions clientOptions;
@@ -508,20 +548,60 @@ void NativeMapView::initializeRenderer() {
             Logger::debug("NativeMapView", "ClientOptions configured");
             
             // Create Map object
+            Logger::error("NativeMapView", "🔴🔴🔴 Creating Map object with NativeMapView as Observer 🔴🔴🔴");
+            Logger::error("NativeMapView", "  NativeMapView Observer pointer: %p", this);
+            
             map = std::make_unique<Map>(
                 *rendererFrontend,
-                *this,
+                *this,  // NativeMapView 作为 MapObserver
                 mapOptions,
                 resourceOptions,
                 clientOptions
             );
             
-            Logger::info("NativeMapView", "Map object created successfully: %p", map.get());
+            Logger::error("NativeMapView", "✅✅✅ Map object created successfully: %p", map.get());
+            Logger::error("NativeMapView", "✅ Observer should be: %p (this NativeMapView instance)", this);
+            
+            // 🔍 诊断：验证 FileSource 是否共享
+            try {
+                auto fileSourceManager = FileSourceManager::get();
+                auto onlineFileSource = fileSourceManager->getFileSource(
+                    FileSourceType::Network,
+                    resourceOptions,
+                    clientOptions
+                );
+                auto databaseFileSource = fileSourceManager->getFileSource(
+                    FileSourceType::Database,
+                    resourceOptions,
+                    clientOptions
+                );
+                
+                Logger::info("NativeMapView", "🔍 FileSource Diagnostic Info:");
+                Logger::info("NativeMapView", "  ✅ OnlineFileSource: %p (should be SAME for all instances)", onlineFileSource.get());
+                Logger::info("NativeMapView", "  ✅ DatabaseFileSource: %p (should be SAME for all instances)", databaseFileSource.get());
+                Logger::info("NativeMapView", "  platformContext: %p", sharedPlatformContext);
+                
+                if (onlineFileSource) {
+                    Logger::info("NativeMapView", "  OnlineFileSource is VALID and ready");
+                } else {
+                    Logger::error("NativeMapView", "  ❌ OnlineFileSource is NULL!");
+                }
+                
+                if (databaseFileSource) {
+                    Logger::info("NativeMapView", "  DatabaseFileSource is VALID and ready");
+                } else {
+                    Logger::error("NativeMapView", "  ❌ DatabaseFileSource is NULL!");
+                }
+            } catch (const std::exception& e) {
+                Logger::error("NativeMapView", "FileSource verification failed: %s", e.what());
+            }
             
             // Verify RunLoop exists for network requests
             auto* currentRunLoop = util::RunLoop::Get();
             if (!currentRunLoop) {
                 Logger::error("NativeMapView", "RunLoop is NULL - network requests will fail!");
+            } else {
+                Logger::info("NativeMapView", "RunLoop is available: %p", currentRunLoop);
             }
             
             // Connect Map to RendererFrontend
@@ -544,6 +624,39 @@ void NativeMapView::initializeRenderer() {
     }
 }
 
+
+napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== destroy() called from TS layer ==========");
+    
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    NativeMapView* nativeMapView = nullptr;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&nativeMapView));
+    
+    if (nativeMapView) {
+        // 防止重复销毁（使用静态集合跟踪已销毁的实例）
+        static std::mutex destroyMutex;
+        static std::set<void*> destroyedInstances;
+        
+        {
+            std::lock_guard<std::mutex> lock(destroyMutex);
+            if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
+                Logger::warn("NativeMapView", "Instance %p already destroyed, skipping", nativeMapView);
+                return nullptr;
+            }
+            destroyedInstances.insert(nativeMapView);
+        }
+        
+        Logger::info("NativeMapView", "Calling cleanupAllResources() for instance %p...", nativeMapView);
+        nativeMapView->cleanupAllResources();
+        Logger::info("NativeMapView", "✅ Resources cleaned up successfully for instance %p", nativeMapView);
+    } else {
+        Logger::warn("NativeMapView", "Cannot destroy: native instance is null");
+    }
+    
+    return nullptr;
+}
 
 } // namespace harmony
 } // namespace mbgl

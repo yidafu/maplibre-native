@@ -121,16 +121,33 @@ void NativeMapView::onDidBecomeIdle() {
     Logger::debug("NativeMapView", "onDidBecomeIdle");
 }
 void NativeMapView::onDidFinishLoadingStyle() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
+    // 🔍 日志：最早期的日志，确认回调被调用
+    Logger::error("NativeMapView", "🎨🎨🎨 onDidFinishLoadingStyle() ENTRY - START 🎨🎨🎨");
+    
+    if (isDestroying.load(std::memory_order_acquire)) {
+        Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle: Instance is destroying, skipping callback");
+        return;
+    }
     
     auto now = std::chrono::steady_clock::now();
     static auto startTime = now;
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
     
-    Logger::warn("NativeMapView", "🎨 [%lld ms] onDidFinishLoadingStyle", elapsed);
+    // 实例标识
+    static int instanceCounter = 0;
+    static std::map<void*, int> instanceIds;
+    if (instanceIds.find(this) == instanceIds.end()) {
+        instanceIds[this] = ++instanceCounter;
+    }
+    int instanceId = instanceIds[this];
+    
+    Logger::error("NativeMapView", "🎨 [Instance #%d] [%lld ms] onDidFinishLoadingStyle", instanceId, elapsed);
+    Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p", instanceId, this, map.get());
     
     // 通知样式加载完成
+    Logger::error("NativeMapView", "🎨 [Instance #%d] Calling notifyStyleLoaded()...", instanceId);
     notifyStyleLoaded();
+    Logger::error("NativeMapView", "🎨 [Instance #%d] notifyStyleLoaded() completed", instanceId);
     
     if (map) {
         try {
@@ -1255,10 +1272,18 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
 }
 
 void NativeMapView::notifyStyleLoaded() {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-    if (styleLoadedTsfn_ == nullptr) return;
+    if (isDestroying.load(std::memory_order_acquire)) {
+        Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: Instance is destroying, skipping callback");
+        return;
+    }
     
-    Logger::debug("NativeMapView", "notifyStyleLoaded: Calling listener (thread-safe)");
+    if (styleLoadedTsfn_ == nullptr) {
+        Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: No listener registered (tsfn is null)");
+        return;
+    }
+    
+    Logger::info("NativeMapView", "✅ notifyStyleLoaded: Calling JS listener (thread-safe)");
+    Logger::debug("NativeMapView", "   this=%p, tsfn=%p", this, styleLoadedTsfn_);
     
     // 调用线程安全函数（自动调度到主线程）
     napi_status status = napi_call_threadsafe_function(
@@ -1268,9 +1293,9 @@ void NativeMapView::notifyStyleLoaded() {
     );
     
     if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoaded: Failed to call threadsafe function, status=%d", status);
+        Logger::error("NativeMapView", "❌ notifyStyleLoaded: Failed to call threadsafe function, status=%d", status);
     } else {
-        Logger::debug("NativeMapView", "notifyStyleLoaded: Threadsafe function called successfully");
+        Logger::info("NativeMapView", "✅ notifyStyleLoaded: Threadsafe function called successfully, JS callback will be invoked");
     }
 }
 

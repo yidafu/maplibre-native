@@ -123,6 +123,25 @@ export class NativeMapView {
      * @param height 高度（逻辑像素）
      */
     setNativeWindowWithSize(surfaceId: BigInt, width: number, height: number): void;
+    
+    /**
+     * 销毁地图实例并释放所有资源
+     * 
+     * 线程隔离模式下会销毁：
+     * - EGL Context（实例独占）
+     * - EGL Surface（实例独占）
+     * - Render Thread（实例独占）
+     * - Map 对象和相关资源
+     * 
+     * 不会销毁：
+     * - EGL Display（进程共享）
+     * 
+     * 注意：
+     * - 调用后地图实例不可再使用
+     * - 可以安全地多次调用（有防重入保护）
+     * - 建议在组件 aboutToDisappear() 时调用
+     */
+    destroy(): void;
 
     // ========== Style Management ==========
     

@@ -522,13 +522,36 @@ struct MarkerTestPage {
       return;
     }
     
-    if (this.testMarker) {
+    // 优先从 markerList 数组中移除最后一个
+    if (this.markerList.length > 0) {
+      const lastMarker = this.markerList[this.markerList.length - 1];
+      console.info(`MarkerTestPage: Removing last marker from list, ID=${lastMarker.getId()}, title=${lastMarker.getTitle()}`);
+      
+      lastMarker.remove();
+      this.markerList.pop(); // 从数组中移除
+      
+      // 如果移除的是 testMarker，清空引用
+      if (lastMarker === this.testMarker) {
+        this.testMarker = null;
+      }
+      
+      this.message = `✅ 已移除最后的 Marker: ${lastMarker.getTitle()}`;
+      this.markerCount = Math.max(0, this.markerCount - 1);
+      
+      console.info(`MarkerTestPage: Marker removed successfully, remaining count: ${this.markerList.length}`);
+    } else if (this.testMarker) {
+      // 如果 markerList 为空但 testMarker 存在，移除 testMarker
+      console.info(`MarkerTestPage: Removing testMarker, ID=${this.testMarker.getId()}`);
+      
       this.testMarker.remove();
-      this.message = `移除了 Marker: ${this.testMarker.getTitle()}`;
+      this.message = `✅ 已移除 Marker: ${this.testMarker.getTitle()}`;
       this.testMarker = null;
       this.markerCount = Math.max(0, this.markerCount - 1);
+      
+      console.info(`MarkerTestPage: testMarker removed successfully`);
     } else {
-      this.message = '没有可移除的 Marker';
+      this.message = '❌ 没有可移除的 Marker';
+      console.warn('MarkerTestPage: No markers to remove');
     }
   }
   
@@ -544,6 +567,7 @@ struct MarkerTestPage {
     this.mapLibreMap.clearMarkers();
     this.markerCount = 0;
     this.testMarker = null;
+    this.markerList = [];  // 清空数组
     this.message = '已清除所有 Marker';
     
     console.info('MarkerTestPage: Cleared all markers');

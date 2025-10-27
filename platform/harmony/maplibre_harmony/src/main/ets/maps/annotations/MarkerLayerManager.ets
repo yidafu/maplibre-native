@@ -361,8 +361,21 @@ export class MarkerLayerManager {
       features: Array.from(this.features.values())
     };
     
+    console.debug(`[MarkerLayerManager] Updating source with ${featureCollection.features.length} features`);
+    
     // 更新 GeoJSON 数据
     this.source.setGeoJson(JSON.stringify(featureCollection));
+    
+    // 触发地图重绘以显示更改
+    try {
+      const nativeMapView = this.mapLibreMap.getNativeMapView();
+      if (nativeMapView) {
+        nativeMapView.triggerRepaint();
+        console.debug('[MarkerLayerManager] Triggered map repaint after source update');
+      }
+    } catch (error) {
+      console.warn(`[MarkerLayerManager] Failed to trigger repaint: ${error}`);
+    }
   }
   
   /**

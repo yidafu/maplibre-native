@@ -604,7 +604,20 @@ void EGLCore::Release()
         Logger::error("EGLCore", "Release eglDestroyContext failed");
     }
 
-    if ((eglDisplay_ == nullptr) || (!eglTerminate(eglDisplay_))) {
-        Logger::error("EGLCore", "Release eglTerminate failed");
-    }
+    // ⚠️ 【多实例修复】不要调用 eglTerminate(eglDisplay_) ！
+    // EGL Display 是进程级别的共享资源，如果在这里终止：
+    // 1. 会破坏同一进程中其他地图实例的 EGL 上下文
+    // 2. 导致后续创建的地图实例出现白屏/黑屏/渲染失败
+    // 3. 系统会在进程退出时自动清理 EGL Display
+    // 
+    // 修复前的症状：
+    // - 第一个地图实例：正常显示 ✅
+    // - 第二个地图实例：白屏 ⚪ (EGL Display 已被终止)
+    // - 第三个地图实例：黑屏 ⚫ (EGL 状态完全混乱)
+    //
+    // 参考：Android/iOS 平台都不会在单个实例销毁时调用 eglTerminate
+    Logger::info("EGLCore", "Keeping EGL Display alive for other map instances (NOT calling eglTerminate)");
+    
+    // 只清空引用，不销毁 Display
+    eglDisplay_ = nullptr;
 }

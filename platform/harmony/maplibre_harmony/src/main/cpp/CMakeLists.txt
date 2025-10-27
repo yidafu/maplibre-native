@@ -187,6 +187,16 @@ add_library(maplibre_native
     geojson/feature_collection_napi.hpp
     geojson/feature_collection_napi.cpp
     
+    # Offline API - 离线地图功能
+    offline/offline_manager_napi.hpp
+    offline/offline_manager_napi.cpp
+    offline/offline_region_napi.hpp
+    offline/offline_region_napi.cpp
+    offline/offline_region_definition_napi.hpp
+    offline/offline_region_definition_napi.cpp
+    offline/offline_region_status_napi.hpp
+    offline/offline_region_status_napi.cpp
+    
     # Source NAPI 类
     sources/geojson_source_napi.hpp
     sources/geojson_source_napi.cpp

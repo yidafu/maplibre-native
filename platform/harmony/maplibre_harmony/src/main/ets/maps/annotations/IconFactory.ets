@@ -250,14 +250,23 @@ export class IconFactory {
   /**
    * 获取默认的 marker 图标
    * 
-   * 默认图标会被缓存，多次调用返回同一实例
+   * 默认图标会被缓存，多次调用返回同一实例。
+   * 如果缓存的图标已被释放（例如调用 markerManager.clear() 后），
+   * 会自动重新创建新的默认图标。
    * 
    * @returns Promise<Icon> 默认 Icon 实例
    * @throws Error 如果加载默认图标失败
    */
   public async defaultMarker(): Promise<Icon> {
-    if (this.defaultMarkerIcon) {
+    // 检查缓存的默认图标是否存在且未被释放
+    if (this.defaultMarkerIcon && !this.defaultMarkerIcon.isReleased()) {
       return this.defaultMarkerIcon;
+    }
+    
+    // 如果默认图标已被释放，清除缓存并重新创建
+    if (this.defaultMarkerIcon && this.defaultMarkerIcon.isReleased()) {
+      console.info('[IconFactory] Cached default marker icon was released, creating new one');
+      this.defaultMarkerIcon = null;
     }
 
     try {

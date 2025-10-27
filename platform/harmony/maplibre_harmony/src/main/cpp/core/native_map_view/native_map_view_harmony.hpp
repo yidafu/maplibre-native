@@ -30,6 +30,9 @@ public:
     // 资源清理方法
     void cleanupAllResources();
     
+    // 主动销毁资源（供 TS 层调用）
+    static napi_value destroy(napi_env env, napi_callback_info info);
+    
     // 设置原生窗口（带尺寸参数）
     void setNativeWindowWithSize(int64_t surfaceId, int width, int height);
 
@@ -223,6 +226,9 @@ private:
     
     // 析构标志 - 用于防止析构期间的回调崩溃
     std::atomic<bool> isDestroying{false};
+    
+    // 资源清理标志 - 防止重复清理
+    std::atomic<bool> resourcesCleaned_{false};
     
     // 调试计数器 - 追踪渲染触发频率
     std::atomic<int> renderRequestCount{0};

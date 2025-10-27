@@ -77,18 +77,24 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     }
     styleUrl.resize(strSize);
     
-    Logger::info("NativeMapView", "setStyleUrl: Loading style from URL: %s", styleUrl.c_str());
+    Logger::info("NativeMapView", "Setting style URL: %s", styleUrl.c_str());
     
     // 加载样式
     try {
+        Logger::error("NativeMapView", "🔴🔴🔴 CALLING map->getStyle().loadURL() 🔴🔴🔴");
         instance->map->getStyle().loadURL(styleUrl);
+        Logger::error("NativeMapView", "✅ loadURL() returned successfully");
+        
+        Logger::error("NativeMapView", "🔴🔴🔴 CALLING map->triggerRepaint() 🔴🔴🔴");
         instance->map->triggerRepaint();
+        Logger::error("NativeMapView", "✅ triggerRepaint() returned successfully");
         
         Logger::info("NativeMapView", "setStyleUrl: Style URL set successfully");
     } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setStyleUrl: Failed to load style: %s", e.what());
+        Logger::error("NativeMapView", "❌❌❌ setStyleUrl: EXCEPTION - %s", e.what());
     }
     
+    Logger::info("NativeMapView", "========== setStyleUrl() END ==========");
     return undefined;
 }
 

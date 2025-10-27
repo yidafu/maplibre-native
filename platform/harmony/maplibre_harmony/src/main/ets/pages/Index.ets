@@ -177,6 +177,16 @@ struct Index {
         '📏'
       ),
     ]),
+    
+    // 🚀 高级功能
+    new TestPageGroup('高级功能', '🚀', [
+      new TestPageItem(
+        '多地图实例测试',
+        '测试多个地图实例的同时显示、独立交互和资源管理',
+        'pages/MultiMapTestPage',
+        '🗺️🗺️🗺️'
+      ),
+    ]),
   ];
 
   build() {

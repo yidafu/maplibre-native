@@ -285,15 +285,28 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
         handleError(curl_easy_setopt(handle, CURLOPT_USERAGENT, "MapLibreNative/1.0"));
         handleError(curl_easy_setopt(handle, CURLOPT_SHARE, context->share));
 
+        // 🔍 诊断：记录请求信息
+        Logger::info("HTTP", "📤 Sending Request:");
+        Logger::info("HTTP", "  URL: %s", resource.url.c_str());
+        Logger::info("HTTP", "  Request: %p", this);
+        Logger::info("HTTP", "  CURL Handle: %p", handle);
+        if (resource.priorEtag) {
+            Logger::debug("HTTP", "  Prior ETag: %s", resource.priorEtag->c_str());
+        }
+        if (resource.priorModified) {
+            Logger::debug("HTTP", "  Prior Modified: %lld", *resource.priorModified);
+        }
+
         // Start requesting the information using CURLEventLoop
         if (context->curlEventLoop) {
             bool success = context->curlEventLoop->addHandle(handle);
             if (!success) {
-                Logger::error("Network", "Failed to add handle to CURLEventLoop");
+                Logger::error("Network", "❌ Failed to add handle to CURLEventLoop");
                 throw std::runtime_error("Failed to add handle to CURLEventLoop");
             }
+            Logger::debug("HTTP", "  ✅ Added to CURLEventLoop");
         } else {
-            Logger::error("Network", "CURLEventLoop is null");
+            Logger::error("Network", "❌ CURLEventLoop is null");
             throw std::runtime_error("CURLEventLoop is null");
         }
         
@@ -414,6 +427,12 @@ size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const 
 }
 
 void HTTPRequest::handleResult(CURLcode code) {
+    // 🔍 诊断：记录结果处理开始
+    Logger::info("HTTP", "📥 Processing Result:");
+    Logger::info("HTTP", "  Request: %p", this);
+    Logger::info("HTTP", "  URL: %s", resource.url.c_str());
+    Logger::info("HTTP", "  CURLcode: %d (%s)", code, curl_easy_strerror(code));
+    
     // Make sure a response object exists
     if (!response) {
         response = std::make_unique<Response>();
@@ -422,7 +441,7 @@ void HTTPRequest::handleResult(CURLcode code) {
     using Error = Response::Error;
 
     if (code != CURLE_OK) {
-        Logger::warn("Network", "Request failed: %s", curl_easy_strerror(code));
+        Logger::warn("Network", "❌ Request failed: %s", curl_easy_strerror(code));
         
         switch (code) {
             case CURLE_COULDNT_RESOLVE_PROXY:
@@ -466,10 +485,27 @@ void HTTPRequest::handleResult(CURLcode code) {
         }
     }
     
+    // 🔍 诊断：记录响应状态
+    Logger::info("HTTP", "📊 Response Status:");
+    if (response->error) {
+        Logger::warn("HTTP", "  Error: %s", response->error->message.c_str());
+    } else if (response->notModified) {
+        Logger::info("HTTP", "  Status: Not Modified (304)");
+    } else if (response->noContent) {
+        Logger::info("HTTP", "  Status: No Content");
+    } else if (response->data) {
+        Logger::info("HTTP", "  Status: Success, Data size: %zu bytes", response->data->size());
+    } else {
+        Logger::warn("HTTP", "  Status: Unknown/Empty");
+    }
+    
     // Calling `callback` may result in deleting `this`. Copy data to temporaries first.
     auto callback_ = callback;
     auto response_ = *response;
+    
+    Logger::debug("HTTP", "🔄 Invoking callback...");
     callback_(response_);
+    Logger::debug("HTTP", "✅ Callback completed");
 }
 
 HTTPFileSource::HTTPFileSource(const ResourceOptions &resourceOptions, const ClientOptions &clientOptions)

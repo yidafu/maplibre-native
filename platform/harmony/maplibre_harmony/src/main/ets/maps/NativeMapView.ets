@@ -14,6 +14,10 @@ import {
   OnTiltListener,
   OnQuickZoomListener
 } from './gestures/GestureListeners';
+import { CompassView } from './widgets/CompassView';
+import { LogoView } from './widgets/LogoView';
+import { CompassPosition } from './widgets/CompassPosition';
+import { CompassVisibility } from './widgets/CompassVisibility';
 
 // 使用 NAPI Marker 类型
 type Marker = maplibre.Marker;
@@ -49,6 +53,10 @@ class NativeMapViewController extends XComponentController {
   // 手势系统
   private uiSettings: UiSettings = new UiSettings();
   private gestureDetector: MapGestureDetector = new MapGestureDetector(this.uiSettings);
+  
+  // UI 组件状态
+  private compassBearingUpdateCallback?: (bearing: number) => void;
+  private uiSettingsUpdateCallback?: () => void;
 
   /**
    * 表面创建回调
@@ -105,6 +113,14 @@ class NativeMapViewController extends XComponentController {
       this.gestureDetector.setMapController(this.mapView);
       
       hilog.info(DOMAIN, 'NativeMapView', 'Map initialized successfully');
+      
+      // 设置相机监听器来更新 Compass
+      this.mapView.addOnCameraMoveListener(() => {
+        this.updateCompassBearing();
+      });
+      
+      // 初始更新一次 Compass bearing
+      this.updateCompassBearing();
       
       // 调用 onMapReady 回调
       if (this.onMapReadyCallback) {
@@ -354,6 +370,49 @@ class NativeMapViewController extends XComponentController {
   getGestureDetector(): MapGestureDetector {
     return this.gestureDetector;
   }
+  
+  /**
+   * 设置 Compass Bearing 更新回调
+   */
+  setCompassBearingUpdateCallback(callback: (bearing: number) => void): void {
+    this.compassBearingUpdateCallback = callback;
+  }
+  
+  /**
+   * 设置 UI 设置更新回调
+   */
+  setUiSettingsUpdateCallback(callback: () => void): void {
+    this.uiSettingsUpdateCallback = callback;
+  }
+  
+  /**
+   * 更新 Compass Bearing
+   */
+  updateCompassBearing(): void {
+    if (this.mapView && this.isInitialized && this.compassBearingUpdateCallback) {
+      try {
+        const bearing = this.mapView.getBearing();
+        this.compassBearingUpdateCallback(bearing);
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to update compass bearing: ${error}`);
+      }
+    }
+  }
+  
+  /**
+   * 归正北（Compass 点击处理）
+   */
+  resetNorth(): void {
+    if (this.mapView && this.isInitialized) {
+      try {
+        // 使用动画方式归正北（参考 Android TIME_MAP_NORTH_ANIMATION = 150ms）
+        this.mapView.setBearing(0, 150);
+        hilog.info(DOMAIN, 'NativeMapView', 'Reset north animation started');
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to reset north: ${error}`);
+      }
+    }
+  }
 }
 
 /**
@@ -376,6 +435,10 @@ export struct NativeMapView {
   onMapReady?: (mapView?: maplibre.NativeMapView) => void;
   onMapLoaded?: () => void;
   onMapError?: (error: string) => void;
+  
+  // UI 组件状态
+  @State private compassBearing: number = 0;
+  @State private uiSettingsVersion: number = 0;
 
   /**
    * 组件即将出现
@@ -395,6 +458,24 @@ export struct NativeMapView {
         this.controller.initialPitch = this.initialPitch;
         this.controller.onMapReadyCallback = this.onMapReady;
         
+        // 设置 UI 组件更新回调
+        this.controller.setCompassBearingUpdateCallback((bearing: number) => {
+          this.compassBearing = bearing;
+        });
+        
+        this.controller.setUiSettingsUpdateCallback(() => {
+          this.uiSettingsVersion++;
+        });
+        
+        // 设置 UiSettings 的配置变更回调
+        const uiSettings = this.controller.getUiSettings();
+        uiSettings.onCompassConfigChanged = () => {
+          this.uiSettingsVersion++;
+        };
+        uiSettings.onLogoConfigChanged = () => {
+          this.uiSettingsVersion++;
+        };
+        
         hilog.info(DOMAIN, 'NativeMapView', `Initial config: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
       } else {
         hilog.error(DOMAIN, 'NativeMapView', 'Controller is null in aboutToAppear');
@@ -406,14 +487,121 @@ export struct NativeMapView {
 
   /**
    * 组件即将消失
+   * 
+   * ⚠️ 重要：在Harmony OS中，当使用router.pushUrl()导航到新页面时，
+   * 旧页面的aboutToDisappear会被调用，但页面仍在栈中。
+   * 如果在这里清理EGL资源，会导致其他地图实例无法正常工作（白屏问题）。
+   * 
+   * 策略：
+   * 1. 不要清理OpenGL/EGL资源 - 这些是进程级别的共享资源
+   * 2. 只标记组件为已销毁状态
+   * 3. 暂停渲染以节省资源
+   * 4. 让系统在进程结束时自动清理资源
    */
   aboutToDisappear(): void {
-    hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToDisappear');
+    hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToDisappear - cleaning up resources');
     this.isDestroyed = true;
     
-    // 清理资源
-    if (this.controller) {
-      this.controller.cleanupResources();
+    // ✅ 线程隔离模式：主动销毁实例资源
+    // 
+    // 当前架构（Android 风格的线程隔离）：
+    // - ✅ EGL Context   - 实例独占，可以销毁
+    // - ✅ EGL Surface   - 实例独占，可以销毁  
+    // - ✅ Render Thread - 实例独占，可以停止
+    // - ❌ EGL Display   - 进程共享，不能调用 eglTerminate
+    // 
+    // cleanupEGL() 已正确实现：
+    // - 销毁 Context 和 Surface
+    // - 保留 Display（系统进程退出时自动清理）
+    // - 多个地图实例可以安全地独立销毁
+    
+    try {
+      const mapView = this.controller.getMapView();
+      if (mapView) {
+        hilog.info(DOMAIN, 'NativeMapView', 'Calling native destroy()...');
+        mapView.destroy();  // 🔑 关键：主动清理资源
+        hilog.info(DOMAIN, 'NativeMapView', '✅ Native resources destroyed');
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `Error destroying resources: ${error}`);
+    }
+    
+    hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToDisappear completed');
+  }
+
+  /**
+   * 获取 Compass 的 X 位置
+   */
+  private getCompassX(): Length {
+    const uiSettings = this.controller.getUiSettings();
+    const position = uiSettings.getCompassPosition();
+    const margins = uiSettings.getCompassMargins();
+    
+    switch (position) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.BottomLeft:
+        return margins.left;
+      case CompassPosition.TopRight:
+      case CompassPosition.BottomRight:
+      default:
+        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - 组件宽度 - 右边距
+    }
+  }
+  
+  /**
+   * 获取 Compass 的 Y 位置
+   */
+  private getCompassY(): Length {
+    const uiSettings = this.controller.getUiSettings();
+    const position = uiSettings.getCompassPosition();
+    const margins = uiSettings.getCompassMargins();
+    
+    switch (position) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.TopRight:
+      default:
+        return margins.top;
+      case CompassPosition.BottomLeft:
+      case CompassPosition.BottomRight:
+        return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - 组件高度 - 下边距
+    }
+  }
+  
+  /**
+   * 获取 Logo 的 X 位置
+   */
+  private getLogoX(): Length {
+    const uiSettings = this.controller.getUiSettings();
+    const position = uiSettings.getLogoPosition();
+    const margins = uiSettings.getLogoMargins();
+    
+    switch (position) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.BottomLeft:
+      default:
+        return margins.left;
+      case CompassPosition.TopRight:
+      case CompassPosition.BottomRight:
+        return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - Logo宽度 - 右边距
+    }
+  }
+  
+  /**
+   * 获取 Logo 的 Y 位置
+   */
+  private getLogoY(): Length {
+    const uiSettings = this.controller.getUiSettings();
+    const position = uiSettings.getLogoPosition();
+    const margins = uiSettings.getLogoMargins();
+    
+    switch (position) {
+      case CompassPosition.TopLeft:
+      case CompassPosition.TopRight:
+        return margins.top;
+      case CompassPosition.BottomLeft:
+      case CompassPosition.BottomRight:
+      default:
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - Logo高度 - 下边距
     }
   }
 
@@ -422,6 +610,7 @@ export struct NativeMapView {
    */
   build() {
     Stack() {
+      // 地图 XComponent
       XComponent({
         type: XComponentType.SURFACE,
         controller: this.controller,
@@ -502,6 +691,32 @@ export struct NativeMapView {
               this.controller.getGestureDetector().onTwoFingerPanEnd(event);
             })
         )
+      
+      // Compass 组件 - 根据 UiSettings 配置定位（绝对定位）
+      if (this.controller.getUiSettings().isCompassEnabled()) {
+        CompassView({
+          bearing: this.compassBearing,
+          compassEnabled: this.controller.getUiSettings().isCompassEnabled(),
+          compassVisibility: this.controller.getUiSettings().getCompassVisibility(),
+          fadeWhenFacingNorth: this.controller.getUiSettings().isCompassFadeWhenFacingNorth(),
+          onCompassClick: () => {
+            this.controller.resetNorth();
+          }
+        })
+          .width(48)
+          .height(48)
+          .position({ x: this.getCompassX(), y: this.getCompassY() })
+      }
+      
+      // Logo 组件 - 根据 UiSettings 配置定位（绝对定位）
+      if (this.controller.getUiSettings().isLogoEnabled()) {
+        LogoView({
+          logoEnabled: this.controller.getUiSettings().isLogoEnabled()
+        })
+          .width(80)
+          .height(40)
+          .position({ x: this.getLogoX(), y: this.getLogoY() })
+      }
     }
   }
 

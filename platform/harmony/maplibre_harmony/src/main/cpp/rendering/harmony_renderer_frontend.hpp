@@ -49,8 +49,14 @@ private:
     MapObserver::RenderMode renderingMode = MapObserver::RenderMode::Full;
     bool needsRender = false;
     std::unique_ptr<util::RunLoop> runLoop;
-    std::thread runLoopThread;  // Background thread for RunLoop
-    std::thread::id runLoopThreadId;  // Thread ID for deadlock avoidance
+    
+    // 🔄 线程隔离模型：每个实例拥有独立的渲染线程（Android 风格）
+    std::thread renderThread;           // 专用渲染线程（原 runLoopThread）
+    std::thread::id renderThreadId;     // 渲染线程 ID
+    std::mutex initMutex;               // 初始化同步
+    std::condition_variable initCV;     // 条件变量
+    bool threadReady = false;           // 线程就绪标志
+    
     std::unique_ptr<gfx::Backend> rendererBackend;
     
     // Renderer components
