@@ -48,8 +48,6 @@
 #include <string>
 #include <thread>
 #include <chrono>
-#include <future>
-#include <condition_variable>
 #include <vector>
 #include <mutex>
 #include <set>
@@ -76,8 +74,8 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
     pixelRatio = 1.0f;
     nativeWindow = nullptr;
     
-    // 初始化统一回调管理器
-    callbackManager_ = std::make_unique<CallbackManager>(env);
+    // 初始化相机变化追踪器
+    cameraChangeTracker = std::make_unique<maplibre::harmony::CameraChangeTracker>(env);
     
     Logger::info("NativeMapView", "========== 🗺️ [Instance #%d] NativeMapView constructed (this=%p) ==========", instanceId, this);
     Logger::info("NativeMapView", "[Instance #%d] Total active instances: %d", instanceId, globalInstanceCounter);
@@ -96,13 +94,6 @@ NativeMapView::~NativeMapView() {
     isDestroying.store(true, std::memory_order_release);
     Logger::debug("NativeMapView", "[Instance #%d] Marked isDestroying=true", instanceId);
     
-    // 清理所有回调（优先清理，防止回调访问正在析构的对象）
-    if (callbackManager_) {
-        Logger::debug("NativeMapView", "[Instance #%d] Clearing all callbacks", instanceId);
-        callbackManager_->Clear();
-        callbackManager_.reset();
-    }
-    
     // 确保资源按正确顺序清理
     cleanupAllResources();
     
@@ -119,16 +110,28 @@ void NativeMapView::cleanupAllResources() {
     Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
     
     try {
-        // 注意：回调已经在析构函数中清理（callbackManager_->Clear()）
+        // 0. 清理样式监听器（线程安全函数）
+        if (styleLoadedTsfn_ != nullptr) {
+            Logger::debug("NativeMapView", "Releasing styleLoadedTsfn (threadsafe function)...");
+            napi_release_threadsafe_function(styleLoadedTsfn_, napi_tsfn_abort);
+            styleLoadedTsfn_ = nullptr;
+        }
+        if (styleLoadErrorTsfn_ != nullptr) {
+            Logger::debug("NativeMapView", "Releasing styleLoadErrorTsfn (threadsafe function)...");
+            napi_release_threadsafe_function(styleLoadErrorTsfn_, napi_tsfn_abort);
+            styleLoadErrorTsfn_ = nullptr;
+        }
         
-        // 🔄 新架构：Map 在渲染线程，无需停止独立的 Map 线程
-        Logger::debug("NativeMapView", "Map is managed by HarmonyRendererFrontend (no separate thread)");
+        // 1. 清理相机监听器
+        if (cameraChangeTracker) {
+            Logger::debug("NativeMapView", "Clearing camera change tracker...");
+            cameraChangeTracker->clearAllListeners();
+            cameraChangeTracker.reset();
+        }
         
-        // 1. 停止所有网络请求和异步操作
+        // 1. 首先停止所有网络请求和异步操作
         Logger::debug("NativeMapView", "Stopping all network requests and async operations...");
         
-        // ⚠️ 重要：Map 现在归 HarmonyRendererFrontend 所有
-        // 我们不应该直接销毁 map，而是让 HarmonyRendererFrontend 管理其生命周期
         if (map) {
             Logger::debug("NativeMapView", "Stopping map operations...");
             // 停止地图的所有网络请求和过渡动画
@@ -165,13 +168,11 @@ void NativeMapView::cleanupAllResources() {
         Logger::debug("NativeMapView", "Final wait for RunLoop shutdown...");
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         
-        // 6. 清理Map对象
-        // 🔄 新架构：Map 归 HarmonyRendererFrontend 所有，在渲染线程中管理
-        // 我们只需要清空指针，不需要销毁（HarmonyRendererFrontend 会在其析构函数中销毁）
+        // 6. 清理Map对象 (在RunLoop仍然有效时)
         if (map) {
-            Logger::debug("NativeMapView", "Clearing Map pointer (ownership in HarmonyRendererFrontend)...");
-            map = nullptr;
-            Logger::debug("NativeMapView", "Map pointer cleared (actual Map will be destroyed by HarmonyRendererFrontend)");
+            Logger::debug("NativeMapView", "Destroying Map object...");
+            map.reset();
+            Logger::debug("NativeMapView", "Map destroyed");
         }
         
         // 5. 清理HarmonyRenderer
@@ -489,7 +490,7 @@ void NativeMapView::initializeRenderer() {
     
     // 3. 创建 Map 对象（如果不存在）
     if (!map && harmonyRenderer) {
-        Logger::info("NativeMapView", "Creating Map object in RunLoop thread...");
+        Logger::info("NativeMapView", "Creating Map object...");
         
         auto* rendererFrontend = harmonyRenderer->getRendererFrontend();
         if (!rendererFrontend) {
@@ -498,105 +499,124 @@ void NativeMapView::initializeRenderer() {
         }
         Logger::debug("NativeMapView", "Got RendererFrontend: %p", rendererFrontend);
         
-        // 🔄 新架构：在渲染线程中创建 Map（合并 Map + 渲染线程）
-        Logger::info("NativeMapView", "========== Creating Map in Render Thread (Merged Architecture) ==========");
-        Logger::info("NativeMapView", "✨ Map + Renderer will share the same thread (iOS-style)");
-        
-        // 使用条件变量等待Map创建完成
-        std::mutex mapCreationMutex;
-        std::condition_variable mapCreationCV;
-        bool mapCreated = false;
-        std::string mapCreationError;
-        
-        // 🔄 在渲染线程中创建 Map（通过 HarmonyRendererFrontend）
-        Logger::info("NativeMapView", "📡 Scheduling Map creation on render thread...");
-        
-        // 准备参数（使用 shared_ptr 传递，避免复制/移动问题）
-        auto mapOptionsPtr = std::make_shared<MapOptions>();
-        mapOptionsPtr->withMapMode(MapMode::Continuous)
-                     .withConstrainMode(ConstrainMode::HeightOnly)
-                     .withViewportMode(ViewportMode::Default)
-                     .withCrossSourceCollisions(true)
-                     .withSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)})
-                     .withPixelRatio(pixelRatio);
-        Logger::info("NativeMapView", "🔍 [DPI] MapOptions configured:");
-        Logger::info("NativeMapView", "  - Size: %dx%d (logical pixels)", width, height);
-        Logger::info("NativeMapView", "  - PixelRatio: %.4f", pixelRatio);
-        Logger::info("NativeMapView", "  - Expected framebuffer (physical): %dx%d", 
-                    static_cast<int>(width * pixelRatio),
-                    static_cast<int>(height * pixelRatio));
-        
-        auto resourceOptionsPtr = std::make_shared<ResourceOptions>();
-        std::string cachePath = "/data/storage/el2/base/cache";
-        static void* sharedPlatformContext = reinterpret_cast<void*>(0x1);
-        
-        resourceOptionsPtr->withCachePath(cachePath + "/mbgl_cache.db")
+        try {
+            // Configure MapOptions
+            MapOptions mapOptions;
+            mapOptions.withMapMode(MapMode::Continuous)
+                      .withConstrainMode(ConstrainMode::HeightOnly)
+                      .withViewportMode(ViewportMode::Default)
+                      .withCrossSourceCollisions(true)
+                      .withSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)})
+                      .withPixelRatio(pixelRatio);
+            Logger::info("NativeMapView", "🔍 [DPI] MapOptions configured:");
+            Logger::info("NativeMapView", "  - Size: %dx%d (logical pixels)", width, height);
+            Logger::info("NativeMapView", "  - PixelRatio: %.4f", pixelRatio);
+            Logger::info("NativeMapView", "  - Expected framebuffer (physical): %dx%d", 
+                        static_cast<int>(width * pixelRatio),
+                        static_cast<int>(height * pixelRatio));
+            
+            // Configure ResourceOptions
+            // 🔧 关键架构：使用统一的 platformContext，使所有实例共享 FileSource
+            // 参考 Android 和 iOS 的实现：
+            // - Android: FileSource.getInstance() 单例，所有 MapView 共享
+            // - iOS: MLNOfflineStorage.sharedOfflineStorage，所有 MapView 共享
+            // 
+            // 共享 FileSource 的优势：
+            // 1. 第一个实例下载并缓存资源
+            // 2. 后续实例直接使用缓存，快速加载
+            // 3. 减少内存占用和网络请求
+            // 4. FileSourceManager 内部有互斥锁，保证线程安全
+            ResourceOptions resourceOptions;
+            std::string cachePath = "/data/storage/el2/base/cache";
+            
+            // 使用统一的标识：进程级别的单例指针
+            // 这样所有 Map 实例都会使用相同的 FileSource 实例和缓存
+            static void* sharedPlatformContext = reinterpret_cast<void*>(0x1);
+            
+            resourceOptions.withCachePath(cachePath + "/mbgl_cache.db")
                           .withAssetPath(cachePath)
-                          .withPlatformContext(sharedPlatformContext);
-        
-        Logger::info("NativeMapView", "ResourceOptions configured with SHARED FileSource");
-        
-        auto clientOptionsPtr = std::make_shared<ClientOptions>();
-        clientOptionsPtr->withName("MapLibre Harmony")
-                        .withVersion("1.0.0");
-        
-        rendererFrontend->invokeOnRenderThread([this, rendererFrontend, mapRenderer = this->mapRenderer,
-                                                 mapOptionsPtr, resourceOptionsPtr, clientOptionsPtr,
-                                                 &mapCreationMutex, &mapCreationCV, &mapCreated, &mapCreationError]() {
+                          .withPlatformContext(sharedPlatformContext); // 统一的 context，共享 FileSource
+            
+            Logger::info("NativeMapView", "ResourceOptions configured with SHARED FileSource (Android/iOS pattern)");
+            Logger::debug("NativeMapView", "  Cache path: %s/mbgl_cache.db", cachePath.c_str());
+            Logger::debug("NativeMapView", "  Shared context: %p (all instances use same FileSource)", sharedPlatformContext);
+            
+            // Configure ClientOptions
+            ClientOptions clientOptions;
+            clientOptions.withName("MapLibre Harmony")
+                         .withVersion("1.0.0");
+            Logger::debug("NativeMapView", "ClientOptions configured");
+            
+            // Create Map object
+            Logger::error("NativeMapView", "🔴🔴🔴 Creating Map object with NativeMapView as Observer 🔴🔴🔴");
+            Logger::error("NativeMapView", "  NativeMapView Observer pointer: %p", this);
+            
+            map = std::make_unique<Map>(
+                *rendererFrontend,
+                *this,  // NativeMapView 作为 MapObserver
+                mapOptions,
+                resourceOptions,
+                clientOptions
+            );
+            
+            Logger::error("NativeMapView", "✅✅✅ Map object created successfully: %p", map.get());
+            Logger::error("NativeMapView", "✅ Observer should be: %p (this NativeMapView instance)", this);
+            
+            // 🔍 诊断：验证 FileSource 是否共享
             try {
-                Logger::info("NativeMapView", "🎬 Map creation task executing on render thread");
-                Logger::info("NativeMapView", "  - Current thread ID: %lu", std::hash<std::thread::id>{}(std::this_thread::get_id()));
-                Logger::info("NativeMapView", "  - Current Scheduler: %p", mbgl::Scheduler::GetCurrent());
+                auto fileSourceManager = FileSourceManager::get();
+                auto onlineFileSource = fileSourceManager->getFileSource(
+                    FileSourceType::Network,
+                    resourceOptions,
+                    clientOptions
+                );
+                auto databaseFileSource = fileSourceManager->getFileSource(
+                    FileSourceType::Database,
+                    resourceOptions,
+                    clientOptions
+                );
                 
-                // 在渲染线程中创建 Map
-                rendererFrontend->initializeMap(*this, *mapOptionsPtr, *resourceOptionsPtr, *clientOptionsPtr);
+                Logger::info("NativeMapView", "🔍 FileSource Diagnostic Info:");
+                Logger::info("NativeMapView", "  ✅ OnlineFileSource: %p (should be SAME for all instances)", onlineFileSource.get());
+                Logger::info("NativeMapView", "  ✅ DatabaseFileSource: %p (should be SAME for all instances)", databaseFileSource.get());
+                Logger::info("NativeMapView", "  platformContext: %p", sharedPlatformContext);
                 
-                Logger::info("NativeMapView", "✅ Map created successfully in render thread!");
-                Logger::info("NativeMapView", "✅ Map and Renderer now on same thread (merged architecture)");
-                
-                // 获取 Map 指针（现在 HarmonyRendererFrontend 拥有 Map）
-                Map* createdMap = rendererFrontend->getMap();
-                if (!createdMap) {
-                    throw std::runtime_error("Map creation succeeded but getMap() returned null");
+                if (onlineFileSource) {
+                    Logger::info("NativeMapView", "  OnlineFileSource is VALID and ready");
+                } else {
+                    Logger::error("NativeMapView", "  ❌ OnlineFileSource is NULL!");
                 }
                 
-                // ⚠️ 重要：保存 Map 指针供外部访问（兼容性）
-                // 注意：Map 的实际所有权在 HarmonyRendererFrontend
-                const_cast<NativeMapView*>(this)->map = createdMap;
-                
-                Logger::debug("NativeMapView", "Map pointer saved for external access");
-                
-                // 通知主线程 Map 已创建
-                {
-                    std::lock_guard<std::mutex> lock(mapCreationMutex);
-                    mapCreated = true;
+                if (databaseFileSource) {
+                    Logger::info("NativeMapView", "  DatabaseFileSource is VALID and ready");
+                } else {
+                    Logger::error("NativeMapView", "  ❌ DatabaseFileSource is NULL!");
                 }
-                mapCreationCV.notify_one();
-                
             } catch (const std::exception& e) {
-                Logger::error("NativeMapView", "Failed to create Map in render thread: %s", e.what());
-                {
-                    std::lock_guard<std::mutex> lock(mapCreationMutex);
-                    mapCreationError = e.what();
-                    mapCreated = true;  // 即使失败也通知
-                }
-                mapCreationCV.notify_one();
+                Logger::error("NativeMapView", "FileSource verification failed: %s", e.what());
             }
-        });
-        
-        // 等待Map创建完成
-        {
-            std::unique_lock<std::mutex> lock(mapCreationMutex);
-            mapCreationCV.wait(lock, [&mapCreated] { return mapCreated; });
+            
+            // Verify RunLoop exists for network requests
+            auto* currentRunLoop = util::RunLoop::Get();
+            if (!currentRunLoop) {
+                Logger::error("NativeMapView", "RunLoop is NULL - network requests will fail!");
+            } else {
+                Logger::info("NativeMapView", "RunLoop is available: %p", currentRunLoop);
+            }
+            
+            // Connect Map to RendererFrontend
+            auto* frontend = harmonyRenderer->getRendererFrontend();
+            if (frontend) {
+                frontend->setMap(map.get());
+            } else {
+                Logger::error("NativeMapView", "Failed to get RendererFrontend");
+            }
+            
+            // Connect Map to HarmonyRenderer (for Transform size updates during resize)
+            harmonyRenderer->setMap(map.get());
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "Failed to create Map object: %s", e.what());
         }
-        
-        if (!mapCreationError.empty()) {
-            Logger::error("NativeMapView", "Map creation failed: %s", mapCreationError.c_str());
-            throw std::runtime_error("Map creation failed: " + mapCreationError);
-        }
-        
-        Logger::info("NativeMapView", "✅ Map creation on render thread completed successfully");
-        Logger::info("NativeMapView", "========== Map and Renderer now on same thread (merged) ==========");
     } else if (map) {
         Logger::debug("NativeMapView", "Map already exists, skipping creation");
     } else {

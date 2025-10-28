@@ -327,9 +327,9 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
     
     // 创建参数：mapPtr
     napi_value args[1];
-    int64_t mapPtr = reinterpret_cast<int64_t>(instance->map);
+    int64_t mapPtr = reinterpret_cast<int64_t>(instance->map.get());
     napi_create_int64(env, mapPtr, &args[0]);
-    Logger::debug("NativeMapView", "getStyle: Creating Style instance with mapPtr=%p", instance->map);
+    Logger::debug("NativeMapView", "getStyle: Creating Style instance with mapPtr=%p", instance->map.get());
     
     // 创建 StyleNAPI 实例
     napi_value styleInstance;
