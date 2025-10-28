@@ -13,6 +13,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-command-line-argument")
     # 启用 RTTI 支持
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
+    add_definitions(-DMLN_SYMBOL_GUARDS=0)
 endif()
 
 link_directories(/opt/homebrew/opt)
