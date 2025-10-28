@@ -60,3 +60,5 @@ out.png
 **/*.rs.bk
 **/*.profraw
 *.md
+*.log
+*.sh
