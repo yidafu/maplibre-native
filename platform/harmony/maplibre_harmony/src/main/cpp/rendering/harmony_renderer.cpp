@@ -185,8 +185,15 @@ void HarmonyRenderer::stopAllRequests() {
         
         // 停止地图的网络请求
         if (map) {
-            Logger::debug("HarmonyRenderer", "Stopping map network requests...");
-            map->cancelTransitions();
+            try {
+                Logger::debug("HarmonyRenderer", "Stopping map network requests...");
+                map->cancelTransitions();
+                Logger::debug("HarmonyRenderer", "Map network requests stopped");
+            } catch (const std::exception& e) {
+                Logger::warn("HarmonyRenderer", "Failed to stop map requests (map may be destroyed): %s", e.what());
+            } catch (...) {
+                Logger::warn("HarmonyRenderer", "Failed to stop map requests (map may be destroyed)");
+            }
         }
         
         Logger::info("HarmonyRenderer", "All network requests stopped successfully");

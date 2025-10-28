@@ -161,6 +161,13 @@ void NativeMapView::cleanupAllResources() {
         // 6. 清理Map对象 (在RunLoop仍然有效时)
         if (map) {
             Logger::debug("NativeMapView", "Destroying Map object...");
+            
+            // 先清空 HarmonyRenderer 的 map 引用，防止 Use-After-Free
+            if (harmonyRenderer) {
+                Logger::debug("NativeMapView", "Clearing HarmonyRenderer's map reference...");
+                harmonyRenderer->setMap(nullptr);
+            }
+            
             map.reset();
             Logger::debug("NativeMapView", "Map destroyed");
         }
@@ -168,7 +175,8 @@ void NativeMapView::cleanupAllResources() {
         // 5. 清理HarmonyRenderer
         if (harmonyRenderer) {
             Logger::debug("NativeMapView", "Destroying HarmonyRenderer...");
-            harmonyRenderer->cleanup();
+            // 注意：不再调用 cleanup()，因为已经调用过 stopAllRequests()
+            // 直接析构以避免重复清理
             harmonyRenderer.reset();
             Logger::debug("NativeMapView", "HarmonyRenderer destroyed");
         }
