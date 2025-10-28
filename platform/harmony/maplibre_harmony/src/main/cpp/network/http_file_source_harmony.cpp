@@ -12,6 +12,7 @@
 #include <mbgl/util/timer.hpp>
 #include <mbgl/util/chrono.hpp>
 #include <mbgl/util/http_header.hpp>
+#include <mbgl/util/async_task.hpp>
 
 #include <curl/curl.h>
 
@@ -22,6 +23,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
+#include <mutex>
+#include <atomic>
 
 // HarmonyOS独立CURL事件循环
 #include "curl_event_loop.hpp"
@@ -35,6 +38,40 @@ namespace {
 void handleError(CURLcode code) {
     if (code != CURLE_OK) {
         throw std::runtime_error(std::string("CURL easy error: ") + curl_easy_strerror(code));
+    }
+}
+
+// 🔒 CURL 全局状态管理（支持多实例）
+std::once_flag curlGlobalInitFlag;
+std::atomic<int> curlInstanceCount{0};
+std::mutex curlGlobalMutex;
+
+void initCURLGlobal() {
+    std::call_once(curlGlobalInitFlag, []() {
+        Logger::info("Network", "🌐 Initializing CURL global state (first instance)");
+        if (curl_global_init(CURL_GLOBAL_ALL)) {
+            Logger::error("Network", "Failed to initialize CURL globally");
+            throw std::runtime_error("Could not init cURL globally");
+        }
+        Logger::info("Network", "✅ CURL global state initialized");
+    });
+    
+    int count = curlInstanceCount.fetch_add(1) + 1;
+    Logger::debug("Network", "CURL instance count: %d", count);
+}
+
+void cleanupCURLGlobal() {
+    int count = curlInstanceCount.fetch_sub(1) - 1;
+    Logger::debug("Network", "CURL instance count: %d", count);
+    
+    if (count == 0) {
+        std::lock_guard<std::mutex> lock(curlGlobalMutex);
+        // 再次检查计数（双重检查锁定）
+        if (curlInstanceCount.load() == 0) {
+            Logger::info("Network", "🌐 Cleaning up CURL global state (last instance)");
+            curl_global_cleanup();
+            Logger::info("Network", "✅ CURL global state cleaned up");
+        }
     }
 }
 } // namespace
@@ -91,7 +128,7 @@ public:
 
 private:
     static size_t headerCallback(char *buffer, size_t size, size_t nmemb, void *userp);
-    static size_t writeCallback(void *contents, size_t size, size_t nmemb, void *userp);
+    static size_t writeCallback(void *contents, size_t nmemb, size_t size, void *userp);
 
     HTTPFileSource::Impl *context = nullptr;
     Resource resource;
@@ -108,6 +145,14 @@ private:
     curl_slist *headers = nullptr;
 
     char error[CURL_ERROR_SIZE] = {0};
+
+    // AsyncTask for thread-safe callback dispatch to the correct RunLoop
+    util::AsyncTask async{[this] {
+        // Calling `callback` may result in deleting `this`. Copy data to temporaries first.
+        auto callback_ = callback;
+        auto response_ = *response;
+        callback_(response_);
+    }};
 };
 
 // 外部函数供 CURLEventLoop 调用
@@ -123,9 +168,12 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
     : resourceOptions(resourceOptions_.clone()),
       clientOptions(clientOptions_.clone()) {
     
-    if (curl_global_init(CURL_GLOBAL_ALL)) {
-        Logger::error("Network", "Failed to initialize CURL");
-        throw std::runtime_error("Could not init cURL");
+    // 🔒 初始化 CURL 全局状态（支持多实例）
+    try {
+        initCURLGlobal();
+    } catch (const std::exception& e) {
+        Logger::error("Network", "Failed to initialize CURL: %s", e.what());
+        throw;
     }
 
     share = curl_share_init();
@@ -152,7 +200,7 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
             curl_share_cleanup(share);
             share = nullptr;
         }
-        curl_global_cleanup();
+        cleanupCURLGlobal();
         throw;
     }
 }
@@ -176,8 +224,8 @@ HTTPFileSource::Impl::~Impl() {
         share = nullptr;
     }
     
-    // 清理CURL全局状态
-    curl_global_cleanup();
+    // 🔒 清理CURL全局状态（支持多实例）
+    cleanupCURLGlobal();
 }
 
 CURL *HTTPFileSource::Impl::getHandle() {
@@ -499,13 +547,11 @@ void HTTPRequest::handleResult(CURLcode code) {
         Logger::warn("HTTP", "  Status: Unknown/Empty");
     }
     
-    // Calling `callback` may result in deleting `this`. Copy data to temporaries first.
-    auto callback_ = callback;
-    auto response_ = *response;
-    
-    Logger::debug("HTTP", "🔄 Invoking callback...");
-    callback_(response_);
-    Logger::debug("HTTP", "✅ Callback completed");
+    // Use AsyncTask to dispatch callback to the correct RunLoop thread
+    // This ensures the callback runs on the thread where HTTPRequest was created
+    Logger::debug("HTTP", "🔄 Dispatching callback to RunLoop thread...");
+    async.send();
+    Logger::debug("HTTP", "✅ Callback dispatched");
 }
 
 HTTPFileSource::HTTPFileSource(const ResourceOptions &resourceOptions, const ClientOptions &clientOptions)

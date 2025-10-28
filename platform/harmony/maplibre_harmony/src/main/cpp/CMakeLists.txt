@@ -72,6 +72,8 @@ add_library(maplibre_native
     rendering/harmony_renderer.cpp
     rendering/harmony_renderer_frontend.hpp
     rendering/harmony_renderer_frontend.cpp
+    rendering/harmony_renderer_thread_manager.hpp
+    rendering/harmony_renderer_thread_manager.cpp
     rendering/backends/harmony_renderer_backend.hpp
     rendering/backends/harmony_renderer_backend.cpp
     rendering/egl/Render.h

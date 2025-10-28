@@ -28,7 +28,7 @@ public:
     ~HarmonyRenderer();
     
     // 初始化渲染器
-    void initialize(int width, int height, float pixelRatio = 1.0f);
+    void initialize(int width, int height, float pixelRatio = 1.0f, const std::string& cachePath = "");
     
     // 设置OHNativeWindow
     void setNativeWindow(OHNativeWindow* window);
@@ -62,6 +62,13 @@ public:
     
     // 获取渲染前端
     HarmonyRendererFrontend* getRendererFrontend() const;
+    
+    // 📝 实例标识
+    std::string getInstanceId() const { return instanceId_; }
+    
+    // 🔀 便利的线程切换方法（不需要 tag 参数）
+    void runOnRenderThread(std::function<void()>&& fn);
+    bool isOnRenderThread() const;
 
     // Scheduler interface implementation
     void schedule(std::function<void()>&& fn) override;
@@ -72,6 +79,7 @@ public:
     void waitForEmpty(const util::SimpleIdentity = util::SimpleIdentity::Empty) override;
 
 private:
+    std::string instanceId_;  // 唯一标识符
     std::unique_ptr<HarmonyRendererBackendImpl> rendererBackend;
     std::unique_ptr<HarmonyRendererFrontend> rendererFrontend;
     Map* map = nullptr;  // 不持有所有权，只保存引用

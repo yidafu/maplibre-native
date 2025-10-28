@@ -1,6 +1,7 @@
 #include "harmony_renderer_frontend.hpp"
 #include "backends/harmony_renderer_backend.hpp"
 #include "vsync/harmony_vsync_manager.hpp"
+#include "harmony_renderer_thread_manager.hpp"
 #include "utils/logger.h"
 
 #include <mbgl/gfx/backend_scope.hpp>
@@ -11,7 +12,9 @@
 #include <mbgl/actor/scheduler.hpp>
 #include <thread>
 #include <chrono>
+#include <future>
 #include <sstream>
+#include <iomanip>
 
 using mbgl::harmony::Logger;
 
@@ -20,17 +23,34 @@ namespace harmony {
 
 static util::ThreadLocal<HarmonyRendererFrontend> currentRendererFrontend;
 
+namespace {
+// 生成唯一实例 ID
+std::string generateInstanceId() {
+    static std::atomic<uint64_t> counter{0};
+    auto count = counter.fetch_add(1);
+    
+    std::ostringstream oss;
+    oss << "render-" << std::setfill('0') << std::setw(5) << count;
+    return oss.str();
+}
+} // anonymous namespace
+
 // Note: ForwardingRendererObserver was removed to avoid RunLoop dependency
 // Observer callbacks are now called directly on the render thread
 
 HarmonyRendererFrontend::HarmonyRendererFrontend(std::unique_ptr<gfx::Backend> backend,
-                                                 float pixelRatio_)
-    : pixelRatio(pixelRatio_),
+                                                 float pixelRatio_,
+                                                 const std::string& instanceId)
+    : instanceId_(instanceId.empty() ? generateInstanceId() : instanceId),
+      pixelRatio(pixelRatio_),
       rendererBackend(std::move(backend)) {
     currentRendererFrontend.set(this);
     
-    Logger::info("HarmonyRendererFrontend", "========== Constructor START ==========");
-    Logger::debug("HarmonyRendererFrontend", "pixelRatio=%.2f, backend=%p", pixelRatio, rendererBackend.get());
+    Logger::info("Thread", "🚀 [%s] Creating renderer frontend", instanceId_.c_str());
+    Logger::debug("Thread", "  Pixel ratio: %.2f", pixelRatio);
+    Logger::debug("Thread", "  Main thread: %lu", 
+                  std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    Logger::debug("Thread", "  Backend: %p", rendererBackend.get());
     
     try {
         // Create the Renderer using HarmonyRendererBackend::getImpl()
@@ -47,65 +67,69 @@ HarmonyRendererFrontend::HarmonyRendererFrontend(std::unique_ptr<gfx::Backend> b
         throw;
     }
     
-    // 🔄 Android 风格：创建专用渲染线程（线程隔离模型）
-    // 关键：EGL Context 将在此线程创建，并始终在此线程使用
-    Logger::info("HarmonyRendererFrontend", "Creating dedicated render thread (Android model)...");
+    // Create and start RunLoop in background thread
+    // IMPORTANT: AsyncTask must be created INSIDE the RunLoop thread!
+    Logger::info("Thread", "▶️  [%s] Starting RunLoop thread", instanceId_.c_str());
     
-    renderThread = std::thread([this]() {
-        // 记录渲染线程 ID（用于线程安全验证）
-        renderThreadId = std::this_thread::get_id();
+    std::promise<void> runLoopReady;
+    auto runLoopReadyFuture = runLoopReady.get_future();
+    
+    runLoopThread = std::thread([this, &runLoopReady]() {
+        // Save thread ID for deadlock avoidance in update()
+        runLoopThreadId = std::this_thread::get_id();
         
-        // 正确打印线程 ID（使用 stringstream）
-        std::ostringstream oss;
-        oss << renderThreadId;
-        Logger::info("HarmonyRendererFrontend", "🎬 Render thread started, threadId=%s", oss.str().c_str());
+        Logger::debug("Thread", "  RunLoop thread ID: %lu", 
+                      std::hash<std::thread::id>{}(runLoopThreadId));
         
-        // 🔑 关键修复：创建独立的 RunLoop（Type::New）
-        // 使用 Type::New 而不是默认类型，确保每个实例有独立的事件循环
-        // Type::Default 会使用 uv_default_loop()，这是全局单例，会导致线程混乱
-        runLoop = std::make_unique<util::RunLoop>(util::RunLoop::Type::New);
-        Logger::info("HarmonyRendererFrontend", "RunLoop created in render thread (Type::New), loop=%p", runLoop.get());
+        // Create RunLoop for this thread (will set thread-local automatically)
+        runLoop = std::make_unique<util::RunLoop>();
+        Logger::debug("Thread", "  RunLoop created: %p", runLoop.get());
         
-        // ⚠️ 关键：EGL Context 将在首次 activate() 时在此线程创建
-        // 这确保 Context 始终绑定到这个渲染线程（Android/iOS 模式）
+        // 📝 注册到线程管理器
+        Logger::info("Thread", "📝 [%s] Registering to ThreadManager", instanceId_.c_str());
+        HarmonyRendererThreadManager::getInstance().registerRendererThread(
+            instanceId_, runLoop.get(), runLoopThreadId);
+        Logger::debug("ThreadMgr", "  Active threads: %zu", 
+                      HarmonyRendererThreadManager::getInstance().getThreadCount());
         
-        // 通知主线程：渲染线程已就绪
-        {
-            std::lock_guard<std::mutex> lock(initMutex);
-            threadReady = true;
-        }
-        initCV.notify_one();
-        Logger::debug("HarmonyRendererFrontend", "Render thread ready, notified main thread");
+        // Signal that RunLoop is ready (before starting the loop)
+        runLoopReady.set_value();
         
-        // 运行渲染循环 - 处理所有渲染请求
-        Logger::info("HarmonyRendererFrontend", "Starting render loop (RunLoop::run)...");
+        // Run the loop - this will process all invoke() calls from update()
+        Logger::info("Thread", "  Starting RunLoop::run()...");
         runLoop->run();
         
-        Logger::info("HarmonyRendererFrontend", "Render thread ended");
+        // 注销线程
+        Logger::info("Thread", "  Unregistering from ThreadManager");
+        HarmonyRendererThreadManager::getInstance().unregisterRendererThread(instanceId_);
+        
+        Logger::info("Thread", "  RunLoop thread ended");
     });
     
-    // 主线程等待渲染线程就绪
-    {
-        std::unique_lock<std::mutex> lock(initMutex);
-        initCV.wait(lock, [this] { return threadReady; });
-    }
-    Logger::info("HarmonyRendererFrontend", "✅ Render thread initialization complete");
+    // Wait for RunLoop to be fully initialized before returning
+    runLoopReadyFuture.wait();
+    Logger::debug("Thread", "  RunLoop thread ready");
     
-    // 🎯 初始化 VSync 管理器（尝试使用系统级 VSync）
+    // 创建线程池（实例成员，不再使用静态）
+    auto backgroundScheduler = Scheduler::GetBackground();
+    threadPool_ = std::make_unique<TaggedScheduler>(backgroundScheduler, util::SimpleIdentity::Empty);
+    Logger::debug("Thread", "  ThreadPool created: %p", threadPool_.get());
+    
+    // 🎯 启用 VSync 管理器
     try {
-        Logger::info("HarmonyRendererFrontend", "Creating HarmonyVSyncManager...");
+        Logger::info("Thread", "  Creating HarmonyVSyncManager...");
         vsyncManager_ = std::make_unique<HarmonyVSyncManager>();
         
         if (vsyncManager_->isAvailable()) {
             useVSync_ = true;
-            Logger::info("HarmonyRendererFrontend", "✅ VSync enabled - will use system-level frame synchronization");
+            Logger::info("Thread", "  ✅ VSync enabled - using system-level frame synchronization");
         } else {
-            Logger::warn("HarmonyRendererFrontend", "⚠️ VSync not available - falling back to manual throttling");
+            Logger::warn("Thread", "  ⚠️ VSync not available - falling back to manual throttling");
             useVSync_ = false;
             vsyncManager_.reset();
         }
     } catch (const std::exception& e) {
-        Logger::error("HarmonyRendererFrontend", "Failed to create VSync manager: %s - falling back to manual throttling", e.what());
+        Logger::error("Thread", "  Failed to create VSync manager: %s - falling back to manual throttling", e.what());
         useVSync_ = false;
         vsyncManager_.reset();
     }
@@ -116,6 +140,15 @@ HarmonyRendererFrontend::HarmonyRendererFrontend(std::unique_ptr<gfx::Backend> b
 HarmonyRendererFrontend::~HarmonyRendererFrontend() {
     Logger::info("HarmonyRendererFrontend", "========== Destructor START ==========");
     
+    // 🛡️ CRITICAL FIX: 在停止渲染线程前，先通知 Backend 停止渲染
+    // 这样可以避免在析构期间发生跨线程的 EGL Context 访问
+    if (rendererBackend) {
+        Logger::debug("HarmonyRendererFrontend", "Notifying backend to pause rendering...");
+        auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
+        harmonyBackend->pauseRendering();
+        Logger::debug("HarmonyRendererFrontend", "Backend rendering paused");
+    }
+    
     // Stop VSync manager if exists
     if (vsyncManager_) {
         Logger::debug("HarmonyRendererFrontend", "Stopping VSync manager...");
@@ -124,18 +157,66 @@ HarmonyRendererFrontend::~HarmonyRendererFrontend() {
         Logger::debug("HarmonyRendererFrontend", "VSync manager stopped and destroyed");
     }
     
+    // 🔒 关键修复：确保 RunLoop 能够正常退出
+    // 在 stop() 之前清空所有待处理的渲染请求
+    renderRequested = false;
+    pendingRequests = 0;
+    needsRender = false;
+    
     // Stop the RunLoop if it exists
     if (runLoop) {
         Logger::debug("HarmonyRendererFrontend", "Stopping RunLoop...");
+        
+        // 🔧 重要：stop() 会通过 invoke() 调度一个停止任务
+        // 需要确保 RunLoop 线程能够处理这个任务
         runLoop->stop();
+        
+        // 给 RunLoop 一点时间处理 stop 命令
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     
-    // Wait for render thread to finish
-    if (renderThread.joinable()) {
-        Logger::debug("HarmonyRendererFrontend", "Waiting for render thread to join...");
-        renderThread.join();
-        Logger::debug("HarmonyRendererFrontend", "Render thread joined");
+    // Wait for RunLoop thread to finish with timeout
+    if (runLoopThread.joinable()) {
+        Logger::debug("HarmonyRendererFrontend", "Waiting for RunLoop thread to join (with 5s timeout)...");
+        
+        // Use async + wait_for to implement timeout
+        auto joinFuture = std::async(std::launch::async, [this]() {
+            runLoopThread.join();
+        });
+        
+        auto status = joinFuture.wait_for(std::chrono::seconds(5));
+        
+        if (status == std::future_status::ready) {
+            Logger::info("Thread", "  ✅ RunLoop thread joined successfully");
+        } else {
+            Logger::error("Thread", "  ❌ RunLoop thread join timed out after 5s");
+            Logger::error("Thread", "  This indicates RunLoop is stuck - forcing detach");
+            
+            // 尝试多次 stop 强制退出
+            for (int i = 0; i < 3; i++) {
+                Logger::warn("Thread", "  Retry stop() attempt %d/3", i + 1);
+                if (runLoop) {
+                    runLoop->stop();
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                
+                auto retryStatus = joinFuture.wait_for(std::chrono::milliseconds(500));
+                if (retryStatus == std::future_status::ready) {
+                    Logger::info("Thread", "  ✅ RunLoop thread joined on retry %d", i + 1);
+                    goto join_success;
+                }
+            }
+            
+            Logger::error("Thread", "  ⚠️ Detaching RunLoop thread (may cause resource leak)");
+            runLoopThread.detach();
+        }
+join_success:
+        ;
     }
+    
+    // 🛡️ 渲染线程已经结束，现在可以安全地清理资源
+    // Backend 的析构函数会在主线程上执行，但由于我们已经设置了 isStopped_ 标志，
+    // 所以不会尝试访问 EGL Context
     
     currentRendererFrontend.set(nullptr);
     Logger::info("HarmonyRendererFrontend", "========== Destructor END ==========");
@@ -189,55 +270,33 @@ void HarmonyRendererFrontend::scheduleRender() {
     // 这类似于 Android 的 requestRender() 行为
     bool expected = false;
     if (!renderRequested.compare_exchange_strong(expected, true)) {
-        Logger::debug("HarmonyRendererFrontend", "🔄 scheduleRender() - already scheduled, skipping");
         return;
     }
     
-    // 🔍 日志：scheduleRender 被调用
-    std::ostringstream callerThread;
-    callerThread << std::this_thread::get_id();
-    Logger::debug("HarmonyRendererFrontend", "📥 scheduleRender() called from thread=%s", callerThread.str().c_str());
-    
     // 🎯 使用 VSync 同步（优先）
     if (useVSync_ && vsyncManager_) {
-        Logger::debug("HarmonyRendererFrontend", "📡 Using VSync path - requesting frame from VSync manager");
-        
-        // VSync 回调在 VSync 线程执行，需要转发到渲染线程
+        // 🔒 关键修复：VSync 回调在系统线程执行，需要调度到 RunLoop 线程
         vsyncManager_->requestFrame([this]() {
-            // 🔍 日志：VSync 回调执行
-            std::ostringstream vsyncThread;
-            vsyncThread << std::this_thread::get_id();
-            Logger::debug("HarmonyRendererFrontend", "⚡ VSync callback fired (thread=%s)", vsyncThread.str().c_str());
-            
-            // ✅ 关键修复：转发到渲染线程执行（通过 RunLoop）
-            if (runLoop) {
-                Logger::debug("HarmonyRendererFrontend", "🔀 Forwarding to render thread via RunLoop::invoke()");
-                
-                runLoop->invoke([this]() {
-                    // 🔍 日志：RunLoop 回调执行
-                    std::ostringstream runLoopThread;
-                    runLoopThread << std::this_thread::get_id();
-                    Logger::debug("HarmonyRendererFrontend", "🔄 RunLoop callback executing (thread=%s)", runLoopThread.str().c_str());
-                    
-                    // 重置请求标志，允许下次调度
-                    renderRequested = false;
-                    
-                    // 如果有待处理的请求，执行渲染
-                    if (pendingRequests > 0) {
-                        pendingRequests.exchange(0);
-                        Logger::debug("HarmonyRendererFrontend", "🎬 Calling performRender() from RunLoop callback");
-                        performRender();  // ✅ 现在在渲染线程执行
-                    } else {
-                        Logger::debug("HarmonyRendererFrontend", "⏭️ No pending requests, skipping performRender");
-                    }
-                });
-            } else {
-                Logger::error("HarmonyRendererFrontend", "❌ RunLoop is null in VSync callback!");
+            // VSync 回调在 OS_VSyncThread 执行，需要调度到渲染线程
+            if (!runLoop) {
+                Logger::error("VSync", "[%s] RunLoop is null in VSync callback", instanceId_.c_str());
+                renderRequested = false;
+                return;
             }
+            
+            runLoop->invoke([this]() {
+                // 现在在渲染线程上执行
+                // 重置请求标志，允许下次调度
+                renderRequested = false;
+                
+                // 如果有待处理的请求，执行渲染
+                if (pendingRequests > 0) {
+                    pendingRequests.exchange(0);
+                    performRender();
+                }
+            });
         });
     } else {
-        Logger::debug("HarmonyRendererFrontend", "🔧 Using RunLoop path (VSync not available)");
-        
         // 🔧 降级方案：使用 RunLoop 异步调度（手动节流）
         if (!runLoop) {
             Logger::error("HarmonyRendererFrontend", "Cannot schedule render: RunLoop not initialized");
@@ -246,71 +305,24 @@ void HarmonyRendererFrontend::scheduleRender() {
         }
         
         runLoop->invoke([this]() {
-            // 🔍 日志：RunLoop 回调执行
-            std::ostringstream runLoopThread;
-            runLoopThread << std::this_thread::get_id();
-            Logger::debug("HarmonyRendererFrontend", "🔄 RunLoop callback executing (thread=%s)", runLoopThread.str().c_str());
-            
             // 重置请求标志，允许下次调度
             renderRequested = false;
             
             // 如果有待处理的请求，执行渲染
             if (pendingRequests > 0) {
                 pendingRequests.exchange(0);
-                Logger::debug("HarmonyRendererFrontend", "🎬 Calling performRender() from RunLoop callback");
                 performRender();
-            } else {
-                Logger::debug("HarmonyRendererFrontend", "⏭️ No pending requests, skipping performRender");
             }
         });
     }
 }
 
 void HarmonyRendererFrontend::performRender() {
-    // 实例标识
-    static int renderInstanceCounter = 0;
-    static std::map<void*, int> renderInstanceIds;
-    if (renderInstanceIds.find(this) == renderInstanceIds.end()) {
-        renderInstanceIds[this] = ++renderInstanceCounter;
-    }
-    int instanceId = renderInstanceIds[this];
-    
-    // 🛡️ 线程安全检查：确保在渲染线程执行
-    auto currentThreadId = std::this_thread::get_id();
-    if (currentThreadId != renderThreadId) {
-        std::ostringstream expected, actual;
-        expected << renderThreadId;
-        actual << currentThreadId;
-        
-        Logger::error("HarmonyRendererFrontend", 
-            "❌ CRITICAL: performRender called from wrong thread!\n"
-            "  [Instance #%d] Expected render thread: %s\n"
-            "  [Instance #%d] Called from thread:      %s\n"
-            "  This indicates a threading bug!",
-            instanceId, expected.str().c_str(),
-            instanceId, actual.str().c_str());
-        return;
-    }
-    
     // 检查是否暂停
     if (renderingPaused) {
-        Logger::warn("HarmonyRendererFrontend", "[Instance #%d] performRender() - rendering paused, skipping", instanceId);
+        Logger::warn("HarmonyRendererFrontend", "performRender() - rendering paused, skipping");
         return;
     }
-    
-    // 🔍 日志：打印当前线程和期望线程（便于对比）
-    std::ostringstream current, expected;
-    current << currentThreadId;
-    expected << renderThreadId;
-    Logger::debug("HarmonyRendererFrontend", 
-        "🎬 [Instance #%d] performRender() START (this=%p)\n"
-        "   Current thread: %s\n"
-        "   Expected thread: %s\n"
-        "   Match: %s", 
-        instanceId, this,
-        current.str().c_str(),
-        expected.str().c_str(),
-        (currentThreadId == renderThreadId) ? "✅ YES" : "❌ NO");
     
     // 🎯 VSync 模式：不需要手动节流（系统级同步）
     // 🔧 降级模式：使用手动帧率限制
@@ -319,8 +331,6 @@ void HarmonyRendererFrontend::performRender() {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFrameTime);
         
         if (elapsed < minFrameInterval) {
-            Logger::debug("HarmonyRendererFrontend", "[Instance #%d] Skipping frame (too soon: %lldms < %lldms)", 
-                         instanceId, elapsed.count(), minFrameInterval.count());
             return;  // 跳过此帧
         }
         
@@ -340,29 +350,25 @@ void HarmonyRendererFrontend::performRender() {
     }
     
     if (!params || !renderer || !rendererBackend) {
-        Logger::warn("HarmonyRendererFrontend", "[Instance #%d] performRender() - missing params/renderer/backend", instanceId);
+        Logger::warn("HarmonyRendererFrontend", "performRender() - missing params/renderer/backend");
         return;
     }
     
-    Logger::debug("HarmonyRendererFrontend", "[Instance #%d] About to render with params=%p", instanceId, params.get());
+    // CRITICAL DEADLOCK FIX: Check if we're already on the RunLoop thread
+    auto currentThreadId = std::this_thread::get_id();
+    bool onRunLoopThread = (currentThreadId == runLoopThreadId);
     
     // 执行渲染
     try {
-        Logger::debug("HarmonyRendererFrontend", "[Instance #%d] Activating OpenGL context...", instanceId);
-        
         // Activate the OpenGL context before rendering
         auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
         gfx::RendererBackend& backendImpl = harmonyBackend->getImpl();
         gfx::BackendScope backendGuard{backendImpl};
         
-        Logger::debug("HarmonyRendererFrontend", "[Instance #%d] Context activated, rendering...", instanceId);
-        
         // HarmonyOS渲染时序优化 - 小延迟确保EGL上下文就绪
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         
         renderer->render(params);
-        
-        Logger::debug("HarmonyRendererFrontend", "✅ [Instance #%d] Render completed successfully", instanceId);
         
         // 🔧 渲染成功，重置错误计数
         consecutiveErrors = 0;
@@ -391,13 +397,40 @@ void HarmonyRendererFrontend::performRender() {
 }
 
 const TaggedScheduler& HarmonyRendererFrontend::getThreadPool() const {
-    // Create a TaggedScheduler using the background scheduler
-    static std::unique_ptr<TaggedScheduler> scheduler;
-    if (!scheduler) {
-        auto backgroundScheduler = Scheduler::GetBackground();
-        scheduler = std::make_unique<TaggedScheduler>(backgroundScheduler, util::SimpleIdentity::Empty);
+    // 返回实例成员（不再使用静态）
+    if (!threadPool_) {
+        // 理论上不应该发生（构造函数已创建）
+        Logger::error("Frontend", "[%s] ThreadPool is null!", instanceId_.c_str());
+        throw std::runtime_error("ThreadPool not initialized");
     }
-    return *scheduler;
+    return *threadPool_;
+}
+
+// 🔀 线程切换方法实现
+void HarmonyRendererFrontend::runOnRenderThread(std::function<void()>&& fn) {
+    Logger::debug("Thread", "🔀 [%s] runOnRenderThread() called", instanceId_.c_str());
+    
+    if (isOnRenderThread()) {
+        // 已在渲染线程，直接执行
+        Logger::debug("Thread", "  ✓ Already on render thread, executing directly");
+        fn();
+    } else {
+        // 跨线程调用，通过 RunLoop 调度
+        Logger::debug("Thread", "  ↗️ Cross-thread call, invoking via RunLoop");
+        Logger::debug("Thread", "  From: %lu -> To: %lu",
+                      std::hash<std::thread::id>{}(std::this_thread::get_id()),
+                      std::hash<std::thread::id>{}(runLoopThreadId));
+        
+        if (runLoop) {
+            runLoop->invoke(std::move(fn));
+        } else {
+            Logger::error("Thread", "[%s] RunLoop is null, cannot invoke", instanceId_.c_str());
+        }
+    }
+}
+
+bool HarmonyRendererFrontend::isOnRenderThread() const {
+    return std::this_thread::get_id() == runLoopThreadId;
 }
 
 void HarmonyRendererFrontend::setMap(Map* map_) {
@@ -423,33 +456,22 @@ void HarmonyRendererFrontend::setRenderingMode(MapObserver::RenderMode mode) {
 }
 
 void HarmonyRendererFrontend::requestRender() {
-    // 实例标识（复用performRender的计数器）
-    static int requestInstanceCounter = 0;
-    static std::map<void*, int> requestInstanceIds;
-    if (requestInstanceIds.find(this) == requestInstanceIds.end()) {
-        requestInstanceIds[this] = ++requestInstanceCounter;
-    }
-    int instanceId = requestInstanceIds[this];
-    
     if (renderingPaused) {
-        Logger::debug("HarmonyRendererFrontend", "[Instance #%d] requestRender() - paused, ignoring", instanceId);
         return;
     }
     
     // 防抖：如果已经有待处理的渲染请求，忽略新请求
     // 这可以防止过度的渲染请求堆积
     if (needsRender) {
-        Logger::debug("HarmonyRendererFrontend", "[Instance #%d] requestRender() - already requested, ignoring", instanceId);
         return;
     }
     
-    Logger::info("HarmonyRendererFrontend", "🎬 [Instance #%d] requestRender() - marking needsRender=true", instanceId);
     needsRender = true;
     
     // Note: Rendering is triggered through the update() mechanism
     // No need to explicitly trigger rendering here
     if (!map) {
-        Logger::warn("HarmonyRendererFrontend", "[Instance #%d] Cannot trigger render: map is null", instanceId);
+        Logger::warn("HarmonyRendererFrontend", "Cannot trigger render: map is null");
     }
 }
 

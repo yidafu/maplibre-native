@@ -25,10 +25,10 @@ public:
     mbgl::gfx::RendererBackend& getImpl() override { return *this; }
 
     void setNativeWindow(void* window);
-    void updateViewPort();  // 移除了override - HarmonyRendererBackend的方法不是虚函数
-    void markContextLost();
-    void resizeFramebuffer(int width, int height);
-    PremultipliedImage readFramebuffer();
+    void updateViewPort() override;
+    void markContextLost() override;
+    void resizeFramebuffer(int width, int height) override;
+    PremultipliedImage readFramebuffer() override;
     void swapBuffers();  // Call eglSwapBuffers to display frame
     
     // 新增：获取和更新 pixelRatio
@@ -43,9 +43,14 @@ public:
     mbgl::gl::ProcAddress getExtensionFunctionPointer(const char*) override;
 
     // 新增：停止和恢复渲染（防止页面切换时崩溃）
-    void pauseRendering();
-    void resumeRendering();
-    bool isRenderingStopped() const { return isStopped_; }
+    void pauseRendering() override;
+    void resumeRendering() override;
+    bool isRenderingStopped() const override { return isStopped_; }
+    
+    // 🔒 线程安全检查
+    bool isOnCorrectThread() const;
+    std::thread::id getOwnerThreadId() const { return ownerThreadId_; }
+    void assertOnCorrectThread() const;  // 调试断言
 
 protected:
     void activate() override;
@@ -76,9 +81,8 @@ private:
     float pixelRatio_ = 1.0f;  // 设备像素比
     bool isStopped_ = false;  // 标记渲染是否已停止（防止崩溃）
     
-    // 🔄 线程绑定（Android 风格）：确保 EGL Context 只在创建线程使用
-    std::thread::id contextThreadId_;    // Context 创建的线程 ID
-    bool contextThreadBound_ = false;    // 是否已绑定到特定线程
+    // 🔒 线程所有权
+    std::thread::id ownerThreadId_;  // EGL Context 所属线程
 };
 
 } // namespace harmony

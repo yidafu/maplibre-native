@@ -19,21 +19,39 @@
 #include <mbgl/storage/resource_options.hpp>
 #include <mbgl/storage/sqlite3.hpp>
 
+#include <sstream>
+#include <iomanip>
+#include <atomic>
+
 using mbgl::harmony::Logger;
 
 namespace mbgl {
 namespace harmony {
 
+namespace {
+// 生成唯一实例 ID
+std::string generateRendererInstanceId() {
+    static std::atomic<uint64_t> counter{0};
+    auto count = counter.fetch_add(1);
+    
+    std::ostringstream oss;
+    oss << "renderer-" << std::setfill('0') << std::setw(5) << count;
+    return oss.str();
+}
+} // anonymous namespace
+
 HarmonyRenderer::HarmonyRenderer() 
-    : uniqueID(util::SimpleIdentity::Empty),
+    : instanceId_(generateRendererInstanceId()),
+      uniqueID(util::SimpleIdentity::Empty),
       weakFactory(std::make_shared<mapbox::base::WeakPtrFactory<Scheduler>>(this)) {
+    Logger::info("Renderer", "🆕 [%s] Creating HarmonyRenderer", instanceId_.c_str());
 }
 
 HarmonyRenderer::~HarmonyRenderer() {
     cleanup();
 }
 
-void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
+void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, const std::string& cachePath) {
     if (initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer already initialized");
         return;
@@ -47,8 +65,13 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     // Initialize FileSourceManager for network resource loading
     Logger::info("HarmonyRenderer", "Initializing FileSourceManager...");
     
-    // Note: SQLite temp path should be set before this point
-    // It's now set in NativeMapView::initializeRenderer() using cachePath from application context
+    // Set SQLite temp path for database operations
+    if (!cachePath.empty()) {
+        mapbox::sqlite::setTempPath(cachePath);
+        Logger::debug("HarmonyRenderer", "SQLite temp path set to: %s", cachePath.c_str());
+    } else {
+        Logger::warn("HarmonyRenderer", "No cache path provided, using default temp directory");
+    }
     
     // Initialize FileSourceManager singleton - this registers default file source factories
     // including HTTP network source for downloading styles and tiles
@@ -60,8 +83,10 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     Logger::debug("HarmonyRenderer", "Renderer backend created: %p", backend.get());
     
     Logger::debug("HarmonyRenderer", "Creating HarmonyRendererFrontend...");
-    rendererFrontend = std::make_unique<HarmonyRendererFrontend>(std::move(backend), pixelRatio);
-    Logger::debug("HarmonyRenderer", "HarmonyRendererFrontend created: %p", rendererFrontend.get());
+    // 传递 instanceId 到 Frontend
+    rendererFrontend = std::make_unique<HarmonyRendererFrontend>(std::move(backend), pixelRatio, instanceId_);
+    Logger::debug("HarmonyRenderer", "HarmonyRendererFrontend created: %p (ID: %s)", 
+                  rendererFrontend.get(), instanceId_.c_str());
     
     initialized = true;
     Log::Info(Event::OpenGL, "HarmonyRenderer initialized successfully");
@@ -185,15 +210,8 @@ void HarmonyRenderer::stopAllRequests() {
         
         // 停止地图的网络请求
         if (map) {
-            try {
-                Logger::debug("HarmonyRenderer", "Stopping map network requests...");
-                map->cancelTransitions();
-                Logger::debug("HarmonyRenderer", "Map network requests stopped");
-            } catch (const std::exception& e) {
-                Logger::warn("HarmonyRenderer", "Failed to stop map requests (map may be destroyed): %s", e.what());
-            } catch (...) {
-                Logger::warn("HarmonyRenderer", "Failed to stop map requests (map may be destroyed)");
-            }
+            Logger::debug("HarmonyRenderer", "Stopping map network requests...");
+            map->cancelTransitions();
         }
         
         Logger::info("HarmonyRenderer", "All network requests stopped successfully");
@@ -269,6 +287,24 @@ void HarmonyRenderer::runRenderJobs(const util::SimpleIdentity tag, bool closeQu
 void HarmonyRenderer::waitForEmpty(const util::SimpleIdentity tag) {
     // For now, this is a no-op since we execute functions immediately
     // In a real implementation, this would wait for all queued tasks to complete
+}
+
+// 🔀 便利的线程切换方法（不需要 tag 参数）
+void HarmonyRenderer::runOnRenderThread(std::function<void()>&& fn) {
+    if (!rendererFrontend) {
+        Logger::error("Renderer", "[%s] Cannot runOnRenderThread: frontend is null", instanceId_.c_str());
+        return;
+    }
+    
+    rendererFrontend->runOnRenderThread(std::move(fn));
+}
+
+bool HarmonyRenderer::isOnRenderThread() const {
+    if (!rendererFrontend) {
+        return false;
+    }
+    
+    return rendererFrontend->isOnRenderThread();
 }
 
 } // namespace harmony

@@ -33,6 +33,11 @@ public:
 
     gfx::Renderable::SwapBehaviour getSwapBehavior() const { return swapBehaviour; }
     virtual void setSwapBehavior(gfx::Renderable::SwapBehaviour swapBehaviour);
+    
+    // 🛡️ 黑屏修复：渲染控制方法
+    virtual void pauseRendering();
+    virtual void resumeRendering();
+    virtual bool isRenderingStopped() const { return false; }
 
 protected:
     gfx::Renderable::SwapBehaviour swapBehaviour = gfx::Renderable::SwapBehaviour::NoFlush;

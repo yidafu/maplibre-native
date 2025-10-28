@@ -22,7 +22,9 @@ class HarmonyVSyncManager;
 
 class HarmonyRendererFrontend : public RendererFrontend {
 public:
-    HarmonyRendererFrontend(std::unique_ptr<gfx::Backend>, float pixelRatio);
+    HarmonyRendererFrontend(std::unique_ptr<gfx::Backend>, 
+                            float pixelRatio,
+                            const std::string& instanceId = "");
     ~HarmonyRendererFrontend() override;
 
     // Implement pure virtual methods from RendererFrontend
@@ -41,26 +43,30 @@ public:
     
     // Get the renderer backend
     gfx::Backend& getRendererBackend();
+    
+    // 🔀 线程切换 API
+    void runOnRenderThread(std::function<void()>&& fn);
+    bool isOnRenderThread() const;
+    
+    // 📝 实例标识
+    std::string getInstanceId() const { return instanceId_; }
+    std::thread::id getRenderThreadId() const { return runLoopThreadId; }
 
 private:
+    std::string instanceId_;  // 唯一标识符
     Map* map = nullptr;
     float pixelRatio = 1.0f;
     bool renderingPaused = false;
     MapObserver::RenderMode renderingMode = MapObserver::RenderMode::Full;
     bool needsRender = false;
     std::unique_ptr<util::RunLoop> runLoop;
-    
-    // 🔄 线程隔离模型：每个实例拥有独立的渲染线程（Android 风格）
-    std::thread renderThread;           // 专用渲染线程（原 runLoopThread）
-    std::thread::id renderThreadId;     // 渲染线程 ID
-    std::mutex initMutex;               // 初始化同步
-    std::condition_variable initCV;     // 条件变量
-    bool threadReady = false;           // 线程就绪标志
-    
+    std::thread runLoopThread;  // Background thread for RunLoop
+    std::thread::id runLoopThreadId;  // Thread ID for deadlock avoidance
     std::unique_ptr<gfx::Backend> rendererBackend;
     
     // Renderer components
     std::unique_ptr<Renderer> renderer;
+    std::unique_ptr<TaggedScheduler> threadPool_;  // 实例成员（不再使用静态）
     
     // 🚀 请求队列机制（模拟 Android GLSurfaceView）
     std::atomic<bool> renderRequested{false};  // 是否有渲染请求在队列中

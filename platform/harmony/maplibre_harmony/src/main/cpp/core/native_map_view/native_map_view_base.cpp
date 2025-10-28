@@ -506,9 +506,9 @@ void NativeMapView::initializeRenderer() {
     // Create HarmonyRenderer (if not exists)
     if (!harmonyRenderer) {
         harmonyRenderer = std::make_unique<HarmonyRenderer>();
-        harmonyRenderer->initialize(width, height, pixelRatio);
+        harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
         
-        Logger::info("NativeMapView", "HarmonyRenderer initialized successfully");
+        Logger::info("NativeMapView", "HarmonyRenderer initialized successfully with cachePath: %s", cachePath_.c_str());
     } else {
         Logger::debug("NativeMapView", "HarmonyRenderer already exists, skipping creation");
     }
