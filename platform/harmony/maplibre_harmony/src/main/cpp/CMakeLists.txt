@@ -109,6 +109,8 @@ add_library(maplibre_native
     
     # Network module
     network/http_file_source_harmony.cpp
+    network/curl_event_loop.hpp
+    network/curl_event_loop.cpp
     
     # VSync management
     vsync/harmony_vsync_manager.hpp

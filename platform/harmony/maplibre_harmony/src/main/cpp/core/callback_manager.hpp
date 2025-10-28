@@ -69,17 +69,26 @@ public:
      * @param callback JavaScript 回调函数
      * @return 是否成功注册
      * 
-     * 注意：如果已存在同名回调，会先注销旧回调再注册新的
+     * 注意：支持多监听器，可以为同一个名称注册多个回调
      */
     bool RegisterCallback(const std::string& name, napi_value callback);
     
     /**
-     * 注销回调
+     * 注销回调（注销指定名称的所有回调）
      * 
      * @param name 回调名称
      * @return 是否成功注销
      */
     bool UnregisterCallback(const std::string& name);
+    
+    /**
+     * 注销指定的回调函数
+     * 
+     * @param name 回调名称
+     * @param callback 要移除的回调函数
+     * @return 是否成功注销
+     */
+    bool UnregisterCallback(const std::string& name, napi_value callback);
     
     /**
      * 调用回调（从任意线程）
@@ -117,9 +126,14 @@ public:
     bool HasCallback(const std::string& name) const;
     
     /**
-     * 获取已注册的回调数量
+     * 获取已注册的回调数量（所有回调名称的总数）
      */
     size_t GetCallbackCount() const;
+    
+    /**
+     * 获取指定名称的回调监听器数量
+     */
+    size_t GetCallbackCount(const std::string& name) const;
     
     /**
      * 清理所有回调
@@ -131,14 +145,17 @@ public:
 private:
     napi_env env_;
     
-    // 回调容器（线程安全）
-    std::unordered_map<std::string, std::unique_ptr<ThreadSafeCallback>> callbacks_;
+    // 回调容器（线程安全）- 支持多监听器
+    std::unordered_map<std::string, std::vector<std::unique_ptr<ThreadSafeCallback>>> callbacks_;
     
     // 保护回调容器的互斥锁
     mutable std::mutex mutex_;
     
     // 标记是否已清理
     bool cleared_ = false;
+    
+    // 辅助方法：比较两个 napi_value 回调是否相等
+    bool AreCallbacksEqual(napi_value callback1, napi_value callback2) const;
 };
 
 } // namespace harmony

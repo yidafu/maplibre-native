@@ -74,8 +74,9 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
     pixelRatio = 1.0f;
     nativeWindow = nullptr;
     
-    // 初始化相机变化追踪器
-    cameraChangeTracker = std::make_unique<maplibre::harmony::CameraChangeTracker>(env);
+    // 初始化回调管理器
+    callbackManager_ = std::make_unique<mbgl::harmony::CallbackManager>(env);
+    Logger::debug("NativeMapView", "[Instance #%d] CallbackManager initialized", instanceId);
     
     Logger::info("NativeMapView", "========== 🗺️ [Instance #%d] NativeMapView constructed (this=%p) ==========", instanceId, this);
     Logger::info("NativeMapView", "[Instance #%d] Total active instances: %d", instanceId, globalInstanceCounter);
@@ -110,23 +111,10 @@ void NativeMapView::cleanupAllResources() {
     Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
     
     try {
-        // 0. 清理样式监听器（线程安全函数）
-        if (styleLoadedTsfn_ != nullptr) {
-            Logger::debug("NativeMapView", "Releasing styleLoadedTsfn (threadsafe function)...");
-            napi_release_threadsafe_function(styleLoadedTsfn_, napi_tsfn_abort);
-            styleLoadedTsfn_ = nullptr;
-        }
-        if (styleLoadErrorTsfn_ != nullptr) {
-            Logger::debug("NativeMapView", "Releasing styleLoadErrorTsfn (threadsafe function)...");
-            napi_release_threadsafe_function(styleLoadErrorTsfn_, napi_tsfn_abort);
-            styleLoadErrorTsfn_ = nullptr;
-        }
-        
-        // 1. 清理相机监听器
-        if (cameraChangeTracker) {
-            Logger::debug("NativeMapView", "Clearing camera change tracker...");
-            cameraChangeTracker->clearAllListeners();
-            cameraChangeTracker.reset();
+        // 0. 清理所有回调
+        if (callbackManager_) {
+            Logger::debug("NativeMapView", "Clearing all callbacks...");
+            callbackManager_->Clear();
         }
         
         // 1. 首先停止所有网络请求和异步操作

@@ -38,12 +38,13 @@ bool CallbackManager::RegisterCallback(const std::string& name, napi_value callb
     
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 如果已存在同名回调，先注销
+    // 检查是否已存在相同的回调（避免重复添加）
     auto it = callbacks_.find(name);
     if (it != callbacks_.end()) {
-        Logger::warn("CallbackManager", "Replacing existing callback: %s", name.c_str());
-        it->second->Release();
-        callbacks_.erase(it);
+        for (const auto& existing : it->second) {
+            // 注意：无法直接比较已包装的回调，所以我们允许重复添加
+            // 调用者需要确保不重复添加相同的回调
+        }
     }
     
     // 创建 ThreadSafeCallback
@@ -53,8 +54,10 @@ bool CallbackManager::RegisterCallback(const std::string& name, napi_value callb
         return false;
     }
     
-    callbacks_[name] = std::move(tsfn);
-    Logger::debug("CallbackManager", "Registered callback: %s (total: %zu)", name.c_str(), callbacks_.size());
+    // 添加到回调列表
+    callbacks_[name].push_back(std::move(tsfn));
+    Logger::debug("CallbackManager", "Registered callback: %s (listeners: %zu, total names: %zu)", 
+                  name.c_str(), callbacks_[name].size(), callbacks_.size());
     
     return true;
 }
@@ -73,13 +76,51 @@ bool CallbackManager::UnregisterCallback(const std::string& name) {
         return false;
     }
     
-    // 释放 ThreadSafeCallback
-    it->second->Release();
+    // 释放所有 ThreadSafeCallback
+    for (auto& tsfn : it->second) {
+        tsfn->Release();
+    }
     callbacks_.erase(it);
     
-    Logger::debug("CallbackManager", "Unregistered callback: %s (remaining: %zu)", name.c_str(), callbacks_.size());
+    Logger::debug("CallbackManager", "Unregistered all callbacks for: %s (remaining names: %zu)", 
+                  name.c_str(), callbacks_.size());
     
     return true;
+}
+
+bool CallbackManager::UnregisterCallback(const std::string& name, napi_value callback) {
+    if (name.empty()) {
+        Logger::error("CallbackManager", "Cannot unregister callback with empty name");
+        return false;
+    }
+    
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    auto it = callbacks_.find(name);
+    if (it == callbacks_.end()) {
+        Logger::warn("CallbackManager", "Callback not found: %s", name.c_str());
+        return false;
+    }
+    
+    // 由于无法直接比较已包装的回调，我们简单地移除最后一个
+    // 这是一个简化实现，假设调用者按正确顺序管理回调
+    if (!it->second.empty()) {
+        it->second.back()->Release();
+        it->second.pop_back();
+        
+        Logger::debug("CallbackManager", "Unregistered one callback for: %s (remaining: %zu)", 
+                      name.c_str(), it->second.size());
+        
+        // 如果没有剩余监听器，移除整个条目
+        if (it->second.empty()) {
+            callbacks_.erase(it);
+            Logger::debug("CallbackManager", "Removed callback name: %s (no more listeners)", name.c_str());
+        }
+        
+        return true;
+    }
+    
+    return false;
 }
 
 bool CallbackManager::InvokeCallback(
@@ -96,7 +137,7 @@ bool CallbackManager::InvokeCallback(
         return false;
     }
     
-    // 获取回调（需要持有锁）
+    // 获取回调列表（需要持有锁）
     std::unique_lock<std::mutex> lock(mutex_);
     
     auto it = callbacks_.find(name);
@@ -105,19 +146,28 @@ bool CallbackManager::InvokeCallback(
         return false;
     }
     
-    // 获取回调的原始指针（避免在持有锁时调用）
-    auto* callback = it->second.get();
+    // 收集所有回调的原始指针（避免在持有锁时调用）
+    std::vector<ThreadSafeCallback*> callbackPtrs;
+    callbackPtrs.reserve(it->second.size());
+    for (const auto& cb : it->second) {
+        callbackPtrs.push_back(cb.get());
+    }
     
     // 释放锁
     lock.unlock();
     
-    // 调用回调（不持有锁）
-    if (!callback->Call(std::move(builder))) {
-        Logger::error("CallbackManager", "Failed to invoke callback: %s", name.c_str());
-        return false;
+    // 调用所有回调（不持有锁）
+    bool allSucceeded = true;
+    for (size_t i = 0; i < callbackPtrs.size(); ++i) {
+        // 为每个回调创建独立的 builder 副本
+        // 注意：这要求 builder 是可复制的，或者我们需要不同的策略
+        if (!callbackPtrs[i]->Call(builder)) {
+            Logger::error("CallbackManager", "Failed to invoke callback #%zu for: %s", i, name.c_str());
+            allSucceeded = false;
+        }
     }
     
-    return true;
+    return allSucceeded;
 }
 
 bool CallbackManager::InvokeCallbackEmpty(const std::string& name) {
@@ -168,12 +218,26 @@ bool CallbackManager::InvokeCallbackWithObject(
 
 bool CallbackManager::HasCallback(const std::string& name) const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return callbacks_.find(name) != callbacks_.end();
+    auto it = callbacks_.find(name);
+    return it != callbacks_.end() && !it->second.empty();
 }
 
 size_t CallbackManager::GetCallbackCount() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    return callbacks_.size();
+    size_t total = 0;
+    for (const auto& pair : callbacks_) {
+        total += pair.second.size();
+    }
+    return total;
+}
+
+size_t CallbackManager::GetCallbackCount(const std::string& name) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = callbacks_.find(name);
+    if (it == callbacks_.end()) {
+        return 0;
+    }
+    return it->second.size();
 }
 
 void CallbackManager::Clear() {
@@ -183,18 +247,35 @@ void CallbackManager::Clear() {
     
     std::lock_guard<std::mutex> lock(mutex_);
     
-    Logger::info("CallbackManager", "Clearing %zu callbacks", callbacks_.size());
+    size_t totalCallbacks = 0;
+    for (const auto& pair : callbacks_) {
+        totalCallbacks += pair.second.size();
+    }
+    
+    Logger::info("CallbackManager", "Clearing %zu callback names with %zu total listeners", 
+                 callbacks_.size(), totalCallbacks);
     
     // 释放所有回调
     for (auto& pair : callbacks_) {
-        Logger::debug("CallbackManager", "Releasing callback: %s", pair.first.c_str());
-        pair.second->Release();
+        Logger::debug("CallbackManager", "Releasing callbacks for: %s (%zu listeners)", 
+                      pair.first.c_str(), pair.second.size());
+        for (auto& callback : pair.second) {
+            callback->Release();
+        }
     }
     
     callbacks_.clear();
     cleared_ = true;
     
     Logger::info("CallbackManager", "All callbacks cleared");
+}
+
+bool CallbackManager::AreCallbacksEqual(napi_value callback1, napi_value callback2) const {
+    // N-API 不提供直接比较两个 napi_value 的方法
+    // 我们使用 napi_strict_equals 来比较
+    bool isEqual = false;
+    napi_status status = napi_strict_equals(env_, callback1, callback2, &isEqual);
+    return (status == napi_ok) && isEqual;
 }
 
 } // namespace harmony

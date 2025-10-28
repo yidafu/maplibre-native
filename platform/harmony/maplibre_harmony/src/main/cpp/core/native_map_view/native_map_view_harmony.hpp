@@ -2,7 +2,7 @@
 #define MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 
 #include "rendering/backends/harmony_renderer_backend.hpp"
-#include "core/camera_change_tracker.hpp"
+#include "core/callback_manager.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/run_loop.hpp>
@@ -235,12 +235,8 @@ private:
     std::atomic<int> sourceChangedCount{0};
     std::atomic<int> cameraChangedCount{0};
     
-    // 相机变化追踪器
-    std::unique_ptr<maplibre::harmony::CameraChangeTracker> cameraChangeTracker;
-    
-    // Style listeners (using napi_threadsafe_function for thread safety)
-    napi_threadsafe_function styleLoadedTsfn_ = nullptr;
-    napi_threadsafe_function styleLoadErrorTsfn_ = nullptr;
+    // 统一的回调管理器
+    std::unique_ptr<mbgl::harmony::CallbackManager> callbackManager_;
     
     // Ensure these are initialised last
     std::unique_ptr<mbgl::Map> map;

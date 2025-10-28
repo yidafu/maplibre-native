@@ -15,6 +15,15 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
+// Camera move reason constants (matching CameraChangeTracker behavior)
+namespace CameraMoveReason {
+    constexpr int REASON_UNKNOWN = 0;
+    constexpr int REASON_GESTURE = 1;
+    constexpr int REASON_API_ANIMATION = 2;
+    constexpr int REASON_DEVELOPER_ANIMATION = 3;
+    constexpr int REASON_ANIMATION_CANCELLED = 4;
+}
+
 napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -109,10 +118,10 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
         Logger::info("NativeMapView", "✅ map->cancelTransitions() returned");
         
         // 触发相机移动取消事件
-        if (instance->cameraChangeTracker) {
-            instance->cameraChangeTracker->notifyCameraMoveCanceled();
+        if (instance->callbackManager_) {
+            instance->callbackManager_->InvokeCallbackEmpty("onCameraMoveCanceled");
             // 取消后相机应该回到 idle 状态
-            instance->cameraChangeTracker->notifyCameraIdle();
+            instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
         }
         
         // 🔧 触发重绘以确保状态更新
@@ -237,10 +246,15 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
         }
         
         // 触发相机移动开始事件
-        if (instance->cameraChangeTracker) {
-            instance->cameraChangeTracker->notifyCameraMoveStarted(
-                duration > 0 ? maplibre::harmony::CameraChangeTracker::REASON_DEVELOPER_ANIMATION 
-                             : maplibre::harmony::CameraChangeTracker::REASON_API_ANIMATION);
+        if (instance->callbackManager_) {
+            int reason = duration > 0 ? CameraMoveReason::REASON_DEVELOPER_ANIMATION 
+                                      : CameraMoveReason::REASON_API_ANIMATION;
+            instance->callbackManager_->InvokeCallback("onCameraMoveStarted", 
+                [reason](napi_env env) -> napi_value {
+                    napi_value reasonValue;
+                    napi_create_int32(env, reason, &reasonValue);
+                    return reasonValue;
+                });
         }
         
         if (duration > 0) {
@@ -256,8 +270,8 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
             Logger::debug("NativeMapView", "moveBy: Instant move by (%.2f, %.2f)", dx, dy);
             
             // 立即移动完成后触发 idle
-            if (instance->cameraChangeTracker) {
-                instance->cameraChangeTracker->notifyCameraIdle();
+            if (instance->callbackManager_) {
+                instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
             }
         }
         
@@ -348,9 +362,13 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
         }
         
         // 触发相机移动开始事件
-        if (instance->cameraChangeTracker) {
-            instance->cameraChangeTracker->notifyCameraMoveStarted(
-                maplibre::harmony::CameraChangeTracker::REASON_API_ANIMATION);
+        if (instance->callbackManager_) {
+            instance->callbackManager_->InvokeCallback("onCameraMoveStarted", 
+                [](napi_env env) -> napi_value {
+                    napi_value reasonValue;
+                    napi_create_int32(env, CameraMoveReason::REASON_API_ANIMATION, &reasonValue);
+                    return reasonValue;
+                });
         }
         
         Logger::debug("NativeMapView", "jumpTo: Executing map->jumpTo()...");
@@ -360,8 +378,8 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
         instance->map->triggerRepaint();  // Trigger rendering
         
         // jumpTo 是立即执行的，所以立即触发 idle 事件
-        if (instance->cameraChangeTracker) {
-            instance->cameraChangeTracker->notifyCameraIdle();
+        if (instance->callbackManager_) {
+            instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
         }
         
         Logger::info("NativeMapView", "jumpTo: Camera jump executed successfully");
@@ -488,9 +506,13 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     // 执行 easeTo 相机动画
     try {
         // 触发相机移动开始事件
-        if (instance->cameraChangeTracker) {
-            instance->cameraChangeTracker->notifyCameraMoveStarted(
-                maplibre::harmony::CameraChangeTracker::REASON_DEVELOPER_ANIMATION);
+        if (instance->callbackManager_) {
+            instance->callbackManager_->InvokeCallback("onCameraMoveStarted", 
+                [](napi_env env) -> napi_value {
+                    napi_value reasonValue;
+                    napi_create_int32(env, CameraMoveReason::REASON_DEVELOPER_ANIMATION, &reasonValue);
+                    return reasonValue;
+                });
         }
         
         instance->map->easeTo(cameraOptions, 
