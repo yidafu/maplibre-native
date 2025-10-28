@@ -8,6 +8,7 @@
 #include <mbgl/gfx/renderable.hpp>
 #include <mbgl/gl/renderer_backend.hpp>
 #include "harmony_renderer_backend.hpp"
+#include "egl_display_manager.hpp"
 #include <memory>
 #include <thread>
 
@@ -66,23 +67,29 @@ private:
     // 新增：检查Surface有效性
     bool isSurfaceValid() const;
     
+    // 🛡️ EGL 状态诊断和自动恢复（修复第二次进入崩溃）
+    bool isEGLHealthy() const;  // 检查 EGL 健康状态
+    bool tryRecoverEGL();       // 尝试恢复 EGL 状态
+    
     // HarmonyOS OpenGL quirk handling
     void validateShaderAttributes();
     GLint bindAttributeWithFallback(GLuint program, GLuint index, const char* name);
     void logShaderInfo(GLuint program);
 
-    // EGL references - these should be managed by the platform layer
-    EGLDisplay eglDisplay_ = EGL_NO_DISPLAY;
+    // EGL references - note: eglDisplay_ removed, now using shared EGLDisplayManager
+    // Each instance has its own Context and Surface, but shares the Display
     EGLConfig eglConfig_ = EGL_NO_CONFIG_KHR;
     EGLSurface eglSurface_ = EGL_NO_SURFACE;
     EGLContext eglContext_ = EGL_NO_CONTEXT;
     EGLNativeWindowType eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
     bool contextInitialized_ = false;  // 标记context是否已在渲染线程创建
+    bool displayAcquired_ = false;  // 标记是否已获取共享 Display
     float pixelRatio_ = 1.0f;  // 设备像素比
     bool isStopped_ = false;  // 标记渲染是否已停止（防止崩溃）
     
-    // 🔒 线程所有权
-    std::thread::id ownerThreadId_;  // EGL Context 所属线程
+    // 🔒 线程所有权和安全
+    std::thread::id ownerThreadId_;  // EGL Context 所属线程（用于验证）
+    std::thread::id renderThreadId_;  // 渲染线程 ID（用于 eglMakeCurrent 验证）
 };
 
 } // namespace harmony

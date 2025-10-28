@@ -239,10 +239,12 @@ endif()
 if(MLN_WITH_OPENGL)
     target_sources(
         maplibre_native PRIVATE
+            rendering/backends/egl_display_manager.hpp
+            rendering/backends/egl_display_manager.cpp
             rendering/backends/harmony_gl_renderer_backend.hpp
             rendering/backends/harmony_gl_renderer_backend.cpp
     )
-    message(STATUS "HarmonyOS: Adding OpenGL renderer backend sources")
+    message(STATUS "HarmonyOS: Adding OpenGL renderer backend sources (with EGL Display Manager)")
 endif()
 
 

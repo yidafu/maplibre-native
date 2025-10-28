@@ -61,10 +61,13 @@ class NativeMapViewController extends XComponentController {
 
   /**
    * 表面创建回调
+   * 
+   * 🛡️ 修复第二次进入地图崩溃问题：
+   * 延迟 EGL 初始化，等待页面转换动画完成后再设置 Native Window
    */
   onSurfaceCreated(surfaceId: string): void {
 
-    hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: onSurfaceCreated surfaceId: ${surfaceId}`);
+    hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: onSurfaceCreated surfaceId: ${surfaceId}, delaying initialization`);
     this.surfaceId = surfaceId;
 
     try {
@@ -84,14 +87,32 @@ class NativeMapViewController extends XComponentController {
       // 不再需要从 ArkTS 传递
       hilog.info(DOMAIN, "NativeMapView", `DPI will be determined by C++ Native API`);
 
-      hilog.info(DOMAIN, "NativeMapView", `Setting native window...`);
-      // 设置渲染表面（使用默认方法，尺寸将在onSurfaceChanged中处理）
-      this.mapView.setNativeWindow(BigInt(surfaceId));
-      hilog.info(DOMAIN, "NativeMapView", `Native window set successfully`);
+      // 🛡️ 延迟初始化：等待页面转换动画完成（通常需要 400-500ms）
+      // ✅ 修复第二次进入崩溃：延迟增加到 800ms，确保 Native Window 完全稳定
+      // 原因：页面转换动画可能需要更长时间，特别是在低性能设备上
+      hilog.info(DOMAIN, "NativeMapView", `Scheduling delayed native window initialization (800ms delay)...`);
+      
+      setTimeout(() => {
+        try {
+          if (!this.mapView) {
+            hilog.warn(DOMAIN, "NativeMapView", `mapView was destroyed before initialization`);
+            return;
+          }
+          
+          hilog.info(DOMAIN, "NativeMapView", `Setting native window after page transition (800ms elapsed)...`);
+          // 设置渲染表面（使用默认方法，尺寸将在onSurfaceChanged中处理）
+          this.mapView.setNativeWindow(BigInt(surfaceId));
+          hilog.info(DOMAIN, "NativeMapView", `Native window set successfully`);
 
-      hilog.info(DOMAIN, "NativeMapView", `Setting style URL: ${this.styleUrl}`);
-      // 设置地图样式
-      this.mapView.setStyleUrl(this.styleUrl);
+          hilog.info(DOMAIN, "NativeMapView", `Setting style URL: ${this.styleUrl}`);
+          // 设置地图样式
+          this.mapView.setStyleUrl(this.styleUrl);
+          
+          hilog.info(DOMAIN, "NativeMapView", `Delayed initialization completed`);
+        } catch (error) {
+          hilog.error(DOMAIN, "NativeMapView", `Delayed initialization failed: ${error.message}`);
+        }
+      }, 800); // ✅ 延迟 800ms，确保页面转换完全完成（从 500ms 增加）
 
       // 延迟调用 jumpTo，等待地图完全初始化
       setTimeout(() => {

@@ -14,12 +14,17 @@
 #include <cassert>
 #include <thread>
 #include <chrono>
+#include <atomic>     // for std::atomic
 #include <stdexcept>  // for std::runtime_error
 #include <cmath>      // for std::abs
 
 using mbgl::harmony::Logger;
 
 namespace {
+
+// 全局 EGL 操作互斥锁 - 保护所有关键 EGL 调用（创建、激活、切换等）
+// 确保 EGL 操作串行化，避免多实例并发冲突
+std::mutex g_eglMutex;
 
 // Get device DPI using HarmonyOS Native API
 // Reference: https://developer.huawei.com/consumer/cn/doc/harmonyos-references/capi-oh-display-manager-h#oh_nativedisplaymanager_getdefaultdisplaydensitydpi
@@ -98,6 +103,16 @@ private:
 HarmonyGLRendererBackend::HarmonyGLRendererBackend()
     : mbgl::gl::RendererBackend(gfx::ContextMode::Unique),
       mbgl::gfx::Renderable({64, 64}, std::make_unique<HarmonyGLRenderableResource>(*this)) {
+    // 注册实例到 EGLDisplayManager（用于资源限制和监控）
+    if (!EGLDisplayManager::getInstance().registerInstance()) {
+        Logger::error("HarmonyGLRendererBackend", 
+                     "Failed to register instance: exceeded maximum concurrent map limit (%d)",
+                     EGLDisplayManager::getMaxConcurrentInstances());
+        throw std::runtime_error("Exceeded maximum concurrent map instances");
+    }
+    Logger::info("HarmonyGLRendererBackend", "Instance created (active: %d/%d)",
+                EGLDisplayManager::getInstance().getActiveInstanceCount(),
+                EGLDisplayManager::getMaxConcurrentInstances());
 }
 
 HarmonyGLRendererBackend::~HarmonyGLRendererBackend() {
@@ -107,6 +122,12 @@ HarmonyGLRendererBackend::~HarmonyGLRendererBackend() {
     isStopped_ = true;
     
     cleanupEGL();
+    
+    // 注销实例（减少活跃计数）
+    EGLDisplayManager::getInstance().unregisterInstance();
+    Logger::info("HarmonyGLRendererBackend", "Instance destroyed (active: %d/%d)",
+                EGLDisplayManager::getInstance().getActiveInstanceCount(),
+                EGLDisplayManager::getMaxConcurrentInstances());
     
     // 🛡️ CRITICAL FIX: 移除 debug 断言，避免跨线程访问 Context
     // 原因：此时可能不在 EGL Context 创建的线程上，访问 getContext() 会导致线程冲突
@@ -130,21 +151,43 @@ void HarmonyGLRendererBackend::updatePixelRatioFromDevice() {
 }
 
 void HarmonyGLRendererBackend::setNativeWindow(void* window) {
-    if (reinterpret_cast<EGLNativeWindowType>(window) == eglWindow_) {
+    EGLNativeWindowType newWindow = reinterpret_cast<EGLNativeWindowType>(window);
+    
+    // 如果是同一个 window，不需要重新初始化
+    if (newWindow == eglWindow_) {
+        Logger::debug("HarmonyGLRendererBackend", "setNativeWindow: Same window, skipping");
         return;
     }
     
+    Logger::info("HarmonyGLRendererBackend", 
+                "setNativeWindow: Changing window from %lu to %lu", 
+                eglWindow_, newWindow);
+    
+    // 清理旧的 EGL 资源
     cleanupEGL();
-    eglWindow_ = reinterpret_cast<EGLNativeWindowType>(window);
-
-    if (eglWindow_) {
-        if (!initializeEGLDisplay()) {
-            Logger::error("HarmonyGL", "Failed to initialize EGL display/surface");
-            eglWindow_ = 0;
-        } else {
-            // Update device DPI and pixelRatio
-            updatePixelRatioFromDevice();
-        }
+    
+    // 🛡️ 修复第二次进入崩溃：添加 window 有效性检查
+    if (!newWindow) {
+        Logger::warn("HarmonyGLRendererBackend", "setNativeWindow: null window provided, skipping initialization");
+        return;
+    }
+    
+    eglWindow_ = newWindow;
+    
+    // 🛡️ 短暂延迟，让 Native Window 稳定（修复页面转换时的时序问题）
+    // 注意：这里的延迟很短（10ms），主要延迟在 TypeScript 层（500ms）
+    Logger::debug("HarmonyGLRendererBackend", "Waiting 10ms for window to stabilize...");
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    // 初始化 EGL Display 和 Surface
+    if (!initializeEGLDisplay()) {
+        Logger::error("HarmonyGL", "Failed to initialize EGL display/surface");
+        eglWindow_ = 0;
+        // 不要设置 isStopped_，让恢复机制有机会修复
+    } else {
+        Logger::info("HarmonyGLRendererBackend", "✅ EGL display/surface initialized successfully");
+        // Update device DPI and pixelRatio
+        updatePixelRatioFromDevice();
     }
 }
 
@@ -169,40 +212,27 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         EGL_NONE
     };
 
-    eglDisplay_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (eglDisplay_ == EGL_NO_DISPLAY) {
-        EGLint error = eglGetError();
-        Logger::error("HarmonyGL", "Failed to get EGL display: %s (0x%X)", 
-                      eglErrorString(error), error);
+    // ✅ 使用共享 EGL Display（通过 EGLDisplayManager）
+    // 这样所有地图实例共享同一个 Display，避免多次初始化冲突
+    EGLDisplay display = EGLDisplayManager::getInstance().acquireDisplay();
+    if (display == EGL_NO_DISPLAY) {
+        Logger::error("HarmonyGL", "Failed to acquire shared EGL display");
         return false;
     }
+    displayAcquired_ = true;
+    Logger::info("HarmonyGLRendererBackend", "✅ Acquired shared EGL Display: %p", display);
 
-    EGLint majorVersion, minorVersion;
-    if (!eglInitialize(eglDisplay_, &majorVersion, &minorVersion)) {
-        EGLint error = eglGetError();
-        Logger::error("HarmonyGL", "Failed to initialize EGL: %s (0x%X)", 
-                      eglErrorString(error), error);
+    // ✅ 选择 EGL 配置（通过 EGLDisplayManager）
+    if (!EGLDisplayManager::getInstance().chooseConfig(attribList, eglConfig_)) {
+        Logger::error("HarmonyGL", "Failed to choose EGL config");
         return false;
     }
-
-    if (!eglBindAPI(EGL_OPENGL_ES_API)) {
-        Logger::error("HarmonyGL", "Failed to bind OpenGL ES API");
-        return false;
-    }
-
-    EGLint numConfigs;
-    if (!eglChooseConfig(eglDisplay_, attribList, &eglConfig_, 1, &numConfigs) || numConfigs <= 0) {
-        EGLint error = eglGetError();
-        Logger::error("OpenGL", "Failed to choose EGL config: %s (numConfigs=%d, error code: 0x%X)", 
-                      eglErrorString(error), numConfigs, error);
-        return false;
-    }
-    Logger::info("HarmonyGLRendererBackend", "Step 4/5: EGL config chosen (numConfigs=%d)", numConfigs);
+    Logger::info("HarmonyGLRendererBackend", "✅ EGL config chosen successfully");
     
     // Verify MSAA configuration
     EGLint samples = 0, sampleBuffers = 0;
-    eglGetConfigAttrib(eglDisplay_, eglConfig_, EGL_SAMPLES, &samples);
-    eglGetConfigAttrib(eglDisplay_, eglConfig_, EGL_SAMPLE_BUFFERS, &sampleBuffers);
+    eglGetConfigAttrib(display, eglConfig_, EGL_SAMPLES, &samples);
+    eglGetConfigAttrib(display, eglConfig_, EGL_SAMPLE_BUFFERS, &sampleBuffers);
     Logger::info("HarmonyGL", "MSAA Config: sampleBuffers=%d, samples=%d", 
                  sampleBuffers, samples);
     if (samples > 1) {
@@ -211,32 +241,32 @@ bool HarmonyGLRendererBackend::initializeEGLDisplay() {
         Logger::warn("HarmonyGL", "MSAA not enabled (device may not support)");
     }
 
+    // ✅ 创建独立的 EGL Surface（每个实例独立）
     // Note: Native Window buffer size will be set in resizeFramebuffer()
-    eglSurface_ = eglCreateWindowSurface(eglDisplay_, eglConfig_, eglWindow_, nullptr);
+    eglSurface_ = eglCreateWindowSurface(display, eglConfig_, eglWindow_, nullptr);
     if (eglSurface_ == EGL_NO_SURFACE) {
         EGLint error = eglGetError();
         Logger::error("HarmonyGL", "Failed to create EGL surface: %s (0x%X)", 
                       eglErrorString(error), error);
         return false;
     }
+    Logger::info("HarmonyGLRendererBackend", "✅ EGL Surface created: %p (independent)", eglSurface_);
     
-    // Enable VSync to prevent flickering
-    if (!eglSwapInterval(eglDisplay_, 1)) {
-        EGLint error = eglGetError();
-        Logger::warn("HarmonyGL", "Failed to set swap interval: %s", eglErrorString(error));
-    }
+    // 将移到 initializeEGLContext() 中
     
     // 🔧 修复黑屏：EGL Display 和 Surface 初始化成功，重置停止标志
     // 问题：cleanupEGL() 设置 isStopped_ = true，但 initializeEGLDisplay() 成功后未重置
     // 解决：在 EGL 初始化成功后重置标志，允许渲染继续
     isStopped_ = false;
-    Logger::info("HarmonyGLRendererBackend", "EGL initialized successfully, rendering enabled");
+    Logger::info("HarmonyGLRendererBackend", "✅ EGL initialized successfully, rendering enabled");
     
     return true;
 }
 
 bool HarmonyGLRendererBackend::initializeEGLContext() {
-    if (eglDisplay_ == EGL_NO_DISPLAY || eglSurface_ == EGL_NO_SURFACE) {
+    // ✅ 使用共享 Display（getDisplay 不增加引用计数）
+    EGLDisplay display = EGLDisplayManager::getInstance().getDisplay();
+    if (display == EGL_NO_DISPLAY || eglSurface_ == EGL_NO_SURFACE) {
         Logger::error("HarmonyGL", "Cannot create context: display or surface not initialized");
         return false;
     }
@@ -245,21 +275,33 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
         return true;
     }
     
+    // ✅ 使用全局互斥锁保护 Context 创建和激活
+    // 防止多个实例并发创建 Context 导致冲突
+    std::lock_guard<std::mutex> lock(g_eglMutex);
+    
+    // ✅ 记录渲染线程 ID（用于后续验证）
+    renderThreadId_ = std::this_thread::get_id();
+    Logger::error("HarmonyGL", "🔴🔴🔴 Creating EGL Context on thread: %lu",
+                 std::hash<std::thread::id>{}(renderThreadId_));
+    Logger::info("HarmonyGLRendererBackend", "Recording render thread ID for EGL context (with mutex protection)");
+    
     const EGLint contextAttribs[] = {
         EGL_CONTEXT_CLIENT_VERSION, 3,  // OpenGL ES 3
         EGL_NONE
     };
     
-    eglContext_ = eglCreateContext(eglDisplay_, eglConfig_, EGL_NO_CONTEXT, contextAttribs);
+    // ✅ 创建独立的 EGL Context（每个实例独立）
+    eglContext_ = eglCreateContext(display, eglConfig_, EGL_NO_CONTEXT, contextAttribs);
     if (eglContext_ == EGL_NO_CONTEXT) {
         EGLint error = eglGetError();
         Logger::error("HarmonyGL", "Failed to create EGL context: %s (0x%X)", 
                       eglErrorString(error), error);
         return false;
     }
+    Logger::info("HarmonyGLRendererBackend", "✅ EGL Context created: %p (independent, with mutex protection)", eglContext_);
     
     // Activate context to get OpenGL information
-    if (!eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_)) {
+    if (!eglMakeCurrent(display, eglSurface_, eglSurface_, eglContext_)) {
         EGLint error = eglGetError();
         Logger::error("OpenGL", "Failed to make context current: %s (error code: 0x%X)", 
                       eglErrorString(error), error);
@@ -306,6 +348,14 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
     // 验证shader属性
     validateShaderAttributes();
     
+    // ✅ Enable VSync to prevent flickering（移到这里，在 Context 创建后调用）
+    if (!eglSwapInterval(display, 1)) {
+        EGLint error = eglGetError();
+        Logger::warn("HarmonyGL", "Failed to set swap interval: %s", eglErrorString(error));
+    } else {
+        Logger::info("HarmonyGL", "✅ VSync enabled (swap interval = 1)");
+    }
+    
     contextInitialized_ = true;
     
     Logger::info("HarmonyGLRendererBackend", "EGL Context: %p (bound to render thread)", eglContext_);
@@ -321,57 +371,68 @@ void HarmonyGLRendererBackend::cleanupEGL() {
     isStopped_ = true;
     
     try {
-        if (eglDisplay_ != EGL_NO_DISPLAY) {
+        // ✅ 获取共享 Display（getDisplay 不增加引用计数）
+        EGLDisplay display = EGL_NO_DISPLAY;
+        if (displayAcquired_) {
+            display = EGLDisplayManager::getInstance().getDisplay();
+        }
+        
+        if (display != EGL_NO_DISPLAY) {
             Logger::debug("HarmonyGLRendererBackend", "Cleaning up EGL context and surface");
             
-            if (eglContext_ != EGL_NO_CONTEXT) {
-                // 🛡️ 线程安全：检查当前线程是否持有这个 Context
-                EGLContext currentContext = eglGetCurrentContext();
-                if (currentContext == eglContext_) {
-                    Logger::debug("HarmonyGLRendererBackend", "Unbinding current EGL context");
-                    // 尝试 unbind，如果失败也继续清理
-                    if (!eglMakeCurrent(eglDisplay_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+            // ✅ 使用全局互斥锁保护 EGL 清理操作
+            {
+                std::lock_guard<std::mutex> lock(g_eglMutex);
+                
+                // ✅ 清理独立的 EGL Context
+                if (eglContext_ != EGL_NO_CONTEXT) {
+                    // 🛡️ 线程安全：检查当前线程是否持有这个 Context
+                    EGLContext currentContext = eglGetCurrentContext();
+                    if (currentContext == eglContext_) {
+                        Logger::debug("HarmonyGLRendererBackend", "Unbinding current EGL context");
+                        // 尝试 unbind，如果失败也继续清理
+                        if (!eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT)) {
+                            EGLint error = eglGetError();
+                            Logger::warn("HarmonyGLRendererBackend", 
+                                        "Failed to unbind context during cleanup (error=0x%x), continuing anyway", 
+                                        error);
+                            // 不要因为 unbind 失败就停止清理
+                        }
+                    } else {
+                        Logger::debug("HarmonyGLRendererBackend", 
+                                     "Context not current on this thread (current=%p, ours=%p)", 
+                                     currentContext, eglContext_);
+                    }
+                    
+                    Logger::debug("HarmonyGLRendererBackend", "Destroying EGL context: %p", eglContext_);
+                    // 🛡️ EGL Context 可以在任意线程销毁（只要不是 current）
+                    if (!eglDestroyContext(display, eglContext_)) {
                         EGLint error = eglGetError();
                         Logger::warn("HarmonyGLRendererBackend", 
-                                    "Failed to unbind context during cleanup (error=0x%x), continuing anyway", 
-                                    error);
-                        // 不要因为 unbind 失败就停止清理
+                                    "Failed to destroy context (error=0x%x)", error);
                     }
-                } else {
-                    Logger::debug("HarmonyGLRendererBackend", 
-                                 "Context not current on this thread (current=%p, ours=%p)", 
-                                 currentContext, eglContext_);
+                    eglContext_ = EGL_NO_CONTEXT;
+                    contextInitialized_ = false;
                 }
                 
-                Logger::debug("HarmonyGLRendererBackend", "Destroying EGL context");
-                // 🛡️ EGL Context 可以在任意线程销毁（只要不是 current）
-                if (!eglDestroyContext(eglDisplay_, eglContext_)) {
-                    EGLint error = eglGetError();
-                    Logger::warn("HarmonyGLRendererBackend", 
-                                "Failed to destroy context (error=0x%x)", error);
+                // ✅ 清理独立的 EGL Surface
+                if (eglSurface_ != EGL_NO_SURFACE) {
+                    Logger::debug("HarmonyGLRendererBackend", "Destroying EGL surface: %p", eglSurface_);
+                    if (!eglDestroySurface(display, eglSurface_)) {
+                        EGLint error = eglGetError();
+                        Logger::warn("HarmonyGLRendererBackend", 
+                                    "Failed to destroy surface (error=0x%x)", error);
+                    }
+                    eglSurface_ = EGL_NO_SURFACE;
                 }
-                eglContext_ = EGL_NO_CONTEXT;
-                contextInitialized_ = false;
-            }
+            }  // ✅ 释放互斥锁
             
-            if (eglSurface_ != EGL_NO_SURFACE) {
-                Logger::debug("HarmonyGLRendererBackend", "Destroying EGL surface");
-                if (!eglDestroySurface(eglDisplay_, eglSurface_)) {
-                    EGLint error = eglGetError();
-                    Logger::warn("HarmonyGLRendererBackend", 
-                                "Failed to destroy surface (error=0x%x)", error);
-                }
-                eglSurface_ = EGL_NO_SURFACE;
+            // ✅ 释放共享 Display（减少引用计数）
+            if (displayAcquired_) {
+                Logger::debug("HarmonyGLRendererBackend", "Releasing shared EGL Display");
+                EGLDisplayManager::getInstance().releaseDisplay();
+                displayAcquired_ = false;
             }
-            
-            Logger::debug("HarmonyGLRendererBackend", "Terminating EGL display");
-            // 🛡️ eglTerminate 会减少引用计数，多次调用是安全的
-            if (!eglTerminate(eglDisplay_)) {
-                EGLint error = eglGetError();
-                Logger::warn("HarmonyGLRendererBackend", 
-                            "Failed to terminate display (error=0x%x)", error);
-            }
-            eglDisplay_ = EGL_NO_DISPLAY;
         }
         
         eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
@@ -382,19 +443,159 @@ void HarmonyGLRendererBackend::cleanupEGL() {
         // 确保清理状态即使发生异常
         eglContext_ = EGL_NO_CONTEXT;
         eglSurface_ = EGL_NO_SURFACE;
-        eglDisplay_ = EGL_NO_DISPLAY;
         eglWindow_ = 0;
         contextInitialized_ = false;
+        if (displayAcquired_) {
+            EGLDisplayManager::getInstance().releaseDisplay();
+            displayAcquired_ = false;
+        }
     } catch (...) {
         Logger::error("HarmonyGLRendererBackend", "Unknown error during EGL cleanup");
         // 确保清理状态即使发生异常
         eglContext_ = EGL_NO_CONTEXT;
         eglSurface_ = EGL_NO_SURFACE;
-        eglDisplay_ = EGL_NO_DISPLAY;
         eglWindow_ = 0;
+        contextInitialized_ = false;
+        if (displayAcquired_) {
+            EGLDisplayManager::getInstance().releaseDisplay();
+            displayAcquired_ = false;
+        }
+    }
+    
+}
+
+// 🛡️ 检查 EGL 健康状态（修复第二次进入崩溃）
+bool HarmonyGLRendererBackend::isEGLHealthy() const {
+    // ✅ 使用共享 Display（getDisplay 不增加引用计数）
+    EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
+    
+    // 基本 EGL 资源检查
+    if (display == EGL_NO_DISPLAY || 
+        eglSurface_ == EGL_NO_SURFACE || 
+        eglContext_ == EGL_NO_CONTEXT) {
+        return false;
+    }
+    
+    // 检查 Surface 有效性
+    if (!isSurfaceValid()) {
+        return false;
+    }
+    
+    // 检查 EGL 没有错误
+    EGLint error = eglGetError();
+    if (error != EGL_SUCCESS) {
+        Logger::warn("HarmonyGLRendererBackend", 
+                    "EGL has pending error: %s (0x%x)", 
+                    eglErrorString(error), error);
+        return false;
+    }
+    
+    return true;
+}
+
+// 🛡️ 尝试恢复 EGL 状态（修复第二次进入崩溃）
+bool HarmonyGLRendererBackend::tryRecoverEGL() {
+    // ✅ 防止并发恢复（如果多个实例同时失败，只允许一个恢复）
+    static std::atomic<bool> recovering{false};
+    if (recovering.exchange(true)) {
+        Logger::warn("HarmonyGLRendererBackend", 
+                    "❌ Already in recovery process, aborting this attempt");
+        return false;
+    }
+    
+    Logger::info("HarmonyGLRendererBackend", "🔧 Attempting to recover EGL state...");
+    
+    // 限制重试次数，防止无限循环
+    static std::atomic<int> recoveryAttempts{0};
+    static std::chrono::steady_clock::time_point lastRecoveryTime;
+    
+    auto now = std::chrono::steady_clock::now();
+    auto timeSinceLastRecovery = std::chrono::duration_cast<std::chrono::seconds>(
+        now - lastRecoveryTime).count();
+    
+    // 如果距离上次恢复不到 2 秒，可能是快速失败，放弃恢复
+    if (timeSinceLastRecovery < 2 && recoveryAttempts > 3) {
+        Logger::error("HarmonyGLRendererBackend", 
+                     "❌ Too many recovery attempts (%d) in short time, giving up", 
+                     recoveryAttempts.load());
+        recovering = false;  // ✅ 重置标志
+        return false;
+    }
+    
+    // 重置计数器（如果已经超过 5 秒）
+    if (timeSinceLastRecovery > 5) {
+        recoveryAttempts = 0;
+    }
+    
+    recoveryAttempts++;
+    lastRecoveryTime = now;
+    
+    Logger::info("HarmonyGLRendererBackend", 
+                "Recovery attempt #%d (last recovery was %ld seconds ago)", 
+                recoveryAttempts.load(), timeSinceLastRecovery);
+    
+    // 1. 完全清理当前无效的 EGL 资源
+    Logger::info("HarmonyGLRendererBackend", "Step 1: Cleaning up invalid EGL resources");
+    
+    // ✅ 使用共享 Display：不需要完全重置 Display，只清理独立资源
+    try {
+        EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
+        
+        // 1.1 清理 Context
+        if (eglContext_ != EGL_NO_CONTEXT && display != EGL_NO_DISPLAY) {
+            EGLContext currentContext = eglGetCurrentContext();
+            if (currentContext == eglContext_) {
+                eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            }
+            eglDestroyContext(display, eglContext_);
+            eglContext_ = EGL_NO_CONTEXT;
+            contextInitialized_ = false;
+        }
+        
+        // 1.2 清理 Surface
+        if (eglSurface_ != EGL_NO_SURFACE && display != EGL_NO_DISPLAY) {
+            eglDestroySurface(display, eglSurface_);
+            eglSurface_ = EGL_NO_SURFACE;
+        }
+        
+        // 1.3 不需要 terminate Display（共享资源由 EGLDisplayManager 管理）
+    } catch (...) {
+        Logger::error("HarmonyGLRendererBackend", "Error during cleanup phase of recovery");
+        // 确保状态清零
+        eglContext_ = EGL_NO_CONTEXT;
+        eglSurface_ = EGL_NO_SURFACE;
         contextInitialized_ = false;
     }
     
+    // 2. 延长延迟时间，让系统完全稳定
+    Logger::info("HarmonyGLRendererBackend", "Step 2: Waiting for system to stabilize (50ms)");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    
+    // 3. 重新初始化整个 EGL 栈（Display + Surface + Context）
+    Logger::info("HarmonyGLRendererBackend", "Step 3: Re-initializing complete EGL stack");
+    if (!eglWindow_) {
+        Logger::error("HarmonyGLRendererBackend", "❌ No native window available for recovery");
+        recovering = false;  // ✅ 重置标志
+        return false;
+    }
+    
+    if (!initializeEGLDisplay()) {
+        Logger::error("HarmonyGLRendererBackend", "❌ Failed to re-initialize EGL display");
+        recovering = false;  // ✅ 重置标志
+        return false;
+    }
+    
+    // 4. 重新初始化 EGL Context（如果在渲染线程）
+    Logger::info("HarmonyGLRendererBackend", "Step 4: Re-initializing EGL context");
+    if (!initializeEGLContext()) {
+        Logger::error("HarmonyGLRendererBackend", "❌ Failed to re-initialize EGL context");
+        recovering = false;  // ✅ 重置标志
+        return false;
+    }
+    
+    Logger::info("HarmonyGLRendererBackend", "✅ EGL recovery successful!");
+    recovering = false;  // ✅ 重置标志
+    return true;
 }
 
 // HarmonyOS OpenGL quirk handling methods
@@ -660,8 +861,11 @@ void HarmonyGLRendererBackend::activate() {
     // HarmonyOS渲染线程EGL Context管理
     // 首次调用时在渲染线程创建context，之后直接激活
     
+    // ✅ 获取共享 Display（getDisplay 不增加引用计数）
+    EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
+    
     // 首次调用且在渲染线程 - 延迟创建context
-    if (!contextInitialized_ && eglDisplay_ != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
+    if (!contextInitialized_ && display != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
         Logger::info("HarmonyGLRendererBackend", "activate() - First call on render thread, creating context...");
         if (!initializeEGLContext()) {
             Logger::error("HarmonyGLRendererBackend", "Failed to initialize EGL context on render thread");
@@ -677,43 +881,43 @@ void HarmonyGLRendererBackend::activate() {
         return;
     }
     
+    // 移除手动线程验证 - EGL 自己会处理线程绑定
+    // eglMakeCurrent() 会返回错误如果线程不正确
+    // 这样避免了过于严格的验证导致正常渲染被阻止
+    
     // Context已创建 - 直接激活
-    if (eglContext_ != EGL_NO_CONTEXT && eglDisplay_ != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
-        // 检查context是否已经current（性能优化）
+    if (eglContext_ != EGL_NO_CONTEXT && display != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
+        // ✅ 关键修复：将 eglGetCurrentContext() 也放到锁内
+        // 确保 检查-激活 是原子操作，完全消除竞态条件
+        std::lock_guard<std::mutex> lock(g_eglMutex);
+        
+        // 在锁内检查context是否已经current（性能优化）
         EGLContext currentContext = eglGetCurrentContext();
         if (currentContext == eglContext_) {
+            // 已经是当前 Context，无需切换
             return;
         }
         
-        if (!eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_)) {
+        // ✅ 在锁内切换 Context，不停止渲染，让错误自然恢复
+        if (!eglMakeCurrent(display, eglSurface_, eglSurface_, eglContext_)) {
             EGLint error = eglGetError();
             Logger::error("HarmonyGLRendererBackend", 
                          "activate() FAILED to make context current: %s (error code: 0x%X)", 
                          eglErrorString(error), error);
             
-            // 🛡️ 如果是Surface相关错误，自动停止渲染防止崩溃
-            if (error == EGL_BAD_SURFACE || error == EGL_BAD_ACCESS || error == EGL_BAD_CURRENT_SURFACE) {
-                Logger::error("HarmonyGLRendererBackend", "Surface invalid - pausing rendering to prevent crash");
-                pauseRendering();
-                
-                // 析构时不抛出异常
-                if (isStopped_) {
-                    Logger::warn("HarmonyGLRendererBackend", "Skipping exception (cleanup in progress)");
-                    return;
-                }
-                throw std::runtime_error("activate() failed: surface error - " + std::string(eglErrorString(error)));
-            }
-            
-            // 析构时不抛出异常
+            // ✅ 析构时不抛出异常，优雅返回
             if (isStopped_) {
-                Logger::warn("HarmonyGLRendererBackend", "eglMakeCurrent failed but skipping exception (cleanup in progress)");
+                Logger::warn("HarmonyGLRendererBackend", "activate() failed but cleanup in progress, returning gracefully");
                 return;
             }
+            
+            // ✅ 不停止渲染！让上层抛出异常或重试
+            // 移除 pauseRendering() 调用，避免在未激活 Context 下执行 OpenGL 命令
             throw std::runtime_error("eglMakeCurrent failed: " + std::string(eglErrorString(error)));
         }
     } else {
         std::string error = "activate() failed: EGL not fully initialized (display=" + 
-                           std::to_string(reinterpret_cast<uintptr_t>(eglDisplay_)) + 
+                           std::to_string(reinterpret_cast<uintptr_t>(display)) + 
                            ", surface=" + std::to_string(reinterpret_cast<uintptr_t>(eglSurface_)) +
                            ", context=" + std::to_string(reinterpret_cast<uintptr_t>(eglContext_)) + ")";
         Logger::error("HarmonyGLRendererBackend", "%s", error.c_str());
@@ -746,18 +950,21 @@ void HarmonyGLRendererBackend::swapBuffers() {
     // 🛡️ 安全检查：验证Surface有效性
     if (!isSurfaceValid()) {
         Logger::warn("HarmonyGLRendererBackend", "swapBuffers() - skipped (surface invalid)");
-        pauseRendering();  // 自动停止渲染
+        // ✅ 不停止渲染，只跳过本帧，下一帧继续尝试
         return;
     }
     
-    if (eglDisplay_ != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
+    // ✅ 使用共享 Display（getDisplay 不增加引用计数）
+    EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
+    
+    if (display != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
         // HarmonyOS缓冲区刷新重试机制
         int retryCount = 0;
         const int maxRetries = 3;
         bool success = false;
         
         while (retryCount < maxRetries && !success) {
-            if (eglSwapBuffers(eglDisplay_, eglSurface_)) {
+            if (eglSwapBuffers(display, eglSurface_)) {
                 success = true;
             } else {
                 EGLint error = eglGetError();
@@ -774,7 +981,7 @@ void HarmonyGLRendererBackend::swapBuffers() {
                 
                 if (retryCount < maxRetries) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    eglMakeCurrent(eglDisplay_, eglSurface_, eglSurface_, eglContext_);
+                    eglMakeCurrent(display, eglSurface_, eglSurface_, eglContext_);
                 }
             }
         }
@@ -785,17 +992,14 @@ void HarmonyGLRendererBackend::swapBuffers() {
                           "eglSwapBuffers failed after %d attempts: %s", 
                           maxRetries, eglErrorString(error));
             
-            // 🛡️ Surface相关错误时停止渲染防止崩溃
-            if (error == EGL_BAD_SURFACE || error == EGL_BAD_CURRENT_SURFACE || error == EGL_BAD_ALLOC) {
-                Logger::error("HarmonyGLRendererBackend", "Pausing rendering to prevent crash");
-                pauseRendering();
-            }
-            // 不再抛出异常，而是优雅地停止渲染
+            // ✅ 不停止渲染！只记录错误，让下一帧继续尝试
+            // 移除 pauseRendering() 调用，避免在未激活 Context 下执行 OpenGL 命令
+            Logger::warn("HarmonyGLRendererBackend", "Skipping this frame, will retry next frame");
         }
     } else {
         Logger::warn("HarmonyGLRendererBackend", 
-                     "Cannot swap buffers: eglDisplay=%p, eglSurface=%p",
-                     eglDisplay_, eglSurface_);
+                     "Cannot swap buffers: display=%p, eglSurface=%p",
+                     display, eglSurface_);
     }
 }
 
@@ -804,14 +1008,17 @@ void HarmonyGLRendererBackend::swapBuffers() {
 
 // 🛡️ 新增：检查Surface有效性
 bool HarmonyGLRendererBackend::isSurfaceValid() const {
-    if (eglDisplay_ == EGL_NO_DISPLAY || eglSurface_ == EGL_NO_SURFACE) {
+    // ✅ 使用共享 Display（getDisplay 不增加引用计数）
+    EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
+    
+    if (display == EGL_NO_DISPLAY || eglSurface_ == EGL_NO_SURFACE) {
         return false;
     }
     
     // 查询Surface属性来验证其有效性
     EGLint width = 0, height = 0;
-    if (!eglQuerySurface(eglDisplay_, eglSurface_, EGL_WIDTH, &width) ||
-        !eglQuerySurface(eglDisplay_, eglSurface_, EGL_HEIGHT, &height)) {
+    if (!eglQuerySurface(display, eglSurface_, EGL_WIDTH, &width) ||
+        !eglQuerySurface(display, eglSurface_, EGL_HEIGHT, &height)) {
         return false;
     }
     

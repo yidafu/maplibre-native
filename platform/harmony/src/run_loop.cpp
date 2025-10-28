@@ -115,9 +115,36 @@ RunLoop::Impl::Impl(RunLoop*, RunLoop::Type type_)
     : type(type_) {
 }
 
+// ✅ 修复退出崩溃：closeHolder() 实现
+void RunLoop::Impl::closeHolder() {
+    if (!holderClosed) {
+        Logger::debug("RunLoop", "closeHolder() called, marking as closed");
+        // 先保存 holder 指针，因为设置 holderClosed 后 holderHandle() 会返回 nullptr
+        auto* holderPtr = reinterpret_cast<uv_handle_t*>(holder);
+        holderClosed = true;  // ✅ 标记为已关闭，防止重复删除
+        uv_close(holderPtr, [](uv_handle_t* h) { 
+            Logger::debug("RunLoop", "Holder close callback, deleting holder");
+            delete reinterpret_cast<uv_async_t*>(h); 
+        });
+    } else {
+        Logger::warn("RunLoop", "closeHolder() called but already closed");
+    }
+}
+
 RunLoop::Impl::~Impl() {
     if (!watchPoll.empty()) {
         Logger::warn("RunLoop", "RunLoop destroyed with %zu active watches", watchPoll.size());
+    }
+    
+    // ✅ 修复退出崩溃：安全清理 holder（如果还未删除）
+    // 注意：正常情况下 holder 应该在 stop() 或析构函数中已经通过 uv_close 删除
+    // 这里只是防御性编程，处理异常情况
+    if (holder && !holderClosed) {
+        Logger::warn("RunLoop", "Holder not properly closed before Impl destruction");
+        // 注意：这里不能调用 uv_close，因为 loop 可能已经不可用
+        // 直接删除可能会造成小的内存泄漏（uv handle 未正确关闭），但比崩溃好
+        delete holder;
+        holder = nullptr;
     }
 }
 
@@ -203,13 +230,13 @@ RunLoop::~RunLoop() {
         impl->watchPoll.clear();
     }
 
-    // ⚡ 修复：只有在 holder 未关闭时才关闭
-    // stop() 可能已经关闭了 holder，避免重复关闭
-    if (!uv_is_closing(impl->holderHandle())) {
+    // ✅ 修复退出崩溃：检查 holder 是否已经被关闭
+    // 如果在 stop() 中已经关闭，holderHandle() 会返回 nullptr，避免访问悬空指针
+    if (!impl->isHolderClosed() && impl->holderHandle()) {
         Logger::debug("RunLoop", "Closing holder handle in destructor");
         impl->closeHolder();
     } else {
-        Logger::debug("RunLoop", "Holder handle already closing (closed in stop())");
+        Logger::debug("RunLoop", "Holder handle already closed (in stop())");
     }
 
     if (impl->type == Type::Default) {
@@ -337,14 +364,10 @@ void RunLoop::stop() {
             uv_run(impl->loop, UV_RUN_NOWAIT);
         }
         
-        // ⚡ 关键修复 2：关闭 holder handle
-        if (!uv_is_closing(impl->holderHandle())) {
+        // ✅ 修复退出崩溃：使用 closeHolder() 方法，它会设置 holderClosed 标志
+        if (!impl->isHolderClosed()) {
             Logger::debug("RunLoop", "Closing holder handle");
-            uv_close(impl->holderHandle(), [](uv_handle_t* h) {
-                Logger::debug("RunLoop", "Holder handle closed");
-                // 确保删除 holder 对象
-                delete reinterpret_cast<uv_async_t*>(h);
-            });
+            impl->closeHolder();  // 这会设置 holderClosed = true，防止析构函数重复删除
             
             // 立即运行一次循环，让 uv_close 生效
             Logger::debug("RunLoop", "Running loop once to process holder close");
