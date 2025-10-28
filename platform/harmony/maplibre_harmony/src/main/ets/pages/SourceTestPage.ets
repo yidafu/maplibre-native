@@ -5,6 +5,7 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { LatLngBounds } from '../maps/geometry/LatLngBounds';
 
 // 暂时从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
@@ -13,6 +14,14 @@ import {
   CircleLayer
 } from '../maps/style/index';
 const TAG = 'SourceTestPage';
+
+/**
+ * 随机位置接口
+ */
+interface RandomLocation {
+  longitude: number;
+  latitude: number;
+}
 
 /**
  * Source 数据源测试页面
@@ -212,6 +221,50 @@ struct SourceTestPage {
   }
 
   /**
+   * 生成随机位置（中国区域）
+   */
+  private generateRandomLocation(): RandomLocation {
+    // 中国区域：经度 70-135，纬度 15-55
+    const longitude = 70 + Math.random() * 65;
+    const latitude = 15 + Math.random() * 40;
+    return { longitude, latitude };
+  }
+
+  /**
+   * FlyTo 到指定边界范围
+   */
+  private flyToBounds(points: maplibre.LatLng[]) {
+    if (!this.mapLibreMap || points.length === 0) return;
+
+    try {
+      // 计算边界范围
+      const bounds = LatLngBounds.fromLatLngArray(points);
+      
+      // 使用 getCameraForLatLngBounds 获取合适的相机位置
+      const padding = 80; // 四周留 80 像素边距
+      const camera = this.mapLibreMap.getCameraForLatLngBounds(
+        bounds,
+        padding, padding, padding, padding
+      );
+
+      if (camera) {
+        // FlyTo 到计算出的相机位置
+        const options: maplibre.CameraOptions = {
+          center: camera.target,
+          zoom: camera.zoom,
+          bearing: camera.bearing,
+          pitch: camera.tilt
+        };
+        this.mapLibreMap.flyTo(options, 2000);
+        
+        hilog.info(DOMAIN, TAG, `Flying to bounds: center=${camera.target.latitude},${camera.target.longitude}, zoom=${camera.zoom}`);
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, `Failed to fly to bounds: ${error}`);
+    }
+  }
+
+  /**
    * 初始化地图
    */
   private initializeMap(mapView?: maplibre.NativeMapView) {
@@ -258,13 +311,26 @@ struct SourceTestPage {
     this.currentSource = 'GeoJsonSource - Point';
 
     try {
+      // 移除旧的数据源和图层
+      try {
+        style.removeLayer('point-layer');
+        style.removeSource('point-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+
       const geojsonData: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [
           {
             type: "Feature",
-            geometry: { type: "Point", coordinates: [116.4074, 39.9042] },
-            properties: { name: "北京", value: 100 }
+            geometry: { type: "Point", coordinates: [centerLng, centerLat] },
+            properties: { name: "随机点", value: 100 }
           }
         ]
       };
@@ -280,7 +346,11 @@ struct SourceTestPage {
       
       style.addLayer(layer as object);
 
-      hilog.info(DOMAIN, TAG, 'GeoJsonSource Point added');
+      // FlyTo 到数据位置
+      const allPoints = [new maplibre.LatLng(centerLat, centerLng)];
+      this.flyToBounds(allPoints);
+
+      hilog.info(DOMAIN, TAG, `GeoJsonSource Point added at ${centerLat}, ${centerLng}`);
       this.message = '✅ 已添加 GeoJSON 点数据源';
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -300,6 +370,20 @@ struct SourceTestPage {
     this.currentSource = 'GeoJsonSource - LineString';
 
     try {
+      // 移除旧的数据源和图层
+      try {
+        style.removeLayer('line-layer');
+        style.removeSource('line-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+      const offset = 1.5; // 线条偏移范围（适合 zoom=5）
+
       const geojsonData: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [
@@ -308,9 +392,9 @@ struct SourceTestPage {
             geometry: {
               type: "LineString",
               coordinates: [
-                [116.3, 39.9],
-                [116.4, 39.95],
-                [116.5, 39.9]
+                [centerLng - offset, centerLat],
+                [centerLng, centerLat + offset * 0.5],
+                [centerLng + offset, centerLat]
               ]
             },
             properties: { name: "测试路径" }
@@ -328,7 +412,15 @@ struct SourceTestPage {
       
       style.addLayer(layer as object);
 
-      hilog.info(DOMAIN, TAG, 'GeoJsonSource Line added');
+      // FlyTo 到数据位置
+      const allPoints = [
+        new maplibre.LatLng(centerLat, centerLng - offset),
+        new maplibre.LatLng(centerLat + offset * 0.5, centerLng),
+        new maplibre.LatLng(centerLat, centerLng + offset)
+      ];
+      this.flyToBounds(allPoints);
+
+      hilog.info(DOMAIN, TAG, `GeoJsonSource Line added at ${centerLat}, ${centerLng}`);
       this.message = '✅ 已添加 GeoJSON 线数据源';
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -348,6 +440,20 @@ struct SourceTestPage {
     this.currentSource = 'GeoJsonSource - Polygon';
 
     try {
+      // 移除旧的数据源和图层
+      try {
+        style.removeLayer('polygon-layer');
+        style.removeSource('polygon-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+      const offset = 1.5; // 多边形大小（适合 zoom=5）
+
       const geojsonData: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [
@@ -356,11 +462,11 @@ struct SourceTestPage {
             geometry: {
               type: "Polygon",
               coordinates: [[
-                [116.3, 39.8],
-                [116.5, 39.8],
-                [116.5, 40.0],
-                [116.3, 40.0],
-                [116.3, 39.8]
+                [centerLng - offset, centerLat - offset],
+                [centerLng + offset, centerLat - offset],
+                [centerLng + offset, centerLat + offset],
+                [centerLng - offset, centerLat + offset],
+                [centerLng - offset, centerLat - offset]
               ]]
             },
             properties: { name: "测试区域" }
@@ -379,7 +485,16 @@ struct SourceTestPage {
       
       style.addLayer(layer as object);
 
-      hilog.info(DOMAIN, TAG, 'GeoJsonSource Polygon added');
+      // FlyTo 到数据位置
+      const allPoints = [
+        new maplibre.LatLng(centerLat - offset, centerLng - offset),
+        new maplibre.LatLng(centerLat - offset, centerLng + offset),
+        new maplibre.LatLng(centerLat + offset, centerLng + offset),
+        new maplibre.LatLng(centerLat + offset, centerLng - offset)
+      ];
+      this.flyToBounds(allPoints);
+
+      hilog.info(DOMAIN, TAG, `GeoJsonSource Polygon added at ${centerLat}, ${centerLng}`);
       this.message = '✅ 已添加 GeoJSON 面数据源';
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -399,20 +514,41 @@ struct SourceTestPage {
     this.currentSource = 'GeoJsonSource - Cluster';
 
     try {
+      // 移除旧的数据源和图层
+      try {
+        style.removeLayer('cluster-layer');
+        style.removeSource('cluster-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机中心位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+      const offset = 1.2; // 聚类点分布范围（适合 zoom=5）
+
       // 生成随机点数据
       const features: Array<GeoJSONFeature> = [];
+      const allPoints: maplibre.LatLng[] = [];
+      
       for (let i = 0; i < 100; i++) {
+        const lng = centerLng + (Math.random() - 0.5) * offset * 2;
+        const lat = centerLat + (Math.random() - 0.5) * offset * 2;
+        
         features.push({
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: [
-              116.3 + Math.random() * 0.3,
-              39.8 + Math.random() * 0.3
-            ]
+            coordinates: [lng, lat]
           },
           properties: { id: i }
         });
+        
+        // 每 10 个点采样一个用于计算边界
+        if (i % 10 === 0) {
+          allPoints.push(new maplibre.LatLng(lat, lng));
+        }
       }
 
       const geojsonData: GeoJSONFeatureCollection = {
@@ -432,7 +568,10 @@ struct SourceTestPage {
       
       style.addLayer(layer as object);
 
-      hilog.info(DOMAIN, TAG, 'GeoJsonSource Cluster added (options not yet supported)');
+      // FlyTo 到数据位置
+      this.flyToBounds(allPoints);
+
+      hilog.info(DOMAIN, TAG, `GeoJsonSource Cluster added at ${centerLat}, ${centerLng}`);
       this.message = '✅ 已添加聚类数据源 (默认选项)';
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -452,6 +591,14 @@ struct SourceTestPage {
     this.currentSource = 'GeoJsonSource - URL';
 
     try {
+      // 移除旧的数据源和图层
+      try {
+        style.removeLayer('url-layer');
+        style.removeSource('url-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
       const source = new maplibre.GeoJsonSource('url-source');
       // 使用公开的 GeoJSON 数据源
       source.setUrl('https://raw.githubusercontent.com/maplibre/maplibre-gl-js/main/test/integration/data/countries.geojson');
@@ -463,6 +610,14 @@ struct SourceTestPage {
         .setFillOutlineColor('#000000');
       
       style.addLayer(layer as object);
+
+      // 生成随机位置并 flyTo（数据是全球的，选择一个随机位置查看）
+      const center = this.generateRandomLocation();
+      const options: maplibre.CameraOptions = {
+        center: new maplibre.LatLng(center.latitude, center.longitude),
+        zoom: 8
+      };
+      this.mapLibreMap.flyTo(options, 2000);
 
       hilog.info(DOMAIN, TAG, 'GeoJsonSource from URL added');
       this.message = '✅ 已添加从 URL 加载的 GeoJSON 数据源';
@@ -484,9 +639,24 @@ struct SourceTestPage {
     this.currentSource = 'VectorSource';
 
     try {
+      // 移除旧的数据源
+      try {
+        style.removeSource('vector-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
       const source = new maplibre.VectorSource('vector-source');
       source.setUrl('https://demotiles.maplibre.org/tiles/tiles.json');
       style.addSource(source);
+
+      // 生成随机位置并 flyTo（矢量瓦片是全球的，选择一个随机位置查看）
+      const center = this.generateRandomLocation();
+      const options: maplibre.CameraOptions = {
+        center: new maplibre.LatLng(center.latitude, center.longitude),
+        zoom: 8
+      };
+      this.mapLibreMap.flyTo(options, 2000);
 
       hilog.info(DOMAIN, TAG, 'VectorSource added');
       hilog.info(DOMAIN, TAG, `  Source ID: ${source.getId()}`);
@@ -511,9 +681,24 @@ struct SourceTestPage {
     this.currentSource = 'RasterSource - OSM';
 
     try {
+      // 移除旧的数据源
+      try {
+        style.removeSource('osm-raster');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
       const source = new maplibre.RasterSource('osm-raster');
       source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
       style.addSource(source);
+
+      // 生成随机位置并 flyTo（栅格瓦片是全球的，选择一个随机位置查看）
+      const center = this.generateRandomLocation();
+      const options: maplibre.CameraOptions = {
+        center: new maplibre.LatLng(center.latitude, center.longitude),
+        zoom: 8
+      };
+      this.mapLibreMap.flyTo(options, 2000);
 
       hilog.info(DOMAIN, TAG, 'RasterSource (OSM) added');
       hilog.info(DOMAIN, TAG, `  Source ID: ${source.getId()}`);
@@ -538,10 +723,25 @@ struct SourceTestPage {
     this.currentSource = 'RasterSource - Satellite';
 
     try {
+      // 移除旧的数据源
+      try {
+        style.removeSource('satellite-raster');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
       const source = new maplibre.RasterSource('satellite-raster');
       // 使用示例卫星影像服务
       source.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
       style.addSource(source);
+
+      // 生成随机位置并 flyTo（卫星影像是全球的，选择一个随机位置查看）
+      const center = this.generateRandomLocation();
+      const options: maplibre.CameraOptions = {
+        center: new maplibre.LatLng(center.latitude, center.longitude),
+        zoom: 8
+      };
+      this.mapLibreMap.flyTo(options, 2000);
 
       hilog.info(DOMAIN, TAG, 'RasterSource (Satellite) added');
       this.message = '✅ 已添加卫星影像数据源';

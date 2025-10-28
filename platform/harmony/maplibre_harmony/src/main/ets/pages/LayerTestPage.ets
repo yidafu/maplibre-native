@@ -5,6 +5,7 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { LatLngBounds } from '../maps/geometry/LatLngBounds';
 
 // 从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
@@ -19,6 +20,14 @@ import {
 } from '../maps/style/index';
 
 const TAG = 'LayerTestPage';
+
+/**
+ * 随机位置接口
+ */
+interface RandomLocation {
+  longitude: number;
+  latitude: number;
+}
 
 /**
  * Layer 图层测试页面
@@ -68,9 +77,6 @@ struct LayerTestPage {
   @State currentLayer: string = '无';
   @State mapReady: boolean = false;
   @State isInitializing: boolean = false;
-  
-  // 数据源是否已添加标记
-  private dataSourceAdded: boolean = false;
 
   build() {
     Column() {
@@ -216,6 +222,50 @@ struct LayerTestPage {
   }
 
   /**
+   * 生成随机位置（中国区域）
+   */
+  private generateRandomLocation(): RandomLocation {
+    // 中国区域：经度 70-135，纬度 15-55
+    const longitude = 70 + Math.random() * 65;
+    const latitude = 15 + Math.random() * 40;
+    return { longitude, latitude };
+  }
+
+  /**
+   * FlyTo 到指定边界范围
+   */
+  private flyToBounds(points: maplibre.LatLng[]) {
+    if (!this.mapLibreMap || points.length === 0) return;
+
+    try {
+      // 计算边界范围
+      const bounds = LatLngBounds.fromLatLngArray(points);
+      
+      // 使用 getCameraForLatLngBounds 获取合适的相机位置
+      const padding = 80; // 四周留 80 像素边距
+      const camera = this.mapLibreMap.getCameraForLatLngBounds(
+        bounds,
+        padding, padding, padding, padding
+      );
+
+      if (camera) {
+        // FlyTo 到计算出的相机位置
+        const options: maplibre.CameraOptions = {
+          center: camera.target,
+          zoom: camera.zoom,
+          bearing: camera.bearing,
+          pitch: camera.tilt
+        };
+        this.mapLibreMap.flyTo(options, 2000);
+        
+        hilog.info(DOMAIN, TAG, `Flying to bounds: center=${camera.target.latitude},${camera.target.longitude}, zoom=${camera.zoom}`);
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, TAG, `Failed to fly to bounds: ${error}`);
+    }
+  }
+
+  /**
    * 初始化地图
    */
   private initializeMap(mapView?: maplibre.NativeMapView) {
@@ -252,15 +302,31 @@ struct LayerTestPage {
   }
 
   /**
-   * 确保测试数据源已添加
+   * 确保测试数据源已添加（使用随机位置）
+   * @returns 所有坐标点的数组，用于计算边界
    */
-  private ensureDataSource() {
-    if (this.dataSourceAdded || !this.mapLibreMap) return;
+  private ensureDataSource(): maplibre.LatLng[] {
+    if (!this.mapLibreMap) return [];
     
     const style = this.mapLibreMap.getStyle();
-    if (!style) return;
+    if (!style) return [];
 
     try {
+      // 移除旧的数据源（如果存在）
+      try {
+        style.removeSource('test-data');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机中心位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+
+      // 在中心位置周围生成随机数据
+      const offset = 1.5; // 经纬度偏移范围（适合 zoom=5）
+      
       // 添加通用测试数据源
       const geojsonData: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
@@ -268,13 +334,13 @@ struct LayerTestPage {
           // 点要素
           {
             type: "Feature",
-            geometry: { type: "Point", coordinates: [116.4074, 39.9042] },
-            properties: { name: "北京", type: "capital", value: 100 }
+            geometry: { type: "Point", coordinates: [centerLng, centerLat] },
+            properties: { name: "中心点", type: "center", value: 100 }
           },
           {
             type: "Feature",
-            geometry: { type: "Point", coordinates: [121.4737, 31.2304] },
-            properties: { name: "上海", type: "city", value: 80 }
+            geometry: { type: "Point", coordinates: [centerLng + offset * 0.5, centerLat + offset * 0.3] },
+            properties: { name: "点2", type: "point", value: 80 }
           },
           // 线要素
           {
@@ -282,9 +348,9 @@ struct LayerTestPage {
             geometry: {
               type: "LineString",
               coordinates: [
-                [116.3, 39.9],
-                [116.4, 39.95],
-                [116.5, 39.9]
+                [centerLng - offset, centerLat],
+                [centerLng - offset * 0.5, centerLat + offset * 0.5],
+                [centerLng, centerLat + offset]
               ]
             },
             properties: { name: "路径1" }
@@ -295,11 +361,11 @@ struct LayerTestPage {
             geometry: {
               type: "Polygon",
               coordinates: [[
-                [116.3, 39.8],
-                [116.5, 39.8],
-                [116.5, 40.0],
-                [116.3, 40.0],
-                [116.3, 39.8]
+                [centerLng - offset, centerLat - offset],
+                [centerLng + offset, centerLat - offset],
+                [centerLng + offset, centerLat + offset],
+                [centerLng - offset, centerLat + offset],
+                [centerLng - offset, centerLat - offset]
               ]]
             },
             properties: { name: "区域1", height: 50 }
@@ -311,10 +377,23 @@ struct LayerTestPage {
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      this.dataSourceAdded = true;
-      hilog.info(DOMAIN, TAG, 'Test data source added');
+      // 提取所有坐标点用于计算边界
+      const allPoints: maplibre.LatLng[] = [];
+      allPoints.push(new maplibre.LatLng(centerLat, centerLng));
+      allPoints.push(new maplibre.LatLng(centerLat + offset * 0.3, centerLng + offset * 0.5));
+      allPoints.push(new maplibre.LatLng(centerLat, centerLng - offset));
+      allPoints.push(new maplibre.LatLng(centerLat + offset * 0.5, centerLng - offset * 0.5));
+      allPoints.push(new maplibre.LatLng(centerLat + offset, centerLng));
+      allPoints.push(new maplibre.LatLng(centerLat - offset, centerLng - offset));
+      allPoints.push(new maplibre.LatLng(centerLat - offset, centerLng + offset));
+      allPoints.push(new maplibre.LatLng(centerLat + offset, centerLng + offset));
+      allPoints.push(new maplibre.LatLng(centerLat + offset, centerLng - offset));
+
+      hilog.info(DOMAIN, TAG, `Test data source added at ${centerLat}, ${centerLng}`);
+      return allPoints;
     } catch (error) {
       hilog.error(DOMAIN, TAG, `Failed to add test data: ${error}`);
+      return [];
     }
   }
 
@@ -326,7 +405,7 @@ struct LayerTestPage {
     const style = this.mapLibreMap.getStyle();
     if (!style) return;
 
-    this.ensureDataSource();
+    const allPoints = this.ensureDataSource();
     this.currentLayer = 'FillLayer';
 
     try {
@@ -336,6 +415,9 @@ struct LayerTestPage {
         .setFillOutlineColor('#000000');
       
       style.addLayer(layer as object);
+
+      // FlyTo 到图层边界
+      this.flyToBounds(allPoints);
 
       hilog.info(DOMAIN, TAG, 'FillLayer added');
       this.message = '✅ 已添加 FillLayer (填充图层)';
@@ -354,7 +436,7 @@ struct LayerTestPage {
     const style = this.mapLibreMap.getStyle();
     if (!style) return;
 
-    this.ensureDataSource();
+    const allPoints = this.ensureDataSource();
     this.currentLayer = 'LineLayer';
 
     try {
@@ -364,6 +446,9 @@ struct LayerTestPage {
         .setLineDasharray([2, 2]);
       
       style.addLayer(layer as object);
+
+      // FlyTo 到图层边界
+      this.flyToBounds(allPoints);
 
       hilog.info(DOMAIN, TAG, 'LineLayer added');
       this.message = '✅ 已添加 LineLayer (线条图层)';
@@ -382,7 +467,7 @@ struct LayerTestPage {
     const style = this.mapLibreMap.getStyle();
     if (!style) return;
 
-    this.ensureDataSource();
+    const allPoints = this.ensureDataSource();
     this.currentLayer = 'CircleLayer';
 
     try {
@@ -394,6 +479,9 @@ struct LayerTestPage {
         .setCircleStrokeColor('#ffffff');
       
       style.addLayer(layer as object);
+
+      // FlyTo 到图层边界
+      this.flyToBounds(allPoints);
 
       hilog.info(DOMAIN, TAG, 'CircleLayer added');
       this.message = '✅ 已添加 CircleLayer (圆形图层)';
@@ -412,7 +500,7 @@ struct LayerTestPage {
     const style = this.mapLibreMap.getStyle();
     if (!style) return;
 
-    this.ensureDataSource();
+    const allPoints = this.ensureDataSource();
     this.currentLayer = 'SymbolLayer';
 
     try {
@@ -422,6 +510,9 @@ struct LayerTestPage {
       layer.setTextColor('#000000');
       
       style.addLayer(layer as object);
+
+      // FlyTo 到图层边界
+      this.flyToBounds(allPoints);
 
       hilog.info(DOMAIN, TAG, 'SymbolLayer added');
       this.message = '✅ 已添加 SymbolLayer (符号图层)';
@@ -443,20 +534,39 @@ struct LayerTestPage {
     this.currentLayer = 'HeatmapLayer';
 
     try {
+      // 移除旧的数据源（如果存在）
+      try {
+        style.removeSource('heatmap-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机中心位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+      const offset = 1.0; // 热力图点分布范围（适合 zoom=5）
+
       // 创建密集点数据用于热力图
       const features: Array<GeoJSONFeature> = [];
+      const allPoints: maplibre.LatLng[] = [];
+      
       for (let i = 0; i < 200; i++) {
+        const lng = centerLng + (Math.random() - 0.5) * offset * 2;
+        const lat = centerLat + (Math.random() - 0.5) * offset * 2;
+        
         features.push({
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: [
-              116.4 + (Math.random() - 0.5) * 0.2,
-              39.9 + (Math.random() - 0.5) * 0.2
-            ]
+            coordinates: [lng, lat]
           },
           properties: { intensity: Math.random() * 100 }
         });
+        
+        if (i % 20 === 0) {
+          allPoints.push(new maplibre.LatLng(lat, lng));
+        }
       }
 
       const geojsonData: GeoJSONFeatureCollection = {
@@ -474,6 +584,9 @@ struct LayerTestPage {
         .setHeatmapOpacity(0.8);
       
       style.addLayer(layer as object);
+
+      // FlyTo 到图层边界
+      this.flyToBounds(allPoints);
 
       hilog.info(DOMAIN, TAG, 'HeatmapLayer added');
       this.message = '✅ 已添加 HeatmapLayer (热力图层)';
@@ -495,6 +608,19 @@ struct LayerTestPage {
     this.currentLayer = 'FillExtrusionLayer';
 
     try {
+      // 移除旧的数据源（如果存在）
+      try {
+        style.removeSource('extrusion-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
+      // 生成随机中心位置
+      const center = this.generateRandomLocation();
+      const centerLng = center.longitude;
+      const centerLat = center.latitude;
+      const offset = 0.5; // 建筑物间距（适合 zoom=5）
+
       const geojsonData: GeoJSONFeatureCollection = {
         type: "FeatureCollection",
         features: [
@@ -503,11 +629,11 @@ struct LayerTestPage {
             geometry: {
               type: "Polygon",
               coordinates: [[
-                [116.39, 39.89],
-                [116.41, 39.89],
-                [116.41, 39.91],
-                [116.39, 39.91],
-                [116.39, 39.89]
+                [centerLng - offset, centerLat - offset],
+                [centerLng, centerLat - offset],
+                [centerLng, centerLat],
+                [centerLng - offset, centerLat],
+                [centerLng - offset, centerLat - offset]
               ]]
             },
             properties: { height: 80, base_height: 0 }
@@ -517,11 +643,11 @@ struct LayerTestPage {
             geometry: {
               type: "Polygon",
               coordinates: [[
-                [116.42, 39.90],
-                [116.44, 39.90],
-                [116.44, 39.92],
-                [116.42, 39.92],
-                [116.42, 39.90]
+                [centerLng + offset * 0.5, centerLat],
+                [centerLng + offset * 2, centerLat],
+                [centerLng + offset * 2, centerLat + offset * 1.5],
+                [centerLng + offset * 0.5, centerLat + offset * 1.5],
+                [centerLng + offset * 0.5, centerLat]
               ]]
             },
             properties: { height: 120, base_height: 0 }
@@ -541,10 +667,20 @@ struct LayerTestPage {
       
       style.addLayer(layer as object);
 
+      // 提取边界点
+      const allPoints: maplibre.LatLng[] = [
+        new maplibre.LatLng(centerLat - offset, centerLng - offset),
+        new maplibre.LatLng(centerLat, centerLng),
+        new maplibre.LatLng(centerLat + offset * 1.5, centerLng + offset * 2)
+      ];
+
       // 调整视角以查看 3D 效果
       if (this.mapLibreMap) {
         this.mapLibreMap.setPitch(60);
       }
+
+      // FlyTo 到图层边界
+      this.flyToBounds(allPoints);
 
       hilog.info(DOMAIN, TAG, 'FillExtrusionLayer added');
       this.message = '✅ 已添加 FillExtrusionLayer (3D 拉伸)';
@@ -566,6 +702,13 @@ struct LayerTestPage {
     this.currentLayer = 'RasterLayer';
 
     try {
+      // 移除旧的数据源（如果存在）
+      try {
+        style.removeSource('raster-test-source');
+      } catch (e) {
+        // 忽略不存在的情况
+      }
+
       const source = new maplibre.RasterSource('raster-test-source');
       source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
       style.addSource(source);
@@ -574,6 +717,14 @@ struct LayerTestPage {
           .setRasterOpacity(0.5);
       
       style.addLayer(layer as object);
+
+      // 生成随机位置并 flyTo（栅格图层是全球的，选择一个随机位置查看）
+      const center = this.generateRandomLocation();
+      const options: maplibre.CameraOptions = {
+        center: new maplibre.LatLng(center.latitude, center.longitude),
+        zoom: 8
+      };
+      this.mapLibreMap.flyTo(options, 2000);
 
       hilog.info(DOMAIN, TAG, 'RasterLayer added');
       this.message = '✅ 已添加 RasterLayer (栅格图层)';
@@ -601,6 +752,14 @@ struct LayerTestPage {
       
       // 背景图层应该添加到最底层
       style.addLayer(layer as object);
+
+      // 生成随机位置并 flyTo（背景图层是全局的，选择一个随机位置查看）
+      const center = this.generateRandomLocation();
+      const options: maplibre.CameraOptions = {
+        center: new maplibre.LatLng(center.latitude, center.longitude),
+        zoom: 8
+      };
+      this.mapLibreMap.flyTo(options, 2000);
 
       hilog.info(DOMAIN, TAG, 'BackgroundLayer added');
       this.message = '✅ 已添加 BackgroundLayer (背景图层)';
@@ -649,8 +808,6 @@ struct LayerTestPage {
           // 忽略不存在的数据源
         }
       });
-
-      this.dataSourceAdded = false;
 
       hilog.info(DOMAIN, TAG, 'All layers cleared');
       this.message = '✅ 已清除所有图层';
