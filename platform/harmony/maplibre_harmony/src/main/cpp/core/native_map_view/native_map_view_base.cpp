@@ -58,7 +58,8 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
-NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
+NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath) 
+    : env_(env), cachePath_(cachePath) {
     // 实例标识（全局计数器，用于多实例调试）
     static int globalInstanceCounter = 0;
     static std::map<void*, int> globalInstanceIds;
@@ -79,6 +80,7 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper) : env_(env) {
     Logger::debug("NativeMapView", "[Instance #%d] CallbackManager initialized", instanceId);
     
     Logger::info("NativeMapView", "========== 🗺️ [Instance #%d] NativeMapView constructed (this=%p) ==========", instanceId, this);
+    Logger::info("NativeMapView", "[Instance #%d] Cache path: %s", instanceId, cachePath_.c_str());
     Logger::info("NativeMapView", "[Instance #%d] Total active instances: %d", instanceId, globalInstanceCounter);
     Logger::info("NativeMapView", "[Instance #%d] 多实例支持：每个实例都有独立的 EGL Context 和 Surface", instanceId);
     Logger::info("NativeMapView", "[Instance #%d] 共享资源：所有实例共享进程级别的 EGL Display", instanceId);
@@ -407,13 +409,46 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
 napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     napi_status status;
     napi_value thisVar;
+    size_t argc = 1;
+    napi_value args[1];
     
-    // 获取this对象
-    status = napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    if (status != napi_ok) return nullptr;
+    // 获取this对象和参数
+    status = napi_get_cb_info(env, info, &argc, args, &thisVar, nullptr);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "New: Failed to get callback info");
+        return nullptr;
+    }
+    
+    // 解析 cachePath 参数（必需）
+    if (argc < 1) {
+        Logger::error("NativeMapView", "New: Missing required cachePath parameter");
+        napi_throw_error(env, nullptr, "NativeMapView constructor requires cachePath parameter");
+        return nullptr;
+    }
+    
+    // 获取字符串长度
+    size_t strLen = 0;
+    status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &strLen);
+    if (status != napi_ok || strLen == 0) {
+        Logger::error("NativeMapView", "New: Invalid cachePath parameter");
+        napi_throw_error(env, nullptr, "cachePath must be a non-empty string");
+        return nullptr;
+    }
+    
+    // 读取字符串内容
+    std::string cachePath(strLen, '\0');
+    status = napi_get_value_string_utf8(env, args[0], &cachePath[0], strLen + 1, &strLen);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "New: Failed to read cachePath string");
+        napi_throw_error(env, nullptr, "Failed to read cachePath parameter");
+        return nullptr;
+    }
+    cachePath.resize(strLen);
+    
+    Logger::info("NativeMapView", "New: Creating instance with cachePath: %s", cachePath.c_str());
     
     // 创建NativeMapView实例
-    NativeMapView* nativeMapView = new NativeMapView(env, thisVar);
+    NativeMapView* nativeMapView = new NativeMapView(env, thisVar, cachePath);
     
     // 设置NativeMapView实例为外部数据
     status = napi_wrap(
@@ -427,6 +462,7 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     
     if (status != napi_ok) {
         delete nativeMapView;
+        Logger::error("NativeMapView", "New: Failed to wrap instance");
         return nullptr;
     }
     
@@ -440,6 +476,10 @@ void NativeMapView::initializeRenderer() {
                   harmonyRenderer ? "exists" : "null",
                   nativeWindow ? "exists" : "null",
                   map ? "exists" : "null");
+    
+    // Set SQLite temp path for database operations (must be done before any database access)
+    mapbox::sqlite::setTempPath(cachePath_);
+    Logger::info("NativeMapView", "SQLite temp path set to: %s", cachePath_.c_str());
     
     // Pre-fetch device DPI before creating Renderer to ensure all components use correct pixelRatio
     if (pixelRatio <= 1.01f) {  // If still default value
@@ -515,18 +555,18 @@ void NativeMapView::initializeRenderer() {
             // 3. 减少内存占用和网络请求
             // 4. FileSourceManager 内部有互斥锁，保证线程安全
             ResourceOptions resourceOptions;
-            std::string cachePath = "/data/storage/el2/base/cache";
             
             // 使用统一的标识：进程级别的单例指针
             // 这样所有 Map 实例都会使用相同的 FileSource 实例和缓存
             static void* sharedPlatformContext = reinterpret_cast<void*>(0x1);
             
-            resourceOptions.withCachePath(cachePath + "/mbgl_cache.db")
-                          .withAssetPath(cachePath)
+            resourceOptions.withCachePath(cachePath_ + "/mbgl_cache.db")
+                          .withAssetPath(cachePath_)
                           .withPlatformContext(sharedPlatformContext); // 统一的 context，共享 FileSource
             
             Logger::info("NativeMapView", "ResourceOptions configured with SHARED FileSource (Android/iOS pattern)");
-            Logger::debug("NativeMapView", "  Cache path: %s/mbgl_cache.db", cachePath.c_str());
+            Logger::info("NativeMapView", "  Cache path: %s/mbgl_cache.db", cachePath_.c_str());
+            Logger::info("NativeMapView", "  Asset path: %s", cachePath_.c_str());
             Logger::debug("NativeMapView", "  Shared context: %p (all instances use same FileSource)", sharedPlatformContext);
             
             // Configure ClientOptions

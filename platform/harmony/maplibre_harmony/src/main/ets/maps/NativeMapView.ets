@@ -1,5 +1,6 @@
 import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import common from '@ohos.app.ability.common';
 import { LatLng } from './geometry/LatLng';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { MapGestureDetector } from './gestures/MapGestureDetector';
@@ -67,9 +68,16 @@ class NativeMapViewController extends XComponentController {
     this.surfaceId = surfaceId;
 
     try {
-      // 创建 MapView 实例
-      hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Creating NativeMapView instance...`);
-      this.mapView = new maplibre.NativeMapView();
+      // 获取应用上下文
+      const context = getContext(this) as common.UIAbilityContext;
+      
+      // 使用应用私有缓存目录 + maplibre 子目录
+      const cachePath = context.cacheDir + '/maplibre';
+      hilog.info(DOMAIN, "NativeMapView", `Using cache path: ${cachePath}`);
+      
+      // 创建 MapView 实例并传递缓存路径
+      hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Creating NativeMapView instance with cachePath...`);
+      this.mapView = new maplibre.NativeMapView(cachePath);
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] NativeMapView instance created successfully`);
 
       // ✅ DPI 现在由 C++ 层直接获取（使用 OH_NativeDisplayManager_GetDefaultDisplayDensityDpi）

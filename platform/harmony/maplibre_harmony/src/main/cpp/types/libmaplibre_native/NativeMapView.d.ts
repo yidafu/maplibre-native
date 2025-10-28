@@ -99,7 +99,11 @@ export interface Rect {
  * 提供地图渲染和交互的底层 C++ 绑定
  */
 export class NativeMapView {
-    constructor();
+    /**
+     * 创建 NativeMapView 实例
+     * @param cachePath 应用缓存目录路径（必需），推荐使用 context.cacheDir + '/maplibre'
+     */
+    constructor(cachePath: string);
 
     // ========== View Management ==========
     

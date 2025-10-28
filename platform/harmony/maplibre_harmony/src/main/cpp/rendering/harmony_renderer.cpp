@@ -47,10 +47,8 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_) {
     // Initialize FileSourceManager for network resource loading
     Logger::info("HarmonyRenderer", "Initializing FileSourceManager...");
     
-    // Set SQLite temp path for database operations
-    std::string cachePath = "/data/storage/el2/base/cache";
-    mapbox::sqlite::setTempPath(cachePath);
-    Logger::debug("HarmonyRenderer", "SQLite temp path set to: %s", cachePath.c_str());
+    // Note: SQLite temp path should be set before this point
+    // It's now set in NativeMapView::initializeRenderer() using cachePath from application context
     
     // Initialize FileSourceManager singleton - this registers default file source factories
     // including HTTP network source for downloading styles and tiles

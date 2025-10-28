@@ -10,6 +10,9 @@ import { CompassVisibility } from '../maps/widgets/CompassVisibility';
 import { CompassPosition } from '../maps/widgets/CompassPosition';
 import { UiSettings } from '../maps/UiSettings';
 import maplibre from 'libmaplibre_native.so';
+import common from '@ohos.app.ability.common';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../constants/HiLogConstants';
 
 @Component
 export struct MapViewWithCompass {
@@ -133,9 +136,11 @@ export struct MapViewWithCompass {
         .height('100%')
         .onLoad(() => {
           // XComponent 加载完成，创建地图
-          const nativeMapView = new maplibre.NativeMapView(
-            this.xComponentController.getXComponentSurfaceId()
-          );
+          const context = getContext(this) as common.UIAbilityContext;
+          const cachePath = context.cacheDir + '/maplibre';
+          
+          hilog.info(DOMAIN, "MapViewWithCompass", `Creating NativeMapView with cachePath: ${cachePath}`);
+          const nativeMapView = new maplibre.NativeMapView(cachePath);
           this.handleMapReady(nativeMapView);
         })
       

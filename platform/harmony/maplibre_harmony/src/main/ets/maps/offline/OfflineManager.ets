@@ -263,7 +263,8 @@ let offlineManagerInstance: OfflineManager | null = null;
  */
 export function getOfflineManager(context: common.UIAbilityContext): OfflineManager {
   if (!offlineManagerInstance) {
-    const cachePath = context.filesDir + '/maplibre-offline.db';
+    // 使用统一的缓存目录（与 NativeMapView 主缓存相同）
+    const cachePath = context.cacheDir + '/maplibre/offline.db';
     offlineManagerInstance = new OfflineManager(cachePath);
   }
   return offlineManagerInstance;

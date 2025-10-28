@@ -24,7 +24,7 @@ public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
     
-    NativeMapView(napi_env env, napi_value wrapper);
+    NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath);
     virtual ~NativeMapView();
     
     // 资源清理方法
@@ -237,6 +237,9 @@ private:
     
     // 统一的回调管理器
     std::unique_ptr<mbgl::harmony::CallbackManager> callbackManager_;
+    
+    // 应用缓存目录路径
+    std::string cachePath_;
     
     // Ensure these are initialised last
     std::unique_ptr<mbgl::Map> map;
