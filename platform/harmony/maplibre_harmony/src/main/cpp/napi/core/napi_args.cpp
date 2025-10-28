@@ -13,15 +13,17 @@ namespace harmony {
 namespace napi {
 
 NapiArgs::NapiArgs(napi_env env, napi_callback_info info, size_t maxArgs)
-    : env_(env), argc_(maxArgs), hasError_(false) {
+    : env_(env), thisObj_(nullptr), argc_(maxArgs), hasError_(false) {
     
     args_.resize(maxArgs);
     
-    napi_status status = napi_get_cb_info(env, info, &argc_, args_.data(), nullptr, nullptr);
+    // 获取 this 对象和参数
+    napi_status status = napi_get_cb_info(env, info, &argc_, args_.data(), &thisObj_, nullptr);
     
     if (status != napi_ok) {
         SetError("Failed to get callback info");
         argc_ = 0;
+        thisObj_ = nullptr;
         return;
     }
     
@@ -641,6 +643,39 @@ bool NapiArgs::GetBoolProperty(napi_value obj, const char* key, bool defaultValu
     }
     
     return result;
+}
+
+// ========== 便利方法实现 ==========
+
+napi_value NapiArgs::Undefined() const {
+    napi_value undefined;
+    napi_get_undefined(env_, &undefined);
+    return undefined;
+}
+
+napi_value NapiArgs::Null() const {
+    napi_value null;
+    napi_get_null(env_, &null);
+    return null;
+}
+
+napi_value NapiArgs::This() const {
+    return thisObj_;
+}
+
+bool NapiArgs::IsNullOrUndefined(size_t index) {
+    if (!CheckIndex(index, nullptr)) {
+        return false;
+    }
+    
+    napi_valuetype type;
+    napi_status status = napi_typeof(env_, args_[index], &type);
+    
+    if (status != napi_ok) {
+        return false;
+    }
+    
+    return (type == napi_null || type == napi_undefined);
 }
 
 } // namespace napi

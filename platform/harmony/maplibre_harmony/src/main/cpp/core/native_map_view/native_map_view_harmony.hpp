@@ -2,7 +2,7 @@
 #define MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 
 #include "rendering/backends/harmony_renderer_backend.hpp"
-#include "core/camera_change_tracker.hpp"
+#include "core/callback_manager.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/run_loop.hpp>
@@ -235,15 +235,13 @@ private:
     std::atomic<int> sourceChangedCount{0};
     std::atomic<int> cameraChangedCount{0};
     
-    // 相机变化追踪器
-    std::unique_ptr<maplibre::harmony::CameraChangeTracker> cameraChangeTracker;
+    // 统一的回调管理器（替代独立的 cameraChangeTracker 和 styleLoadedTsfn_）
+    std::unique_ptr<CallbackManager> callbackManager_;
     
-    // Style listeners (using napi_threadsafe_function for thread safety)
-    napi_threadsafe_function styleLoadedTsfn_ = nullptr;
-    napi_threadsafe_function styleLoadErrorTsfn_ = nullptr;
-    
-    // Ensure these are initialised last
-    std::unique_ptr<mbgl::Map> map;
+    // 🔄 新架构：Map 归 HarmonyRendererFrontend 所有（在渲染线程）
+    // Map RunLoop thread - 已移除！Map 现在在渲染线程创建和运行
+    // ⚠️ map 指针仅用于兼容性，实际所有权在 HarmonyRendererFrontend
+    mbgl::Map* map = nullptr;  // 改为裸指针（不拥有所有权）
 };
 
 } // namespace harmony

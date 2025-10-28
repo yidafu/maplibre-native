@@ -39,7 +39,11 @@ class TestPageGroup {
 @Component
 struct Index {
   // 按功能模块分组的测试页面
-  private testPageGroups: TestPageGroup[] = [
+  @State private testPageGroups: TestPageGroup[] = [];
+  
+  aboutToAppear() {
+    // 延迟初始化数据，避免阻塞首屏加载
+    this.testPageGroups = [
     // 🗺️ 基础功能
     new TestPageGroup('基础功能', '🗺️', [
       new TestPageItem(
@@ -88,11 +92,23 @@ struct Index {
       ),
     ]),
     
-    // 🎨 样式系统
+    // 🎨 样式系统（已拆分为3个独立页面）
     new TestPageGroup('样式系统', '🎨', [
       new TestPageItem(
-        'Style 样式综合测试',
-        '测试地图样式、图层、数据源等完整 Style API 功能',
+        '1. Source 数据源测试',
+        '测试 GeoJSON、Vector、Raster 等各种数据源类型和配置',
+        'pages/SourceTestPage',
+        '📊'
+      ),
+      new TestPageItem(
+        '2. Layer 图层测试',
+        '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
+        'pages/LayerTestPage',
+        '🔨'
+      ),
+      new TestPageItem(
+        '3. Style 地图样式测试',
+        '测试地图样式切换、样式信息获取、图层可见性控制等样式相关功能',
         'pages/StyleTestPage',
         '🎨'
       ),
@@ -101,26 +117,6 @@ struct Index {
         '测试不同地图样式 URL 的动态切换和样式信息获取',
         'pages/StyleUrlTestPage',
         '🔄'
-      ),
-    ]),
-    
-    // 🔨 图层系统
-    new TestPageGroup('图层系统', '🔨', [
-      new TestPageItem(
-        'Layer 图层测试',
-        '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
-        'pages/LayerTestPage',
-        '🔨'
-      ),
-    ]),
-    
-    // 📊 数据源系统
-    new TestPageGroup('数据源系统', '📊', [
-      new TestPageItem(
-        'Source 数据源测试',
-        '测试 GeoJSON、Vector、Raster 等各种数据源类型',
-        'pages/SourceTestPage',
-        '📊'
       ),
     ]),
     
@@ -187,7 +183,24 @@ struct Index {
         '🗺️🗺️🗺️'
       ),
     ]),
-  ];
+    
+    // 💾 离线地图
+    new TestPageGroup('离线地图', '💾', [
+      new TestPageItem(
+        '离线地图下载测试',
+        '测试离线地图区域的创建、下载、暂停、恢复和删除功能',
+        'pages/OfflineMapTestPage',
+        '📥'
+      ),
+      new TestPageItem(
+        '离线缓存管理测试',
+        '测试环境缓存清理、数据库压缩、重置和配置管理功能',
+        'pages/OfflineCacheTestPage',
+        '🗑️'
+      ),
+    ]),
+    ];
+  }
 
   build() {
     Column() {

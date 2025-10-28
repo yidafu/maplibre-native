@@ -52,6 +52,14 @@ target_link_libraries(
 )
 
 
+# Add src directory to include paths for Harmony-specific files
+target_include_directories(
+    mbgl-core
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src
+)
+
 target_sources(
     mbgl-core
     PRIVATE
@@ -68,7 +76,7 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/run_loop_impl.hpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/string_util.cpp
-        ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer/timer_original.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/timer.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/logging_harmony.cpp
         # logger.cpp is in libmaplibre_native.so (utils/logger.cpp)
         # HTTP file source is implemented in libmaplibre_native.so (network/http_file_source_harmony.cpp)
@@ -83,12 +91,17 @@ target_sources(
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/platform/time.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/asset_file_source.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/database_file_source.cpp
-        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/file_source_manager.cpp
+        # 🔧 FIX: 使用 Harmony 专用的 FileSourceManager 和 MainResourceLoader
+        # ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/file_source_manager.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/harmony_file_source_manager.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/file_source_request.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/local_file_request.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/local_file_source.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/mbtiles_file_source.cpp
-        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/main_resource_loader.cpp
+        # 🔧 FIX: 使用 Harmony 专用的 MainResourceLoader，修复 Actor invoke 问题
+        # ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/main_resource_loader.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/harmony_main_resource_loader.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/harmony_main_resource_loader.hpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/offline.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/offline_database.cpp
         ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/offline_download.cpp

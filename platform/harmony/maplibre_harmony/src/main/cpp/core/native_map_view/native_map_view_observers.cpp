@@ -17,17 +17,34 @@ struct StyleErrorData {
     std::string error;
 };
 
-void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {
+void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraWillChange");
+    
+    // 通知相机开始移动
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onCameraMoveStarted");
+    }
 }
+
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraIsChanging");
+    
+    // 通知相机移动中（高频事件，考虑节流）
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onCameraMove");
+    }
 }
-void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode) {
+
+void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraDidChange");
+    
+    // 通知相机移动结束
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onCameraIdle");
+    }
     
     // MapLibre 内部已经处理渲染时机（通过 triggerRepaint）
     // 不需要在这里额外请求渲染，否则会造成过度渲染
@@ -142,7 +159,24 @@ void NativeMapView::onDidFinishLoadingStyle() {
     int instanceId = instanceIds[this];
     
     Logger::error("NativeMapView", "🎨 [Instance #%d] [%lld ms] onDidFinishLoadingStyle", instanceId, elapsed);
-    Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p", instanceId, this, map.get());
+    Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p, callbackManager=%p", 
+                  instanceId, this, map, callbackManager_.get());
+    
+    // 检查样式状态
+    if (map) {
+        try {
+            std::string styleUrl = map->getStyle().getURL();
+            Logger::error("NativeMapView", "🎨 [Instance #%d] Style URL: %s", instanceId, styleUrl.c_str());
+            
+            // 获取 sources 和 layers 数量
+            auto sources = map->getStyle().getSources();
+            auto layers = map->getStyle().getLayers();
+            Logger::error("NativeMapView", "🎨 [Instance #%d] Sources: %zu, Layers: %zu", 
+                          instanceId, sources.size(), layers.size());
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "🎨 [Instance #%d] Error getting style info: %s", instanceId, e.what());
+        }
+    }
     
     // 通知样式加载完成
     Logger::error("NativeMapView", "🎨 [Instance #%d] Calling notifyStyleLoaded()...", instanceId);
@@ -881,394 +915,186 @@ void NativeMapView::onSpriteLoaded(const std::optional<mbgl::style::Sprite>&) {}
 void NativeMapView::onSpriteError(const std::optional<mbgl::style::Sprite>&, std::exception_ptr) {}
 void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>&) {}
 
-// ========== 相机监听器方法实现 ==========
+// ========== 相机监听器方法实现（使用 CallbackManager）==========
 
 napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "addOnCameraIdleListener() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象和参数
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    // 添加监听器
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->addIdleListener(args[0]);
-        Logger::debug("NativeMapView", "addOnCameraIdleListener: Listener added");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->RegisterCallback("onCameraIdle", args.Get(0));
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::removeOnCameraIdleListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraIdleListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraIdleListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraIdleListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->removeIdleListener(args[0]);
-        Logger::debug("NativeMapView", "removeOnCameraIdleListener: Listener removed");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->UnregisterCallback("onCameraIdle");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::addOnCameraMoveStartedListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraMoveStartedListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraMoveStartedListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraMoveStartedListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->addMoveStartedListener(args[0]);
-        Logger::debug("NativeMapView", "addOnCameraMoveStartedListener: Listener added");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->RegisterCallback("onCameraMoveStarted", args.Get(0));
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::removeOnCameraMoveStartedListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraMoveStartedListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraMoveStartedListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraMoveStartedListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->removeMoveStartedListener(args[0]);
-        Logger::debug("NativeMapView", "removeOnCameraMoveStartedListener: Listener removed");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->UnregisterCallback("onCameraMoveStarted");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::addOnCameraMoveListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraMoveListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraMoveListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraMoveListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->addMoveListener(args[0]);
-        Logger::debug("NativeMapView", "addOnCameraMoveListener: Listener added");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->RegisterCallback("onCameraMove", args.Get(0));
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::removeOnCameraMoveListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraMoveListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraMoveListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraMoveListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->removeMoveListener(args[0]);
-        Logger::debug("NativeMapView", "removeOnCameraMoveListener: Listener removed");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->UnregisterCallback("onCameraMove");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::addOnCameraMoveCanceledListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraMoveCanceledListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->addCanceledListener(args[0]);
-        Logger::debug("NativeMapView", "addOnCameraMoveCanceledListener: Listener added");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->RegisterCallback("onCameraMoveCanceled", args.Get(0));
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraMoveCanceledListener() called");
-    
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "removeOnCameraMoveCanceledListener: Failed to get callback argument");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "removeOnCameraMoveCanceledListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    if (instance->cameraChangeTracker) {
-        instance->cameraChangeTracker->removeCanceledListener(args[0]);
-        Logger::debug("NativeMapView", "removeOnCameraMoveCanceledListener: Listener removed");
+    if (instance->callbackManager_) {
+        instance->callbackManager_->UnregisterCallback("onCameraMoveCanceled");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
-// ========== 样式监听器方法实现 ==========
+// ========== 样式监听器方法实现（使用 CallbackManager）==========
 
 napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setOnStyleLoadedListener() called");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象和参数
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    // 清理旧的线程安全函数
-    if (instance->styleLoadedTsfn_ != nullptr) {
-        napi_release_threadsafe_function(instance->styleLoadedTsfn_, napi_tsfn_abort);
-        instance->styleLoadedTsfn_ = nullptr;
+    if (!instance->callbackManager_) {
+        return args.Undefined();
     }
     
-    // 检查是否为null（移除监听器）
-    napi_valuetype valueType;
-    napi_typeof(env, args[0], &valueType);
-    
-    if (valueType == napi_null || valueType == napi_undefined) {
-        Logger::debug("NativeMapView", "setOnStyleLoadedListener: Listener removed (null)");
-        return undefined;
+    // 检查是否为 null/undefined（移除监听器）
+    if (args.IsNullOrUndefined(0)) {
+        instance->callbackManager_->UnregisterCallback("onStyleLoaded");
+    } else {
+        instance->callbackManager_->RegisterCallback("onStyleLoaded", args.Get(0));
     }
     
-    if (valueType != napi_function) {
-        Logger::error("NativeMapView", "setOnStyleLoadedListener: Argument is not a function");
-        return undefined;
-    }
-    
-    // 创建线程安全函数
-    napi_value resourceName;
-    napi_create_string_utf8(env, "StyleLoadedCallback", NAPI_AUTO_LENGTH, &resourceName);
-    
-    napi_status status = napi_create_threadsafe_function(
-        env,
-        args[0],  // JS callback
-        nullptr,  // async_resource
-        resourceName,  // async_resource_name
-        0,  // max_queue_size (0 = unlimited)
-        1,  // initial_thread_count
-        nullptr,  // thread_finalize_data
-        nullptr,  // thread_finalize_cb
-        nullptr,  // context
-        [](napi_env env, napi_value js_callback, void* context, void* data) {
-            // 调用 JS 回调（已在主线程）
-            napi_value global;
-            napi_get_global(env, &global);
-            napi_value result;
-            napi_call_function(env, global, js_callback, 0, nullptr, &result);
-        },
-        &instance->styleLoadedTsfn_
-    );
-    
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to create threadsafe function");
-        return undefined;
-    }
-    
-    Logger::debug("NativeMapView", "setOnStyleLoadedListener: Listener added (thread-safe)");
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setOnStyleLoadErrorListener() called");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象和参数
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
-        Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to get callback argument");
-        return undefined;
-    }
-    
-    // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
-        Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to unwrap instance");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        return args.Undefined();
     }
     
-    // 清理旧的线程安全函数
-    if (instance->styleLoadErrorTsfn_ != nullptr) {
-        napi_release_threadsafe_function(instance->styleLoadErrorTsfn_, napi_tsfn_abort);
-        instance->styleLoadErrorTsfn_ = nullptr;
+    if (!instance->callbackManager_) {
+        return args.Undefined();
     }
     
-    // 检查是否为null（移除监听器）
-    napi_valuetype valueType;
-    napi_typeof(env, args[0], &valueType);
-    
-    if (valueType == napi_null || valueType == napi_undefined) {
-        Logger::debug("NativeMapView", "setOnStyleLoadErrorListener: Listener removed (null)");
-        return undefined;
+    // 检查是否为 null/undefined（移除监听器）
+    if (args.IsNullOrUndefined(0)) {
+        instance->callbackManager_->UnregisterCallback("onStyleLoadError");
+    } else {
+        instance->callbackManager_->RegisterCallback("onStyleLoadError", args.Get(0));
     }
     
-    if (valueType != napi_function) {
-        Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Argument is not a function");
-        return undefined;
-    }
-    
-    // 创建线程安全函数
-    napi_value resourceName;
-    napi_create_string_utf8(env, "StyleLoadErrorCallback", NAPI_AUTO_LENGTH, &resourceName);
-    
-    napi_status status = napi_create_threadsafe_function(
-        env,
-        args[0],  // JS callback
-        nullptr,  // async_resource
-        resourceName,  // async_resource_name
-        0,  // max_queue_size (0 = unlimited)
-        1,  // initial_thread_count
-        nullptr,  // thread_finalize_data
-        nullptr,  // thread_finalize_cb
-        nullptr,  // context
-        [](napi_env env, napi_value js_callback, void* context, void* data) {
-            // 调用 JS 回调（已在主线程），传递错误信息
-            auto* errorData = static_cast<StyleErrorData*>(data);
-            if (errorData) {
-                napi_value errorArg;
-                napi_create_string_utf8(env, errorData->error.c_str(), NAPI_AUTO_LENGTH, &errorArg);
-                
-                napi_value global;
-                napi_get_global(env, &global);
-                napi_value result;
-                napi_value args[1] = {errorArg};
-                napi_call_function(env, global, js_callback, 1, args, &result);
-                
-                delete errorData;  // 清理数据
-            }
-        },
-        &instance->styleLoadErrorTsfn_
-    );
-    
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to create threadsafe function");
-        return undefined;
-    }
-    
-    Logger::debug("NativeMapView", "setOnStyleLoadErrorListener: Listener added (thread-safe)");
-    return undefined;
+    return args.Undefined();
 }
 
 void NativeMapView::notifyStyleLoaded() {
@@ -1277,49 +1103,40 @@ void NativeMapView::notifyStyleLoaded() {
         return;
     }
     
-    if (styleLoadedTsfn_ == nullptr) {
-        Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: No listener registered (tsfn is null)");
+    if (!callbackManager_) {
+        Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: CallbackManager is null");
         return;
     }
     
-    Logger::info("NativeMapView", "✅ notifyStyleLoaded: Calling JS listener (thread-safe)");
-    Logger::debug("NativeMapView", "   this=%p, tsfn=%p", this, styleLoadedTsfn_);
+    Logger::info("NativeMapView", "✅ notifyStyleLoaded: Invoking callback via CallbackManager");
     
-    // 调用线程安全函数（自动调度到主线程）
-    napi_status status = napi_call_threadsafe_function(
-        styleLoadedTsfn_,
-        nullptr,  // 无需传递数据
-        napi_tsfn_nonblocking
-    );
+    // 使用 CallbackManager 调用回调（自动处理线程安全）
+    bool success = callbackManager_->InvokeCallbackEmpty("onStyleLoaded");
     
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "❌ notifyStyleLoaded: Failed to call threadsafe function, status=%d", status);
+    if (success) {
+        Logger::info("NativeMapView", "✅ notifyStyleLoaded: Callback invoked successfully");
     } else {
-        Logger::info("NativeMapView", "✅ notifyStyleLoaded: Threadsafe function called successfully, JS callback will be invoked");
+        Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: No listener registered or callback failed");
     }
 }
 
 void NativeMapView::notifyStyleLoadError(const std::string& error) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    if (styleLoadErrorTsfn_ == nullptr) return;
     
-    Logger::debug("NativeMapView", "notifyStyleLoadError: Calling listener (thread-safe) with error: %s", error.c_str());
+    if (!callbackManager_) {
+        Logger::warn("NativeMapView", "notifyStyleLoadError: CallbackManager is null");
+        return;
+    }
     
-    // 创建错误数据副本
-    auto* data = new StyleErrorData{error};
+    Logger::error("NativeMapView", "notifyStyleLoadError: Invoking error callback with: %s", error.c_str());
     
-    // 调用线程安全函数（自动调度到主线程）
-    napi_status status = napi_call_threadsafe_function(
-        styleLoadErrorTsfn_,
-        data,
-        napi_tsfn_nonblocking
-    );
+    // 使用 CallbackManager 调用错误回调
+    bool success = callbackManager_->InvokeCallbackWithString("onStyleLoadError", error);
     
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "notifyStyleLoadError: Failed to call threadsafe function, status=%d", status);
-        delete data;  // 清理未使用的数据
+    if (success) {
+        Logger::debug("NativeMapView", "notifyStyleLoadError: Error callback invoked successfully");
     } else {
-        Logger::debug("NativeMapView", "notifyStyleLoadError: Threadsafe function called successfully");
+        Logger::warn("NativeMapView", "notifyStyleLoadError: No error listener registered or callback failed");
     }
 }
 

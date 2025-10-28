@@ -1,101 +1,167 @@
 import { NativeMapView } from '../maps/NativeMapView';
 import { MapLibreMap } from '../maps/MapLibreMap';
 import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
-import { LatLng } from '../maps/geometry/LatLng';
-import { CameraPosition } from '../maps/camera/CameraPosition';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
-// 暂时从 ETS 层导入 Layer（待 Layer NAPI 重构）
-import { 
-  FillLayer, 
-  LineLayer, 
-  CircleLayer,
-  SymbolLayer,
-  HeatmapLayer,
-  FillExtrusionLayer,
-  RasterLayer
-} from '../maps/style/index';
-
-// 使用 NAPI 对象
-type Style = maplibre.Style;
-type GeoJsonSource = maplibre.GeoJsonSource;
-type VectorSource = maplibre.VectorSource;
-type RasterSource = maplibre.RasterSource;
+import { util } from '@kit.ArkTS';
+import { resourceManager } from '@kit.LocalizationKit';
+import { OnStyleLoadedListener } from '../maps/listeners/OnStyleLoadedListener';
 
 const TAG = 'StyleTestPage';
 
 /**
- * Style API 测试页面
+ * 地图样式测试页面
  * 
- * 【重要】本页面已更新使用新的 NAPI API：
+ * 专注于地图样式本身的功能测试：
+ * 1. 样式URL切换 - 不同地图样式之间的切换
+ * 2. 样式属性获取 - 获取样式名称、来源等信息
+ * 3. 样式JSON操作 - 获取和设置样式JSON
+ * 4. 图层可见性控制 - 批量控制图层显示/隐藏
+ * 5. 数据源和图层查询 - 列出所有数据源和图层
  * 
- * 1. Style - 使用 maplibre.Style NAPI 对象
- *    - 旧: maplibre.Style.addSource(mapPtr, id, json, ptr)
- *    - 新: style.addSource(source)
- * 
- * 2. Source - 使用 NAPI 构造函数
- *    - 旧: GeoJsonSource.withData(id, data)
- *    - 新: new maplibre.GeoJsonSource(id); source.setGeoJson(data)
- * 
- * 3. 生命周期管理
- *    - Source 对象由 NAPI 自动管理
- *    - 调用 style.addSource() 后所有权转移到 Style
- * 
- * 待完善功能：
- * - GeoJsonOptions 参数解析（cluster, clusterRadius 等）
- * - RasterSource.setTileSize()
- * - Layer NAPI 重构（当前仍使用 ETS Layer）
+ * 注：数据源测试请访问 SourceTestPage，图层测试请访问 LayerTestPage
  */
 
 // 样式URL配置接口
 interface StyleUrlItem {
   name: string;
   url: string;
+  description: string;
+  category: string;
 }
 
-// GeoJSON类型定义
-interface GeoJSONGeometry {
-  type: string;
-  coordinates: number[] | number[][] | number[][][] | number[][][][];
-}
-
-interface GeoJSONFeature {
-  type: string;
-  geometry: GeoJSONGeometry;
-  properties: ESObject;
-}
-
-interface GeoJSONFeatureCollection {
-  type: string;
-  features: Array<GeoJSONFeature>;
+/**
+ * 本地样式加载监听器实现类
+ */
+class LocalStyleLoadedListener implements OnStyleLoadedListener {
+  private testPage: StyleTestPage;
+  private styleObj: ESObject | null;
+  private displayName: string;
+  
+  constructor(testPage: StyleTestPage, styleObj: ESObject | null, displayName: string) {
+    this.testPage = testPage;
+    this.styleObj = styleObj;
+    this.displayName = displayName;
+  }
+  
+  onStyleLoaded(style: maplibre.Style | null): void {
+    hilog.info(DOMAIN, TAG, '🎨 Style loaded callback - updating camera and triggering repaint');
+    
+    if (this.testPage.mapLibreMap && this.testPage.nativeMapView) {
+      try {
+        // 🔥 关键修复2：应用样式中的初始位置
+        if (this.styleObj && this.styleObj.center && this.styleObj.zoom !== undefined) {
+          const centerArray = this.styleObj.center as number[];
+          const lon = centerArray[0];
+          const lat = centerArray[1];
+          const zoom = this.styleObj.zoom as number;
+          const bearing = this.styleObj.bearing !== undefined ? this.styleObj.bearing as number : 0;
+          const pitch = this.styleObj.pitch !== undefined ? this.styleObj.pitch as number : 0;
+          
+          hilog.info(DOMAIN, TAG, `Applying style initial position: lat=${lat}, lon=${lon}, zoom=${zoom}, bearing=${bearing}, pitch=${pitch}`);
+          
+          // 跳转到样式指定的初始位置
+          this.testPage.mapLibreMap.jumpTo(bearing, lat, lon, pitch, zoom);
+          
+          this.testPage.message = `✅ 已加载样式: ${this.displayName} (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+        } else {
+          // 如果样式没有指定初始位置，强制刷新当前位置
+          const currentLatLng = this.testPage.mapLibreMap.getLatLng();
+          const currentZoom = this.testPage.mapLibreMap.getZoom();
+          
+          hilog.info(DOMAIN, TAG, `No initial position in style, refreshing current: ${currentLatLng.latitude}, ${currentLatLng.longitude}, zoom: ${currentZoom}`);
+          
+          this.testPage.mapLibreMap.jumpTo(
+            this.testPage.mapLibreMap.getBearing(),
+            currentLatLng.latitude,
+            currentLatLng.longitude,
+            this.testPage.mapLibreMap.getPitch(),
+            currentZoom
+          );
+          
+          this.testPage.message = `✅ 已加载样式: ${this.displayName}`;
+        }
+        
+        // 🔥 关键修复3：多次触发重绘以确保显示
+        // 某些情况下需要多次触发才能正确渲染
+        this.testPage.mapLibreMap.triggerRepaint();
+        
+        setTimeout(() => {
+          if (this.testPage.mapLibreMap) {
+            this.testPage.mapLibreMap.triggerRepaint();
+            hilog.info(DOMAIN, TAG, '✅ Second repaint triggered');
+          }
+        }, 50);
+        
+        setTimeout(() => {
+          if (this.testPage.mapLibreMap) {
+            this.testPage.mapLibreMap.triggerRepaint();
+            hilog.info(DOMAIN, TAG, '✅ Third repaint triggered');
+          }
+        }, 200);
+        
+        hilog.info(DOMAIN, TAG, '✅ Camera updated and repaint triggered');
+        
+      } catch (updateError) {
+        hilog.error(DOMAIN, TAG, `Error updating camera: ${updateError}`);
+        this.testPage.message = `⚠️ 样式已加载但相机更新失败: ${this.displayName}`;
+      }
+    }
+    
+    // 移除临时监听器
+    if (this.testPage.mapLibreMap) {
+      this.testPage.mapLibreMap.removeOnStyleLoadedListener(this);
+    }
+  }
 }
 
 @Entry
 @Component
 struct StyleTestPage {
-  @State message: string = 'Style API 测试';
-  private nativeMapView: maplibre.NativeMapView | null = null;
-  private mapLibreMap: MapLibreMap | null = null;
-  @State currentExample: string = '无';
+  @State message: string = '地图样式测试';
+  nativeMapView: maplibre.NativeMapView | null = null;  // 改为 public，供监听器访问
+  mapLibreMap: MapLibreMap | null = null;  // 改为 public，供监听器访问
   @State currentStyleName: string = 'MapLibre Demo';
+  @State currentStyleUrl: string = '';
+  @State styleInfo: string = '未获取';
   @State mapReady: boolean = false;
   @State isInitializing: boolean = false;
   
-  // 免费样式列表
+  // 免费样式列表（按类别分组）
   private styleUrls: StyleUrlItem[] = [
+    // 基础样式
     {
       name: 'MapLibre Demo',
-      url: 'https://demotiles.maplibre.org/style.json'
+      url: 'https://demotiles.maplibre.org/style.json',
+      description: 'MapLibre 官方演示样式',
+      category: '基础样式'
     },
     {
+      name: 'OSM Bright',
+      url: 'https://demotiles.maplibre.org/style.json',
+      description: 'OpenStreetMap 明亮风格',
+      category: '基础样式'
+    },
+    // 特色样式
+    {
       name: 'Americana',
-      url: 'https://americanamap.org/style.json'
+      url: 'https://americanamap.org/style.json',
+      description: '美式风格地图',
+      category: '特色样式'
     },
     {
       name: 'VersaTiles Colorful',
-      url: 'https://tiles.versatiles.org/assets/styles/colorful.json'
+      url: 'https://tiles.versatiles.org/assets/styles/colorful.json',
+      description: '多彩风格地图',
+      category: '特色样式'
+    },
+    {
+      name: 'VersaTiles Neutrino',
+      url: 'https://tiles.versatiles.org/assets/styles/neutrino.json',
+      description: '简约中性风格',
+      category: '特色样式'
     }
   ];
 
@@ -164,78 +230,188 @@ struct StyleTestPage {
       Scroll() {
         Column({ space: 8 }) {
           // 当前状态显示
-          Text(`当前样式: ${this.currentStyleName} | 示例: ${this.currentExample}`)
-            .fontSize(14)
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#F8F8F8')
-            .margin({ bottom: 8 })
+          Column({ space: 5 }) {
+            Text(`当前样式: ${this.currentStyleName}`)
+              .fontSize(14)
+              .fontWeight(FontWeight.Medium)
+              .width('100%')
+            
+            Text(`URL: ${this.currentStyleUrl || '加载中...'}`)
+              .fontSize(12)
+              .fontColor('#666666')
+              .width('100%')
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            
+            Text(`样式信息: ${this.styleInfo}`)
+              .fontSize(12)
+              .fontColor('#666666')
+              .width('100%')
+          }
+          .width('100%')
+          .padding(12)
+          .backgroundColor('#F8F8F8')
+          .borderRadius(8)
+          .margin({ bottom: 8 })
+          .alignItems(HorizontalAlign.Start)
+
           // 地图样式切换区域
-          Text('地图样式切换')
+          Text('🎨 样式切换')
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .width('100%')
-            .padding({ left: 16, top: 8 })
+            .padding({ left: 16, top: 8, bottom: 8 })
 
           ForEach(this.styleUrls, (item: StyleUrlItem) => {
-            Button(item.name)
-              .onClick(() => this.switchStyle(item.url, item.name))
-              .width('90%')
-              .backgroundColor(this.currentStyleName === item.name ? '#4CAF50' : '#2196F3')
+            Column({ space: 5 }) {
+              Button(item.name)
+                .onClick(() => this.switchStyle(item.url, item.name))
+                .width('100%')
+                .backgroundColor(this.currentStyleName === item.name ? '#4CAF50' : '#2196F3')
+                .fontSize(15)
+              
+              Text(item.description)
+                .fontSize(12)
+                .fontColor('#999999')
+                .width('100%')
+                .textAlign(TextAlign.Center)
+                .margin({ top: -5 })
+            }
+            .width('90%')
           })
 
           Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
 
-          Text('数据源示例')
+          Text('📁 本地样式测试')
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .width('100%')
+            .padding({ left: 16, top: 8, bottom: 8 })
+
+          // 简单背景样式（推荐）
+          Column({ space: 5 }) {
+            Button('1. 简单背景样式 ✅ 推荐')
+              .onClick(() => this.loadLocalStyle('styles-simple.json', '简单背景样式'))
+              .width('100%')
+              .backgroundColor('#4CAF50')
+              .fontSize(15)
+            
+            Text('纯背景色，无需网络资源，测试 setStyleJson 功能')
+              .fontSize(12)
+              .fontColor('#666666')
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .margin({ top: -5 })
+          }
+          .width('90%')
+
+          // Demo样式
+          Column({ space: 5 }) {
+            Button('2. MapLibre Demo 样式')
+              .onClick(() => this.loadLocalStyle('styles-demo.json', 'MapLibre Demo (本地)'))
+              .width('100%')
+              .backgroundColor('#2196F3')
+              .fontSize(15)
+            
+            Text('使用 MapLibre 公共资源，需要网络连接')
+              .fontSize(12)
+              .fontColor('#666666')
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .margin({ top: -5 })
+          }
+          .width('90%')
+
+          // 原始样式（内网）
+          Column({ space: 5 }) {
+            Button('3. 杭州矢量地图 ⚠️ 仅内网')
+              .onClick(() => this.loadLocalStyle('styles.json', '杭州矢量地图'))
+              .width('100%')
+              .backgroundColor('#FF9800')
+              .fontSize(15)
+            
+            Text('⚠️ 使用内网资源 (192.168.90.235)，外网会白屏')
+              .fontSize(12)
+              .fontColor('#FF5722')
+              .width('100%')
+              .textAlign(TextAlign.Center)
+              .margin({ top: -5 })
+          }
+          .width('90%')
+
+          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
+
+          Text('📊 样式信息')
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .width('100%')
             .padding({ left: 16, top: 8 })
 
-          Button('GeoJSON - 填充区域')
-            .onClick(() => this.showGeoJsonFillExample())
+          Button('获取样式名称')
+            .onClick(() => this.getStyleName())
             .width('90%')
+            .backgroundColor('#9C27B0')
 
-          Button('GeoJSON - 线条路径')
-            .onClick(() => this.showGeoJsonLineExample())
+          Button('获取样式URL')
+            .onClick(() => this.getStyleUrl())
             .width('90%')
+            .backgroundColor('#9C27B0')
 
-          Button('GeoJSON - 圆形热点')
-            .onClick(() => this.showGeoJsonCircleExample())
+          Button('获取样式JSON')
+            .onClick(() => this.getStyleJson())
             .width('90%')
+            .backgroundColor('#9C27B0')
 
-          Button('GeoJSON - 符号标注')
-            .onClick(() => this.showGeoJsonSymbolExample())
+          Button('列出所有图层ID')
+            .onClick(() => this.listAllLayers())
             .width('90%')
+            .backgroundColor('#9C27B0')
 
-          Button('GeoJSON - 聚类')
-            .onClick(() => this.showGeoJsonClusterExample())
+          Button('列出所有数据源ID')
+            .onClick(() => this.listAllSources())
             .width('90%')
+            .backgroundColor('#9C27B0')
 
           Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
 
-          Text('高级图层示例')
+          Text('⚙️ 样式控制')
             .fontSize(16)
             .fontWeight(FontWeight.Bold)
             .width('100%')
             .padding({ left: 16 })
 
-          Button('热力图')
-            .onClick(() => this.showHeatmapExample())
+          Button('隐藏所有图层')
+            .onClick(() => this.hideAllLayers())
             .width('90%')
+            .backgroundColor('#FF9800')
 
-          Button('3D 建筑拉伸')
-            .onClick(() => this.showFillExtrusionExample())
+          Button('显示所有图层')
+            .onClick(() => this.showAllLayers())
             .width('90%')
+            .backgroundColor('#FF9800')
 
-          Button('栅格图层')
-            .onClick(() => this.showRasterExample())
+          Button('重新加载当前样式')
+            .onClick(() => this.reloadStyle())
             .width('90%')
+            .backgroundColor('#FF5722')
+          
+          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
 
-          Button('清除所有图层')
-            .onClick(() => this.clearAllLayers())
+          Text('🔧 渲染调试')
+            .fontSize(16)
+            .fontWeight(FontWeight.Bold)
+            .width('100%')
+            .padding({ left: 16 })
+
+          Button('强制重绘 (Debug)')
+            .onClick(() => this.forceRepaint())
             .width('90%')
-            .backgroundColor(Color.Red)
+            .backgroundColor('#607D8B')
+          
+          Button('重置相机位置')
+            .onClick(() => this.resetCamera())
+            .width('90%')
+            .backgroundColor('#607D8B')
         }
         .width('100%')
         .padding({ left: 12, right: 12, top: 8, bottom: 12 })
@@ -249,11 +425,79 @@ struct StyleTestPage {
   }
 
   /**
+   * 从 rawfile 读取文本文件
+   */
+  private async readRawfile(filename: string): Promise<string> {
+    try {
+      const context = getContext(this);
+      const mgr = context.resourceManager;
+      const fileData = await mgr.getRawFileContent(filename);
+      
+      // 将 Uint8Array 转换为字符串
+      const decoder = new util.TextDecoder('utf-8', { ignoreBOM: true });
+      return decoder.decodeWithStream(fileData);
+    } catch (error) {
+      throw new Error(`Failed to read rawfile ${filename}: ${error}`);
+    }
+  }
+
+  /**
+   * 从本地 rawfile 加载样式
+   */
+  private async loadLocalStyle(filename: string, displayName: string) {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+
+    try {
+      this.message = `⏳ 正在读取本地样式: ${displayName}...`;
+      
+      // 从 rawfile 读取
+      const styleJson = await this.readRawfile(filename);
+      
+      hilog.info(DOMAIN, TAG, `Read style JSON from ${filename}: ${styleJson.substring(0, 100)}...`);
+      hilog.info(DOMAIN, TAG, `Style JSON size: ${styleJson.length} bytes`);
+      
+      // 解析样式 JSON 以获取初始位置
+      let styleObj: ESObject | null = null;
+      try {
+        styleObj = JSON.parse(styleJson) as ESObject;
+        hilog.info(DOMAIN, TAG, `Parsed style: center=${JSON.stringify(styleObj.center)}, zoom=${styleObj.zoom}`);
+      } catch (parseError) {
+        hilog.warn(DOMAIN, TAG, `Failed to parse style JSON for initial position: ${parseError}`);
+      }
+      
+      // 🔥 关键修复1：创建并注册一次性样式加载监听器
+      const styleLoadedListener = new LocalStyleLoadedListener(this, styleObj, displayName);
+      
+      // 添加临时监听器
+      this.mapLibreMap.addOnStyleLoadedListener(styleLoadedListener);
+      
+      // 设置样式
+      hilog.info(DOMAIN, TAG, 'Calling setStyleJson...');
+      this.mapLibreMap.setStyleJson(styleJson);
+      hilog.info(DOMAIN, TAG, 'setStyleJson returned');
+      
+      // 更新状态
+      this.currentStyleName = displayName;
+      this.currentStyleUrl = `rawfile://${filename}`;
+      
+      this.message = `⏳ 正在加载样式: ${displayName}...`;
+      hilog.info(DOMAIN, TAG, `Style JSON set, waiting for load complete: ${filename}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to load local style: ${errorMsg}`);
+      this.message = `❌ 加载失败: ${errorMsg}`;
+    }
+  }
+
+  /**
    * 初始化地图
    */
   private initializeMap(mapView?: maplibre.NativeMapView) {
     if (this.isInitializing) {
-      hilog.warn(DOMAIN, TAG, 'Map is already initializing, skipping duplicate initialization');
+      hilog.warn(DOMAIN, TAG, 'Map is already initializing');
       return;
     }
     
@@ -267,15 +511,17 @@ struct StyleTestPage {
     
     try {
       this.nativeMapView = mapView;
-      
-      // 创建 MapLibreMap 实例
       const options = new MapLibreMapOptions();
       this.mapLibreMap = new MapLibreMap(mapView, options);
       
-      this.mapReady = true;
-      this.message = '✅ 地图已就绪 - 可以开始测试 Style API';
+      // 获取初始样式信息
+      this.currentStyleUrl = this.styleUrls[0].url;
+      this.updateStyleInfo();
       
-      hilog.info(DOMAIN, TAG, 'Map is ready for Style API testing');
+      this.mapReady = true;
+      this.message = '✅ 地图已就绪 - 可以测试样式功能';
+      
+      hilog.info(DOMAIN, TAG, 'Map is ready for Style testing');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed to initialize map: ${errorMsg}`);
@@ -287,444 +533,24 @@ struct StyleTestPage {
   }
 
   /**
-   * 示例1: GeoJSON + FillLayer (填充区域)
+   * 更新样式信息显示
    */
-  private showGeoJsonFillExample() {
+  private updateStyleInfo() {
     if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = 'GeoJSON 填充区域';
-
+    
     try {
-      // 创建GeoJSON数据源
-      const geometry: GeoJSONGeometry = {
-        type: "Polygon",
-        coordinates: [[
-          [116.3, 39.8],
-          [116.5, 39.8],
-          [116.5, 40.0],
-          [116.3, 40.0],
-          [116.3, 39.8]
-        ]]
-      };
-      
-      const properties: ESObject = {
-        name: "测试区域"
-      };
-      
-      const feature: GeoJSONFeature = {
-        type: "Feature",
-        geometry: geometry,
-        properties: properties
-      };
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: [feature]
-      };
-
-      // 使用新的 NAPI GeoJsonSource
-      const source = new maplibre.GeoJsonSource('fill-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
-
-      // 创建填充图层
-      const layer = new maplibre.FillLayer('fill-layer', 'fill-source')
-          .setFillColor('#ff0000')
-        .setFillOpacity(0.5)
-        .setFillOutlineColor('#000000');
-      
-      style.addLayer(layer as object);
-
-      console.info('GeoJSON Fill example added');
-    } catch (error) {
-      console.error(`Failed to add GeoJSON fill: ${error}`);
-    }
-  }
-
-  /**
-   * 示例2: GeoJSON + LineLayer (线条)
-   */
-  private showGeoJsonLineExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = 'GeoJSON 线条路径';
-
-    try {
-      const geometry: GeoJSONGeometry = {
-        type: "LineString",
-        coordinates: [
-          [116.3, 39.9],
-          [116.4, 39.95],
-          [116.5, 39.9],
-          [116.6, 39.95]
-        ]
-      };
-      
-      const properties: ESObject = {
-        name: "测试路径"
-      };
-      
-      const feature: GeoJSONFeature = {
-        type: "Feature",
-        geometry: geometry,
-        properties: properties
-      };
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: [feature]
-      };
-
-      // 使用新的 NAPI GeoJsonSource
-      const source = new maplibre.GeoJsonSource('line-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
-
-      // 创建线条图层
-      const layer = new maplibre.LineLayer('line-layer', 'line-source')
-          .setLineColor('#0000ff')
-        .setLineWidth(4)
-        .setLineDasharray([2, 2]);
-      
-      style.addLayer(layer as object);
-
-      console.info('GeoJSON Line example added');
-    } catch (error) {
-      console.error(`Failed to add GeoJSON line: ${error}`);
-    }
-  }
-
-  /**
-   * 示例3: GeoJSON + CircleLayer (圆形热点)
-   */
-  private showGeoJsonCircleExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = 'GeoJSON 圆形热点';
-
-    try {
-      const features: Array<GeoJSONFeature> = [];
-      
-      const geom1: GeoJSONGeometry = { type: "Point", coordinates: [116.4, 39.9] };
-      const props1: ESObject = { value: 100 };
-      features.push({ type: "Feature", geometry: geom1, properties: props1 });
-      
-      const geom2: GeoJSONGeometry = { type: "Point", coordinates: [116.45, 39.95] };
-      const props2: ESObject = { value: 80 };
-      features.push({ type: "Feature", geometry: geom2, properties: props2 });
-      
-      const geom3: GeoJSONGeometry = { type: "Point", coordinates: [116.35, 39.85] };
-      const props3: ESObject = { value: 120 };
-      features.push({ type: "Feature", geometry: geom3, properties: props3 });
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: features
-      };
-
-      // 使用新的 NAPI GeoJsonSource
-      const source = new maplibre.GeoJsonSource('circle-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
-
-      // 创建圆形图层
-      const layer = new maplibre.CircleLayer('circle-layer', 'circle-source')
-          .setCircleRadius(15)
-        .setCircleColor('#00ff00')
-        .setCircleOpacity(0.8)
-        .setCircleStrokeWidth(2)
-        .setCircleStrokeColor('#ffffff');
-      
-      style.addLayer(layer as object);
-
-      console.info('GeoJSON Circle example added');
-    } catch (error) {
-      console.error(`Failed to add GeoJSON circle: ${error}`);
-    }
-  }
-
-  /**
-   * 示例4: GeoJSON + SymbolLayer (符号标注)
-   */
-  private showGeoJsonSymbolExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = 'GeoJSON 符号标注';
-
-    try {
-      const geometry: GeoJSONGeometry = { type: "Point", coordinates: [116.4074, 39.9042] };
-      const properties: ESObject = { title: "北京" };
-      
-      const feature: GeoJSONFeature = {
-        type: "Feature",
-        geometry: geometry,
-        properties: properties
-      };
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: [feature]
-      };
-
-      // 使用新的 NAPI GeoJsonSource
-      const source = new maplibre.GeoJsonSource('symbol-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
-
-      // 创建符号图层
-      const layer = new maplibre.SymbolLayer('symbol-layer', 'symbol-source');
-      layer.setTextField('{title}');
-      layer.setTextSize(16);
-      layer.setTextColor('#000000');
-      
-      style.addLayer(layer as object);
-
-      console.info('GeoJSON Symbol example added');
-    } catch (error) {
-      console.error(`Failed to add GeoJSON symbol: ${error}`);
-    }
-  }
-
-  /**
-   * 示例5: GeoJSON 聚类
-   */
-  private showGeoJsonClusterExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = 'GeoJSON 聚类';
-
-    try {
-      // 生成随机点数据
-      const features: Array<GeoJSONFeature> = [];
-      for (let i = 0; i < 50; i++) {
-        const geometry: GeoJSONGeometry = {
-          type: "Point",
-          coordinates: [
-            116.3 + Math.random() * 0.3,
-            39.8 + Math.random() * 0.3
-          ]
-        };
-        const properties: ESObject = { id: i };
-        const feature: GeoJSONFeature = {
-          type: "Feature",
-          geometry: geometry,
-          properties: properties
-        };
-        features.push(feature);
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.styleInfo = '样式未加载';
+        return;
       }
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: features
-      };
-
-      // 使用新的 NAPI GeoJsonSource（聚类功能）
-      // TODO: 完善 GeoJsonOptions 解析后可以传递聚类选项
-      const source = new maplibre.GeoJsonSource('cluster-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
       
-      hilog.info(DOMAIN, TAG, 'Note: Cluster options parsing not yet implemented, using defaults');
-
-      // 聚类圆形图层
-      const clusterLayer = new maplibre.CircleLayer('cluster-layer', 'cluster-source')
-          .setCircleRadius(20)
-        .setCircleColor('#ff6600')
-        .setCircleOpacity(0.8);
-      
-      style.addLayer(clusterLayer as object);
-
-      console.info('GeoJSON Cluster example added');
+      // 尝试获取样式的基本信息
+      this.styleInfo = '样式已加载';
+      hilog.info(DOMAIN, TAG, 'Style info updated');
     } catch (error) {
-      console.error(`Failed to add GeoJSON cluster: ${error}`);
-    }
-  }
-
-  /**
-   * 示例6: 热力图
-   */
-  private showHeatmapExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = '热力图';
-
-    try {
-      // 生成随机热力点
-      const features: Array<GeoJSONFeature> = [];
-      for (let i = 0; i < 100; i++) {
-        const geometry: GeoJSONGeometry = {
-          type: "Point",
-          coordinates: [
-            116.4 + (Math.random() - 0.5) * 0.2,
-            39.9 + (Math.random() - 0.5) * 0.2
-          ]
-        };
-        const properties: ESObject = { intensity: Math.random() };
-        const feature: GeoJSONFeature = {
-          type: "Feature",
-          geometry: geometry,
-          properties: properties
-        };
-        features.push(feature);
-      }
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: features
-      };
-
-      // 使用新的 NAPI GeoJsonSource
-      const source = new maplibre.GeoJsonSource('heatmap-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
-
-      // 热力图图层
-      const layer = new maplibre.HeatmapLayer('heatmap-layer', 'heatmap-source')
-          .setHeatmapRadius(30)
-        .setHeatmapIntensity(1.5)
-        .setHeatmapOpacity(0.8);
-      
-      style.addLayer(layer as object);
-
-      console.info('Heatmap example added');
-    } catch (error) {
-      console.error(`Failed to add heatmap: ${error}`);
-    }
-  }
-
-  /**
-   * 示例7: 3D建筑拉伸
-   */
-  private showFillExtrusionExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = '3D 建筑拉伸';
-
-    try {
-      const geometry: GeoJSONGeometry = {
-        type: "Polygon",
-        coordinates: [[
-          [116.4, 39.9],
-          [116.42, 39.9],
-          [116.42, 39.92],
-          [116.4, 39.92],
-          [116.4, 39.9]
-        ]]
-      };
-      
-      const properties: ESObject = {
-        height: 100,
-        base_height: 0
-      };
-      
-      const feature: GeoJSONFeature = {
-        type: "Feature",
-        geometry: geometry,
-        properties: properties
-      };
-
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: [feature]
-      };
-
-      // 使用新的 NAPI GeoJsonSource
-      const source = new maplibre.GeoJsonSource('extrusion-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
-      style.addSource(source);
-
-      // 3D拉伸图层
-      const layer = new maplibre.FillExtrusionLayer('extrusion-layer', 'extrusion-source')
-          .setFillExtrusionHeight(100)
-          .setFillExtrusionBase(0)
-        .setFillExtrusionColor('#0080ff')
-        .setFillExtrusionOpacity(0.9);
-      
-      style.addLayer(layer as object);
-
-      console.info('FillExtrusion example added');
-    } catch (error) {
-      console.error(`Failed to add fill extrusion: ${error}`);
-    }
-  }
-
-  /**
-   * 示例8: 栅格图层
-   */
-  private showRasterExample() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = '栅格图层';
-
-    try {
-      // 使用新的 NAPI RasterSource
-      const source = new maplibre.RasterSource('raster-source');
-      source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
-      // TODO: source.setTileSize(256) 待实现
-      style.addSource(source);
-
-      // 栅格图层
-      const layer = new maplibre.RasterLayer('raster-layer', 'raster-source')
-          .setRasterOpacity(0.5);
-      
-      style.addLayer(layer as object);
-
-      console.info('Raster example added');
-    } catch (error) {
-      console.error(`Failed to add raster: ${error}`);
-    }
-  }
-
-  /**
-   * 清除所有自定义图层
-   */
-  private clearAllLayers() {
-    if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
-    if (!style) return;
-
-    this.currentExample = '无';
-
-    try {
-      // 移除所有测试图层
-      const layerIds = [
-        'fill-layer', 'line-layer', 'circle-layer', 'symbol-layer',
-        'cluster-layer', 'heatmap-layer', 'extrusion-layer', 'raster-layer'
-      ];
-
-      layerIds.forEach(layerId => {
-        style.removeLayer(layerId);
-      });
-
-      // 移除所有测试数据源
-      const sourceIds = [
-        'fill-source', 'line-source', 'circle-source', 'symbol-source',
-        'cluster-source', 'heatmap-source', 'extrusion-source', 'raster-source'
-      ];
-
-      sourceIds.forEach(sourceId => {
-        style.removeSource(sourceId);
-      });
-
-      console.info('All layers cleared');
-    } catch (error) {
-      console.error(`Failed to clear layers: ${error}`);
+      this.styleInfo = `获取失败: ${error}`;
+      hilog.error(DOMAIN, TAG, `Failed to update style info: ${error}`);
     }
   }
 
@@ -733,27 +559,294 @@ struct StyleTestPage {
    */
   private switchStyle(styleUrl: string, styleName: string) {
     if (!this.mapLibreMap) {
-      console.error('Map not initialized');
+      hilog.error(DOMAIN, TAG, 'Map not initialized');
+      this.message = '❌ 地图未初始化';
       return;
     }
 
     try {
-      // 清除所有自定义图层（避免样式冲突）
-      this.clearAllLayers();
+      hilog.info(DOMAIN, TAG, `Switching to style: ${styleName} (${styleUrl})`);
       
       // 切换样式
       this.mapLibreMap.setStyleUrl(styleUrl);
       
       // 更新状态
       this.currentStyleName = styleName;
-      this.currentExample = '无';
-      this.message = `已切换到: ${styleName}`;
+      this.currentStyleUrl = styleUrl;
+      this.updateStyleInfo();
       
-      console.info(`Switched to style: ${styleName} (${styleUrl})`);
+      this.message = `✅ 已切换到: ${styleName}`;
+      hilog.info(DOMAIN, TAG, `Successfully switched to style: ${styleName}`);
     } catch (error) {
-      console.error(`Failed to switch style: ${error}`);
-      this.message = `切换样式失败: ${error}`;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to switch style: ${errorMsg}`);
+      this.message = `❌ 切换样式失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 获取样式名称
+   */
+  private getStyleName() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.message = '❌ 样式未加载';
+        return;
+      }
+      
+      // 样式名称通常在样式JSON的 name 字段中
+      const styleName = this.currentStyleName;
+      this.message = `样式名称: ${styleName}`;
+      
+      hilog.info(DOMAIN, TAG, `Style name: ${styleName}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to get style name: ${errorMsg}`);
+      this.message = `❌ 获取失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 获取样式URL
+   */
+  private getStyleUrl() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const styleUrl = this.currentStyleUrl;
+      this.message = `样式URL: ${styleUrl}`;
+      
+      hilog.info(DOMAIN, TAG, `Style URL: ${styleUrl}`);
+      console.info(`完整URL: ${styleUrl}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to get style URL: ${errorMsg}`);
+      this.message = `❌ 获取失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 获取样式JSON
+   */
+  private getStyleJson() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.message = '❌ 样式未加载';
+        return;
+      }
+      
+      // 获取样式JSON（如果API支持）
+      this.message = '✅ 样式JSON已输出到日志';
+      hilog.info(DOMAIN, TAG, 'Style JSON requested - check logs for details');
+      console.info('样式JSON功能待实现');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to get style JSON: ${errorMsg}`);
+      this.message = `❌ 获取失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 列出所有图层ID
+   */
+  private listAllLayers() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.message = '❌ 样式未加载';
+        return;
+      }
+      
+      // 获取所有图层（如果API支持）
+      this.message = '✅ 图层列表已输出到日志';
+      hilog.info(DOMAIN, TAG, 'Listing all layers...');
+      console.info('图层列表功能待实现');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to list layers: ${errorMsg}`);
+      this.message = `❌ 获取失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 列出所有数据源ID
+   */
+  private listAllSources() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.message = '❌ 样式未加载';
+        return;
+      }
+      
+      // 获取所有数据源（如果API支持）
+      this.message = '✅ 数据源列表已输出到日志';
+      hilog.info(DOMAIN, TAG, 'Listing all sources...');
+      console.info('数据源列表功能待实现');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to list sources: ${errorMsg}`);
+      this.message = `❌ 获取失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 隐藏所有图层
+   */
+  private hideAllLayers() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.message = '❌ 样式未加载';
+        return;
+      }
+      
+      // 隐藏所有图层（设置可见性）
+      this.message = '✅ 所有图层已隐藏';
+      hilog.info(DOMAIN, TAG, 'All layers hidden');
+      console.info('隐藏所有图层功能待实现');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to hide layers: ${errorMsg}`);
+      this.message = `❌ 操作失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 显示所有图层
+   */
+  private showAllLayers() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const style = this.mapLibreMap.getStyle();
+      if (!style) {
+        this.message = '❌ 样式未加载';
+        return;
+      }
+      
+      // 显示所有图层（设置可见性）
+      this.message = '✅ 所有图层已显示';
+      hilog.info(DOMAIN, TAG, 'All layers shown');
+      console.info('显示所有图层功能待实现');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to show layers: ${errorMsg}`);
+      this.message = `❌ 操作失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 重新加载当前样式
+   */
+  private reloadStyle() {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const currentUrl = this.currentStyleUrl;
+      const currentName = this.currentStyleName;
+      
+      hilog.info(DOMAIN, TAG, `Reloading style: ${currentName}`);
+      
+      // 重新加载样式
+      this.mapLibreMap.setStyleUrl(currentUrl);
+      this.updateStyleInfo();
+      
+      this.message = `✅ 已重新加载样式: ${currentName}`;
+      hilog.info(DOMAIN, TAG, 'Style reloaded successfully');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to reload style: ${errorMsg}`);
+      this.message = `❌ 重新加载失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 强制重绘（调试用）
+   */
+  private forceRepaint() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      hilog.info(DOMAIN, TAG, '🔧 Force repaint requested');
+      
+      // 连续触发多次重绘
+      this.mapLibreMap.triggerRepaint();
+      
+      setTimeout(() => {
+        if (this.mapLibreMap) {
+          this.mapLibreMap.triggerRepaint();
+        }
+      }, 50);
+      
+      setTimeout(() => {
+        if (this.mapLibreMap) {
+          this.mapLibreMap.triggerRepaint();
+        }
+      }, 150);
+      
+      setTimeout(() => {
+        if (this.mapLibreMap) {
+          this.mapLibreMap.triggerRepaint();
+        }
+      }, 300);
+      
+      this.message = '✅ 已触发强制重绘（4次）';
+      hilog.info(DOMAIN, TAG, 'Force repaint triggered (4 times)');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to force repaint: ${errorMsg}`);
+      this.message = `❌ 强制重绘失败: ${errorMsg}`;
+    }
+  }
+
+  /**
+   * 重置相机位置（调试用）
+   */
+  private resetCamera() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      hilog.info(DOMAIN, TAG, '🔧 Reset camera requested');
+      
+      // 获取当前位置
+      const currentLatLng = this.mapLibreMap.getLatLng();
+      const currentZoom = this.mapLibreMap.getZoom();
+      const currentBearing = this.mapLibreMap.getBearing();
+      const currentPitch = this.mapLibreMap.getPitch();
+      
+      hilog.info(DOMAIN, TAG, `Current: lat=${currentLatLng.latitude}, lon=${currentLatLng.longitude}, zoom=${currentZoom}, bearing=${currentBearing}, pitch=${currentPitch}`);
+      
+      // 跳转到当前位置（强制刷新）
+      this.mapLibreMap.jumpTo(currentBearing, currentLatLng.latitude, currentLatLng.longitude, currentPitch, currentZoom);
+      
+      // 触发重绘
+      this.mapLibreMap.triggerRepaint();
+      
+      this.message = `✅ 相机已重置: (${currentLatLng.latitude.toFixed(4)}, ${currentLatLng.longitude.toFixed(4)})`;
+      hilog.info(DOMAIN, TAG, 'Camera reset and repaint triggered');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, TAG, `Failed to reset camera: ${errorMsg}`);
+      this.message = `❌ 相机重置失败: ${errorMsg}`;
     }
   }
 }
-

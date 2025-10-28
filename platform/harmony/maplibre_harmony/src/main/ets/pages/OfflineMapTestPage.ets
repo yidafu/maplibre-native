@@ -4,7 +4,6 @@
  * 演示如何使用离线地图功能
  */
 import { MapLibreMap } from '../maps/MapLibreMap';
-import { MapLibreMapOptions } from '../maps/MapLibreMapOptions';
 import {
   OfflineManager,
   OfflineRegion,
@@ -14,12 +13,40 @@ import {
   OfflineRegionObserver,
   OfflineRegionStatus,
   OfflineRegionError,
-  OfflineTilePyramidRegionDefinition
+  OfflineTilePyramidRegionDefinition,
+  CreateOfflineRegionCallback
 } from '../maps/offline';
 import { LatLngBounds } from '../maps/geometry/LatLngBounds';
 import common from '@ohos.app.ability.common';
 import { router } from '@kit.ArkUI';
 import util from '@ohos.util';
+
+// 创建离线区域回调实现
+class CreateRegionCallbackImpl implements CreateOfflineRegionCallback {
+  page: OfflineMapTestPage;
+  
+  constructor(page: OfflineMapTestPage) {
+    this.page = page;
+  }
+  
+  onCreate(region: OfflineRegion): void {
+    this.page.currentRegion = region;
+    this.page.statusMessage = '离线区域已创建，开始下载...';
+    
+    // 设置观察者监听下载进度
+    this.page.setupRegionObserver(region);
+    
+    // 开始下载
+    region.setDownloadState(DownloadState.ACTIVE);
+    
+    // 刷新列表
+    this.page.loadOfflineRegions();
+  }
+  
+  onError(error: string): void {
+    this.page.statusMessage = `创建失败: ${error}`;
+  }
+}
 
 @Entry
 @Component
@@ -45,7 +72,7 @@ struct OfflineMapTestPage {
   /**
    * 加载离线区域列表
    */
-  private loadOfflineRegions() {
+  public loadOfflineRegions() {
     if (!this.offlineManager) return;
     
     this.offlineManager.listOfflineRegions((result) => {
@@ -100,42 +127,16 @@ struct OfflineMapTestPage {
       const metadataStr = JSON.stringify(metadata);
       const encoder = new util.TextEncoder();
       const uint8Array = encoder.encodeInto(metadataStr);
-      const metadataBuffer = uint8Array.buffer;
+      const metadataBuffer: ArrayBuffer = uint8Array.buffer as ArrayBuffer;
       
       this.statusMessage = '正在创建离线区域...';
       
-      // 创建离线区域  
-      class CreateHandler {
-        page: OfflineMapTestPage;
-        
-        constructor(page: OfflineMapTestPage) {
-          this.page = page;
-        }
-        
-        handle(result: OfflineRegion | string): void {
-          if (typeof result === 'string') {
-            this.page.statusMessage = `创建失败: ${result}`;
-          } else {
-            this.page.currentRegion = result;
-            this.page.statusMessage = '离线区域已创建，开始下载...';
-            
-            // 设置观察者监听下载进度
-            this.page.setupRegionObserver(result);
-            
-            // 开始下载
-            result.setDownloadState(DownloadState.ACTIVE);
-            
-            // 刷新列表
-            this.page.loadOfflineRegions();
-          }
-        }
-      }
+      // 创建回调
+      const page = this;
+      const callback = new CreateRegionCallbackImpl(page);
       
-      const handler = new CreateHandler(this);
-      const handleMethod: (result: OfflineRegion | string) => void = (result: OfflineRegion | string): void => {
-        handler.handle(result);
-      };
-      this.offlineManager.createOfflineRegion(definition, metadataBuffer, handleMethod);
+      // 创建离线区域  
+      this.offlineManager.createOfflineRegion(definition, metadataBuffer, callback);
     } catch (error) {
       this.statusMessage = `错误: ${error}`;
     }
@@ -144,7 +145,7 @@ struct OfflineMapTestPage {
   /**
    * 设置区域观察者
    */
-  private setupRegionObserver(region: OfflineRegion) {
+  public setupRegionObserver(region: OfflineRegion) {
     class ObserverImpl implements OfflineRegionObserver {
       private page: OfflineMapTestPage;
       private region: OfflineRegion;

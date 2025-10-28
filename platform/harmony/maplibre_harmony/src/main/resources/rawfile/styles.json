@@ -1,0 +1,4377 @@
+{
+  "version": 8,
+  "metadata": {},
+  "center": [
+    120.22636085834802,
+    30.287941073627294
+  ],
+  "zoom": 12.805014539290793,
+  "bearing": 0,
+  "pitch": 0,
+  "sources": {
+    "杭州矢量底图": {
+      "name": "杭州矢量底图",
+      "type": "vector",
+      "tiles": [
+        "http://192.168.90.235:8007/hzmapserver/hzvector/{z}/{x}/{y}.pbf"
+      ]
+    },
+    "管线附属3": {
+      "name": "管线附属3",
+      "type": "vector",
+      "tiles": [
+        "http://192.168.90.235:8007/pipeabout/pipeabout/{z}/{x}/{y}.pbf"
+      ]
+    }
+  },
+  "sprite": "http://192.168.90.235:8008/mapboxSource/sprites/sprite",
+  "glyphs": "http://192.168.90.235:8008/mapboxSource/fonts/{fontstack}/{range}.pbf",
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "background-color": "#f0f3fa"
+      }
+    },
+    {
+      "id": "ap-开发区_保税区-development_and_bonded_zone",
+      "type": "circle",
+      "metadata": {
+        "layerId": "1809071054660833282"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "development_and_bonded_zone",
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "id": "ap-地级政府-prefectural_government",
+      "type": "circle",
+      "metadata": {
+        "layerId": "1809071054400786434"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "prefectural_government",
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "id": "ap-省级政府-provincial_government",
+      "type": "circle",
+      "metadata": {
+        "layerId": "1809071054446923777"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "provincial_government",
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "id": "water-池塘-pond",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054694387713"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "pond",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#b8dbff"
+      }
+    },
+    {
+      "id": "water-水库-reservoir",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054849576962"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "reservoir",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#b8dbff"
+      }
+    },
+    {
+      "id": "water-岛屿-islands",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054727942146"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "islands",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "rgba(11, 160, 74, 1)"
+      }
+    },
+    {
+      "id": "water-湖泊-lake",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054807633921"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "lake",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#b8dbff"
+      }
+    },
+    {
+      "id": "water-岸滩-beach",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054899908610"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "beach",
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "greenland-果园orchard",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054165905410"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "orchard",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "greenland-茶园-tea_garden",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054107185153"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "tea_garden",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "greenland-草地-grassland",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054061047809"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "grassland",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "greenland-稻田-paddy",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054136545282"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "paddy",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "community-空地面-empty_ground",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071053947801602"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "empty_ground",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "rgba(250, 250, 250, 1)"
+      }
+    },
+    {
+      "id": "greenland-人工绿地-artificial_green_space",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054274957314"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "artificial_green_space",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "POI-企事业单位-enterprises_and_institutions",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055172538369"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "enterprises_and_institutions",
+      "layout": {
+        "visibility": "none"
+      }
+    },
+    {
+      "id": "road-栈道-plank",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053444485121"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "plank",
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "road-专用公路-special_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053578702850"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "special_road",
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "road-主干道匝道-trunk_ramp",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053540954114"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "trunk_ramp",
+      "layout": {
+        "visibility": "visible"
+      }
+    },
+    {
+      "id": "community-小区单位面-community_area",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054031687681"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "community_area",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#e4ebf2"
+      }
+    },
+    {
+      "id": "water-河流-river",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054769885186"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "river",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#b8dbff"
+      }
+    },
+    {
+      "id": "water-河流-river-text",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054769885186"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "river",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "point",
+        "text-padding": 500
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "greenland-花圃花坛-flower_beds",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054203654145"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "flower_beds",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "greenland-林地-woodland",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071054233014274"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "woodland",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#c5f0d3"
+      }
+    },
+    {
+      "id": "community-建筑基底-building_base",
+      "type": "fill",
+      "metadata": {
+        "layerId": "1809071053914247170"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "building_base",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "fill-color": "#e6f2ff"
+      }
+    },
+    {
+      "id": "community-门牌和楼栋号-points_number",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053989744642"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "points_number",
+      "layout": {
+        "text-field": [
+          "get",
+          "SHORTNAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-size": 12,
+        "text-letter-spacing": 0.15
+      },
+      "paint": {
+        "text-color": "#000",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-其他公路-other_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053163466753"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "other_road",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      }
+    },
+    {
+      "id": "road-其他公路-other_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053163466753"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "other_road",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-县道-county_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053238964226"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "county_road",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      }
+    },
+    {
+      "id": "road-县道-county_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053238964226"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "county_road",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-乡村路-rural_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053272518657"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "rural_road",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      }
+    },
+    {
+      "id": "road-乡村路-rural_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053272518657"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "rural_road",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-村道-village_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071052924391426"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "village_road",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      }
+    },
+    {
+      "id": "road-村道-village_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071052924391426"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "village_road",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-乡道-township_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053306073090"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "township_road",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      }
+    },
+    {
+      "id": "road-乡道-township_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053306073090"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "township_road",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-机耕路-plowing_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053062803457"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "plowing_road",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      },
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      }
+    },
+    {
+      "id": "road-机耕路-plowing_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053062803457"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "plowing_road",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      },
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      }
+    },
+    {
+      "id": "road-小路-path-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053373181953"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "path",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6
+      }
+    },
+    {
+      "id": "road-小路-path",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053373181953"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "path",
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-内部道路-internal_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053134106626"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "internal_road",
+      "layout": {
+        "visibility": "visible",
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 6,
+        "line-translate-anchor": "map"
+      }
+    },
+    {
+      "id": "road-内部道路-internal_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053134106626"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "internal_road",
+      "layout": {
+        "visibility": "visible",
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": "#fff",
+        "line-width": 4
+      }
+    },
+    {
+      "id": "road-支线-branch_line-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053478039554"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "branch_line",
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 10
+      },
+      "layout": {
+        "line-join": "miter"
+      }
+    },
+    {
+      "id": "road-支线-branch_line",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053478039554"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "branch_line",
+      "paint": {
+        "line-color": "#fff",
+        "line-width": 8
+      }
+    },
+    {
+      "id": "road-次干道-secondary_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071052861476866"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "secondary_road",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2,
+          13,
+          4,
+          14,
+          6,
+          15,
+          8,
+          16,
+          10,
+          17,
+          12,
+          18,
+          16,
+          19,
+          20,
+          20,
+          80
+        ]
+      }
+    },
+    {
+      "id": "road-主干道-main_road-border",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053515788289"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "main_road",
+      "layout": {
+        "visibility": "none"
+      },
+      "paint": {
+        "line-color": "#b8bac0",
+        "line-width": 3
+      }
+    },
+    {
+      "id": "road-主干道-main_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053515788289"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "main_road",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "#fff",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2,
+          13,
+          4,
+          14,
+          6,
+          15,
+          8,
+          16,
+          10,
+          17,
+          12,
+          18,
+          16,
+          19,
+          20,
+          20,
+          80
+        ]
+      }
+    },
+    {
+      "id": "road-匝道-ramp",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053406736386"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "ramp",
+      "paint": {
+        "line-color": "#fff",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          12,
+          2,
+          13,
+          4,
+          14,
+          6,
+          15,
+          8,
+          16,
+          10,
+          17,
+          12,
+          18,
+          16,
+          19,
+          20,
+          20,
+          80
+        ]
+      }
+    },
+    {
+      "id": "road-高架-elevated",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071052962140161"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "elevated",
+      "minzoom": 7,
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": {
+          "stops": [
+            [
+              6,
+              "#fdbf90"
+            ],
+            [
+              7,
+              "#fcdb89"
+            ],
+            [
+              9,
+              "#ffb676"
+            ]
+          ]
+        },
+        "line-width": {
+          "stops": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              10,
+              3.5
+            ],
+            [
+              11,
+              4
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              14,
+              10
+            ],
+            [
+              15,
+              15
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "base": 1
+        }
+      }
+    },
+    {
+      "id": "road-快速路-freeway",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053092163585"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "freeway",
+      "paint": {
+        "line-color": {
+          "stops": [
+            [
+              6,
+              "#fdbf90"
+            ],
+            [
+              7,
+              "#fcdb89"
+            ],
+            [
+              9,
+              "#ffb676"
+            ]
+          ]
+        },
+        "line-width": {
+          "stops": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              10,
+              3.5
+            ],
+            [
+              11,
+              4
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              14,
+              10
+            ],
+            [
+              15,
+              15
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "base": 1
+        }
+      }
+    },
+    {
+      "id": "road-国道-state_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053033443330"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "state_road",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": {
+          "stops": [
+            [
+              6,
+              "#fdbf90"
+            ],
+            [
+              7,
+              "#fcdb89"
+            ],
+            [
+              9,
+              "#ffb676"
+            ]
+          ]
+        },
+        "line-width": {
+          "stops": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              10,
+              3.5
+            ],
+            [
+              11,
+              4
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              14,
+              10
+            ],
+            [
+              15,
+              30
+            ],
+            [
+              20,
+              60
+            ]
+          ],
+          "base": 1
+        }
+      }
+    },
+    {
+      "id": "road-省道-provincial_road",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053201215490"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "provincial_road",
+      "paint": {
+        "line-color": {
+          "stops": [
+            [
+              6,
+              "#fdbf90"
+            ],
+            [
+              7,
+              "#fcdb89"
+            ],
+            [
+              9,
+              "#ffb676"
+            ]
+          ]
+        },
+        "line-width": {
+          "stops": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              10,
+              3.5
+            ],
+            [
+              11,
+              4
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              14,
+              10
+            ],
+            [
+              15,
+              30
+            ],
+            [
+              20,
+              60
+            ]
+          ],
+          "base": 1
+        }
+      }
+    },
+    {
+      "id": "road-高速公路-highway",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071052995694593"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "highway",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": {
+          "stops": [
+            [
+              6,
+              "#fdbf90"
+            ],
+            [
+              7,
+              "#fcdb89"
+            ],
+            [
+              9,
+              "#ffb676"
+            ]
+          ]
+        },
+        "line-width": {
+          "stops": [
+            [
+              8,
+              2
+            ],
+            [
+              9,
+              3
+            ],
+            [
+              10,
+              3.5
+            ],
+            [
+              11,
+              4
+            ],
+            [
+              12,
+              4
+            ],
+            [
+              14,
+              10
+            ],
+            [
+              15,
+              30
+            ],
+            [
+              20,
+              60
+            ]
+          ],
+          "base": 1
+        }
+      }
+    },
+    {
+      "id": "pt-地铁-subway",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053624840194"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "subway",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          [
+            "get",
+            "FNAME"
+          ],
+          "杭州地铁１号线",
+          "#e70015",
+          "杭州地铁２号线",
+          "#f39803",
+          "杭州地铁３号线",
+          "#fac102",
+          "杭州地铁３号线一期",
+          "#fac102",
+          "杭州地铁４号线",
+          "#029642",
+          "杭州地铁５号线",
+          "#4ccbc0",
+          "杭州地铁６号线",
+          "#056cb7",
+          "杭州地铁６号线杭富段",
+          "#056cb7",
+          "杭州地铁６号线一期",
+          "#056cb7",
+          "杭州地铁７号线",
+          "#910685",
+          "杭州地铁８号线",
+          "#fd749e",
+          "杭州地铁９号线",
+          "#956034",
+          "杭州地铁９号线一期南段",
+          "#956034",
+          "杭州地铁１０号线",
+          "#96d30b",
+          "杭州地铁１６号线",
+          "#f19a53",
+          "#e70015"
+        ],
+        "line-width": 1.2
+      }
+    },
+    {
+      "id": "pt-地铁-subway-text",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053624840194"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "subway",
+      "layout": {
+        "text-field": [
+          "match",
+          [
+            "get",
+            "FNAME"
+          ],
+          "杭州地铁１号线",
+          "一号线",
+          "杭州地铁２号线",
+          "二号线",
+          "杭州地铁３号线",
+          "三号线",
+          "杭州地铁３号线一期",
+          "三号线",
+          "杭州地铁４号线",
+          "四号线",
+          "杭州地铁５号线",
+          "五号线",
+          "杭州地铁６号线",
+          "六号线",
+          "杭州地铁６号线杭富段",
+          "六号线",
+          "杭州地铁６号线一期",
+          "六号线",
+          "杭州地铁７号线",
+          "七号线",
+          "杭州地铁８号线",
+          "八号线",
+          "杭州地铁９号线",
+          "九号线",
+          "杭州地铁９号线一期南段",
+          "九号线",
+          "杭州地铁１０号线",
+          "十号线",
+          "杭州地铁１６号线",
+          "十六号线",
+          "一号线"
+        ],
+        "text-size": 12,
+        "text-allow-overlap": false,
+        "text-ignore-placement": false,
+        "symbol-placement": "line",
+        "text-padding": 200,
+        "text-keep-upright": true
+      },
+      "paint": {
+        "text-halo-color": [
+          "match",
+          [
+            "get",
+            "FNAME"
+          ],
+          "杭州地铁１号线",
+          "#e70015",
+          "杭州地铁２号线",
+          "#f39803",
+          "杭州地铁３号线",
+          "#fac102",
+          "杭州地铁３号线一期",
+          "#fac102",
+          "杭州地铁４号线",
+          "#029642",
+          "杭州地铁５号线",
+          "#4ccbc0",
+          "杭州地铁６号线",
+          "#056cb7",
+          "杭州地铁６号线杭富段",
+          "#056cb7",
+          "杭州地铁６号线一期",
+          "#056cb7",
+          "杭州地铁７号线",
+          "#910685",
+          "杭州地铁８号线",
+          "#fd749e",
+          "杭州地铁９号线",
+          "#956034",
+          "杭州地铁９号线一期南段",
+          "#956034",
+          "杭州地铁１０号线",
+          "#96d30b",
+          "杭州地铁１６号线",
+          "#f19a53",
+          "#e70015"
+        ],
+        "text-halo-width": 10,
+        "text-color": "#fff"
+      }
+    },
+    {
+      "id": "pt-铁路-railway-base",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053847138305"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "railway",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-width": 2,
+        "line-color": "#e5d6d6"
+      }
+    },
+    {
+      "id": "pt-飞机场-airport",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053759057922"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "airport",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": 12,
+        "icon-image": "飞机场"
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "pt-铁路-railway",
+      "type": "line",
+      "metadata": {
+        "layerId": "1809071053847138305"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "railway",
+      "layout": {
+        "visibility": "visible"
+      },
+      "paint": {
+        "line-color": "#ccaeae",
+        "line-width": 2,
+        "line-offset": 0,
+        "line-dasharray": [
+          3,
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "id": "pt-地铁口-subway_entrance",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053666783234"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "subway_entrance",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "text-offset": [
+          -5,
+          -1
+        ],
+        "text-size": 12
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "pt-地铁站-metro_station",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053717114881"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "metro_station",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": 12,
+        "icon-image": "杭州地铁2号线"
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "pt-火车站-train_station",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053801000962"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "train_station",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          10,
+          17,
+          11,
+          18,
+          11
+        ],
+        "icon-image": "火车站",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-风景名胜-famous_tourist_sites",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055000571905"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "famous_tourist_sites",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          11.5,
+          18,
+          12
+        ],
+        "icon-image": "景区",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ],
+        "visibility": "visible"
+      },
+      "paint": {
+        "text-color": "#20be7d",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-西湖-famous_tourist_sites",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055000571905"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "famous_tourist_sites",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "NAME"
+          ],
+          "西湖风景区",
+          "西湖",
+          "景区"
+        ],
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      },
+      "filter": [
+        "all",
+        [
+          "==",
+          "NAME",
+          "西湖风景区"
+        ]
+      ]
+    },
+    {
+      "id": "POI-医疗-medical",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055252230146"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "medical",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "in",
+            "门",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ],
+        [
+          "in",
+          "门诊",
+          [
+            "get",
+            "NAME"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1.3,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "药店保健品",
+          "药店",
+          "医疗器械",
+          "药店",
+          "诊所/卫生院",
+          "小医院",
+          "诊所 /卫生院",
+          "小医院",
+          "动物医院",
+          "小医院",
+          "康复疗养院",
+          "小医院",
+          "其它医疗服务",
+          "小医院",
+          "综合医院"
+        ],
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#f56667",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-医疗门-medical",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055252230146"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "medical",
+      "filter": [
+        "all",
+        [
+          "in",
+          "门",
+          [
+            "get",
+            "NAME"
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            "门诊",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "门",
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#5687fc",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-房产小区-community",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054971211777"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "community",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "in",
+            "门",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-size": 15.5,
+        "text-justify": "center"
+      },
+      "paint": {
+        "text-color": "#a1a8b3",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "POI-房产小区门-community",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054971211777"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "community",
+      "filter": [
+        "any",
+        [
+          "in",
+          "门",
+          [
+            "get",
+            "NAME"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "门"
+      },
+      "paint": {
+        "text-color": "#5687fc",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-大楼大厦-building",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054933463042"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "building",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "写字楼",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-码头_公交站点-pier_bus_stop",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055361282049"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "pier_bus_stop",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "公交站",
+          "公交站",
+          "码头"
+        ],
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-商场-shopping_mall",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055218675714"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "shopping_mall",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "in",
+            "门",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "购物",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#a763f6",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-商场门-shopping_mall",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055218675714"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "shopping_mall",
+      "filter": [
+        "any",
+        [
+          "in",
+          "门",
+          [
+            "get",
+            "NAME"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "门",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-教育-educate",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055138983937"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "educate",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "in",
+            "门",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "高等教育",
+          "大学",
+          "幼儿园/托儿所",
+          "学_幼儿园",
+          "中小学"
+        ],
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#32bded",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-教育门-educate",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055138983937"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "educate",
+      "filter": [
+        "any",
+        [
+          "in",
+          "门",
+          [
+            "get",
+            "NAME"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "门",
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#5687fc",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-公共区域-public_area",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055080263682"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "public_area",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "in",
+            "门",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            "入口",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "博物馆",
+          "博物馆",
+          "档案馆",
+          "中央机构",
+          "公墓",
+          "文化古迹",
+          "公共厕所",
+          "厕所",
+          "公园",
+          "公园",
+          "海水浴场",
+          "游泳馆",
+          "纪念碑",
+          "文化古迹",
+          "纪念馆",
+          "文化古迹",
+          "纪念像",
+          "文化古迹",
+          "教堂",
+          "中央机构",
+          "科技馆",
+          "科技馆",
+          "垃圾场",
+          "体育",
+          "历史文化遗址",
+          "文化古迹",
+          "烈士陵园",
+          "文化古迹",
+          "露天体育场",
+          "体育",
+          "森林公园",
+          "景区",
+          "清真寺",
+          "中央机构",
+          "寺庙道观",
+          "文化古迹",
+          "植物园",
+          "植物园",
+          "自然保护区",
+          "景区",
+          "展览馆",
+          "其它",
+          "艺术馆",
+          "其它",
+          "塔",
+          "文化古迹",
+          "亭",
+          "景区",
+          "休闲广场",
+          "休闲广场",
+          "水族馆/海洋馆",
+          "体育",
+          "体育场馆",
+          "体育",
+          "体育馆",
+          "体育",
+          "动物园",
+          "景区",
+          "会议中心",
+          "其它",
+          "其它"
+        ],
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "博物馆",
+          "#e07e61",
+          "档案馆",
+          "#f56667",
+          "公墓",
+          "#e27f61",
+          "公共厕所",
+          "#2c9ff6",
+          "公园",
+          "#20be7d",
+          "海水浴场",
+          "#32bded",
+          "纪念碑",
+          "#e27f61",
+          "纪念馆",
+          "#e27f61",
+          "纪念像",
+          "#e27f61",
+          "教堂",
+          "#f56667",
+          "科技馆",
+          "#27bbec",
+          "历史文化遗址",
+          "#e27f61",
+          "烈士陵园",
+          "#e27f61",
+          "露天体育场",
+          "#32bded",
+          "森林公园",
+          "#20be7d",
+          "清真寺",
+          "#f56667",
+          "寺庙道观",
+          "#e27f61",
+          "植物园",
+          "#20be7d",
+          "自然保护区",
+          "#20be7d",
+          "展览馆",
+          "#2c9ff7",
+          "艺术馆",
+          "#2c9ff7",
+          "塔",
+          "#e27f61",
+          "亭",
+          "#20be7d",
+          "休闲广场",
+          "#a763f6",
+          "水族馆/海洋馆",
+          "#32bded",
+          "体育场馆",
+          "#32bded",
+          "体育馆",
+          "#32bded",
+          "动物园",
+          "#20be7d",
+          "会议中心",
+          "#2c9ff7",
+          "#2c9ff7"
+        ],
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-公共区域门-public_area",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055080263682"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "public_area",
+      "filter": [
+        "all",
+        [
+          "in",
+          "门",
+          [
+            "get",
+            "NAME"
+          ]
+        ],
+        [
+          "in",
+          "入口",
+          [
+            "get",
+            "NAME"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "门",
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#5687fc",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-其他公路-other_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053163466753"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "other_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-县道-county_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053238964226"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "county_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-村道-village_road-copy",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071052924391426"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "village_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-乡村路-rural_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053272518657"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "rural_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-乡道-township_road-copy",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053306073090"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "township_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-机耕路-plowing_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053062803457"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "plowing_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-小路-path-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053373181953"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "path",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-次干道-secondary_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071052861476866"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "secondary_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      },
+      "minzoom": 13
+    },
+    {
+      "id": "road-主干道-main_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053515788289"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "main_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      },
+      "minzoom": 13
+    },
+    {
+      "id": "road-匝道-ramp-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053406736386"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "ramp",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-高架-elevated-copy",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071052962140161"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "elevated",
+      "minzoom": 7,
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-快速路-freeway-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053092163585"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "freeway",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      },
+      "minzoom": 13
+    },
+    {
+      "id": "road-省道-provincial_road-name",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053201215490"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "provincial_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-国道-state_road-copy",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071053033443330"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "state_road",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "road-高速公路-highway-name-copy",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071052995694593"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "highway",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "exponential",
+            0
+          ],
+          [
+            "zoom"
+          ],
+          10,
+          0,
+          12,
+          12
+        ],
+        "symbol-placement": "line"
+      },
+      "paint": {
+        "text-color": "rgba(143, 89, 50, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      },
+      "minzoom": 13
+    },
+    {
+      "id": "POI-个体商业-individual_business",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055046709250"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "individual_business",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "in",
+            "门",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ],
+        [
+          "!",
+          [
+            "in",
+            "入口",
+            [
+              "get",
+              "NAME"
+            ]
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "保洁/家政/搬家",
+          "家政",
+          "保险",
+          "金融",
+          "便利店",
+          "超市",
+          "饼屋糕点",
+          "蛋糕",
+          "装潢/设计/广告",
+          "打印店",
+          "珠宝首饰",
+          "购物",
+          "钟表",
+          "购物",
+          "中介机构",
+          "生活服务",
+          "中餐馆",
+          "中餐",
+          "园艺/花卉",
+          "购物",
+          "邮政",
+          "邮政",
+          "眼镜店",
+          "购物",
+          "烟酒日杂/茶",
+          "购物",
+          "音像店/音像器材",
+          "购物",
+          "服装鞋帽",
+          "服饰鞋帽",
+          "服装鞋帽店",
+          "服饰鞋帽",
+          "副食品店",
+          "购物",
+          "西餐馆",
+          "美食",
+          "茶社",
+          "美食",
+          "电脑数码",
+          "家电数码",
+          "电影院",
+          "电影院",
+          "婚纱/摄影/冲印",
+          "照相馆",
+          "健身中心",
+          "体育",
+          "连锁酒店",
+          "酒店",
+          "文体/办公用品",
+          "购物",
+          "快餐店",
+          "中餐",
+          "会所",
+          "休闲娱乐",
+          "家具建材",
+          "购物",
+          "家具建材店",
+          "购物",
+          "酒吧",
+          "酒吧",
+          "咖啡馆",
+          "咖啡厅",
+          "加油站/加气站",
+          "加油站",
+          "旅行社",
+          "写字楼",
+          "美容美发",
+          "丽人",
+          "超市",
+          "超市",
+          "其它市场",
+          "购物",
+          "家用电器",
+          "家电数码",
+          "汽车 4S 店",
+          "汽车",
+          "汽车4S店",
+          "汽车",
+          "汽车检测",
+          "汽车维修",
+          "汽车维修/配件/清洗",
+          "汽车维修",
+          "汽车销售",
+          "汽车",
+          "汽车租赁",
+          "汽车",
+          "桑拿洗浴/足疗按摩",
+          "洗浴按摩",
+          "物业公司",
+          "生活服务",
+          "剧场戏院音乐厅",
+          "大剧院",
+          "娱乐城歌舞厅",
+          "ktv",
+          "证券",
+          "金融",
+          "其它休闲场所",
+          "休闲娱乐",
+          "信用社",
+          "信用社",
+          "游艺厅",
+          "休闲娱乐",
+          "其它汽车服务",
+          "汽车",
+          "其它金融机构",
+          "金融",
+          "通信",
+          "购物",
+          "通信器材",
+          "购物",
+          "书店",
+          "图书馆",
+          "网吧",
+          "休闲娱乐",
+          "一般宾馆酒店",
+          "酒店",
+          "新闻出版",
+          "广播电视",
+          "非星级度假村",
+          "度假村",
+          "高尔夫球场",
+          "体育",
+          "事务所",
+          "生活服务",
+          "购物"
+        ],
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "保洁/家政/搬家",
+          "#2c9ff7",
+          "保险",
+          "#7e96cd",
+          "便利店",
+          "#a560f7",
+          "饼屋糕点",
+          "#f58828",
+          "装潢/设计/广告",
+          "#2da0f7",
+          "珠宝首饰",
+          "#a763f6",
+          "钟表",
+          "#a763f6",
+          "中介机构",
+          "#2c9ff7",
+          "中餐馆",
+          "#f58a2a",
+          "园艺/花卉",
+          "#a763f6",
+          "邮政",
+          "#00865a",
+          "眼镜店",
+          "#a763f6",
+          "烟酒日杂/茶",
+          "#a763f6",
+          "音像店/音像器材",
+          "#a763f6",
+          "服装鞋帽",
+          "#9168ff",
+          "服装鞋帽店",
+          "#9168ff",
+          "副食品店",
+          "#a763f6",
+          "西餐馆",
+          "#f58a2a",
+          "茶社",
+          "#f58a2a",
+          "电脑数码",
+          "#a663f7",
+          "电影院",
+          "#a460f7",
+          "婚纱/摄影/冲印",
+          "#2c9ff7",
+          "健身中心",
+          "#32bded",
+          "连锁酒店",
+          "#a663f7",
+          "文体/办公用品",
+          "#a763f6",
+          "快餐店",
+          "#f58a2a",
+          "会所",
+          "#a763f6",
+          "家具建材",
+          "#a763f6",
+          "家具建材店",
+          "#a763f6",
+          "酒吧",
+          "#f88827",
+          "咖啡馆",
+          "#f58a2a",
+          "加油站/加气站",
+          "#5687fc",
+          "旅行社",
+          "#7e96cd",
+          "美容美发",
+          "#a663f7",
+          "超市",
+          "#a560f7",
+          "其它市场",
+          "#a763f6",
+          "家用电器",
+          "#a663f7",
+          "汽车 4S 店",
+          "#2c9ff7",
+          "汽车4S店",
+          "#2c9ff7",
+          "汽车检测",
+          "#2c9ff7",
+          "汽车维修/配件/清洗",
+          "#2c9ff7",
+          "汽车销售",
+          "#2c9ff7",
+          "汽车租赁",
+          "#2c9ff7",
+          "桑拿洗浴/足疗按摩",
+          "#a460f7",
+          "物业公司",
+          "#2c9ff7",
+          "剧场戏院音乐厅",
+          "#a763f6",
+          "娱乐城歌舞厅",
+          "#aa6ef7",
+          "证券",
+          "#7e96cd",
+          "其它休闲场所",
+          "#a763f6",
+          "信用社",
+          "#7e96cd",
+          "游艺厅",
+          "#a763f6",
+          "其它汽车服务",
+          "#2c9ff7",
+          "其它金融机构",
+          "#7e96cd",
+          "通信",
+          "#a763f6",
+          "通信器材",
+          "#a763f6",
+          "书店",
+          "#32bded",
+          "网吧",
+          "#a763f6",
+          "一般宾馆酒店",
+          "#a663f7",
+          "新闻出版",
+          "#27baeb",
+          "非星级度假村",
+          "#20be7d",
+          "高尔夫球场",
+          "#32bded",
+          "事务所",
+          "#2c9ff7",
+          "#a763f6"
+        ],
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-个体商业门-individual_business",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055046709250"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "individual_business",
+      "filter": [
+        "any",
+        [
+          "in",
+          "门",
+          [
+            "get",
+            "NAME"
+          ]
+        ],
+        [
+          "in",
+          "入口",
+          [
+            "get",
+            "NAME"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "门",
+        "icon-size": 1,
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-水电气-water_electricity_and_gas",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055289978881"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "water_electricity_and_gas",
+      "layout": {
+        "visibility": "visible",
+        "icon-image": "污水连接点"
+      }
+    },
+    {
+      "id": "POI-机关单位-government_agencies",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055113818114"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "government_agencies",
+      "layout": {
+        "text-field": [
+          "get",
+          "NAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": [
+          "match",
+          [
+            "get",
+            "CODENAME"
+          ],
+          "法院",
+          "检察院",
+          "公安局 /派出所",
+          "警察局",
+          "公安局/派出所",
+          "警察局",
+          "公证局/公证处",
+          "中央机构",
+          "检察院",
+          "检察院",
+          "交警队",
+          "公安交管",
+          "交通服务机构",
+          "公安交管",
+          "海关",
+          "中央机构",
+          "驻××办事机构",
+          "中央机构",
+          "驻地办事机构",
+          "中央机构",
+          "政府机关",
+          "中央机构",
+          "政府机关通用",
+          "中央机构",
+          "司法局/司法处",
+          "中央机构",
+          "司法局司法处",
+          "中央机构",
+          "省级机关",
+          "中央机构",
+          "市级机关",
+          "中央机构",
+          "市政环卫",
+          "中央机构",
+          "中央机构"
+        ],
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "#f96565",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "POI-服务区-service_area",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071055323533314"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "service_area",
+      "layout": {
+        "visibility": "visible",
+        "icon-image": "服务区"
+      }
+    },
+    {
+      "id": "ap-行政村-administrative_village",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054564364289"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "administrative_village",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "中央机构",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "ap-乡级政府-township_government",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054530809858"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "township_government",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "中央机构",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "ap-自然村-natural_village",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054614695938"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "natural_village",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-size": 16
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "ap-县级政府-county_government",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054493061122"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "county_government",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "text-size": 16
+      },
+      "paint": {
+        "text-color": "#727886",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "ap-村委会-village_committee",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1809071054350454785"
+      },
+      "source": "杭州矢量底图",
+      "source-layer": "village_committee",
+      "layout": {
+        "text-field": [
+          "get",
+          "FNAME"
+        ],
+        "text-anchor": "left",
+        "text-justify": "auto",
+        "text-keep-upright": false,
+        "icon-text-fit": "none",
+        "text-offset": [
+          1,
+          -0.1
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          14,
+          10.5,
+          20,
+          12
+        ],
+        "icon-image": "中央机构",
+        "icon-padding": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          20,
+          17,
+          5,
+          18,
+          2
+        ]
+      },
+      "paint": {
+        "text-color": "rgba(153, 153, 153, 1)",
+        "text-halo-color": "#fff",
+        "text-halo-width": 1
+      }
+    },
+    {
+      "id": "不依比例尺的用电室",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500790882930689"
+      },
+      "source": "管线附属3",
+      "source-layer": "yds_byblc",
+      "layout": {
+        "icon-image": "不依比例的用电室",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "不明用途的检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500790824210433"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_bmyt",
+      "layout": {
+        "icon-image": "不明用途的检修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "不依比例尺的电线塔/铁塔",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500790937456642"
+      },
+      "source": "管线附属3",
+      "source-layer": "dxt_tt_byblc",
+      "layout": {
+        "icon-image": "不依比例尺的电线塔和铁塔",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "电杆",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500790983593985"
+      },
+      "source": "管线附属3",
+      "source-layer": "dg",
+      "layout": {
+        "icon-image": "电杆",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "电缆标",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791042314242"
+      },
+      "source": "管线附属3",
+      "source-layer": "dlb",
+      "layout": {
+        "icon-image": "电缆标",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "电力检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791096840193"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_dl",
+      "layout": {
+        "icon-image": "电力检修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "电线入地口",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791159754754"
+      },
+      "source": "管线附属3",
+      "source-layer": "rdk_dx",
+      "layout": {
+        "icon-image": "电线入地口",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "电信入口",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791210086402"
+      },
+      "source": "管线附属3",
+      "source-layer": "rk_dx",
+      "layout": {
+        "icon-image": "电信入口",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "电信手口",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791252029441"
+      },
+      "source": "管线附属3",
+      "source-layer": "sk_dx",
+      "layout": {
+        "icon-image": "电信手口",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "工业/石油管线检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791323332610"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_gy_sygx",
+      "layout": {
+        "icon-image": "工业和石油管线检修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ],
+        "text-max-width": 100
+      }
+    },
+    {
+      "id": "架空管道的墩架",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791377858561"
+      },
+      "source": "管线附属3",
+      "source-layer": "dj_jkgd",
+      "layout": {
+        "icon-image": "架空管道的墩架",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "水龙头",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791646294018"
+      },
+      "source": "管线附属3",
+      "source-layer": "slt",
+      "layout": {
+        "icon-image": "水龙头",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "燃气天然气检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791444967425"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_rq_trq",
+      "layout": {
+        "icon-image": "燃气天然气检修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "上水检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791587573761"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_ss",
+      "layout": {
+        "icon-image": "上水检修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "热水检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791499493378"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_rs",
+      "layout": {
+        "icon-image": "热水检查修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "通信线电缆标",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791709208577"
+      },
+      "source": "管线附属3",
+      "source-layer": "dlb_txx",
+      "layout": {
+        "icon-image": "通信线电缆标",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "通信线入地口",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791763734529"
+      },
+      "source": "管线附属3",
+      "source-layer": "rdk_txx",
+      "layout": {
+        "icon-image": "通信线入地口",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "污水箅子",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791826649089"
+      },
+      "source": "管线附属3",
+      "source-layer": "wsbz",
+      "layout": {
+        "icon-image": "污水箅子",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "污水箅子2",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791881175042"
+      },
+      "source": "管线附属3",
+      "source-layer": "wsbz2",
+      "layout": {
+        "icon-image": "污水箅子2",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "下水(污水)/雨水检修井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791931506690"
+      },
+      "source": "管线附属3",
+      "source-layer": "jxj_xs_ws_ys",
+      "layout": {
+        "icon-image": "下水(污水)雨水检修井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ],
+        "text-max-width": 100
+      }
+    },
+    {
+      "id": "下水暗井",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500791990226946"
+      },
+      "source": "管线附属3",
+      "source-layer": "aj_xs",
+      "layout": {
+        "icon-image": "下水暗井",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ]
+      }
+    },
+    {
+      "id": "以比例尺的变电室符号",
+      "type": "symbol",
+      "metadata": {
+        "layerId": "1962500792053141505"
+      },
+      "source": "管线附属3",
+      "source-layer": "bdsfh_yblc",
+      "layout": {
+        "icon-image": "以比例尺的变电室符合",
+        "text-field": [
+          "get",
+          "SBLB"
+        ],
+        "text-size": 10,
+        "text-anchor": "right",
+        "text-offset": [
+          -1,
+          0
+        ],
+        "text-max-width": 100
+      }
+    }
+  ],
+  "id": "inc0pd0r7"
+}

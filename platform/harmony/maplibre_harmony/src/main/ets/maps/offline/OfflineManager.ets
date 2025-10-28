@@ -86,8 +86,7 @@ export class OfflineManager {
    * @param cachePath 数据库路径
    */
   constructor(cachePath: string) {
-    const nativeModule: ESObject = globalThis.requireNapi('maplibre_native') as ESObject;
-    this.nativeManager = new nativeModule.OfflineManager(cachePath) as ESObject;
+    this.nativeManager = new maplibre.OfflineManager(cachePath) as ESObject;
   }
   
   /**
@@ -116,16 +115,16 @@ export class OfflineManager {
   public createOfflineRegion(
     definition: OfflineRegionDefinition,
     metadata: ArrayBuffer,
-    callback: (result: OfflineRegion | string) => void
+    callback: CreateOfflineRegionCallback
   ): void {
     this.nativeManager.createOfflineRegion(
       definition,
       metadata,
       (result: ESObject | string) => {
         if (typeof result === 'string') {
-          callback(result);
+          callback.onError(result);
         } else {
-          callback(new OfflineRegion(result));
+          callback.onCreate(new OfflineRegion(result));
         }
       }
     );

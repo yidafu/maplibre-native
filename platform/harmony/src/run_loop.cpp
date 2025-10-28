@@ -113,11 +113,144 @@ RunLoop* RunLoop::Get() {
 
 RunLoop::Impl::Impl(RunLoop*, RunLoop::Type type_) 
     : type(type_) {
+    holder = new uv_async_t;
+}
+
+uv_handle_t* RunLoop::Impl::holderHandle() {
+    return reinterpret_cast<uv_handle_t*>(holder);
+}
+
+void RunLoop::Impl::closeHolder() {
+    uv_close(holderHandle(), [](uv_handle_t* h) {
+        delete reinterpret_cast<uv_async_t*>(h);
+    });
 }
 
 RunLoop::Impl::~Impl() {
     if (!watchPoll.empty()) {
         Logger::warn("RunLoop", "RunLoop destroyed with %zu active watches", watchPoll.size());
+    }
+    if (!runnables.empty()) {
+        Logger::warn("RunLoop", "RunLoop destroyed with %zu active runnables", runnables.size());
+    }
+}
+
+/**
+ * Add a Runnable to the scheduled tasks queue
+ * 
+ * Thread-safe: Can be called from any thread.
+ * Wakes up the event loop to process the new task.
+ */
+void RunLoop::Impl::addRunnable(Runnable* runnable) {
+    {
+        std::lock_guard<std::mutex> lock(runnablesMutex);
+        runnables.push_back(runnable);
+    }
+    
+    // Wake up the event loop to process the new runnable
+    wake();
+}
+
+/**
+ * Remove a Runnable from the scheduled tasks queue
+ * 
+ * Thread-safe: Can be called from any thread.
+ */
+void RunLoop::Impl::removeRunnable(Runnable* runnable) {
+    std::lock_guard<std::mutex> lock(runnablesMutex);
+    runnables.remove(runnable);
+}
+
+/**
+ * Process all Runnables whose due time has passed
+ * 
+ * This method is called from RunLoop::runOnce() on the RunLoop thread.
+ * It collects all ready-to-run tasks, then executes them outside the lock
+ * to avoid potential deadlocks.
+ * 
+ * Based on Android's implementation, we iterate through all runnables
+ * and execute those whose dueTime <= now.
+ * 
+ * Optimization: Tracks next due time and schedules wake() only if needed.
+ */
+void RunLoop::Impl::processRunnables() {
+    auto now = Clock::now();
+    std::list<Runnable*> readyToRun;
+    TimePoint nextDue = TimePoint::max();
+    bool hasRunnables = false;
+    
+    // Collect all runnables that are due
+    {
+        std::lock_guard<std::mutex> lock(runnablesMutex);
+        
+        hasRunnables = !runnables.empty();
+        if (hasRunnables) {
+            Logger::debug("RunLoop", "processRunnables: checking %zu runnables", runnables.size());
+        }
+        
+        // Similar to Android: O(N) but typically the list is small (1-2 items)
+        // We don't remove items - each Runnable manages its own lifecycle
+        for (auto* runnable : runnables) {
+            auto dueTime = runnable->dueTime();
+            
+            if (dueTime <= now) {
+                readyToRun.push_back(runnable);
+            } else {
+                // Track the earliest future due time
+                nextDue = std::min(nextDue, dueTime);
+            }
+        }
+        
+        if (!readyToRun.empty()) {
+            Logger::info("RunLoop", "processRunnables: %zu ready to run (out of %zu total)", 
+                        readyToRun.size(), runnables.size());
+        }
+    }
+    
+    // Execute runnables outside the lock to avoid potential deadlocks
+    for (auto* runnable : readyToRun) {
+        try {
+            runnable->runTask();
+        } catch (const std::exception& e) {
+            Logger::error("RunLoop", "Runnable threw exception: %s", e.what());
+        } catch (...) {
+            Logger::error("RunLoop", "Runnable threw unknown exception");
+        }
+    }
+    
+    // Optimization: If there are future runnables, log when next one is due
+    // The event loop will naturally check again on the next iteration
+    if (nextDue != TimePoint::max()) {
+        auto waitTime = std::chrono::duration_cast<std::chrono::milliseconds>(nextDue - now);
+        Logger::debug("RunLoop", "Next runnable due in %lld ms", waitTime.count());
+    }
+}
+
+/**
+ * Wake up the event loop
+ * 
+ * Thread-safe: Can be called from any thread.
+ * Uses dedicated uv_async (waker) to signal the event loop.
+ * 
+ * 🔧 关键修复：直接使用 uv_async_send，避免通过 AsyncTask Runnable
+ * 这打破了之前的循环依赖问题。
+ */
+void RunLoop::Impl::wake() {
+    // 记录调用线程
+    std::ostringstream threadId;
+    threadId << std::this_thread::get_id();
+    
+    Logger::info("RunLoop", "🚨 wake() called from thread=%s, waker=%p", 
+        threadId.str().c_str(), waker);
+    
+    if (waker) {
+        if (int err = uv_async_send(waker); err != 0) {
+            Logger::error("RunLoop", "uv_async_send failed: %s", uvErrorString(err));
+        } else {
+            Logger::info("RunLoop", "✅ uv_async_send succeeded");
+        }
+    } else {
+        Logger::error("RunLoop", "❌ wake() called but waker is null!");
     }
 }
 
@@ -168,7 +301,72 @@ RunLoop::RunLoop(Type type)
     }
 
     Scheduler::SetCurrent(this);
-    impl->async = std::make_unique<AsyncTask>(std::bind(&RunLoop::process, this));
+    
+    // 🔧 关键修复：创建 uv_async 用于 wake()，而不是 AsyncTask
+    // AsyncTask 作为 Runnable 会导致循环依赖：
+    //   wake() → async->send() → addRunnable() → wake() → 循环！
+    // 解决：使用独立的 uv_async_t 直接唤醒事件循环
+    impl->waker = new uv_async_t;
+    impl->waker->data = this;
+    if (int err = uv_async_init(impl->loop, impl->waker, [](uv_async_t* handle) {
+        auto* self = static_cast<RunLoop*>(handle->data);
+        
+        // 记录回调线程
+        std::ostringstream threadId;
+        threadId << std::this_thread::get_id();
+        
+        Logger::info("RunLoop", "🔔 Waker callback triggered in thread=%s, RunLoop=%p", 
+            threadId.str().c_str(), self);
+        
+        // 🔧 关键：必须在这里处理工作队列和 Runnables！
+        // uv_async callback 是唯一的执行点，不能依赖 runOnce()
+        
+        // Process work queue
+        std::shared_ptr<WorkTask> task;
+        std::unique_lock<std::mutex> lock(self->mutex);
+        
+        size_t highCount = self->highPriorityQueue.size();
+        size_t defaultCount = self->defaultQueue.size();
+        
+        // 总是记录队列大小（即使为0也记录，这很重要）
+        Logger::info("RunLoop", "📊 Work queue: high=%zu, default=%zu", highCount, defaultCount);
+        
+        int taskCount = 0;
+        while (true) {
+            if (!self->highPriorityQueue.empty()) {
+                task = std::move(self->highPriorityQueue.front());
+                self->highPriorityQueue.pop();
+                Logger::info("RunLoop", "📤 Dequeued HIGH priority task");
+            } else if (!self->defaultQueue.empty()) {
+                task = std::move(self->defaultQueue.front());
+                self->defaultQueue.pop();
+                Logger::info("RunLoop", "📤 Dequeued DEFAULT priority task");
+            } else {
+                Logger::info("RunLoop", "✅ All work queue tasks processed, count=%d", taskCount);
+                break;
+            }
+            lock.unlock();
+            taskCount++;
+            Logger::info("RunLoop", "⚙️ Executing WorkTask #%d...", taskCount);
+            (*task)();
+            Logger::info("RunLoop", "✅ WorkTask #%d completed", taskCount);
+            task.reset();
+            lock.lock();
+        }
+        lock.unlock();
+        
+        // Process scheduled Runnables after work queue
+        Logger::info("RunLoop", "📋 Processing Runnables");
+        self->impl->processRunnables();
+        Logger::info("RunLoop", "🔔 Waker callback completed");
+    }); err != 0) {
+        Logger::error("RunLoop", "Failed to initialize waker async: %s", uvErrorString(err));
+        delete impl->waker;
+        impl->waker = nullptr;
+        throw std::runtime_error("Failed to initialize waker async");
+    }
+    
+    uv_unref(reinterpret_cast<uv_handle_t*>(impl->waker));
 }
 
 /**
@@ -194,6 +392,14 @@ RunLoop::~RunLoop() {
     impl->watchPoll.clear();
 
     impl->closeHolder();
+    
+    // 关闭 waker async handle
+    if (impl->waker) {
+        uv_close(reinterpret_cast<uv_handle_t*>(impl->waker), [](uv_handle_t* h) {
+            delete reinterpret_cast<uv_async_t*>(h);
+        });
+        impl->waker = nullptr;
+    }
 
     if (impl->type == Type::Default) {
         return;
@@ -233,29 +439,89 @@ RunLoop::~RunLoop() {
 }
 
 /**
- * Get the raw loop handle
+ * Schedule overrides with logging
+ */
+void RunLoop::schedule(std::function<void()>&& fn) {
+    std::ostringstream threadId;
+    threadId << std::this_thread::get_id();
+    Logger::info("RunLoop", "🎯 schedule(fn) called from thread=%s, RunLoop=%p", 
+        threadId.str().c_str(), this);
+    invoke(std::move(fn));
+    Logger::info("RunLoop", "🎯 schedule(fn) - invoke() returned");
+}
+
+void RunLoop::schedule(const util::SimpleIdentity tag, std::function<void()>&& fn) {
+    (void)tag; // Unused parameter
+    Logger::info("RunLoop", "🎯 schedule(tag, fn) called, RunLoop=%p", this);
+    schedule(std::move(fn));
+}
+
+/**
+ * Push implementation with logging
+ */
+void RunLoop::pushImpl(Priority priority, std::shared_ptr<WorkTask> task) {
+    // 记录调用线程
+    std::ostringstream threadId;
+    threadId << std::this_thread::get_id();
+    
+    Logger::info("RunLoop", "📥 pushImpl() called from thread=%s, priority=%d, RunLoop=%p", 
+        threadId.str().c_str(), static_cast<int>(priority), this);
+    
+    pushImplInline(priority, std::move(task));
+    
+    // Log queue sizes after push
+    std::lock_guard<std::mutex> lock(mutex);
+    Logger::info("RunLoop", "📊 After pushImpl: high=%zu, default=%zu", 
+        highPriorityQueue.size(), defaultQueue.size());
+}
+
+void RunLoop::push(Priority priority, std::shared_ptr<WorkTask> task) {
+    pushImpl(priority, std::move(task));
+}
+
+/**
+ * Get the RunLoop::Impl pointer
  * Thread-safe: Can be called from any thread
+ * 
+ * Returns RunLoop::Impl* (not uv_loop_t*) for compatibility with Android platform.
+ * This allows AsyncTask and Timer to access addRunnable/removeRunnable methods.
  */
 LOOP_HANDLE RunLoop::getLoopHandle() {
-    return Get()->impl->loop;
+    return Get()->impl.get();
 }
 
 void RunLoop::wake() {
-    if (impl->async) {
-        impl->async->send();
-    }
+    // 使用新的 waker 机制（不使用废弃的 async）
+    impl->wake();
 }
 
 void RunLoop::run() {
     MBGL_VERIFY_THREAD(tid);
     
+    std::ostringstream threadId;
+    threadId << std::this_thread::get_id();
+    Logger::info("RunLoop", "🎬 RunLoop::run() called on thread=%s, RunLoop=%p", threadId.str().c_str(), this);
+    
     uv_ref(impl->holderHandle());
-    uv_run(impl->loop, UV_RUN_DEFAULT);
+    Logger::info("RunLoop", "Starting uv_run(UV_RUN_DEFAULT)...");
+    
+    int result = uv_run(impl->loop, UV_RUN_DEFAULT);
+    
+    Logger::info("RunLoop", "⚠️ uv_run() returned! result=%d, thread=%s", result, threadId.str().c_str());
+    Logger::info("RunLoop", "This means the event loop has stopped!");
 }
 
 void RunLoop::runOnce() {
     MBGL_VERIFY_THREAD(tid);
+    
+    // First, run the libuv event loop once
     uv_run(impl->loop, UV_RUN_NOWAIT);
+    
+    // Then process the work queue (high priority first, then default)
+    process();
+    
+    // Finally, process scheduled Runnables (AsyncTask, Timer, etc.)
+    impl->processRunnables();
 }
 
 void RunLoop::stop() {

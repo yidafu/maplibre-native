@@ -13,6 +13,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-command-line-argument")
     # 启用 RTTI 支持
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti")
+    # 禁用 symbol guards（MUSL 不支持 std::source_location）
+    add_definitions(-DMLN_SYMBOL_GUARDS=0)
 endif()
 
 link_directories(/opt/homebrew/opt)
@@ -45,31 +47,18 @@ set_target_properties(curl
 )
 
 
-add_library(maplibre_native_loop STATIC)
-target_sources(
-    maplibre_native_loop
-    PRIVATE
-        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/async_task.cpp
-        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/run_loop.cpp
-        ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/util/timer.cpp
-)
-
-target_include_directories(
-    maplibre_native_loop
-    PUBLIC
-        ${MBGL_SOURCE_DIR}/include
-        ${MBGL_SOURCE_DIR}/platform/default/include
-        ${MBGL_SOURCE_DIR}/src
-        ${MBGL_SOURCE_DIR}/vendor/maplibre-native-base/include
-    PRIVATE ${LIBUV_INCLUDE_DIRS}
-)
+# Note: maplibre_native_loop library removed
+# Timer, AsyncTask, and RunLoop are now provided by mbgl-core
+# via platform/harmony/harmony.cmake configuration
 
 add_library(maplibre_native
     SHARED
     # Core module - MapView implementation
     core/common.hpp
-    core/camera_change_tracker.cpp
-    core/camera_change_tracker.hpp
+    core/thread_safe_callback.hpp
+    core/thread_safe_callback.cpp
+    core/callback_manager.hpp
+    core/callback_manager.cpp
     core/native_map_view/native_map_view_harmony.hpp
     core/native_map_view/native_map_view_base.cpp
     core/native_map_view/native_map_view_camera.cpp
@@ -119,8 +108,6 @@ add_library(maplibre_native
     napi/bindings/style/style_napi_images.cpp
     
     # Network module
-    network/curl_event_loop.hpp
-    network/curl_event_loop.cpp
     network/http_file_source_harmony.cpp
     
     # VSync management

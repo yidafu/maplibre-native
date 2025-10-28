@@ -88,8 +88,20 @@ void CameraChangeTracker::notifyCameraMoveStarted(int reason) {
     for (const auto& tsfn : move_started_listeners_) {
         auto* data = new CameraMoveStartedData{reason};
         napi_status status = napi_call_threadsafe_function(tsfn, data, napi_tsfn_nonblocking);
+        
+        // ⚠️ 增强错误处理
         if (status != napi_ok) {
-            Logger::error("CameraChangeTracker", "Failed to call moveStarted threadsafe function, status=%d", status);
+            switch (status) {
+                case napi_queue_full:
+                    Logger::warn("CameraChangeTracker", "⚠️ moveStarted: Queue full, event dropped");
+                    break;
+                case napi_closing:
+                    Logger::debug("CameraChangeTracker", "moveStarted: ThreadSafe function closing");
+                    break;
+                default:
+                    Logger::error("CameraChangeTracker", "❌ moveStarted failed, status=%d", status);
+                    break;
+            }
             delete data;  // 调用失败时清理数据
         }
     }
@@ -107,8 +119,11 @@ void CameraChangeTracker::notifyCameraMove() {
     
     for (const auto& tsfn : move_listeners_) {
         napi_status status = napi_call_threadsafe_function(tsfn, nullptr, napi_tsfn_nonblocking);
-        if (status != napi_ok) {
-            Logger::error("CameraChangeTracker", "Failed to call move threadsafe function, status=%d", status);
+        
+        // ⚠️ 增强错误处理（使用简化日志，因为 move 事件频繁）
+        if (status != napi_ok && status != napi_queue_full) {
+            // 仅记录非队列满的错误（队列满在高频事件中可以接受）
+            Logger::error("CameraChangeTracker", "❌ move failed, status=%d", status);
         }
     }
 }
@@ -127,8 +142,20 @@ void CameraChangeTracker::notifyCameraIdle() {
     
     for (const auto& tsfn : idle_listeners_) {
         napi_status status = napi_call_threadsafe_function(tsfn, nullptr, napi_tsfn_nonblocking);
+        
+        // ⚠️ 增强错误处理
         if (status != napi_ok) {
-            Logger::error("CameraChangeTracker", "Failed to call idle threadsafe function, status=%d", status);
+            switch (status) {
+                case napi_queue_full:
+                    Logger::warn("CameraChangeTracker", "⚠️ idle: Queue full, event dropped");
+                    break;
+                case napi_closing:
+                    Logger::debug("CameraChangeTracker", "idle: ThreadSafe function closing");
+                    break;
+                default:
+                    Logger::error("CameraChangeTracker", "❌ idle failed, status=%d", status);
+                    break;
+            }
         }
     }
 }
@@ -145,8 +172,20 @@ void CameraChangeTracker::notifyCameraMoveCanceled() {
     
     for (const auto& tsfn : canceled_listeners_) {
         napi_status status = napi_call_threadsafe_function(tsfn, nullptr, napi_tsfn_nonblocking);
+        
+        // ⚠️ 增强错误处理
         if (status != napi_ok) {
-            Logger::error("CameraChangeTracker", "Failed to call canceled threadsafe function, status=%d", status);
+            switch (status) {
+                case napi_queue_full:
+                    Logger::warn("CameraChangeTracker", "⚠️ canceled: Queue full, event dropped");
+                    break;
+                case napi_closing:
+                    Logger::debug("CameraChangeTracker", "canceled: ThreadSafe function closing");
+                    break;
+                default:
+                    Logger::error("CameraChangeTracker", "❌ canceled failed, status=%d", status);
+                    break;
+            }
         }
     }
 }

@@ -88,6 +88,31 @@ public:
      */
     napi_env Env() const { return env_; }
     
+    /**
+     * 返回 undefined（便利方法）
+     */
+    napi_value Undefined() const;
+    
+    /**
+     * 返回 null（便利方法）
+     */
+    napi_value Null() const;
+    
+    /**
+     * 获取 this 对象
+     */
+    napi_value This() const;
+    
+    /**
+     * 获取参数（GetValue 的别名）
+     */
+    napi_value Get(size_t index) { return GetValue(index); }
+    
+    /**
+     * 检查参数是否为 null 或 undefined
+     */
+    bool IsNullOrUndefined(size_t index);
+    
     // ========== 基础类型参数获取 ==========
     
     /**
@@ -224,6 +249,7 @@ public:
 
 private:
     napi_env env_;
+    napi_value thisObj_;  // 保存 this 对象
     size_t argc_;
     std::vector<napi_value> args_;
     bool hasError_;
