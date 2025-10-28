@@ -1,6 +1,10 @@
 #include "callback_manager.hpp"
 #include "../utils/logger.h"
+#include "../utils/anr_detector.hpp"
 #include <algorithm>
+#include <thread>
+#include <atomic>
+#include <condition_variable>
 
 using mbgl::harmony::Logger;
 
@@ -241,6 +245,9 @@ size_t CallbackManager::GetCallbackCount(const std::string& name) const {
 }
 
 void CallbackManager::Clear() {
+    // 🔍 ANR监控：记录清理耗时
+    ANRDetector detector("CallbackManager::Clear", 50, 500);
+    
     if (cleared_) {
         return;
     }
@@ -255,19 +262,32 @@ void CallbackManager::Clear() {
     Logger::info("CallbackManager", "Clearing %zu callback names with %zu total listeners", 
                  callbacks_.size(), totalCallbacks);
     
-    // 释放所有回调
+    // ⚡ ANR FIX: 简化实现，直接释放所有回调
+    // 原因：ThreadSafeCallback::Release() 内部已有保护机制
+    // 解决方案：通过 ANRDetector 监控整体耗时，如果单个回调耗时过长会被记录
+    //
+    // 注意：由于 HarmonyOS 标准库限制，无法使用 std::async 实现细粒度超时控制
+    // 如果整体清理超过500ms，ANRDetector 会发出错误警告
+    
+    size_t releasedCount = 0;
     for (auto& pair : callbacks_) {
         Logger::debug("CallbackManager", "Releasing callbacks for: %s (%zu listeners)", 
                       pair.first.c_str(), pair.second.size());
+        
         for (auto& callback : pair.second) {
-            callback->Release();
+            // 为每个回调添加细粒度的超时监控
+            {
+                ANRDetector releaseDetector("callback->Release", 50, 200);
+                callback->Release();
+            }
+            releasedCount++;
         }
     }
     
     callbacks_.clear();
     cleared_ = true;
     
-    Logger::info("CallbackManager", "All callbacks cleared");
+    Logger::info("CallbackManager", "All %zu callbacks cleared", releasedCount);
 }
 
 bool CallbackManager::AreCallbacksEqual(napi_value callback1, napi_value callback2) const {

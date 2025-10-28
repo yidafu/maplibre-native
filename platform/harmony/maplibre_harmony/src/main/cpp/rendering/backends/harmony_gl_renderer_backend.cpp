@@ -10,6 +10,7 @@
 #include <native_window/external_window.h>
 #include <window_manager/oh_display_manager.h>
 #include "utils/logger.h"
+#include "utils/anr_detector.hpp"
 #include <cassert>
 #include <thread>
 #include <chrono>
@@ -313,6 +314,9 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
 }
 
 void HarmonyGLRendererBackend::cleanupEGL() {
+    // 🔍 ANR监控：记录EGL清理耗时
+    harmony::ANRDetector detector("cleanupEGL", 100, 500);
+    
     // 🛡️ CRITICAL FIX: 标记渲染已停止，防止并发访问
     isStopped_ = true;
     
@@ -637,14 +641,20 @@ void HarmonyGLRendererBackend::activate() {
     
     // 🔒 线程安全检查
     assertOnCorrectThread();
-    // 🛡️ 安全检查：如果渲染已停止，抛出异常
+    
+    // 🛡️ 安全检查：如果渲染已停止，优雅降级（不抛出异常）
+    // 原因：析构时 BackendScope 可能调用 activate()
+    // 如果抛出异常会导致 std::terminate() → 崩溃
     if (isStopped_) {
-        throw std::runtime_error("activate() failed: rendering stopped");
+        Logger::debug("HarmonyGLRendererBackend", "activate() skipped: rendering stopped");
+        return;  // 直接返回，不激活
     }
     
     // 🛡️ 安全检查：验证Surface有效性
+    // 析构时 Surface 可能已无效，不应抛出异常
     if (!isSurfaceValid()) {
-        throw std::runtime_error("activate() failed: surface invalid");
+        Logger::warn("HarmonyGLRendererBackend", "activate() failed: surface invalid (may be in cleanup)");
+        return;  // 优雅降级，不抛出异常
     }
     
     // HarmonyOS渲染线程EGL Context管理
@@ -655,6 +665,11 @@ void HarmonyGLRendererBackend::activate() {
         Logger::info("HarmonyGLRendererBackend", "activate() - First call on render thread, creating context...");
         if (!initializeEGLContext()) {
             Logger::error("HarmonyGLRendererBackend", "Failed to initialize EGL context on render thread");
+            // 在析构时不要抛出异常
+            if (isStopped_) {
+                Logger::warn("HarmonyGLRendererBackend", "Skipping context init (cleanup in progress)");
+                return;
+            }
             throw std::runtime_error("Failed to initialize EGL context");
         }
         // initializeEGLContext()已经调用了eglMakeCurrent，所以context已经是current
@@ -680,7 +695,19 @@ void HarmonyGLRendererBackend::activate() {
             if (error == EGL_BAD_SURFACE || error == EGL_BAD_ACCESS || error == EGL_BAD_CURRENT_SURFACE) {
                 Logger::error("HarmonyGLRendererBackend", "Surface invalid - pausing rendering to prevent crash");
                 pauseRendering();
+                
+                // 析构时不抛出异常
+                if (isStopped_) {
+                    Logger::warn("HarmonyGLRendererBackend", "Skipping exception (cleanup in progress)");
+                    return;
+                }
                 throw std::runtime_error("activate() failed: surface error - " + std::string(eglErrorString(error)));
+            }
+            
+            // 析构时不抛出异常
+            if (isStopped_) {
+                Logger::warn("HarmonyGLRendererBackend", "eglMakeCurrent failed but skipping exception (cleanup in progress)");
+                return;
             }
             throw std::runtime_error("eglMakeCurrent failed: " + std::string(eglErrorString(error)));
         }
@@ -690,6 +717,12 @@ void HarmonyGLRendererBackend::activate() {
                            ", surface=" + std::to_string(reinterpret_cast<uintptr_t>(eglSurface_)) +
                            ", context=" + std::to_string(reinterpret_cast<uintptr_t>(eglContext_)) + ")";
         Logger::error("HarmonyGLRendererBackend", "%s", error.c_str());
+        
+        // 析构时不抛出异常
+        if (isStopped_) {
+            Logger::warn("HarmonyGLRendererBackend", "Skipping exception (cleanup in progress)");
+            return;
+        }
         throw std::runtime_error(error);
     }
 }

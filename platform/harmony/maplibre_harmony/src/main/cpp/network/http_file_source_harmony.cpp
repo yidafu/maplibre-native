@@ -25,12 +25,16 @@
 #include <optional>
 #include <mutex>
 #include <atomic>
+#include <thread>
+#include <condition_variable>
 
 // HarmonyOS独立CURL事件循环
 #include "curl_event_loop.hpp"
 #include "utils/logger.h"
+#include "utils/anr_detector.hpp"
 
 using mbgl::harmony::Logger;
+using mbgl::harmony::ANRDetector;
 
 namespace {
 // handleError(CURLMcode)已移除，现在由CURLEventLoop处理
@@ -206,13 +210,23 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 }
 
 HTTPFileSource::Impl::~Impl() {
-    // 停止CURL事件循环
+    // 🔍 ANR监控：记录HTTP清理耗时
+    ANRDetector detector("HTTPFileSource::Impl destructor", 100, 500);
+    
+    // ⚡ ANR FIX: 为 CURL 事件循环停止添加监控
+    // 原因：stop() 可能需要等待所有活跃请求完成，如果有大量请求可能耗时很长
+    // 解决方案：使用 ANRDetector 监控耗时（最多200ms阈值），超时会记录警告
+    //
+    // 注意：由于 HarmonyOS 标准库限制，无法使用 std::async 实现真正的超时中断
+    // 但通过 ANRDetector 可以及时发现并记录慢速操作
     if (curlEventLoop) {
+        ANRDetector stopDetector("curlEventLoop->stop", 50, 200);
         curlEventLoop->stop();
+        Logger::debug("Network", "CURL event loop stopped");
         curlEventLoop.reset();
     }
     
-    // 清理CURL句柄队列
+    // 清理CURL句柄队列（通常很快）
     while (!handles.empty()) {
         curl_easy_cleanup(handles.front());
         handles.pop();
@@ -379,8 +393,10 @@ HTTPRequest::~HTTPRequest() {
             Logger::warn("Network", "Error removing CURL handle from CURLEventLoop");
         }
         
-        // 等待CURL操作完全停止
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        // ⚡ ANR FIX: 移除 sleep，避免累积延迟导致ANR
+        // 原因：如果有多个HTTPRequest同时析构，10ms * N 可能导致主线程阻塞
+        // 解决方案：removeHandle() 内部已经处理了同步，不需要额外等待
+        // std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 已移除
     }
     
     // 返回句柄到池中

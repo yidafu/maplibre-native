@@ -27,6 +27,7 @@
 #include "napi/core/napi_utils.h"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
+#include "utils/anr_detector.hpp"
 
 // 几何类型转换
 #include "geometry/lat_lng_harmony.hpp"
@@ -54,6 +55,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
+using mbgl::harmony::ANRDetector;
 
 namespace mbgl {
 namespace harmony {
@@ -104,6 +106,9 @@ NativeMapView::~NativeMapView() {
 }
 
 void NativeMapView::cleanupAllResources() {
+    // 🔍 ANR监控：记录整个清理过程的耗时
+    ANRDetector detector("cleanupAllResources", 100, 1000);
+    
     // 防止重复清理
     if (resourcesCleaned_.exchange(true)) {
         Logger::warn("NativeMapView", "Resources already cleaned, skipping");
@@ -113,8 +118,9 @@ void NativeMapView::cleanupAllResources() {
     Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
     
     try {
-        // 0. 清理所有回调
+        // 0. 清理所有回调（带ANR监控）
         if (callbackManager_) {
+            ANRDetector callbackDetector("callbackManager->Clear", 50, 500);
             Logger::debug("NativeMapView", "Clearing all callbacks...");
             callbackManager_->Clear();
         }
@@ -133,30 +139,31 @@ void NativeMapView::cleanupAllResources() {
             }
         }
         
-        // 2. 停止所有渲染操作和网络请求
+        // 2. 停止所有渲染操作和网络请求（带ANR监控）
         if (harmonyRenderer) {
+            ANRDetector rendererDetector("harmonyRenderer->stopAllRequests", 50, 500);
             Logger::debug("NativeMapView", "Stopping HarmonyRenderer requests...");
             harmonyRenderer->stopAllRequests();
             Logger::debug("NativeMapView", "Pausing HarmonyRenderer...");
             harmonyRenderer->pause();
         }
         
-        // 3. 等待所有异步操作完成
-        Logger::debug("NativeMapView", "Waiting for async operations to complete...");
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // 进一步增加等待时间
+        // ⚡ ANR FIX: 移除所有长时间的 sleep，避免阻塞主线程
+        // 原因：在主线程上 sleep 1500ms 会导致 ANR（应用无响应）
+        // 解决方案：发送停止信号后立即继续，让后台线程自行清理
+        
+        // 3. 给异步操作一个极短的时间窗口来处理停止信号
+        Logger::debug("NativeMapView", "Allowing brief time for stop signals to propagate...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 从 1000ms 减少到 10ms
         
         // 4. 强制停止所有RunLoop
         Logger::debug("NativeMapView", "Force stopping all RunLoops...");
         try {
-            // 这里可以添加强制停止RunLoop的逻辑
-            Logger::debug("NativeMapView", "RunLoop cleanup initiated");
+            // RunLoop 的清理会在 HarmonyRenderer 析构时自动处理
+            Logger::debug("NativeMapView", "RunLoop cleanup will be handled by HarmonyRenderer destructor");
         } catch (const std::exception& e) {
             Logger::warn("NativeMapView", "Error during RunLoop cleanup: %s", e.what());
         }
-        
-        // 5. 再次等待确保RunLoop完全停止
-        Logger::debug("NativeMapView", "Final wait for RunLoop shutdown...");
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         
         // 6. 清理Map对象 (在RunLoop仍然有效时)
         if (map) {
