@@ -47,6 +47,10 @@ public:
     void resumeRendering();
     bool isRenderingStopped() const { return isStopped_; }
 
+public:
+    // 新增：公开方法，供外部在渲染线程调用
+    void cleanupEGLOnRenderThread();
+
 protected:
     void activate() override;
     void deactivate() override;

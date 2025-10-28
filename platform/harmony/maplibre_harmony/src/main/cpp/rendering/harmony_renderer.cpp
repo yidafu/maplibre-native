@@ -19,6 +19,9 @@
 #include <mbgl/storage/resource_options.hpp>
 #include <mbgl/storage/sqlite3.hpp>
 
+#include <thread>
+#include <chrono>
+
 using mbgl::harmony::Logger;
 
 namespace mbgl {
@@ -169,29 +172,29 @@ void HarmonyRenderer::resume() {
 void HarmonyRenderer::stopAllRequests() {
     
     try {
-        // 停止FileSourceManager的所有网络请求
-        if (auto fileSourceManager = mbgl::FileSourceManager::get()) {
-            Logger::debug("HarmonyRenderer", "Stopping FileSourceManager requests...");
-            
-            // 强制清理所有文件源
-            // 注意：这里需要更安全的清理方式
-            Logger::debug("HarmonyRenderer", "FileSourceManager cleanup initiated");
-        }
-        
-        // 停止渲染前端的请求
+        // 🛡️ 首先停止渲染前端，防止新的渲染请求
         if (rendererFrontend) {
-            Logger::debug("HarmonyRenderer", "Stopping renderer frontend requests...");
-            // 停止渲染前端的异步操作
+            Logger::debug("HarmonyRenderer", "Pausing renderer frontend...");
             rendererFrontend->pause();
         }
         
-        // 停止地图的网络请求
-        if (map) {
-            Logger::debug("HarmonyRenderer", "Stopping map network requests...");
-            map->cancelTransitions();
+        // 🛡️ 给网络线程一点时间完成正在进行的操作
+        // 这可以避免在清理时访问正在被销毁的对象
+        Logger::debug("HarmonyRenderer", "Waiting for async operations to complete...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        
+        // ⚠️ 注意：不要调用 map->cancelTransitions()
+        // 原因：它会触发内部清理，可能访问正在被其他线程销毁的资源
+        // Map对象会在自己的析构函数中安全地清理
+        Logger::debug("HarmonyRenderer", "Skipping map->cancelTransitions() to avoid race condition");
+        
+        // 🛡️ FileSourceManager会在自己的析构函数中清理
+        // 这里只记录日志，不强制清理
+        if (auto fileSourceManager = mbgl::FileSourceManager::get()) {
+            Logger::debug("HarmonyRenderer", "FileSourceManager will cleanup in its destructor");
         }
         
-        Logger::info("HarmonyRenderer", "All network requests stopped successfully");
+        Logger::info("HarmonyRenderer", "All request停止已启动，等待异步操作自然完成");
         
     } catch (const std::exception& e) {
         Logger::error("HarmonyRenderer", "Error stopping network requests: %s", e.what());
@@ -206,13 +209,42 @@ void HarmonyRenderer::cleanup() {
         return;
     }
     
-    // 首先停止所有网络请求
+    Logger::info("HarmonyRenderer", "========== Cleanup START ==========");
+    
+    // 🛡️ 第零步：立即设置后端的停止标志
+    // 这可以防止在析构期间activate()抛出异常
+    if (rendererBackend) {
+        auto* backend = getRendererBackend();
+        if (backend) {
+            Logger::debug("HarmonyRenderer", "Setting backend stopped flag...");
+            backend->pauseRendering();
+        }
+    }
+    
+    // 🛡️ 第一步：停止所有请求（非阻塞）
     stopAllRequests();
     
-    rendererFrontend.reset();
-    rendererBackend.reset();
-    map = nullptr;  // 清除引用（不持有所有权）
+    // 🛡️ 第二步：清理渲染前端（这会停止渲染线程）
+    if (rendererFrontend) {
+        Logger::debug("HarmonyRenderer", "Destroying renderer frontend...");
+        rendererFrontend.reset();
+        Logger::debug("HarmonyRenderer", "✅ Renderer frontend destroyed");
+    }
+    
+    // 🛡️ 第三步：清理渲染后端
+    if (rendererBackend) {
+        Logger::debug("HarmonyRenderer", "Destroying renderer backend...");
+        rendererBackend.reset();
+        Logger::debug("HarmonyRenderer", "✅ Renderer backend destroyed");
+    }
+    
+    // 🛡️ 第四步：清除Map引用（不持有所有权，由NativeMapView管理）
+    map = nullptr;
+    
+    // 🛡️ 标记为未初始化
     initialized = false;
+    
+    Logger::info("HarmonyRenderer", "========== Cleanup END ==========");
     Log::Info(Event::OpenGL, "HarmonyRenderer cleaned up successfully");
 }
 

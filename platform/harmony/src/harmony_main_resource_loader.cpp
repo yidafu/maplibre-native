@@ -10,6 +10,8 @@
 #include <mbgl/util/client_options.hpp>
 #include <mbgl/util/thread.hpp>
 #include <mbgl/util/logging.hpp>
+#include <mbgl/util/identity.hpp>
+#include <mbgl/util/run_loop.hpp>
 
 #include <mapbox/std/weak.hpp>
 
@@ -64,28 +66,73 @@ public:
         // 这避免了 Actor invoke 失败的问题
         auto callback = [targetScheduler, req](const Response& res) {
             mbgl::Log::Info(mbgl::Event::HttpRequest, 
-                           "[Harmony] MainResourceLoader callback received");
+                           "[Harmony] 📞 MainResourceLoaderThread callback invoked");
+            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                           "[Harmony]   req pointer: " + 
+                           std::to_string(reinterpret_cast<uintptr_t>(req)));
+            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                           "[Harmony]   Response data: " + 
+                           (res.data ? std::to_string(res.data->size()) + " bytes" : "none"));
+            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                           "[Harmony]   Response error: " + 
+                           (res.error ? res.error->message : "none"));
+            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                           "[Harmony]   Response notModified: " + 
+                           std::string(res.notModified ? "true" : "false"));
             
             // 通过目标 Scheduler（渲染线程）调度回调执行
             if (auto guard = targetScheduler.lock(); targetScheduler) {
                 mbgl::Log::Info(mbgl::Event::HttpRequest, 
-                               "[Harmony] Scheduling setResponse on target thread");
+                               "[Harmony] ✅ Target scheduler locked");
                 
-                // 直接在目标线程上调度 lambda 执行
-                targetScheduler->schedule([req, res]() {
+                // 🔧 关键修复：直接使用 RunLoop::invoke 而不是 Scheduler::schedule
+                // 原因：Scheduler::schedule(tag, fn) 没有正确执行 lambda
+                // RunLoop::invoke() 更可靠，专门用于跨线程任务调度
+                
+                auto* schedulerPtr = targetScheduler.get();
+                mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                               "[Harmony] Scheduler pointer: " + 
+                               std::to_string(reinterpret_cast<uintptr_t>(schedulerPtr)));
+                
+                // 🔧 关键修复：在 Harmony 平台，Scheduler 总是 RunLoop
+                // 直接使用 RunLoop::invoke() 而不是 Scheduler::schedule()
+                // 原因：schedule() 的 lambda 不会被执行（调度到错误的队列）
+                auto* runLoop = static_cast<util::RunLoop*>(schedulerPtr);
+                mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                               "[Harmony] ✅ Using RunLoop::invoke() for reliable execution");
+                
+                // 使用 RunLoop::invoke - 这会立即在目标线程上执行
+                runLoop->invoke([req, res]() {
+                    std::ostringstream threadId;
+                    threadId << std::this_thread::get_id();
                     mbgl::Log::Info(mbgl::Event::HttpRequest, 
-                                   "[Harmony] Calling FileSourceRequest::setResponse directly");
+                                   "[Harmony] ⚡ Lambda executing via RunLoop::invoke on thread: " + threadId.str());
+                    
+                    auto* scheduler = Scheduler::GetCurrent();
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony]   Current Scheduler: " + 
+                                   std::string(scheduler ? "exists" : "NULL"));
+                    
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony] 🎯 Calling FileSourceRequest::setResponse on req=" + 
+                                   std::to_string(reinterpret_cast<uintptr_t>(req)));
                     
                     // 直接调用 setResponse，此时已经在正确的线程上
                     static_cast<FileSourceRequest*>(req)->setResponse(res);
                     
                     mbgl::Log::Info(mbgl::Event::HttpRequest, 
-                                   "[Harmony] setResponse completed successfully");
+                                   "[Harmony] ✅ setResponse() call completed successfully");
                 });
+                
+                mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                               "[Harmony] ✅ RunLoop::invoke() call returned");
             } else {
                 mbgl::Log::Warning(mbgl::Event::HttpRequest, 
-                                  "[Harmony] Target scheduler is gone, cannot deliver response");
+                                  "[Harmony] ❌ Target scheduler is gone, cannot deliver response");
             }
+            
+            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                           "[Harmony] 📞 MainResourceLoaderThread callback completed");
         };
 
         auto requestFromNetwork = [=, this](const Resource& res,
@@ -129,12 +176,27 @@ public:
             } else {
                 // Cache request with fallback to network with cache control
                 tasks[req] = databaseFileSource->request(resource, [=, this](const Response& response) {
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony] 📦 Database callback invoked for: " + 
+                                   resource.url.substr(0, 80));
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony]   noContent: " + std::string(response.noContent ? "true" : "false"));
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony]   isUsable: " + std::string(response.isUsable() ? "true" : "false"));
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony]   data size: " + 
+                                   (response.data ? std::to_string(response.data->size()) : "null"));
+                    
                     Resource res = resource;
 
                     // Resource is in the cache
                     if (!response.noContent) {
                         if (response.isUsable()) {
+                            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                           "[Harmony] ✅ Cache is usable, calling callback with cached data");
                             callback(response);
+                            mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                           "[Harmony] ✅ callback(response) returned");
                             // Set the priority of existing resource to low if it's expired but usable.
                             res.setPriority(Resource::Priority::Low);
                         }
@@ -165,7 +227,11 @@ public:
                         res.priorEtag = response.etag;
                     }
 
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony] 🌐 Calling requestFromNetwork...");
                     tasks[req] = requestFromNetwork(res, std::move(tasks[req]));
+                    mbgl::Log::Info(mbgl::Event::HttpRequest, 
+                                   "[Harmony] 🌐 requestFromNetwork returned");
                 });
             }
         } else if (auto networkReq = requestFromNetwork(resource, nullptr)) {

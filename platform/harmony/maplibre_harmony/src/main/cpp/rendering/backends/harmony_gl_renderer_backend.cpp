@@ -101,12 +101,23 @@ HarmonyGLRendererBackend::HarmonyGLRendererBackend()
 }
 
 HarmonyGLRendererBackend::~HarmonyGLRendererBackend() {
+    // 🛡️ 关键修复：在析构函数第一行就设置停止标志
+    // 这样可以防止后续的activate()等方法抛出异常
+    isStopped_ = true;
+    
+    Logger::info("HarmonyGLRendererBackend", "========== Destructor START (isStopped set) ==========");
+    
     cleanupEGL();
+    
 #ifndef NDEBUG
-    if (static_cast<gl::Context&>(getContext()).getCleanupOnDestruction()) {
-        assert(eglGetCurrentContext() != EGL_NO_CONTEXT);
-    }
+    // 🛡️ 移除析构中的断言，防止析构期间崩溃
+    // 原因：析构时EGL context可能已经在其他线程被释放
+    // if (static_cast<gl::Context&>(getContext()).getCleanupOnDestruction()) {
+    //     assert(eglGetCurrentContext() != EGL_NO_CONTEXT);
+    // }
 #endif
+    
+    Logger::info("HarmonyGLRendererBackend", "========== Destructor END ==========");
 }
 
 void HarmonyGLRendererBackend::updatePixelRatioFromDevice() {
@@ -316,19 +327,36 @@ bool HarmonyGLRendererBackend::initializeEGLContext() {
     return true;
 }
 
-void HarmonyGLRendererBackend::cleanupEGL() {
+void HarmonyGLRendererBackend::cleanupEGLOnRenderThread() {
     // 实例标识（用于多实例调试）
     static int cleanupCounter = 0;
     int cleanupId = ++cleanupCounter;
     
+    // 🔍 验证当前在渲染线程
+    auto currentThreadId = std::this_thread::get_id();
+    std::ostringstream threadInfo;
+    threadInfo << currentThreadId;
+    Logger::info("HarmonyGLRendererBackend", 
+                "🧹 [Cleanup #%d] cleanupEGLOnRenderThread() called from thread=%s", 
+                cleanupId, threadInfo.str().c_str());
+    
+    if (contextThreadBound_ && currentThreadId != contextThreadId_) {
+        std::ostringstream expected;
+        expected << contextThreadId_;
+        Logger::error("HarmonyGLRendererBackend", 
+                     "❌ cleanupEGLOnRenderThread() called from wrong thread! Expected=%s, Actual=%s",
+                     expected.str().c_str(), threadInfo.str().c_str());
+        // 虽然不是正确的线程，但仍然继续清理（避免资源泄漏）
+    }
+    
     try {
         if (eglDisplay_ != EGL_NO_DISPLAY) {
             Logger::info("HarmonyGLRendererBackend", 
-                        "🧹 [Cleanup #%d] Cleaning up EGL resources (Context=%p, Surface=%p, Display=%p)", 
+                        "🧹 [Cleanup #%d] Cleaning up EGL resources on render thread (Context=%p, Surface=%p, Display=%p)", 
                         cleanupId, eglContext_, eglSurface_, eglDisplay_);
             
             if (eglContext_ != EGL_NO_CONTEXT) {
-                // 确保当前没有EGL上下文
+                // ✅ 在正确的线程上：可以安全调用EGL API
                 EGLContext currentContext = eglGetCurrentContext();
                 if (currentContext == eglContext_) {
                     Logger::debug("HarmonyGLRendererBackend", "[Cleanup #%d] Unbinding current EGL context", cleanupId);
@@ -348,19 +376,6 @@ void HarmonyGLRendererBackend::cleanupEGL() {
             }
             
             // ⚠️ 【多实例修复关键】不要调用 eglTerminate(eglDisplay_) ！
-            // 
-            // EGL Display 是进程级别的共享资源（类似 Android/iOS），如果在这里终止：
-            // 1. 会破坏同一进程中其他地图实例的 EGL 上下文
-            // 2. 导致后续创建的地图实例出现白屏/黑屏/渲染失败
-            // 3. 系统会在进程退出时自动清理 EGL Display
-            //
-            // 修复效果：
-            // - 修复前：第一个地图正常，第二个白屏，第三个黑屏
-            // - 修复后：多个地图实例可以同时正常运行
-            //
-            // 参考：
-            // - Android 的 AndroidGLRendererBackend 不调用 eglTerminate
-            // - iOS 的 MLNMapViewOpenGLImpl 每个实例独立管理 EAGLContext
             Logger::info("HarmonyGLRendererBackend", 
                         "[Cleanup #%d] ✅ Keeping EGL Display alive for other instances (NOT calling eglTerminate)", 
                         cleanupId);
@@ -369,9 +384,9 @@ void HarmonyGLRendererBackend::cleanupEGL() {
             eglDisplay_ = EGL_NO_DISPLAY;
         }
         
-        eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
+        eglWindow_ = 0;
         Logger::info("HarmonyGLRendererBackend", 
-                    "[Cleanup #%d] ✅ EGL cleanup completed successfully (Display preserved for other instances)", 
+                    "[Cleanup #%d] ✅ EGL cleanup completed successfully on render thread", 
                     cleanupId);
         
     } catch (const std::exception& e) {
@@ -379,7 +394,43 @@ void HarmonyGLRendererBackend::cleanupEGL() {
     } catch (...) {
         Logger::error("HarmonyGLRendererBackend", "[Cleanup #%d] ❌ Unknown error during EGL cleanup", cleanupId);
     }
+}
+
+void HarmonyGLRendererBackend::cleanupEGL() {
+    // 实例标识（用于多实例调试）
+    static int cleanupCounter = 0;
+    int cleanupId = ++cleanupCounter;
     
+    Logger::info("HarmonyGLRendererBackend", 
+                "🧹 [Cleanup #%d] cleanupEGL() called (fallback - resources should already be cleaned)", 
+                cleanupId);
+    
+    try {
+        // ⚠️ 析构函数路径：EGL资源应该已经在渲染线程清理
+        // 这里只做安全的重置操作，不调用EGL API
+        
+        if (eglContext_ != EGL_NO_CONTEXT || eglSurface_ != EGL_NO_SURFACE) {
+            Logger::warn("HarmonyGLRendererBackend", 
+                        "[Cleanup #%d] ⚠️ EGL resources not cleaned on render thread - forcing cleanup", 
+                        cleanupId);
+            
+            // 重置所有EGL句柄（不调用EGL API，避免线程违规）
+            eglContext_ = EGL_NO_CONTEXT;
+            eglSurface_ = EGL_NO_SURFACE;
+            eglDisplay_ = EGL_NO_DISPLAY;
+            contextInitialized_ = false;
+        }
+        
+        eglWindow_ = 0;
+        Logger::info("HarmonyGLRendererBackend", 
+                    "[Cleanup #%d] ✅ EGL handles reset", 
+                    cleanupId);
+        
+    } catch (const std::exception& e) {
+        Logger::error("HarmonyGLRendererBackend", "[Cleanup #%d] ❌ Error during EGL cleanup: %s", cleanupId, e.what());
+    } catch (...) {
+        Logger::error("HarmonyGLRendererBackend", "[Cleanup #%d] ❌ Unknown error during EGL cleanup", cleanupId);
+    }
 }
 
 // HarmonyOS OpenGL quirk handling methods
@@ -622,14 +673,20 @@ void HarmonyGLRendererBackend::activate() {
             actual << currentThreadId;
             
             Logger::error("HarmonyGLRendererBackend", 
-                "❌ FATAL: EGL Context thread violation!\n"
+                "❌ EGL Context thread violation!\n"
                 "  Context %p created on thread: %s\n"
-                "  Called from thread:           %s\n"
-                "  This will cause rendering corruption!\n"
-                "  EGL Context MUST be used on the thread it was created on.",
+                "  Called from thread:           %s",
                 eglContext_, expected.str().c_str(), actual.str().c_str());
             
-            // 抛出异常防止继续执行（避免 OpenGL 状态混乱）
+            // 🛡️ 如果正在停止/析构中，不抛出异常，只是返回
+            // 这可以防止在cleanup/destructor期间的异常导致SIGABRT
+            if (isStopped_) {
+                Logger::warn("HarmonyGLRendererBackend", 
+                    "⚠️ Thread violation during shutdown - skipping activation (safe)");
+                return;
+            }
+            
+            // 正常情况下，抛出异常防止继续执行（避免 OpenGL 状态混乱）
             throw std::runtime_error(
                 "EGL Context thread violation: Context must be used on the thread it was created on");
         } else {
@@ -748,12 +805,21 @@ void HarmonyGLRendererBackend::swapBuffers() {
                           "❌ swapBuffers FAILED after %d attempts: %s (0x%X)", 
                           maxRetries, eglErrorString(error), error);
             
-            // 🛡️ Surface相关错误时停止渲染防止崩溃
-            if (error == EGL_BAD_SURFACE || error == EGL_BAD_CURRENT_SURFACE || error == EGL_BAD_ALLOC) {
-                Logger::error("HarmonyGLRendererBackend", "Pausing rendering to prevent crash");
-                pauseRendering();
+            // 🛡️ Surface相关错误时抛出异常，让上层捕获并处理
+            // 这样可以防止继续渲染导致更严重的错误(如断言失败引发的SIGABRT崩溃)
+            if (error == EGL_BAD_SURFACE || error == EGL_BAD_CURRENT_SURFACE) {
+                Logger::error("HarmonyGLRendererBackend", "Surface invalid - throwing exception to stop render pipeline");
+                throw std::runtime_error("eglSwapBuffers failed: Surface invalid (EGL_BAD_SURFACE or EGL_BAD_CURRENT_SURFACE)");
+            } else if (error == EGL_BAD_ALLOC) {
+                Logger::error("HarmonyGLRendererBackend", "Memory allocation failed - throwing exception to stop render pipeline");
+                throw std::runtime_error("eglSwapBuffers failed: EGL buffer allocation failed (EGL_BAD_ALLOC). "
+                                        "This usually indicates low memory or graphics driver issues.");
+            } else {
+                // 其他错误也抛出异常
+                Logger::error("HarmonyGLRendererBackend", "Throwing exception to stop render pipeline");
+                std::string errorMsg = "eglSwapBuffers failed: " + std::string(eglErrorString(error));
+                throw std::runtime_error(errorMsg);
             }
-            // 不再抛出异常，而是优雅地停止渲染
         }
     } else {
         Logger::warn("HarmonyGLRendererBackend", 

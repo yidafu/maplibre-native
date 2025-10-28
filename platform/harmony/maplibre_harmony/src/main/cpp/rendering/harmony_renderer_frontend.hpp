@@ -31,7 +31,17 @@ public:
     void update(std::shared_ptr<UpdateParameters>) override;
     const TaggedScheduler& getThreadPool() const override;
 
-    void setMap(Map* map);
+    // 🔄 新增：在渲染线程中创建和管理 Map
+    void initializeMap(MapObserver& observer, 
+                       const MapOptions& mapOptions,
+                       const ResourceOptions& resourceOptions,
+                       const ClientOptions& clientOptions);
+    Map* getMap() { return map.get(); }
+    
+    // 🔄 新增：在渲染线程上执行 Map 操作（通过 RunLoop 调度）
+    void invokeOnRenderThread(std::function<void()>&& task);
+    
+    void setMap(Map* map);  // 保留兼容性（已废弃）
     void render(Map&);
     void setRenderingMode(MapObserver::RenderMode mode);
     void requestRender();
@@ -43,7 +53,10 @@ public:
     gfx::Backend& getRendererBackend();
 
 private:
-    Map* map = nullptr;
+    // 🔄 合并架构：Map 归渲染线程所有（与 iOS 理念一致）
+    std::unique_ptr<Map> map;  // Map 对象（渲染线程创建和管理）
+    Map* externalMap = nullptr;  // 外部 Map 指针（兼容旧代码，已废弃）
+    
     float pixelRatio = 1.0f;
     bool renderingPaused = false;
     MapObserver::RenderMode renderingMode = MapObserver::RenderMode::Full;

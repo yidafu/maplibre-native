@@ -1,5 +1,6 @@
 #include "harmony_renderer_frontend.hpp"
 #include "backends/harmony_renderer_backend.hpp"
+#include "backends/harmony_gl_renderer_backend.hpp"
 #include "vsync/harmony_vsync_manager.hpp"
 #include "utils/logger.h"
 
@@ -12,6 +13,8 @@
 #include <thread>
 #include <chrono>
 #include <sstream>
+#include <mutex>
+#include <condition_variable>
 
 using mbgl::harmony::Logger;
 
@@ -122,6 +125,85 @@ HarmonyRendererFrontend::~HarmonyRendererFrontend() {
         vsyncManager_->stop();
         vsyncManager_.reset();
         Logger::debug("HarmonyRendererFrontend", "VSync manager stopped and destroyed");
+    }
+    
+    // 🔧 关键修复：设置停止标志，防止在析构期间activate()抛出异常
+    // 这是第一优先级，必须在任何清理之前执行
+    if (rendererBackend) {
+        Logger::info("HarmonyRendererFrontend", "Setting backend stopped flag (prevent thread violations)...");
+        auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
+        if (harmonyBackend) {
+            try {
+                auto& backendImpl = dynamic_cast<HarmonyGLRendererBackend&>(harmonyBackend->getImpl());
+                backendImpl.pauseRendering();  // 设置 isStopped_ = true
+                Logger::info("HarmonyRendererFrontend", "✅ Backend stopped flag set");
+            } catch (...) {
+                Logger::error("HarmonyRendererFrontend", "Failed to set backend stopped flag");
+            }
+        }
+    }
+    
+    // 🔧 关键修复：在渲染线程清理资源（防止线程违规崩溃）
+    // Map 和 EGL Context 都必须在创建它们的线程（渲染线程）上销毁
+    if (runLoop) {
+        Logger::info("HarmonyRendererFrontend", "🧹 Scheduling cleanup on render thread...");
+        
+        std::atomic<bool> cleanupDone{false};
+        std::mutex cleanupMutex;
+        std::condition_variable cleanupCV;
+        
+        // 在渲染线程执行清理
+        // 🔧 使用 Priority::High 确保清理任务优先执行
+        runLoop->invoke(util::RunLoop::Priority::High, [this, &cleanupDone, &cleanupMutex, &cleanupCV]() {
+            try {
+                Logger::info("HarmonyRendererFrontend", "🧹 Executing cleanup on render thread...");
+                
+                // 🔄 新架构：首先销毁 Map（在渲染线程）
+                if (map) {
+                    Logger::info("HarmonyRendererFrontend", "Destroying Map on render thread...");
+                    map.reset();
+                    Logger::info("HarmonyRendererFrontend", "✅ Map destroyed on render thread");
+                }
+                
+                // 然后清理 EGL 资源
+                if (rendererBackend) {
+                    auto* harmonyBackend = static_cast<HarmonyRendererBackend*>(rendererBackend.get());
+                    if (harmonyBackend) {
+                        auto& backendImpl = dynamic_cast<HarmonyGLRendererBackend&>(harmonyBackend->getImpl());
+                        
+                        // 在渲染线程清理EGL资源
+                        Logger::debug("HarmonyRendererFrontend", "Cleaning up EGL context on render thread...");
+                        backendImpl.cleanupEGLOnRenderThread();
+                        Logger::info("HarmonyRendererFrontend", "✅ EGL cleanup completed on render thread");
+                    }
+                }
+            } catch (const std::exception& e) {
+                Logger::error("HarmonyRendererFrontend", "Error during cleanup: %s", e.what());
+            }
+            
+            // 通知清理完成
+            {
+                std::lock_guard<std::mutex> lock(cleanupMutex);
+                cleanupDone = true;
+            }
+            cleanupCV.notify_one();
+        });
+        
+        // 等待清理完成（带超时保护）
+        {
+            std::unique_lock<std::mutex> lock(cleanupMutex);
+            bool success = cleanupCV.wait_for(lock, std::chrono::seconds(2), [&cleanupDone]() {
+                return cleanupDone.load();
+            });
+            
+            if (success) {
+                Logger::info("HarmonyRendererFrontend", "✅ Cleanup confirmed");
+            } else {
+                Logger::warn("HarmonyRendererFrontend", "⚠️ Cleanup timeout after 2s - continuing shutdown anyway");
+            }
+        }
+    } else {
+        Logger::warn("HarmonyRendererFrontend", "Skipping cleanup - runLoop is null");
     }
     
     // Stop the RunLoop if it exists
@@ -400,9 +482,61 @@ const TaggedScheduler& HarmonyRendererFrontend::getThreadPool() const {
     return *scheduler;
 }
 
+// 🔄 新方法：在渲染线程中创建 Map
+void HarmonyRendererFrontend::initializeMap(MapObserver& observer,
+                                             const MapOptions& mapOptions,
+                                             const ResourceOptions& resourceOptions,
+                                             const ClientOptions& clientOptions) {
+    Logger::info("HarmonyRendererFrontend", "========== initializeMap() START ==========");
+    
+    // 确保在渲染线程调用
+    if (std::this_thread::get_id() != renderThreadId) {
+        Logger::error("HarmonyRendererFrontend", "❌ initializeMap() MUST be called from render thread!");
+        Logger::error("HarmonyRendererFrontend", "Current thread=%lu, Render thread=%lu",
+                     std::hash<std::thread::id>{}(std::this_thread::get_id()),
+                     std::hash<std::thread::id>{}(renderThreadId));
+        throw std::runtime_error("initializeMap() must be called from render thread");
+    }
+    
+    if (map) {
+        Logger::warn("HarmonyRendererFrontend", "Map already exists, destroying old one");
+        map.reset();
+    }
+    
+    try {
+        Logger::info("HarmonyRendererFrontend", "Creating Map in render thread...");
+        Logger::info("HarmonyRendererFrontend", "  - Observer: %p", &observer);
+        Logger::info("HarmonyRendererFrontend", "  - Current Scheduler: %p", mbgl::Scheduler::GetCurrent());
+        
+        // 在渲染线程中创建 Map（与 iOS 理念一致）
+        map = std::make_unique<Map>(*this, observer, mapOptions, resourceOptions, clientOptions);
+        
+        Logger::info("HarmonyRendererFrontend", "✅ Map created successfully: %p", map.get());
+        Logger::info("HarmonyRendererFrontend", "✅ Map and Renderer now on same thread (merged architecture)");
+        
+    } catch (const std::exception& e) {
+        Logger::error("HarmonyRendererFrontend", "Failed to create Map: %s", e.what());
+        throw;
+    }
+    
+    Logger::info("HarmonyRendererFrontend", "========== initializeMap() END ==========");
+}
+
+// 🔄 新方法：在渲染线程上执行任务
+void HarmonyRendererFrontend::invokeOnRenderThread(std::function<void()>&& task) {
+    if (!runLoop) {
+        Logger::error("HarmonyRendererFrontend", "Cannot invoke: RunLoop is null");
+        return;
+    }
+    
+    // 使用 RunLoop::invoke 将任务调度到渲染线程
+    runLoop->invoke(std::move(task));
+}
+
 void HarmonyRendererFrontend::setMap(Map* map_) {
+    Logger::warn("HarmonyRendererFrontend", "⚠️ setMap(Map*) is deprecated - use initializeMap() instead");
     Logger::debug("HarmonyRendererFrontend", "setMap() called: %p", map_);
-    map = map_;
+    externalMap = map_;  // 保存到 externalMap 而不是 map
 }
 
 void HarmonyRendererFrontend::render(Map& /* map */) {
@@ -448,13 +582,15 @@ void HarmonyRendererFrontend::requestRender() {
     
     // Note: Rendering is triggered through the update() mechanism
     // No need to explicitly trigger rendering here
-    if (!map) {
+    Map* activeMap = map ? map.get() : externalMap;
+    if (!activeMap) {
         Logger::warn("HarmonyRendererFrontend", "[Instance #%d] Cannot trigger render: map is null", instanceId);
     }
 }
 
 void HarmonyRendererFrontend::processRenderRequest() {
-    if (!needsRender || renderingPaused || !map) {
+    Map* activeMap = map ? map.get() : externalMap;
+    if (!needsRender || renderingPaused || !activeMap) {
         return;
     }
     needsRender = false;
@@ -472,7 +608,8 @@ void HarmonyRendererFrontend::resume() {
         renderingPaused = false;
         consecutiveErrors = 0;  // 重置错误计数
         Logger::info("HarmonyRendererFrontend", "Rendering resumed, error count reset");
-        if (map) {
+        Map* activeMap = map ? map.get() : externalMap;
+        if (activeMap) {
             requestRender();
         }
     }
