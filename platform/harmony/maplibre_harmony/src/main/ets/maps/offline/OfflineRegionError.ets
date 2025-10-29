@@ -5,7 +5,7 @@
  */
 
 // 重新导出 NAPI 接口
-export type { OfflineRegionError } from 'libmaplibre_native.so';
+export type { OfflineRegionError } from 'libmaplibre.so';
 
 // 重新导出错误原因枚举（如果有的话）
 export enum OfflineRegionErrorReason {

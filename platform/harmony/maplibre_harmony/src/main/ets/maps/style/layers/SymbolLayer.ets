@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { SymbolLayer } from 'libmaplibre_native.so';
+export { SymbolLayer } from 'libmaplibre.so';

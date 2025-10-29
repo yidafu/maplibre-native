@@ -5,5 +5,5 @@
  */
 
 // 重新导出 NAPI 类
-export { Style, StyleBuilder } from 'libmaplibre_native.so';
+export { Style, StyleBuilder } from 'libmaplibre.so';
 

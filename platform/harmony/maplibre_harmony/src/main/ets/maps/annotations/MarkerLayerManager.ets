@@ -11,7 +11,7 @@
  * - 支持 rotation, alpha, zIndex, anchor, draggable 等高级功能
  */
 
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { MapLibreMap } from '../MapLibreMap';
 import { LatLng } from '../geometry/LatLng';
 import { GeoJsonSource } from '../style/sources/GeoJsonSource';

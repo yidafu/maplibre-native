@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // 使用 NAPI Marker 类型
 type Marker = maplibre.Marker;

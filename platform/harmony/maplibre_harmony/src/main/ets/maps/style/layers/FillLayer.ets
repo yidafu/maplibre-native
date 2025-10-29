@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { FillLayer } from 'libmaplibre_native.so';
+export { FillLayer } from 'libmaplibre.so';

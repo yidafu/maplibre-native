@@ -2,7 +2,7 @@
  * TransitionOptions - 过渡选项
  * 使用 NAPI 模块中的类型定义
  */
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 export type TransitionOptions = maplibre.TransitionOptions;
 

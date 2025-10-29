@@ -5,7 +5,7 @@
  */
 
 // 重新导出 NAPI 类
-export { RasterDemSource } from 'libmaplibre_native.so';
+export { RasterDemSource } from 'libmaplibre.so';
 
 /**
  * DEM编码类型

@@ -5,7 +5,7 @@
  * 2. 提供辅助类型定义（用于测试页面和应用开发）
  */
 
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // ========== 导出 maplibre namespace ==========
 export { maplibre };

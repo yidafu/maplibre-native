@@ -5,7 +5,7 @@
  * 对应 Android 的 OfflineManager 和 iOS 的 MLNOfflineStorage
  */
 
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import common from '@ohos.app.ability.common';
 import { OfflineRegion } from './OfflineRegion';
 import { OfflineRegionDefinition } from './OfflineRegionDefinition';

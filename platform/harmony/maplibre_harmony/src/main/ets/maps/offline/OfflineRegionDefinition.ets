@@ -4,7 +4,7 @@
  * 从 NAPI 层重新导出类型
  */
 
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import type { LatLngBounds } from '../geometry/LatLngBounds';
 
 // 重新导出 NAPI 类型
@@ -12,7 +12,7 @@ export type {
   OfflineRegionDefinition,
   OfflineTilePyramidRegionDefinition,
   OfflineGeometryRegionDefinition
-} from 'libmaplibre_native.so';
+} from 'libmaplibre.so';
 
 /**
  * 创建瓦片金字塔区域定义的工厂函数

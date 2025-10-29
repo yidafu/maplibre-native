@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { OfflineRegion } from 'libmaplibre_native.so';
+export { OfflineRegion } from 'libmaplibre.so';

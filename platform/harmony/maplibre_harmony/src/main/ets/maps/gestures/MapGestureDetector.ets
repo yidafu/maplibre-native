@@ -20,7 +20,7 @@ import { UiSettings, FocalPoint } from '../UiSettings';
 import { VelocityTracker } from './VelocityTracker';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import display from '@ohos.display';
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // 类型定义
 type NativeMapViewType = maplibre.NativeMapView;

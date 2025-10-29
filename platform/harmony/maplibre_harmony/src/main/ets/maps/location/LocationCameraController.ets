@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { MapLibreMap } from '../MapLibreMap';
 import { LocationComponentOptions } from './LocationComponentOptions';
 import { CameraMode } from './modes/CameraMode';

@@ -4,7 +4,7 @@
  * 为 NAPI OfflineRegion 类提供辅助方法
  */
 
-import type maplibre from 'libmaplibre_native.so';
+import type maplibre from 'libmaplibre.so';
 import { DownloadState as OfflineRegionDownloadState } from './OfflineRegionStatus';
 
 /**

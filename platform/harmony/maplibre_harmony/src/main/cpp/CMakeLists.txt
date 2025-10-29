@@ -51,7 +51,7 @@ set_target_properties(curl
 # Timer, AsyncTask, and RunLoop are now provided by mbgl-core
 # via platform/harmony/harmony.cmake configuration
 
-add_library(maplibre_native
+add_library(maplibre
     SHARED
     # Core module - MapView implementation
     core/common.hpp
@@ -234,7 +234,7 @@ add_library(maplibre_native
 # Conditionally add rendering backend sources
 if(MLN_WITH_VULKAN)
     target_sources(
-        maplibre_native PRIVATE
+        maplibre PRIVATE
             rendering/backends/harmony_vulkan_renderer_backend.hpp
             rendering/backends/harmony_vulkan_renderer_backend.cpp
     )
@@ -243,7 +243,7 @@ endif()
 
 if(MLN_WITH_OPENGL)
     target_sources(
-        maplibre_native PRIVATE
+        maplibre PRIVATE
             rendering/backends/egl_display_manager.hpp
             rendering/backends/egl_display_manager.cpp
             rendering/backends/harmony_gl_renderer_backend.hpp
@@ -254,7 +254,7 @@ endif()
 
 
 target_include_directories(
-  maplibre_native
+  maplibre
   PUBLIC ${PROJECT_SOURCE_DIR}
           ../../../../../../src
           ../../../../../../include
@@ -266,7 +266,7 @@ target_include_directories(
           /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot/usr/include)
 
 
-target_link_libraries(maplibre_native
+target_link_libraries(maplibre
 PUBLIC
     curl
     mbgl-core

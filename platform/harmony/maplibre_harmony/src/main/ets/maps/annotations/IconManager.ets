@@ -1,6 +1,6 @@
 import { Icon } from './Icon';
 import { IconFactory } from './IconFactory';
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // 使用 NAPI Marker 和 NativeMapView 类型
 type Marker = maplibre.Marker;

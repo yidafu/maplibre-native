@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { MarkerOptions } from './MarkerOptions';
 import { MarkerDragState } from './MarkerDragState';
 import { LatLng } from '../geometry/LatLng';

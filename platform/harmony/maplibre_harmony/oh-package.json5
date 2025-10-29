@@ -27,7 +27,7 @@
     "obfuscation-rules.txt"
   ],
   "dependencies": {
-    "libmaplibre_native.so": "file:./src/main/cpp/types/libmaplibre_native",
+    "libmaplibre.so": "file:./src/main/cpp/types/libmaplibre",
     "@types/geojson": "^7946.0.16"
   },
   "devDependencies": {},

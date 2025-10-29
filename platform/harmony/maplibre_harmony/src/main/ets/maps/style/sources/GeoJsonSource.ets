@@ -5,7 +5,7 @@
  */
 
 // 重新导出 NAPI 类
-export { GeoJsonSource } from 'libmaplibre_native.so';
+export { GeoJsonSource } from 'libmaplibre.so';
 
 // 保留 GeoJSON数据类型定义供外部使用
 export type GeoJsonData = Object | string | null;

@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { CircleLayer } from 'libmaplibre_native.so';
+export { CircleLayer } from 'libmaplibre.so';

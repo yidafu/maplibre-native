@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { InfoWindow, InfoWindowPosition } from './InfoWindow';
 import { InfoWindowAdapter } from './InfoWindowAdapter';
 import { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListener';

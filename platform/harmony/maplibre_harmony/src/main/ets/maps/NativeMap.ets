@@ -1,5 +1,5 @@
 import { Feature, Polygon, Geometry } from './geojson';
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';

@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { ImageSource } from 'libmaplibre_native.so';
+export { ImageSource } from 'libmaplibre.so';

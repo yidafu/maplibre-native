@@ -2,7 +2,7 @@
  * Rect - 矩形
  * 使用 NAPI 模块中的 Rect 接口，添加工具函数
  */
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { Point } from './Point';
 import { Size } from '../types/NativeTypes';
 

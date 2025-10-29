@@ -14,7 +14,7 @@ export { IconFactory } from './IconFactory';
 export { IconManager } from './IconManager';
 
 // Marker 相关
-// Marker 现在由 NAPI 提供，从 libmaplibre_native.so 导入
+// Marker 现在由 NAPI 提供，从 libmaplibre.so 导入
 export { MarkerOptions } from './MarkerOptions';
 export { MarkerDragState } from './MarkerDragState';
 export { MarkerManager } from './MarkerManager';

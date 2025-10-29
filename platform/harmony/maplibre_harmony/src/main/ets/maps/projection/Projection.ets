@@ -4,7 +4,7 @@
  * 提供地图坐标和屏幕坐标之间的转换功能
  * 对应 Android 的 Projection 类和 iOS 的 MLNMapView coordinate conversion 方法
  */
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { LatLng, createLatLng } from '../geometry/LatLng';
 import { Point, createPoint } from '../geometry/Point';
 import { VisibleRegion } from './VisibleRegion';

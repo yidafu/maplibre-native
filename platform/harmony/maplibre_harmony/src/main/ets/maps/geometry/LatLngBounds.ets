@@ -1,5 +1,5 @@
 import { LatLng } from './LatLng';
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 /**
  * LatLngBounds - 经纬度边界类

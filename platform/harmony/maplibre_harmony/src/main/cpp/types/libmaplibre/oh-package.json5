@@ -1,5 +1,5 @@
 {
-  "name": "libmaplibre_native.so",
+  "name": "libmaplibre.so",
   "types": "./Index.d.ts",
   "version": "1.0.0",
   "description": "MapLibre Native NAPI module for HarmonyOS"

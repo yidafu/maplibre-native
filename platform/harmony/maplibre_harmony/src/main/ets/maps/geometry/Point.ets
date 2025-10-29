@@ -2,7 +2,7 @@
  * Point/PixelCoordinate - 像素坐标
  * 使用 NAPI 模块中的 PixelCoordinate 类型定义
  */
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // Point 是 PixelCoordinate 的别名，用于 ArkTS 代码
 export type Point = maplibre.PixelCoordinate;

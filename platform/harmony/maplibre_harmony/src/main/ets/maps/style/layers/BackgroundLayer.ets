@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { BackgroundLayer } from 'libmaplibre_native.so';
+export { BackgroundLayer } from 'libmaplibre.so';

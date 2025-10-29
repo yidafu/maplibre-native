@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { HillshadeLayer } from 'libmaplibre_native.so';
+export { HillshadeLayer } from 'libmaplibre.so';

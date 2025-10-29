@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { LineLayer } from 'libmaplibre_native.so';
+export { LineLayer } from 'libmaplibre.so';

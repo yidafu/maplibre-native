@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { HeatmapLayer } from 'libmaplibre_native.so';
+export { HeatmapLayer } from 'libmaplibre.so';

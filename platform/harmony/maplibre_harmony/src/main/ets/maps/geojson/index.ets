@@ -7,7 +7,7 @@
  * - 创建实例：需要导入 maplibre，如 `new maplibre.Point(120, 30)`
  */
 
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // 导出类型别名（用于类型注解）
 export type Point = maplibre.Point;

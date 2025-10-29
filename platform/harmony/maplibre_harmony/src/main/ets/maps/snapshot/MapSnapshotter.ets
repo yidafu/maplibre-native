@@ -5,7 +5,7 @@
  * 对应 Android 的 MapSnapshotter 和 iOS 的 MLNMapSnapshotter
  */
 
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import image from '@ohos.multimedia.image';
 import { SnapshotOptions } from './SnapshotOptions';
 import { MapSnapshot } from './MapSnapshot';

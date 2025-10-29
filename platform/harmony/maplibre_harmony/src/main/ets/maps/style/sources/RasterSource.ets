@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { RasterSource } from 'libmaplibre_native.so';
+export { RasterSource } from 'libmaplibre.so';

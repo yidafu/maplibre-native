@@ -13,10 +13,10 @@
  * const position = {latitude: 39.9042, longitude: 116.4074};
  * ```
  */
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 
 // 直接导出NAPI类，不使用type别名
-export { LatLng } from 'libmaplibre_native.so';
+export { LatLng } from 'libmaplibre.so';
 
 /**
  * 创建 LatLng 对象

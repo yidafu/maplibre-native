@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { LocationComponentOptions } from './LocationComponentOptions';
 import { LocationComponentConstants } from './LocationComponentConstants';
 import { RenderMode } from './modes/RenderMode';

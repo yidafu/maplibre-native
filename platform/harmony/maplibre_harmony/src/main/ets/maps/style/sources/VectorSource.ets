@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { VectorSource } from 'libmaplibre_native.so';
+export { VectorSource } from 'libmaplibre.so';

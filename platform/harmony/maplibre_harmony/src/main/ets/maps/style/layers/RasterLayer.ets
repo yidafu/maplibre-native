@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 类
-export { RasterLayer } from 'libmaplibre_native.so';
+export { RasterLayer } from 'libmaplibre.so';

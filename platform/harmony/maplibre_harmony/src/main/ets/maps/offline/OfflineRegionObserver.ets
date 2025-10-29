@@ -5,4 +5,4 @@
  */
 
 // 重新导出 NAPI 接口
-export type { OfflineRegionObserver } from 'libmaplibre_native.so';
+export type { OfflineRegionObserver } from 'libmaplibre.so';

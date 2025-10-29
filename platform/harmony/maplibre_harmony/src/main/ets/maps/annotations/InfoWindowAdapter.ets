@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 
 // 使用 NAPI Marker 类型

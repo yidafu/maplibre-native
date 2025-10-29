@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre_native.so';
+import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 import { Point } from '../geometry/Point';
 // import { ComponentContent } from '@kit.ArkUI';
