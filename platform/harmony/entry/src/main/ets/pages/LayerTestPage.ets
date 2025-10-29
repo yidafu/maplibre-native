@@ -19,7 +19,6 @@ import {
   RasterLayer,
   BackgroundLayer
 } from 'maplibre_harmony/src/main/ets/maps/style/index';
-import { CameraOptions } from '../types/MapTypes';
 
 const TAG = 'LayerTestPage';
 

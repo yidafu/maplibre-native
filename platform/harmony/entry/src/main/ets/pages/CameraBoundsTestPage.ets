@@ -1,5 +1,4 @@
 /**
-import { CameraOptions } from '../types/MapTypes';
  * CameraBoundsTestPage - 相机边界计算测试页面
  * 
  * 测试接口：

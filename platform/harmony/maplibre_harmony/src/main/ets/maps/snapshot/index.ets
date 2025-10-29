@@ -6,6 +6,7 @@
 
 export { MapSnapshotter } from './MapSnapshotter';
 export { MapSnapshot } from './MapSnapshot';
-export { SnapshotOptions, SnapshotOptionsBuilder, Size } from './SnapshotOptions';
+export { SnapshotOptions, SnapshotOptionsBuilder } from './SnapshotOptions';
 export type { SnapshotReadyCallback, SnapshotErrorHandler } from './MapSnapshotter';
+export type { Size } from '../types/NativeTypes';
 

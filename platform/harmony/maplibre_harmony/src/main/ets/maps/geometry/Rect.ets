@@ -4,16 +4,9 @@
  */
 import maplibre from 'libmaplibre_native.so';
 import { Point } from './Point';
+import { Size } from '../types/NativeTypes';
 
 export type Rect = maplibre.Rect;
-
-/**
- * Size - 尺寸接口
- */
-export interface Size {
-  width: number;
-  height: number;
-}
 
 /**
  * 创建矩形

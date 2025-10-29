@@ -1,5 +1,4 @@
 /**
-import { CameraOptions } from '../types/MapTypes';
  * CameraAnimationTestPage - 相机动画测试页面
  * 
  * 测试内容：

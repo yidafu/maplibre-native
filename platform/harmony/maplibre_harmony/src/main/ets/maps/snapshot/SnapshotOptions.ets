@@ -6,21 +6,7 @@
 
 import { CameraPosition } from '../camera/CameraPosition';
 import { LatLngBounds } from '../geometry/LatLngBounds';
-
-/**
- * 尺寸接口
- */
-export interface Size {
-  /**
-   * 宽度（像素）
-   */
-  width: number;
-  
-  /**
-   * 高度（像素）
-   */
-  height: number;
-}
+import { Size } from '../types/NativeTypes';
 
 /**
  * 快照选项接口

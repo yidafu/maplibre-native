@@ -7,7 +7,18 @@
 
 // 导出所有公共 API
 export * from './src/main/ets/maps/index';
-// 导出 maplibre namespace（供 entry 模块使用）
+// 导出 maplibre namespace 和辅助类型（供 entry 模块和内部模块使用）
 export { maplibre } from './src/main/ets/maps/types/NativeTypes';
+export type {
+  LatLngLiteral,
+  RectangleLiteral,
+  Size,
+  Padding,
+  CameraOptionsLiteral,
+  GeoJsonGeometry,
+  GeoJsonProperties,
+  GeoJsonFeature,
+  GeoJsonFeatureCollection
+} from './src/main/ets/maps/types/NativeTypes';
 
 
