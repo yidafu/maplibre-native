@@ -111,6 +111,9 @@ export class MarkerManager {
       if (!icon) {
         // 如果没有设置图标，加载默认图标
         console.info('[MarkerManager] No icon set, loading default marker icon');
+        if (!this.iconManager.iconFactory) {
+          throw new Error('[MarkerManager] IconFactory is not initialized');
+        }
         icon = await this.iconManager.iconFactory.defaultMarker();
         options.icon(icon);
       }
@@ -169,6 +172,9 @@ export class MarkerManager {
         let icon = options.getIcon();
         if (!icon) {
           console.info('[MarkerManager] No icon set in batch, loading default marker icon');
+          if (!this.iconManager.iconFactory) {
+            throw new Error('[MarkerManager] IconFactory is not initialized');
+          }
           icon = await this.iconManager.iconFactory.defaultMarker();
           options.icon(icon);
         }

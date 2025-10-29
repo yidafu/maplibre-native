@@ -54,11 +54,11 @@ export class PropertyValue<T> {
   /**
    * 转换为JSON对象
    */
-  public toJSON(): ESObject {
-    const obj: ESObject = {};
+  public toJSON(): Record<string, Object> {
+    const obj: Record<string, Object> = {};
     obj['name'] = this.name;
     if (this.isValue()) {
-      obj['value'] = this.value;
+      obj['value'] = this.value as Object;
     } else if (this.isExpression() && this.expression !== null) {
       obj['expression'] = this.expression.toArray();
     }

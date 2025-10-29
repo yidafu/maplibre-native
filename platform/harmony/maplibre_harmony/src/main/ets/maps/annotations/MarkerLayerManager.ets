@@ -387,7 +387,7 @@ export class MarkerLayerManager {
       const features = this.mapLibreMap.queryRenderedFeaturesForPoint(
         x, y,
         [MarkerLayerManager.LAYER_ID],
-        null
+        undefined
       );
       
       if (features && features.length > 0) {

@@ -51,6 +51,15 @@ public:
     // 📝 实例标识
     std::string getInstanceId() const { return instanceId_; }
     std::thread::id getRenderThreadId() const { return runLoopThreadId; }
+    
+    // 🔍 查询方法（线程安全）
+    std::vector<mbgl::Feature> queryRenderedFeatures(
+        const mbgl::ScreenBox& box, 
+        const mbgl::RenderedQueryOptions& options) const;
+    
+    std::vector<mbgl::Feature> queryRenderedFeatures(
+        const mbgl::ScreenCoordinate& point,
+        const mbgl::RenderedQueryOptions& options) const;
 
 private:
     std::string instanceId_;  // 唯一标识符

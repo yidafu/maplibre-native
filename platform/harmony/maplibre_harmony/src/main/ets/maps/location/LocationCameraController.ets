@@ -99,7 +99,7 @@ export class LocationCameraController {
 
       // 根据相机模式决定相机参数
       let cameraBearing: number = 0;
-      const currentCamera: ESObject | null = this.maplibreMap.getCameraPosition();
+      const currentCamera: Object | null = this.maplibreMap.getCameraPosition();
 
       switch (this.cameraMode) {
         case CameraMode.TRACKING:

@@ -718,9 +718,9 @@ export class MapLibreMap {
   }
 
   // 相机位置
-  public getCameraPosition(): ESObject | null {
+  public getCameraPosition(): Object | null {
     if (this.destroyed) return null;
-    const result: ESObject = this.nativeMapView.getCameraPosition() as ESObject;
+    const result: Object = this.nativeMapView.getCameraPosition() as Object;
     // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
     return result;
   }
@@ -903,18 +903,6 @@ export class MapLibreMap {
     return this.nativeMapView.queryShapeAnnotations(rect);
   }
 
-  public queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: ESObject): Feature[] {
-    if (this.destroyed) return [];
-    const results: ESObject[] = this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter) as ESObject[];
-    return results as Feature[];
-  }
-
-  public queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[], filter?: ESObject): Feature[] {
-    if (this.destroyed) return [];
-    const results: ESObject[] = this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter) as ESObject[];
-    return results as Feature[];
-  }
-
   // 光照
   public getLight(): Light | null {
     if (this.destroyed) return null;
@@ -995,9 +983,9 @@ export class MapLibreMap {
     this.nativeMapView.removeImage(name);
   }
 
-  public getImage(name: string): ESObject | null {
+  public getImage(name: string): Object | null {
     if (this.destroyed) return null;
-    const result: ESObject = this.nativeMapView.getImage(name) as ESObject;
+    const result: Object = this.nativeMapView.getImage(name) as Object;
     return result;
   }
 
@@ -1770,6 +1758,99 @@ export class MapLibreMap {
   public isAnnotationSelected(marker: Marker): boolean {
     if (this.destroyed) return false;
     return this.annotationViewManager.isAnnotationSelected(marker);
+  }
+  
+  // ==================== 特性查询 (Feature Query) ====================
+  
+  /**
+   * 查询指定点的渲染要素
+   * 
+   * @param x X 坐标（屏幕像素）
+   * @param y Y 坐标（屏幕像素）
+   * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
+   * @param filter 可选的过滤器表达式
+   * @returns Feature 数组
+   * 
+   * @example
+   * ```typescript
+   * // 查询屏幕坐标 (100, 200) 处的所有要素
+   * const features = map.queryRenderedFeaturesForPoint(100, 200);
+   * 
+   * // 只查询特定图层的要素
+   * const features = map.queryRenderedFeaturesForPoint(100, 200, ['poi-layer', 'building-layer']);
+   * 
+   * // 使用过滤器查询
+   * const features = map.queryRenderedFeaturesForPoint(100, 200, ['poi-layer'], ['==', ['get', 'type'], 'restaurant']);
+   * ```
+   */
+  public queryRenderedFeaturesForPoint(
+    x: number,
+    y: number,
+    layerIds?: string[],
+    filter?: Object
+  ): Feature[] {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'queryRenderedFeaturesForPoint: Map is destroyed');
+      return [];
+    }
+    
+    try {
+      return this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
+    } catch (error) {
+      console.error('MapLibreMap', `queryRenderedFeaturesForPoint failed: ${error.message}`);
+      return [];
+    }
+  }
+  
+  /**
+   * 查询矩形区域内的渲染要素
+   * 
+   * @param left 左边界（屏幕像素）
+   * @param top 上边界（屏幕像素）
+   * @param right 右边界（屏幕像素）
+   * @param bottom 下边界（屏幕像素）
+   * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
+   * @param filter 可选的过滤器表达式
+   * @returns Feature 数组
+   * 
+   * @example
+   * ```typescript
+   * // 查询矩形区域内的所有要素
+   * const features = map.queryRenderedFeaturesForBox(100, 100, 300, 300);
+   * 
+   * // 只查询特定图层的要素
+   * const features = map.queryRenderedFeaturesForBox(
+   *   100, 100, 300, 300,
+   *   ['poi-layer', 'building-layer']
+   * );
+   * 
+   * // 使用过滤器查询
+   * const features = map.queryRenderedFeaturesForBox(
+   *   100, 100, 300, 300,
+   *   ['poi-layer'],
+   *   ['==', ['get', 'type'], 'restaurant']
+   * );
+   * ```
+   */
+  public queryRenderedFeaturesForBox(
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+    layerIds?: string[],
+    filter?: Object
+  ): Feature[] {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'queryRenderedFeaturesForBox: Map is destroyed');
+      return [];
+    }
+    
+    try {
+      return this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter);
+    } catch (error) {
+      console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
+      return [];
+    }
   }
 }
 

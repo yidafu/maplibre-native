@@ -4,6 +4,14 @@
 #include "geometry/lat_lng_harmony.hpp"
 #include "geometry/point_harmony.hpp"
 #include "geometry/projected_meters_harmony.hpp"
+#include "geojson/feature_napi.hpp"
+#include "style/filter_conversion.hpp"
+#include "rendering/harmony_renderer.hpp"
+#include "rendering/harmony_renderer_frontend.hpp"
+#include <mbgl/map/map.hpp>
+#include <mbgl/util/geo.hpp>
+#include <mbgl/style/filter.hpp>
+#include <mbgl/renderer/query.hpp>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -228,27 +236,267 @@ napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info
 napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint() called");
     
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Feature 的 NAPI 包装类和渲染器前端支持
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:977-993
-    Logger::warn("NativeMapView", "queryRenderedFeaturesForPoint: Not implemented - requires Feature wrapper class and renderer support");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: Invalid arguments");
+        return undefined;
+    }
     
-    return undefined;
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查是否正在销毁
+    if (instance->isDestroying.load()) {
+        Logger::warn("NativeMapView", "queryRenderedFeaturesForPoint: Instance is being destroyed");
+        return undefined;
+    }
+    
+    // 检查渲染器是否存在
+    if (!instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: HarmonyRenderer not initialized");
+        return undefined;
+    }
+    
+    try {
+        // 1. 解析参数：x, y
+        double x = args.GetDouble(0, "x");
+        double y = args.GetDouble(1, "y");
+        
+        if (args.HasError()) {
+            Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: Failed to parse x, y");
+            return undefined;
+        }
+        
+        Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint: x=%.2f, y=%.2f", x, y);
+        
+        // 2. 构造 ScreenCoordinate
+        mbgl::ScreenCoordinate point(x, y);
+        
+        // 3. 构造查询选项
+        mbgl::RenderedQueryOptions options;
+        
+        // 4. 解析可选的 layerIds 参数
+        if (args.Count() >= 3) {
+            napi_value layerIdsValue = args.GetValue(2);
+            napi_valuetype type;
+            napi_typeof(env, layerIdsValue, &type);
+            
+            if (type == napi_object) {
+                bool isArray;
+                napi_is_array(env, layerIdsValue, &isArray);
+                
+                if (isArray) {
+                    uint32_t length;
+                    napi_get_array_length(env, layerIdsValue, &length);
+                    
+                    std::vector<std::string> layerIds;
+                    for (uint32_t i = 0; i < length; i++) {
+                        napi_value element;
+                        napi_get_element(env, layerIdsValue, i, &element);
+                        
+                        size_t strLength;
+                        napi_get_value_string_utf8(env, element, nullptr, 0, &strLength);
+                        std::string str(strLength, '\0');
+                        napi_get_value_string_utf8(env, element, &str[0], strLength + 1, &strLength);
+                        
+                        layerIds.push_back(str);
+                    }
+                    
+                    if (!layerIds.empty()) {
+                        options.layerIDs = layerIds;
+                        Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint: layerIds count=%zu", layerIds.size());
+                    }
+                }
+            }
+        }
+        
+        // 5. 解析可选的 filter 参数
+        if (args.Count() >= 4) {
+            napi_value filterValue = args.GetValue(3);
+            napi_valuetype type;
+            napi_typeof(env, filterValue, &type);
+            
+            if (type == napi_object) {
+                bool isArray;
+                napi_is_array(env, filterValue, &isArray);
+                
+                if (isArray) {
+                    auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
+                    if (filter) {
+                        options.filter = *filter;
+                        Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint: filter applied");
+                    }
+                }
+            }
+        }
+        
+        // 6. 调用渲染器前端查询
+        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
+        if (!rendererFrontend) {
+            Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: RendererFrontend is null");
+            return undefined;
+        }
+        
+        std::vector<mbgl::Feature> features = rendererFrontend->queryRenderedFeatures(point, options);
+        
+        Logger::info("NativeMapView", "queryRenderedFeaturesForPoint: Found %zu features", features.size());
+        
+        // 7. 转换结果为 NAPI 数组
+        napi_value result = maplibre::harmony::geojson::FeatureNAPI::NewArray(env, features);
+        
+        return result;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: Exception - %s", e.what());
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "queryRenderedFeaturesForBox() called");
     
+    NapiArgs args(env, info);
+    args.RequireMinArgs(4);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Feature 的 NAPI 包装类和渲染器前端支持
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:995-1014
-    Logger::warn("NativeMapView", "queryRenderedFeaturesForBox: Not implemented - requires Feature wrapper class and renderer support");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForBox: Invalid arguments");
+        return undefined;
+    }
     
-    return undefined;
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForBox: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    // 检查是否正在销毁
+    if (instance->isDestroying.load()) {
+        Logger::warn("NativeMapView", "queryRenderedFeaturesForBox: Instance is being destroyed");
+        return undefined;
+    }
+    
+    // 检查渲染器是否存在
+    if (!instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForBox: HarmonyRenderer not initialized");
+        return undefined;
+    }
+    
+    try {
+        // 1. 解析参数：left, top, right, bottom
+        double left = args.GetDouble(0, "left");
+        double top = args.GetDouble(1, "top");
+        double right = args.GetDouble(2, "right");
+        double bottom = args.GetDouble(3, "bottom");
+        
+        if (args.HasError()) {
+            Logger::error("NativeMapView", "queryRenderedFeaturesForBox: Failed to parse box coordinates");
+            return undefined;
+        }
+        
+        Logger::debug("NativeMapView", "queryRenderedFeaturesForBox: left=%.2f, top=%.2f, right=%.2f, bottom=%.2f", 
+                      left, top, right, bottom);
+        
+        // 2. 构造 ScreenBox
+        mbgl::ScreenBox box{
+            mbgl::ScreenCoordinate{left, top},
+            mbgl::ScreenCoordinate{right, bottom}
+        };
+        
+        // 3. 构造查询选项
+        mbgl::RenderedQueryOptions options;
+        
+        // 4. 解析可选的 layerIds 参数
+        if (args.Count() >= 5) {
+            napi_value layerIdsValue = args.GetValue(4);
+            napi_valuetype type;
+            napi_typeof(env, layerIdsValue, &type);
+            
+            if (type == napi_object) {
+                bool isArray;
+                napi_is_array(env, layerIdsValue, &isArray);
+                
+                if (isArray) {
+                    uint32_t length;
+                    napi_get_array_length(env, layerIdsValue, &length);
+                    
+                    std::vector<std::string> layerIds;
+                    for (uint32_t i = 0; i < length; i++) {
+                        napi_value element;
+                        napi_get_element(env, layerIdsValue, i, &element);
+                        
+                        size_t strLength;
+                        napi_get_value_string_utf8(env, element, nullptr, 0, &strLength);
+                        std::string str(strLength, '\0');
+                        napi_get_value_string_utf8(env, element, &str[0], strLength + 1, &strLength);
+                        
+                        layerIds.push_back(str);
+                    }
+                    
+                    if (!layerIds.empty()) {
+                        options.layerIDs = layerIds;
+                        Logger::debug("NativeMapView", "queryRenderedFeaturesForBox: layerIds count=%zu", layerIds.size());
+                    }
+                }
+            }
+        }
+        
+        // 5. 解析可选的 filter 参数
+        if (args.Count() >= 6) {
+            napi_value filterValue = args.GetValue(5);
+            napi_valuetype type;
+            napi_typeof(env, filterValue, &type);
+            
+            if (type == napi_object) {
+                bool isArray;
+                napi_is_array(env, filterValue, &isArray);
+                
+                if (isArray) {
+                    auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
+                    if (filter) {
+                        options.filter = *filter;
+                        Logger::debug("NativeMapView", "queryRenderedFeaturesForBox: filter applied");
+                    }
+                }
+            }
+        }
+        
+        // 6. 调用渲染器前端查询
+        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
+        if (!rendererFrontend) {
+            Logger::error("NativeMapView", "queryRenderedFeaturesForBox: RendererFrontend is null");
+            return undefined;
+        }
+        
+        std::vector<mbgl::Feature> features = rendererFrontend->queryRenderedFeatures(box, options);
+        
+        Logger::info("NativeMapView", "queryRenderedFeaturesForBox: Found %zu features", features.size());
+        
+        // 7. 转换结果为 NAPI 数组
+        napi_value result = maplibre::harmony::geojson::FeatureNAPI::NewArray(env, features);
+        
+        return result;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "queryRenderedFeaturesForBox: Exception - %s", e.what());
+        return undefined;
+    }
 }
 
 

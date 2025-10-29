@@ -39,10 +39,10 @@ export class IconManager {
   private iconMap: Map<string, IconRefData> = new Map();
   // 使用 reuseIdentifier 作为 key，存储可复用的图标
   private reuseIdentifierMap: Map<string, Icon> = new Map();
-  private nativeMapView!: NativeMapView;
+  private nativeMapView: NativeMapView | null = null;
   private highestIconWidth: number = 0;
   private highestIconHeight: number = 0;
-  public iconFactory!: IconFactory;
+  public iconFactory: IconFactory | null = null;
 
   /**
    * 构造函数
@@ -105,6 +105,9 @@ export class IconManager {
    * @returns Promise<Icon> 默认 Icon 实例
    */
   private async loadDefaultIconForMarker(marker: Marker): Promise<Icon> {
+    if (!this.iconFactory) {
+      throw new Error('[IconManager] IconFactory is not initialized');
+    }
     const icon = await this.iconFactory.defaultMarker();
     
     // 更新最大图标尺寸
@@ -212,6 +215,9 @@ export class IconManager {
         if (defaultIconProvider) {
           icon = await defaultIconProvider();
         } else {
+          if (!this.iconFactory) {
+            throw new Error('[IconManager] IconFactory is not initialized');
+          }
           icon = await this.iconFactory.defaultMarker();
         }
         marker.setIcon(icon.getId());
@@ -293,6 +299,9 @@ export class IconManager {
       console.info(`[IconManager] Loading icon to native: id=${iconId}, size=${width}x${height}, scale=${scale}`);
       
       // 调用 Native 方法添加图标
+      if (!this.nativeMapView) {
+        throw new Error('[IconManager] NativeMapView is not initialized');
+      }
       this.nativeMapView.addAnnotationIcon(iconId, width, height, scale, bytes);
       
       console.debug(`[IconManager] Icon ${iconId} loaded to native successfully`);
@@ -342,6 +351,9 @@ export class IconManager {
     
     try {
       // 从 Native 层删除
+      if (!this.nativeMapView) {
+        throw new Error('[IconManager] NativeMapView is not initialized');
+      }
       this.nativeMapView.removeAnnotationIcon(iconId);
       console.debug(`[IconManager] Icon ${iconId} removed from native`);
       
@@ -416,6 +428,9 @@ export class IconManager {
    */
   public getTopOffsetPixelsForIcon(icon: Icon): number {
     try {
+      if (!this.nativeMapView) {
+        throw new Error('[IconManager] NativeMapView is not initialized');
+      }
       // TODO: NativeMapView 没有 getPixelRatio() 方法，使用默认值
       const pixelRatio: number = 1.0;
       const topOffset: number = this.nativeMapView.getTopOffsetPixelsForAnnotationSymbol(icon.getId());
@@ -484,7 +499,9 @@ export class IconManager {
     // 遍历所有图标进行清理
     this.iconMap.forEach((cached: IconRefData, iconId: string) => {
       try {
-        this.nativeMapView.removeAnnotationIcon(iconId);
+        if (this.nativeMapView) {
+          this.nativeMapView.removeAnnotationIcon(iconId);
+        }
         cached.icon.release();
       } catch (error) {
         console.error(`[IconManager] Failed to cleanup icon ${iconId}:`, error);

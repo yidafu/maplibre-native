@@ -498,6 +498,51 @@ gfx::Backend& HarmonyRendererFrontend::getRendererBackend() {
     return *rendererBackend;
 }
 
+// 🔍 查询方法实现（线程安全）
+std::vector<mbgl::Feature> HarmonyRendererFrontend::queryRenderedFeatures(
+    const mbgl::ScreenBox& box,
+    const mbgl::RenderedQueryOptions& options) const {
+    
+    Logger::debug("HarmonyRendererFrontend", "queryRenderedFeatures(box) called");
+    
+    if (!renderer) {
+        Logger::error("HarmonyRendererFrontend", "Renderer is null, returning empty results");
+        return {};
+    }
+    
+    // 直接调用 renderer 的方法（renderer 本身是线程安全的）
+    try {
+        auto result = renderer->queryRenderedFeatures(box, options);
+        Logger::debug("HarmonyRendererFrontend", "queryRenderedFeatures(box) returned %zu features", result.size());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("HarmonyRendererFrontend", "queryRenderedFeatures(box) failed: %s", e.what());
+        return {};
+    }
+}
+
+std::vector<mbgl::Feature> HarmonyRendererFrontend::queryRenderedFeatures(
+    const mbgl::ScreenCoordinate& point,
+    const mbgl::RenderedQueryOptions& options) const {
+    
+    Logger::debug("HarmonyRendererFrontend", "queryRenderedFeatures(point) called: x=%.2f, y=%.2f", point.x, point.y);
+    
+    if (!renderer) {
+        Logger::error("HarmonyRendererFrontend", "Renderer is null, returning empty results");
+        return {};
+    }
+    
+    // 直接调用 renderer 的方法（renderer 本身是线程安全的）
+    try {
+        auto result = renderer->queryRenderedFeatures(point, options);
+        Logger::debug("HarmonyRendererFrontend", "queryRenderedFeatures(point) returned %zu features", result.size());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("HarmonyRendererFrontend", "queryRenderedFeatures(point) failed: %s", e.what());
+        return {};
+    }
+}
+
 } // namespace harmony
 } // namespace mbgl
 
