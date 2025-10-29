@@ -1,9 +1,9 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 const TAG = 'StyleUrlTestPage';
 
@@ -262,7 +262,7 @@ struct StyleUrlTestPage {
         this.getStyleInfo();
       }, 2000);
       
-      hilog.info(DOMAIN, TAG, `Style switched to: ${item.name}`);
+      hilog.info(DOMAIN, TAG, `maplibre.Style switched to: ${item.name}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed to switch style: ${errorMsg}`);
@@ -279,7 +279,7 @@ struct StyleUrlTestPage {
     try {
       const style = this.mapLibreMap.getStyle();
       if (!style) {
-        hilog.warn(DOMAIN, TAG, 'Style not available');
+        hilog.warn(DOMAIN, TAG, 'maplibre.Style not available');
         return;
       }
       
@@ -291,7 +291,7 @@ struct StyleUrlTestPage {
       this.currentStyleUrl = uri;
       this.styleJsonLength = json.length;
       
-      hilog.info(DOMAIN, TAG, `Style Info:`);
+      hilog.info(DOMAIN, TAG, `maplibre.Style Info:`);
       hilog.info(DOMAIN, TAG, `  URI: ${uri}`);
       hilog.info(DOMAIN, TAG, `  JSON Length: ${json.length}`);
       hilog.info(DOMAIN, TAG, `  Fully Loaded: ${loaded}`);

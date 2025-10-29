@@ -5,6 +5,7 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import router from '@ohos.router';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
@@ -76,8 +77,8 @@ struct EventListenersTestPage {
   };
 
   private styleLoadedListener: OnDidFinishLoadingStyleListener = {
-    onDidFinishLoadingStyle: () => {
-      this.logEvent(`🎨 Style finished loading`);
+    onDidFinishLoadingmaplibre.Style: () => {
+      this.logEvent(`🎨 maplibre.Style finished loading`);
     }
   };
 
@@ -299,7 +300,7 @@ struct EventListenersTestPage {
             .width(120)
             .onClick(() => {
               if (this.mapView) {
-                const beijing = new LatLng(39.9042, 116.4074);
+                const beijing = new maplibre.LatLng(39.9042, 116.4074);
                 this.mapView.flyTo(beijing, 15, 0, 45, 2000);
               }
             })

@@ -10,8 +10,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 
@@ -293,7 +293,7 @@ struct CoordinateConversionTestPage {
     if (!this.mapView) return;
     
     try {
-      const currentZoom = this.mapView.getZoom();
+      const currentZoom: number = this.mapView.getZoom();
       const currentLat = this.mapView.getLatLng().latitude;
       
       // 计算当前位置和缩放级别下的分辨率

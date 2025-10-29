@@ -7,6 +7,7 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
@@ -15,7 +16,6 @@ import { router } from '@kit.ArkUI';
 import abilityAccessCtrl, { Permissions } from '@ohos.abilityAccessCtrl';
 import geoLocationManager from '@ohos.geoLocationManager';
 import promptAction from '@ohos.promptAction';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 
@@ -145,8 +145,8 @@ struct LocationFlyToTestPage {
       const location = geoLocationManager.getLastLocation();
       
       if (location) {
-        const latitude = location.latitude;
-        const longitude = location.longitude;
+        const latitude: number = location.latitude;
+        const longitude: number = location.longitude;
         
         hilog.info(DOMAIN, 'LocationFlyTo', 
           `Location: lat=${latitude}, lng=${longitude}`);
@@ -220,8 +220,8 @@ struct LocationFlyToTestPage {
     }
 
     // 测试坐标：杭州西湖
-    const latitude = 30.2591;
-    const longitude = 120.1328;
+    const latitude: number = 30.2591;
+    const longitude: number = 120.1328;
     
     this.currentLocation = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
     this.locationStatus = '使用测试位置';

@@ -9,8 +9,8 @@
  */
 
 import { router } from '@kit.ArkUI';
+import { maplibre } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';

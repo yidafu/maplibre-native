@@ -1,4 +1,5 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/MarkerOptions';
@@ -16,11 +17,8 @@ import { router } from '@kit.ArkUI';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 // import { ComponentContent, wrapBuilder } from '@kit.ArkUI';
-import maplibre from 'libmaplibre_native.so';
 import { TestPageLayout } from '../components/TestPageLayout';
 
-// 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
 
 const TAG = 'MarkerTestPage';
 
@@ -48,13 +46,13 @@ class MarkerClickListenerImpl implements OnMarkerClickListener {
     this.testPage = testPage;
   }
   
-  onMarkerClick(marker: Marker): boolean {
+  onMarkerClick(marker: maplibre.Marker): boolean {
     this.testPage.selectedMarkerId = marker.getId();
-    const pos = marker.getPosition();
+    const pos: maplibre.LatLng = marker.getPosition();
     this.testPage.message = `🎯 点击: ${marker.getTitle()} (${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)})`;
     this.testPage.lastMarkerPosition = `${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}`;
     
-    console.info(`MarkerTestPage: Marker clicked - ID=${marker.getId()}, Title=${marker.getTitle()}`);
+    console.info(`MarkerTestPage: maplibre.Marker clicked - ID=${marker.getId()}, Title=${marker.getTitle()}`);
     
     // 显示 InfoWindow
     marker.showInfoWindow();
@@ -72,21 +70,21 @@ class MarkerDragListenerImpl implements OnMarkerDragListener {
     this.testPage = testPage;
   }
   
-  onMarkerDragStart(marker: Marker): void {
-    const pos = marker.getPosition();
+  onMarkerDragStart(marker: maplibre.Marker): void {
+    const pos: maplibre.LatLng = marker.getPosition();
     this.testPage.message = `🤏 开始拖拽: ${marker.getTitle()}`;
     this.testPage.lastMarkerPosition = `起始: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}`;
     console.info(`MarkerTestPage: Drag start - ${marker.getTitle()}`);
   }
   
-  onMarkerDrag(marker: Marker): void {
-    const pos = marker.getPosition();
+  onMarkerDrag(marker: maplibre.Marker): void {
+    const pos: maplibre.LatLng = marker.getPosition();
     this.testPage.lastMarkerPosition = `拖拽中: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}`;
     console.info(`MarkerTestPage: Dragging to ${pos.latitude}, ${pos.longitude}`);
   }
   
-  onMarkerDragEnd(marker: Marker): void {
-    const pos = marker.getPosition();
+  onMarkerDragEnd(marker: maplibre.Marker): void {
+    const pos: maplibre.LatLng = marker.getPosition();
     this.testPage.message = `✓ 拖拽完成: ${marker.getTitle()}`;
     this.testPage.lastMarkerPosition = `最终: ${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}`;
     console.info(`MarkerTestPage: Drag end at ${pos.latitude}, ${pos.longitude}`);
@@ -103,7 +101,7 @@ class InfoWindowClickListenerImpl implements OnInfoWindowClickListener {
     this.testPage = testPage;
   }
   
-  onInfoWindowClick(marker: Marker): void {
+  onInfoWindowClick(marker: maplibre.Marker): void {
     this.testPage.message = `💬 InfoWindow 被点击: ${marker.getTitle()}`;
     console.info(`MarkerTestPage: InfoWindow clicked - ${marker.getTitle()}`);
   }
@@ -119,7 +117,7 @@ class InfoWindowCloseListenerImpl implements OnInfoWindowCloseListener {
     this.testPage = testPage;
   }
   
-  onInfoWindowClose(marker: Marker): void {
+  onInfoWindowClose(marker: maplibre.Marker): void {
     this.testPage.message = `🔒 InfoWindow 关闭: ${marker.getTitle()}`;
     console.info(`MarkerTestPage: InfoWindow closed - ${marker.getTitle()}`);
   }
@@ -135,14 +133,14 @@ class MarkerSelectListenerImpl implements OnMarkerSelectListener {
     this.testPage = testPage;
   }
   
-  onMarkerSelect(marker: Marker): void {
+  onMarkerSelect(marker: maplibre.Marker): void {
     this.testPage.message = `✅ Marker 选中: ${marker.getTitle()}`;
-    console.info(`MarkerTestPage: Marker selected - ID=${marker.getId()}, Title=${marker.getTitle()}`);
+    console.info(`MarkerTestPage: maplibre.Marker selected - ID=${marker.getId()}, Title=${marker.getTitle()}`);
   }
   
-  onMarkerDeselect(marker: Marker): void {
+  onMarkerDeselect(marker: maplibre.Marker): void {
     this.testPage.message = `⭕ Marker 取消选中: ${marker.getTitle()}`;
-    console.info(`MarkerTestPage: Marker deselected - ID=${marker.getId()}, Title=${marker.getTitle()}`);
+    console.info(`MarkerTestPage: maplibre.Marker deselected - ID=${marker.getId()}, Title=${marker.getTitle()}`);
   }
 }
 
@@ -150,7 +148,7 @@ class MarkerSelectListenerImpl implements OnMarkerSelectListener {
  * 自定义 Marker 视图 Builder
  */
 interface CustomMarkerParams {
-  marker: Marker;
+  marker: maplibre.Marker;
 }
 
 @Builder
@@ -179,13 +177,13 @@ function CustomMarkerBuilder(params: CustomMarkerParams) {
  * 当前版本暂时不支持自定义视图
  */
 class TestAnnotationViewAdapter implements AnnotationViewAdapter {
-  getAnnotationView(marker: Marker): object | null {
+  getAnnotationView(marker: maplibre.Marker): object | null {
     // TODO: 实现自定义视图
     // 当前 HarmonyOS SDK 版本不支持 ComponentContent 和 wrapBuilder
     return null;  // 暂时使用默认图标
   }
   
-  getReuseIdentifier(marker: Marker): string {
+  getReuseIdentifier(marker: maplibre.Marker): string {
     return marker.getIcon() || 'default';
   }
 }
@@ -205,7 +203,7 @@ struct MarkerTestPage {
   
   // InfoWindow 显示状态
   @State showInfoWindow: boolean = false;
-  @State infoWindowMarker: Marker | null = null;
+  @State infoWindowMarker: maplibre.Marker | null = null;
   @State infoWindowX: number = 0;
   @State infoWindowY: number = 0;
   
@@ -230,14 +228,14 @@ struct MarkerTestPage {
    */
   private generateRandomLocationInChina(): maplibre.LatLng {
     // 中国的大致边界
-    const minLat = 18.0;   // 最南端（海南岛）
-    const maxLat = 54.0;   // 最北端（黑龙江）
-    const minLng = 73.0;   // 最西端（新疆）
-    const maxLng = 135.0;  // 最东端（黑龙江）
+    const minLat: number = 18.0;   // 最南端（海南岛）
+    const maxLat: number = 54.0;   // 最北端（黑龙江）
+    const minLng: number = 73.0;   // 最西端（新疆）
+    const maxLng: number = 135.0;  // 最东端（黑龙江）
     
     // 生成随机经纬度
-    const lat = minLat + Math.random() * (maxLat - minLat);
-    const lng = minLng + Math.random() * (maxLng - minLng);
+    const lat: number = minLat + Math.random() * (maxLat - minLat);
+    const lng: number = minLng + Math.random() * (maxLng - minLng);
     
     return new maplibre.LatLng(lat, lng);
   }
@@ -255,8 +253,8 @@ struct MarkerTestPage {
     return cities[Math.floor(Math.random() * cities.length)];
   }
   
-  private testMarker: Marker | null = null;
-  private markerList: Marker[] = [];
+  private testMarker: maplibre.Marker | null = null;
+  private markerList: maplibre.Marker[] = [];
   
   aboutToAppear() {
     hilog.info(DOMAIN, TAG, 'aboutToAppear');
@@ -351,12 +349,12 @@ struct MarkerTestPage {
     const infoWindowManager = this.mapLibreMap.getMarkerManager().getInfoWindowManager();
     
     // 设置显示回调
-    infoWindowManager.setOnShowUICallback((marker: Marker) => {
+    infoWindowManager.setOnShowUICallback((marker: maplibre.Marker) => {
       this.showInfoWindowUI(marker);
     });
     
     // 设置隐藏回调
-    infoWindowManager.setOnHideUICallback((marker: Marker) => {
+    infoWindowManager.setOnHideUICallback((marker: maplibre.Marker) => {
       this.hideInfoWindowUI();
     });
     
@@ -380,10 +378,10 @@ struct MarkerTestPage {
   /**
    * 显示 InfoWindow UI
    */
-  showInfoWindowUI(marker: Marker) {
+  showInfoWindowUI(marker: maplibre.Marker) {
     if (!this.nativeMapView) return;
     
-    const pos = marker.getPosition();
+    const pos: maplibre.LatLng = marker.getPosition();
     
     try {
       // 转换地理坐标到屏幕坐标
@@ -436,14 +434,14 @@ struct MarkerTestPage {
     try {
       // [MarkerDebug] 记录地图当前状态
       if (this.nativeMapView) {
-        const currentPos = this.nativeMapView.getLatLng();
-        const currentZoom = this.nativeMapView.getZoom();
+        const currentPos: maplibre.LatLng = this.nativeMapView.getLatLng();
+        const currentZoom: number = this.nativeMapView.getZoom();
         console.info(`[MarkerDebug] TestPage: Current camera - lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
         console.info(`[MarkerDebug] TestPage: Adding random marker at lat=${location.latitude}, lng=${location.longitude}`);
       }
       
       // 创建带不同样式的 Marker（不设置 icon，将自动使用默认图标）
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(location)
           .title(`${cityName} #${this.markerCount + 1}`)
@@ -539,7 +537,7 @@ struct MarkerTestPage {
       this.message = `✅ 已移除最后的 Marker: ${lastMarker.getTitle()}`;
       this.markerCount = Math.max(0, this.markerCount - 1);
       
-      console.info(`MarkerTestPage: Marker removed successfully, remaining count: ${this.markerList.length}`);
+      console.info(`MarkerTestPage: maplibre.Marker removed successfully, remaining count: ${this.markerList.length}`);
     } else if (this.testMarker) {
       // 如果 markerList 为空但 testMarker 存在，移除 testMarker
       console.info(`MarkerTestPage: Removing testMarker, ID=${this.testMarker.getId()}`);
@@ -583,8 +581,8 @@ struct MarkerTestPage {
       return;
     }
     
-    const currentPos = this.testMarker.getPosition();
-    const targetPos = new maplibre.LatLng(
+    const currentPos: maplibre.LatLng = this.testMarker.getPosition();
+    const targetPos: maplibre.LatLng = new maplibre.LatLng(
       currentPos.latitude + 0.5,
       currentPos.longitude + 0.5
     );
@@ -610,13 +608,13 @@ struct MarkerTestPage {
       return;
     }
     
-    const marker = this.testMarker;
-    const currentAlpha = marker.getAlpha();
-    const targetAlpha = currentAlpha > 0.5 ? 0.3 : 1.0;
-    const duration = 1000;  // 1 秒
-    const fps = 60;
-    const steps = Math.floor(duration / (1000 / fps));
-    const deltaAlpha = targetAlpha - currentAlpha;
+    const marker: maplibre.Marker = this.testMarker;
+    const currentAlpha: number = marker.getAlpha();
+    const targetAlpha: number = currentAlpha > 0.5 ? 0.3 : 1.0;
+    const duration: number = 1000;  // 1 秒
+    const fps: number = 60;
+    const steps: number = Math.floor(duration / (1000 / fps));
+    const deltaAlpha: number = targetAlpha - currentAlpha;
     
     this.message = `开始透明度动画: ${currentAlpha.toFixed(2)} → ${targetAlpha.toFixed(2)}`;
     
@@ -640,7 +638,7 @@ struct MarkerTestPage {
       }
       
       // 线性插值
-      const newAlpha = currentAlpha + deltaAlpha * progress;
+      const newAlpha: number = currentAlpha + deltaAlpha * progress;
       marker.setAlpha(newAlpha);
       
       // 更新地图显示
@@ -659,13 +657,13 @@ struct MarkerTestPage {
       return;
     }
     
-    const marker = this.testMarker;
-    const currentRotation = marker.getRotation();
-    const targetRotation = currentRotation + 90;
-    const duration = 1000;  // 1 秒
-    const fps = 60;
-    const steps = Math.floor(duration / (1000 / fps));
-    const deltaRotation = targetRotation - currentRotation;
+    const marker: maplibre.Marker = this.testMarker;
+    const currentRotation: number = marker.getRotation();
+    const targetRotation: number = currentRotation + 90;
+    const duration: number = 1000;  // 1 秒
+    const fps: number = 60;
+    const steps: number = Math.floor(duration / (1000 / fps));
+    const deltaRotation: number = targetRotation - currentRotation;
     
     this.message = `开始旋转动画: ${currentRotation.toFixed(1)}° → ${targetRotation.toFixed(1)}°`;
     
@@ -689,7 +687,7 @@ struct MarkerTestPage {
       }
       
       // 线性插值
-      const newRotation = currentRotation + deltaRotation * progress;
+      const newRotation: number = currentRotation + deltaRotation * progress;
       marker.setRotation(newRotation);
       
       // 更新地图显示
@@ -1054,12 +1052,12 @@ struct MarkerTestPage {
     
     try {
       // 使用 LatLng NAPI 类创建位置（通过构造函数）
-      const position = new maplibre.LatLng(39.9042, 116.4074);
+      const position: maplibre.LatLng = new maplibre.LatLng(39.9042, 116.4074);
       
       console.info(`[MarkerDebug] TestLatLngClass: Creating marker with LatLng instance`);
       console.info(`[MarkerDebug] TestLatLngClass: position.latitude=${position.latitude}, position.longitude=${position.longitude}`);
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('LatLng 类测试')
@@ -1075,7 +1073,7 @@ struct MarkerTestPage {
       this.markerCount++;
       this.testMarker = marker;
       
-      const resultPos = marker.getPosition();
+      const resultPos: maplibre.LatLng = marker.getPosition();
       this.message = `✅ LatLng类测试成功\n` +
         `输入: (${position.latitude}, ${position.longitude})\n` +
         `结果: (${resultPos.latitude}, ${resultPos.longitude})\n` +
@@ -1098,13 +1096,13 @@ struct MarkerTestPage {
     }
     
     try {
-      // 使用 new LatLng() 构造函数创建位置
-      const position = new maplibre.LatLng(31.2304, 121.4737);
+      // 使用 new maplibre.LatLng() 构造函数创建位置
+      const position: maplibre.LatLng = new maplibre.LatLng(31.2304, 121.4737);
       
       console.info(`[MarkerDebug] TestConstructor: Creating marker with constructor`);
       console.info(`[MarkerDebug] TestConstructor: position=(${position.latitude}, ${position.longitude})`);
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('构造函数测试')
@@ -1120,9 +1118,9 @@ struct MarkerTestPage {
       this.markerCount++;
       this.testMarker = marker;
       
-      const resultPos = marker.getPosition();
+      const resultPos: maplibre.LatLng = marker.getPosition();
       this.message = `✅ 构造函数测试成功\n` +
-        `输入: new LatLng(${position.latitude}, ${position.longitude})\n` +
+        `输入: new maplibre.LatLng(${position.latitude}, ${position.longitude})\n` +
         `结果: (${resultPos.latitude}, ${resultPos.longitude})\n` +
         `ID: ${marker.getId()} - 使用默认图标`;
       
@@ -1143,10 +1141,10 @@ struct MarkerTestPage {
     }
     
     try {
-      const oldPos = this.testMarker.getPosition();
+      const oldPos: maplibre.LatLng = this.testMarker.getPosition();
       
       // 测试使用 LatLng 类实例更新
-      const newPosition = new maplibre.LatLng(
+      const newPosition: maplibre.LatLng = new maplibre.LatLng(
         oldPos.latitude + 1.0,
         oldPos.longitude + 1.0
       );
@@ -1160,7 +1158,7 @@ struct MarkerTestPage {
       // 更新到地图
       this.mapLibreMap.updateMarker(this.testMarker);
       
-      const resultPos = this.testMarker.getPosition();
+      const resultPos: maplibre.LatLng = this.testMarker.getPosition();
       this.message = `✅ Position更新成功\n` +
         `旧位置: (${oldPos.latitude.toFixed(4)}, ${oldPos.longitude.toFixed(4)})\n` +
         `新位置: (${resultPos.latitude.toFixed(4)}, ${resultPos.longitude.toFixed(4)})`;
@@ -1182,15 +1180,15 @@ struct MarkerTestPage {
     }
     
     try {
-      const pos = this.testMarker.getPosition();
-      const id = this.testMarker.getId();
-      const title = this.testMarker.getTitle();
-      const snippet = this.testMarker.getSnippet();
-      const visible = this.testMarker.getVisible();
-      const alpha = this.testMarker.getAlpha();
-      const rotation = this.testMarker.getRotation();
-      const zIndex = this.testMarker.getZIndex();
-      const draggable = this.testMarker.getDraggable();
+      const pos: maplibre.LatLng = this.testMarker.getPosition();
+      const id: number = this.testMarker.getId();
+      const title: string = this.testMarker.getTitle();
+      const snippet: string = this.testMarker.getSnippet();
+      const visible: boolean = this.testMarker.getVisible();
+      const alpha: number = this.testMarker.getAlpha();
+      const rotation: number = this.testMarker.getRotation();
+      const zIndex: number = this.testMarker.getZIndex();
+      const draggable: boolean = this.testMarker.getDraggable();
       const icon = this.testMarker.getIcon();
       
       this.message = `📊 Marker 详细信息\n` +
@@ -1205,7 +1203,7 @@ struct MarkerTestPage {
         `Z-Index: ${zIndex}\n` +
         `可拖拽: ${draggable ? '是' : '否'}`;
       
-      console.info(`[MarkerDebug] ShowMarkerInfo: Marker ${id} details displayed`);
+      console.info(`[MarkerDebug] ShowMarkerInfo: maplibre.Marker ${id} details displayed`);
       console.info(`[MarkerDebug] Position: (${pos.latitude}, ${pos.longitude})`);
     } catch (e) {
       this.message = `❌ 获取信息失败: ${e.message}`;
@@ -1226,7 +1224,7 @@ struct MarkerTestPage {
       // 创建一个带有详细 InfoWindow 内容的 Marker
       const position = new maplibre.LatLng(40.0, 116.0);
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('InfoWindow 测试')
@@ -1272,7 +1270,7 @@ struct MarkerTestPage {
       // 作为示例，我们先创建一个使用默认图标但带特殊标记的 Marker
       this.message = '⏳ 正在创建自定义图标 Marker...';
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('自定义图标测试')
@@ -1348,7 +1346,7 @@ struct MarkerTestPage {
     }
     
     try {
-      const pos = this.testMarker.getPosition();
+      const pos: maplibre.LatLng = this.testMarker.getPosition();
       
       // 移动相机到 Marker 位置，缩放到合适级别
       this.mapLibreMap.flyTo({

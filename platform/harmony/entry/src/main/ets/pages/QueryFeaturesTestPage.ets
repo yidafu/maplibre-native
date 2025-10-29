@@ -7,8 +7,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
@@ -167,12 +167,12 @@ struct QueryFeaturesTestPage {
     
     try {
       // 获取地图中心点像素坐标
-      const centerLatLng = this.mapView.getLatLng();
-      const zoom = this.mapView.getZoom();
+      const centerLatLng: maplibre.LatLng = this.mapView.getLatLng();
+      const zoom: number = this.mapView.getZoom();
       
       // 获取地图尺寸（假设是 400x400 的中心区域）
-      const centerX = 200; // 屏幕中心 X
-      const centerY = 200; // 屏幕中心 Y
+      const centerX: number = 200; // 屏幕中心 X
+      const centerY: number = 200; // 屏幕中心 Y
       const boxSize = 100; // 查询区域半径
       
       // 查询中心区域的要素
@@ -236,10 +236,10 @@ struct QueryFeaturesTestPage {
       
       this.featureCount = features.length;
       
-      const centerLatLng = this.mapView.getLatLng();
-      const zoom = this.mapView.getZoom();
-      const bearing = this.mapView.getBearing();
-      const pitch = this.mapView.getPitch();
+      const centerLatLng: maplibre.LatLng = this.mapView.getLatLng();
+      const zoom: number = this.mapView.getZoom();
+      const bearing: number = this.mapView.getBearing();
+      const pitch: number = this.mapView.getPitch();
       
       if (features.length > 0) {
         // 统计要素类型

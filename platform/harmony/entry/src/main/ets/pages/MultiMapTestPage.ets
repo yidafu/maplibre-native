@@ -4,10 +4,10 @@
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
-import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 
 const TAG = 'MultiMapTestPage';

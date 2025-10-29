@@ -3,8 +3,8 @@
  * 测试新增的 Android/iOS 对齐 API 和核心功能
  */
 import router from '@ohos.router';
+import { maplibre } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { TestPageLayout } from '../components/TestPageLayout';
@@ -84,7 +84,7 @@ struct CoreAPITestPage {
       this.addTestResult(`✅ getPixelRatio: ${this.pixelRatio.toFixed(2)}x`);
       
       // 测试矩形转换
-      const logicalRect = { left: 100, top: 100, right: 300, bottom: 300 };
+      const logicalRect: maplibre.Rect = { left: 100, top: 100, right: 300, bottom: 300 } as maplibre.Rect;
       const physicalRect = this.mapView.getDensityDependantRectangle(logicalRect);
       
       this.addTestResult(`✅ 逻辑矩形: [${logicalRect.left}, ${logicalRect.top}, ${logicalRect.right}, ${logicalRect.bottom}]`);
@@ -120,19 +120,19 @@ struct CoreAPITestPage {
         if (!this.mapView) return;
         
         // 测试 getLatLng
-        const center = this.mapView.getLatLng();
+        const center: maplibre.LatLng = this.mapView.getLatLng();
         this.addTestResult(`✅ getLatLng: (${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)})`);
         
         // 测试 getZoom
-        const zoom = this.mapView.getZoom();
+        const zoom: number = this.mapView.getZoom();
         this.addTestResult(`✅ getZoom: ${zoom.toFixed(2)}`);
         
         // 测试 getBearing
-        const bearing = this.mapView.getBearing();
+        const bearing: number = this.mapView.getBearing();
         this.addTestResult(`✅ getBearing: ${bearing.toFixed(2)}°`);
         
         // 测试 getPitch
-        const pitch = this.mapView.getPitch();
+        const pitch: number = this.mapView.getPitch();
         this.addTestResult(`✅ getPitch: ${pitch.toFixed(2)}°`);
       }, 500);
       
@@ -165,8 +165,8 @@ struct CoreAPITestPage {
       // 设置缩放限制
       this.mapView.setMinZoom(5);
       this.mapView.setMaxZoom(18);
-      const minZoom = this.mapView.getMinZoom();
-      const maxZoom = this.mapView.getMaxZoom();
+      const minZoom: number = this.mapView.getMinZoom();
+      const maxZoom: number = this.mapView.getMaxZoom();
       this.addTestResult(`✅ 缩放范围: ${minZoom.toFixed(1)} - ${maxZoom.toFixed(1)}`);
       
       // 设置俯仰角限制

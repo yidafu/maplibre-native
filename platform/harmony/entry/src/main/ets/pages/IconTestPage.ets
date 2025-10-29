@@ -1,11 +1,11 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { LatLng } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLng';
 import { Icon, IconFactory, MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/index';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
 import { router } from '@kit.ArkUI';
-import maplibre from 'libmaplibre_native.so';
 import resourceManager from '@ohos.resourceManager';
 
 /**
@@ -77,13 +77,13 @@ struct IconTestPage {
       console.info(`[IconTestPage] Icon size: ${defaultIcon.getWidth()}x${defaultIcon.getHeight()}`);
 
       // 在地图上添加使用默认图标的 Marker
-      const position = new LatLng(39.9042, 116.4074); // 北京
+      const position = new maplibre.LatLng(39.9042, 116.4074); // 北京
       const markerOptions = new MarkerOptions()
         .position(position)
         .title('默认图标测试')
         .icon(defaultIcon);
 
-      const marker = await this.mapLibreMap!.addMarker(markerOptions);
+      const marker: maplibre.Marker = await this.mapLibreMap!.addMarker(markerOptions);
       this.markers.push(marker);
 
       this.testStatus = `默认图标测试成功 - ${defaultIcon.toString()}`;
@@ -116,14 +116,14 @@ struct IconTestPage {
       }
 
       // 添加使用自定义图标的 Marker
-      const position = new LatLng(39.9142, 116.4174); // 稍微偏移
+      const position = new maplibre.LatLng(39.9142, 116.4174); // 稍微偏移
       const markerOptions = new MarkerOptions()
         .position(position)
         .title('自定义图标测试')
         .snippet('使用自定义图标')
         .icon(this.testIcon);
 
-      const marker = await this.mapLibreMap!.addMarker(markerOptions);
+      const marker: maplibre.Marker = await this.mapLibreMap!.addMarker(markerOptions);
       this.markers.push(marker);
 
       this.testStatus = `自定义图标测试成功 - ${this.testIcon.toString()}`;
@@ -148,9 +148,9 @@ struct IconTestPage {
 
       // 在不同位置添加多个使用相同图标的 Marker
       const positions = [
-        new LatLng(39.9242, 116.4274),
-        new LatLng(39.9342, 116.4374),
-        new LatLng(39.9442, 116.4474)
+        new maplibre.LatLng(39.9242, 116.4274),
+        new maplibre.LatLng(39.9342, 116.4374),
+        new maplibre.LatLng(39.9442, 116.4474)
       ];
 
       for (let i = 0; i < positions.length; i++) {
@@ -159,7 +159,7 @@ struct IconTestPage {
           .title(`共享图标 Marker ${i + 1}`)
           .icon(this.testIcon!);
 
-        const marker = await this.mapLibreMap!.addMarker(markerOptions);
+        const marker: maplibre.Marker = await this.mapLibreMap!.addMarker(markerOptions);
         this.markers.push(marker);
       }
 

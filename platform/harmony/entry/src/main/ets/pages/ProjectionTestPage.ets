@@ -8,12 +8,12 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { createLatLng } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLng';
 import { AttributionButton, DEFAULT_ATTRIBUTIONS } from 'maplibre_harmony/src/main/ets/maps/widgets/AttributionButton';
 import { ScaleBarView, ScaleBarUnit } from 'maplibre_harmony/src/main/ets/maps/widgets/ScaleBarView';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
-import maplibre from 'libmaplibre_native.so';
 import router from '@ohos.router';
 
 @Entry
@@ -214,7 +214,7 @@ struct ProjectionTestPage {
     
     try {
       // 获取地图中心点
-      const center = this.nativeMapView.getLatLng();
+      const center: maplibre.LatLng = this.nativeMapView.getLatLng();
       
       this.centerLatitude = center.latitude;
       this.centerLongitude = center.longitude;
@@ -269,7 +269,7 @@ struct ProjectionTestPage {
     if (!this.nativeMapView) return;
     
     try {
-      const zoom = this.nativeMapView.getZoom();
+      const zoom: number = this.nativeMapView.getZoom();
       this.metersPerPixel = this.nativeMapView.getMetersPerPixelAtLatitude(this.centerLatitude, zoom);
     } catch (error) {
       hilog.error(DOMAIN, 'ProjectionTest', `Error getting meters per pixel: ${error}`);

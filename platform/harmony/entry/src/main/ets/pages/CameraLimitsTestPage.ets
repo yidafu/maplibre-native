@@ -9,8 +9,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 
@@ -240,8 +240,8 @@ struct CameraLimitsTestPage {
     if (!this.mapView) return;
     
     try {
-      const minZoom = this.mapView.getMinZoom();
-      const maxZoom = this.mapView.getMaxZoom();
+      const minZoom: number = this.mapView.getMinZoom();
+      const maxZoom: number = this.mapView.getMaxZoom();
       const minPitch = this.mapView.getMinPitch();
       const maxPitch = this.mapView.getMaxPitch();
       

@@ -69,7 +69,7 @@ struct ExpressionPerformanceTest {
       Expression.literal([1, 2, 3]);
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('字面量创建', iterations * 4, duration);
   }
 
@@ -87,7 +87,7 @@ struct ExpressionPerformanceTest {
       Expression.id();
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('数据访问表达式', iterations * 4, duration);
   }
 
@@ -115,7 +115,7 @@ struct ExpressionPerformanceTest {
       );
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('数学运算', iterations * 3, duration);
   }
 
@@ -136,7 +136,7 @@ struct ExpressionPerformanceTest {
       );
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('插值表达式', iterations, duration);
   }
 
@@ -157,7 +157,7 @@ struct ExpressionPerformanceTest {
       );
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('Match 表达式', iterations, duration);
   }
 
@@ -187,7 +187,7 @@ struct ExpressionPerformanceTest {
       );
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('嵌套表达式', iterations, duration);
   }
 
@@ -222,7 +222,7 @@ struct ExpressionPerformanceTest {
       }
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('toArray 转换', iterations * expressions.length, duration);
   }
 
@@ -251,7 +251,7 @@ struct ExpressionPerformanceTest {
       }
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('Converter 解析 (已跳过)', iterations * jsonExamples.length, duration);
   }
 
@@ -284,7 +284,7 @@ struct ExpressionPerformanceTest {
       const opacityProperty = PropertyFactory.circleOpacity(Expression.literal(0.8));
     }
     
-    const duration = Date.now() - startTime;
+    const duration: number = Date.now() - startTime;
     this.addResult('PropertyFactory 创建', iterations, duration);
   }
 

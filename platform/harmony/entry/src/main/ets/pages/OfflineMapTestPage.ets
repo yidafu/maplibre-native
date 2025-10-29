@@ -10,6 +10,7 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { OfflineManager } from 'maplibre_harmony/src/main/ets/maps/offline/OfflineManager';
 import { OfflineRegion } from 'maplibre_harmony/src/main/ets/maps/offline/OfflineRegion';
 import { createTilePyramidRegionDefinition } from 'maplibre_harmony/src/main/ets/maps/offline/OfflineRegionDefinition';
@@ -22,7 +23,6 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import common from '@ohos.app.ability.common';
 import promptAction from '@ohos.promptAction';
-import maplibre from 'libmaplibre_native.so';
 import util from '@ohos.util';
 import { TestPageLayout } from '../components/TestPageLayout';
 

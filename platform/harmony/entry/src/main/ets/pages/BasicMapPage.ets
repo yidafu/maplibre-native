@@ -7,11 +7,9 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
-import maplibre from 'libmaplibre_native.so';
+import { maplibre } from 'maplibre_harmony';
 import { DOMAIN } from '../constants/HiLogConstants';
 
-// 从 NAPI 模块导入相机选项类型
-type CameraOptions = maplibre.CameraOptions;
 const TAG = 'BasicMapPage';
 
 // 全局地图视图引用（用于测试）
@@ -209,7 +207,7 @@ struct BasicMapPage {
     }
     
     const location = this.testLocations[index];
-    const bearing = location.bearing || 0;
+    const bearing: number = location.bearing || 0;
     const pitch = location.pitch || 0;
     globalMapView.jumpTo(bearing, location.latitude, location.longitude, pitch, location.zoom);
     this.currentInfo = location.name;
@@ -239,19 +237,20 @@ struct BasicMapPage {
     hilog.info(DOMAIN, 'BasicMapPage', '✅ cancelTransitions completed');
     
     const location = this.testLocations[index];
-    const options: CameraOptions = {
-      center: {
-        latitude: location.latitude,
-        longitude: location.longitude
-      },
+    const center: maplibre.LatLng = {
+      latitude: location.latitude,
+      longitude: location.longitude
+    } as maplibre.LatLng;
+    const options:  maplibre.CameraOptions = {
+      center: center,
       zoom: 6,  // 固定 zoom 为 6（用于测试）
       bearing: location.bearing || 0,
       pitch: location.pitch || 0
     };
     
     // 调试日志：记录当前位置和目标位置
-    const currentPos = globalMapView.getLatLng();
-    const currentZoom = globalMapView.getZoom();
+    const currentPos: maplibre.LatLng = globalMapView.getLatLng();
+    const currentZoom: number = globalMapView.getZoom();
     hilog.info(DOMAIN, 'BasicMapPage', 
       `flyTo: BEFORE - current: lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
     hilog.info(DOMAIN, 'BasicMapPage', 
@@ -280,19 +279,20 @@ struct BasicMapPage {
     globalMapView.cancelTransitions();
     
     const location = this.testLocations[index];
-    const options: CameraOptions = {
-      center: {
-        latitude: location.latitude,
-        longitude: location.longitude
-      },
+    const center: maplibre.LatLng = {
+      latitude: location.latitude,
+      longitude: location.longitude
+    } as maplibre.LatLng;
+    const options :  maplibre.CameraOptions= {
+      center: center,
       zoom: 6,  // 固定 zoom 为 6（用于测试）
       bearing: location.bearing || 0,
       pitch: location.pitch || 0
     };
     
     // 调试日志：记录当前位置和目标位置
-    const currentPos = globalMapView.getLatLng();
-    const currentZoom = globalMapView.getZoom();
+    const currentPos: maplibre.LatLng = globalMapView.getLatLng();
+    const currentZoom: number = globalMapView.getZoom();
     hilog.info(DOMAIN, 'BasicMapPage', 
       `easeTo: BEFORE - current: lat=${currentPos.latitude}, lng=${currentPos.longitude}, zoom=${currentZoom}`);
     hilog.info(DOMAIN, 'BasicMapPage', 
@@ -320,14 +320,15 @@ struct BasicMapPage {
     // 取消当前正在进行的所有动画
     globalMapView.cancelTransitions();
     
-    const currentPos = globalMapView.getLatLng();
+    const currentPos: maplibre.LatLng = globalMapView.getLatLng();
     
     // 旋转到 120 度，倾斜 45 度
-    const options: CameraOptions = {
-      center: {
-        latitude: currentPos.latitude,
-        longitude: currentPos.longitude
-      },
+    const center: maplibre.LatLng = {
+      latitude: currentPos.latitude,
+      longitude: currentPos.longitude
+    } as maplibre.LatLng;
+    const options :  maplibre.CameraOptions= {
+      center: center,
       zoom: 6,  // 固定 zoom 为 6（用于测试）
       bearing: 120,
       pitch: 45
@@ -352,8 +353,8 @@ struct BasicMapPage {
       return;
     }
     
-    const currentZoom = globalMapView.getZoom();
-    const newZoom = currentZoom + delta;
+    const currentZoom: number = globalMapView.getZoom();
+    const newZoom: number = currentZoom + delta;
     globalMapView.setZoom(newZoom, undefined, undefined, 300);
     this.showToast(`缩放: ${newZoom.toFixed(1)}`);
     hilog.info(DOMAIN, 'BasicMapPage', `setZoom: ${newZoom}`);
@@ -396,8 +397,8 @@ struct BasicMapPage {
       return;
     }
     
-    const pos = globalMapView.getLatLng();
-    const info = `位置: ${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)}`;
+    const pos: maplibre.LatLng = globalMapView.getLatLng();
+    const info: string = `位置: ${pos.latitude.toFixed(4)}, ${pos.longitude.toFixed(4)}`;
     this.showToast(info);
     hilog.info(DOMAIN, 'BasicMapPage', info);
   }
@@ -411,8 +412,8 @@ struct BasicMapPage {
       return;
     }
     
-    const zoom = globalMapView.getZoom();
-    const info = `缩放级别: ${zoom.toFixed(2)}`;
+    const zoom: number = globalMapView.getZoom();
+    const info: string = `缩放级别: ${zoom.toFixed(2)}`;
     this.showToast(info);
     hilog.info(DOMAIN, 'BasicMapPage', info);
   }
@@ -426,8 +427,8 @@ struct BasicMapPage {
       return;
     }
     
-    const bearing = globalMapView.getBearing();
-    const info = `方向角度: ${bearing.toFixed(1)}°`;
+    const bearing: number = globalMapView.getBearing();
+    const info: string = `方向角度: ${bearing.toFixed(1)}°`;
     this.showToast(info);
     hilog.info(DOMAIN, 'BasicMapPage', info);
   }
@@ -441,8 +442,8 @@ struct BasicMapPage {
       return;
     }
     
-    const pitch = globalMapView.getPitch();
-    const info = `倾斜角度: ${pitch.toFixed(1)}°`;
+    const pitch: number = globalMapView.getPitch();
+    const info: string = `倾斜角度: ${pitch.toFixed(1)}°`;
     this.showToast(info);
     hilog.info(DOMAIN, 'BasicMapPage', info);
   }

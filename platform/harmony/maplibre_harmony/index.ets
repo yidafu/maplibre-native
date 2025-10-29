@@ -7,5 +7,7 @@
 
 // 导出所有公共 API
 export * from './src/main/ets/maps/index';
+// 导出 maplibre namespace（供 entry 模块使用）
+export { maplibre } from './src/main/ets/maps/types/NativeTypes';
 
 

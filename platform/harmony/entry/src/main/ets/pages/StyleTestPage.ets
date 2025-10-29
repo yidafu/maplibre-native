@@ -1,9 +1,9 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { util } from '@kit.ArkTS';
 import { resourceManager } from '@kit.LocalizationKit';
@@ -48,7 +48,7 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
   }
   
   onStyleLoaded(style: maplibre.Style | null): void {
-    hilog.info(DOMAIN, TAG, '🎨 Style loaded callback - updating camera and triggering repaint');
+    hilog.info(DOMAIN, TAG, '🎨 maplibre.Style loaded callback - updating camera and triggering repaint');
     
     if (this.testPage.mapLibreMap && this.testPage.nativeMapView) {
       try {
@@ -57,7 +57,7 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
         if (this.styleObj && styleRecord['center'] && styleRecord['zoom'] !== undefined) {
           const centerArray = styleRecord['center'] as number[];
           const lon = centerArray[0];
-          const lat = centerArray[1];
+          const lat: number = centerArray[1];
           const zoom = styleRecord['zoom'] as number;
           const bearing = styleRecord['bearing'] !== undefined ? styleRecord['bearing'] as number : 0;
           const pitch = styleRecord['pitch'] !== undefined ? styleRecord['pitch'] as number : 0;
@@ -70,8 +70,8 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
           this.testPage.message = `✅ 已加载样式: ${this.displayName} (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
         } else {
           // 如果样式没有指定初始位置，强制刷新当前位置
-          const currentLatLng = this.testPage.mapLibreMap.getLatLng();
-          const currentZoom = this.testPage.mapLibreMap.getZoom();
+          const currentLatLng: maplibre.LatLng = this.testPage.mapLibreMap.getLatLng();
+          const currentZoom: number = this.testPage.mapLibreMap.getZoom();
           
           hilog.info(DOMAIN, TAG, `No initial position in style, refreshing current: ${currentLatLng.latitude}, ${currentLatLng.longitude}, zoom: ${currentZoom}`);
           
@@ -490,7 +490,7 @@ struct StyleTestPage {
       this.mapReady = true;
       this.message = '✅ 地图已就绪 - 可以测试样式功能';
       
-      hilog.info(DOMAIN, TAG, 'Map is ready for Style testing');
+      hilog.info(DOMAIN, TAG, 'Map is ready for maplibre.Style testing');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed to initialize map: ${errorMsg}`);
@@ -734,7 +734,7 @@ struct StyleTestPage {
       this.updateStyleInfo();
       
       this.message = `✅ 已重新加载样式: ${currentName}`;
-      hilog.info(DOMAIN, TAG, 'Style reloaded successfully');
+      hilog.info(DOMAIN, TAG, 'maplibre.Style reloaded successfully');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed to reload style: ${errorMsg}`);
@@ -797,10 +797,10 @@ struct StyleTestPage {
       hilog.info(DOMAIN, TAG, '🔧 Reset camera requested');
       
       // 获取当前位置
-      const currentLatLng = this.mapLibreMap.getLatLng();
-      const currentZoom = this.mapLibreMap.getZoom();
-      const currentBearing = this.mapLibreMap.getBearing();
-      const currentPitch = this.mapLibreMap.getPitch();
+      const currentLatLng: maplibre.LatLng = this.mapLibreMap.getLatLng();
+      const currentZoom: number = this.mapLibreMap.getZoom();
+      const currentBearing: number = this.mapLibreMap.getBearing();
+      const currentPitch: number = this.mapLibreMap.getPitch();
       
       hilog.info(DOMAIN, TAG, `Current: lat=${currentLatLng.latitude}, lon=${currentLatLng.longitude}, zoom=${currentZoom}, bearing=${currentBearing}, pitch=${currentPitch}`);
       

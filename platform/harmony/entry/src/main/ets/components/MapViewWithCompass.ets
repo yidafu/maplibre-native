@@ -9,7 +9,6 @@ import { CompassView } from '../maps/widgets/CompassView';
 import { CompassVisibility } from '../maps/widgets/CompassVisibility';
 import { CompassPosition } from '../maps/widgets/CompassPosition';
 import { UiSettings } from '../maps/UiSettings';
-import maplibre from 'libmaplibre_native.so';
 import common from '@ohos.app.ability.common';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';

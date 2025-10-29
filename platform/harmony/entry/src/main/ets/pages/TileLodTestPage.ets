@@ -9,8 +9,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 
@@ -190,7 +190,7 @@ struct TileLodTestPage {
     
     try {
       const minRadius = this.mapView.getTileLodMinRadius();
-      const scale = this.mapView.getTileLodScale();
+      const scale: number = this.mapView.getTileLodScale();
       const pitchThreshold = this.mapView.getTileLodPitchThreshold();
       const zoomShift = this.mapView.getTileLodZoomShift();
       

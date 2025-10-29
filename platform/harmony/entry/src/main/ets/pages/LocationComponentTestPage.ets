@@ -1,4 +1,5 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
@@ -10,7 +11,6 @@ import { LatLng } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLng';
 import { router } from '@kit.ArkUI';
 import abilityAccessCtrl, { Permissions } from '@ohos.abilityAccessCtrl';
 import { BusinessError } from '@kit.BasicServicesKit';
-import maplibre from 'libmaplibre_native.so';
 import { OnStyleLoadedListener } from 'maplibre_harmony/src/main/ets/maps/listeners/OnStyleLoadedListener';
 import { OnCameraTrackingChangedListener } from 'maplibre_harmony/src/main/ets/maps/location/listeners/OnCameraTrackingChangedListener';
 import { OnRenderModeChangedListener } from 'maplibre_harmony/src/main/ets/maps/location/listeners/OnRenderModeChangedListener';
@@ -25,7 +25,7 @@ class StyleLoadedListenerImpl implements OnStyleLoadedListener {
   }
 
   onStyleLoaded(): void {
-    console.info('LocationComponentTestPage: Style loaded, initializing LocationComponent');
+    console.info('LocationComponentTestPage: maplibre.Style loaded, initializing LocationComponent');
     this.testPage.initializeLocationComponent();
   }
 }
@@ -257,9 +257,9 @@ struct LocationComponentTestPage {
     }
 
     // 模拟在北京天安门附近的位置
-    const lat = 39.9042 + (Math.random() - 0.5) * 0.01;
-    const lng = 116.4074 + (Math.random() - 0.5) * 0.01;
-    const bearing = Math.random() * 360;
+    const lat: number = 39.9042 + (Math.random() - 0.5) * 0.01;
+    const lng: number = 116.4074 + (Math.random() - 0.5) * 0.01;
+    const bearing: number = Math.random() * 360;
     const accuracy = 10 + Math.random() * 20;
 
     this.locationComponent.forceLocationUpdate(lat, lng, bearing, accuracy);

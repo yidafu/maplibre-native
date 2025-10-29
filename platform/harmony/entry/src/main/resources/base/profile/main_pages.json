@@ -36,7 +36,6 @@
     "pages/LightTestPage",
     "pages/MapStateTestPage",
     "pages/CoreAPITestPage",
-    "pages/MapSnapshotterTestPage",
-    "pages/TestPageExample"
+    "pages/MapSnapshotterTestPage"
   ]
 }

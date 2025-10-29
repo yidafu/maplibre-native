@@ -5,6 +5,7 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
 import { DOMAIN } from '../constants/HiLogConstants';
@@ -278,7 +279,7 @@ struct GestureTestPage {
               .fontSize(12)
               .onClick(() => {
                 if (this.mapViewRef) {
-                  const pitch = this.mapViewRef.getPitch();
+                  const pitch: number = this.mapViewRef.getPitch();
                   this.gestureInfo = `当前俯仰角: ${pitch.toFixed(2)}°`;
                 }
               })

@@ -1,9 +1,9 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { LatLngBounds } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLngBounds';
 import { TestPageLayout } from '../components/TestPageLayout';
@@ -215,8 +215,8 @@ struct SourceTestPage {
    */
   private generateRandomLocation(): RandomLocation {
     // 中国区域：经度 70-135，纬度 15-55
-    const longitude = 70 + Math.random() * 65;
-    const latitude = 15 + Math.random() * 40;
+    const longitude: number = 70 + Math.random() * 65;
+    const latitude: number = 15 + Math.random() * 40;
     return { longitude, latitude };
   }
 
@@ -325,7 +325,7 @@ struct SourceTestPage {
         ]
       };
 
-      const source = new maplibre.GeoJsonSource('point-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('point-source');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
@@ -392,7 +392,7 @@ struct SourceTestPage {
         ]
       };
 
-      const source = new maplibre.GeoJsonSource('line-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('line-source');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
@@ -464,7 +464,7 @@ struct SourceTestPage {
         ]
       };
 
-      const source = new maplibre.GeoJsonSource('polygon-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('polygon-source');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
@@ -523,8 +523,8 @@ struct SourceTestPage {
       const allPoints: maplibre.LatLng[] = [];
       
       for (let i = 0; i < 100; i++) {
-        const lng = centerLng + (Math.random() - 0.5) * offset * 2;
-        const lat = centerLat + (Math.random() - 0.5) * offset * 2;
+        const lng: number = centerLng + (Math.random() - 0.5) * offset * 2;
+        const lat: number = centerLat + (Math.random() - 0.5) * offset * 2;
         
         features.push({
           type: "Feature",
@@ -547,7 +547,7 @@ struct SourceTestPage {
       };
 
       // TODO: 聚类选项待完善
-      const source = new maplibre.GeoJsonSource('cluster-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('cluster-source');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
@@ -589,7 +589,7 @@ struct SourceTestPage {
         // 忽略不存在的情况
       }
 
-      const source = new maplibre.GeoJsonSource('url-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('url-source');
       // 使用公开的 GeoJSON 数据源
       source.setUrl('https://raw.githubusercontent.com/maplibre/maplibre-gl-js/main/test/integration/data/countries.geojson');
       style.addSource(source);
@@ -636,7 +636,7 @@ struct SourceTestPage {
         // 忽略不存在的情况
       }
 
-      const source = new maplibre.VectorSource('vector-source');
+      const source: maplibre.VectorSource = new maplibre.VectorSource('vector-source');
       source.setUrl('https://demotiles.maplibre.org/tiles/tiles.json');
       style.addSource(source);
 
@@ -678,7 +678,7 @@ struct SourceTestPage {
         // 忽略不存在的情况
       }
 
-      const source = new maplibre.RasterSource('osm-raster');
+      const source: maplibre.RasterSource = new maplibre.RasterSource('osm-raster');
       source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
       style.addSource(source);
 
@@ -720,7 +720,7 @@ struct SourceTestPage {
         // 忽略不存在的情况
       }
 
-      const source = new maplibre.RasterSource('satellite-raster');
+      const source: maplibre.RasterSource = new maplibre.RasterSource('satellite-raster');
       // 使用示例卫星影像服务
       source.setUrl('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
       style.addSource(source);

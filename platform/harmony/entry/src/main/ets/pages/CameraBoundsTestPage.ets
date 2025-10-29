@@ -1,4 +1,5 @@
 /**
+import { CameraOptions } from '../types/MapTypes';
  * CameraBoundsTestPage - 相机边界计算测试页面
  * 
  * 测试接口：
@@ -8,8 +9,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { LatLngBounds } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLngBounds';
@@ -168,9 +169,10 @@ struct CameraBoundsTestPage {
       // 使用合适的缩放级别显示两个城市
       const zoom = 6.5; // 适合显示北京到上海的缩放级别
       
-      // 创建 CameraOptions 对象
+      // 创建 any 对象
+      const center: maplibre.LatLng = { latitude: centerLat, longitude: centerLng } as maplibre.LatLng;
       const cameraOptions: maplibre.CameraOptions = {
-        center: { latitude: centerLat, longitude: centerLng },
+        center: center,
         zoom: zoom,
         bearing: 0,
         pitch: 0
@@ -202,10 +204,10 @@ struct CameraBoundsTestPage {
     
     try {
       // 获取当前相机位置信息
-      const currentLatLng = this.mapView.getLatLng();
-      const currentZoom = this.mapView.getZoom();
-      const currentBearing = this.mapView.getBearing();
-      const currentPitch = this.mapView.getPitch();
+      const currentLatLng: maplibre.LatLng = this.mapView.getLatLng();
+      const currentZoom: number = this.mapView.getZoom();
+      const currentBearing: number = this.mapView.getBearing();
+      const currentPitch: number = this.mapView.getPitch();
       
       this.boundsInfo = `当前视图信息:\n` +
         `中心: ${currentLatLng.latitude.toFixed(4)}°, ${currentLatLng.longitude.toFixed(4)}°\n` +

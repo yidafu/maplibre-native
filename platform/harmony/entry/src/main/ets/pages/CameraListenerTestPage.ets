@@ -5,6 +5,7 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
@@ -12,7 +13,6 @@ import { OnCameraIdleListener, OnCameraMoveStartedListener,
          OnCameraMoveListener, OnCameraMoveCanceledListener } from 'maplibre_harmony/src/main/ets/maps/camera/CameraListener';
 import { CameraMoveReason, getCameraMoveReasonText } from 'maplibre_harmony/src/main/ets/maps/camera/CameraMoveReason';
 import { router } from '@kit.ArkUI';
-import maplibre from 'libmaplibre_native.so';
 
 // 相机空闲监听器实现
 class CameraIdleListenerImpl implements OnCameraIdleListener {
@@ -163,8 +163,8 @@ struct CameraListenerTestPage {
   private testJumpTo(): void {
     if (!this.mapLibreMap) return;
     
-    const lat = 39.9 + (Math.random() - 0.5) * 0.1;
-    const lng = 116.4 + (Math.random() - 0.5) * 0.1;
+    const lat: number = 39.9 + (Math.random() - 0.5) * 0.1;
+    const lng: number = 116.4 + (Math.random() - 0.5) * 0.1;
     
     this.addLog(`🎯 调用 jumpTo(${lat.toFixed(4)}, ${lng.toFixed(4)})`);
     this.mapLibreMap.jumpTo(0, lat, lng, 0, 12);
@@ -176,8 +176,8 @@ struct CameraListenerTestPage {
   private testEaseTo(): void {
     if (!this.mapLibreMap) return;
     
-    const lat = 39.9 + (Math.random() - 0.5) * 0.1;
-    const lng = 116.4 + (Math.random() - 0.5) * 0.1;
+    const lat: number = 39.9 + (Math.random() - 0.5) * 0.1;
+    const lng: number = 116.4 + (Math.random() - 0.5) * 0.1;
     
     this.addLog(`🎯 调用 easeTo(${lat.toFixed(4)}, ${lng.toFixed(4)}, 1000ms)`);
     this.mapLibreMap.easeTo({

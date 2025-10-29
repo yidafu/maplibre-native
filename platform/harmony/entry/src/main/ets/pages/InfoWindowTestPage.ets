@@ -11,8 +11,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
@@ -20,9 +20,6 @@ import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreM
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
 import { MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/MarkerOptions';
 import { InfoWindowStyle } from 'maplibre_harmony/src/main/ets/maps/annotations/InfoWindow';
-
-// 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
 
 @Entry
 @Component
@@ -33,7 +30,7 @@ struct InfoWindowTestPage {
   @State infoWindowCount: number = 0;
   
   private mapLibreMap: MapLibreMap | null = null;
-  private markerList: Marker[] = [];
+  private markerList: maplibre.Marker[] = [];
 
   /**
    * 地图区域构建器
@@ -271,7 +268,7 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('默认 InfoWindow')
@@ -303,7 +300,7 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('多行文本 InfoWindow')
@@ -334,7 +331,7 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('蓝色主题')
@@ -369,7 +366,7 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('绿色主题')
@@ -403,7 +400,7 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('大字体')
@@ -437,7 +434,7 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title('紧凑')
@@ -490,7 +487,7 @@ struct InfoWindowTestPage {
       
       const position = new maplibre.LatLng(lat, lng);
       
-      const marker = await this.mapLibreMap.addMarker(
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title(title)
@@ -597,8 +594,8 @@ struct InfoWindowTestPage {
     const baseLng = 116.4074;
     const range = 0.3; // 约30公里范围
     
-    const lat = baseLat + (Math.random() - 0.5) * range;
-    const lng = baseLng + (Math.random() - 0.5) * range;
+    const lat: number = baseLat + (Math.random() - 0.5) * range;
+    const lng: number = baseLng + (Math.random() - 0.5) * range;
     
     return new maplibre.LatLng(lat, lng);
   }

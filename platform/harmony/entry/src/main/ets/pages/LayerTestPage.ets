@@ -1,9 +1,9 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { LatLngBounds } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLngBounds';
 import { TestPageLayout } from '../components/TestPageLayout';
@@ -19,6 +19,7 @@ import {
   RasterLayer,
   BackgroundLayer
 } from 'maplibre_harmony/src/main/ets/maps/style/index';
+import { CameraOptions } from '../types/MapTypes';
 
 const TAG = 'LayerTestPage';
 
@@ -229,8 +230,8 @@ struct LayerTestPage {
    */
   private generateRandomLocation(): RandomLocation {
     // 中国区域：经度 70-135，纬度 15-55
-    const longitude = 70 + Math.random() * 65;
-    const latitude = 15 + Math.random() * 40;
+    const longitude: number = 70 + Math.random() * 65;
+    const latitude: number = 15 + Math.random() * 40;
     return { longitude, latitude };
   }
 
@@ -253,7 +254,7 @@ struct LayerTestPage {
 
       if (camera) {
         // FlyTo 到计算出的相机位置
-        const options: maplibre.CameraOptions = {
+        const options:  maplibre.CameraOptions = {
           center: camera.target,
           zoom: camera.zoom,
           bearing: camera.bearing,
@@ -376,7 +377,7 @@ struct LayerTestPage {
         ]
       };
 
-      const source = new maplibre.GeoJsonSource('test-data');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('test-data');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
@@ -555,8 +556,8 @@ struct LayerTestPage {
       const allPoints: maplibre.LatLng[] = [];
       
       for (let i = 0; i < 200; i++) {
-        const lng = centerLng + (Math.random() - 0.5) * offset * 2;
-        const lat = centerLat + (Math.random() - 0.5) * offset * 2;
+        const lng: number = centerLng + (Math.random() - 0.5) * offset * 2;
+        const lat: number = centerLat + (Math.random() - 0.5) * offset * 2;
         
         features.push({
           type: "Feature",
@@ -577,11 +578,11 @@ struct LayerTestPage {
         features: features
       };
 
-      const source = new maplibre.GeoJsonSource('heatmap-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('heatmap-source');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
-      const layer = new maplibre.HeatmapLayer('heatmap-test-layer', 'heatmap-source')
+      const layer: maplibre.HeatmapLayer = new maplibre.HeatmapLayer('heatmap-test-layer', 'heatmap-source')
           .setHeatmapRadius(30)
         .setHeatmapIntensity(1.5)
         .setHeatmapOpacity(0.8);
@@ -658,7 +659,7 @@ struct LayerTestPage {
         ]
       };
 
-      const source = new maplibre.GeoJsonSource('extrusion-source');
+      const source: maplibre.GeoJsonSource = new maplibre.GeoJsonSource('extrusion-source');
       source.setGeoJson(JSON.stringify(geojsonData));
       style.addSource(source);
 
@@ -712,7 +713,7 @@ struct LayerTestPage {
         // 忽略不存在的情况
       }
 
-      const source = new maplibre.RasterSource('raster-test-source');
+      const source: maplibre.RasterSource = new maplibre.RasterSource('raster-test-source');
       source.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png');
       style.addSource(source);
 

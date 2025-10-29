@@ -5,8 +5,8 @@
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
+import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
-import maplibre from 'libmaplibre_native.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 
@@ -194,7 +194,7 @@ struct TestPageExample {
   private zoomIn(): void {
     if (!this.mapView) return;
     
-    const currentZoom = this.mapView.getZoom();
+    const currentZoom: number = this.mapView.getZoom();
     this.mapView.setZoom(currentZoom + 1, 300);
     this.statusMessage = `✅ 放大到 Zoom ${(currentZoom + 1).toFixed(1)}`;
   }
@@ -205,7 +205,7 @@ struct TestPageExample {
   private zoomOut(): void {
     if (!this.mapView) return;
     
-    const currentZoom = this.mapView.getZoom();
+    const currentZoom: number = this.mapView.getZoom();
     this.mapView.setZoom(currentZoom - 1, 300);
     this.statusMessage = `✅ 缩小到 Zoom ${(currentZoom - 1).toFixed(1)}`;
   }
@@ -234,8 +234,9 @@ struct TestPageExample {
   private flyToBeijing(): void {
     if (!this.mapView) return;
     
+    const center: maplibre.LatLng = { latitude: 39.9042, longitude: 116.4074 } as maplibre.LatLng;
     const options: maplibre.CameraOptions = {
-      center: { latitude: 39.9042, longitude: 116.4074 },
+      center: center,
       zoom: 10,
       bearing: 0,
       pitch: 0
@@ -250,8 +251,9 @@ struct TestPageExample {
   private flyToShanghai(): void {
     if (!this.mapView) return;
     
+    const center: maplibre.LatLng = { latitude: 31.2304, longitude: 121.4737 } as maplibre.LatLng;
     const options: maplibre.CameraOptions = {
-      center: { latitude: 31.2304, longitude: 121.4737 },
+      center: center,
       zoom: 10,
       bearing: 0,
       pitch: 0

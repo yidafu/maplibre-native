@@ -1,4 +1,5 @@
 /**
+import { CameraOptions } from '../types/MapTypes';
  * CameraAnimationTestPage - 相机动画测试页面
  * 
  * 测试内容：
@@ -10,10 +11,10 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { createLatLng } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLng';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
-import maplibre from 'libmaplibre_native.so';
 import promptAction from '@ohos.promptAction';
 import router from '@ohos.router';
 

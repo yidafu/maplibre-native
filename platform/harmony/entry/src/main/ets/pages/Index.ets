@@ -149,7 +149,7 @@ struct Index {
         '🔨'
       ),
       new TestPageItem(
-        '3. Style 地图样式测试',
+        '3. maplibre.Style 地图样式测试',
         '测试地图样式切换、样式信息获取、图层可见性控制等样式相关功能',
         'pages/StyleTestPage',
         '🎨'

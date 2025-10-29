@@ -11,6 +11,7 @@
  */
 
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { maplibre } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
@@ -18,7 +19,6 @@ import { MarkerLayerManager } from 'maplibre_harmony/src/main/ets/maps/annotatio
 import { MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/MarkerOptions';
 import { IconFactory } from 'maplibre_harmony/src/main/ets/maps/annotations/IconFactory';
 import { router } from '@kit.ArkUI';
-import maplibre from 'libmaplibre_native.so';
 import { TestPageLayout } from '../components/TestPageLayout';
 
 @Entry
@@ -197,8 +197,8 @@ struct MarkerAdvancedTestPage {
       const iconFactory = IconFactory.getInstance();
       
       for (let i = 0; i < rotations.length; i++) {
-        const rotation = rotations[i];
-        const lat = 39.9042 + (i - 4) * 0.01;
+        const rotation: number = rotations[i];
+        const lat: number = 39.9042 + (i - 4) * 0.01;
         const lon = 116.4074;
         
         const marker = new MarkerOptions()
@@ -234,7 +234,7 @@ struct MarkerAdvancedTestPage {
       // 添加不同透明度的 markers
       for (let i = 0; i <= 10; i++) {
         const alpha = i / 10;
-        const lat = 39.9042;
+        const lat: number = 39.9042;
         const lon = 116.4074 + (i - 5) * 0.01;
         
         const marker = new MarkerOptions()
@@ -271,7 +271,7 @@ struct MarkerAdvancedTestPage {
       const count = 50;
       
       for (let i = 0; i < count; i++) {
-        const lat = 39.9042 + (Math.random() - 0.5) * 0.1;
+        const lat: number = 39.9042 + (Math.random() - 0.5) * 0.1;
         const lon = 116.4074 + (Math.random() - 0.5) * 0.1;
         
         const marker = new MarkerOptions()
@@ -286,7 +286,7 @@ struct MarkerAdvancedTestPage {
       
       const startTime = Date.now();
       this.markerLayerManager.addMarkers(markers);
-      const duration = Date.now() - startTime;
+      const duration: number = Date.now() - startTime;
       
       this.log(`✅ 批量添加 ${count} 个 markers 成功，耗时 ${duration}ms`);
       this.currentTest = '测试完成';
