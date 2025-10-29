@@ -8,7 +8,6 @@
  * - 取消快照
  */
 
-import { NativeMapView } from '../maps/NativeMapView';
 import { MapSnapshotter, SnapshotOptions, SnapshotOptionsBuilder } from '../maps/snapshot/MapSnapshotter';
 import { MapSnapshot } from '../maps/snapshot/MapSnapshot';
 import { createLatLng } from '../maps/geometry/LatLng';
@@ -17,6 +16,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import image from '@ohos.multimedia.image';
 import promptAction from '@ohos.promptAction';
+import router from '@ohos.router';
 
 @Entry
 @Component
@@ -39,7 +39,7 @@ struct MapSnapshotterTestPage {
         Button('返回')
           .onClick(() => {
             hilog.info(DOMAIN, 'MapSnapshotterTest', 'Navigating back');
-            // TODO: 导航返回
+            router.back();
           })
           .margin({ right: 16 })
       }

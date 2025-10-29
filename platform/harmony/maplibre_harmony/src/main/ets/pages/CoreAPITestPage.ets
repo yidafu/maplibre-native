@@ -7,6 +7,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { NativeMapView } from '../maps/NativeMapView';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 type NullableNativeMapView = maplibre.NativeMapView | null;
 
@@ -325,8 +326,9 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 应用边距失败: ${error.message}`);
     }
   }
-  
-  build() {
+
+  @Builder
+  MapAreaBuilder() {
     Stack() {
       // 地图组件
       NativeMapView({
@@ -397,208 +399,249 @@ struct CoreAPITestPage {
         .hitTestBehavior(HitTestMode.Transparent)
       }
       
-      // 控制面板
-      Column() {
-        // 标题栏
-        Row() {
-          Button('返回')
-            .fontSize(14)
-            .onClick(() => {
-              router.back();
-            })
-          
-          Text('核心 API 测试')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
-            .layoutWeight(1)
-            .textAlign(TextAlign.Center)
-          
-          Button(this.showPaddingOverlay ? '隐藏' : '显示')
-            .fontSize(14)
-            .onClick(() => {
-              this.showPaddingOverlay = !this.showPaddingOverlay;
-            })
-        }
-        .width('100%')
-        .height(50)
-        .padding(10)
-        .backgroundColor(Color.White)
-        .justifyContent(FlexAlign.SpaceBetween)
-        
-        // 快捷测试按钮
-        Row() {
-          Button('运行所有测试')
-            .fontSize(14)
-            .type(ButtonType.Normal)
-            .borderRadius(8)
-            .backgroundColor('#007AFF')
-            .onClick(() => {
-              this.runAllTests();
-            })
-          
-          Button('清除结果')
-            .fontSize(14)
-            .type(ButtonType.Normal)
-            .borderRadius(8)
-            .backgroundColor('#FF3B30')
-            .onClick(() => {
-              this.testResults = [];
-            })
-        }
-        .width('100%')
-        .padding(10)
-        .backgroundColor(Color.White)
-        .justifyContent(FlexAlign.SpaceAround)
-        
-        // 测试按钮组
-        Scroll() {
-          Column() {
-            Text('新增 API 测试')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .margin({ top: 10, bottom: 5 })
-            
-            Row() {
-              Button('像素比例')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.testPixelRatio())
-              
-              Button('内容边距')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.testContentPadding())
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceAround)
-            
-            Text('边距控制')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .margin({ top: 10, bottom: 5 })
-            
-            Row() {
-              Button('示例边距')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.applyExamplePadding())
-              
-              Button('清除边距')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.clearPadding())
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceAround())
-            
-            Text('相机控制测试')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .margin({ top: 10, bottom: 5 })
-            
-            Row() {
-              Button('相机控制')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.testCameraControl())
-              
-              Button('限制测试')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.testZoomPitchLimits())
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceAround)
-            
-            Text('工具 API 测试')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .margin({ top: 10, bottom: 5 })
-            
-            Row() {
-              Button('坐标转换')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.testCoordinateConversion())
-              
-              Button('瓦片管理')
-                .fontSize(13)
-                .type(ButtonType.Normal)
-                .borderRadius(6)
-                .onClick(() => this.testTileManagement())
-            }
-            .width('100%')
-            .justifyContent(FlexAlign.SpaceAround)
-            
-            Text('地图状态')
-              .fontSize(16)
-              .fontWeight(FontWeight.Bold)
-              .margin({ top: 10, bottom: 5 })
-            
-            Button('查询状态')
-              .fontSize(13)
-              .type(ButtonType.Normal)
-              .borderRadius(6)
-              .width('45%')
-              .onClick(() => this.testMapState())
-          }
-          .width('100%')
-          .padding(10)
-        }
-        .height(240)
-        .backgroundColor(Color.White)
-        
-        // 当前状态显示
-        Column() {
-          Text('当前状态')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .margin({ bottom: 5 })
-          
-          Text(`像素比: ${this.pixelRatio.toFixed(2)}x`)
-            .fontSize(12)
-            .fontColor('#666')
-          
-          Text(`边距: [${this.currentPadding.map(p => p.toFixed(0)).join(', ')}]`)
-            .fontSize(12)
-            .fontColor('#666')
-        }
-        .width('100%')
-        .padding(10)
-        .backgroundColor('#F0F0F0')
-        .alignItems(HorizontalAlign.Start)
-        
-        // 测试结果日志
-        Scroll() {
-          Column() {
-            ForEach(this.testResults, (result: string, index: number) => {
-              Text(result)
-                .fontSize(11)
-                .fontFamily('monospace')
-                .width('100%')
-                .padding({ left: 5, right: 5, top: 2, bottom: 2 })
-                .backgroundColor(index % 2 === 0 ? '#FAFAFA' : '#FFFFFF')
-            })
-          }
-          .width('100%')
-        }
-        .layoutWeight(1)
-        .backgroundColor('#F5F5F5')
-        .scrollBar(BarState.Auto)
-      }
-      .width('100%')
-      .backgroundColor(Color.White)
-      .position({ x: 0, y: 0 })
+      // 边距显示/隐藏控制按钮
+      Button(this.showPaddingOverlay ? '隐藏边距' : '显示边距')
+        .fontSize(12)
+        .padding(8)
+        .position({ x: 8, y: 8 })
+        .onClick(() => {
+          this.showPaddingOverlay = !this.showPaddingOverlay;
+        })
     }
     .width('100%')
     .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 快捷测试按钮
+    Row() {
+      Button('运行所有测试')
+        .fontSize(14)
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#007AFF')
+        .width('48%')
+        .onClick(() => {
+          this.handleRunAllTests();
+        })
+      
+      Button('清除结果')
+        .fontSize(14)
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#FF3B30')
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => {
+          this.testResults = [];
+        })
+    }
+    .width('100%')
+    
+    // 测试按钮组
+    Text('新增 API 测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Row() {
+      Button('像素比例')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .onClick(() => this.handleTestPixelRatio())
+      
+      Button('内容边距')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => this.handleTestContentPadding())
+    }
+    .width('100%')
+    
+    Text('边距控制')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Row() {
+      Button('示例边距')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .onClick(() => this.handleApplyExamplePadding())
+      
+      Button('清除边距')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => this.handleClearPadding())
+    }
+    .width('100%')
+    
+    Text('相机控制测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Row() {
+      Button('相机控制')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .onClick(() => this.handleTestCameraControl())
+      
+      Button('限制测试')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => this.handleTestZoomPitchLimits())
+    }
+    .width('100%')
+    
+    Text('工具 API 测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Row() {
+      Button('坐标转换')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .onClick(() => this.handleTestCoordinateConversion())
+      
+      Button('瓦片管理')
+        .fontSize(13)
+        .type(ButtonType.Normal)
+        .borderRadius(6)
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => this.handleTestTileManagement())
+    }
+    .width('100%')
+    
+    Text('地图状态')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Button('查询状态')
+      .fontSize(13)
+      .type(ButtonType.Normal)
+      .borderRadius(6)
+      .width('48%')
+      .onClick(() => this.handleTestMapState())
+    
+    Divider()
+    
+    // 当前状态显示
+    Column() {
+      Text('当前状态')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 5 })
+      
+      Text(`像素比: ${this.pixelRatio.toFixed(2)}x`)
+        .fontSize(12)
+        .fontColor('#666')
+      
+      Text(`边距: [${this.currentPadding.map(p => p.toFixed(0)).join(', ')}]`)
+        .fontSize(12)
+        .fontColor('#666')
+    }
+    .width('100%')
+    .padding(10)
+    .backgroundColor('#F0F0F0')
+    .alignItems(HorizontalAlign.Start)
+    .borderRadius(4)
+    
+    // 测试结果日志
+    Text('测试结果')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Column() {
+      ForEach(this.testResults, (result: string, index: number) => {
+        Text(result)
+          .fontSize(11)
+          .fontFamily('monospace')
+          .width('100%')
+          .padding({ left: 5, right: 5, top: 2, bottom: 2 })
+          .backgroundColor(index % 2 === 0 ? '#FAFAFA' : '#FFFFFF')
+      })
+    }
+    .width('100%')
+    .height(150)
+    .backgroundColor('#F5F5F5')
+    .borderRadius(4)
+    .border({ width: 1, color: '#E0E0E0' })
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: '核心 API 测试',
+        mapArea: this.MapAreaBuilder,
+        controlArea: this.ControlAreaBuilder
+      })
+    }
+    .width('100%')
+    .height('100%')
+  }
+  
+  // ========== 包装方法（用于 @Builder 中的 this 上下文绑定） ==========
+  
+  private handleRunAllTests = (): void => {
+    this.runAllTests();
+  }
+  
+  private handleTestPixelRatio = (): void => {
+    this.testPixelRatio();
+  }
+  
+  private handleTestContentPadding = (): void => {
+    this.testContentPadding();
+  }
+  
+  private handleApplyExamplePadding = (): void => {
+    this.applyExamplePadding();
+  }
+  
+  private handleClearPadding = (): void => {
+    this.clearPadding();
+  }
+  
+  private handleTestCameraControl = (): void => {
+    this.testCameraControl();
+  }
+  
+  private handleTestZoomPitchLimits = (): void => {
+    this.testZoomPitchLimits();
+  }
+  
+  private handleTestCoordinateConversion = (): void => {
+    this.testCoordinateConversion();
+  }
+  
+  private handleTestTileManagement = (): void => {
+    this.testTileManagement();
+  }
+  
+  private handleTestMapState = (): void => {
+    this.testMapState();
   }
 }
 

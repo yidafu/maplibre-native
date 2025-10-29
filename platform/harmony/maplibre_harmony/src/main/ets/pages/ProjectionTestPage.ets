@@ -9,24 +9,23 @@
 
 import { NativeMapView } from '../maps/NativeMapView';
 import { createLatLng } from '../maps/geometry/LatLng';
-import { Projection } from '../maps/projection/Projection';
 import { AttributionButton, DEFAULT_ATTRIBUTIONS } from '../maps/widgets/AttributionButton';
 import { ScaleBarView, ScaleBarUnit } from '../maps/widgets/ScaleBarView';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import maplibre from 'libmaplibre_native.so';
+import router from '@ohos.router';
 
 @Entry
 @Component
 struct ProjectionTestPage {
   @State private mapReady: boolean = false;
-  @State private projection: Projection | null = null;
   @State private centerLatitude: number = 30.2741;
   @State private centerLongitude: number = 120.1551;
-  @State private visibleRegionText: string = 'Not calculated';
+  @State private visibleRegionText: string = '未计算';
   @State private metersPerPixel: number = 0;
   
-  private mapView: NativeMapView | null = null;
+  private nativeMapView: maplibre.NativeMapView | null = null;
   
   build() {
     Column() {
@@ -42,7 +41,7 @@ struct ProjectionTestPage {
         Button('返回')
           .onClick(() => {
             hilog.info(DOMAIN, 'ProjectionTest', 'Navigating back');
-            // TODO: 导航返回
+            router.back();
           })
           .margin({ right: 16 })
       }
@@ -165,23 +164,13 @@ struct ProjectionTestPage {
     hilog.info(DOMAIN, 'ProjectionTest', 'Map ready');
     
     if (mapView) {
-      // 获取 map controller
-      const mapComponent = this.mapView;
-      if (mapComponent) {
-        const mapLibreMap = mapComponent.getController().getMapView();
-        
-        if (mapLibreMap) {
-          // 创建 Projection（需要视图尺寸）
-          // 注意：实际应用中应该从 mapLibreMap.getProjection() 获取
-          this.projection = new Projection(mapView, 1080, 1920); // 示例尺寸
-          this.mapReady = true;
-          
-          // 初始化 metersPerPixel
-          this.updateMetersPerPixel();
-          
-          hilog.info(DOMAIN, 'ProjectionTest', 'Projection initialized');
-        }
-      }
+      this.nativeMapView = mapView;
+      this.mapReady = true;
+      
+      // 初始化 metersPerPixel
+      this.updateMetersPerPixel();
+      
+      hilog.info(DOMAIN, 'ProjectionTest', 'Map initialized');
     }
   }
   
@@ -189,24 +178,28 @@ struct ProjectionTestPage {
    * 测试可见区域
    */
   private testVisibleRegion(): void {
-    if (!this.projection) {
-      hilog.warn(DOMAIN, 'ProjectionTest', 'Projection not initialized');
+    if (!this.nativeMapView) {
+      hilog.warn(DOMAIN, 'ProjectionTest', 'Map not initialized');
       return;
     }
     
     try {
-      const visibleRegion = this.projection.getVisibleRegion();
+      const bounds = this.nativeMapView.getVisibleCoordinateBounds() as maplibre.LatLng[];
       
-      this.visibleRegionText = 
-        `Near Left: ${visibleRegion.nearLeft.latitude.toFixed(6)}, ${visibleRegion.nearLeft.longitude.toFixed(6)}\n` +
-        `Near Right: ${visibleRegion.nearRight.latitude.toFixed(6)}, ${visibleRegion.nearRight.longitude.toFixed(6)}\n` +
-        `Far Left: ${visibleRegion.farLeft.latitude.toFixed(6)}, ${visibleRegion.farLeft.longitude.toFixed(6)}\n` +
-        `Far Right: ${visibleRegion.farRight.latitude.toFixed(6)}, ${visibleRegion.farRight.longitude.toFixed(6)}`;
-      
-      hilog.info(DOMAIN, 'ProjectionTest', `Visible region: ${visibleRegion.toString()}`);
-    } catch (error) {
-      hilog.error(DOMAIN, 'ProjectionTest', `Error getting visible region: ${error}`);
-      this.visibleRegionText = `Error: ${error}`;
+      if (bounds && bounds.length >= 2) {
+        this.visibleRegionText = 
+          `西南角: ${bounds[0].latitude.toFixed(6)}, ${bounds[0].longitude.toFixed(6)}\n` +
+          `东北角: ${bounds[1].latitude.toFixed(6)}, ${bounds[1].longitude.toFixed(6)}\n` +
+          `可见区域已计算`;
+        
+        hilog.info(DOMAIN, 'ProjectionTest', `Visible region calculated`);
+      } else {
+        this.visibleRegionText = '无法获取可见区域';
+      }
+    } catch (err) {
+      const error = err as Error;
+      hilog.error(DOMAIN, 'ProjectionTest', `Error getting visible region: ${error.message}`);
+      this.visibleRegionText = `错误: ${error.message}`;
     }
   }
   
@@ -214,38 +207,23 @@ struct ProjectionTestPage {
    * 测试屏幕中心点转换
    */
   private testScreenCenter(): void {
-    if (!this.projection) {
-      hilog.warn(DOMAIN, 'ProjectionTest', 'Projection not initialized');
+    if (!this.nativeMapView) {
+      hilog.warn(DOMAIN, 'ProjectionTest', 'Map not initialized');
       return;
     }
     
     try {
-      const screenWidth = this.projection.getViewWidth();
-      const screenHeight = this.projection.getViewHeight();
+      // 获取地图中心点
+      const center = this.nativeMapView.getLatLng();
       
-      const centerX: number = screenWidth / 2;
-      const centerY: number = screenHeight / 2;
-      interface PointLike {
-        x: number;
-        y: number;
-      }
-      const centerPoint: PointLike = { x: centerX, y: centerY };
-      const centerLatLng = this.projection.screenLocationToLatLng(centerPoint);
-      
-      this.centerLatitude = centerLatLng.latitude;
-      this.centerLongitude = centerLatLng.longitude;
+      this.centerLatitude = center.latitude;
+      this.centerLongitude = center.longitude;
       
       hilog.info(DOMAIN, 'ProjectionTest', 
-        `Screen center (${centerPoint.x}, ${centerPoint.y}) -> ` +
-        `LatLng (${centerLatLng.latitude}, ${centerLatLng.longitude})`);
-        
-      // 反向转换验证
-      const backToScreen = this.projection.latLngToScreenLocation(centerLatLng);
-      hilog.info(DOMAIN, 'ProjectionTest', 
-        `Back to screen: (${backToScreen.x}, ${backToScreen.y})`);
+        `Map center: ${center.latitude.toFixed(6)}, ${center.longitude.toFixed(6)}`);
         
     } catch (error) {
-      hilog.error(DOMAIN, 'ProjectionTest', `Error converting screen center: ${error}`);
+      hilog.error(DOMAIN, 'ProjectionTest', `Error getting center: ${error}`);
     }
   }
   
@@ -253,8 +231,8 @@ struct ProjectionTestPage {
    * 测试批量坐标转换
    */
   private testBatchConversion(): void {
-    if (!this.projection) {
-      hilog.warn(DOMAIN, 'ProjectionTest', 'Projection not initialized');
+    if (!this.nativeMapView) {
+      hilog.warn(DOMAIN, 'ProjectionTest', 'Map not initialized');
       return;
     }
     
@@ -267,24 +245,17 @@ struct ProjectionTestPage {
         createLatLng(30.30, 120.18)
       ];
       
-      // 批量转换
+      // 批量转换（使用单个转换模拟批量）
       const startTime = Date.now();
-      const screenPoints = this.projection.latLngsToScreenLocations(testLatLngs);
+      for (let i = 0; i < testLatLngs.length; i++) {
+        const pixel = this.nativeMapView.pixelForLatLng(testLatLngs[i].latitude, testLatLngs[i].longitude);
+        hilog.info(DOMAIN, 'ProjectionTest', 
+          `[${i}] (${testLatLngs[i].latitude}, ${testLatLngs[i].longitude}) -> (${pixel.x}, ${pixel.y})`);
+      }
       const endTime = Date.now();
       
       hilog.info(DOMAIN, 'ProjectionTest', 
         `Batch conversion of ${testLatLngs.length} points took ${endTime - startTime}ms`);
-      
-      // 打印结果
-      for (let i = 0; i < testLatLngs.length; i++) {
-        hilog.info(DOMAIN, 'ProjectionTest', 
-          `  [${i}] (${testLatLngs[i].latitude}, ${testLatLngs[i].longitude}) -> ` +
-          `(${screenPoints[i].x}, ${screenPoints[i].y})`);
-      }
-      
-      // 反向批量转换
-      const backToLatLngs = this.projection.screenLocationsToLatLngs(screenPoints);
-      hilog.info(DOMAIN, 'ProjectionTest', 'Reverse conversion completed');
       
     } catch (error) {
       hilog.error(DOMAIN, 'ProjectionTest', `Error in batch conversion: ${error}`);
@@ -295,10 +266,11 @@ struct ProjectionTestPage {
    * 更新每像素米数
    */
   private updateMetersPerPixel(): void {
-    if (!this.projection) return;
+    if (!this.nativeMapView) return;
     
     try {
-      this.metersPerPixel = this.projection.getMetersPerPixelAtLatitude(this.centerLatitude);
+      const zoom = this.nativeMapView.getZoom();
+      this.metersPerPixel = this.nativeMapView.getMetersPerPixelAtLatitude(this.centerLatitude, zoom);
     } catch (error) {
       hilog.error(DOMAIN, 'ProjectionTest', `Error getting meters per pixel: ${error}`);
     }

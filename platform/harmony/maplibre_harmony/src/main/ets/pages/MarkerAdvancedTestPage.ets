@@ -19,6 +19,7 @@ import { MarkerOptions } from '../maps/annotations/MarkerOptions';
 import { IconFactory } from '../maps/annotations/IconFactory';
 import { router } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 @Entry
 @Component
@@ -28,113 +29,93 @@ struct MarkerAdvancedTestPage {
   
   @State testResults: string[] = [];
   @State currentTest: string = '准备测试...';
-  
+
+  @Builder
+  MapAreaBuilder() {
+    NativeMapView({
+      onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+        this.onMapReady(nativeMapView);
+      }
+    })
+      .width('100%')
+      .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 当前测试状态
+    Text(this.currentTest)
+      .fontSize(14)
+      .width('100%')
+      .padding(12)
+      .backgroundColor('#F8F8F8')
+      .borderRadius(4)
+    
+    // 测试按钮
+    Text('测试项目')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+
+    Row() {
+      Button('测试 1: 旋转角度')
+        .onClick(() => this.testRotation())
+        .width('48%')
+      
+      Button('测试 2: 透明度')
+        .onClick(() => this.testAlpha())
+        .width('48%')
+        .margin({ left: 8 })
+    }
+    .width('100%')
+    
+    Row() {
+      Button('测试 3: 批量添加')
+        .onClick(() => this.testBatchAdd())
+        .width('48%')
+      
+      Button('测试 4: 更新属性')
+        .onClick(() => this.testUpdateProperties())
+        .width('48%')
+        .margin({ left: 8 })
+    }
+    .width('100%')
+    
+    Button('清除所有')
+      .onClick(() => this.clearAll())
+      .width('48%')
+      .backgroundColor('#FF6B6B')
+    
+    Divider().height(1).color('#E0E0E0')
+    
+    // 测试结果
+    Text('测试结果')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+    
+    Column() {
+      ForEach(this.testResults, (result: string, index: number) => {
+        Text(result)
+          .fontSize(12)
+          .padding(8)
+          .width('100%')
+          .backgroundColor(index % 2 === 0 ? '#FFFFFF' : '#F9F9F9')
+          .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
+      }, (result: string, index: number) => `${index}-${result}`)
+    }
+    .width('100%')
+    .border({ width: 1, color: '#E0E0E0' })
+    .borderRadius(4)
+  }
+
   build() {
     Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text('Marker 高级功能测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-      
-      // 地图区域（60%）
-      NativeMapView({
-        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-          this.onMapReady(nativeMapView);
-        }
+      TestPageLayout({
+        title: 'Marker 高级功能测试',
+        mapArea: this.MapAreaBuilder,
+        controlArea: this.ControlAreaBuilder
       })
-        .width('100%')
-        .height('60%')
-      
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column() {
-          // 当前测试状态
-          Text(this.currentTest)
-            .fontSize(14)
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#F8F8F8')
-            .margin({ bottom: 8 })
-          
-          // 测试按钮
-          Text('测试项目')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-            .margin({ bottom: 8 })
-
-          Button('测试 1: 旋转角度')
-            .onClick(() => this.testRotation())
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Button('测试 2: 透明度')
-            .onClick(() => this.testAlpha())
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Button('测试 3: 批量添加')
-            .onClick(() => this.testBatchAdd())
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Button('测试 4: 更新属性')
-            .onClick(() => this.testUpdateProperties())
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Button('清除所有')
-            .onClick(() => this.clearAll())
-            .width('100%')
-            .backgroundColor('#FF6B6B')
-            .margin({ bottom: 12 })
-          
-          Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
-          
-          // 测试结果
-          Text('测试结果')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Column() {
-            ForEach(this.testResults, (result: string, index: number) => {
-              Text(result)
-                .fontSize(12)
-                .padding(8)
-                .width('100%')
-                .backgroundColor(index % 2 === 0 ? '#FFFFFF' : '#F9F9F9')
-                .border({ width: { bottom: 0.5 }, color: '#E0E0E0' })
-            }, (result: string, index: number) => `${index}-${result}`)
-          }
-          .width('100%')
-          .border({ width: 1, color: '#E0E0E0' })
-          .borderRadius(4)
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')

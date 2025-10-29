@@ -40,6 +40,8 @@ class TestPageGroup {
 struct Index {
   // 按功能模块分组的测试页面
   @State private testPageGroups: TestPageGroup[] = [];
+  // 当前选中的分组索引
+  @State private selectedGroupIndex: number = 0;
   
   aboutToAppear() {
     // 延迟初始化数据，避免阻塞首屏加载
@@ -48,21 +50,49 @@ struct Index {
     new TestPageGroup('基础功能', '🗺️', [
       new TestPageItem(
         '基础地图测试',
-        '测试地图渲染、初始化、基础交互等核心功能',
+        '测试地图渲染、初始化和相机基础移动（jumpTo/easeTo/flyTo）',
         'pages/BasicMapPage',
         '🗺️'
       ),
       new TestPageItem(
         '核心 API 测试',
-        '测试新增 API（内容边距、像素比例）及核心相机功能',
+        '测试内容边距、像素比例、矩形转换等新增核心 API',
         'pages/CoreAPITestPage',
         '🔧'
       ),
       new TestPageItem(
-        '相机监听器测试',
-        '测试相机移动、空闲等各种相机事件监听器功能',
+        '地图状态',
+        '测试地图加载状态和重绘功能',
+        'pages/MapStateTestPage',
+        '🔄'
+      ),
+    ]),
+    
+    // 📷 相机系统
+    new TestPageGroup('相机系统', '📷', [
+      new TestPageItem(
+        '相机动画测试',
+        '测试 easeTo 平滑动画和 flyTo 飞行动画',
+        'pages/CameraAnimationTestPage',
+        '🎬'
+      ),
+      new TestPageItem(
+        '相机事件监听器',
+        '测试相机移动、空闲等各种相机事件监听器（onMove/onIdle）',
         'pages/CameraListenerTestPage',
-        '📷'
+        '👂'
+      ),
+      new TestPageItem(
+        '相机边界计算',
+        '测试边界计算和可视区域控制功能',
+        'pages/CameraBoundsTestPage',
+        '📐'
+      ),
+      new TestPageItem(
+        '相机参数限制',
+        '测试缩放和倾斜角度限制功能',
+        'pages/CameraLimitsTestPage',
+        '🔒'
       ),
     ]),
     
@@ -89,6 +119,12 @@ struct Index {
         '测试 Marker 的高级功能和复杂场景应用',
         'pages/MarkerAdvancedTestPage',
         '⭐'
+      ),
+      new TestPageItem(
+        'InfoWindow 测试',
+        '测试 InfoWindow 显示、隐藏、样式定制、边界检测等功能',
+        'pages/InfoWindowTestPage',
+        '💬'
       ),
       new TestPageItem(
         'Icon 管理测试',
@@ -211,6 +247,78 @@ struct Index {
         '🗑️'
       ),
     ]),
+    
+    // 🔧 高级特性
+    new TestPageGroup('高级特性', '🔧', [
+      new TestPageItem(
+        '特性查询',
+        '测试点击和框选查询地图要素功能',
+        'pages/QueryFeaturesTestPage',
+        '🔍'
+      ),
+      new TestPageItem(
+        '样式过渡选项',
+        '测试样式切换过渡动画配置',
+        'pages/StyleTransitionTestPage',
+        '🎬'
+      ),
+      new TestPageItem(
+        '折线/多边形',
+        '测试折线和多边形注解功能',
+        'pages/PolylinePolygonTestPage',
+        '📏'
+      ),
+      new TestPageItem(
+        '坐标转换',
+        '测试各种坐标系转换计算',
+        'pages/CoordinateConversionTestPage',
+        '🧭'
+      ),
+      new TestPageItem(
+        '光照系统',
+        '测试地图光照配置和效果',
+        'pages/LightTestPage',
+        '💡'
+      ),
+    ]),
+    
+    // 🛠️ 工具与调试
+    new TestPageGroup('工具与调试', '🛠️', [
+      new TestPageItem(
+        '坐标投影转换',
+        '测试地理坐标和屏幕坐标互转、可见区域计算',
+        'pages/ProjectionTestPage',
+        '🗺️'
+      ),
+      new TestPageItem(
+        '地图快照',
+        '测试后台渲染地图生成高质量快照图像',
+        'pages/MapSnapshotterTestPage',
+        '📸'
+      ),
+      new TestPageItem(
+        '事件监听器集成',
+        '测试所有 Android/iOS 风格的地图事件监听器',
+        'pages/listeners/EventListenersTestPage',
+        '📡'
+      ),
+    ]),
+    
+    // ⚡ 性能优化
+    new TestPageGroup('性能优化', '⚡', [
+      new TestPageItem(
+        '瓦片LOD配置',
+        '测试瓦片细节级别参数配置',
+        'pages/TileLodTestPage',
+        '🎚️'
+      ),
+      new TestPageItem(
+        '瓦片预加载',
+        '测试瓦片预加载优化功能',
+        'pages/TilePrefetchTestPage',
+        '🚀'
+      ),
+    ]),
     ];
   }
 
@@ -229,53 +337,22 @@ struct Index {
       .justifyContent(FlexAlign.Center)
       .padding({ top: 20 })
 
-      // 副标题
-      Column() {
-        Text('测试页面导航')
-          .fontSize(16)
-          .fontColor('#666666')
-          .margin({ top: 10, bottom: 5 })
-
-        Text('选择一个测试页面开始')
-          .fontSize(14)
-          .fontColor('#999999')
-      }
-      .width('100%')
-      .padding(15)
-
-      // 测试页面列表（分组显示）
-      List({ space: 10 }) {
-        ForEach(this.testPageGroups, (group: TestPageGroup, groupIndex: number) => {
-          ListItemGroup() {
-            // 分组标题
-            ListItem() {
-              Row() {
-                Text(group.groupIcon)
-                  .fontSize(20)
-                  .margin({ right: 8 })
-                
-                Text(group.groupName)
-                  .fontSize(16)
-                  .fontWeight(FontWeight.Bold)
-                  .fontColor('#333333')
-              }
-              .width('100%')
-              .padding({ left: 5, top: 15, bottom: 8 })
-            }
-            
-            // 分组内的测试页面
-            ForEach(group.pages, (item: TestPageItem) => {
-              ListItem() {
-                this.buildTestPageCard(item)
-              }
-            })
-          }
-        })
+      // 主内容区：左右分栏布局
+      Row() {
+        // 左侧 Tab 栏
+        this.buildLeftTabBar()
+        
+        // 分隔线
+        Column()
+          .width(1)
+          .height('100%')
+          .backgroundColor('#E0E0E0')
+        
+        // 右侧内容区
+        this.buildRightContent()
       }
       .width('100%')
       .layoutWeight(1)
-      .padding({ left: 15, right: 15 })
-      .sticky(StickyStyle.Header)
 
       // 底部信息
       Column() {
@@ -293,6 +370,107 @@ struct Index {
       .backgroundColor('#F5F5F5')
     }
     .width('100%')
+    .height('100%')
+    .backgroundColor('#FFFFFF')
+  }
+
+  @Builder
+  buildLeftTabBar() {
+    // 左侧垂直 Tab 栏（可滚动）
+    Scroll() {
+      Column({ space: 6 }) {
+        ForEach(this.testPageGroups, (group: TestPageGroup, index: number) => {
+          Column() {
+            // 图标
+            Text(group.groupIcon)
+              .fontSize(20)
+              .margin({ bottom: 4 })
+            
+            // 分类名称
+            Text(group.groupName)
+              .fontSize(11)
+              .fontWeight(this.selectedGroupIndex === index ? FontWeight.Medium : FontWeight.Regular)
+              .fontColor(this.selectedGroupIndex === index ? '#2196F3' : '#666666')
+              .textAlign(TextAlign.Center)
+              .maxLines(2)
+              .lineHeight(15)
+          }
+          .width('100%')
+          .padding({ top: 10, bottom: 10, left: 4, right: 4 })
+          .backgroundColor(this.selectedGroupIndex === index ? '#E3F2FD' : '#FAFAFA')
+          .borderRadius(10)
+          .border({
+            width: this.selectedGroupIndex === index ? 2 : 0,
+            color: '#2196F3'
+          })
+          .shadow({
+            radius: this.selectedGroupIndex === index ? 6 : 0,
+            color: this.selectedGroupIndex === index ? 'rgba(33, 150, 243, 0.2)' : Color.Transparent,
+            offsetX: 0,
+            offsetY: 2
+          })
+          .onClick(() => {
+            this.selectedGroupIndex = index;
+          })
+        })
+      }
+      .width('100%')
+      .padding({ left: 10, right: 10, top: 10, bottom: 10 })
+    }
+    .scrollable(ScrollDirection.Vertical)
+    .scrollBar(BarState.Auto)
+    .width(120)
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+
+  @Builder
+  buildRightContent() {
+    // 右侧内容区
+    Column() {
+      if (this.testPageGroups.length > 0 && this.selectedGroupIndex < this.testPageGroups.length) {
+        // 当前选中分组
+        // const currentGroup = this.testPageGroups[this.selectedGroupIndex];
+        
+        // 分组标题栏
+        Column() {
+          Row() {
+            Text(this.testPageGroups[this.selectedGroupIndex].groupIcon)
+              .fontSize(28)
+              .margin({ right: 12 })
+            
+            Text(this.testPageGroups[this.selectedGroupIndex].groupName)
+              .fontSize(22)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#2196F3')
+          }
+          .width('100%')
+          
+          // 标题下划线
+          Column()
+            .width('100%')
+            .height(2)
+            .backgroundColor('#E3F2FD')
+            .margin({ top: 10 })
+        }
+        .width('100%')
+        .padding({ left: 20, right: 20, top: 15, bottom: 10 })
+        .backgroundColor('#FAFAFA')
+        
+        // 测试页面列表
+        List({ space: 12 }) {
+          ForEach(this.testPageGroups[this.selectedGroupIndex].pages, (item: TestPageItem) => {
+            ListItem() {
+              this.buildTestPageCard(item)
+            }
+          })
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .padding({ left: 20, right: 20, top: 15, bottom: 10 })
+      }
+    }
+    .layoutWeight(1)
     .height('100%')
     .backgroundColor('#FFFFFF')
   }

@@ -6,6 +6,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import maplibre from 'libmaplibre_native.so';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { LatLngBounds } from '../maps/geometry/LatLngBounds';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 // 暂时从 ETS 层导入 Layer（待 Layer NAPI 重构）
 import { 
@@ -69,152 +70,141 @@ struct SourceTestPage {
   @State mapReady: boolean = false;
   @State isInitializing: boolean = false;
 
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text(this.message)
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-
-      // 地图区域（60%）
-      Stack() {
-        NativeMapView({
-          styleUrl: 'https://demotiles.maplibre.org/style.json',
-          initialLatitude: 39.9042,
-          initialLongitude: 116.4074,
-          initialZoom: 10,
-          initialBearing: 0,
-          initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            this.initializeMap(mapView);
-          }
-        })
-          .width('100%')
-          .height('100%')
-        
-        // 加载指示器
-        if (!this.mapReady) {
-          Column() {
-            LoadingProgress()
-              .width(50)
-              .height(50)
-              .color('#2196F3')
-            
-            Text('地图加载中...')
-              .fontSize(16)
-              .margin({ top: 10 })
-          }
-          .width('100%')
-          .height('100%')
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor('rgba(255, 255, 255, 0.8)')
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+        styleUrl: 'https://demotiles.maplibre.org/style.json',
+        initialLatitude: 39.9042,
+        initialLongitude: 116.4074,
+        initialZoom: 10,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          this.initializeMap(mapView);
         }
-      }
-      .width('100%')
-      .height('60%')
-
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column({ space: 8 }) {
-          // 当前数据源显示
-          Text(`当前数据源: ${this.currentSource}`)
-            .fontSize(14)
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#F8F8F8')
-            .margin({ bottom: 8 })
-          Text('GeoJsonSource 测试')
+      })
+        .width('100%')
+        .height('100%')
+      
+      // 加载指示器
+      if (!this.mapReady) {
+        Column() {
+          LoadingProgress()
+            .width(50)
+            .height(50)
+            .color('#2196F3')
+          
+          Text('地图加载中...')
             .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 8 })
-
-          Button('点数据 (Point)')
-            .onClick(() => this.testGeoJsonPoint())
-            .width('90%')
-            .backgroundColor('#2196F3')
-
-          Button('线数据 (LineString)')
-            .onClick(() => this.testGeoJsonLine())
-            .width('90%')
-            .backgroundColor('#2196F3')
-
-          Button('面数据 (Polygon)')
-            .onClick(() => this.testGeoJsonPolygon())
-            .width('90%')
-            .backgroundColor('#2196F3')
-
-          Button('多点聚类')
-            .onClick(() => this.testGeoJsonCluster())
-            .width('90%')
-            .backgroundColor('#2196F3')
-
-          Button('从 URL 加载')
-            .onClick(() => this.testGeoJsonFromUrl())
-            .width('90%')
-            .backgroundColor('#2196F3')
-
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Text('VectorSource 测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 8 })
-
-          Button('矢量瓦片数据源')
-            .onClick(() => this.testVectorSource())
-            .width('90%')
-            .backgroundColor('#4CAF50')
-
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Text('RasterSource 测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 8 })
-
-          Button('OSM 栅格瓦片')
-            .onClick(() => this.testRasterSource())
-            .width('90%')
-            .backgroundColor('#FF9800')
-
-          Button('卫星影像')
-            .onClick(() => this.testRasterSourceSatellite())
-            .width('90%')
-            .backgroundColor('#FF9800')
-
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Button('清除所有数据源')
-            .onClick(() => this.clearAllSources())
-            .width('90%')
-            .backgroundColor(Color.Red)
+            .margin({ top: 10 })
         }
         .width('100%')
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('rgba(255, 255, 255, 0.8)')
       }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 当前数据源显示
+    Text(`当前数据源: ${this.currentSource}`)
+      .fontSize(14)
       .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+      .padding(12)
+      .backgroundColor('#F8F8F8')
+      .borderRadius(4)
+    
+    Text('GeoJsonSource 测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Row() {
+      Button('点数据 (Point)')
+        .onClick(() => this.handleTestGeoJsonPoint())
+        .width('48%')
+        .backgroundColor('#2196F3')
+
+      Button('线数据 (LineString)')
+        .onClick(() => this.handleTestGeoJsonLine())
+        .width('48%')
+        .margin({ left: 8 })
+        .backgroundColor('#2196F3')
+    }
+    .width('100%')
+
+    Row() {
+      Button('面数据 (Polygon)')
+        .onClick(() => this.handleTestGeoJsonPolygon())
+        .width('48%')
+        .backgroundColor('#2196F3')
+
+      Button('多点聚类')
+        .onClick(() => this.handleTestGeoJsonCluster())
+        .width('48%')
+        .margin({ left: 8 })
+        .backgroundColor('#2196F3')
+    }
+    .width('100%')
+
+    Button('从 URL 加载')
+      .onClick(() => this.handleTestGeoJsonFromUrl())
+      .width('48%')
+      .backgroundColor('#2196F3')
+
+    Divider().strokeWidth(2)
+
+    Text('VectorSource 测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Button('矢量瓦片数据源')
+      .onClick(() => this.handleTestVectorSource())
+      .width('48%')
+      .backgroundColor('#4CAF50')
+
+    Divider().strokeWidth(2)
+
+    Text('RasterSource 测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Row() {
+      Button('OSM 栅格瓦片')
+        .onClick(() => this.handleTestRasterSource())
+        .width('48%')
+        .backgroundColor('#FF9800')
+
+      Button('卫星影像')
+        .onClick(() => this.handleTestRasterSourceSatellite())
+        .width('48%')
+        .margin({ left: 8 })
+        .backgroundColor('#FF9800')
+    }
+    .width('100%')
+
+    Divider().strokeWidth(2)
+
+    Button('清除所有数据源')
+      .onClick(() => this.handleClearAllSources())
+      .width('48%')
+      .backgroundColor(Color.Red)
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: this.message,
+        mapArea: this.MapAreaBuilder,
+        controlArea: this.ControlAreaBuilder
+      })
     }
     .width('100%')
     .height('100%')
@@ -798,6 +788,44 @@ struct SourceTestPage {
       hilog.error(DOMAIN, TAG, `Failed to clear sources: ${errorMsg}`);
       this.message = `❌ 清除失败: ${errorMsg}`;
     }
+  }
+  
+  // ========== 包装方法（用于 @Builder 中的 this 上下文绑定） ==========
+  
+  private handleTestGeoJsonPoint = (): void => {
+    this.testGeoJsonPoint();
+  }
+  
+  private handleTestGeoJsonLine = (): void => {
+    this.testGeoJsonLine();
+  }
+  
+  private handleTestGeoJsonPolygon = (): void => {
+    this.testGeoJsonPolygon();
+  }
+  
+  private handleTestGeoJsonCluster = (): void => {
+    this.testGeoJsonCluster();
+  }
+  
+  private handleTestGeoJsonFromUrl = (): void => {
+    this.testGeoJsonFromUrl();
+  }
+  
+  private handleTestVectorSource = (): void => {
+    this.testVectorSource();
+  }
+  
+  private handleTestRasterSource = (): void => {
+    this.testRasterSource();
+  }
+  
+  private handleTestRasterSourceSatellite = (): void => {
+    this.testRasterSourceSatellite();
+  }
+  
+  private handleClearAllSources = (): void => {
+    this.clearAllSources();
   }
 }
 

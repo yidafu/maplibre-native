@@ -79,7 +79,7 @@ struct CompassTestPage {
       
       // 设置指南针更新回调
       this.mapLibreMap.onCompassUpdate = (bearing: number) => {
-        this.currentBearing = bearing;
+        this.currentBearing = bearing ?? 0;
         hilog.info(DOMAIN, 'CompassTestPage', `Bearing updated: ${bearing}`);
       };
       
@@ -88,7 +88,7 @@ struct CompassTestPage {
       this.setupUiSettings(uiSettings);
       
       // 初始化指南针方向
-      this.currentBearing = this.mapLibreMap.getBearing();
+      this.currentBearing = this.mapLibreMap.getBearing() ?? 0;
       
       this.isMapReady = true;
       hilog.info(DOMAIN, 'CompassTestPage', 'Map initialized successfully');
@@ -273,7 +273,7 @@ struct CompassTestPage {
       Scroll() {
         Column() {
           // 状态信息
-          Text(`方位角: ${this.currentBearing.toFixed(1)}°`)
+          Text(`方位角: ${(this.currentBearing ?? 0).toFixed(1)}°`)
             .fontSize(14)
             .width('100%')
             .padding(12)

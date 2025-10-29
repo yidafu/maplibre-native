@@ -24,6 +24,7 @@ import common from '@ohos.app.ability.common';
 import promptAction from '@ohos.promptAction';
 import maplibre from 'libmaplibre_native.so';
 import util from '@ohos.util';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 @Entry
 @Component
@@ -52,179 +53,6 @@ struct OfflineMapTestPage {
         duration: 2000
       });
     }
-  }
-  
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Text('离线地图测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .margin({ left: 16 })
-        
-        Blank()
-        
-        Button('返回')
-          .onClick(() => {
-            hilog.info(DOMAIN, 'OfflineMapTest', 'Navigating back');
-            // TODO: 导航返回
-          })
-          .margin({ right: 16 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F7F7F7')
-      
-      // 地图视图
-      NativeMapView({
-        styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 30.2741,
-        initialLongitude: 120.1551,
-        initialZoom: 10,
-        initialBearing: 0,
-        initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          this.onMapReady(mapView);
-        }
-      })
-      .width('100%')
-      .height('40%')
-      
-      // 控制区
-      Scroll() {
-        Column({ space: 12 }) {
-          Text('离线地图管理')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          // 创建离线区域
-          Button('创建杭州离线区域')
-            .width('90%')
-            .onClick(() => {
-              this.createHangzhouOfflineRegion();
-            })
-          
-          // 列出离线区域
-          Button('刷新离线区域列表')
-            .width('90%')
-            .onClick(() => {
-              this.loadOfflineRegions();
-            })
-          
-          Divider()
-          
-          // 下载控制
-          Text('下载控制')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          Row({ space: 8 }) {
-            Button('开始下载')
-              .width('45%')
-              .onClick(() => {
-                this.startDownload();
-              })
-              .enabled(this.currentRegion !== null)
-            
-            Button('暂停')
-              .width('45%')
-              .onClick(() => {
-                this.pauseDownload();
-              })
-              .enabled(this.currentRegion !== null)
-          }
-          .width('90%')
-          
-          Row({ space: 8 }) {
-            Button('恢复')
-              .width('45%')
-              .onClick(() => {
-                this.resumeDownload();
-              })
-              .enabled(this.currentRegion !== null)
-            
-            Button('删除区域')
-              .width('45%')
-              .backgroundColor('#FF6B6B')
-              .onClick(() => {
-                this.deleteCurrentRegion();
-              })
-              .enabled(this.currentRegion !== null)
-          }
-          .width('90%')
-          
-          Divider()
-          
-          // 状态显示
-          Text('下载状态')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          Text(this.downloadStatus)
-            .fontSize(14)
-            .width('90%')
-            .fontColor(Color.Gray)
-          
-          Progress({
-            value: this.downloadProgress,
-            total: 100,
-            type: ProgressType.Linear
-          })
-          .width('90%')
-          .color('#007AFF')
-          
-          Text(`${this.downloadProgress.toFixed(1)}%`)
-            .fontSize(14)
-            .width('90%')
-          
-          Divider()
-          
-          // 离线区域列表
-          Text(`离线区域列表 (${this.offlineRegions.length})`)
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          ForEach(this.offlineRegions, (region: OfflineRegion, index: number) => {
-            Row() {
-              Column({ space: 4 }) {
-                Text(`区域 ${region.id}`)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                
-                Text(this.getRegionMetadataText(region))
-                  .fontSize(12)
-                  .fontColor(Color.Gray)
-              }
-              .alignItems(HorizontalAlign.Start)
-              .layoutWeight(1)
-              
-              Button('选择')
-                .fontSize(12)
-                .onClick(() => {
-                  this.selectRegion(region);
-                })
-            }
-            .width('90%')
-            .padding(12)
-            .backgroundColor(this.currentRegion === region ? '#E3F2FD' : '#F5F5F5')
-            .borderRadius(8)
-          }, (region: OfflineRegion) => region.id.toString())
-        }
-        .width('100%')
-        .padding(16)
-      }
-      .width('100%')
-      .layoutWeight(1)
-      .backgroundColor('#FFFFFF')
-    }
-    .width('100%')
-    .height('100%')
-    .backgroundColor('#F5F5F5')
   }
   
   /**
@@ -532,5 +360,154 @@ struct OfflineMapTestPage {
     } catch {
       return `区域 ${region.id}`;
     }
+  }
+
+  @Builder
+  MapAreaBuilder() {
+    NativeMapView({
+      styleUrl: 'https://demotiles.maplibre.org/style.json',
+      initialLatitude: 30.2741,
+      initialLongitude: 120.1551,
+      initialZoom: 10,
+      initialBearing: 0,
+      initialPitch: 0,
+      onMapReady: (mapView?: maplibre.NativeMapView) => {
+        this.onMapReady(mapView);
+      }
+    })
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    Text('离线地图管理')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+    
+    Button('创建杭州离线区域')
+      .width('100%')
+      .onClick(() => {
+        this.createHangzhouOfflineRegion();
+      })
+    
+    Button('刷新离线区域列表')
+      .width('100%')
+      .onClick(() => {
+        this.loadOfflineRegions();
+      })
+    
+    Divider()
+    
+    Text('下载控制')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+    
+    Row() {
+      Button('开始下载')
+        .width('48%')
+        .onClick(() => {
+          this.startDownload();
+        })
+        .enabled(this.currentRegion !== null)
+      
+      Button('暂停')
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => {
+          this.pauseDownload();
+        })
+        .enabled(this.currentRegion !== null)
+    }
+    .width('100%')
+    
+    Row() {
+      Button('恢复')
+        .width('48%')
+        .onClick(() => {
+          this.resumeDownload();
+        })
+        .enabled(this.currentRegion !== null)
+      
+      Button('删除区域')
+        .width('48%')
+        .margin({ left: 8 })
+        .backgroundColor('#FF6B6B')
+        .onClick(() => {
+          this.deleteCurrentRegion();
+        })
+        .enabled(this.currentRegion !== null)
+    }
+    .width('100%')
+    
+    Divider()
+    
+    Text('下载状态')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+    
+    Text(this.downloadStatus)
+      .fontSize(14)
+      .width('100%')
+      .fontColor(Color.Gray)
+    
+    Progress({
+      value: this.downloadProgress,
+      total: 100,
+      type: ProgressType.Linear
+    })
+    .width('100%')
+    .color('#007AFF')
+    
+    Text(`${this.downloadProgress.toFixed(1)}%`)
+      .fontSize(14)
+      .width('100%')
+    
+    Divider()
+    
+    Text(`离线区域列表 (${this.offlineRegions.length})`)
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+    
+    ForEach(this.offlineRegions, (region: OfflineRegion, index: number) => {
+      Row() {
+        Column({ space: 4 }) {
+          Text(`区域 ${region.id}`)
+            .fontSize(14)
+            .fontWeight(FontWeight.Medium)
+          
+          Text(this.getRegionMetadataText(region))
+            .fontSize(12)
+            .fontColor(Color.Gray)
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+        
+        Button('选择')
+          .fontSize(12)
+          .onClick(() => {
+            this.selectRegion(region);
+          })
+      }
+      .width('100%')
+      .padding(12)
+      .backgroundColor(this.currentRegion === region ? '#E3F2FD' : '#F5F5F5')
+      .borderRadius(8)
+    }, (region: OfflineRegion) => region.id.toString())
+  }
+
+  build() {
+    Navigation() {
+      TestPageLayout({
+        title: '离线地图测试',
+        mapArea: this.MapAreaBuilder,
+        controlArea: this.ControlAreaBuilder
+      })
+    }
+    .hideTitleBar(true)
   }
 }

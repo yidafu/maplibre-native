@@ -17,6 +17,7 @@ import { DOMAIN } from '../constants/HiLogConstants';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 // import { ComponentContent, wrapBuilder } from '@kit.ArkUI';
 import maplibre from 'libmaplibre_native.so';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 // 使用 NAPI Marker 类型
 type Marker = maplibre.Marker;
@@ -697,332 +698,308 @@ struct MarkerTestPage {
       }
     }, 1000 / fps);
   }
-  
+
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+        styleUrl: "https://demotiles.maplibre.org/style.json",
+        initialLatitude: 35.0,
+        initialLongitude: 105.0,
+        initialZoom: 4,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView): void => this.onMapReady(mapView)
+      })
+        .width('100%')
+        .height('100%')
+      
+      // 加载指示器
+      if (!this.mapReady) {
+        Column() {
+          LoadingProgress()
+            .width(50)
+            .height(50)
+            .color('#2196F3')
+          
+          Text('地图加载中...')
+            .fontSize(16)
+            .margin({ top: 10 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('rgba(255, 255, 255, 0.8)')
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 状态信息
+    Column({ space: 5 }) {
+      Text(this.message)
+        .fontSize(13)
+        .fontColor('#333333')
+        .width('100%')
+      
+      Row({ space: 20 }) {
+        Text(`Marker 数量: ${this.markerCount}`)
+          .fontSize(12)
+          .fontColor('#2196F3')
+        
+        if (this.selectedMarkerId >= 0) {
+          Text(`选中 ID: ${this.selectedMarkerId}`)
+            .fontSize(12)
+            .fontColor('#43A047')
+        }
+      }
+      .width('100%')
+      
+      if (this.lastMarkerPosition) {
+        Text(`坐标: ${this.lastMarkerPosition}`)
+          .fontSize(11)
+          .fontColor('#757575')
+          .width('100%')
+      }
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#F8F8F8')
+    
+    // 基础操作
+    Text('基础操作')
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+    
+    Row() {
+      Button('➕ 添加单个')
+        .onClick(() => this.handleAddSingleMarker())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+      
+      Button('🚀 批量添加')
+        .onClick(() => this.handleAddBatchMarkers())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+    }
+    .width('100%')
+    
+    Row() {
+      Button('➖ 移除最后')
+        .onClick(() => this.handleRemoveLastMarker())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#FFA726')
+      
+      Button('🗑️ 清除所有')
+        .onClick(() => this.handleClearAllMarkers())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#EF5350')
+    }
+    .width('100%')
+    
+    // 动画测试
+    Text('动画测试')
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+    
+    Row() {
+      Button('📍 位置')
+        .onClick(() => this.handleTestMarkerAnimation())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#AB47BC')
+      
+      Button('👁️ 透明度')
+        .onClick(() => this.handleTestAlphaAnimation())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#AB47BC')
+    }
+    .width('100%')
+    
+    Button('🔄 旋转')
+      .onClick(() => this.handleTestRotationAnimation())
+      .width('48%')
+      .type(ButtonType.Normal)
+      .borderRadius(8)
+      .backgroundColor('#AB47BC')
+    
+    // Position 解析测试
+    Text('Position 解析测试')
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+      .fontColor('#E53935')
+    
+    Row() {
+      Button('🧪 LatLng类')
+        .onClick(() => this.handleTestLatLngClass())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#E53935')
+      
+      Button('📝 构造函数')
+        .onClick(() => this.handleTestPlainObject())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#E53935')
+    }
+    .width('100%')
+    
+    Row() {
+      Button('🔄 更新Position')
+        .onClick(() => this.handleTestUpdatePosition())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#F4511E')
+      
+      Button('📊 显示信息')
+        .onClick(() => this.handleShowMarkerInfo())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#F4511E')
+    }
+    .width('100%')
+    
+    // 高级功能
+    Text('高级功能')
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+    
+    Row() {
+      Button('🎯 选中第一个')
+        .onClick(() => this.handleSelectFirstMarker())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#26A69A')
+      
+      Button('❌ 取消选中')
+        .onClick(() => this.handleDeselectAll())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#78909C')
+    }
+    .width('100%')
+    
+    Row() {
+      Button('💬 InfoWindow')
+        .onClick(() => this.handleTestInfoWindow())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#26A69A')
+      
+      Button('🎨 自定义图标')
+        .onClick(() => this.handleTestCustomIcon())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#5C6BC0')
+    }
+    .width('100%')
+    
+    // 样式控制
+    Text('样式控制')
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+    
+    Row() {
+      Button('👁️ 切换可见')
+        .onClick(() => this.handleToggleVisibility())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#7E57C2')
+      
+      Button('🔍 聚焦Marker')
+        .onClick(() => this.handleFocusMarker())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#7E57C2')
+    }
+    .width('100%')
+    
+    Row() {
+      Button('💧 透明度+')
+        .onClick(() => this.handleIncreaseAlpha())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#5C6BC0')
+      
+      Button('💧 透明度-')
+        .onClick(() => this.handleDecreaseAlpha())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#5C6BC0')
+    }
+    .width('100%')
+    
+    Button('🚫 关闭所有InfoWindow')
+      .onClick(() => this.handleCloseAllInfoWindows())
+      .width('48%')
+      .type(ButtonType.Normal)
+      .borderRadius(8)
+      .backgroundColor('#8D6E63')
+    
+    // 批量操作
+    Text('批量操作')
+      .fontSize(14)
+      .fontWeight(FontWeight.Bold)
+    
+    Row() {
+      Button('🔄 全部旋转90°')
+        .onClick(() => this.handleRotateAllMarkers())
+        .width('48%')
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#FF7043')
+      
+      Button('👻 切换全部可见')
+        .onClick(() => this.handleToggleAllVisibility())
+        .width('48%')
+        .margin({ left: 8 })
+        .type(ButtonType.Normal)
+        .borderRadius(8)
+        .backgroundColor('#FF7043')
+    }
+    .width('100%')
+  }
+
   build() {
     Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-        
-        Text('Marker 功能测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-      
-      // 地图区域（60%）
-      Stack() {
-        // 使用 NativeMapView 组件
-        NativeMapView({
-          styleUrl: "https://demotiles.maplibre.org/style.json",
-          initialLatitude: 35.0,
-          initialLongitude: 105.0,
-          initialZoom: 4,
-          initialBearing: 0,
-          initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView): void => this.onMapReady(mapView)
-        })
-          .width('100%')
-          .height('100%')
-        
-        // 加载指示器
-        if (!this.mapReady) {
-          Column() {
-            LoadingProgress()
-              .width(50)
-              .height(50)
-              .color('#2196F3')
-            
-            Text('地图加载中...')
-              .fontSize(16)
-              .margin({ top: 10 })
-          }
-          .width('100%')
-          .height('100%')
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor('rgba(255, 255, 255, 0.8)')
-        }
-      }
-      .width('100%')
-      .height('60%')
-      
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column({ space: 10 }) {
-          // 状态信息
-          Column({ space: 5 }) {
-            Text(this.message)
-              .fontSize(13)
-              .fontColor('#333333')
-              .width('100%')
-            
-            Row({ space: 20 }) {
-              Text(`Marker 数量: ${this.markerCount}`)
-                .fontSize(12)
-                .fontColor('#2196F3')
-              
-              if (this.selectedMarkerId >= 0) {
-                Text(`选中 ID: ${this.selectedMarkerId}`)
-                  .fontSize(12)
-                  .fontColor('#43A047')
-              }
-            }
-            .width('100%')
-            
-            if (this.lastMarkerPosition) {
-              Text(`坐标: ${this.lastMarkerPosition}`)
-                .fontSize(11)
-                .fontColor('#757575')
-                .width('100%')
-            }
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#F8F8F8')
-          .margin({ bottom: 8 })
-          
-          // 控制按钮
-          // 基础操作
-          Text('基础操作')
-            .fontSize(14)
-            .fontWeight(FontWeight.Bold)
-            .margin({ top: 5 })
-          
-          Row({ space: 8 }) {
-            Button('➕ 添加单个')
-              .onClick(() => this.addSingleMarker())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-            
-            Button('🚀 批量添加')
-              .onClick(() => this.addBatchMarkers())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-          }
-          .width('100%')
-          
-          Row({ space: 8 }) {
-            Button('➖ 移除最后')
-              .onClick(() => this.removeLastMarker())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#FFA726')
-            
-            Button('🗑️ 清除所有')
-              .onClick(() => this.clearAllMarkers())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#EF5350')
-          }
-          .width('100%')
-          
-          // 动画测试
-          Text('动画测试')
-            .fontSize(14)
-            .fontWeight(FontWeight.Bold)
-            .margin({ top: 10 })
-          
-          Row({ space: 8 }) {
-            Button('📍 位置')
-              .onClick(() => this.testMarkerAnimation())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#AB47BC')
-            
-            Button('👁️ 透明度')
-              .onClick(() => this.testAlphaAnimation())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#AB47BC')
-          }
-          .width('100%')
-          
-          Button('🔄 旋转')
-            .onClick(() => this.testRotationAnimation())
-            .width('100%')
-            .type(ButtonType.Normal)
-            .borderRadius(8)
-            .backgroundColor('#AB47BC')
-          
-          // Position 解析测试 (NEW)
-          Text('Position 解析测试')
-            .fontSize(14)
-            .fontWeight(FontWeight.Bold)
-            .margin({ top: 10 })
-            .fontColor('#E53935')
-          
-          Row({ space: 8 }) {
-            Button('🧪 LatLng类')
-              .onClick(() => this.testLatLngClass())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#E53935')
-            
-            Button('📝 构造函数')
-              .onClick(() => this.testPlainObject())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#E53935')
-          }
-          .width('100%')
-          
-          Row({ space: 8 }) {
-            Button('🔄 更新Position')
-              .onClick(() => this.testUpdatePosition())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#F4511E')
-            
-            Button('📊 显示信息')
-              .onClick(() => this.showMarkerInfo())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#F4511E')
-          }
-          .width('100%')
-          
-          // 高级功能
-          Text('高级功能')
-            .fontSize(14)
-            .fontWeight(FontWeight.Bold)
-            .margin({ top: 10 })
-          
-          Row({ space: 8 }) {
-            Button('🎯 选中第一个')
-              .onClick(() => this.selectFirstMarker())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#26A69A')
-            
-            Button('❌ 取消选中')
-              .onClick(() => this.deselectAll())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#78909C')
-          }
-          .width('100%')
-          
-          Row({ space: 8 }) {
-            Button('💬 InfoWindow')
-              .onClick(() => this.testInfoWindow())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#26A69A')
-            
-            Button('🎨 自定义图标')
-              .onClick(() => this.testCustomIcon())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#5C6BC0')
-          }
-          .width('100%')
-          
-          // 样式控制
-          Text('样式控制')
-            .fontSize(14)
-            .fontWeight(FontWeight.Bold)
-            .margin({ top: 10 })
-          
-          Row({ space: 8 }) {
-            Button('👁️ 切换可见')
-              .onClick(() => this.toggleVisibility())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#7E57C2')
-            
-            Button('🔍 聚焦Marker')
-              .onClick(() => this.focusMarker())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#7E57C2')
-          }
-          .width('100%')
-          
-          Row({ space: 8 }) {
-            Button('💧 透明度+')
-              .onClick(() => this.increaseAlpha())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#5C6BC0')
-            
-            Button('💧 透明度-')
-              .onClick(() => this.decreaseAlpha())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#5C6BC0')
-          }
-          .width('100%')
-          
-          Row({ space: 8 }) {
-            Button('🚫 关闭所有InfoWindow')
-              .onClick(() => this.closeAllInfoWindows())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#8D6E63')
-          }
-          .width('100%')
-          
-          // 批量操作
-          Text('批量操作')
-            .fontSize(14)
-            .fontWeight(FontWeight.Bold)
-            .margin({ top: 10 })
-          
-          Row({ space: 8 }) {
-            Button('🔄 全部旋转90°')
-              .onClick(() => this.rotateAllMarkers())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#FF7043')
-            
-            Button('👻 切换全部可见')
-              .onClick(() => this.toggleAllVisibility())
-              .flexGrow(1)
-              .type(ButtonType.Normal)
-              .borderRadius(8)
-              .backgroundColor('#FF7043')
-          }
-          .width('100%')
-          
-          
-        }
-        .padding(12)
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+      TestPageLayout({
+        title: 'Marker 功能测试',
+        mapArea: this.MapAreaBuilder,
+        controlArea: this.ControlAreaBuilder
+      })
     }
     .width('100%')
     .height('100%')
@@ -1522,6 +1499,96 @@ struct MarkerTestPage {
       this.message = `❌ 批量切换可见性失败: ${e.message}`;
       console.error(`[MarkerDebug] Toggle all visibility failed - ${e.message}`);
     }
+  }
+  
+  // ========== 包装方法（用于 @Builder 中的 this 上下文绑定） ==========
+  
+  private handleAddSingleMarker = (): void => {
+    this.addSingleMarker();
+  }
+  
+  private handleAddBatchMarkers = (): void => {
+    this.addBatchMarkers();
+  }
+  
+  private handleRemoveLastMarker = (): void => {
+    this.removeLastMarker();
+  }
+  
+  private handleClearAllMarkers = (): void => {
+    this.clearAllMarkers();
+  }
+  
+  private handleTestMarkerAnimation = (): void => {
+    this.testMarkerAnimation();
+  }
+  
+  private handleTestAlphaAnimation = (): void => {
+    this.testAlphaAnimation();
+  }
+  
+  private handleTestRotationAnimation = (): void => {
+    this.testRotationAnimation();
+  }
+  
+  private handleTestLatLngClass = (): void => {
+    this.testLatLngClass();
+  }
+  
+  private handleTestPlainObject = (): void => {
+    this.testPlainObject();
+  }
+  
+  private handleTestUpdatePosition = (): void => {
+    this.testUpdatePosition();
+  }
+  
+  private handleShowMarkerInfo = (): void => {
+    this.showMarkerInfo();
+  }
+  
+  private handleSelectFirstMarker = (): void => {
+    this.selectFirstMarker();
+  }
+  
+  private handleDeselectAll = (): void => {
+    this.deselectAll();
+  }
+  
+  private handleTestInfoWindow = (): void => {
+    this.testInfoWindow();
+  }
+  
+  private handleTestCustomIcon = (): void => {
+    this.testCustomIcon();
+  }
+  
+  private handleToggleVisibility = (): void => {
+    this.toggleVisibility();
+  }
+  
+  private handleFocusMarker = (): void => {
+    this.focusMarker();
+  }
+  
+  private handleIncreaseAlpha = (): void => {
+    this.increaseAlpha();
+  }
+  
+  private handleDecreaseAlpha = (): void => {
+    this.decreaseAlpha();
+  }
+  
+  private handleCloseAllInfoWindows = (): void => {
+    this.closeAllInfoWindows();
+  }
+  
+  private handleRotateAllMarkers = (): void => {
+    this.rotateAllMarkers();
+  }
+  
+  private handleToggleAllVisibility = (): void => {
+    this.toggleAllVisibility();
   }
 }
 

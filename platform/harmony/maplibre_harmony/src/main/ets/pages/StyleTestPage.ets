@@ -8,6 +8,7 @@ import { DOMAIN } from '../constants/HiLogConstants';
 import { util } from '@kit.ArkTS';
 import { resourceManager } from '@kit.LocalizationKit';
 import { OnStyleLoadedListener } from '../maps/listeners/OnStyleLoadedListener';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 const TAG = 'StyleTestPage';
 
@@ -37,10 +38,10 @@ interface StyleUrlItem {
  */
 class LocalStyleLoadedListener implements OnStyleLoadedListener {
   private testPage: StyleTestPage;
-  private styleObj: ESObject | null;
+  private styleObj: Object | null;
   private displayName: string;
   
-  constructor(testPage: StyleTestPage, styleObj: ESObject | null, displayName: string) {
+  constructor(testPage: StyleTestPage, styleObj: Object | null, displayName: string) {
     this.testPage = testPage;
     this.styleObj = styleObj;
     this.displayName = displayName;
@@ -52,13 +53,14 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
     if (this.testPage.mapLibreMap && this.testPage.nativeMapView) {
       try {
         // 🔥 关键修复2：应用样式中的初始位置
-        if (this.styleObj && this.styleObj.center && this.styleObj.zoom !== undefined) {
-          const centerArray = this.styleObj.center as number[];
+        const styleRecord = this.styleObj as Record<string, Object>;
+        if (this.styleObj && styleRecord['center'] && styleRecord['zoom'] !== undefined) {
+          const centerArray = styleRecord['center'] as number[];
           const lon = centerArray[0];
           const lat = centerArray[1];
-          const zoom = this.styleObj.zoom as number;
-          const bearing = this.styleObj.bearing !== undefined ? this.styleObj.bearing as number : 0;
-          const pitch = this.styleObj.pitch !== undefined ? this.styleObj.pitch as number : 0;
+          const zoom = styleRecord['zoom'] as number;
+          const bearing = styleRecord['bearing'] !== undefined ? styleRecord['bearing'] as number : 0;
+          const pitch = styleRecord['pitch'] !== undefined ? styleRecord['pitch'] as number : 0;
           
           hilog.info(DOMAIN, TAG, `Applying style initial position: lat=${lat}, lon=${lon}, zoom=${zoom}, bearing=${bearing}, pitch=${pitch}`);
           
@@ -165,260 +167,226 @@ struct StyleTestPage {
     }
   ];
 
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text(this.message)
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-
-      // 地图区域（60%）
-      Stack() {
-        NativeMapView({
-          styleUrl: this.styleUrls[0].url,
-          initialLatitude: 39.9042,
-          initialLongitude: 116.4074,
-          initialZoom: 3,
-          initialBearing: 0,
-          initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            this.initializeMap(mapView);
-          }
-        })
-          .width('100%')
-          .height('100%')
-        
-        // 加载指示器
-        if (!this.mapReady) {
-          Column() {
-            LoadingProgress()
-              .width(50)
-              .height(50)
-              .color('#2196F3')
-            
-            Text('地图加载中...')
-              .fontSize(16)
-              .margin({ top: 10 })
-          }
-          .width('100%')
-          .height('100%')
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor('rgba(255, 255, 255, 0.8)')
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+        styleUrl: this.styleUrls[0].url,
+        initialLatitude: 39.9042,
+        initialLongitude: 116.4074,
+        initialZoom: 3,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          this.initializeMap(mapView);
         }
-      }
-      .width('100%')
-      .height('60%')
-
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column({ space: 8 }) {
-          // 当前状态显示
-          Column({ space: 5 }) {
-            Text(`当前样式: ${this.currentStyleName}`)
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .width('100%')
-            
-            Text(`URL: ${this.currentStyleUrl || '加载中...'}`)
-              .fontSize(12)
-              .fontColor('#666666')
-              .width('100%')
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-            
-            Text(`样式信息: ${this.styleInfo}`)
-              .fontSize(12)
-              .fontColor('#666666')
-              .width('100%')
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#F8F8F8')
-          .borderRadius(8)
-          .margin({ bottom: 8 })
-          .alignItems(HorizontalAlign.Start)
-
-          // 地图样式切换区域
-          Text('🎨 样式切换')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 8, bottom: 8 })
-
-          ForEach(this.styleUrls, (item: StyleUrlItem) => {
-            Column({ space: 5 }) {
-              Button(item.name)
-                .onClick(() => this.switchStyle(item.url, item.name))
-                .width('100%')
-                .backgroundColor(this.currentStyleName === item.name ? '#4CAF50' : '#2196F3')
-                .fontSize(15)
-              
-              Text(item.description)
-                .fontSize(12)
-                .fontColor('#999999')
-                .width('100%')
-                .textAlign(TextAlign.Center)
-                .margin({ top: -5 })
-            }
-            .width('90%')
-          })
-
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Text('📁 本地样式测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 8, bottom: 8 })
-
-          // 简单背景样式（推荐）
-          Column({ space: 5 }) {
-            Button('1. 简单背景样式 ✅ 推荐')
-              .onClick(() => this.loadLocalStyle('styles-simple.json', '简单背景样式'))
-              .width('100%')
-              .backgroundColor('#4CAF50')
-              .fontSize(15)
-            
-            Text('纯背景色，无需网络资源，测试 setStyleJson 功能')
-              .fontSize(12)
-              .fontColor('#666666')
-              .width('100%')
-              .textAlign(TextAlign.Center)
-              .margin({ top: -5 })
-          }
-          .width('90%')
-
-          // Demo样式
-          Column({ space: 5 }) {
-            Button('2. MapLibre Demo 样式')
-              .onClick(() => this.loadLocalStyle('styles-demo.json', 'MapLibre Demo (本地)'))
-              .width('100%')
-              .backgroundColor('#2196F3')
-              .fontSize(15)
-            
-            Text('使用 MapLibre 公共资源，需要网络连接')
-              .fontSize(12)
-              .fontColor('#666666')
-              .width('100%')
-              .textAlign(TextAlign.Center)
-              .margin({ top: -5 })
-          }
-          .width('90%')
-
-          // 原始样式（内网）
-          Column({ space: 5 }) {
-            Button('3. 杭州矢量地图 ⚠️ 仅内网')
-              .onClick(() => this.loadLocalStyle('styles.json', '杭州矢量地图'))
-              .width('100%')
-              .backgroundColor('#FF9800')
-              .fontSize(15)
-            
-            Text('⚠️ 使用内网资源 (192.168.90.235)，外网会白屏')
-              .fontSize(12)
-              .fontColor('#FF5722')
-              .width('100%')
-              .textAlign(TextAlign.Center)
-              .margin({ top: -5 })
-          }
-          .width('90%')
-
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Text('📊 样式信息')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16, top: 8 })
-
-          Button('获取样式名称')
-            .onClick(() => this.getStyleName())
-            .width('90%')
-            .backgroundColor('#9C27B0')
-
-          Button('获取样式URL')
-            .onClick(() => this.getStyleUrl())
-            .width('90%')
-            .backgroundColor('#9C27B0')
-
-          Button('获取样式JSON')
-            .onClick(() => this.getStyleJson())
-            .width('90%')
-            .backgroundColor('#9C27B0')
-
-          Button('列出所有图层ID')
-            .onClick(() => this.listAllLayers())
-            .width('90%')
-            .backgroundColor('#9C27B0')
-
-          Button('列出所有数据源ID')
-            .onClick(() => this.listAllSources())
-            .width('90%')
-            .backgroundColor('#9C27B0')
-
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Text('⚙️ 样式控制')
-            .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16 })
-
-          Button('隐藏所有图层')
-            .onClick(() => this.hideAllLayers())
-            .width('90%')
-            .backgroundColor('#FF9800')
-
-          Button('显示所有图层')
-            .onClick(() => this.showAllLayers())
-            .width('90%')
-            .backgroundColor('#FF9800')
-
-          Button('重新加载当前样式')
-            .onClick(() => this.reloadStyle())
-            .width('90%')
-            .backgroundColor('#FF5722')
+      })
+        .width('100%')
+        .height('100%')
+      
+      // 加载指示器
+      if (!this.mapReady) {
+        Column() {
+          LoadingProgress()
+            .width(50)
+            .height(50)
+            .color('#2196F3')
           
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-          Text('🔧 渲染调试')
+          Text('地图加载中...')
             .fontSize(16)
-            .fontWeight(FontWeight.Bold)
-            .width('100%')
-            .padding({ left: 16 })
-
-          Button('强制重绘 (Debug)')
-            .onClick(() => this.forceRepaint())
-            .width('90%')
-            .backgroundColor('#607D8B')
-          
-          Button('重置相机位置')
-            .onClick(() => this.resetCamera())
-            .width('90%')
-            .backgroundColor('#607D8B')
+            .margin({ top: 10 })
         }
         .width('100%')
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('rgba(255, 255, 255, 0.8)')
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 当前状态显示
+    Column({ space: 5 }) {
+      Text(`当前样式: ${this.currentStyleName}`)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      
+      Text(`URL: ${this.currentStyleUrl || '加载中...'}`)
+        .fontSize(12)
+        .fontColor('#666666')
+        .width('100%')
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      
+      Text(`样式信息: ${this.styleInfo}`)
+        .fontSize(12)
+        .fontColor('#666666')
+        .width('100%')
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#F8F8F8')
+    .borderRadius(8)
+    .alignItems(HorizontalAlign.Start)
+
+    // 地图样式切换区域
+    Text('🎨 样式切换')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    ForEach(this.styleUrls, (item: StyleUrlItem) => {
+      Column({ space: 5 }) {
+        Button(item.name)
+          .onClick(() => this.switchStyle(item.url, item.name))
+          .width('100%')
+          .backgroundColor(this.currentStyleName === item.name ? '#4CAF50' : '#2196F3')
+          .fontSize(14)
+        
+        Text(item.description)
+          .fontSize(11)
+          .fontColor('#999999')
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .margin({ top: -5 })
       }
       .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+    })
+
+    Divider().strokeWidth(2)
+
+    Text('📁 本地样式测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Button('1. 简单背景样式 ✅')
+      .onClick(() => this.loadLocalStyle('styles-simple.json', '简单背景样式'))
+      .width('100%')
+      .fontSize(13)
+      .backgroundColor('#4CAF50')
+
+    Button('2. MapLibre Demo 样式')
+      .onClick(() => this.loadLocalStyle('styles-demo.json', 'MapLibre Demo (本地)'))
+      .width('100%')
+      .fontSize(13)
+      .backgroundColor('#2196F3')
+
+    Button('3. 杭州矢量地图 ⚠️ 内网')
+      .onClick(() => this.loadLocalStyle('styles.json', '杭州矢量地图'))
+      .width('100%')
+      .fontSize(13)
+      .backgroundColor('#FF9800')
+
+    Divider().strokeWidth(2)
+
+    Text('📊 样式信息')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Row() {
+      Button('获取样式名称')
+        .onClick(() => this.handleGetStyleName())
+        .width('48%')
+        .fontSize(12)
+        .backgroundColor('#9C27B0')
+
+      Button('获取样式URL')
+        .onClick(() => this.handleGetStyleUrl())
+        .width('48%')
+        .margin({ left: 8 })
+        .fontSize(12)
+        .backgroundColor('#9C27B0')
+    }
+    .width('100%')
+
+    Row() {
+      Button('获取样式JSON')
+        .onClick(() => this.handleGetStyleJson())
+        .width('48%')
+        .fontSize(12)
+        .backgroundColor('#9C27B0')
+
+      Button('列出所有图层ID')
+        .onClick(() => this.handleListAllLayers())
+        .width('48%')
+        .margin({ left: 8 })
+        .fontSize(11)
+        .backgroundColor('#9C27B0')
+    }
+    .width('100%')
+
+    Button('列出所有数据源ID')
+      .onClick(() => this.handleListAllSources())
+      .width('48%')
+      .fontSize(11)
+      .backgroundColor('#9C27B0')
+
+    Divider().strokeWidth(2)
+
+    Text('⚙️ 样式控制')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Row() {
+      Button('隐藏所有图层')
+        .onClick(() => this.handleHideAllLayers())
+        .width('48%')
+        .fontSize(12)
+        .backgroundColor('#FF9800')
+
+      Button('显示所有图层')
+        .onClick(() => this.handleShowAllLayers())
+        .width('48%')
+        .margin({ left: 8 })
+        .fontSize(12)
+        .backgroundColor('#FF9800')
+    }
+    .width('100%')
+
+    Button('重新加载当前样式')
+      .onClick(() => this.handleReloadStyle())
+      .width('48%')
+      .fontSize(12)
+      .backgroundColor('#FF5722')
+    
+    Divider().strokeWidth(2)
+
+    Text('🔧 渲染调试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+
+    Row() {
+      Button('强制重绘 (Debug)')
+        .onClick(() => this.handleForceRepaint())
+        .width('48%')
+        .fontSize(12)
+        .backgroundColor('#607D8B')
+      
+      Button('重置相机位置')
+        .onClick(() => this.handleResetCamera())
+        .width('48%')
+        .margin({ left: 8 })
+        .fontSize(12)
+        .backgroundColor('#607D8B')
+    }
+    .width('100%')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: this.message,
+        mapArea: this.MapAreaBuilder,
+        controlArea: this.ControlAreaBuilder
+      })
     }
     .width('100%')
     .height('100%')
@@ -460,10 +428,11 @@ struct StyleTestPage {
       hilog.info(DOMAIN, TAG, `Style JSON size: ${styleJson.length} bytes`);
       
       // 解析样式 JSON 以获取初始位置
-      let styleObj: ESObject | null = null;
+      let styleObj: Object | null = null;
       try {
-        styleObj = JSON.parse(styleJson) as ESObject;
-        hilog.info(DOMAIN, TAG, `Parsed style: center=${JSON.stringify(styleObj.center)}, zoom=${styleObj.zoom}`);
+        styleObj = JSON.parse(styleJson) as Object;
+        const styleRecord = styleObj as Record<string, Object>;
+        hilog.info(DOMAIN, TAG, `Parsed style: center=${JSON.stringify(styleRecord['center'])}, zoom=${styleRecord['zoom']}`);
       } catch (parseError) {
         hilog.warn(DOMAIN, TAG, `Failed to parse style JSON for initial position: ${parseError}`);
       }
@@ -848,5 +817,75 @@ struct StyleTestPage {
       hilog.error(DOMAIN, TAG, `Failed to reset camera: ${errorMsg}`);
       this.message = `❌ 相机重置失败: ${errorMsg}`;
     }
+  }
+
+  /**
+   * 处理获取样式名称（包装方法）
+   */
+  private handleGetStyleName(): void {
+    this.getStyleName();
+  }
+
+  /**
+   * 处理获取样式URL（包装方法）
+   */
+  private handleGetStyleUrl(): void {
+    this.getStyleUrl();
+  }
+
+  /**
+   * 处理获取样式JSON（包装方法）
+   */
+  private handleGetStyleJson(): void {
+    this.getStyleJson();
+  }
+
+  /**
+   * 处理列出所有图层（包装方法）
+   */
+  private handleListAllLayers(): void {
+    this.listAllLayers();
+  }
+
+  /**
+   * 处理列出所有数据源（包装方法）
+   */
+  private handleListAllSources(): void {
+    this.listAllSources();
+  }
+
+  /**
+   * 处理隐藏所有图层（包装方法）
+   */
+  private handleHideAllLayers(): void {
+    this.hideAllLayers();
+  }
+
+  /**
+   * 处理显示所有图层（包装方法）
+   */
+  private handleShowAllLayers(): void {
+    this.showAllLayers();
+  }
+
+  /**
+   * 处理重新加载样式（包装方法）
+   */
+  private handleReloadStyle(): void {
+    this.reloadStyle();
+  }
+
+  /**
+   * 处理强制重绘（包装方法）
+   */
+  private handleForceRepaint(): void {
+    this.forceRepaint();
+  }
+
+  /**
+   * 处理重置相机（包装方法）
+   */
+  private handleResetCamera(): void {
+    this.resetCamera();
   }
 }

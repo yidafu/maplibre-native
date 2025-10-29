@@ -7,6 +7,7 @@
     "pages/GestureTestPage",
     "pages/MarkerTestPage",
     "pages/MarkerAdvancedTestPage",
+    "pages/InfoWindowTestPage",
     "pages/IconTestPage",
     "pages/SourceTestPage",
     "pages/LayerTestPage",
@@ -22,6 +23,16 @@
     "pages/LogoScaleBarTestPage",
     "pages/MultiMapTestPage",
     "pages/ProjectionTestPage",
-    "pages/OfflineMapTestPage"
+    "pages/OfflineMapTestPage",
+    "pages/CameraBoundsTestPage",
+    "pages/CameraLimitsTestPage",
+    "pages/QueryFeaturesTestPage",
+    "pages/TileLodTestPage",
+    "pages/TilePrefetchTestPage",
+    "pages/StyleTransitionTestPage",
+    "pages/PolylinePolygonTestPage",
+    "pages/CoordinateConversionTestPage",
+    "pages/LightTestPage",
+    "pages/MapStateTestPage"
   ]
 }
