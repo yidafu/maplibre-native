@@ -132,8 +132,8 @@ struct CameraLimitsTestPage {
     Column() {
       TestPageLayout({
         title: '相机参数限制测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

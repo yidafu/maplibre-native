@@ -140,8 +140,8 @@ struct PolylinePolygonTestPage {
     Column() {
       TestPageLayout({
         title: '折线/多边形注解测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

@@ -104,8 +104,8 @@ struct CameraBoundsTestPage {
     Column() {
       TestPageLayout({
         title: '相机边界计算测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void =>  this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

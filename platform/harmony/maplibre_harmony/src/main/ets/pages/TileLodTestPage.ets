@@ -116,8 +116,8 @@ struct TileLodTestPage {
     Column() {
       TestPageLayout({
         title: '瓦片LOD配置测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

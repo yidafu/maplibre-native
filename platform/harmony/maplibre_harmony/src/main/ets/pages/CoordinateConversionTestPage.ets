@@ -143,8 +143,8 @@ struct CoordinateConversionTestPage {
     Column() {
       TestPageLayout({
         title: '坐标转换计算测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

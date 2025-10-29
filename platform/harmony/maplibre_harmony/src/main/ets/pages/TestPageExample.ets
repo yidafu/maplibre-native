@@ -160,8 +160,8 @@ struct TestPageExample {
       TestPageLayout({
         title: this.currentTitle,
         onBack: (): void => this.customBackAction(),
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

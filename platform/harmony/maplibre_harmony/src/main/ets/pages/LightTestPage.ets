@@ -107,8 +107,8 @@ struct LightTestPage {
     Column() {
       TestPageLayout({
         title: '光照系统测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

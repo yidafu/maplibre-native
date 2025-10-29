@@ -137,8 +137,8 @@ struct MapStateTestPage {
     Column() {
       TestPageLayout({
         title: '地图状态测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

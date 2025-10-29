@@ -221,8 +221,8 @@ struct InfoWindowTestPage {
     Column() {
       TestPageLayout({
         title: 'InfoWindow 测试',
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')

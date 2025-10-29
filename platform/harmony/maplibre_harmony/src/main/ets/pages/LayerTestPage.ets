@@ -216,8 +216,8 @@ struct LayerTestPage {
     Column() {
       TestPageLayout({
         title: this.message,
-        mapArea: this.MapAreaBuilder,
-        controlArea: this.ControlAreaBuilder
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
     }
     .width('100%')
