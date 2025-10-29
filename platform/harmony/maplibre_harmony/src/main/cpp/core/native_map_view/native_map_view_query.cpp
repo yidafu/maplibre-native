@@ -47,17 +47,13 @@ napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_i
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double latitude = args.GetDouble(0, "latitude");
     double longitude = args.GetDouble(1, "longitude");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -71,9 +67,7 @@ napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_i
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "projectedMetersForLatLng: Failed - %s", e.what());
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
 }
 
@@ -83,9 +77,7 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
@@ -94,17 +86,13 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "pixelForLatLng: Map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double latitude = args.GetDouble(0, "latitude");
     double longitude = args.GetDouble(1, "longitude");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -115,9 +103,7 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "pixelForLatLng: Failed - %s", e.what());
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
 }
 
@@ -140,17 +126,13 @@ napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_i
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double northing = args.GetDouble(0, "northing");
     double easting = args.GetDouble(1, "easting");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -164,9 +146,7 @@ napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_i
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "latLngForProjectedMeters: Failed - %s", e.what());
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
 }
 
@@ -176,9 +156,7 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
@@ -187,17 +165,13 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "latLngForPixel: Map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double x = args.GetDouble(0, "x");
     double y = args.GetDouble(1, "y");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -208,9 +182,7 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "latLngForPixel: Failed - %s", e.what());
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
 }
 

@@ -12,17 +12,44 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
-void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode) {
+void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraWillChange");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        bool animated = (mode == MapObserver::CameraChangeMode::Animated);
+        callbackManager_->InvokeCallback("onCameraWillChange", [animated](napi_env env) {
+            napi_value argv[1];
+            napi_get_boolean(env, animated, &argv[0]);
+            return argv[0];
+        });
+    }
 }
+
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraIsChanging");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
+    }
 }
-void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode) {
+
+void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onCameraDidChange");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        bool animated = (mode == MapObserver::CameraChangeMode::Animated);
+        callbackManager_->InvokeCallback("onCameraDidChange", [animated](napi_env env) {
+            napi_value argv[1];
+            napi_get_boolean(env, animated, &argv[0]);
+            return argv[0];
+        });
+    }
     
     // MapLibre 内部已经处理渲染时机（通过 triggerRepaint）
     // 不需要在这里额外请求渲染，否则会造成过度渲染
@@ -34,6 +61,11 @@ void NativeMapView::onWillStartLoadingMap() {
     Logger::info("NativeMapView", "  - Style URL/JSON is set");
     Logger::info("NativeMapView", "  - Map starts loading resources");
     Logger::info("NativeMapView", "===========================================");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onWillStartLoadingMap");
+    }
 }
 void NativeMapView::onDidFinishLoadingMap() {
     if (isDestroying.load(std::memory_order_acquire)) return;
@@ -43,6 +75,11 @@ void NativeMapView::onDidFinishLoadingMap() {
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
     
     Logger::warn("NativeMapView", "🗺️ [%lld ms] onDidFinishLoadingMap", elapsed);
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingMap");
+    }
     
     // MapLibre内部已自动处理渲染，不需要额外请求
     // 移除此处的 requestRender() 避免重复渲染
@@ -79,16 +116,43 @@ void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& e
     Logger::info("NativeMapView", "  Suggestion: %s", suggestion);
     Logger::error("NativeMapView", "=========================================");
     
-    // 通知样式加载错误
+    // 通知监听器
     std::string fullError = std::string(errorType) + ": " + errorMsg;
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackWithString("onDidFailLoadingMap", fullError);
+    }
+    
+    // 通知样式加载错误（保留旧的监听器）
     notifyStyleLoadError(fullError);
 }
 void NativeMapView::onWillStartRenderingFrame() {
     if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onWillStartRenderingFrame");
+    }
 }
+
 void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStatus& status) {
     if (isDestroying.load(std::memory_order_acquire)) {
         return;
+    }
+    
+    // 通知监听器（带渲染统计信息）
+    if (callbackManager_) {
+        bool fully = (status.mode == MapObserver::RenderMode::Full);
+        // 使用 renderingStats 中的实际数据
+        double encodingTime = 0.0; // TODO: 从 status.renderingStats 中获取实际值
+        double renderingTime = 0.0; // TODO: 从 status.renderingStats 中获取实际值
+        
+        callbackManager_->InvokeCallback("onDidFinishRenderingFrame", [fully, encodingTime, renderingTime](napi_env env) {
+            napi_value argv[3];
+            napi_get_boolean(env, fully, &argv[0]);
+            napi_create_double(env, encodingTime, &argv[1]);
+            napi_create_double(env, renderingTime, &argv[2]);
+            return argv[0]; // DataBuilder 需要返回值，这里返回第一个参数
+        });
     }
     
     // Network I/O is now handled by the renderer thread's RunLoop
@@ -96,7 +160,13 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
 void NativeMapView::onWillStartRenderingMap() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onWillStartRenderingMap");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onWillStartRenderingMap");
+    }
 }
+
 void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
     // 立即检查对象是否正在析构
     if (isDestroying.load(std::memory_order_acquire)) {
@@ -105,15 +175,32 @@ void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
     
     try {
         Logger::debug("NativeMapView", "onDidFinishRenderingMap");
+        
+        // 通知监听器
+        if (callbackManager_) {
+            bool fully = (mode == MapObserver::RenderMode::Full);
+            callbackManager_->InvokeCallback("onDidFinishRenderingMap", [fully](napi_env env) {
+                napi_value argv[1];
+                napi_get_boolean(env, fully, &argv[0]);
+                return argv[0];
+            });
+        }
+        
         // 渲染已完成，不需要再次请求渲染
         // onCameraDidChange 已经处理了渲染请求
     } catch (...) {
         // 忽略所有异常，避免崩溃
     }
 }
+
 void NativeMapView::onDidBecomeIdle() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     Logger::debug("NativeMapView", "onDidBecomeIdle");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onDidBecomeIdle");
+    }
 }
 void NativeMapView::onDidFinishLoadingStyle() {
     // 🔍 日志：最早期的日志，确认回调被调用
@@ -139,7 +226,12 @@ void NativeMapView::onDidFinishLoadingStyle() {
     Logger::error("NativeMapView", "🎨 [Instance #%d] [%lld ms] onDidFinishLoadingStyle", instanceId, elapsed);
     Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p", instanceId, this, map.get());
     
-    // 通知样式加载完成
+    // 通知 Android 风格的监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingStyle");
+    }
+    
+    // 通知样式加载完成（旧的监听器）
     Logger::error("NativeMapView", "🎨 [Instance #%d] Calling notifyStyleLoaded()...", instanceId);
     notifyStyleLoaded();
     Logger::error("NativeMapView", "🎨 [Instance #%d] notifyStyleLoaded() completed", instanceId);
@@ -196,6 +288,12 @@ void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
     Logger::warn("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d)", 
                  elapsed, count, source.getID().c_str(), static_cast<int>(source.getType()));
     
+    // 通知监听器
+    if (callbackManager_) {
+        std::string sourceId = source.getID();
+        callbackManager_->InvokeCallbackWithString("onSourceChanged", sourceId);
+    }
+    
     // MapLibre内部已自动处理渲染，不需要额外请求
     // 移除此处的 requestRender() 避免重复渲染导致无限循环
 }
@@ -215,6 +313,11 @@ void NativeMapView::onStyleImageMissing(const std::string& id) {
         Logger::info("NativeMapView", "[MarkerDebug]    Example: new MarkerOptions().position(latLng).icon(\"my-icon\").getMarker()");
     }
     Logger::warn("NativeMapView", "=========================================");
+    
+    // 通知监听器
+    if (callbackManager_) {
+        callbackManager_->InvokeCallbackWithString("onStyleImageMissing", id);
+    }
 }
 
 bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
@@ -1311,6 +1414,108 @@ void NativeMapView::notifyStyleLoadError(const std::string& error) {
         Logger::error("NativeMapView", "notifyStyleLoadError: Failed to invoke callback");
     }
 }
+
+// ========== Android/iOS 风格监听器的 NAPI 方法实现 ==========
+
+// 辅助宏：简化监听器注册代码
+#define IMPLEMENT_ADD_LISTENER(MethodName, CallbackName) \
+napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
+    Logger::debug("NativeMapView", #MethodName "() called"); \
+    napi_value undefined; \
+    napi_get_undefined(env, &undefined); \
+    napi_value thisObj; \
+    size_t argc = 1; \
+    napi_value args[1]; \
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to get callback argument"); \
+        return undefined; \
+    } \
+    NativeMapView* instance = nullptr; \
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to unwrap instance"); \
+        return undefined; \
+    } \
+    if (!instance->callbackManager_) { \
+        Logger::error("NativeMapView", #MethodName ": CallbackManager not initialized"); \
+        return undefined; \
+    } \
+    if (instance->callbackManager_->RegisterCallback(CallbackName, args[0])) { \
+        Logger::debug("NativeMapView", #MethodName ": Listener added via CallbackManager"); \
+    } else { \
+        Logger::error("NativeMapView", #MethodName ": Failed to register callback"); \
+    } \
+    return undefined; \
+}
+
+#define IMPLEMENT_REMOVE_LISTENER(MethodName, CallbackName) \
+napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
+    Logger::debug("NativeMapView", #MethodName "() called"); \
+    napi_value undefined; \
+    napi_get_undefined(env, &undefined); \
+    napi_value thisObj; \
+    size_t argc = 1; \
+    napi_value args[1]; \
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to get callback argument"); \
+        return undefined; \
+    } \
+    NativeMapView* instance = nullptr; \
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) { \
+        Logger::error("NativeMapView", #MethodName ": Failed to unwrap instance"); \
+        return undefined; \
+    } \
+    if (!instance->callbackManager_) { \
+        Logger::error("NativeMapView", #MethodName ": CallbackManager not initialized"); \
+        return undefined; \
+    } \
+    if (instance->callbackManager_->UnregisterCallback(CallbackName, args[0])) { \
+        Logger::debug("NativeMapView", #MethodName ": Listener removed via CallbackManager"); \
+    } else { \
+        Logger::warn("NativeMapView", #MethodName ": Listener not found"); \
+    } \
+    return undefined; \
+}
+
+// ===== 相机事件监听器 =====
+IMPLEMENT_ADD_LISTENER(addOnCameraWillChangeListener, "onCameraWillChange")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraWillChangeListener, "onCameraWillChange")
+IMPLEMENT_ADD_LISTENER(addOnCameraIsChangingListener, "onCameraIsChanging")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraIsChangingListener, "onCameraIsChanging")
+IMPLEMENT_ADD_LISTENER(addOnCameraDidChangeListener, "onCameraDidChange")
+IMPLEMENT_REMOVE_LISTENER(removeOnCameraDidChangeListener, "onCameraDidChange")
+
+// ===== 地图加载事件监听器 =====
+IMPLEMENT_ADD_LISTENER(addOnWillStartLoadingMapListener, "onWillStartLoadingMap")
+IMPLEMENT_REMOVE_LISTENER(removeOnWillStartLoadingMapListener, "onWillStartLoadingMap")
+IMPLEMENT_ADD_LISTENER(addOnDidFinishLoadingMapListener, "onDidFinishLoadingMap")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishLoadingMapListener, "onDidFinishLoadingMap")
+IMPLEMENT_ADD_LISTENER(addOnDidFailLoadingMapListener, "onDidFailLoadingMap")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidFailLoadingMapListener, "onDidFailLoadingMap")
+
+// ===== 渲染事件监听器 =====
+IMPLEMENT_ADD_LISTENER(addOnWillStartRenderingFrameListener, "onWillStartRenderingFrame")
+IMPLEMENT_REMOVE_LISTENER(removeOnWillStartRenderingFrameListener, "onWillStartRenderingFrame")
+IMPLEMENT_ADD_LISTENER(addOnDidFinishRenderingFrameListener, "onDidFinishRenderingFrame")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishRenderingFrameListener, "onDidFinishRenderingFrame")
+IMPLEMENT_ADD_LISTENER(addOnWillStartRenderingMapListener, "onWillStartRenderingMap")
+IMPLEMENT_REMOVE_LISTENER(removeOnWillStartRenderingMapListener, "onWillStartRenderingMap")
+IMPLEMENT_ADD_LISTENER(addOnDidFinishRenderingMapListener, "onDidFinishRenderingMap")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishRenderingMapListener, "onDidFinishRenderingMap")
+
+// ===== 样式事件监听器 =====
+IMPLEMENT_ADD_LISTENER(addOnDidFinishLoadingStyleListener, "onDidFinishLoadingStyle")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishLoadingStyleListener, "onDidFinishLoadingStyle")
+IMPLEMENT_ADD_LISTENER(addOnStyleImageMissingListener, "onStyleImageMissing")
+IMPLEMENT_REMOVE_LISTENER(removeOnStyleImageMissingListener, "onStyleImageMissing")
+
+// ===== 其他事件监听器 =====
+IMPLEMENT_ADD_LISTENER(addOnDidBecomeIdleListener, "onDidBecomeIdle")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidBecomeIdleListener, "onDidBecomeIdle")
+IMPLEMENT_ADD_LISTENER(addOnSourceChangedListener, "onSourceChanged")
+IMPLEMENT_REMOVE_LISTENER(removeOnSourceChangedListener, "onSourceChanged")
+
+#undef IMPLEMENT_ADD_LISTENER
+#undef IMPLEMENT_REMOVE_LISTENER
 
 } // namespace harmony
 } // namespace mbgl

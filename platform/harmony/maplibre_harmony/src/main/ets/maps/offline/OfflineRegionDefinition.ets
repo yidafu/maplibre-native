@@ -1,87 +1,42 @@
 /**
  * OfflineRegionDefinition - 离线区域定义
  * 
- * 定义离线地图区域的范围和参数
+ * 从 NAPI 层重新导出类型
  */
-import { LatLngBounds } from '../geometry/LatLngBounds';
-import { Geometry } from '../geojson';
+
 import maplibre from 'libmaplibre_native.so';
+import type { LatLngBounds } from '../geometry/LatLngBounds';
+
+// 重新导出 NAPI 类型
+export type { 
+  OfflineRegionDefinition,
+  OfflineTilePyramidRegionDefinition,
+  OfflineGeometryRegionDefinition
+} from 'libmaplibre_native.so';
 
 /**
- * 边界对象接口（用于内部转换）
- */
-interface BoundsObject {
-  north: number;
-  east: number;
-  south: number;
-  west: number;
-}
-
-/**
- * 离线区域定义类型（匹配 .d.ts 定义）
- */
-export type OfflineRegionDefinition = 
-  maplibre.OfflineTilePyramidRegionDefinition 
-  | maplibre.OfflineGeometryRegionDefinition;
-
-/**
- * 基于瓦片金字塔的离线区域定义（匹配 .d.ts 定义）
- */
-export type OfflineTilePyramidRegionDefinition = maplibre.OfflineTilePyramidRegionDefinition;
-
-/**
- * 基于几何体的离线区域定义（匹配 .d.ts 定义）
- */
-export type OfflineGeometryRegionDefinition = maplibre.OfflineGeometryRegionDefinition;
-
-/**
- * 创建瓦片金字塔区域定义
+ * 创建瓦片金字塔区域定义的工厂函数
  */
 export function createTilePyramidRegionDefinition(
   styleURL: string,
   bounds: LatLngBounds,
-  minZoom: number,
-  maxZoom: number,
+  minZoom: number = 0,
+  maxZoom: number = 16,
   pixelRatio: number = 1.0,
   includeIdeographs: boolean = true
 ): maplibre.OfflineTilePyramidRegionDefinition {
-  const boundsObj: BoundsObject = {
-    north: bounds.north,
-    east: bounds.east,
-    south: bounds.south,
-    west: bounds.west
-  };
-  
   return {
     type: 'tilePyramid',
     styleURL,
-    bounds: boundsObj,
+    bounds: {
+      north: bounds.north,
+      east: bounds.east,
+      south: bounds.south,
+      west: bounds.west
+    },
     minZoom,
     maxZoom,
     pixelRatio,
     includeIdeographs
   };
 }
-
-/**
- * 创建几何体区域定义
- */
-export function createGeometryRegionDefinition(
-  styleURL: string,
-  geometry: Geometry,
-  minZoom: number,
-  maxZoom: number,
-  pixelRatio: number = 1.0,
-  includeIdeographs: boolean = true
-): maplibre.OfflineGeometryRegionDefinition {
-  return {
-    type: 'geometry',
-    styleURL,
-    geometry,
-    minZoom,
-    maxZoom,
-    pixelRatio,
-    includeIdeographs
-  };
-}
-

@@ -365,7 +365,13 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"setNativeWindowWithSize", nullptr, setNativeWindowWithSize, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"destroy", nullptr, destroy, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 相机监听器方法
+        // ========== 新增方法：对齐 Android/iOS API ==========
+        {"setContentPadding", nullptr, setContentPadding, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getContentPadding", nullptr, getContentPadding, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getPixelRatio", nullptr, getPixelRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getDensityDependantRectangle", nullptr, getDensityDependantRectangle, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // 相机监听器方法（旧的）
         {"addOnCameraIdleListener", nullptr, addOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraIdleListener", nullptr, removeOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnCameraMoveStartedListener", nullptr, addOnCameraMoveStartedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -375,9 +381,49 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnCameraMoveCanceledListener", nullptr, addOnCameraMoveCanceledListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraMoveCanceledListener", nullptr, removeOnCameraMoveCanceledListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 样式监听器方法
+        // 样式监听器方法（旧的）
         {"setOnStyleLoadedListener", nullptr, setOnStyleLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"setOnStyleLoadErrorListener", nullptr, setOnStyleLoadErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr}
+        {"setOnStyleLoadErrorListener", nullptr, setOnStyleLoadErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // ========== Android/iOS 风格监听器方法 ==========
+        
+        // 相机事件监听器
+        {"addOnCameraWillChangeListener", nullptr, addOnCameraWillChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnCameraWillChangeListener", nullptr, removeOnCameraWillChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnCameraIsChangingListener", nullptr, addOnCameraIsChangingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnCameraIsChangingListener", nullptr, removeOnCameraIsChangingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnCameraDidChangeListener", nullptr, addOnCameraDidChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnCameraDidChangeListener", nullptr, removeOnCameraDidChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // 地图加载事件监听器
+        {"addOnWillStartLoadingMapListener", nullptr, addOnWillStartLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnWillStartLoadingMapListener", nullptr, removeOnWillStartLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnDidFinishLoadingMapListener", nullptr, addOnDidFinishLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidFinishLoadingMapListener", nullptr, removeOnDidFinishLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnDidFailLoadingMapListener", nullptr, addOnDidFailLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidFailLoadingMapListener", nullptr, removeOnDidFailLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // 渲染事件监听器
+        {"addOnWillStartRenderingFrameListener", nullptr, addOnWillStartRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnWillStartRenderingFrameListener", nullptr, removeOnWillStartRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnDidFinishRenderingFrameListener", nullptr, addOnDidFinishRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidFinishRenderingFrameListener", nullptr, removeOnDidFinishRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnWillStartRenderingMapListener", nullptr, addOnWillStartRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnWillStartRenderingMapListener", nullptr, removeOnWillStartRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnDidFinishRenderingMapListener", nullptr, addOnDidFinishRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidFinishRenderingMapListener", nullptr, removeOnDidFinishRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // 样式事件监听器
+        {"addOnDidFinishLoadingStyleListener", nullptr, addOnDidFinishLoadingStyleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidFinishLoadingStyleListener", nullptr, removeOnDidFinishLoadingStyleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnStyleImageMissingListener", nullptr, addOnStyleImageMissingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnStyleImageMissingListener", nullptr, removeOnStyleImageMissingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // 其他事件监听器
+        {"addOnDidBecomeIdleListener", nullptr, addOnDidBecomeIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidBecomeIdleListener", nullptr, removeOnDidBecomeIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnSourceChangedListener", nullptr, addOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnSourceChangedListener", nullptr, removeOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
     Logger::info("NativeMapView", "Registering %zu methods", properties.size());
@@ -671,11 +717,10 @@ void NativeMapView::initializeRenderer() {
 napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "========== destroy() called from TS layer ==========");
     
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    NapiArgs args(env, info);
     
     NativeMapView* nativeMapView = nullptr;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&nativeMapView));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
     
     if (nativeMapView) {
         // 防止重复销毁（使用静态集合跟踪已销毁的实例）
@@ -699,6 +744,171 @@ napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     }
     
     return nullptr;
+}
+
+// ========== 新增方法：对齐 Android/iOS API ==========
+
+/**
+ * 设置内容边距
+ * 对齐 Android: setContentPadding(double[] padding)
+ */
+napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "setContentPadding() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+    
+    napi_value paddingArray = args.GetArray(0, "padding");
+    if (args.HasError()) return args.Undefined();
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "setContentPadding: Failed to unwrap instance");
+        return args.Undefined();
+    }
+    
+    // 解析数组 [top, left, bottom, right]
+    uint32_t length = 0;
+    napi_status status = napi_get_array_length(env, paddingArray, &length);
+    if (status != napi_ok || length != 4) {
+        napi_throw_error(env, nullptr, "Padding array must have exactly 4 elements [top, left, bottom, right]");
+        return args.Undefined();
+    }
+    
+    for (uint32_t i = 0; i < 4; i++) {
+        napi_value element;
+        if (napi_get_element(env, paddingArray, i, &element) != napi_ok) {
+            napi_throw_error(env, nullptr, "Failed to get padding array element");
+            return args.Undefined();
+        }
+        
+        double value;
+        if (napi_get_value_double(env, element, &value) != napi_ok) {
+            napi_throw_error(env, nullptr, "Padding array elements must be numbers");
+            return args.Undefined();
+        }
+        
+        instance->contentPadding_[i] = value;
+    }
+    
+    Logger::info("NativeMapView", "setContentPadding: [top=%.1f, left=%.1f, bottom=%.1f, right=%.1f]",
+                 instance->contentPadding_[0], instance->contentPadding_[1],
+                 instance->contentPadding_[2], instance->contentPadding_[3]);
+    
+    return args.Undefined();
+}
+
+/**
+ * 获取内容边距
+ * 对齐 Android: getContentPadding()
+ */
+napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getContentPadding() called");
+    
+    NapiArgs args(env, info);
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getContentPadding: Failed to unwrap instance");
+        return args.Undefined();
+    }
+    
+    // 创建返回数组 [top, left, bottom, right]
+    napi_value result;
+    napi_create_array_with_length(env, 4, &result);
+    
+    for (uint32_t i = 0; i < 4; i++) {
+        napi_value element;
+        napi_create_double(env, instance->contentPadding_[i], &element);
+        napi_set_element(env, result, i, element);
+    }
+    
+    Logger::debug("NativeMapView", "getContentPadding: [%.1f, %.1f, %.1f, %.1f]",
+                  instance->contentPadding_[0], instance->contentPadding_[1],
+                  instance->contentPadding_[2], instance->contentPadding_[3]);
+    
+    return result;
+}
+
+/**
+ * 获取设备像素比
+ * 对齐 Android: getPixelRatio()
+ * 对齐 iOS: contentScaleFactor
+ */
+napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getPixelRatio() called");
+    
+    NapiArgs args(env, info);
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getPixelRatio: Failed to unwrap instance");
+        return args.Undefined();
+    }
+    
+    napi_value result;
+    napi_create_double(env, instance->pixelRatio, &result);
+    
+    Logger::debug("NativeMapView", "getPixelRatio: %.2f", instance->pixelRatio);
+    
+    return result;
+}
+
+/**
+ * 根据设备像素比调整矩形尺寸
+ * 对齐 Android: getDensityDependantRectangle(RectF rectangle)
+ */
+napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callback_info info) {
+    Logger::debug("NativeMapView", "getDensityDependantRectangle() called");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+    
+    napi_value rectObj = args.GetObject(0, "rectangle");
+    if (args.HasError()) return args.Undefined();
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
+        Logger::error("NativeMapView", "getDensityDependantRectangle: Failed to unwrap instance");
+        return args.Undefined();
+    }
+    
+    // 读取矩形的属性
+    double left = args.GetDoubleProperty(rectObj, "left", 0.0);
+    double top = args.GetDoubleProperty(rectObj, "top", 0.0);
+    double right = args.GetDoubleProperty(rectObj, "right", 0.0);
+    double bottom = args.GetDoubleProperty(rectObj, "bottom", 0.0);
+    
+    // 根据像素比调整
+    double pixelRatio = instance->pixelRatio;
+    
+    // 创建返回对象
+    napi_value result;
+    napi_create_object(env, &result);
+    
+    napi_value leftValue, topValue, rightValue, bottomValue;
+    napi_create_double(env, left / pixelRatio, &leftValue);
+    napi_create_double(env, top / pixelRatio, &topValue);
+    napi_create_double(env, right / pixelRatio, &rightValue);
+    napi_create_double(env, bottom / pixelRatio, &bottomValue);
+    
+    napi_set_named_property(env, result, "left", leftValue);
+    napi_set_named_property(env, result, "top", topValue);
+    napi_set_named_property(env, result, "right", rightValue);
+    napi_set_named_property(env, result, "bottom", bottomValue);
+    
+    Logger::debug("NativeMapView", "getDensityDependantRectangle: Input=[%.1f,%.1f,%.1f,%.1f], Output=[%.1f,%.1f,%.1f,%.1f] (pixelRatio=%.2f)",
+                  left, top, right, bottom,
+                  left/pixelRatio, top/pixelRatio, right/pixelRatio, bottom/pixelRatio,
+                  pixelRatio);
+    
+    return result;
 }
 
 } // namespace harmony

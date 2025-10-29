@@ -3,6 +3,7 @@
     "pages/Index",
     "pages/BasicMapPage",
     "pages/CameraListenerTestPage",
+    "pages/CameraAnimationTestPage",
     "pages/GestureTestPage",
     "pages/MarkerTestPage",
     "pages/MarkerAdvancedTestPage",
@@ -16,10 +17,11 @@
     "pages/ExpressionRealWorldExamples",
     "pages/SymbolLayerExpressionExample",
     "pages/LocationComponentTestPage",
+    "pages/LocationFlyToTestPage",
     "pages/CompassTestPage",
     "pages/LogoScaleBarTestPage",
     "pages/MultiMapTestPage",
-    "pages/OfflineMapTestPage",
-    "pages/OfflineCacheTestPage"
+    "pages/ProjectionTestPage",
+    "pages/OfflineMapTestPage"
   ]
 }

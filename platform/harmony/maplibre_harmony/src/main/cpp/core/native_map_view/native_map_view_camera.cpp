@@ -25,45 +25,22 @@ namespace CameraMoveReason {
 }
 
 napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取参数
-    size_t argc = 2;
-    napi_value args[2];
-    
-    if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "Failed to get resizeView arguments");
-        return undefined;
-    }
-    
-    if (argc < 2) {
-        Logger::error("NativeMapView", "resizeView requires 2 arguments");
-        return undefined;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) return args.Undefined();
     
     // 解析宽度和高度
-    int32_t newWidth, newHeight;
-    if (napi_get_value_int32(env, args[0], &newWidth) != napi_ok ||
-        napi_get_value_int32(env, args[1], &newHeight) != napi_ok) {
-        Logger::error("NativeMapView", "Failed to parse resizeView arguments");
-        return undefined;
-    }
+    int32_t newWidth = args.GetInt32(0, "width");
+    int32_t newHeight = args.GetInt32(1, "height");
+    if (args.HasError()) return args.Undefined();
     
     Logger::info("NativeMapView", "🔍 [DPI] resizeView called: %dx%d (logical)", newWidth, newHeight);
     
-    // 获取this对象
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "Failed to get this object");
-        return undefined;
-    }
-    
     // 获取NativeMapView实例
     NativeMapView* instance;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 更新尺寸
@@ -81,7 +58,7 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     
     Logger::info("NativeMapView", "View resized to %d x %d", instance->width, instance->height);
     
-    return undefined;
+    return args.Undefined();
 }
 
 // Note: getStyleUrl, setStyleUrl, getStyleJson, setStyleJson, and setLatLngBounds are now defined in native_map_view_style.cpp
@@ -89,27 +66,19 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "cancelTransitions() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "cancelTransitions: Failed to get this object");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "cancelTransitions: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "cancelTransitions: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -134,47 +103,31 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
         Logger::error("NativeMapView", "cancelTransitions: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "setGestureInProgress() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "setGestureInProgress: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "setGestureInProgress: Missing inProgress argument");
-        return undefined;
-    }
+    // 获取布尔参数
+    bool inProgress = args.GetBool(0, "inProgress");
+    if (args.HasError()) return args.Undefined();
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setGestureInProgress: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "setGestureInProgress: Map not initialized");
-        return undefined;
-    }
-    
-    // 获取布尔参数
-    bool inProgress = false;
-    if (napi_get_value_bool(env, args[0], &inProgress) != napi_ok) {
-        Logger::error("NativeMapView", "setGestureInProgress: Failed to get boolean value");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -184,65 +137,45 @@ napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info 
         Logger::error("NativeMapView", "setGestureInProgress: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "moveBy() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象
-    napi_value thisObj;
-    size_t argc = 3;  // 支持可选的 duration 参数
-    napi_value args[3];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "moveBy: Failed to get arguments");
-        return undefined;
-    }
+    // 获取移动距离
+    double dx = args.GetDouble(0, "dx");
+    double dy = args.GetDouble(1, "dy");
+    // 获取动画时长（可选，默认 0 表示立即执行）
+    uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(2, 0.0));
+    if (args.HasError()) return args.Undefined();
     
-    if (argc < 2) {
-        Logger::error("NativeMapView", "moveBy: Missing dx/dy arguments");
-        return undefined;
+    if (duration > 0) {
+        Logger::debug("NativeMapView", "moveBy: with animation duration = %lu ms", (unsigned long)duration);
     }
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "moveBy: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "moveBy: Map not initialized");
-        return undefined;
-    }
-    
-    // 获取移动距离
-    double dx = 0, dy = 0;
-    if (napi_get_value_double(env, args[0], &dx) != napi_ok ||
-        napi_get_value_double(env, args[1], &dy) != napi_ok) {
-        Logger::error("NativeMapView", "moveBy: Failed to get dx/dy values");
-        return undefined;
-    }
-    
-    // 获取动画时长（可选，默认 0 表示立即执行）
-    uint64_t duration = 0;
-    if (argc >= 3) {
-        double durationValue;
-        if (napi_get_value_double(env, args[2], &durationValue) == napi_ok) {
-            duration = static_cast<uint64_t>(durationValue);
-            Logger::debug("NativeMapView", "moveBy: with animation duration = %lu ms", (unsigned long)duration);
-        }
+        return args.Undefined();
     }
     
     try {
         // 再次检查 map 是否有效（防止竞态条件）
         if (!instance->map) {
             Logger::warn("NativeMapView", "moveBy: Map became null before execution");
-            return undefined;
+            return args.Undefined();
         }
         
         // 触发相机移动开始事件
@@ -285,35 +218,32 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "moveBy: Unknown exception");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "========== jumpTo() START ==========");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(5);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象和参数
-    napi_value thisObj;
-    size_t argc = 6;  // 最多6个参数（5个必需 + 1个可选的padding）
-    napi_value args[6];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "jumpTo: Failed to get arguments");
-        return undefined;
-    }
+    // 解析参数：angle, latitude, longitude, pitch, zoom
+    double angle = args.GetDouble(0, "angle");
+    double latitude = args.GetDouble(1, "latitude");
+    double longitude = args.GetDouble(2, "longitude");
+    double pitch = args.GetDouble(3, "pitch");
+    double zoom = args.GetDouble(4, "zoom");
+    if (args.HasError()) return args.Undefined();
     
-    // 检查参数数量（至少需要5个参数）
-    if (argc < 5) {
-        Logger::error("NativeMapView", "jumpTo: Requires at least 5 arguments (angle, latitude, longitude, pitch, zoom), got %zu", argc);
-        return undefined;
-    }
+    Logger::info("NativeMapView", "jumpTo: angle=%f, lat=%f, lng=%f, pitch=%f, zoom=%f", 
+                  angle, latitude, longitude, pitch, zoom);
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance or instance is null");
-        return undefined;
+        return args.Undefined();
     }
     
     Logger::debug("NativeMapView", "jumpTo: instance=%p", instance);
@@ -325,23 +255,8 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "jumpTo: Map not initialized yet, will skip jumpTo");
-        return undefined;
+        return args.Undefined();
     }
-    
-    // 解析参数：angle, latitude, longitude, pitch, zoom
-    double angle, latitude, longitude, pitch, zoom;
-    
-    if (napi_get_value_double(env, args[0], &angle) != napi_ok ||
-        napi_get_value_double(env, args[1], &latitude) != napi_ok ||
-        napi_get_value_double(env, args[2], &longitude) != napi_ok ||
-        napi_get_value_double(env, args[3], &pitch) != napi_ok ||
-        napi_get_value_double(env, args[4], &zoom) != napi_ok) {
-        Logger::error("NativeMapView", "jumpTo: Failed to parse numeric arguments");
-        return undefined;
-    }
-    
-    Logger::info("NativeMapView", "jumpTo: angle=%f, lat=%f, lng=%f, pitch=%f, zoom=%f", 
-                  angle, latitude, longitude, pitch, zoom);
     
     // 构建 CameraOptions
     CameraOptions cameraOptions;
@@ -358,7 +273,7 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
         // 再次检查 map 是否有效（防止竞态条件）
         if (!instance->map) {
             Logger::error("NativeMapView", "jumpTo: Map became null before execution");
-            return undefined;
+            return args.Undefined();
         }
         
         // 触发相机移动开始事件
@@ -392,44 +307,32 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "========== jumpTo() END - UNKNOWN ERROR ==========");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "========== easeTo() START ==========");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象
-    napi_value thisObj;
-    size_t argc = 2;
-    napi_value args[2];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "easeTo: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "easeTo: Missing camera options argument");
-        return undefined;
-    }
+    // 获取相机选项对象
+    napi_value cameraObj = args.GetObject(0, "cameraOptions");
+    if (args.HasError()) return args.Undefined();
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "easeTo: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::error("NativeMapView", "easeTo: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
-    
-    // 解析相机选项对象
-    napi_value cameraObj = args[0];
     
     CameraOptions cameraOptions;
     
@@ -494,14 +397,8 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     }
     
     // 获取动画时长（可选，默认 300ms）
-    uint64_t duration = 300;
-    if (argc >= 2) {
-        double durationValue;
-        if (napi_get_value_double(env, args[1], &durationValue) == napi_ok) {
-            duration = static_cast<uint64_t>(durationValue);
-            Logger::debug("NativeMapView", "easeTo: duration = %lu ms", (unsigned long)duration);
-        }
-    }
+    uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 300.0));
+    Logger::debug("NativeMapView", "easeTo: duration = %lu ms", (unsigned long)duration);
     
     // 执行 easeTo 相机动画
     try {
@@ -528,38 +425,26 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "========== easeTo() END - FAILED ==========");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "========== flyTo() START ==========");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象和参数
-    napi_value thisObj;
-    size_t argc = 2;  // CameraOptions object + duration
-    napi_value args[2];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "flyTo: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "flyTo: Missing camera options argument");
-        return undefined;
-    }
+    // 获取相机选项对象
+    napi_value cameraObj = args.GetObject(0, "cameraOptions");
+    if (args.HasError()) return args.Undefined();
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "flyTo: Failed to get instance or map not initialized");
-        return undefined;
+        return args.Undefined();
     }
-    
-    // 解析相机选项对象
-    napi_value cameraObj = args[0];
     
     CameraOptions cameraOptions;
     
@@ -609,13 +494,9 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     }
     
     // 获取动画时长（可选，默认使用 flyTo 自动时长）
-    uint64_t duration = 0;
-    if (argc >= 2) {
-        double durationValue;
-        if (napi_get_value_double(env, args[1], &durationValue) == napi_ok) {
-            duration = static_cast<uint64_t>(durationValue);
-            Logger::debug("NativeMapView", "flyTo: duration = %lu ms", (unsigned long)duration);
-        }
+    uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 0.0));
+    if (duration > 0) {
+        Logger::debug("NativeMapView", "flyTo: duration = %lu ms", (unsigned long)duration);
     }
     
     // 执行 flyTo 相机动画
@@ -651,22 +532,19 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "========== flyTo() END - FAILED ==========");
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getLatLng() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getLatLng: Failed to get instance or map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -692,7 +570,7 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getLatLng: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
@@ -701,20 +579,14 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setLatLng: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取参数：latitude, longitude, padding (可选), duration (可选)
@@ -723,9 +595,7 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
     double duration = args.GetDoubleOr(3, 0.0);
     
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -740,9 +610,7 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setLatLng: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_info info) {
@@ -751,36 +619,26 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 解析 LatLngBounds
     napi_value boundsObj = args.GetObject(0, "bounds");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     mbgl::LatLngBounds bounds;
     if (!LatLngBoundsHarmony::ParseLatLngBounds(env, boundsObj, bounds)) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Failed to parse bounds");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 解析 padding (top, left, bottom, right)
@@ -802,24 +660,21 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Failed - %s", e.what());
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
 }
 
 napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getCameraForGeometry() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
     // TODO: 需要实现 Geometry 和 CameraPosition 的 NAPI 包装类
     // 参考 Android: platform/android/MapLibreAndroid/src/cpp/geojson/geometry.cpp
     // 参考 Android: platform/android/MapLibreAndroid/src/cpp/map/camera_position.cpp
     Logger::warn("NativeMapView", "getCameraForGeometry: Not implemented - requires Geometry and CameraPosition wrapper classes");
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info) {
@@ -827,23 +682,20 @@ napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info)
     // Network reachability handled by Harmony network manager
     Logger::debug("NativeMapView", "setReachability: Network reachability handled by Harmony system");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    NapiArgs args(env, info);
+    return args.Undefined();
 }
 
 napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "resetPosition() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "resetPosition: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -857,35 +709,25 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "resetPosition: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getPitch() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "getPitch: Failed to get this object");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getPitch: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "getPitch: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -900,53 +742,32 @@ napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getPitch: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "setPitch() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象和参数
-    size_t argc = 2;
-    napi_value args[2];
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "setPitch: Failed to get callback info");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "setPitch: Missing pitch argument");
-        return undefined;
-    }
+    // 获取 pitch 值和可选的动画时长
+    double pitch = args.GetDouble(0, "pitch");
+    uint32_t duration = args.GetUint32Or(1, 0);
+    if (args.HasError()) return args.Undefined();
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setPitch: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "setPitch: Map not initialized");
-        return undefined;
-    }
-    
-    // 获取 pitch 值
-    double pitch;
-    if (napi_get_value_double(env, args[0], &pitch) != napi_ok) {
-        Logger::error("NativeMapView", "setPitch: Failed to get pitch value");
-        return undefined;
-    }
-    
-    // 获取可选的动画时长参数（毫秒）
-    uint32_t duration = 0;
-    if (argc >= 2) {
-        napi_get_value_uint32(env, args[1], &duration);
+        return args.Undefined();
     }
     
     try {
@@ -966,7 +787,7 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setPitch: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
@@ -975,28 +796,20 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setZoom: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取参数：zoom, cx (可选), cy (可选), duration (可选)
     double zoom = args.GetDouble(0, "zoom");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double cx = args.GetDoubleOr(1, 0.0);
@@ -1021,35 +834,25 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setZoom: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getZoom() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "getZoom: Failed to get this object");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getZoom: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "getZoom: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1064,21 +867,19 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getZoom: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "resetZoom() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "resetZoom: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1088,9 +889,7 @@ napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "resetZoom: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
@@ -1098,28 +897,16 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
     
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setMinZoom: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    if (args.HasError()) return args.Undefined();
     
     double zoom = args.GetDouble(0, "zoom");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    if (args.HasError()) return args.Undefined();
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setMinZoom: Failed to get instance or map not initialized");
+        return args.Undefined();
     }
     
     try {
@@ -1129,23 +916,19 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setMinZoom: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getMinZoom() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMinZoom: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1160,9 +943,7 @@ napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getMinZoom: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
@@ -1170,28 +951,16 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
     
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
-    // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
-    NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
-        Logger::error("NativeMapView", "setMaxZoom: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
+    if (args.HasError()) return args.Undefined();
     
     double zoom = args.GetDouble(0, "zoom");
-    if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+    if (args.HasError()) return args.Undefined();
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setMaxZoom: Failed to get instance or map not initialized");
+        return args.Undefined();
     }
     
     try {
@@ -1201,23 +970,19 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setMaxZoom: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getMaxZoom() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMaxZoom: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1232,9 +997,7 @@ napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getMaxZoom: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
@@ -1243,27 +1006,19 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setMinPitch: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double pitch = args.GetDouble(0, "pitch");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1273,23 +1028,19 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setMinPitch: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getMinPitch() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMinPitch: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1304,9 +1055,7 @@ napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getMinPitch: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
@@ -1315,27 +1064,19 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setMaxPitch: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     double pitch = args.GetDouble(0, "pitch");
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1345,23 +1086,19 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setMaxPitch: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getMaxPitch() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMaxPitch: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1376,9 +1113,7 @@ napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getMaxPitch: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
@@ -1387,20 +1122,14 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(4);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "rotateBy: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取参数：sx, sy, ex, ey, duration (可选)
@@ -1411,9 +1140,7 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
     double duration = args.GetDoubleOr(4, 0.0);
     
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1425,60 +1152,48 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "rotateBy: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "setBearing() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // 获取this对象
-    napi_value thisObj;
-    size_t argc = 1;
-    napi_value args[1];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "setBearing: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 1) {
-        Logger::error("NativeMapView", "setBearing: Missing bearing argument");
-        return undefined;
-    }
+    // 获取bearing值和可选的duration
+    double bearing = args.GetDouble(0, "bearing");
+    uint32_t duration = args.GetUint32Or(1, 0);
+    if (args.HasError()) return args.Undefined();
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setBearing: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
         Logger::warn("NativeMapView", "setBearing: Map not initialized");
-        return undefined;
-    }
-    
-    // 获取bearing值
-    double bearing;
-    if (napi_get_value_double(env, args[0], &bearing) != napi_ok) {
-        Logger::error("NativeMapView", "setBearing: Failed to get bearing value");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
-        instance->map->jumpTo(mbgl::CameraOptions().withBearing(bearing));
+        if (duration > 0) {
+            instance->map->easeTo(mbgl::CameraOptions().withBearing(bearing),
+                                mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
+        } else {
+            instance->map->jumpTo(mbgl::CameraOptions().withBearing(bearing));
+        }
         instance->map->triggerRepaint();
         Logger::debug("NativeMapView", "setBearing: Set bearing to %.2f", bearing);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setBearing: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
@@ -1487,20 +1202,14 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(3);
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setBearingXY: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     // 获取参数：degrees, cx, cy, duration (可选)
@@ -1510,9 +1219,7 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
     double duration = args.GetDoubleOr(3, 0.0);
     
     if (args.HasError()) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1527,35 +1234,19 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setBearingXY: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getBearing() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "getBearing: Failed to get this object");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
-        Logger::error("NativeMapView", "getBearing: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    // 检查 Map 对象是否已初始化
-    if (!instance->map) {
-        Logger::warn("NativeMapView", "getBearing: Map not initialized");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getBearing: Failed to get instance or map not initialized");
+        return args.Undefined();
     }
     
     try {
@@ -1570,21 +1261,19 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "getBearing: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "resetNorth() called");
     
+    NapiArgs args(env, info);
+    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "resetNorth: Failed to get instance or map not initialized");
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1598,41 +1287,31 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "resetNorth: Failed - %s", e.what());
     }
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "setVisibleCoordinateBounds() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
     // TODO: 需要实现 LatLng 数组和 RectF 的 NAPI 包装类
     // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:583-615
     Logger::warn("NativeMapView", "setVisibleCoordinateBounds: Not implemented - requires LatLng array and RectF wrapper classes");
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getVisibleCoordinateBounds() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "getVisibleCoordinateBounds: Failed to get this object");
-        return undefined;
-    }
-    
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getVisibleCoordinateBounds: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
     try {
@@ -1647,7 +1326,7 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
         Logger::error("NativeMapView", "getVisibleCoordinateBounds: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info) {
@@ -1655,35 +1334,20 @@ napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info
     // Snapshot functionality requires renderer callback support
     Logger::debug("NativeMapView", "scheduleSnapshot: Snapshot functionality requires renderer callback support");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    NapiArgs args(env, info);
+    return args.Undefined();
 }
 
 napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "getCameraPosition() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // 获取this对象
-    napi_value thisObj;
-    if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "getCameraPosition: Failed to get this object");
-        return undefined;
-    }
+    NapiArgs args(env, info);
     
     // 获取NativeMapView实例
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
-        Logger::error("NativeMapView", "getCameraPosition: Failed to unwrap instance");
-        return undefined;
-    }
-    
-    // 检查 Map 对象是否已初始化
-    if (!instance->map) {
-        Logger::warn("NativeMapView", "getCameraPosition: Map not initialized");
-        return undefined;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getCameraPosition: Failed to get instance or map not initialized");
+        return args.Undefined();
     }
     
     try {
@@ -1734,7 +1398,7 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
         Logger::error("NativeMapView", "getCameraPosition: Failed - %s", e.what());
     }
     
-    return undefined;
+    return args.Undefined();
 }
 
 

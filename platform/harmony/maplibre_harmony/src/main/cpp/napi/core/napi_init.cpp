@@ -16,6 +16,8 @@
 // Offline API
 #include "offline/offline_manager_napi.hpp"
 #include "offline/offline_region_napi.hpp"
+// Snapshot API
+#include "snapshot/snapshotter_napi.hpp"
 // Style API bindings (NAPI 对象)
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/bindings/style_builder_napi.hpp"
@@ -57,6 +59,9 @@ static napi_value Init(napi_env env, napi_value exports) {
     // 初始化离线地图 API
     maplibre::harmony::OfflineManagerNAPI::Init(env, exports);
     maplibre::harmony::OfflineRegionNAPI::Init(env, exports);
+    
+    // 初始化地图快照 API
+    mbgl::harmony::MapSnapshotterNAPI::Init(env, exports);
     
     // 初始化 NativeMapView 类
     mbgl::harmony::NativeMapView::Init(env, exports);

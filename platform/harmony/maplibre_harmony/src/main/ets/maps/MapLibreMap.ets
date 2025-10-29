@@ -35,6 +35,8 @@ import { OnCameraIdleListener, OnCameraMoveStartedListener,
 import { CameraMoveReason } from './camera/CameraMoveReason';
 import { UiSettings } from './UiSettings';
 import { LocationComponent } from './location/LocationComponent';
+import { Projection } from './projection/Projection';
+import { CameraAnimationCallback } from './camera/CameraAnimationCallback';
 
 // Marker 和 Style 现在由 NAPI 提供
 type Marker = maplibre.Marker;
@@ -66,6 +68,9 @@ export class MapLibreMap {
   // 位置组件
   private locationComponent: LocationComponent;
   
+  // 投影工具
+  private projection: Projection;
+  
   // 视图尺寸（用于 InfoWindow 等功能）
   private viewWidth: number = 0;
   private viewHeight: number = 0;
@@ -82,6 +87,11 @@ export class MapLibreMap {
   
   // ScaleBar 更新回调（由外部 UI 层注入）
   public onScaleBarUpdate?: (metersPerPixel: number) => void;
+  
+  // 动画回调管理
+  private pendingAnimationCallback: CameraAnimationCallback | null = null;
+  private animationTimerId: number | null = null;
+  private animationCancelled: boolean = false;
 
   constructor(nativeMapView: maplibre.NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
@@ -90,6 +100,7 @@ export class MapLibreMap {
     this.infoWindowManager = new InfoWindowManager();
     this.annotationViewManager = new AnnotationViewManager();
     this.locationComponent = new LocationComponent(this);
+    this.projection = new Projection(nativeMapView, 0, 0); // 初始尺寸为 0，稍后更新
     
     // 设置 AnnotationViewManager 的 NativeMapView
     this.annotationViewManager.setNativeMapView(nativeMapView);
@@ -344,6 +355,16 @@ export class MapLibreMap {
   public getLocationComponent(): LocationComponent {
     return this.locationComponent;
   }
+  
+  /**
+   * 获取坐标投影工具
+   * 用于地图坐标和屏幕坐标之间的转换
+   * 
+   * @returns Projection 实例
+   */
+  public getProjection(): Projection {
+    return this.projection;
+  }
 
   /**
    * 调整视图大小
@@ -353,6 +374,10 @@ export class MapLibreMap {
     // 保存尺寸
     this.viewWidth = width;
     this.viewHeight = height;
+    
+    // 更新 Projection 的视图尺寸
+    this.projection.updateViewSize(width, height);
+    
     this.nativeMapView.resizeView(width, height);
   }
 
@@ -431,14 +456,117 @@ export class MapLibreMap {
     this.nativeMapView.jumpTo(angle, latitude, longitude, pitch, zoom, padding);
   }
 
-  public easeTo(options: maplibre.CameraOptions, duration: number): void {
+  /**
+   * 平滑过渡到指定相机位置（easeTo）
+   * 
+   * @param options 相机选项
+   * @param duration 动画持续时间（毫秒）
+   * @param callback 可选的动画回调
+   */
+  public easeTo(options: maplibre.CameraOptions, duration: number, callback?: CameraAnimationCallback): void {
     if (this.destroyed) return;
+    
+    // 如果有回调，设置动画监听
+    if (callback) {
+      this.setupAnimationCallback(callback, duration);
+    }
+    
     this.nativeMapView.easeTo(options, duration);
   }
 
-  public flyTo(options: maplibre.CameraOptions, duration: number): void {
+  /**
+   * 飞行动画到指定相机位置（flyTo）
+   * 
+   * @param options 相机选项
+   * @param duration 动画持续时间（毫秒）
+   * @param callback 可选的动画回调
+   */
+  public flyTo(options: maplibre.CameraOptions, duration: number, callback?: CameraAnimationCallback): void {
     if (this.destroyed) return;
+    
+    // 如果有回调，设置动画监听
+    if (callback) {
+      this.setupAnimationCallback(callback, duration);
+    }
+    
     this.nativeMapView.flyTo(options, duration);
+  }
+  
+  /**
+   * 设置动画回调
+   * 
+   * @param callback 回调函数
+   * @param duration 动画持续时间
+   */
+  private setupAnimationCallback(callback: CameraAnimationCallback, duration: number): void {
+    // 清除之前的动画回调
+    this.clearAnimationCallback();
+    
+    this.pendingAnimationCallback = callback;
+    this.animationCancelled = false;
+    
+    // 监听相机移动取消事件
+    class CancelListenerImpl implements OnCameraMoveCanceledListener {
+      private parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
+      }
+      
+      onCameraMoveCanceled(): void {
+        this.parent.onAnimationCancelled();
+      }
+    }
+    const cancelListener = new CancelListenerImpl(this);
+    
+    this.cameraChangeDispatcher.addOnCameraMoveCanceledListener(cancelListener);
+    
+    // 设置定时器，在动画结束时触发完成回调
+    // 增加一个小的缓冲时间（50ms）以确保动画完全完成
+    this.animationTimerId = setTimeout(() => {
+      if (!this.animationCancelled && this.pendingAnimationCallback) {
+        try {
+          this.pendingAnimationCallback.onFinish();
+        } catch (error) {
+          console.error('[MapLibreMap] Error in animation onFinish callback:', error);
+        }
+      }
+      
+      // 清理
+      this.cameraChangeDispatcher.removeOnCameraMoveCanceledListener(cancelListener);
+      this.clearAnimationCallback();
+    }, duration + 50); // 加 50ms 缓冲
+  }
+  
+  /**
+   * 动画取消时调用
+   */
+  private onAnimationCancelled(): void {
+    if (this.pendingAnimationCallback && !this.animationCancelled) {
+      this.animationCancelled = true;
+      
+      try {
+        if (this.pendingAnimationCallback.onCancel) {
+          this.pendingAnimationCallback.onCancel();
+        }
+      } catch (error) {
+        console.error('[MapLibreMap] Error in animation onCancel callback:', error);
+      }
+      
+      this.clearAnimationCallback();
+    }
+  }
+  
+  /**
+   * 清除动画回调
+   */
+  private clearAnimationCallback(): void {
+    if (this.animationTimerId !== null) {
+      clearTimeout(this.animationTimerId);
+      this.animationTimerId = null;
+    }
+    this.pendingAnimationCallback = null;
+    this.animationCancelled = false;
   }
 
   // 位置和相机

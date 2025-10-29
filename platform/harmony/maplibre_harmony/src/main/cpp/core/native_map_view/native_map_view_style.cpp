@@ -178,16 +178,11 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
     
     NapiArgs args(env, info);
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
     // 获取NativeMapView实例
-    napi_value thisObj;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setLatLngBounds: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
     // 检查参数是否为 null（允许清除边界限制）
@@ -195,8 +190,13 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
         // 清除边界限制
         instance->map->setBounds(mbgl::BoundOptions());
         Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (no argument)");
-        return undefined;
+        return args.Undefined();
     }
+    
+    // TODO: 实现解析 LatLngBounds 参数并设置边界
+    Logger::warn("NativeMapView", "setLatLngBounds: LatLngBounds parameter parsing not yet implemented");
+    
+    return args.Undefined();
 }
 
 napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {

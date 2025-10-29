@@ -864,6 +864,10 @@ void HarmonyGLRendererBackend::activate() {
     // ✅ 获取共享 Display（getDisplay 不增加引用计数）
     EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
     
+    // 🔍 诊断日志：activate() 状态
+    Logger::error("HarmonyGL", "🔴 activate() state: contextInitialized_=%d, eglContext_=%p, display=%p, surface=%p",
+                 contextInitialized_, eglContext_, display, eglSurface_);
+    
     // 首次调用且在渲染线程 - 延迟创建context
     if (!contextInitialized_ && display != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
         Logger::info("HarmonyGLRendererBackend", "activate() - First call on render thread, creating context...");

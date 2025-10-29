@@ -342,14 +342,14 @@ struct LocationComponentTestPage {
             })
             .type(ButtonType.Normal)
             .backgroundColor(this.locationEnabled ? '#FF6B6B' : '#4CAF50')
-            .layoutWeight(1)
+            .width('48%')
 
           Button('模拟位置')
             .onClick(() => {
               this.simulateLocation();
             })
             .margin({ left: 8 })
-            .layoutWeight(1)
+            .width('48%')
         }
         .width('100%')
         .padding(8)
@@ -362,37 +362,42 @@ struct LocationComponentTestPage {
           .fontWeight(FontWeight.Medium)
           .margin({ top: 8, bottom: 4 })
 
-        Row() {
-          Button('无')
-            .onClick(() => {
-              this.setCameraMode(CameraMode.NONE);
-            })
-            .fontSize(12)
-            .layoutWeight(1)
+        Column({ space: 8 }) {
+          Row() {
+            Button('无')
+              .onClick(() => {
+                this.setCameraMode(CameraMode.NONE);
+              })
+              .fontSize(12)
+              .width('48%')
 
-          Button('跟踪')
-            .onClick(() => {
-              this.setCameraMode(CameraMode.TRACKING);
-            })
-            .fontSize(12)
-            .margin({ left: 4 })
-            .layoutWeight(1)
+            Button('跟踪')
+              .onClick(() => {
+                this.setCameraMode(CameraMode.TRACKING);
+              })
+              .fontSize(12)
+              .margin({ left: 8 })
+              .width('48%')
+          }
+          .width('100%')
 
-          Button('跟踪+指南针')
-            .onClick(() => {
-              this.setCameraMode(CameraMode.TRACKING_COMPASS);
-            })
-            .fontSize(12)
-            .margin({ left: 4 })
-            .layoutWeight(1)
+          Row() {
+            Button('跟踪+指南针')
+              .onClick(() => {
+                this.setCameraMode(CameraMode.TRACKING_COMPASS);
+              })
+              .fontSize(12)
+              .width('48%')
 
-          Button('跟踪+GPS')
-            .onClick(() => {
-              this.setCameraMode(CameraMode.TRACKING_GPS);
-            })
-            .fontSize(12)
-            .margin({ left: 4 })
-            .layoutWeight(1)
+            Button('跟踪+GPS')
+              .onClick(() => {
+                this.setCameraMode(CameraMode.TRACKING_GPS);
+              })
+              .fontSize(12)
+              .margin({ left: 8 })
+              .width('48%')
+          }
+          .width('100%')
         }
         .width('100%')
         .padding(8)
@@ -411,7 +416,7 @@ struct LocationComponentTestPage {
               this.setRenderMode(RenderMode.NORMAL);
             })
             .fontSize(12)
-            .layoutWeight(1)
+            .width('48%')
 
           Button('指南针')
             .onClick(() => {
@@ -419,18 +424,21 @@ struct LocationComponentTestPage {
             })
             .fontSize(12)
             .margin({ left: 8 })
-            .layoutWeight(1)
+            .width('48%')
+        }
+        .width('100%')
+        .padding(8)
 
+        Row() {
           Button('GPS')
             .onClick(() => {
               this.setRenderMode(RenderMode.GPS);
             })
             .fontSize(12)
-            .margin({ left: 8 })
-            .layoutWeight(1)
+            .width('48%')
         }
         .width('100%')
-        .padding(8)
+        .padding({ top: 0 })
         }
         .padding({ left: 12, right: 12, top: 8, bottom: 12 })
         .width('100%')

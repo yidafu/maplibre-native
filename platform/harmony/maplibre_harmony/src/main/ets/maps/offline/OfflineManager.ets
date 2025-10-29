@@ -1,271 +1,275 @@
 /**
  * OfflineManager - 离线地图管理器
  * 
- * 封装 NAPI OfflineManager，提供类型安全的接口
+ * 单例类，管理所有离线地图区域的创建、列表和删除
+ * 对应 Android 的 OfflineManager 和 iOS 的 MLNOfflineStorage
  */
+
 import maplibre from 'libmaplibre_native.so';
+import common from '@ohos.app.ability.common';
 import { OfflineRegion } from './OfflineRegion';
 import { OfflineRegionDefinition } from './OfflineRegionDefinition';
-import common from '@ohos.app.ability.common';
+import { OfflineRegionStatus } from './OfflineRegionStatus';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 
 /**
- * 列出离线区域的回调接口
- */
-export interface ListOfflineRegionsCallback {
-  /**
-   * 成功获取离线区域列表
-   * @param regions 离线区域数组
-   */
-  onList(regions: Array<OfflineRegion>): void;
-  
-  /**
-   * 获取失败
-   * @param error 错误信息
-   */
-  onError(error: string): void;
-}
-
-/**
- * 创建离线区域的回调接口
- */
-export interface CreateOfflineRegionCallback {
-  /**
-   * 成功创建离线区域
-   * @param region 新创建的离线区域
-   */
-  onCreate(region: OfflineRegion): void;
-  
-  /**
-   * 创建失败
-   * @param error 错误信息
-   */
-  onError(error: string): void;
-}
-
-/**
- * 合并离线区域的回调接口
- */
-export interface MergeOfflineRegionsCallback {
-  /**
-   * 成功合并离线区域
-   * @param regions 合并后的离线区域数组
-   */
-  onMerge(regions: Array<OfflineRegion>): void;
-  
-  /**
-   * 合并失败
-   * @param error 错误信息
-   */
-  onError(error: string): void;
-}
-
-/**
- * 数据库操作回调接口
- */
-export interface FileSourceCallback {
-  /**
-   * 操作成功
-   */
-  onSuccess(): void;
-  
-  /**
-   * 操作失败
-   * @param error 错误信息
-   */
-  onError(error: string): void;
-}
-
-/**
- * OfflineManager - 离线地图管理器
+ * OfflineManager 类
+ * 
+ * 使用示例：
+ * ```typescript
+ * // 获取实例
+ * const offlineManager = OfflineManager.getInstance(context);
+ * 
+ * // 列出所有离线区域
+ * const regions = await offlineManager.listOfflineRegions();
+ * 
+ * // 创建新的离线区域
+ * const definition = new OfflineTilePyramidRegionDefinition(
+ *   styleURL,
+ *   bounds,
+ *   0,  // minZoom
+ *   16  // maxZoom
+ * );
+ * 
+ * const metadata = new TextEncoder().encode('My offline map').buffer;
+ * const region = await offlineManager.createOfflineRegion(definition, metadata);
+ * 
+ * // 开始下载
+ * region.download();
+ * ```
  */
 export class OfflineManager {
-  private nativeManager: ESObject;
+  private static instance: OfflineManager | null = null;
+  private nativeManager: maplibre.OfflineManager; // NAPI 对象
+  private context: common.UIAbilityContext;
   
   /**
-   * 构造函数
-   * @param cachePath 数据库路径
+   * 私有构造函数（单例模式）
    */
-  constructor(cachePath: string) {
-    this.nativeManager = new maplibre.OfflineManager(cachePath) as ESObject;
+  private constructor(context: common.UIAbilityContext) {
+    this.context = context;
+    
+    try {
+      // 创建 NAPI 离线管理器实例
+      const dbPath = context.cacheDir + '/maplibre-offline.db';
+      this.nativeManager = new maplibre.OfflineManager(dbPath);
+      hilog.info(DOMAIN, 'OfflineManager', 'OfflineManager instance created');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineManager', `Failed to create OfflineManager: ${errorMsg}`);
+      throw new Error(`Failed to create OfflineManager: ${errorMsg}`);
+    }
+  }
+  
+  /**
+   * 获取单例实例
+   * 
+   * @param context 应用上下文
+   * @returns OfflineManager 实例
+   */
+  public static getInstance(context: common.UIAbilityContext): OfflineManager {
+    if (!OfflineManager.instance) {
+      OfflineManager.instance = new OfflineManager(context);
+    }
+    return OfflineManager.instance;
   }
   
   /**
    * 列出所有离线区域
-   * @param callback 简化回调函数
+   * 
+   * @returns Promise<OfflineRegion[]> 离线区域列表
    */
-  public listOfflineRegions(callback: (result: OfflineRegion[] | string) => void): void {
-    this.nativeManager.listOfflineRegions((result: ESObject | string) => {
-      if (typeof result === 'string') {
-        callback(result);
-      } else if (Array.isArray(result)) {
-        const regions: OfflineRegion[] = (result as ESObject[]).map((r: ESObject) => new OfflineRegion(r));
-        callback(regions);
-      } else {
-        callback('Unknown error occurred');
+  public async listOfflineRegions(): Promise<OfflineRegion[]> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.nativeManager.listOfflineRegions((result: OfflineRegion[] | string) => {
+          if (typeof result === 'string') {
+            // 错误情况
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to list offline regions: ${result}`);
+            reject(new Error(result));
+          } else {
+            // 成功情况 - result 已经是 OfflineRegion[] 数组
+            hilog.info(DOMAIN, 'OfflineManager', `Found ${result.length} offline regions`);
+            resolve(result);
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error listing offline regions: ${errorMsg}`);
+        reject(new Error(errorMsg));
       }
     });
   }
   
   /**
    * 创建离线区域
+   * 
    * @param definition 区域定义
-   * @param metadata 元数据
-   * @param callback 简化回调函数
+   * @param metadata 元数据（可选，用于存储自定义信息如区域名称）
+   * @returns Promise<OfflineRegion> 创建的离线区域
    */
-  public createOfflineRegion(
-    definition: OfflineRegionDefinition,
-    metadata: ArrayBuffer,
-    callback: CreateOfflineRegionCallback
-  ): void {
-    this.nativeManager.createOfflineRegion(
-      definition,
-      metadata,
-      (result: ESObject | string) => {
-        if (typeof result === 'string') {
-          callback.onError(result);
-        } else {
-          callback.onCreate(new OfflineRegion(result));
-        }
-      }
-    );
-  }
-  
-  /**
-   * 获取指定 ID 的离线区域
-   * @param regionId 区域 ID
-   * @param callback 回调函数
-   */
-  public getOfflineRegion(regionId: number, callback: (region: OfflineRegion | null, error?: string) => void): void {
-    this.nativeManager.getOfflineRegion(regionId, (result: ESObject | string | null) => {
-      if (typeof result === 'string') {
-        callback(null, result);
-      } else if (result === null) {
-        callback(null);
-      } else {
-        callback(new OfflineRegion(result));
+  public async createOfflineRegion(
+    definition: maplibre.OfflineTilePyramidRegionDefinition,
+    metadata: ArrayBuffer = new ArrayBuffer(0)
+  ): Promise<OfflineRegion> {
+    return new Promise((resolve, reject) => {
+      try {
+        const metadataBuffer = metadata;
+        
+        hilog.info(DOMAIN, 'OfflineManager', 'Creating offline region...');
+        
+        this.nativeManager.createOfflineRegion(
+          definition,
+          metadataBuffer,
+          (result: OfflineRegion | string) => {
+            if (typeof result === 'string') {
+              hilog.error(DOMAIN, 'OfflineManager', `Failed to create offline region: ${result}`);
+              reject(new Error(result));
+            } else {
+              // result 已经是 OfflineRegion 对象
+              hilog.info(DOMAIN, 'OfflineManager', 'Offline region created successfully');
+              resolve(result);
+            }
+          }
+        );
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error creating offline region: ${errorMsg}`);
+        reject(new Error(errorMsg));
       }
     });
   }
   
   /**
-   * 合并其他数据库的离线区域
-   * @param path 数据库文件路径
-   * @param callback 回调接口
+   * 删除离线区域
+   * 
+   * @param region 要删除的离线区域
    */
-  public mergeOfflineRegions(path: string, callback: MergeOfflineRegionsCallback): void {
-    this.nativeManager.mergeOfflineRegions(path, (result: ESObject | string) => {
-      if (typeof result === 'string') {
-        callback.onError(result);
-      } else if (Array.isArray(result)) {
-        const regions: OfflineRegion[] = (result as ESObject[]).map((r: ESObject) => new OfflineRegion(r));
-        callback.onMerge(regions);
-      } else {
-        callback.onError('Unknown error occurred');
+  public async deleteOfflineRegion(region: OfflineRegion): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        region.delete((error?: string) => {
+          if (error) {
+            reject(new Error(error));
+          } else {
+            resolve();
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        reject(new Error(errorMsg));
       }
     });
   }
   
   /**
-   * 重置数据库（删除所有数据）
-   * @param callback 回调接口
+   * 设置离线地图瓦片数量限制
+   * 
+   * 用于防止下载过多数据
+   * 
+   * @param limit 最大瓦片数量（0 表示无限制）
    */
-  public resetDatabase(callback: FileSourceCallback): void {
-    this.nativeManager.resetDatabase((error: string | undefined) => {
-      if (error) {
-        callback.onError(error);
-      } else {
-        callback.onSuccess();
+  public setOfflineMapboxTileCountLimit(limit: number): void {
+    try {
+      this.nativeManager.setOfflineMapboxTileCountLimit(limit);
+      hilog.info(DOMAIN, 'OfflineManager', `Tile count limit set to: ${limit}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineManager', `Error setting tile count limit: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+  }
+  
+  /**
+   * 重置数据库
+   * 
+   * 删除所有离线区域和缓存数据
+   * ⚠️ 警告：此操作不可逆
+   */
+  public async resetDatabase(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.nativeManager.resetDatabase((error?: string) => {
+          if (error) {
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to reset database: ${error}`);
+            reject(new Error(error));
+          } else {
+            hilog.warn(DOMAIN, 'OfflineManager', 'Database reset successfully');
+            resolve();
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error resetting database: ${errorMsg}`);
+        reject(new Error(errorMsg));
       }
     });
   }
   
   /**
-   * 压缩数据库以节省空间
-   * @param callback 回调接口
+   * 清理缓存
+   * 
+   * 删除不属于任何离线区域的缓存数据
    */
-  public packDatabase(callback: FileSourceCallback): void {
-    this.nativeManager.packDatabase((error: string | undefined) => {
-      if (error) {
-        callback.onError(error);
-      } else {
-        callback.onSuccess();
-      }
-    });
-  }
-  
-  /**
-   * 使缓存失效（强制重新验证）
-   * @param callback 回调接口
-   */
-  public invalidateAmbientCache(callback: FileSourceCallback): void {
-    this.nativeManager.invalidateAmbientCache((error: string | undefined) => {
-      if (error) {
-        callback.onError(error);
-      } else {
-        callback.onSuccess();
-      }
-    });
-  }
-  
-  /**
-   * 清除环境缓存
-   * @param callback 回调接口
-   */
-  public clearAmbientCache(callback: FileSourceCallback): void {
-    this.nativeManager.clearAmbientCache((error: string | undefined) => {
-      if (error) {
-        callback.onError(error);
-      } else {
-        callback.onSuccess();
+  public async clearAmbientCache(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.nativeManager.clearAmbientCache((error?: string) => {
+          if (error) {
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to clear ambient cache: ${error}`);
+            reject(new Error(error));
+          } else {
+            hilog.info(DOMAIN, 'OfflineManager', 'Ambient cache cleared successfully');
+            resolve();
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error clearing ambient cache: ${errorMsg}`);
+        reject(new Error(errorMsg));
       }
     });
   }
   
   /**
    * 设置最大环境缓存大小
-   * @param size 大小（字节）
-   * @param callback 回调接口
+   * 
+   * @param size 最大大小（字节）
    */
-  public setMaximumAmbientCacheSize(size: number, callback: FileSourceCallback): void {
-    this.nativeManager.setMaximumAmbientCacheSize(size, (error: string | undefined) => {
-      if (error) {
-        callback.onError(error);
-      } else {
-        callback.onSuccess();
+  public setMaximumAmbientCacheSize(size: number): void {
+    try {
+      this.nativeManager.setMaximumAmbientCacheSize(size, () => {
+        // 回调
+      });
+      hilog.info(DOMAIN, 'OfflineManager', `Maximum ambient cache size set to: ${size} bytes`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineManager', `Error setting maximum ambient cache size: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+  }
+  
+  /**
+   * 使环境缓存失效
+   */
+  public async invalidateAmbientCache(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.nativeManager.invalidateAmbientCache((error?: string) => {
+          if (error) {
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to invalidate ambient cache: ${error}`);
+            reject(new Error(error));
+          } else {
+            hilog.info(DOMAIN, 'OfflineManager', 'Ambient cache invalidated successfully');
+            resolve();
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error invalidating ambient cache: ${errorMsg}`);
+        reject(new Error(errorMsg));
       }
     });
   }
-  
-  /**
-   * 设置离线瓦片数量限制
-   * @param limit 限制数量
-   */
-  public setOfflineMapboxTileCountLimit(limit: number): void {
-    this.nativeManager.setOfflineMapboxTileCountLimit(limit);
-  }
-  
-  /**
-   * 设置是否自动压缩数据库
-   * @param autopack 是否自动压缩
-   */
-  public runPackDatabaseAutomatically(autopack: boolean): void {
-    this.nativeManager.runPackDatabaseAutomatically(autopack);
-  }
-}
-
-// 单例实例
-let offlineManagerInstance: OfflineManager | null = null;
-
-/**
- * 获取 OfflineManager 单例实例
- * @param context 应用上下文
- * @returns OfflineManager 实例
- */
-export function getOfflineManager(context: common.UIAbilityContext): OfflineManager {
-  if (!offlineManagerInstance) {
-    // 使用统一的缓存目录（与 NativeMapView 主缓存相同）
-    const cachePath = context.cacheDir + '/maplibre/offline.db';
-    offlineManagerInstance = new OfflineManager(cachePath);
-  }
-  return offlineManagerInstance;
 }

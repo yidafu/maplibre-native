@@ -115,6 +115,31 @@ export class NativeMapView {
     resizeView(width: number, height: number): void;
     
     /**
+     * 设置内容边距（对齐 Android API）
+     * @param padding 边距数组 [top, left, bottom, right]（逻辑像素）
+     */
+    setContentPadding(padding: number[]): void;
+    
+    /**
+     * 获取内容边距（对齐 Android API）
+     * @returns 边距数组 [top, left, bottom, right]
+     */
+    getContentPadding(): number[];
+    
+    /**
+     * 获取设备像素比（对齐 Android API）
+     * @returns 像素比（例如：2.0、3.0）
+     */
+    getPixelRatio(): number;
+    
+    /**
+     * 根据设备像素比调整矩形尺寸（对齐 Android API）
+     * @param rectangle 输入矩形
+     * @returns 调整后的矩形
+     */
+    getDensityDependantRectangle(rectangle: Rect): Rect;
+    
+    /**
      * 设置原生窗口
      * @param surfaceId Surface ID
      */
@@ -954,4 +979,188 @@ export class NativeMapView {
      */
     removeOnCameraMoveCanceledListener(callback: () => void): void;
 
+    // ========== Android/iOS 风格监听器（新增） ==========
+    
+    // 相机事件监听器
+    /**
+     * 添加相机即将改变监听器
+     * @param callback 回调函数，参数为是否使用动画
+     */
+    addOnCameraWillChangeListener(callback: (animated: boolean) => void): void;
+    removeOnCameraWillChangeListener(callback: (animated: boolean) => void): void;
+    
+    /**
+     * 添加相机正在改变监听器
+     * @param callback 回调函数
+     */
+    addOnCameraIsChangingListener(callback: () => void): void;
+    removeOnCameraIsChangingListener(callback: () => void): void;
+    
+    /**
+     * 添加相机已改变监听器
+     * @param callback 回调函数，参数为是否使用动画
+     */
+    addOnCameraDidChangeListener(callback: (animated: boolean) => void): void;
+    removeOnCameraDidChangeListener(callback: (animated: boolean) => void): void;
+    
+    // 地图加载事件监听器
+    /**
+     * 添加地图即将开始加载监听器
+     * @param callback 回调函数
+     */
+    addOnWillStartLoadingMapListener(callback: () => void): void;
+    removeOnWillStartLoadingMapListener(callback: () => void): void;
+    
+    /**
+     * 添加地图加载完成监听器
+     * @param callback 回调函数
+     */
+    addOnDidFinishLoadingMapListener(callback: () => void): void;
+    removeOnDidFinishLoadingMapListener(callback: () => void): void;
+    
+    /**
+     * 添加地图加载失败监听器
+     * @param callback 回调函数，参数为错误信息
+     */
+    addOnDidFailLoadingMapListener(callback: (errorMessage: string) => void): void;
+    removeOnDidFailLoadingMapListener(callback: (errorMessage: string) => void): void;
+    
+    // 渲染事件监听器
+    /**
+     * 添加帧即将开始渲染监听器
+     * @param callback 回调函数
+     */
+    addOnWillStartRenderingFrameListener(callback: () => void): void;
+    removeOnWillStartRenderingFrameListener(callback: () => void): void;
+    
+    /**
+     * 添加帧渲染完成监听器
+     * @param callback 回调函数，参数为是否完全渲染、编码时间、渲染时间
+     */
+    addOnDidFinishRenderingFrameListener(callback: (fully: boolean, frameEncodingTime: number, frameRenderingTime: number) => void): void;
+    removeOnDidFinishRenderingFrameListener(callback: (fully: boolean, frameEncodingTime: number, frameRenderingTime: number) => void): void;
+    
+    /**
+     * 添加地图即将开始渲染监听器
+     * @param callback 回调函数
+     */
+    addOnWillStartRenderingMapListener(callback: () => void): void;
+    removeOnWillStartRenderingMapListener(callback: () => void): void;
+    
+    /**
+     * 添加地图渲染完成监听器
+     * @param callback 回调函数，参数为是否完全渲染
+     */
+    addOnDidFinishRenderingMapListener(callback: (fully: boolean) => void): void;
+    removeOnDidFinishRenderingMapListener(callback: (fully: boolean) => void): void;
+    
+    // 样式事件监听器
+    /**
+     * 添加样式加载完成监听器
+     * @param callback 回调函数
+     */
+    addOnDidFinishLoadingStyleListener(callback: () => void): void;
+    removeOnDidFinishLoadingStyleListener(callback: () => void): void;
+    
+    /**
+     * 添加样式图片缺失监听器
+     * @param callback 回调函数，参数为缺失的图片 ID
+     */
+    addOnStyleImageMissingListener(callback: (id: string) => void): void;
+    removeOnStyleImageMissingListener(callback: (id: string) => void): void;
+    
+    // 其他事件监听器
+    /**
+     * 添加地图进入空闲状态监听器
+     * @param callback 回调函数
+     */
+    addOnDidBecomeIdleListener(callback: () => void): void;
+    removeOnDidBecomeIdleListener(callback: () => void): void;
+    
+    /**
+     * 添加数据源改变监听器
+     * @param callback 回调函数，参数为数据源 ID
+     */
+    addOnSourceChangedListener(callback: (id: string) => void): void;
+    removeOnSourceChangedListener(callback: (id: string) => void): void;
+
 }
+
+// ==================== MapSnapshotter API ====================
+
+/**
+ * 快照选项（NAPI 层）
+ */
+export interface SnapshotOptionsNAPI {
+  /** 宽度（像素） */
+  width: number;
+  /** 高度（像素） */
+  height: number;
+  /** 像素比 */
+  pixelRatio: number;
+  /** 样式 URL */
+  styleUrl: string;
+  /** 样式 JSON（可选） */
+  styleJson?: string;
+  /** 是否显示 logo */
+  showLogo?: boolean;
+  /** 本地字体族 */
+  localFontFamily?: string;
+}
+
+/**
+ * 快照结果（NAPI 层）
+ */
+export interface SnapshotResultNAPI {
+  /** 图像数据（RGBA格式） */
+  data: ArrayBuffer;
+  /** 图像宽度 */
+  width: number;
+  /** 图像高度 */
+  height: number;
+  /** 归属信息 */
+  attributions?: string[];
+}
+
+/**
+ * MapSnapshotter NAPI 对象
+ */
+export interface MapSnapshotterNAPI {
+  /**
+   * 开始生成快照
+   * @param callback 回调函数 (error, result)
+   */
+  start(callback: (error: string | null, result: SnapshotResultNAPI | null) => void): void;
+  
+  /**
+   * 取消快照生成
+   */
+  cancel(): void;
+  
+  /**
+   * 设置样式 URL
+   * @param styleUrl 样式 URL
+   */
+  setStyleUrl(styleUrl: string): void;
+  
+  /**
+   * 设置相机位置
+   * @param position 相机位置
+   */
+  setCameraPosition(position: any): void;
+  
+  /**
+   * 设置区域边界
+   * @param bounds 边界
+   */
+  setRegion(bounds: any): void;
+}
+
+/**
+ * 创建 MapSnapshotter 实例
+ * 
+ * @param options 快照选项
+ * @returns MapSnapshotter NAPI 对象
+ */
+export function createMapSnapshotter(options: SnapshotOptionsNAPI): MapSnapshotterNAPI;
+

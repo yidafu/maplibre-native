@@ -27,7 +27,7 @@ type NativeMapViewType = maplibre.NativeMapView;
 
 const TAG = 'MapGestureDetector';
 const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
-const ROTATION_RATE = 0.2;  // 旋转速率系数 - 调节旋转速度（越小越慢，0.4 = 40%原速）
+const ROTATION_RATE = 0.1;  // 旋转速率系数 - 调节旋转速度（越小越慢，速度降低50%）
 
 // Android 缩放惯性动画常量（参考 MapLibreConstants.java）
 const MAX_ABSOLUTE_SCALE_VELOCITY_CHANGE = 2.5;  // 最大缩放速度变化

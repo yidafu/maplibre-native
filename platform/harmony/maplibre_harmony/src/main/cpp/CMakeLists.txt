@@ -188,6 +188,11 @@ add_library(maplibre_native
     offline/offline_region_status_napi.hpp
     offline/offline_region_status_napi.cpp
     
+    # Snapshot API - 地图快照功能
+    snapshot/map_snapshotter_harmony.hpp
+    snapshot/map_snapshotter_harmony.cpp
+    snapshot/snapshotter_napi.cpp
+    
     # Source NAPI 类
     sources/geojson_source_napi.hpp
     sources/geojson_source_napi.cpp

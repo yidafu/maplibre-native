@@ -19,6 +19,37 @@ import { CompassView } from './widgets/CompassView';
 import { LogoView } from './widgets/LogoView';
 import { CompassPosition } from './widgets/CompassPosition';
 import { CompassVisibility } from './widgets/CompassVisibility';
+import { RenderingStats } from './RenderingStats';
+import { RenderingRefreshMode } from './types';
+import {
+  OnCameraWillChangeListener,
+  OnCameraIsChangingListener,
+  OnCameraDidChangeListener,
+  OnWillStartLoadingMapListener,
+  OnDidFinishLoadingMapListener,
+  OnDidFailLoadingMapListener,
+  OnWillStartRenderingFrameListener,
+  OnDidFinishRenderingFrameListener,
+  OnDidFinishRenderingFrameWithStatsListener,
+  OnWillStartRenderingMapListener,
+  OnDidFinishRenderingMapListener,
+  OnDidFinishLoadingStyleListener,
+  OnStyleImageMissingListener,
+  OnCanRemoveUnusedStyleImageListener,
+  OnDidBecomeIdleListener,
+  OnSourceChangedListener,
+  OnPreCompileShaderListener,
+  OnPostCompileShaderListener,
+  OnShaderCompileFailedListener,
+  OnGlyphsLoadedListener,
+  OnGlyphsErrorListener,
+  OnGlyphsRequestedListener,
+  OnTileActionListener,
+  OnSpriteLoadedListener,
+  OnSpriteErrorListener,
+  OnSpriteRequestedListener,
+  OnMapReadyCallback
+} from './listeners/MapEventListeners';
 
 // 使用 NAPI Marker 类型
 type Marker = maplibre.Marker;
@@ -58,6 +89,47 @@ class NativeMapViewController extends XComponentController {
   // UI 组件状态
   private compassBearingUpdateCallback?: (bearing: number) => void;
   private uiSettingsUpdateCallback?: () => void;
+
+  // ========== 监听器管理系统 ==========
+  
+  // 相机事件监听器
+  private onCameraWillChangeListeners: OnCameraWillChangeListener[] = [];
+  private onCameraIsChangingListeners: OnCameraIsChangingListener[] = [];
+  private onCameraDidChangeListeners: OnCameraDidChangeListener[] = [];
+  
+  // 地图加载事件监听器
+  private onWillStartLoadingMapListeners: OnWillStartLoadingMapListener[] = [];
+  private onDidFinishLoadingMapListeners: OnDidFinishLoadingMapListener[] = [];
+  private onDidFailLoadingMapListeners: OnDidFailLoadingMapListener[] = [];
+  
+  // 渲染事件监听器
+  private onWillStartRenderingFrameListeners: OnWillStartRenderingFrameListener[] = [];
+  private onDidFinishRenderingFrameListeners: OnDidFinishRenderingFrameListener[] = [];
+  private onDidFinishRenderingFrameWithStatsListeners: OnDidFinishRenderingFrameWithStatsListener[] = [];
+  private onWillStartRenderingMapListeners: OnWillStartRenderingMapListener[] = [];
+  private onDidFinishRenderingMapListeners: OnDidFinishRenderingMapListener[] = [];
+  
+  // 样式事件监听器
+  private onDidFinishLoadingStyleListeners: OnDidFinishLoadingStyleListener[] = [];
+  private onStyleImageMissingListeners: OnStyleImageMissingListener[] = [];
+  private onCanRemoveUnusedStyleImageListeners: OnCanRemoveUnusedStyleImageListener[] = [];
+  
+  // 其他事件监听器
+  private onDidBecomeIdleListeners: OnDidBecomeIdleListener[] = [];
+  private onSourceChangedListeners: OnSourceChangedListener[] = [];
+  private onPreCompileShaderListeners: OnPreCompileShaderListener[] = [];
+  private onPostCompileShaderListeners: OnPostCompileShaderListener[] = [];
+  private onShaderCompileFailedListeners: OnShaderCompileFailedListener[] = [];
+  private onGlyphsLoadedListeners: OnGlyphsLoadedListener[] = [];
+  private onGlyphsErrorListeners: OnGlyphsErrorListener[] = [];
+  private onGlyphsRequestedListeners: OnGlyphsRequestedListener[] = [];
+  private onTileActionListeners: OnTileActionListener[] = [];
+  private onSpriteLoadedListeners: OnSpriteLoadedListener[] = [];
+  private onSpriteErrorListeners: OnSpriteErrorListener[] = [];
+  private onSpriteRequestedListeners: OnSpriteRequestedListener[] = [];
+  
+  // 地图就绪回调列表
+  private onMapReadyCallbacks: OnMapReadyCallback[] = [];
 
   /**
    * 表面创建回调
@@ -148,6 +220,136 @@ class NativeMapViewController extends XComponentController {
         this.updateCompassBearing();
       });
       
+      // ========== 注册 Android/iOS 风格的监听器回调到 C++ 层 ==========
+      hilog.info(DOMAIN, 'NativeMapView', 'Registering event listeners to C++ layer...');
+      
+      // 相机事件监听器
+      this.mapView.addOnCameraWillChangeListener((animated: boolean) => {
+        for (const listener of this.onCameraWillChangeListeners) {
+          try { listener.onCameraWillChange(animated); } catch (error) { 
+            hilog.error(DOMAIN, 'NativeMapView', `OnCameraWillChangeListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnCameraIsChangingListener(() => {
+        for (const listener of this.onCameraIsChangingListeners) {
+          try { listener.onCameraIsChanging(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnCameraIsChangingListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnCameraDidChangeListener((animated: boolean) => {
+        for (const listener of this.onCameraDidChangeListeners) {
+          try { listener.onCameraDidChange(animated); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnCameraDidChangeListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      // 地图加载事件监听器
+      this.mapView.addOnWillStartLoadingMapListener(() => {
+        for (const listener of this.onWillStartLoadingMapListeners) {
+          try { listener.onWillStartLoadingMap(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnWillStartLoadingMapListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnDidFinishLoadingMapListener(() => {
+        for (const listener of this.onDidFinishLoadingMapListeners) {
+          try { listener.onDidFinishLoadingMap(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishLoadingMapListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnDidFailLoadingMapListener((errorMessage: string) => {
+        for (const listener of this.onDidFailLoadingMapListeners) {
+          try { listener.onDidFailLoadingMap(errorMessage); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidFailLoadingMapListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      // 渲染事件监听器
+      this.mapView.addOnWillStartRenderingFrameListener(() => {
+        for (const listener of this.onWillStartRenderingFrameListeners) {
+          try { listener.onWillStartRenderingFrame(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnWillStartRenderingFrameListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnDidFinishRenderingFrameListener((fully: boolean, frameEncodingTime: number, frameRenderingTime: number) => {
+        // 通知简单版本的监听器
+        for (const listener of this.onDidFinishRenderingFrameListeners) {
+          try { listener.onDidFinishRenderingFrame(fully, frameEncodingTime, frameRenderingTime); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishRenderingFrameListener error: ${error.message}`);
+          }
+        }
+        // 通知带统计信息的监听器
+        const stats = new RenderingStats(fully, frameEncodingTime, frameRenderingTime);
+        for (const listener of this.onDidFinishRenderingFrameWithStatsListeners) {
+          try { listener.onDidFinishRenderingFrame(fully, stats); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishRenderingFrameWithStatsListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnWillStartRenderingMapListener(() => {
+        for (const listener of this.onWillStartRenderingMapListeners) {
+          try { listener.onWillStartRenderingMap(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnWillStartRenderingMapListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnDidFinishRenderingMapListener((fully: boolean) => {
+        for (const listener of this.onDidFinishRenderingMapListeners) {
+          try { listener.onDidFinishRenderingMap(fully); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishRenderingMapListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      // 样式事件监听器
+      this.mapView.addOnDidFinishLoadingStyleListener(() => {
+        for (const listener of this.onDidFinishLoadingStyleListeners) {
+          try { listener.onDidFinishLoadingStyle(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishLoadingStyleListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnStyleImageMissingListener((id: string) => {
+        for (const listener of this.onStyleImageMissingListeners) {
+          try { listener.onStyleImageMissing(id); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnStyleImageMissingListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      // 其他事件监听器
+      this.mapView.addOnDidBecomeIdleListener(() => {
+        for (const listener of this.onDidBecomeIdleListeners) {
+          try { listener.onDidBecomeIdle(); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnDidBecomeIdleListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      this.mapView.addOnSourceChangedListener((id: string) => {
+        for (const listener of this.onSourceChangedListeners) {
+          try { listener.onSourceChangedListener(id); } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `OnSourceChangedListener error: ${error.message}`);
+          }
+        }
+      });
+      
+      hilog.info(DOMAIN, 'NativeMapView', 'All event listeners registered to C++ layer');
+      
       // 初始更新一次 Compass bearing
       this.updateCompassBearing();
       
@@ -159,6 +361,20 @@ class NativeMapViewController extends XComponentController {
         } catch (callbackError) {
           hilog.error(DOMAIN, 'NativeMapView', `onMapReady callback error: ${callbackError.message}`);
         }
+      }
+      
+      // 调用所有通过 getMapAsync 注册的回调
+      if (this.onMapReadyCallbacks.length > 0) {
+        hilog.info(DOMAIN, 'NativeMapView', `Invoking ${this.onMapReadyCallbacks.length} getMapAsync callbacks`);
+        for (const callback of this.onMapReadyCallbacks) {
+          try {
+            callback.onMapReady(this.mapView);
+          } catch (callbackError) {
+            hilog.error(DOMAIN, 'NativeMapView', `getMapAsync callback error: ${callbackError.message}`);
+          }
+        }
+        // 清空回调列表
+        this.onMapReadyCallbacks = [];
       }
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to initialize map: ${error.message}`);
@@ -386,6 +602,63 @@ class NativeMapViewController extends XComponentController {
     }
   }
   
+  // ========== 新增方法：对齐 Android/iOS API ==========
+  
+  /**
+   * 设置内容边距（对齐 Android API）
+   * @param padding 边距数组 [top, left, bottom, right]（逻辑像素）
+   */
+  setContentPadding(padding: number[]): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setContentPadding: Map not initialized');
+      return;
+    }
+    
+    try {
+      this.mapView.setContentPadding(padding);
+      hilog.info(DOMAIN, 'NativeMapView', `setContentPadding: [${padding.join(', ')}]`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setContentPadding error: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 获取内容边距（对齐 Android API）
+   * @returns 边距数组 [top, left, bottom, right]
+   */
+  getContentPadding(): number[] {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getContentPadding: Map not initialized');
+      return [0, 0, 0, 0];
+    }
+    
+    try {
+      const padding = this.mapView.getContentPadding();
+      return padding as number[];
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getContentPadding error: ${error.message}`);
+      return [0, 0, 0, 0];
+    }
+  }
+  
+  /**
+   * 获取设备像素比（对齐 Android API）
+   * @returns 像素比（例如：2.0、3.0）
+   */
+  getPixelRatio(): number {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getPixelRatio: Map not initialized');
+      return 1.0;
+    }
+    
+    try {
+      return this.mapView.getPixelRatio() as number;
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getPixelRatio error: ${error.message}`);
+      return 1.0;
+    }
+  }
+  
   /**
    * 获取 UI 设置
    */
@@ -440,6 +713,729 @@ class NativeMapViewController extends XComponentController {
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to reset north: ${error}`);
       }
+    }
+  }
+
+  // ========== 监听器注册和移除方法 ==========
+  
+  // ===== 相机事件监听器 =====
+  
+  /**
+   * 添加相机即将改变的监听器
+   */
+  addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    if (this.onCameraWillChangeListeners.indexOf(listener) === -1) {
+      this.onCameraWillChangeListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除相机即将改变的监听器
+   */
+  removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    const index = this.onCameraWillChangeListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onCameraWillChangeListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加相机正在改变的监听器
+   */
+  addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
+    if (this.onCameraIsChangingListeners.indexOf(listener) === -1) {
+      this.onCameraIsChangingListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除相机正在改变的监听器
+   */
+  removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
+    const index = this.onCameraIsChangingListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onCameraIsChangingListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加相机已改变的监听器
+   */
+  addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
+    if (this.onCameraDidChangeListeners.indexOf(listener) === -1) {
+      this.onCameraDidChangeListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除相机已改变的监听器
+   */
+  removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
+    const index = this.onCameraDidChangeListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onCameraDidChangeListeners.splice(index, 1);
+    }
+  }
+
+  // ===== 地图加载事件监听器 =====
+  
+  /**
+   * 添加地图即将开始加载的监听器
+   */
+  addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
+    if (this.onWillStartLoadingMapListeners.indexOf(listener) === -1) {
+      this.onWillStartLoadingMapListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除地图即将开始加载的监听器
+   */
+  removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
+    const index = this.onWillStartLoadingMapListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onWillStartLoadingMapListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加地图加载完成的监听器
+   */
+  addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
+    if (this.onDidFinishLoadingMapListeners.indexOf(listener) === -1) {
+      this.onDidFinishLoadingMapListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除地图加载完成的监听器
+   */
+  removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
+    const index = this.onDidFinishLoadingMapListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidFinishLoadingMapListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加地图加载失败的监听器
+   */
+  addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
+    if (this.onDidFailLoadingMapListeners.indexOf(listener) === -1) {
+      this.onDidFailLoadingMapListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除地图加载失败的监听器
+   */
+  removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
+    const index = this.onDidFailLoadingMapListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidFailLoadingMapListeners.splice(index, 1);
+    }
+  }
+
+  // ===== 渲染事件监听器 =====
+  
+  /**
+   * 添加帧即将开始渲染的监听器
+   */
+  addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
+    if (this.onWillStartRenderingFrameListeners.indexOf(listener) === -1) {
+      this.onWillStartRenderingFrameListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除帧即将开始渲染的监听器
+   */
+  removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
+    const index = this.onWillStartRenderingFrameListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onWillStartRenderingFrameListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加帧渲染完成的监听器（简单版本）
+   */
+  addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
+    if (this.onDidFinishRenderingFrameListeners.indexOf(listener) === -1) {
+      this.onDidFinishRenderingFrameListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除帧渲染完成的监听器（简单版本）
+   */
+  removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
+    const index = this.onDidFinishRenderingFrameListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidFinishRenderingFrameListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加帧渲染完成的监听器（带统计信息）
+   */
+  addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
+    if (this.onDidFinishRenderingFrameWithStatsListeners.indexOf(listener) === -1) {
+      this.onDidFinishRenderingFrameWithStatsListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除帧渲染完成的监听器（带统计信息）
+   */
+  removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
+    const index = this.onDidFinishRenderingFrameWithStatsListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidFinishRenderingFrameWithStatsListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加地图即将开始渲染的监听器
+   */
+  addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
+    if (this.onWillStartRenderingMapListeners.indexOf(listener) === -1) {
+      this.onWillStartRenderingMapListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除地图即将开始渲染的监听器
+   */
+  removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
+    const index = this.onWillStartRenderingMapListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onWillStartRenderingMapListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加地图渲染完成的监听器
+   */
+  addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
+    if (this.onDidFinishRenderingMapListeners.indexOf(listener) === -1) {
+      this.onDidFinishRenderingMapListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除地图渲染完成的监听器
+   */
+  removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
+    const index = this.onDidFinishRenderingMapListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidFinishRenderingMapListeners.splice(index, 1);
+    }
+  }
+
+  // ===== 样式事件监听器 =====
+  
+  /**
+   * 添加样式加载完成的监听器
+   */
+  addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
+    if (this.onDidFinishLoadingStyleListeners.indexOf(listener) === -1) {
+      this.onDidFinishLoadingStyleListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除样式加载完成的监听器
+   */
+  removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
+    const index = this.onDidFinishLoadingStyleListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidFinishLoadingStyleListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加样式图片缺失的监听器
+   */
+  addOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
+    if (this.onStyleImageMissingListeners.indexOf(listener) === -1) {
+      this.onStyleImageMissingListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除样式图片缺失的监听器
+   */
+  removeOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
+    const index = this.onStyleImageMissingListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onStyleImageMissingListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加可移除未使用样式图片的监听器
+   */
+  addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
+    if (this.onCanRemoveUnusedStyleImageListeners.indexOf(listener) === -1) {
+      this.onCanRemoveUnusedStyleImageListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除可移除未使用样式图片的监听器
+   */
+  removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
+    const index = this.onCanRemoveUnusedStyleImageListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onCanRemoveUnusedStyleImageListeners.splice(index, 1);
+    }
+  }
+
+  // ===== 其他事件监听器 =====
+  
+  /**
+   * 添加地图进入空闲状态的监听器
+   */
+  addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
+    if (this.onDidBecomeIdleListeners.indexOf(listener) === -1) {
+      this.onDidBecomeIdleListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除地图进入空闲状态的监听器
+   */
+  removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
+    const index = this.onDidBecomeIdleListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onDidBecomeIdleListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加数据源改变的监听器
+   */
+  addOnSourceChangedListener(listener: OnSourceChangedListener): void {
+    if (this.onSourceChangedListeners.indexOf(listener) === -1) {
+      this.onSourceChangedListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除数据源改变的监听器
+   */
+  removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
+    const index = this.onSourceChangedListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onSourceChangedListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加着色器编译前的监听器
+   */
+  addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
+    if (this.onPreCompileShaderListeners.indexOf(listener) === -1) {
+      this.onPreCompileShaderListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除着色器编译前的监听器
+   */
+  removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
+    const index = this.onPreCompileShaderListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onPreCompileShaderListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加着色器编译后的监听器
+   */
+  addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
+    if (this.onPostCompileShaderListeners.indexOf(listener) === -1) {
+      this.onPostCompileShaderListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除着色器编译后的监听器
+   */
+  removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
+    const index = this.onPostCompileShaderListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onPostCompileShaderListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加着色器编译失败的监听器
+   */
+  addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
+    if (this.onShaderCompileFailedListeners.indexOf(listener) === -1) {
+      this.onShaderCompileFailedListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除着色器编译失败的监听器
+   */
+  removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
+    const index = this.onShaderCompileFailedListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onShaderCompileFailedListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加字形加载完成的监听器
+   */
+  addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
+    if (this.onGlyphsLoadedListeners.indexOf(listener) === -1) {
+      this.onGlyphsLoadedListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除字形加载完成的监听器
+   */
+  removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
+    const index = this.onGlyphsLoadedListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onGlyphsLoadedListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加字形加载错误的监听器
+   */
+  addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
+    if (this.onGlyphsErrorListeners.indexOf(listener) === -1) {
+      this.onGlyphsErrorListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除字形加载错误的监听器
+   */
+  removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
+    const index = this.onGlyphsErrorListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onGlyphsErrorListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加字形请求的监听器
+   */
+  addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
+    if (this.onGlyphsRequestedListeners.indexOf(listener) === -1) {
+      this.onGlyphsRequestedListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除字形请求的监听器
+   */
+  removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
+    const index = this.onGlyphsRequestedListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onGlyphsRequestedListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加瓦片操作的监听器
+   */
+  addOnTileActionListener(listener: OnTileActionListener): void {
+    if (this.onTileActionListeners.indexOf(listener) === -1) {
+      this.onTileActionListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除瓦片操作的监听器
+   */
+  removeOnTileActionListener(listener: OnTileActionListener): void {
+    const index = this.onTileActionListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onTileActionListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加精灵图加载完成的监听器
+   */
+  addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
+    if (this.onSpriteLoadedListeners.indexOf(listener) === -1) {
+      this.onSpriteLoadedListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除精灵图加载完成的监听器
+   */
+  removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
+    const index = this.onSpriteLoadedListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onSpriteLoadedListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加精灵图加载错误的监听器
+   */
+  addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
+    if (this.onSpriteErrorListeners.indexOf(listener) === -1) {
+      this.onSpriteErrorListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除精灵图加载错误的监听器
+   */
+  removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
+    const index = this.onSpriteErrorListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onSpriteErrorListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加精灵图请求的监听器
+   */
+  addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
+    if (this.onSpriteRequestedListeners.indexOf(listener) === -1) {
+      this.onSpriteRequestedListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除精灵图请求的监听器
+   */
+  removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
+    const index = this.onSpriteRequestedListeners.indexOf(listener);
+    if (index !== -1) {
+      this.onSpriteRequestedListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 获取地图异步（对齐 Android getMapAsync 模式）
+   * @param callback 地图就绪回调
+   */
+  getMapAsync(callback: OnMapReadyCallback): void {
+    if (this.mapView && this.isInitialized) {
+      // 地图已就绪，立即回调
+      try {
+        callback.onMapReady(this.mapView);
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `getMapAsync callback error: ${error.message}`);
+      }
+    } else {
+      // 地图未就绪，添加到回调列表
+      this.onMapReadyCallbacks.push(callback);
+    }
+  }
+
+  // ========== 渲染控制方法 ==========
+  
+  /**
+   * 在渲染线程上执行任务（对齐 Android queueEvent）
+   * @param runnable 要执行的任务
+   */
+  queueEvent(runnable: () => void): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'queueEvent: Map not initialized');
+      return;
+    }
+    
+    // TODO: 实现真正的渲染线程队列
+    // 当前作为简单实现，直接在下一个事件循环执行
+    setTimeout(() => {
+      try {
+        runnable();
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `queueEvent error: ${error.message}`);
+      }
+    }, 0);
+  }
+
+  /**
+   * 设置最大帧率（对齐 Android setMaximumFps）
+   * @param maximumFps 最大帧率
+   */
+  setMaximumFps(maximumFps: number): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setMaximumFps: Map not initialized');
+      return;
+    }
+    
+    try {
+      // TODO: C++ NAPI 绑定
+      // this.mapView.setMaximumFps(maximumFps);
+      hilog.info(DOMAIN, 'NativeMapView', `setMaximumFps: ${maximumFps} (Not yet implemented in C++)`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setMaximumFps error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 设置渲染刷新模式（对齐 Android setRenderingRefreshMode）
+   * @param mode 渲染模式
+   */
+  setRenderingRefreshMode(mode: RenderingRefreshMode): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setRenderingRefreshMode: Map not initialized');
+      return;
+    }
+    
+    try {
+      // TODO: C++ NAPI 绑定
+      // this.mapView.setRenderingRefreshMode(mode);
+      const modeName = mode === RenderingRefreshMode.CONTINUOUS ? 'CONTINUOUS' : 'WHEN_DIRTY';
+      hilog.info(DOMAIN, 'NativeMapView', `setRenderingRefreshMode: ${modeName} (Not yet implemented in C++)`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setRenderingRefreshMode error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 获取渲染刷新模式（对齐 Android getRenderingRefreshMode）
+   * @returns 当前渲染模式
+   */
+  getRenderingRefreshMode(): RenderingRefreshMode {
+    // TODO: C++ NAPI 绑定
+    // 当前返回默认值
+    return RenderingRefreshMode.WHEN_DIRTY;
+  }
+
+  // ========== 性能和缓存配置 ==========
+  
+  /**
+   * 设置是否预加载瓦片（对齐 Android prefetchesTiles）
+   * @param enabled 是否启用预加载
+   */
+  setPrefetchesTiles(enabled: boolean): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setPrefetchesTiles: Map not initialized');
+      return;
+    }
+    
+    try {
+      this.mapView.setPrefetchTiles(enabled);
+      hilog.info(DOMAIN, 'NativeMapView', `setPrefetchesTiles: ${enabled}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setPrefetchesTiles error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 设置是否启用瓦片缓存（对齐 Android tileCacheEnabled）
+   * @param enabled 是否启用缓存
+   */
+  setTileCacheEnabled(enabled: boolean): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setTileCacheEnabled: Map not initialized');
+      return;
+    }
+    
+    try {
+      // TODO: C++ NAPI 绑定
+      // this.mapView.setTileCacheEnabled(enabled);
+      hilog.info(DOMAIN, 'NativeMapView', `setTileCacheEnabled: ${enabled} (Not yet implemented in C++)`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setTileCacheEnabled error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 设置 LOD 最小半径（对齐 iOS tileLodMinRadius）
+   * @param radius 最小半径（瓦片单位）
+   */
+  setTileLodMinRadius(radius: number): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setTileLodMinRadius: Map not initialized');
+      return;
+    }
+    
+    try {
+      this.mapView.setTileLodMinRadius(radius);
+      hilog.info(DOMAIN, 'NativeMapView', `setTileLodMinRadius: ${radius}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setTileLodMinRadius error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 设置 LOD 缩放因子（对齐 iOS tileLodScale）
+   * @param scale 缩放因子
+   */
+  setTileLodScale(scale: number): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setTileLodScale: Map not initialized');
+      return;
+    }
+    
+    try {
+      this.mapView.setTileLodScale(scale);
+      hilog.info(DOMAIN, 'NativeMapView', `setTileLodScale: ${scale}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setTileLodScale error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 设置 LOD 俯仰角阈值（对齐 iOS tileLodPitchThreshold）
+   * @param threshold 俯仰角阈值（弧度）
+   */
+  setTileLodPitchThreshold(threshold: number): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setTileLodPitchThreshold: Map not initialized');
+      return;
+    }
+    
+    try {
+      this.mapView.setTileLodPitchThreshold(threshold);
+      hilog.info(DOMAIN, 'NativeMapView', `setTileLodPitchThreshold: ${threshold}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setTileLodPitchThreshold error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 设置 LOD 缩放级别偏移（对齐 iOS tileLodZoomShift）
+   * @param shift 缩放级别偏移
+   */
+  setTileLodZoomShift(shift: number): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setTileLodZoomShift: Map not initialized');
+      return;
+    }
+    
+    try {
+      this.mapView.setTileLodZoomShift(shift);
+      hilog.info(DOMAIN, 'NativeMapView', `setTileLodZoomShift: ${shift}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setTileLodZoomShift error: ${error.message}`);
+    }
+  }
+
+  /**
+   * 低内存警告处理（对齐 Android onLowMemory）
+   */
+  onLowMemory(): void {
+    if (!this.mapView || !this.isInitialized) {
+      return;
+    }
+    
+    try {
+      this.mapView.onLowMemory();
+      hilog.warn(DOMAIN, 'NativeMapView', 'onLowMemory: Low memory warning sent to C++ layer');
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `onLowMemory error: ${error.message}`);
     }
   }
 }
@@ -929,5 +1925,385 @@ export struct NativeMapView {
    */
   getController(): NativeMapViewController {
     return this.controller;
+  }
+
+  // ========== 监听器方法代理 ==========
+  // 将 Controller 的监听器方法暴露给组件使用者
+  
+  // ===== 相机事件监听器 =====
+  
+  addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    this.controller.addOnCameraWillChangeListener(listener);
+  }
+
+  removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    this.controller.removeOnCameraWillChangeListener(listener);
+  }
+
+  addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
+    this.controller.addOnCameraIsChangingListener(listener);
+  }
+
+  removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
+    this.controller.removeOnCameraIsChangingListener(listener);
+  }
+
+  addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
+    this.controller.addOnCameraDidChangeListener(listener);
+  }
+
+  removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
+    this.controller.removeOnCameraDidChangeListener(listener);
+  }
+
+  // ===== 地图加载事件监听器 =====
+  
+  addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
+    this.controller.addOnWillStartLoadingMapListener(listener);
+  }
+
+  removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
+    this.controller.removeOnWillStartLoadingMapListener(listener);
+  }
+
+  addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
+    this.controller.addOnDidFinishLoadingMapListener(listener);
+  }
+
+  removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
+    this.controller.removeOnDidFinishLoadingMapListener(listener);
+  }
+
+  addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
+    this.controller.addOnDidFailLoadingMapListener(listener);
+  }
+
+  removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
+    this.controller.removeOnDidFailLoadingMapListener(listener);
+  }
+
+  // ===== 渲染事件监听器 =====
+  
+  addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
+    this.controller.addOnWillStartRenderingFrameListener(listener);
+  }
+
+  removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
+    this.controller.removeOnWillStartRenderingFrameListener(listener);
+  }
+
+  addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
+    this.controller.addOnDidFinishRenderingFrameListener(listener);
+  }
+
+  removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
+    this.controller.removeOnDidFinishRenderingFrameListener(listener);
+  }
+
+  addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
+    this.controller.addOnDidFinishRenderingFrameWithStatsListener(listener);
+  }
+
+  removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
+    this.controller.removeOnDidFinishRenderingFrameWithStatsListener(listener);
+  }
+
+  addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
+    this.controller.addOnWillStartRenderingMapListener(listener);
+  }
+
+  removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
+    this.controller.removeOnWillStartRenderingMapListener(listener);
+  }
+
+  addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
+    this.controller.addOnDidFinishRenderingMapListener(listener);
+  }
+
+  removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
+    this.controller.removeOnDidFinishRenderingMapListener(listener);
+  }
+
+  // ===== 样式事件监听器 =====
+  
+  addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
+    this.controller.addOnDidFinishLoadingStyleListener(listener);
+  }
+
+  removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
+    this.controller.removeOnDidFinishLoadingStyleListener(listener);
+  }
+
+  addOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
+    this.controller.addOnStyleImageMissingListener(listener);
+  }
+
+  removeOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
+    this.controller.removeOnStyleImageMissingListener(listener);
+  }
+
+  addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
+    this.controller.addOnCanRemoveUnusedStyleImageListener(listener);
+  }
+
+  removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
+    this.controller.removeOnCanRemoveUnusedStyleImageListener(listener);
+  }
+
+  // ===== 其他事件监听器 =====
+  
+  addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
+    this.controller.addOnDidBecomeIdleListener(listener);
+  }
+
+  removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
+    this.controller.removeOnDidBecomeIdleListener(listener);
+  }
+
+  addOnSourceChangedListener(listener: OnSourceChangedListener): void {
+    this.controller.addOnSourceChangedListener(listener);
+  }
+
+  removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
+    this.controller.removeOnSourceChangedListener(listener);
+  }
+
+  addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
+    this.controller.addOnPreCompileShaderListener(listener);
+  }
+
+  removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
+    this.controller.removeOnPreCompileShaderListener(listener);
+  }
+
+  addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
+    this.controller.addOnPostCompileShaderListener(listener);
+  }
+
+  removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
+    this.controller.removeOnPostCompileShaderListener(listener);
+  }
+
+  addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
+    this.controller.addOnShaderCompileFailedListener(listener);
+  }
+
+  removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
+    this.controller.removeOnShaderCompileFailedListener(listener);
+  }
+
+  addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
+    this.controller.addOnGlyphsLoadedListener(listener);
+  }
+
+  removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
+    this.controller.removeOnGlyphsLoadedListener(listener);
+  }
+
+  addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
+    this.controller.addOnGlyphsErrorListener(listener);
+  }
+
+  removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
+    this.controller.removeOnGlyphsErrorListener(listener);
+  }
+
+  addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
+    this.controller.addOnGlyphsRequestedListener(listener);
+  }
+
+  removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
+    this.controller.removeOnGlyphsRequestedListener(listener);
+  }
+
+  addOnTileActionListener(listener: OnTileActionListener): void {
+    this.controller.addOnTileActionListener(listener);
+  }
+
+  removeOnTileActionListener(listener: OnTileActionListener): void {
+    this.controller.removeOnTileActionListener(listener);
+  }
+
+  addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
+    this.controller.addOnSpriteLoadedListener(listener);
+  }
+
+  removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
+    this.controller.removeOnSpriteLoadedListener(listener);
+  }
+
+  addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
+    this.controller.addOnSpriteErrorListener(listener);
+  }
+
+  removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
+    this.controller.removeOnSpriteErrorListener(listener);
+  }
+
+  addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
+    this.controller.addOnSpriteRequestedListener(listener);
+  }
+
+  removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
+    this.controller.removeOnSpriteRequestedListener(listener);
+  }
+
+  /**
+   * 获取地图异步（对齐 Android getMapAsync 模式）
+   * @param callback 地图就绪回调
+   */
+  getMapAsync(callback: OnMapReadyCallback): void {
+    this.controller.getMapAsync(callback);
+  }
+
+  // ========== 渲染控制方法 ==========
+  
+  /**
+   * 在渲染线程上执行任务
+   */
+  queueEvent(runnable: () => void): void {
+    this.controller.queueEvent(runnable);
+  }
+
+  /**
+   * 设置最大帧率
+   */
+  setMaximumFps(maximumFps: number): void {
+    this.controller.setMaximumFps(maximumFps);
+  }
+
+  /**
+   * 设置渲染刷新模式
+   */
+  setRenderingRefreshMode(mode: RenderingRefreshMode): void {
+    this.controller.setRenderingRefreshMode(mode);
+  }
+
+  /**
+   * 获取渲染刷新模式
+   */
+  getRenderingRefreshMode(): RenderingRefreshMode {
+    return this.controller.getRenderingRefreshMode();
+  }
+
+  // ========== 性能和缓存配置 ==========
+  
+  /**
+   * 设置是否预加载瓦片
+   */
+  setPrefetchesTiles(enabled: boolean): void {
+    this.controller.setPrefetchesTiles(enabled);
+  }
+
+  /**
+   * 设置是否启用瓦片缓存
+   */
+  setTileCacheEnabled(enabled: boolean): void {
+    this.controller.setTileCacheEnabled(enabled);
+  }
+
+  /**
+   * 设置 LOD 最小半径
+   */
+  setTileLodMinRadius(radius: number): void {
+    this.controller.setTileLodMinRadius(radius);
+  }
+
+  /**
+   * 设置 LOD 缩放因子
+   */
+  setTileLodScale(scale: number): void {
+    this.controller.setTileLodScale(scale);
+  }
+
+  /**
+   * 设置 LOD 俯仰角阈值
+   */
+  setTileLodPitchThreshold(threshold: number): void {
+    this.controller.setTileLodPitchThreshold(threshold);
+  }
+
+  /**
+   * 设置 LOD 缩放级别偏移
+   */
+  setTileLodZoomShift(shift: number): void {
+    this.controller.setTileLodZoomShift(shift);
+  }
+
+  // ========== 鸿蒙风格的生命周期方法 ==========
+  
+  /**
+   * 页面显示时调用（鸿蒙生命周期）
+   * 用于恢复地图渲染、重新启动定位等
+   */
+  onPageShow(): void {
+    hilog.info(DOMAIN, 'NativeMapView', 'onPageShow: Resuming map rendering');
+    // 恢复渲染
+    this.controller.triggerRepaint();
+    
+    // TODO: 恢复其他资源（如位置服务）
+  }
+
+  /**
+   * 页面隐藏时调用（鸿蒙生命周期）
+   * 用于暂停地图渲染、暂停定位等，节省资源
+   */
+  onPageHide(): void {
+    hilog.info(DOMAIN, 'NativeMapView', 'onPageHide: Pausing map rendering');
+    // TODO: 暂停渲染和其他资源
+  }
+
+  /**
+   * 返回键处理（鸿蒙生命周期）
+   * @returns true 表示消费了返回事件，false 表示不消费
+   */
+  onBackPress(): boolean {
+    hilog.info(DOMAIN, 'NativeMapView', 'onBackPress: Handling back press');
+    
+    // 取消正在进行的相机动画
+    this.controller.getMapView()?.cancelTransitions();
+    
+    // 不消费返回事件，让系统处理
+    return false;
+  }
+
+  /**
+   * 内存压力回调（鸿蒙风格）
+   * @param level 内存压力级别
+   */
+  onMemoryLevel(level: number): void {
+    hilog.warn(DOMAIN, 'NativeMapView', `onMemoryLevel: Memory pressure level ${level}`);
+    
+    // 根据内存压力级别采取不同措施
+    if (level >= 2) {
+      // 高内存压力：清理缓存
+      this.controller.onLowMemory();
+    }
+  }
+  
+  // ========== 新增方法：对齐 Android/iOS API ==========
+  
+  /**
+   * 设置内容边距（对齐 Android API）
+   * @param padding 边距数组 [top, left, bottom, right]（逻辑像素）
+   */
+  setContentPadding(padding: number[]): void {
+    this.controller.setContentPadding(padding);
+  }
+  
+  /**
+   * 获取内容边距（对齐 Android API）
+   * @returns 边距数组 [top, left, bottom, right]
+   */
+  getContentPadding(): number[] {
+    return this.controller.getContentPadding();
+  }
+  
+  /**
+   * 获取设备像素比（对齐 Android API）
+   * @returns 像素比
+   */
+  getPixelRatio(): number {
+    return this.controller.getPixelRatio();
   }
 }

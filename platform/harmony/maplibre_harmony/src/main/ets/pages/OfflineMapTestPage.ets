@@ -1,311 +1,536 @@
 /**
- * OfflineMapTestPage - 离线地图功能测试页面
+ * OfflineMapTestPage - 离线地图测试页面
  * 
- * 演示如何使用离线地图功能
+ * 测试内容：
+ * - 创建离线区域
+ * - 下载离线地图
+ * - 列出离线区域
+ * - 删除离线区域
+ * - 下载进度监控
  */
-import { MapLibreMap } from '../maps/MapLibreMap';
-import {
-  OfflineManager,
-  OfflineRegion,
-  getOfflineManager,
-  DownloadState,
-  createTilePyramidRegionDefinition,
-  OfflineRegionObserver,
-  OfflineRegionStatus,
-  OfflineRegionError,
-  OfflineTilePyramidRegionDefinition,
-  CreateOfflineRegionCallback
-} from '../maps/offline';
-import { LatLngBounds } from '../maps/geometry/LatLngBounds';
-import common from '@ohos.app.ability.common';
-import { router } from '@kit.ArkUI';
-import util from '@ohos.util';
 
-// 创建离线区域回调实现
-class CreateRegionCallbackImpl implements CreateOfflineRegionCallback {
-  page: OfflineMapTestPage;
-  
-  constructor(page: OfflineMapTestPage) {
-    this.page = page;
-  }
-  
-  onCreate(region: OfflineRegion): void {
-    this.page.currentRegion = region;
-    this.page.statusMessage = '离线区域已创建，开始下载...';
-    
-    // 设置观察者监听下载进度
-    this.page.setupRegionObserver(region);
-    
-    // 开始下载
-    region.setDownloadState(DownloadState.ACTIVE);
-    
-    // 刷新列表
-    this.page.loadOfflineRegions();
-  }
-  
-  onError(error: string): void {
-    this.page.statusMessage = `创建失败: ${error}`;
-  }
-}
+import { NativeMapView } from '../maps/NativeMapView';
+import { OfflineManager } from '../maps/offline/OfflineManager';
+import { OfflineRegion } from '../maps/offline/OfflineRegion';
+import { createTilePyramidRegionDefinition } from '../maps/offline/OfflineRegionDefinition';
+import type { OfflineTilePyramidRegionDefinition } from '../maps/offline/OfflineRegionDefinition';
+import { DownloadState, OfflineRegionStatus } from '../maps/offline/OfflineRegionStatus';
+import type { OfflineRegionObserver, OfflineRegionError } from '../maps/offline';
+import { LatLngBounds } from '../maps/geometry/LatLngBounds';
+import { createLatLng } from '../maps/geometry/LatLng';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../constants/HiLogConstants';
+import common from '@ohos.app.ability.common';
+import promptAction from '@ohos.promptAction';
+import maplibre from 'libmaplibre_native.so';
+import util from '@ohos.util';
 
 @Entry
 @Component
 struct OfflineMapTestPage {
-  @State title: string = '离线地图测试';
-  @State offlineRegions: Array<OfflineRegion> = [];
-  @State currentRegion: OfflineRegion | null = null;
-  @State downloadProgress: string = '未开始';
-  @State statusMessage: string = '准备就绪';
+  @State private mapReady: boolean = false;
+  @State private offlineRegions: OfflineRegion[] = [];
+  @State private downloadProgress: number = 0;
+  @State private downloadStatus: string = '等待操作...';
+  @State private currentRegion: OfflineRegion | null = null;
   
-  private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private offlineManager: OfflineManager | null = null;
-  private mapController: MapLibreMap | null = null;
   
   aboutToAppear() {
-    // 初始化离线管理器
-    this.offlineManager = getOfflineManager(this.context);
-    
-    // 加载现有离线区域列表
-    this.loadOfflineRegions();
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      this.offlineManager = OfflineManager.getInstance(context);
+      
+      // 加载已有的离线区域
+      this.loadOfflineRegions();
+      
+      hilog.info(DOMAIN, 'OfflineMapTest', 'OfflineManager initialized');
+    } catch (error) {
+      hilog.error(DOMAIN, 'OfflineMapTest', `Failed to initialize: ${error}`);
+      promptAction.showToast({
+        message: `初始化失败: ${error}`,
+        duration: 2000
+      });
+    }
+  }
+  
+  build() {
+    Column() {
+      // 标题栏
+      Row() {
+        Text('离线地图测试')
+          .fontSize(20)
+          .fontWeight(FontWeight.Bold)
+          .margin({ left: 16 })
+        
+        Blank()
+        
+        Button('返回')
+          .onClick(() => {
+            hilog.info(DOMAIN, 'OfflineMapTest', 'Navigating back');
+            // TODO: 导航返回
+          })
+          .margin({ right: 16 })
+      }
+      .width('100%')
+      .height(56)
+      .backgroundColor('#F7F7F7')
+      
+      // 地图视图
+      NativeMapView({
+        styleUrl: 'https://demotiles.maplibre.org/style.json',
+        initialLatitude: 30.2741,
+        initialLongitude: 120.1551,
+        initialZoom: 10,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          this.onMapReady(mapView);
+        }
+      })
+      .width('100%')
+      .height('40%')
+      
+      // 控制区
+      Scroll() {
+        Column({ space: 12 }) {
+          Text('离线地图管理')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+          
+          // 创建离线区域
+          Button('创建杭州离线区域')
+            .width('90%')
+            .onClick(() => {
+              this.createHangzhouOfflineRegion();
+            })
+          
+          // 列出离线区域
+          Button('刷新离线区域列表')
+            .width('90%')
+            .onClick(() => {
+              this.loadOfflineRegions();
+            })
+          
+          Divider()
+          
+          // 下载控制
+          Text('下载控制')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+          
+          Row({ space: 8 }) {
+            Button('开始下载')
+              .width('45%')
+              .onClick(() => {
+                this.startDownload();
+              })
+              .enabled(this.currentRegion !== null)
+            
+            Button('暂停')
+              .width('45%')
+              .onClick(() => {
+                this.pauseDownload();
+              })
+              .enabled(this.currentRegion !== null)
+          }
+          .width('90%')
+          
+          Row({ space: 8 }) {
+            Button('恢复')
+              .width('45%')
+              .onClick(() => {
+                this.resumeDownload();
+              })
+              .enabled(this.currentRegion !== null)
+            
+            Button('删除区域')
+              .width('45%')
+              .backgroundColor('#FF6B6B')
+              .onClick(() => {
+                this.deleteCurrentRegion();
+              })
+              .enabled(this.currentRegion !== null)
+          }
+          .width('90%')
+          
+          Divider()
+          
+          // 状态显示
+          Text('下载状态')
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+          
+          Text(this.downloadStatus)
+            .fontSize(14)
+            .width('90%')
+            .fontColor(Color.Gray)
+          
+          Progress({
+            value: this.downloadProgress,
+            total: 100,
+            type: ProgressType.Linear
+          })
+          .width('90%')
+          .color('#007AFF')
+          
+          Text(`${this.downloadProgress.toFixed(1)}%`)
+            .fontSize(14)
+            .width('90%')
+          
+          Divider()
+          
+          // 离线区域列表
+          Text(`离线区域列表 (${this.offlineRegions.length})`)
+            .fontSize(16)
+            .fontWeight(FontWeight.Medium)
+            .width('100%')
+          
+          ForEach(this.offlineRegions, (region: OfflineRegion, index: number) => {
+            Row() {
+              Column({ space: 4 }) {
+                Text(`区域 ${region.id}`)
+                  .fontSize(14)
+                  .fontWeight(FontWeight.Medium)
+                
+                Text(this.getRegionMetadataText(region))
+                  .fontSize(12)
+                  .fontColor(Color.Gray)
+              }
+              .alignItems(HorizontalAlign.Start)
+              .layoutWeight(1)
+              
+              Button('选择')
+                .fontSize(12)
+                .onClick(() => {
+                  this.selectRegion(region);
+                })
+            }
+            .width('90%')
+            .padding(12)
+            .backgroundColor(this.currentRegion === region ? '#E3F2FD' : '#F5F5F5')
+            .borderRadius(8)
+          }, (region: OfflineRegion) => region.id.toString())
+        }
+        .width('100%')
+        .padding(16)
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .backgroundColor('#FFFFFF')
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#F5F5F5')
+  }
+  
+  /**
+   * 地图就绪回调
+   */
+  private onMapReady(mapView?: maplibre.NativeMapView): void {
+    hilog.info(DOMAIN, 'OfflineMapTest', 'Map ready');
+    this.mapReady = true;
   }
   
   /**
    * 加载离线区域列表
    */
-  public loadOfflineRegions() {
-    if (!this.offlineManager) return;
+  private async loadOfflineRegions(): Promise<void> {
+    if (!this.offlineManager) {
+      promptAction.showToast({ message: 'OfflineManager 未初始化', duration: 2000 });
+      return;
+    }
     
-    this.offlineManager.listOfflineRegions((result) => {
-      if (typeof result === 'string') {
-        this.statusMessage = `加载失败: ${result}`;
-      } else {
-        this.offlineRegions = result;
-        this.statusMessage = `找到 ${result.length} 个离线区域`;
-      }
-    });
+    try {
+      hilog.info(DOMAIN, 'OfflineMapTest', 'Loading offline regions...');
+      const regions = await this.offlineManager.listOfflineRegions();
+      
+      this.offlineRegions = regions;
+      hilog.info(DOMAIN, 'OfflineMapTest', `Loaded ${regions.length} offline regions`);
+      
+      promptAction.showToast({
+        message: `找到 ${regions.length} 个离线区域`,
+        duration: 2000
+      });
+    } catch (error) {
+      hilog.error(DOMAIN, 'OfflineMapTest', `Failed to load offline regions: ${error}`);
+      promptAction.showToast({
+        message: `加载失败: ${error}`,
+        duration: 2000
+      });
+    }
   }
   
   /**
-   * 下载当前可见区域
+   * 创建杭州离线区域
    */
-  private downloadCurrentRegion() {
-    if (!this.offlineManager || !this.mapController) return;
+  private async createHangzhouOfflineRegion(): Promise<void> {
+    if (!this.offlineManager) {
+      promptAction.showToast({ message: 'OfflineManager 未初始化', duration: 2000 });
+      return;
+    }
     
     try {
-      // 获取当前地图视图的参数
-      const styleURL = 'https://demotiles.maplibre.org/style.json';
-      const bounds = new LatLngBounds(
-        40.0,  // north
-        117.0, // east
-        39.0,  // south
-        116.0  // west
-      );
-      const minZoom = 10;
-      const maxZoom = 14;
-      const pixelRatio = 2.0;
+      hilog.info(DOMAIN, 'OfflineMapTest', 'Creating Hangzhou offline region...');
       
-      // 创建区域定义
-      const definition: OfflineTilePyramidRegionDefinition = createTilePyramidRegionDefinition(
-        styleURL,
+      // 定义杭州区域（西湖附近）
+      const southwest = createLatLng(30.23, 120.12);
+      const northeast = createLatLng(30.31, 120.20);
+      const bounds = LatLngBounds.fromLatLngs(southwest, northeast);
+      
+      const definition = createTilePyramidRegionDefinition(
+        'https://demotiles.maplibre.org/style.json',
         bounds,
-        minZoom,
-        maxZoom,
-        pixelRatio,
-        true
+        10,  // minZoom
+        14,  // maxZoom
+        2.0, // pixelRatio
+        true // includeIdeographs
       );
       
-      // 创建元数据（存储区域名称等信息）
-      interface MetadataInfo {
-        name: string;
-        created: string;
+      // 创建元数据
+      const metadataText = JSON.stringify({
+        name: '杭州西湖',
+        createdAt: Date.now()
+      });
+      // 使用 Uint8Array 直接创建 ArrayBuffer
+      const utf8Bytes: Uint8Array = new Uint8Array(metadataText.length);
+      for (let i = 0; i < metadataText.length; i++) {
+        utf8Bytes[i] = metadataText.charCodeAt(i);
       }
+      const metadata = utf8Bytes.buffer as ArrayBuffer;
       
-      const metadata: MetadataInfo = {
-        name: '北京地区',
-        created: new Date().toISOString()
-      };
-      const metadataStr = JSON.stringify(metadata);
-      const encoder = new util.TextEncoder();
-      const uint8Array = encoder.encodeInto(metadataStr);
-      const metadataBuffer: ArrayBuffer = uint8Array.buffer as ArrayBuffer;
+      const region = await this.offlineManager.createOfflineRegion(definition, metadata);
       
-      this.statusMessage = '正在创建离线区域...';
+      hilog.info(DOMAIN, 'OfflineMapTest', `Offline region created: ID=${region.id}`);
       
-      // 创建回调
-      const page = this;
-      const callback = new CreateRegionCallbackImpl(page);
+      // 设置观察者
+      this.setupRegionObserver(region);
       
-      // 创建离线区域  
-      this.offlineManager.createOfflineRegion(definition, metadataBuffer, callback);
+      // 添加到列表
+      this.offlineRegions.push(region);
+      this.currentRegion = region;
+      
+      promptAction.showToast({
+        message: '离线区域创建成功！',
+        duration: 2000
+      });
+      
     } catch (error) {
-      this.statusMessage = `错误: ${error}`;
+      hilog.error(DOMAIN, 'OfflineMapTest', `Failed to create offline region: ${error}`);
+      promptAction.showToast({
+        message: `创建失败: ${error}`,
+        duration: 2000
+      });
     }
+  }
+  
+  /**
+   * 选择区域
+   */
+  private selectRegion(region: OfflineRegion): void {
+    this.currentRegion = region;
+    this.setupRegionObserver(region);
+    
+    hilog.info(DOMAIN, 'OfflineMapTest', `Selected region: ${region.id}`);
+    
+      // 获取当前状态
+      region.getStatus((result: OfflineRegionStatus | string) => {
+        if (typeof result === 'string') {
+          hilog.error(DOMAIN, 'OfflineMapTest', `Failed to get status: ${result}`);
+        } else {
+          this.downloadProgress = (result.completedResourceCount / result.requiredResourceCount) * 100;
+          this.downloadStatus = `${result.completedResourceCount}/${result.requiredResourceCount}`;
+        }
+      });
   }
   
   /**
    * 设置区域观察者
    */
-  public setupRegionObserver(region: OfflineRegion) {
-    class ObserverImpl implements OfflineRegionObserver {
-      private page: OfflineMapTestPage;
-      private region: OfflineRegion;
-      
-      constructor(page: OfflineMapTestPage, region: OfflineRegion) {
-        this.page = page;
-        this.region = region;
-      }
-      
-      onStatusChanged(status: OfflineRegionStatus): void {
-        const percent = status.requiredResourceCount > 0
-          ? Math.round((status.completedResourceCount / status.requiredResourceCount) * 100)
-          : 0;
+  private setupRegionObserver(region: OfflineRegion): void {
+    const observer: OfflineRegionObserver = {
+      onStatusChanged: (status: OfflineRegionStatus) => {
+        const progress = (status.completedResourceCount / status.requiredResourceCount) * 100;
+        this.downloadProgress = progress;
+        this.downloadStatus = `${status.completedResourceCount}/${status.requiredResourceCount}`;
         
-        this.page.downloadProgress = `${percent}% (${status.completedResourceCount}/${status.requiredResourceCount})`;
+        hilog.info(DOMAIN, 'OfflineMapTest', 
+          `Progress: ${progress.toFixed(1)}% ` +
+          `(${status.completedResourceCount}/${status.requiredResourceCount})`);
         
         if (status.complete) {
-          this.page.statusMessage = '下载完成！';
-          this.region.setDownloadState(DownloadState.INACTIVE);
+          const toastOptions: promptAction.ShowToastOptions = {
+            message: '下载完成！',
+            duration: 2000
+          };
+          promptAction.showToast(toastOptions);
         }
-      }
+      },
       
-      onError(error: OfflineRegionError): void {
-        this.page.statusMessage = `下载错误: ${error.message}`;
-      }
+      onError: (error: OfflineRegionError) => {
+        this.downloadStatus = `错误: ${error.message}`;
+        
+        hilog.error(DOMAIN, 'OfflineMapTest', `Download error: ${error.message}`);
+        
+        const toastOptions: promptAction.ShowToastOptions = {
+          message: `下载错误: ${error.message}`,
+          duration: 3000
+        };
+        promptAction.showToast(toastOptions);
+      },
       
-      mapboxTileCountLimitExceeded(limit: number): void {
-        this.page.statusMessage = `警告: 已达到瓦片数量限制 (${limit})`;
+      mapboxTileCountLimitExceeded: (limit: number) => {
+        this.downloadStatus = `超出瓦片数量限制: ${limit}`;
+        
+        hilog.warn(DOMAIN, 'OfflineMapTest', `Tile count limit exceeded: ${limit}`);
+        
+        const toastOptions: promptAction.ShowToastOptions = {
+          message: `超出瓦片限制: ${limit}`,
+          duration: 3000
+        };
+        promptAction.showToast(toastOptions);
       }
-    }
+    };
     
-    region.setObserver(new ObserverImpl(this, region));
+    region.setObserver(observer);
   }
   
   /**
-   * 删除指定区域
+   * 开始下载
    */
-  private deleteRegion(region: OfflineRegion) {
-    const regionId = region.id;
-    region.delete((error?: string) => {
-      if (error) {
-        this.statusMessage = `删除失败: ${error}`;
-      } else {
-        this.statusMessage = `区域 ${regionId} 已删除`;
-        this.loadOfflineRegions();
-      }
-    });
+  private startDownload(): void {
+    if (!this.currentRegion) {
+      promptAction.showToast({ message: '请先选择或创建离线区域', duration: 2000 });
+      return;
+    }
+    
+    try {
+      this.currentRegion.setDownloadState(DownloadState.ACTIVE);
+      this.downloadStatus = '开始下载...';
+      
+      hilog.info(DOMAIN, 'OfflineMapTest', 'Download started');
+      
+      const toastOptions: promptAction.ShowToastOptions = {
+        message: '开始下载离线地图',
+        duration: 2000
+      };
+      promptAction.showToast(toastOptions);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineMapTest', `Failed to start download: ${errorMsg}`);
+      const toastOptions: promptAction.ShowToastOptions = {
+        message: `启动下载失败: ${errorMsg}`,
+        duration: 2000
+      };
+      promptAction.showToast(toastOptions);
+    }
   }
   
   /**
    * 暂停下载
    */
-  private pauseDownload() {
-    if (this.currentRegion) {
+  private pauseDownload(): void {
+    if (!this.currentRegion) return;
+    
+    try {
       this.currentRegion.setDownloadState(DownloadState.INACTIVE);
-      this.statusMessage = '下载已暂停';
+      this.downloadStatus = '下载已暂停';
+      
+      hilog.info(DOMAIN, 'OfflineMapTest', 'Download paused');
+      
+      const toastOptions: promptAction.ShowToastOptions = {
+        message: '下载已暂停',
+        duration: 2000
+      };
+      promptAction.showToast(toastOptions);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineMapTest', `Failed to pause download: ${errorMsg}`);
     }
   }
   
   /**
    * 恢复下载
    */
-  private resumeDownload() {
-    if (this.currentRegion) {
+  private resumeDownload(): void {
+    if (!this.currentRegion) return;
+    
+    try {
       this.currentRegion.setDownloadState(DownloadState.ACTIVE);
-      this.statusMessage = '下载已恢复';
+      this.downloadStatus = '下载已恢复';
+      
+      hilog.info(DOMAIN, 'OfflineMapTest', 'Download resumed');
+      
+      const toastOptions: promptAction.ShowToastOptions = {
+        message: '下载已恢复',
+        duration: 2000
+      };
+      promptAction.showToast(toastOptions);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineMapTest', `Failed to resume download: ${errorMsg}`);
     }
   }
   
-  build() {
-    Column() {
-      // 标题
-      Text(this.title)
-        .fontSize(20)
-        .fontWeight(FontWeight.Bold)
-        .margin({ top: 20, bottom: 10 })
-      
-      // 状态信息
-      Text(this.statusMessage)
-        .fontSize(14)
-        .fontColor('#666')
-        .margin({ bottom: 10 })
-      
-      // 下载进度
-      if (this.currentRegion) {
-        Text(`下载进度: ${this.downloadProgress}`)
-          .fontSize(14)
-          .fontColor('#333')
-          .margin({ bottom: 10 })
-      }
-      
-      // 操作按钮
-      Row() {
-        Button('下载当前区域')
-          .onClick(() => this.downloadCurrentRegion())
-          .margin({ right: 10 })
+  /**
+   * 删除当前区域
+   */
+  private async deleteCurrentRegion(): Promise<void> {
+    if (!this.currentRegion) return;
+    
+    const regionId = this.currentRegion.id;
+    
+    hilog.info(DOMAIN, 'OfflineMapTest', `Deleting region: ${regionId}`);
+    
+    this.currentRegion.delete((error?: string) => {
+      if (error) {
+        hilog.error(DOMAIN, 'OfflineMapTest', `Failed to delete region: ${error}`);
+        const toastOptions: promptAction.ShowToastOptions = {
+          message: `删除失败: ${error}`,
+          duration: 2000
+        };
+        promptAction.showToast(toastOptions);
+      } else {
+        // 从列表中移除
+        this.offlineRegions = this.offlineRegions.filter(r => r.id !== regionId);
+        this.currentRegion = null;
+        this.downloadProgress = 0;
+        this.downloadStatus = '区域已删除';
         
-        Button('暂停')
-          .onClick(() => this.pauseDownload())
-          .margin({ right: 10 })
-          .enabled(this.currentRegion !== null)
+        hilog.info(DOMAIN, 'OfflineMapTest', 'Region deleted successfully');
         
-        Button('恢复')
-          .onClick(() => this.resumeDownload())
-          .enabled(this.currentRegion !== null)
+        const toastOptions: promptAction.ShowToastOptions = {
+          message: '离线区域已删除',
+          duration: 2000
+        };
+        promptAction.showToast(toastOptions);
       }
-      .margin({ bottom: 20 })
-      
-      // 离线区域列表
-      Text(`离线区域列表 (${this.offlineRegions.length})`)
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 10 })
-      
-      List() {
-        ForEach(this.offlineRegions, (region: OfflineRegion) => {
-          ListItem() {
-            Row() {
-              Column() {
-                Text(`区域 ID: ${region.id}`)
-                  .fontSize(14)
-                
-                Text(`样式: ${region.definition.styleURL}`)
-                  .fontSize(12)
-                  .fontColor('#666')
-              }
-              .alignItems(HorizontalAlign.Start)
-              .layoutWeight(1)
-              
-              Button('删除')
-                .onClick(() => this.deleteRegion(region))
-                .fontSize(12)
-            }
-            .width('100%')
-            .padding(10)
-            .backgroundColor('#f5f5f5')
-            .borderRadius(5)
-          }
-          .margin({ bottom: 10 })
-        })
+    });
+  }
+  
+  /**
+   * 获取区域元数据文本
+   */
+  private getRegionMetadataText(region: OfflineRegion): string {
+    try {
+      const metadata = region.metadata;
+      const uint8Array = new Uint8Array(metadata);
+      // 简单的 UTF-8 解码
+      let text = '';
+      for (let i = 0; i < uint8Array.length; i++) {
+        text += String.fromCharCode(uint8Array[i]);
       }
-      .height(300)
-      .width('100%')
-      
-      // 底部操作按钮
-      Row() {
-        Button('刷新列表')
-          .onClick(() => this.loadOfflineRegions())
-          .margin({ right: 10 })
-        
-        Button('返回')
-          .onClick(() => {
-            router.back();
-          })
+      interface MetadataJson {
+        name?: string;
+        createdAt?: number;
       }
-      .margin({ top: 20 })
+      const json: MetadataJson = JSON.parse(text) as MetadataJson;
+      return json.name || `区域 ${region.id}`;
+    } catch {
+      return `区域 ${region.id}`;
     }
-    .width('100%')
-    .height('100%')
-    .padding(20)
   }
 }
-

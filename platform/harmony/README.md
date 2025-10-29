@@ -57,6 +57,9 @@ See [README_RECENT_CHANGES.md](README_RECENT_CHANGES.md) for the latest updates.
 - ✅ Camera animations
 - ✅ DPI/High-resolution display support
 - ✅ Optimized rendering pipeline
+- ✅ **Android/iOS API alignment** - Complete event listener system
+- ✅ **Performance control** - FPS, rendering mode, LOD configuration
+- ✅ **Comprehensive UI settings** - Compass, Logo, ScaleBar configuration
 
 ## Gesture System
 
@@ -91,7 +94,32 @@ The gesture system has been recently improved with:
 ### Testing
 Run the demo app on a HarmonyOS device or emulator.
 
+## API 完整性
+
+MapLibre Native 鸿蒙版现已提供与 Android/iOS 平台对等的 API：
+
+### 事件监听器（Android 风格）
+- ✅ 26 个事件监听器接口
+- ✅ 52 个 add/remove 方法
+- ✅ 完整的 C++ NAPI 绑定
+- ✅ 线程安全的跨线程回调
+
+### 性能控制
+- ✅ 渲染模式控制（CONTINUOUS / WHEN_DIRTY）
+- ✅ FPS 限制
+- ✅ 瓦片预加载
+- ✅ LOD 参数配置（iOS 风格）
+
+### 生命周期
+- ✅ 鸿蒙原生生命周期钩子
+- ✅ 页面显示/隐藏处理
+- ✅ 内存压力管理
+
+详细信息请参阅：
+- **[API_README.md](maplibre_harmony/docs/API_README.md)** - API 快速参考
+- **[API_USAGE_GUIDE.md](maplibre_harmony/docs/API_USAGE_GUIDE.md)** - 完整使用指南
+- **[API_IMPLEMENTATION_COMPLETE.md](maplibre_harmony/docs/API_IMPLEMENTATION_COMPLETE.md)** - 实施报告
+
 ## License
 
 See [LICENSE.md](../../LICENSE.md) in the root directory.
-

@@ -53,6 +53,12 @@ struct Index {
         '🗺️'
       ),
       new TestPageItem(
+        '核心 API 测试',
+        '测试新增 API（内容边距、像素比例）及核心相机功能',
+        'pages/CoreAPITestPage',
+        '🔧'
+      ),
+      new TestPageItem(
         '相机监听器测试',
         '测试相机移动、空闲等各种相机事件监听器功能',
         'pages/CameraListenerTestPage',
@@ -155,6 +161,12 @@ struct Index {
         '测试用户定位功能、追踪模式和渲染模式',
         'pages/LocationComponentTestPage',
         '🧭'
+      ),
+      new TestPageItem(
+        '定位flyTo测试',
+        '测试获取定位并使用flyTo动画移动到定位位置（zoom=6）',
+        'pages/LocationFlyToTestPage',
+        '🎯'
       ),
     ]),
     

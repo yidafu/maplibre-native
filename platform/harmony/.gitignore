@@ -10,6 +10,6 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
-/*.md
-/*.log
-/*.sh
+*.md
+*.log
+*.sh

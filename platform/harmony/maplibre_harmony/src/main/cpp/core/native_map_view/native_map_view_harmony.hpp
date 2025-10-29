@@ -194,6 +194,56 @@ public:
     static napi_value setOnStyleLoadedListener(napi_env env, napi_callback_info info);
     static napi_value setOnStyleLoadErrorListener(napi_env env, napi_callback_info info);
     
+    // ========== 新增的 Android/iOS 风格监听器 ==========
+    
+    // 相机事件监听器（Android 风格）
+    static napi_value addOnCameraWillChangeListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnCameraWillChangeListener(napi_env env, napi_callback_info info);
+    static napi_value addOnCameraIsChangingListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnCameraIsChangingListener(napi_env env, napi_callback_info info);
+    static napi_value addOnCameraDidChangeListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnCameraDidChangeListener(napi_env env, napi_callback_info info);
+    
+    // 地图加载事件监听器
+    static napi_value addOnWillStartLoadingMapListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnWillStartLoadingMapListener(napi_env env, napi_callback_info info);
+    static napi_value addOnDidFinishLoadingMapListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidFinishLoadingMapListener(napi_env env, napi_callback_info info);
+    static napi_value addOnDidFailLoadingMapListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidFailLoadingMapListener(napi_env env, napi_callback_info info);
+    
+    // 渲染事件监听器
+    static napi_value addOnWillStartRenderingFrameListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnWillStartRenderingFrameListener(napi_env env, napi_callback_info info);
+    static napi_value addOnDidFinishRenderingFrameListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidFinishRenderingFrameListener(napi_env env, napi_callback_info info);
+    static napi_value addOnWillStartRenderingMapListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnWillStartRenderingMapListener(napi_env env, napi_callback_info info);
+    static napi_value addOnDidFinishRenderingMapListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidFinishRenderingMapListener(napi_env env, napi_callback_info info);
+    
+    // 样式事件监听器（Android 风格）
+    static napi_value addOnDidFinishLoadingStyleListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidFinishLoadingStyleListener(napi_env env, napi_callback_info info);
+    static napi_value addOnStyleImageMissingListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnStyleImageMissingListener(napi_env env, napi_callback_info info);
+    
+    // 其他事件监听器
+    static napi_value addOnDidBecomeIdleListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidBecomeIdleListener(napi_env env, napi_callback_info info);
+    static napi_value addOnSourceChangedListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnSourceChangedListener(napi_env env, napi_callback_info info);
+    
+    // ========== 新增方法：对齐 Android/iOS API ==========
+    
+    // 内容边距 (Content Padding)
+    static napi_value setContentPadding(napi_env env, napi_callback_info info);
+    static napi_value getContentPadding(napi_env env, napi_callback_info info);
+    
+    // 像素比例 (Pixel Ratio)
+    static napi_value getPixelRatio(napi_env env, napi_callback_info info);
+    static napi_value getDensityDependantRectangle(napi_env env, napi_callback_info info);
+    
     // Helper methods for notifying style listeners
     void notifyStyleLoaded();
     void notifyStyleLoadError(const std::string& error);
@@ -240,6 +290,9 @@ private:
     
     // 应用缓存目录路径
     std::string cachePath_;
+    
+    // 内容边距 [top, left, bottom, right]
+    std::array<double, 4> contentPadding_ = {0.0, 0.0, 0.0, 0.0};
     
     // Ensure these are initialised last
     std::unique_ptr<mbgl::Map> map;

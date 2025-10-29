@@ -226,9 +226,8 @@ napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
     // Low memory handling delegated to Harmony system
     Logger::debug("NativeMapView", "onLowMemory: Low memory handling delegated to Harmony system");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    NapiArgs args(env, info);
+    return args.Undefined();
 }
 
 napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
