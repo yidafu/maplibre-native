@@ -169,11 +169,33 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // NOTE: RasterDEMSource 的 URL 在构造时设置，不能后续修改
-    // 如果需要更改 URL，需要重新创建 Source 对象
-    // TODO: 实现重新创建 Source 的逻辑
-    Logger::warn("RasterDemSourceNAPI", "SetUrl is not supported for RasterDEMSource. URL must be set during construction.");
-    napi_throw_error(env, nullptr, "SetUrl is not supported. Please recreate the source with the new URL.");
+    try {
+        // RasterDEMSource 的 URL 在构造时设置，不能后续修改
+        // 我们需要重新创建 Source 对象
+        std::string sourceId = sourceNapi->id;
+        uint16_t tileSize = 512;  // 使用默认的 tile size
+        
+        // 创建新的 RasterDEMSource
+        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = url;
+        auto newSource = std::make_unique<mbgl::style::RasterDEMSource>(
+            sourceId,
+            std::move(urlOrTileset),
+            tileSize
+        );
+        
+        // 替换原有的 source
+        sourceNapi->source = std::move(newSource);
+        
+        Logger::info("RasterDemSourceNAPI", "RasterDEMSource recreated with new URL: %s -> %s", 
+                    sourceId.c_str(), url.c_str());
+        
+        // 注意：调用者需要将新的 Source 重新添加到 Style 中
+        Logger::warn("RasterDemSourceNAPI", "Source recreated. You may need to remove and re-add the source to the style.");
+        
+    } catch (const std::exception& e) {
+        Logger::error("RasterDemSourceNAPI", "SetUrl failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+    }
     
     return nullptr;
 }

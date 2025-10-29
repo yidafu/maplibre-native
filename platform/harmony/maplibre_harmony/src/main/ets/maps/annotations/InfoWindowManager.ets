@@ -1,5 +1,5 @@
 import maplibre from 'libmaplibre.so';
-import { InfoWindow, InfoWindowPosition } from './InfoWindow';
+import { InfoWindow, InfoWindowPosition, InfoWindowStyle } from './InfoWindow';
 import { InfoWindowAdapter } from './InfoWindowAdapter';
 import { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListener';
 import { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseListener';
@@ -126,8 +126,9 @@ export class InfoWindowManager {
    * @param screenWidth 屏幕宽度
    * @param screenHeight 屏幕高度
    * @param markerScreenPosition Marker 的屏幕坐标
+   * @param style 可选的 InfoWindow 样式配置
    */
-  show(marker: Marker, screenWidth: number, screenHeight: number, markerScreenPosition: Point): InfoWindow | null {
+  show(marker: Marker, screenWidth: number, screenHeight: number, markerScreenPosition: Point, style?: InfoWindowStyle): InfoWindow | null {
     // 如果不允许多个，先关闭已有的
     if (!this.allowConcurrentMultiple) {
       this.closeAll();
@@ -144,7 +145,8 @@ export class InfoWindowManager {
     let infoWindow = this.infoWindows.get(markerId);
     
     if (!infoWindow) {
-      infoWindow = new InfoWindow(marker);
+      // 使用样式配置创建 InfoWindow
+      infoWindow = new InfoWindow(marker, style);
       
       // 设置回调
       infoWindow.setOnShowCallback((m: Marker, pos: InfoWindowPosition) => {
@@ -169,6 +171,9 @@ export class InfoWindowManager {
       });
       
       this.infoWindows.set(markerId, infoWindow);
+    } else if (style) {
+      // 如果 InfoWindow 已存在但提供了新样式，更新样式
+      infoWindow.setStyle(style);
     }
     
     // 显示

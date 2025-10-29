@@ -118,14 +118,85 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
 napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "pixelsForLatLngs() called");
     
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现数组参数解析和结果数组返回
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:772-796
-    Logger::warn("NativeMapView", "pixelsForLatLngs: Not implemented - requires array parameter parsing");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "pixelsForLatLngs: Invalid arguments");
+        return undefined;
+    }
     
-    return undefined;
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "pixelsForLatLngs: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        // 解析输入数组 [lat1, lng1, lat2, lng2, ...]
+        napi_value inputArray = args.GetValue(0);
+        bool isArray;
+        napi_is_array(env, inputArray, &isArray);
+        
+        if (!isArray) {
+            Logger::error("NativeMapView", "pixelsForLatLngs: Input must be an array");
+            return undefined;
+        }
+        
+        uint32_t length;
+        napi_get_array_length(env, inputArray, &length);
+        
+        if (length % 2 != 0) {
+            Logger::error("NativeMapView", "pixelsForLatLngs: Array length must be even (lat/lng pairs)");
+            return undefined;
+        }
+        
+        // 构建 LatLng 向量
+        std::vector<mbgl::LatLng> latLngs;
+        latLngs.reserve(length / 2);
+        
+        for (uint32_t i = 0; i < length; i += 2) {
+            napi_value latValue, lngValue;
+            napi_get_element(env, inputArray, i, &latValue);
+            napi_get_element(env, inputArray, i + 1, &lngValue);
+            
+            double lat, lng;
+            napi_get_value_double(env, latValue, &lat);
+            napi_get_value_double(env, lngValue, &lng);
+            
+            latLngs.emplace_back(lat, lng);
+        }
+        
+        // 调用 Map API 进行批量转换
+        std::vector<mbgl::ScreenCoordinate> coordinates = instance->map->pixelsForLatLngs(latLngs);
+        
+        // 创建输出数组
+        napi_value outputArray;
+        napi_create_array_with_length(env, length, &outputArray);
+        
+        // 填充输出数组 [x1, y1, x2, y2, ...]
+        for (size_t i = 0; i < coordinates.size(); i++) {
+            napi_value xValue, yValue;
+            napi_create_double(env, coordinates[i].x, &xValue);
+            napi_create_double(env, coordinates[i].y, &yValue);
+            
+            napi_set_element(env, outputArray, i * 2, xValue);
+            napi_set_element(env, outputArray, i * 2 + 1, yValue);
+        }
+        
+        Logger::info("NativeMapView", "pixelsForLatLngs: Converted %zu coordinates", coordinates.size());
+        return outputArray;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "pixelsForLatLngs: Exception - %s", e.what());
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_info info) {
@@ -197,40 +268,245 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
 napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "latLngsForPixels() called");
     
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现数组参数解析和结果数组返回
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:802-826
-    Logger::warn("NativeMapView", "latLngsForPixels: Not implemented - requires array parameter parsing");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "latLngsForPixels: Invalid arguments");
+        return undefined;
+    }
     
-    return undefined;
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "latLngsForPixels: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        // 解析输入数组 [x1, y1, x2, y2, ...]
+        napi_value inputArray = args.GetValue(0);
+        bool isArray;
+        napi_is_array(env, inputArray, &isArray);
+        
+        if (!isArray) {
+            Logger::error("NativeMapView", "latLngsForPixels: Input must be an array");
+            return undefined;
+        }
+        
+        uint32_t length;
+        napi_get_array_length(env, inputArray, &length);
+        
+        if (length % 2 != 0) {
+            Logger::error("NativeMapView", "latLngsForPixels: Array length must be even (x/y pairs)");
+            return undefined;
+        }
+        
+        // 构建 ScreenCoordinate 向量
+        std::vector<mbgl::ScreenCoordinate> coordinates;
+        coordinates.reserve(length / 2);
+        
+        for (uint32_t i = 0; i < length; i += 2) {
+            napi_value xValue, yValue;
+            napi_get_element(env, inputArray, i, &xValue);
+            napi_get_element(env, inputArray, i + 1, &yValue);
+            
+            double x, y;
+            napi_get_value_double(env, xValue, &x);
+            napi_get_value_double(env, yValue, &y);
+            
+            coordinates.emplace_back(x, y);
+        }
+        
+        // 调用 Map API 进行批量转换
+        std::vector<mbgl::LatLng> latLngs = instance->map->latLngsForPixels(coordinates);
+        
+        // 创建输出数组
+        napi_value outputArray;
+        napi_create_array_with_length(env, length, &outputArray);
+        
+        // 填充输出数组 [lat1, lng1, lat2, lng2, ...]
+        for (size_t i = 0; i < latLngs.size(); i++) {
+            napi_value latValue, lngValue;
+            napi_create_double(env, latLngs[i].latitude(), &latValue);
+            napi_create_double(env, latLngs[i].longitude(), &lngValue);
+            
+            napi_set_element(env, outputArray, i * 2, latValue);
+            napi_set_element(env, outputArray, i * 2 + 1, lngValue);
+        }
+        
+        Logger::info("NativeMapView", "latLngsForPixels: Converted %zu coordinates", latLngs.size());
+        return outputArray;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "latLngsForPixels: Exception - %s", e.what());
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "queryPointAnnotations() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(4);
     
-    // TODO: 需要渲染器前端支持 queryPointAnnotations
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:936-955
-    Logger::warn("NativeMapView", "queryPointAnnotations: Not implemented - requires renderer frontend support");
+    napi_value emptyArray;
+    napi_create_array(env, &emptyArray);
     
-    return undefined;
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "queryPointAnnotations: Invalid arguments");
+        return emptyArray;
+    }
+    
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "queryPointAnnotations: Failed to unwrap instance");
+        return emptyArray;
+    }
+    
+    // 检查是否正在销毁
+    if (instance->isDestroying.load()) {
+        Logger::warn("NativeMapView", "queryPointAnnotations: Instance is being destroyed");
+        return emptyArray;
+    }
+    
+    // 检查渲染器是否存在
+    if (!instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "queryPointAnnotations: HarmonyRenderer not initialized");
+        return emptyArray;
+    }
+    
+    try {
+        // 解析矩形参数：left, top, right, bottom
+        double left = args.GetDouble(0, "left");
+        double top = args.GetDouble(1, "top");
+        double right = args.GetDouble(2, "right");
+        double bottom = args.GetDouble(3, "bottom");
+        
+        if (args.HasError()) {
+            Logger::error("NativeMapView", "queryPointAnnotations: Failed to parse box coordinates");
+            return emptyArray;
+        }
+        
+        Logger::debug("NativeMapView", "queryPointAnnotations: box=[%.2f, %.2f, %.2f, %.2f]", 
+                      left, top, right, bottom);
+        
+        // 构造 ScreenBox
+        mbgl::ScreenBox box{
+            mbgl::ScreenCoordinate{left, top},
+            mbgl::ScreenCoordinate{right, bottom}
+        };
+        
+        // 调用渲染器前端查询
+        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
+        if (!rendererFrontend) {
+            Logger::error("NativeMapView", "queryPointAnnotations: RendererFrontend is null");
+            return emptyArray;
+        }
+        
+        // TODO: HarmonyRendererFrontend 需要实现 queryPointAnnotations
+        // mbgl::AnnotationIDs ids = rendererFrontend->queryPointAnnotations(box);
+        
+        Logger::warn("NativeMapView", "queryPointAnnotations: Not yet implemented in HarmonyRendererFrontend");
+        
+        // 暂时返回空数组
+        napi_value result;
+        napi_create_array(env, &result);
+        
+        return result;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "queryPointAnnotations: Exception - %s", e.what());
+        return emptyArray;
+    }
 }
 
 napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "queryShapeAnnotations() called");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(4);
     
-    // TODO: 需要渲染器前端支持 queryShapeAnnotations
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:957-975
-    Logger::warn("NativeMapView", "queryShapeAnnotations: Not implemented - requires renderer frontend support");
+    napi_value emptyArray;
+    napi_create_array(env, &emptyArray);
     
-    return undefined;
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "queryShapeAnnotations: Invalid arguments");
+        return emptyArray;
+    }
+    
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "queryShapeAnnotations: Failed to unwrap instance");
+        return emptyArray;
+    }
+    
+    // 检查是否正在销毁
+    if (instance->isDestroying.load()) {
+        Logger::warn("NativeMapView", "queryShapeAnnotations: Instance is being destroyed");
+        return emptyArray;
+    }
+    
+    // 检查渲染器是否存在
+    if (!instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "queryShapeAnnotations: HarmonyRenderer not initialized");
+        return emptyArray;
+    }
+    
+    try {
+        // 解析矩形参数：left, top, right, bottom
+        double left = args.GetDouble(0, "left");
+        double top = args.GetDouble(1, "top");
+        double right = args.GetDouble(2, "right");
+        double bottom = args.GetDouble(3, "bottom");
+        
+        if (args.HasError()) {
+            Logger::error("NativeMapView", "queryShapeAnnotations: Failed to parse box coordinates");
+            return emptyArray;
+        }
+        
+        Logger::debug("NativeMapView", "queryShapeAnnotations: box=[%.2f, %.2f, %.2f, %.2f]", 
+                      left, top, right, bottom);
+        
+        // 构造 ScreenBox
+        mbgl::ScreenBox box{
+            mbgl::ScreenCoordinate{left, top},
+            mbgl::ScreenCoordinate{right, bottom}
+        };
+        
+        // 调用渲染器前端查询
+        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
+        if (!rendererFrontend) {
+            Logger::error("NativeMapView", "queryShapeAnnotations: RendererFrontend is null");
+            return emptyArray;
+        }
+        
+        // TODO: HarmonyRendererFrontend 需要实现 queryShapeAnnotations
+        // mbgl::AnnotationIDs ids = rendererFrontend->queryShapeAnnotations(box);
+        
+        Logger::warn("NativeMapView", "queryShapeAnnotations: Not yet implemented in HarmonyRendererFrontend");
+        
+        // 暂时返回空数组
+        napi_value result;
+        napi_create_array(env, &result);
+        
+        return result;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "queryShapeAnnotations: Exception - %s", e.what());
+        return emptyArray;
+    }
 }
 
 napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info) {

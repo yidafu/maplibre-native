@@ -1,5 +1,6 @@
 import { LatLng } from '../geometry/LatLng';
 import { Icon } from './Icon';
+import { InfoWindowStyle } from './InfoWindow';
 import maplibre from 'libmaplibre.so';
 
 // 使用 NAPI Marker 类型
@@ -43,6 +44,11 @@ export class MarkerOptions {
   private _alpha: number = 1.0;
   private _rotation: number = 0;
   private _zIndex: number = 0;
+  
+  // InfoWindow 配置
+  private _infoWindowStyle?: InfoWindowStyle;
+  private _infoWindowOffsetX: number = 0;
+  private _infoWindowOffsetY: number = 0;
   
   /**
    * 设置 Marker 的位置
@@ -172,6 +178,58 @@ export class MarkerOptions {
     return this;
   }
   
+  /**
+   * 设置 InfoWindow 的样式配置
+   * 
+   * @param style InfoWindow 样式
+   * @returns MarkerOptions 实例（支持链式调用）
+   * 
+   * @example
+   * ```typescript
+   * new MarkerOptions()
+   *   .position(latLng)
+   *   .title('标题')
+   *   .infoWindowStyle({
+   *     backgroundColor: '#2196F3',
+   *     titleFontColor: Color.White,
+   *     showCloseButton: true
+   *   })
+   * ```
+   */
+  public infoWindowStyle(style: InfoWindowStyle): MarkerOptions {
+    this._infoWindowStyle = style;
+    // 如果样式中包含偏移量，也设置到偏移量字段
+    if (style.offsetX !== undefined) {
+      this._infoWindowOffsetX = style.offsetX;
+    }
+    if (style.offsetY !== undefined) {
+      this._infoWindowOffsetY = style.offsetY;
+    }
+    return this;
+  }
+  
+  /**
+   * 设置 InfoWindow 的 X 轴偏移量
+   * 
+   * @param offsetX X 轴偏移量（像素）
+   * @returns MarkerOptions 实例（支持链式调用）
+   */
+  public infoWindowOffsetX(offsetX: number): MarkerOptions {
+    this._infoWindowOffsetX = offsetX;
+    return this;
+  }
+  
+  /**
+   * 设置 InfoWindow 的 Y 轴偏移量
+   * 
+   * @param offsetY Y 轴偏移量（像素）
+   * @returns MarkerOptions 实例（支持链式调用）
+   */
+  public infoWindowOffsetY(offsetY: number): MarkerOptions {
+    this._infoWindowOffsetY = offsetY;
+    return this;
+  }
+  
   
   // ========== Getter 方法 ==========
   
@@ -244,6 +302,27 @@ export class MarkerOptions {
    */
   public getZIndex(): number {
     return this._zIndex;
+  }
+  
+  /**
+   * 获取 InfoWindow 样式配置
+   */
+  public getInfoWindowStyle(): InfoWindowStyle | undefined {
+    return this._infoWindowStyle;
+  }
+  
+  /**
+   * 获取 InfoWindow X 轴偏移量
+   */
+  public getInfoWindowOffsetX(): number {
+    return this._infoWindowOffsetX;
+  }
+  
+  /**
+   * 获取 InfoWindow Y 轴偏移量
+   */
+  public getInfoWindowOffsetY(): number {
+    return this._infoWindowOffsetY;
   }
   
   

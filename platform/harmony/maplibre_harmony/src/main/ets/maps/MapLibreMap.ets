@@ -170,28 +170,6 @@ export class MapLibreMap {
   }
   
   /**
-   * 设置 AnnotationView 相机移动监听器
-   * 当地图相机移动时，自动更新所有 AnnotationView 的位置
-   * @private
-   */
-  private setupAnnotationViewCameraListener(): void {
-    class AnnotationViewMoveListenerImpl implements OnCameraMoveListener {
-      parent: MapLibreMap;
-      
-      constructor(parent: MapLibreMap) {
-        this.parent = parent;
-      }
-      
-      onCameraMove(): void {
-        // 地图相机移动时，更新所有 AnnotationView 的位置
-        this.parent.annotationViewManager.updateAllPositions();
-      }
-    }
-    const annotationViewMoveListener = new AnnotationViewMoveListenerImpl(this);
-    this.cameraChangeDispatcher.addOnCameraMoveListener(annotationViewMoveListener);
-  }
-  
-  /**
    * 设置 Compass 相机移动监听器
    * 当地图旋转时，自动更新指南针方向
    * @private
@@ -234,9 +212,50 @@ export class MapLibreMap {
           const metersPerPixel = this.parent.getMetersPerPixelAtLatitude(this.parent.getLatLng().latitude);
           this.parent.onScaleBarUpdate(metersPerPixel);
         }
+        
+        // 同时更新 AnnotationView 位置
+        this.parent.updateAnnotationViewPositions(false);
       }
     }
     this.cameraChangeDispatcher.addOnCameraMoveListener(new ScaleBarMoveListenerImpl(this));
+  }
+  
+  /**
+   * 设置 AnnotationView 相机监听器
+   * 当地图相机变化时，更新所有 AnnotationView 的位置和变换
+   * @private
+   */
+  private setupAnnotationViewCameraListener(): void {
+    // 相机移动监听：更新视图位置
+    class AnnotationViewMoveListenerImpl implements OnCameraMoveListener {
+      parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
+      }
+      
+      onCameraMove(): void {
+        // 相机移动时更新位置（bearing/pitch 没变）
+        this.parent.updateAnnotationViewPositions(false);
+      }
+    }
+    
+    // 相机空闲监听：确保最终状态正确
+    class AnnotationViewIdleListenerImpl implements OnCameraIdleListener {
+      parent: MapLibreMap;
+      
+      constructor(parent: MapLibreMap) {
+        this.parent = parent;
+      }
+      
+      onCameraIdle(): void {
+        // 相机停止时更新，包括 bearing/pitch 的变化
+        this.parent.updateAnnotationViewPositions(true);
+      }
+    }
+    
+    this.cameraChangeDispatcher.addOnCameraMoveListener(new AnnotationViewMoveListenerImpl(this));
+    this.cameraChangeDispatcher.addOnCameraIdleListener(new AnnotationViewIdleListenerImpl(this));
   }
   
   /**
@@ -319,19 +338,63 @@ export class MapLibreMap {
   }
 
   /**
-   * 销毁地图
+   * 销毁地图（参考 Android MapLibreMap.onDestroy()）
    */
   public destroy(): void {
     if (this.destroyed) {
       return;
     }
+    
+    console.info('MapLibreMap: Starting destroy sequence (Android/iOS pattern)...');
     this.destroyed = true;
     
-    // 销毁位置组件
-    this.locationComponent.onDestroy();
-    
-    // NativeMapView 没有 destroy 方法，资源由系统管理
-    // this.nativeMapView.destroy();
+    try {
+      // 1. 清理所有监听器数组（参考 Android）
+      console.debug('MapLibreMap: Clearing all listeners...');
+      this.styleLoadedListeners = [];
+      this.styleLoadErrorListeners = [];
+      this.pendingOperations = [];
+      
+      // 2. 取消所有动画
+      if (this.animationTimerId !== null) {
+        clearTimeout(this.animationTimerId);
+        this.animationTimerId = null;
+      }
+      this.pendingAnimationCallback = null;
+      this.animationCancelled = false;
+      
+      // 3. 清理 MarkerManager（参考 Android）
+      console.debug('MapLibreMap: Clearing MarkerManager...');
+      this.markerManager.clear();
+      
+      // 4. 清理 InfoWindowManager
+      console.debug('MapLibreMap: Clearing InfoWindowManager...');
+      this.infoWindowManager.closeAll();
+      
+      // 5. 清理 AnnotationViewManager
+      console.debug('MapLibreMap: Clearing AnnotationViewManager...');
+      this.annotationViewManager.clear();
+      
+      // 6. 销毁位置组件（参考 Android）
+      console.debug('MapLibreMap: Destroying LocationComponent...');
+      this.locationComponent.onDestroy();
+      
+      // 7. 清理相机调度器
+      console.debug('MapLibreMap: Clearing CameraChangeDispatcher...');
+      // CameraChangeDispatcher 会在下面的 NativeMapView destroy 中清理监听器
+      
+      // 8. 清理样式引用
+      this.style = null;
+      this.styleLoaded = false;
+      
+      // 9. 清理 NativeMapView 引用（实际销毁在 NativeMapView 层）
+      // Native 资源会在 NativeMapView.aboutToDisappear() 中异步清理
+      
+      console.info('MapLibreMap: ✅ Destroy sequence completed');
+      
+    } catch (error) {
+      console.error('MapLibreMap: Error during destroy:', error);
+    }
   }
 
   /**
@@ -1758,6 +1821,34 @@ export class MapLibreMap {
   public isAnnotationSelected(marker: Marker): boolean {
     if (this.destroyed) return false;
     return this.annotationViewManager.isAnnotationSelected(marker);
+  }
+  
+  /**
+   * 获取所有可见的 Annotations
+   * 
+   * 参考: iOS MLNMapView visibleAnnotations
+   * 
+   * @returns 当前屏幕可见的 Marker 数组
+   */
+  public getVisibleAnnotations(): Marker[] {
+    if (this.destroyed) return [];
+    
+    // 获取所有具有自定义视图的 Marker
+    const allViews = this.annotationViewManager.getVisibleViews();
+    return allViews.map(viewData => viewData.marker);
+  }
+  
+  /**
+   * 更新所有 AnnotationView 的位置
+   * 
+   * 在地图相机变化时自动调用，更新所有自定义视图的屏幕坐标
+   * 
+   * @param cameraChanged 相机参数是否发生变化（bearing/pitch）
+   * @private
+   */
+  private updateAnnotationViewPositions(cameraChanged: boolean = false): void {
+    if (this.destroyed) return;
+    this.annotationViewManager.batchUpdatePositions(cameraChanged);
   }
   
   // ==================== 特性查询 (Feature Query) ====================

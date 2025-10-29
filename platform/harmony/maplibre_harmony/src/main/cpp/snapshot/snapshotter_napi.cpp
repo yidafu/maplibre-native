@@ -100,7 +100,108 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
     }
     options.showLogo = showLogo;
     
-    // TODO: 解析 camera, region, styleJSON等可选参数
+    // 解析可选参数
+    
+    // 解析 styleJSON（可选）
+    napi_value styleJSONVal;
+    status = napi_get_named_property(env, optionsObj, "styleJSON", &styleJSONVal);
+    if (status == napi_ok) {
+        napi_valuetype styleJSONType;
+        napi_typeof(env, styleJSONVal, &styleJSONType);
+        if (styleJSONType == napi_string) {
+            size_t jsonSize;
+            napi_get_value_string_utf8(env, styleJSONVal, nullptr, 0, &jsonSize);
+            if (jsonSize > 0) {
+                std::string styleJSON(jsonSize, '\0');
+                napi_get_value_string_utf8(env, styleJSONVal, &styleJSON[0], jsonSize + 1, &jsonSize);
+                options.styleJSON = styleJSON;
+                Logger::info("SnapshotterNAPI", "Using styleJSON: %zu bytes", jsonSize);
+            }
+        }
+    }
+    
+    // 解析 camera（可选）
+    napi_value cameraVal;
+    status = napi_get_named_property(env, optionsObj, "camera", &cameraVal);
+    if (status == napi_ok) {
+        napi_valuetype cameraType;
+        napi_typeof(env, cameraVal, &cameraType);
+        if (cameraType == napi_object) {
+            // 解析 camera position
+            mbgl::CameraOptions camera;
+            
+            // 解析 target (LatLng)
+            napi_value targetVal;
+            if (napi_get_named_property(env, cameraVal, "target", &targetVal) == napi_ok) {
+                napi_value latVal, lngVal;
+                napi_get_named_property(env, targetVal, "latitude", &latVal);
+                napi_get_named_property(env, targetVal, "longitude", &lngVal);
+                double lat, lng;
+                napi_get_value_double(env, latVal, &lat);
+                napi_get_value_double(env, lngVal, &lng);
+                camera.center = mbgl::LatLng(lat, lng);
+                Logger::debug("SnapshotterNAPI", "Camera target: lat=%.6f, lng=%.6f", lat, lng);
+            }
+            
+            // 解析 zoom
+            napi_value zoomVal;
+            if (napi_get_named_property(env, cameraVal, "zoom", &zoomVal) == napi_ok) {
+                double zoom;
+                napi_get_value_double(env, zoomVal, &zoom);
+                camera.zoom = zoom;
+                Logger::debug("SnapshotterNAPI", "Camera zoom: %.2f", zoom);
+            }
+            
+            // 解析 bearing
+            napi_value bearingVal;
+            if (napi_get_named_property(env, cameraVal, "bearing", &bearingVal) == napi_ok) {
+                double bearing;
+                napi_get_value_double(env, bearingVal, &bearing);
+                camera.bearing = bearing;
+                Logger::debug("SnapshotterNAPI", "Camera bearing: %.2f", bearing);
+            }
+            
+            // 解析 tilt (pitch)
+            napi_value tiltVal;
+            if (napi_get_named_property(env, cameraVal, "tilt", &tiltVal) == napi_ok) {
+                double tilt;
+                napi_get_value_double(env, tiltVal, &tilt);
+                camera.pitch = tilt;
+                Logger::debug("SnapshotterNAPI", "Camera tilt: %.2f", tilt);
+            }
+            
+            options.camera = camera;
+        }
+    }
+    
+    // 解析 region（LatLngBounds，可选）
+    napi_value regionVal;
+    status = napi_get_named_property(env, optionsObj, "region", &regionVal);
+    if (status == napi_ok) {
+        napi_valuetype regionType;
+        napi_typeof(env, regionVal, &regionType);
+        if (regionType == napi_object) {
+            napi_value northVal, southVal, eastVal, westVal;
+            napi_get_named_property(env, regionVal, "north", &northVal);
+            napi_get_named_property(env, regionVal, "south", &southVal);
+            napi_get_named_property(env, regionVal, "east", &eastVal);
+            napi_get_named_property(env, regionVal, "west", &westVal);
+            
+            double north, south, east, west;
+            napi_get_value_double(env, northVal, &north);
+            napi_get_value_double(env, southVal, &south);
+            napi_get_value_double(env, eastVal, &east);
+            napi_get_value_double(env, westVal, &west);
+            
+            mbgl::LatLngBounds bounds = mbgl::LatLngBounds::hull(
+                mbgl::LatLng(north, east),
+                mbgl::LatLng(south, west)
+            );
+            options.region = bounds;
+            Logger::debug("SnapshotterNAPI", "Region bounds: N=%.6f, S=%.6f, E=%.6f, W=%.6f", 
+                         north, south, east, west);
+        }
+    }
     
     // 创建资源选项
     // 注意：这里简化处理，实际应该从context获取正确的缓存路径
@@ -224,7 +325,20 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
                 napi_set_named_property(env, resultObj, "width", widthVal);
                 napi_set_named_property(env, resultObj, "height", heightVal);
                 
-                // TODO: 添加 attributions
+                // 添加 attributions
+                if (!attributions.empty()) {
+                    napi_value attributionsArray;
+                    napi_create_array_with_length(env, attributions.size(), &attributionsArray);
+                    
+                    for (size_t i = 0; i < attributions.size(); i++) {
+                        napi_value attrValue;
+                        napi_create_string_utf8(env, attributions[i].c_str(), NAPI_AUTO_LENGTH, &attrValue);
+                        napi_set_element(env, attributionsArray, i, attrValue);
+                    }
+                    
+                    napi_set_named_property(env, resultObj, "attributions", attributionsArray);
+                    Logger::debug("SnapshotterNAPI", "Added %zu attributions", attributions.size());
+                }
                 
                 // 调用 callback(null, result)
                 napi_value argv[2];
@@ -328,9 +442,47 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     }
 
     // 解析 CameraPosition
-    // TODO: 实现 CameraPosition 的解析
-    // mbgl::CameraOptions camera = ParseCameraPosition(env, args[0]);
-    // snapshotterInstance->snapshotter->setCameraOptions(camera);
+    napi_value cameraObj = args[0];
+    mbgl::CameraOptions camera;
+    
+    // 解析 target (LatLng)
+    napi_value targetVal;
+    if (napi_get_named_property(env, cameraObj, "target", &targetVal) == napi_ok) {
+        napi_value latVal, lngVal;
+        napi_get_named_property(env, targetVal, "latitude", &latVal);
+        napi_get_named_property(env, targetVal, "longitude", &lngVal);
+        double lat, lng;
+        napi_get_value_double(env, latVal, &lat);
+        napi_get_value_double(env, lngVal, &lng);
+        camera.center = mbgl::LatLng(lat, lng);
+    }
+    
+    // 解析 zoom
+    napi_value zoomVal;
+    if (napi_get_named_property(env, cameraObj, "zoom", &zoomVal) == napi_ok) {
+        double zoom;
+        napi_get_value_double(env, zoomVal, &zoom);
+        camera.zoom = zoom;
+    }
+    
+    // 解析 bearing
+    napi_value bearingVal;
+    if (napi_get_named_property(env, cameraObj, "bearing", &bearingVal) == napi_ok) {
+        double bearing;
+        napi_get_value_double(env, bearingVal, &bearing);
+        camera.bearing = bearing;
+    }
+    
+    // 解析 tilt (pitch)
+    napi_value tiltVal;
+    if (napi_get_named_property(env, cameraObj, "tilt", &tiltVal) == napi_ok) {
+        double tilt;
+        napi_get_value_double(env, tiltVal, &tilt);
+        camera.pitch = tilt;
+    }
+    
+    snapshotterInstance->snapshotter->setCameraOptions(camera);
+    Logger::info("SnapshotterNAPI", "Camera position set");
 
     return nullptr;
 }

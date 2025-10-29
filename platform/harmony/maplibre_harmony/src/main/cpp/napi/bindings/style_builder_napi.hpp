@@ -46,11 +46,26 @@ private:
     std::string styleUri;
     std::string styleJson;
     
-    // 预加载的资源（存储为 NAPI 对象引用）
-    // TODO: 实现预加载 sources/layers/images
-    // std::vector<napi_ref> sources;
-    // std::vector<napi_ref> layers;
-    // std::vector<napi_ref> images;
+    // 预加载的资源
+    struct ImageData {
+        std::string id;
+        std::vector<uint8_t> data;
+        uint32_t width;
+        uint32_t height;
+        float pixelRatio;
+    };
+    
+    struct TransitionOptions {
+        uint64_t duration = 300;  // milliseconds
+        uint64_t delay = 0;
+        bool enablePlacementTransitions = true;
+    };
+    
+    // 预加载的资源（存储 JSON 字符串或对象序列化）
+    std::vector<std::string> preloadedSourcesJson;
+    std::vector<std::string> preloadedLayersJson;
+    std::vector<ImageData> preloadedImages;
+    TransitionOptions transitionOptions;
 };
 
 } // namespace harmony

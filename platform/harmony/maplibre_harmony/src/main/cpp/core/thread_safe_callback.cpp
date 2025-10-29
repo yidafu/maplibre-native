@@ -248,10 +248,10 @@ void ThreadSafeCallback::Finalize(
     void* finalize_data,
     void* finalize_hint
 ) {
-    auto* instance = static_cast<ThreadSafeCallback*>(finalize_hint);
-    if (instance != nullptr) {
-        Logger::debug("ThreadSafeCallback", "Finalized: %s", instance->resourceName_.c_str());
-    }
+    // ✅ 修复 SIGSEGV：不访问 instance 成员
+    // 原因：Finalize 可能在对象析构后调用，访问成员变量会导致崩溃
+    // 解决：只记录 Finalize 被调用，不访问对象状态
+    Logger::debug("ThreadSafeCallback", "Finalize callback invoked");
 }
 
 } // namespace harmony

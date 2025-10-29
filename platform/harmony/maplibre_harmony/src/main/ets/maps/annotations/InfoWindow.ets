@@ -30,6 +30,18 @@ export interface InfoWindowStyle {
   padding?: number;
   maxWidth?: number;
   animated?: boolean;
+  
+  // 附件视图支持（参考 iOS MLNCalloutView）
+  leftAccessoryBuilder?: () => void;   // @Builder 函数，用于自定义左侧附件
+  rightAccessoryBuilder?: () => void;  // @Builder 函数，用于自定义右侧附件
+  
+  // 附加功能
+  showCloseButton?: boolean;           // 是否显示关闭按钮
+  thumbnailImage?: ResourceStr;        // 缩略图（显示在标题左侧）
+  
+  // InfoWindow 偏移量
+  offsetX?: number;                    // X 轴偏移量（像素）
+  offsetY?: number;                    // Y 轴偏移量（像素）
 }
 
 /**
@@ -65,8 +77,18 @@ export class InfoWindow {
   private onCloseCallback?: (marker: Marker) => void;
   private onUpdateCallback?: (marker: Marker, position: InfoWindowPosition) => void;
   
-  constructor(marker: Marker) {
+  constructor(marker: Marker, style?: InfoWindowStyle) {
     this.marker = marker;
+    if (style) {
+      this.setStyle(style);
+      // 从样式中应用偏移量
+      if (style.offsetX !== undefined) {
+        this.offsetX = style.offsetX;
+      }
+      if (style.offsetY !== undefined) {
+        this.offsetY = style.offsetY;
+      }
+    }
   }
   
   /**
@@ -327,16 +349,23 @@ export class InfoWindow {
  * InfoWindowComponent - InfoWindow UI 组件
  * 
  * 使用 Popup 显示 Marker 信息
- * 支持动态箭头、自定义样式、动画效果
+ * 支持动态箭头、自定义样式、动画效果、附件视图
+ * 
+ * 参考:
+ * - Android: InfoWindow with custom views
+ * - iOS: MLNCalloutView with accessory views
  */
 @Component
 export struct InfoWindowComponent {
   @Prop marker: Marker;
   @Prop arrowOffsetX: number = 0; // 箭头相对于中心的偏移量
-  @Prop customContent?: object;
-  @Prop customStyle?: InfoWindowStyle;
+  @Prop customContent: object | null = null;
+  @Prop customStyle: InfoWindowStyle | null = null;
   @State windowOpacity: number = 0; // 用于动画（重命名避免与 CustomComponent.opacity 冲突）
   @State windowScale: number = 0.8; // 用于动画（重命名避免与 CustomComponent.scale 冲突）
+  
+  @BuilderParam leftAccessoryBuilder?: () => void;   // 左侧附件视图
+  @BuilderParam rightAccessoryBuilder?: () => void;  // 右侧附件视图
   
   onWindowClick?: () => void; // 重命名避免与 CustomComponent.onClick 冲突
   onLongClick?: () => void;
@@ -359,33 +388,98 @@ export struct InfoWindowComponent {
     Column() {
       // 内容区域
       Column() {
-        // 标题
-        if (this.marker.getTitle()) {
-          Text(this.marker.getTitle())
-            .fontSize(this.customStyle?.titleFontSize ?? 16)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.customStyle?.titleFontColor ?? '#333333')
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .width('100%')
+        // 顶部：关闭按钮
+        if (this.customStyle?.showCloseButton) {
+          Row() {
+            Blank()
+            
+            Text('×')
+              .fontSize(24)
+              .fontColor('#999999')
+              .width(32)
+              .height(32)
+              .textAlign(TextAlign.Center)
+              .onClick(() => {
+                console.info('[InfoWindow] Close button clicked');
+                if (this.onClose) {
+                  this.onClose();
+                }
+              })
+          }
+          .width('100%')
+          .height(32)
         }
         
-        // 描述
-        if (this.marker.getSnippet()) {
-          Text(this.marker.getSnippet())
-            .fontSize(this.customStyle?.snippetFontSize ?? 14)
-            .fontColor(this.customStyle?.snippetFontColor ?? '#666666')
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .margin({ top: 4 })
-            .width('100%')
+        // 主内容区域：左附件 + 内容 + 右附件
+        Row() {
+          // 左侧附件视图（参考 iOS leftAccessoryView）
+          if (this.leftAccessoryBuilder || this.customStyle?.leftAccessoryBuilder) {
+            Column() {
+              if (this.leftAccessoryBuilder) {
+                this.leftAccessoryBuilder()
+              }
+            }
+            .margin({ right: 8 })
+          }
+          
+          // 中间内容区域
+          Column() {
+            // 标题行：缩略图 + 标题
+            if (this.marker.getTitle()) {
+              Row() {
+                // 缩略图
+                if (this.customStyle?.thumbnailImage) {
+                  Image(this.customStyle.thumbnailImage)
+                    .width(32)
+                    .height(32)
+                    .borderRadius(4)
+                    .margin({ right: 8 })
+                }
+                
+                // 标题
+                Text(this.marker.getTitle())
+                  .fontSize(this.customStyle?.titleFontSize ?? 16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor(this.customStyle?.titleFontColor ?? '#333333')
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .layoutWeight(1)
+              }
+              .width('100%')
+              .alignItems(VerticalAlign.Center)
+            }
+            
+            // 描述
+            if (this.marker.getSnippet()) {
+              Text(this.marker.getSnippet())
+                .fontSize(this.customStyle?.snippetFontSize ?? 14)
+                .fontColor(this.customStyle?.snippetFontColor ?? '#666666')
+                .maxLines(2)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .margin({ top: 4 })
+                .width('100%')
+            }
+            
+            // 自定义内容（TODO: 等待 SDK 支持）
+            // if (this.customContent) {
+            //   ContentSlot(this.customContent)
+            //     .margin({ top: 8 })
+            // }
+          }
+          .layoutWeight(1)
+          
+          // 右侧附件视图（参考 iOS rightAccessoryView）
+          if (this.rightAccessoryBuilder || this.customStyle?.rightAccessoryBuilder) {
+            Column() {
+              if (this.rightAccessoryBuilder) {
+                this.rightAccessoryBuilder()
+              }
+            }
+            .margin({ left: 8 })
+          }
         }
-        
-        // 自定义内容（TODO: 等待 SDK 支持）
-        // if (this.customContent) {
-        //   ContentSlot(this.customContent)
-        //     .margin({ top: 8 })
-        // }
+        .width('100%')
+        .alignItems(VerticalAlign.Top)
       }
       .padding(this.customStyle?.padding ?? 12)
       .backgroundColor(this.customStyle?.backgroundColor ?? Color.White)

@@ -4,6 +4,10 @@ import { LatLng } from '../geometry/LatLng';
 
 type Marker = maplibre.Marker;
 
+// 常量定义（参考 iOS/mbgl）
+const PITCH_MAX_DEGREES = 60; // mbgl::util::PITCH_MAX 约为 60度
+const DEFAULT_VIEW_SIZE = 40;
+
 /**
  * 拖拽状态枚举
  * 
@@ -106,8 +110,12 @@ export struct AnnotationView {
   @BuilderParam customContentBuilder?: () => void;
   
   // 视图尺寸（用于计算位置）
-  private viewWidth: number = 40;
-  private viewHeight: number = 40;
+  private viewWidth: number = DEFAULT_VIEW_SIZE;
+  private viewHeight: number = DEFAULT_VIEW_SIZE;
+  
+  // Transform 跟踪（用于增量更新）
+  private lastAppliedScale: number = 1;
+  private lastAppliedRotation: number = 0;
   
   // 拖拽相关
   private dragStartX: number = 0;
@@ -135,6 +143,9 @@ export struct AnnotationView {
   
   /**
    * 准备复用（重置状态）
+   * 
+   * 参考: iOS MLNAnnotationView prepareForReuse
+   * 当视图从复用池中取出时调用，重置所有可变状态
    */
   public prepareForReuse(): void {
     this.viewState.selected = false;
@@ -142,6 +153,9 @@ export struct AnnotationView {
     this.viewOpacity = 1;
     this.viewScale = 1;
     this.rotation = 0;
+    this.lastAppliedScale = 1;
+    this.lastAppliedRotation = 0;
+    this.updateComputedProperties();
   }
   
   /**
@@ -170,17 +184,44 @@ export struct AnnotationView {
   
   /**
    * 设置拖拽状态
+   * 
+   * 参考: iOS MLNAnnotationView setDragState:animated:
+   * 根据不同的拖拽状态应用不同的动画效果
    */
   public setDragState(state: DragState, animated: boolean): void {
+    const prevState = this.viewState.dragState;
     this.viewState.dragState = state;
     
-    // animation 属性会自动应用到状态变化
-    if (state === DragState.Dragging) {
-      this.viewScale = 1.3;
-      this.viewOpacity = 0.9;
-    } else if (state === DragState.None) {
-      this.viewScale = 1.0;
-      this.viewOpacity = 1.0;
+    // 参考 iOS MBXAnnotationView 的动画实现
+    switch (state) {
+      case DragState.None:
+        this.viewScale = 1.0;
+        this.viewOpacity = 1.0;
+        break;
+        
+      case DragState.Starting:
+        // 开始拖拽时快速放大（弹性效果）
+        this.viewScale = 1.5;
+        this.viewOpacity = 0.95;
+        break;
+        
+      case DragState.Dragging:
+        // 拖拽中保持放大状态
+        this.viewScale = 1.3;
+        this.viewOpacity = 0.9;
+        break;
+        
+      case DragState.Canceling:
+        // 取消时快速恢复
+        this.viewScale = 1.0;
+        this.viewOpacity = 1.0;
+        break;
+        
+      case DragState.Ending:
+        // 结束时从放大状态缓慢恢复
+        this.viewScale = 1.0;
+        this.viewOpacity = 1.0;
+        break;
     }
     
     this.updateComputedProperties();
@@ -224,29 +265,60 @@ export struct AnnotationView {
   
   /**
    * 计算缩放比例（根据距离）
+   * 
+   * 参考: iOS MLNAnnotationView updateScaleTransformForViewingDistance
+   * 
+   * 实现原理：
+   * 1. 计算视图在屏幕上的相对位置（0.0 = 顶部，1.0 = 底部）
+   * 2. 计算最大缩放减少量 = 1.0 - 相对位置
+   * 3. 计算倾斜强度 = 当前倾斜角度 / 最大倾斜角度
+   * 4. 最终缩放 = 1.0 - (最大缩放减少量 * 倾斜强度)
+   * 
+   * 这样越靠近地平线的视图越小，模拟透视效果
    */
   private calculateScale(): number {
     let baseScale = this.viewScale;
     
-    if (this.viewState.scalesWithViewingDistance && this.mapPitch > 0) {
-      // 根据地图倾斜角度和位置计算缩放
-      // 越靠近屏幕顶部（地平线）越小，越靠近底部越大
-      const normalizedY = this.screenY / this.screenHeight;
-      const scaleFactor = 0.5 + (normalizedY * 0.5); // 0.5 到 1.0
-      baseScale *= Math.max(0.5, Math.min(1.5, scaleFactor));
+    // 如果未启用或拖拽中，不应用距离缩放
+    if (!this.viewState.scalesWithViewingDistance || 
+        this.viewState.dragState === DragState.Dragging ||
+        this.screenHeight <= 0 ||
+        this.mapPitch <= 0) {
+      return baseScale;
     }
     
-    return baseScale;
+    // 计算视图中心在屏幕上的归一化 Y 位置 (0.0 = 顶部, 1.0 = 底部)
+    const normalizedY = Math.max(0, Math.min(1, this.screenY / this.screenHeight));
+    
+    // 最大缩放减少量：越靠近顶部（地平线），减少量越大
+    const maxScaleReduction = 1.0 - normalizedY;
+    
+    // 倾斜强度：当前倾斜角度占最大倾斜角度的比例
+    const pitch = Math.max(0, this.mapPitch); // 防止负值
+    const pitchIntensity = Math.min(1.0, pitch / PITCH_MAX_DEGREES);
+    
+    // 计算倾斜调整后的缩放比例
+    // pitchAdjustedScale 范围从 1.0（无倾斜）到 0.0（最大倾斜且在顶部）
+    const pitchAdjustedScale = 1.0 - (maxScaleReduction * pitchIntensity);
+    
+    // 应用缩放，确保不会太小
+    const distanceScale = Math.max(0.3, pitchAdjustedScale);
+    
+    return baseScale * distanceScale;
   }
   
   /**
    * 计算旋转角度
+   * 
+   * 参考: iOS MLNAnnotationView updateRotateTransform
    */
   private calculateRotation(): number {
     let rotation = this.marker.getRotation();
     
+    // 如果启用跟随地图旋转，叠加地图方向
     if (this.viewState.rotatesToMatchCamera) {
-      rotation += this.mapBearing;
+      // mapBearing 是顺时针角度，需要取负值以匹配 iOS 行为
+      rotation -= this.mapBearing;
     }
     
     return rotation;
@@ -254,6 +326,9 @@ export struct AnnotationView {
   
   /**
    * 创建手势
+   * 
+   * 组合点击、长按和拖拽手势
+   * 参考: iOS MLNAnnotationView 的手势识别器配置
    */
   private createGestures(): GestureType {
     if (!this.viewState.enabled) {
@@ -271,21 +346,51 @@ export struct AnnotationView {
         }
       });
     
-    // 如果可拖拽，添加拖拽手势
+    // 如果可拖拽，添加拖拽手势组合
     if (this.viewState.draggable) {
-      return GestureGroup(GestureMode.Exclusive,
-        // 长按开始拖拽
-        LongPressGesture({ fingers: 1, repeat: false, duration: 500 })
-          .onAction((event: GestureEvent) => {
-            this.startDrag(event);
-          })
-          .onActionEnd(() => {
-            // 如果没有进入拖拽状态，则当作点击
-            if (this.viewState.dragState === DragState.Starting) {
-              this.cancelDrag();
-              this.setSelected(!this.viewState.selected, true);
-            }
-          }),
+      // 拖拽手势（Pan）
+      const panGesture = PanGesture({ fingers: 1, distance: 5 })
+        .onActionStart((event: GestureEvent) => {
+          // Pan 开始时检查是否已经在拖拽状态
+          if (this.viewState.dragState === DragState.Starting ||
+              this.viewState.dragState === DragState.Dragging) {
+            this.setDragState(DragState.Dragging, false);
+          }
+        })
+        .onActionUpdate((event: GestureEvent) => {
+          if (this.viewState.dragState === DragState.Dragging) {
+            this.updateDrag(event);
+            this.updateComputedProperties();
+          }
+        })
+        .onActionEnd((event: GestureEvent) => {
+          if (this.viewState.dragState === DragState.Dragging) {
+            this.endDrag(event);
+          }
+        })
+        .onActionCancel(() => {
+          if (this.viewState.dragState !== DragState.None) {
+            this.cancelDrag();
+          }
+        });
+      
+      // 长按手势用于启动拖拽
+      const longPressGesture = LongPressGesture({ fingers: 1, repeat: false, duration: 500 })
+        .onAction((event: GestureEvent) => {
+          this.startDrag(event);
+        })
+        .onActionEnd(() => {
+          // 如果长按结束但没有进入拖拽状态，当作点击
+          if (this.viewState.dragState === DragState.Starting) {
+            this.cancelDrag();
+            this.setSelected(!this.viewState.selected, true);
+          }
+        });
+      
+      // 组合手势：长按 + 拖动（序列）或 点击（独立）
+      return GestureGroup(GestureMode.Parallel,
+        // 拖拽序列：长按后可以拖动
+        GestureGroup(GestureMode.Sequence, longPressGesture, panGesture),
         // 普通点击
         tapGesture
       );
@@ -370,6 +475,45 @@ export struct AnnotationView {
     }, 150);
   }
   
+  /**
+   * 获取当前动画曲线
+   * 根据不同的状态返回不同的动画曲线
+   * 
+   * 注意：由于 Harmony SDK 限制，使用基础曲线类型
+   * 理想情况下应该使用 SpringMotion 或 Spring，但这些在当前 SDK 版本中不可用
+   */
+  private getAnimationCurve(): Curve {
+    switch (this.viewState.dragState) {
+      case DragState.Starting:
+        // 开始拖拽：快速加速
+        return Curve.FastOutSlowIn;
+      case DragState.Ending:
+        // 结束拖拽：缓慢结束
+        return Curve.FastOutSlowIn;
+      case DragState.Canceling:
+        // 取消拖拽：快速恢复
+        return Curve.FastOutSlowIn;
+      default:
+        // 默认：平滑过渡
+        return Curve.EaseOut;
+    }
+  }
+  
+  /**
+   * 获取动画时长
+   */
+  private getAnimationDuration(): number {
+    switch (this.viewState.dragState) {
+      case DragState.Starting:
+      case DragState.Ending:
+        return 400; // 参考 iOS 的 0.4 秒
+      case DragState.Canceling:
+        return 200;
+      default:
+        return 250;
+    }
+  }
+  
   build() {
     Stack() {
       if (this.customContentBuilder) {
@@ -388,9 +532,14 @@ export struct AnnotationView {
     .opacity(this.viewOpacity * this.marker.getAlpha())
     .scale({ x: this.computedScale, y: this.computedScale })
     .rotate({ angle: this.computedRotation })
-    .animation({ duration: 200, curve: Curve.EaseOut })
+    .animation({
+      duration: this.getAnimationDuration(),
+      curve: this.getAnimationCurve(),
+      tempo: 1.0
+    })
     .visibility(this.visible ? Visibility.Visible : Visibility.None)
     .gesture(this.createGestures())
+    .zIndex(this.viewState.selected ? 1000 : (this.viewState.dragState !== DragState.None ? 999 : 1))
     .onAreaChange((oldValue: Area, newValue: Area) => {
       // 更新视图尺寸
       this.viewWidth = Number(newValue.width);

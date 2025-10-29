@@ -12,8 +12,44 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
+// ✅ 架构修复：线程安全辅助方法实现
+bool NativeMapView::isOnRenderThread() const {
+    if (!harmonyRenderer) {
+        return false;
+    }
+    return harmonyRenderer->isOnRenderThread();
+}
+
+void NativeMapView::runOnRenderThread(std::function<void()>&& fn) {
+    if (!harmonyRenderer) {
+        Logger::error("NativeMapView", "❌ runOnRenderThread: harmonyRenderer is null");
+        return;
+    }
+    harmonyRenderer->runOnRenderThread(std::move(fn));
+}
+
 void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    // ✅ 架构修复：确保回调在渲染线程上执行
+    if (!isOnRenderThread()) {
+        Logger::debug("NativeMapView", "onCameraWillChange dispatching to render thread");
+        runOnRenderThread([this, mode]() {
+            if (isDestroying.load(std::memory_order_acquire)) return;
+            Logger::debug("NativeMapView", "onCameraWillChange [渲染线程]");
+            
+            if (callbackManager_) {
+                bool animated = (mode == MapObserver::CameraChangeMode::Animated);
+                callbackManager_->InvokeCallback("onCameraWillChange", [animated](napi_env env) {
+                    napi_value argv[1];
+                    napi_get_boolean(env, animated, &argv[0]);
+                    return argv[0];
+                });
+            }
+        });
+        return;
+    }
+    
     Logger::debug("NativeMapView", "onCameraWillChange");
     
     // 通知监听器
@@ -29,6 +65,20 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
 
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    // ✅ 架构修复：确保回调在渲染线程上执行
+    if (!isOnRenderThread()) {
+        Logger::debug("NativeMapView", "onCameraIsChanging dispatching to render thread");
+        runOnRenderThread([this]() {
+            if (isDestroying.load(std::memory_order_acquire)) return;
+            Logger::debug("NativeMapView", "onCameraIsChanging [渲染线程]");
+            if (callbackManager_) {
+                callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
+            }
+        });
+        return;
+    }
+    
     Logger::debug("NativeMapView", "onCameraIsChanging");
     
     // 通知监听器
@@ -39,6 +89,26 @@ void NativeMapView::onCameraIsChanging() {
 
 void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    // ✅ 架构修复：确保回调在渲染线程上执行
+    if (!isOnRenderThread()) {
+        Logger::debug("NativeMapView", "onCameraDidChange dispatching to render thread");
+        runOnRenderThread([this, mode]() {
+            if (isDestroying.load(std::memory_order_acquire)) return;
+            Logger::debug("NativeMapView", "onCameraDidChange [渲染线程]");
+            
+            if (callbackManager_) {
+                bool animated = (mode == MapObserver::CameraChangeMode::Animated);
+                callbackManager_->InvokeCallback("onCameraDidChange", [animated](napi_env env) {
+                    napi_value argv[1];
+                    napi_get_boolean(env, animated, &argv[0]);
+                    return argv[0];
+                });
+            }
+        });
+        return;
+    }
+    
     Logger::debug("NativeMapView", "onCameraDidChange");
     
     // 通知监听器
@@ -139,12 +209,23 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
         return;
     }
     
+    // ⚠️ 重要：onDidFinishRenderingFrame 本身就在渲染线程被 Renderer 调用
+    // 不应该被分发！分发会导致白屏（渲染无法完成）
+    
     // 通知监听器（带渲染统计信息）
     if (callbackManager_) {
         bool fully = (status.mode == MapObserver::RenderMode::Full);
         // 使用 renderingStats 中的实际数据
-        double encodingTime = 0.0; // TODO: 从 status.renderingStats 中获取实际值
-        double renderingTime = 0.0; // TODO: 从 status.renderingStats 中获取实际值
+        // 从 renderingStats 获取实际的编码和渲染时间
+        const auto& stats = status.renderingStats;
+        // encodingTime 和 renderingTime 已经是秒为单位，转换为毫秒
+        double encodingTime = stats.encodingTime * 1000.0;
+        double renderingTime = stats.renderingTime * 1000.0;
+        
+        if (encodingTime > 0.0 || renderingTime > 0.0) {
+            Logger::debug("NativeMapView", "Rendering stats - encoding: %.2fms, rendering: %.2fms", 
+                         encodingTime, renderingTime);
+        }
         
         callbackManager_->InvokeCallback("onDidFinishRenderingFrame", [fully, encodingTime, renderingTime](napi_env env) {
             napi_value argv[3];
@@ -174,6 +255,9 @@ void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
     }
     
     try {
+        // ⚠️ 重要：onDidFinishRenderingMap 本身就在渲染线程被 Renderer 调用
+        // 不应该被分发！分发会导致渲染流程中断
+        
         Logger::debug("NativeMapView", "onDidFinishRenderingMap");
         
         // 通知监听器
@@ -208,6 +292,27 @@ void NativeMapView::onDidFinishLoadingStyle() {
     
     if (isDestroying.load(std::memory_order_acquire)) {
         Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle: Instance is destroying, skipping callback");
+        return;
+    }
+    
+    // ✅ 架构修复：确保回调在渲染线程上执行
+    if (!isOnRenderThread()) {
+        Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle called from wrong thread! Dispatching to render thread.");
+        
+        // 切换到渲染线程执行
+        runOnRenderThread([this]() {
+            if (isDestroying.load(std::memory_order_acquire)) return;
+            
+            Logger::info("NativeMapView", "🎨 onDidFinishLoadingStyle [渲染线程]");
+            
+            // 通知 Android 风格的监听器
+            if (callbackManager_) {
+                callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingStyle");
+            }
+            
+            // 通知样式加载完成（旧的监听器）
+            notifyStyleLoaded();
+        });
         return;
     }
     
@@ -280,6 +385,34 @@ void NativeMapView::onDidFinishLoadingStyle() {
 void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
+    // ✅ 架构修复：确保回调在渲染线程上执行
+    if (!isOnRenderThread()) {
+        Logger::warn("NativeMapView", "⚠️ onSourceChanged called from wrong thread! Dispatching to render thread.");
+        
+        // 复制 source ID 避免引用失效
+        std::string sourceId = source.getID();
+        auto sourceType = source.getType();
+        
+        // 切换到渲染线程执行
+        runOnRenderThread([this, sourceId, sourceType]() {
+            // 在渲染线程上安全执行
+            int count = ++sourceChangedCount;
+            auto now = std::chrono::steady_clock::now();
+            static auto startTime = now;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+            
+            Logger::info("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d) [渲染线程]", 
+                         elapsed, count, sourceId.c_str(), static_cast<int>(sourceType));
+            
+            // 通知监听器
+            if (callbackManager_) {
+                callbackManager_->InvokeCallbackWithString("onSourceChanged", sourceId);
+            }
+        });
+        return;
+    }
+    
+    // 已经在渲染线程，直接执行
     int count = ++sourceChangedCount;
     auto now = std::chrono::steady_clock::now();
     static auto startTime = now;

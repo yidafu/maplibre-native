@@ -28,6 +28,7 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "utils/anr_detector.hpp"
+#include "core/thread_safe_callback.hpp"
 
 // 几何类型转换
 #include "geometry/lat_lng_harmony.hpp"
@@ -60,13 +61,21 @@ using mbgl::harmony::ANRDetector;
 namespace mbgl {
 namespace harmony {
 
+// ✅ 使用 atomic 计数器准确跟踪活跃实例数
+namespace {
+    std::atomic<int> g_activeInstanceCount{0};
+    std::atomic<int> g_totalInstanceCount{0};  // 总创建数（用于ID）
+}
+
 NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath) 
     : env_(env), cachePath_(cachePath) {
     // 实例标识（全局计数器，用于多实例调试）
-    static int globalInstanceCounter = 0;
     static std::map<void*, int> globalInstanceIds;
-    globalInstanceIds[this] = ++globalInstanceCounter;
-    int instanceId = globalInstanceIds[this];
+    int instanceId = ++g_totalInstanceCount;
+    globalInstanceIds[this] = instanceId;
+    
+    // ✅ 递增活跃实例计数
+    int activeCount = ++g_activeInstanceCount;
     
     // 创建包装器引用
     napi_create_reference(env, wrapper, 1, &wrapper_);
@@ -83,7 +92,7 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string
     
     Logger::info("NativeMapView", "========== 🗺️ [Instance #%d] NativeMapView constructed (this=%p) ==========", instanceId, this);
     Logger::info("NativeMapView", "[Instance #%d] Cache path: %s", instanceId, cachePath_.c_str());
-    Logger::info("NativeMapView", "[Instance #%d] Total active instances: %d", instanceId, globalInstanceCounter);
+    Logger::info("NativeMapView", "[Instance #%d] Active instances: %d (Total created: %d)", instanceId, activeCount, instanceId);
     Logger::info("NativeMapView", "[Instance #%d] 多实例支持：每个实例都有独立的 EGL Context 和 Surface", instanceId);
     Logger::info("NativeMapView", "[Instance #%d] 共享资源：所有实例共享进程级别的 EGL Display", instanceId);
 }
@@ -106,16 +115,22 @@ NativeMapView::~NativeMapView() {
 }
 
 void NativeMapView::cleanupAllResources() {
+    // 使用异步版本，但提供空回调
+    cleanupAllResourcesAsync(nullptr);
+}
+
+void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
     // 🔍 ANR监控：记录整个清理过程的耗时
-    ANRDetector detector("cleanupAllResources", 100, 1000);
+    ANRDetector detector("cleanupAllResourcesAsync", 100, 1000);
     
     // 防止重复清理
     if (resourcesCleaned_.exchange(true)) {
         Logger::warn("NativeMapView", "Resources already cleaned, skipping");
+        if (onComplete) onComplete();
         return;
     }
     
-    Logger::info("NativeMapView", "========== cleanupAllResources START ==========");
+    Logger::info("NativeMapView", "========== cleanupAllResourcesAsync START (Android/iOS pattern) ==========");
     
     try {
         // 0. 清理所有回调（带ANR监控）
@@ -125,30 +140,21 @@ void NativeMapView::cleanupAllResources() {
             callbackManager_->Clear();
         }
         
-        // 1. 首先停止所有网络请求和异步操作
-        Logger::debug("NativeMapView", "Stopping all network requests and async operations...");
-        
-        // 2. 停止所有渲染操作和网络请求（带ANR监控）
+        // 1. ✅ 立即停止渲染（参考 iOS destroyDisplayLink 和 Android MapRenderer.onStop()）
+        // 关键修复：在异步等待之前先停止渲染，防止 OpenGL attribute location 断言失败
         if (harmonyRenderer) {
-            ANRDetector rendererDetector("harmonyRenderer->stopAllRequests", 50, 500);
-            Logger::debug("NativeMapView", "Stopping HarmonyRenderer requests...");
-            harmonyRenderer->stopAllRequests();
-            Logger::debug("NativeMapView", "Pausing HarmonyRenderer...");
+            Logger::debug("NativeMapView", "Immediately pausing renderer to stop rendering loop...");
             harmonyRenderer->pause();
+            
+            // ✅ 等待正在执行的渲染帧完成（参考 Android GLSurfaceView.onPause()）
+            // 原因：pause() 只设置标志，正在执行的渲染可能还在访问资源
+            // 解决：等待当前帧完成（通常 1-2帧 = 16-33ms）
+            Logger::debug("NativeMapView", "Waiting for current render frame to complete...");
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            Logger::debug("NativeMapView", "Current render frame should be completed");
         }
         
-        // ⚡ 修复 ResourceLoader SIGSEGV：给 ResourceLoader 线程足够时间停止
-        // 原因：10ms 太短，ResourceLoaderThread 还在访问 FileSource 时 Map 就被销毁了
-        // 解决方案：增加到 200ms，平衡等待时间和用户体验
-        //         - 200ms 对用户几乎无感知
-        //         - 足够让 ResourceLoader 线程完成清理
-        //         - 比之前的 1000ms 快 5 倍
-        
-        // 3. 给异步操作时间来处理停止信号和完成清理
-        Logger::debug("NativeMapView", "Waiting for ResourceLoader and async operations to stop...");
-        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // 从 10ms 增加到 200ms
-        
-        // 4. 取消所有正在进行的地图过渡和动画
+        // 2. 立即取消所有动画（参考 Android cancelTransitions）
         if (map) {
             Logger::debug("NativeMapView", "Cancelling all map transitions...");
             try {
@@ -158,61 +164,107 @@ void NativeMapView::cleanupAllResources() {
             }
         }
         
-        // 5. 再等待一小段时间，确保所有回调都已处理完毕
-        Logger::debug("NativeMapView", "Final wait for pending callbacks...");
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        
-        // 6. 强制停止所有RunLoop
-        Logger::debug("NativeMapView", "Force stopping all RunLoops...");
-        try {
-            // RunLoop 的清理会在 HarmonyRenderer 析构时自动处理
-            Logger::debug("NativeMapView", "RunLoop cleanup will be handled by HarmonyRenderer destructor");
-        } catch (const std::exception& e) {
-            Logger::warn("NativeMapView", "Error during RunLoop cleanup: %s", e.what());
-        }
-        
-        // 7. 清理Map对象 (在RunLoop仍然有效时)
-        if (map) {
-            Logger::debug("NativeMapView", "Destroying Map object...");
-            
-            // 先清空 HarmonyRenderer 的 map 引用，防止 Use-After-Free
-            if (harmonyRenderer) {
-                Logger::debug("NativeMapView", "Clearing HarmonyRenderer's map reference...");
-                harmonyRenderer->setMap(nullptr);
-            }
-            
-            map.reset();
-            Logger::debug("NativeMapView", "Map destroyed");
-        }
-        
-        // 8. 清理HarmonyRenderer
+        // 3. 使用异步方式等待所有后台线程完成（参考 Android/iOS）
         if (harmonyRenderer) {
-            Logger::debug("NativeMapView", "Destroying HarmonyRenderer...");
-            // 注意：不再调用 cleanup()，因为已经调用过 stopAllRequests()
-            // 直接析构以避免重复清理
-            harmonyRenderer.reset();
-            Logger::debug("NativeMapView", "HarmonyRenderer destroyed");
+            Logger::debug("NativeMapView", "Waiting for async operations to complete...");
+            
+            // 使用异步回调而不是硬编码等待
+            harmonyRenderer->stopAllRequestsAsync([this, onComplete = std::move(onComplete)]() {
+                // 这个回调会在所有异步操作完成后被调用
+                Logger::info("NativeMapView", "Async stop completed, continuing cleanup...");
+                
+                try {
+                    // 4. 清理Map对象（参考 iOS destroyCoreObjects 顺序）
+                    if (map) {
+                        Logger::debug("NativeMapView", "Destroying Map object...");
+                        
+                        // 先清空 HarmonyRenderer 的 map 引用，防止 Use-After-Free
+                        if (harmonyRenderer) {
+                            Logger::debug("NativeMapView", "Clearing HarmonyRenderer's map reference...");
+                            harmonyRenderer->setMap(nullptr);
+                        }
+                        
+                        map.reset();
+                        Logger::debug("NativeMapView", "Map destroyed");
+                    }
+                    
+                    // 5. 清理HarmonyRenderer（参考 iOS destroyCoreObjects）
+                    if (harmonyRenderer) {
+                        Logger::debug("NativeMapView", "Destroying HarmonyRenderer...");
+                        harmonyRenderer.reset();
+                        Logger::debug("NativeMapView", "HarmonyRenderer destroyed");
+                    }
+                    
+                    // 6. 清理其他资源
+                    mapRenderer = nullptr;
+                    nativeWindow = nullptr;
+                    
+                    // 7. 释放NAPI引用
+                    if (wrapper_) {
+                        napi_delete_reference(env_, wrapper_);
+                        wrapper_ = nullptr;
+                    }
+                    
+                    Logger::info("NativeMapView", "All resources cleaned up successfully");
+                    
+                    // ✅ 递减活跃实例计数
+                    int remaining = --g_activeInstanceCount;
+                    Logger::info("NativeMapView", "Instance cleaned up, remaining active instances: %d", remaining);
+                    Logger::info("NativeMapView", "========== cleanupAllResourcesAsync END ==========");
+                    
+                    // 8. 调用完成回调
+                    if (onComplete) {
+                        Logger::debug("NativeMapView", "Invoking cleanup completion callback");
+                        onComplete();
+                    }
+                    
+                } catch (const std::exception& e) {
+                    Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
+                    // ✅ 即使出错也要递减计数
+                    int remaining = --g_activeInstanceCount;
+                    Logger::info("NativeMapView", "Instance cleanup failed but counted, remaining: %d", remaining);
+                    if (onComplete) onComplete();
+                } catch (...) {
+                    Logger::error("NativeMapView", "Unknown error during resource cleanup");
+                    // ✅ 即使出错也要递减计数
+                    int remaining = --g_activeInstanceCount;
+                    Logger::info("NativeMapView", "Instance cleanup failed but counted, remaining: %d", remaining);
+                    if (onComplete) onComplete();
+                }
+            });
+            
+            return; // 异步执行，立即返回
         }
         
-        // 9. 清理其他资源
+        // 如果没有 harmonyRenderer，直接清理其他资源
+        Logger::warn("NativeMapView", "No harmonyRenderer, cleaning up immediately");
+        
         mapRenderer = nullptr;
         nativeWindow = nullptr;
         
-        // 10. 释放NAPI引用
         if (wrapper_) {
             napi_delete_reference(env_, wrapper_);
             wrapper_ = nullptr;
         }
         
-        Logger::info("NativeMapView", "All resources cleaned up successfully");
+        // ✅ 递减活跃实例计数
+        int remaining = --g_activeInstanceCount;
+        Logger::info("NativeMapView", "Resources cleaned up (no renderer), remaining instances: %d", remaining);
+        if (onComplete) onComplete();
         
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
+        // ✅ 即使出错也要递减计数
+        int remaining = --g_activeInstanceCount;
+        Logger::info("NativeMapView", "Cleanup error, remaining instances: %d", remaining);
+        if (onComplete) onComplete();
     } catch (...) {
         Logger::error("NativeMapView", "Unknown error during resource cleanup");
+        // ✅ 即使出错也要递减计数
+        int remaining = --g_activeInstanceCount;
+        Logger::info("NativeMapView", "Cleanup unknown error, remaining instances: %d", remaining);
+        if (onComplete) onComplete();
     }
-    
-    Logger::info("NativeMapView", "========== cleanupAllResources END ==========");
 }
 
 
@@ -370,6 +422,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"setNativeWindow", nullptr, setNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setNativeWindowWithSize", nullptr, setNativeWindowWithSize, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"destroy", nullptr, destroy, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"destroyAsync", nullptr, destroyAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
         
         // ========== 新增方法：对齐 Android/iOS API ==========
         {"setContentPadding", nullptr, setContentPadding, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -694,9 +747,15 @@ void NativeMapView::initializeRenderer() {
             // Verify RunLoop exists for network requests
             auto* currentRunLoop = util::RunLoop::Get();
             if (!currentRunLoop) {
-                Logger::error("NativeMapView", "RunLoop is NULL - network requests will fail!");
+                Logger::error("NativeMapView", "❌ CRITICAL: RunLoop is NULL - Map will NOT work!");
+                Logger::error("NativeMapView", "  FileSource callbacks will not be processed!");
+                Logger::error("NativeMapView", "  Style loading will fail silently!");
+                throw std::runtime_error("Map requires a RunLoop on the creating thread");
             } else {
-                Logger::info("NativeMapView", "RunLoop is available: %p", currentRunLoop);
+                Logger::info("NativeMapView", "✅ RunLoop is available: %p", currentRunLoop);
+                Logger::info("NativeMapView", "  Current thread: %lu", 
+                            std::hash<std::thread::id>{}(std::this_thread::get_id()));
+                Logger::info("NativeMapView", "  This RunLoop will process FileSource callbacks");
             }
             
             // Connect Map to RendererFrontend
@@ -750,6 +809,81 @@ napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     }
     
     return nullptr;
+}
+
+napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== destroyAsync() called from TS layer (Android/iOS pattern) ==========");
+    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1); // 需要回调函数参数
+    
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "destroyAsync: Missing callback parameter");
+        return args.Undefined();
+    }
+    
+    // 获取回调函数
+    napi_value callback = args.GetFunction(0, "callback");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "destroyAsync: Invalid callback parameter");
+        return args.Undefined();
+    }
+    
+    NativeMapView* nativeMapView = nullptr;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
+    
+    if (nativeMapView) {
+        // 防止重复销毁
+        static std::mutex destroyMutex;
+        static std::set<void*> destroyedInstances;
+        
+        {
+            std::lock_guard<std::mutex> lock(destroyMutex);
+            if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
+                Logger::warn("NativeMapView", "Instance %p already destroyed, skipping", nativeMapView);
+                
+                // ✅ 使用 ThreadSafeCallback 确保线程安全
+                auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_skip");
+                if (tsfn) {
+                    tsfn->CallEmpty();
+                }
+                
+                return args.Undefined();
+            }
+            destroyedInstances.insert(nativeMapView);
+        }
+        
+        Logger::info("NativeMapView", "Calling cleanupAllResourcesAsync() for instance %p...", nativeMapView);
+        
+        // ✅ 创建 ThreadSafeCallback（线程安全的跨线程回调）
+        auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_complete");
+        if (!tsfn) {
+            Logger::error("NativeMapView", "Failed to create ThreadSafeCallback");
+            return args.Undefined();
+        }
+        
+        // 调用异步清理，传入回调
+        // 使用 shared_ptr 确保回调在异步操作完成前不被释放
+        auto sharedTsfn = std::shared_ptr<ThreadSafeCallback>(std::move(tsfn));
+        
+        nativeMapView->cleanupAllResourcesAsync([sharedTsfn]() {
+            Logger::info("NativeMapView", "✅ Async cleanup completed, invoking TS callback via ThreadSafeCallback");
+            
+            // ✅ ThreadSafeCallback 会自动调度到主线程执行
+            // 不需要手动调用 napi_call_function
+            if (sharedTsfn && sharedTsfn->IsValid()) {
+                sharedTsfn->CallEmpty();
+            } else {
+                Logger::warn("NativeMapView", "ThreadSafeCallback is invalid or released");
+            }
+        });
+        
+        Logger::info("NativeMapView", "Async cleanup initiated");
+    } else {
+        Logger::warn("NativeMapView", "Cannot destroy: native instance is null");
+    }
+    
+    return args.Undefined();
 }
 
 // ========== 新增方法：对齐 Android/iOS API ==========

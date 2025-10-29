@@ -1511,47 +1511,56 @@ export struct NativeMapView {
   }
 
   /**
-   * 组件即将消失
+   * 组件即将消失（参考 Android MapView.onDestroy() 和 iOS MLNMapView.dealloc）
    * 
-   * ⚠️ 重要：在Harmony OS中，当使用router.pushUrl()导航到新页面时，
-   * 旧页面的aboutToDisappear会被调用，但页面仍在栈中。
-   * 如果在这里清理EGL资源，会导致其他地图实例无法正常工作（白屏问题）。
-   * 
-   * 策略：
-   * 1. 不要清理OpenGL/EGL资源 - 这些是进程级别的共享资源
-   * 2. 只标记组件为已销毁状态
-   * 3. 暂停渲染以节省资源
-   * 4. 让系统在进程结束时自动清理资源
+   * 改进：
+   * 1. 使用异步 destroy 而不是同步阻塞
+   * 2. 按照 Android/iOS 的顺序清理资源
+   * 3. 清理所有监听器和回调
    */
   aboutToDisappear(): void {
-    hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToDisappear - cleaning up resources');
-    this.isDestroyed = true;
+    hilog.info(DOMAIN, 'NativeMapView', '========== aboutToDisappear START (Android/iOS pattern) ==========');
     
-    // ✅ 线程隔离模式：主动销毁实例资源
-    // 
-    // 当前架构（Android 风格的线程隔离）：
-    // - ✅ EGL Context   - 实例独占，可以销毁
-    // - ✅ EGL Surface   - 实例独占，可以销毁  
-    // - ✅ Render Thread - 实例独占，可以停止
-    // - ❌ EGL Display   - 进程共享，不能调用 eglTerminate
-    // 
-    // cleanupEGL() 已正确实现：
-    // - 销毁 Context 和 Surface
-    // - 保留 Display（系统进程退出时自动清理）
-    // - 多个地图实例可以安全地独立销毁
+    // 1. 设置销毁标志（参考 Android MapView.destroyed）
+    this.isDestroyed = true;
+    hilog.debug(DOMAIN, 'NativeMapView', 'Set isDestroyed flag');
     
     try {
+      // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
+      hilog.debug(DOMAIN, 'NativeMapView', 'Cancelling all animations and gestures...');
       const mapView = this.controller.getMapView();
       if (mapView) {
-        hilog.info(DOMAIN, 'NativeMapView', 'Calling native destroy()...');
-        mapView.destroy();  // 🔑 关键：主动清理资源
-        hilog.info(DOMAIN, 'NativeMapView', '✅ Native resources destroyed');
+        try {
+          mapView.cancelTransitions();
+        } catch (err) {
+          hilog.warn(DOMAIN, 'NativeMapView', `Error cancelling transitions: ${err}`);
+        }
       }
+      
+      // 3. ✅ 使用异步 destroy（参考 Android/iOS 模式）
+      // 这样可以避免阻塞主线程，同时确保资源正确释放
+      if (mapView) {
+        hilog.info(DOMAIN, 'NativeMapView', 'Calling native destroyAsync()...');
+        
+        // 使用异步方式，传入完成回调
+        mapView.destroyAsync(() => {
+          hilog.info(DOMAIN, 'NativeMapView', '✅ Async destroy completed');
+          hilog.info(DOMAIN, 'NativeMapView', '========== aboutToDisappear END ==========');
+        });
+        
+        hilog.debug(DOMAIN, 'NativeMapView', 'Async destroy initiated, returning immediately');
+      } else {
+        hilog.warn(DOMAIN, 'NativeMapView', 'MapView is null, skipping destroy');
+        hilog.info(DOMAIN, 'NativeMapView', '========== aboutToDisappear END ==========');
+      }
+      
+      // 4. 清理 UI 组件引用（立即执行，不等待异步完成）
+      // Controller 的引用会在组件销毁时自动清理
+      // 事件监听器会在 C++ 层的 cleanupAllResourcesAsync 中清理
+      
     } catch (error) {
-      hilog.error(DOMAIN, 'NativeMapView', `Error destroying resources: ${error}`);
+      hilog.error(DOMAIN, 'NativeMapView', `Error in aboutToDisappear: ${error}`);
     }
-    
-    hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToDisappear completed');
   }
 
   /**

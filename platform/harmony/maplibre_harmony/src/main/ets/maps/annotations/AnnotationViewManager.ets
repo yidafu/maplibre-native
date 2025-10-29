@@ -254,6 +254,11 @@ export class AnnotationViewManager {
   
   /**
    * 从复用池获取视图
+   * 
+   * 参考: iOS MLNMapView dequeueReusableAnnotationViewWithIdentifier:
+   * 
+   * @param identifier 复用标识符
+   * @returns 复用的视图数据，如果池中没有则返回 null
    */
   public dequeueReusableView(identifier: string): AnnotationViewData | null {
     const pool: AnnotationViewData[] | undefined = this.reusePool.get(identifier);
@@ -261,8 +266,8 @@ export class AnnotationViewManager {
     if (pool && pool.length > 0) {
       const viewData = pool.pop() || null;
       if (viewData) {
-        // 调用 prepareForReuse 重置状态（如果视图数据有此方法）
-        // viewData.prepareForReuse?.();
+        console.debug(`[AnnotationViewManager] Dequeued reusable view for identifier: ${identifier}`);
+        // 注意：prepareForReuse() 应该在重新关联 marker 后由上层调用
       }
       return viewData;
     }
@@ -505,11 +510,82 @@ export class AnnotationViewManager {
   
   /**
    * 批量更新视图（性能优化）
+   * 
+   * 相比逐个更新，批量更新可以减少UI刷新次数
+   * 
+   * @param markers 要更新的 Marker 数组
    */
   public batchUpdateViews(markers: Marker[]): void {
     markers.forEach(marker => {
       this.updateView(marker);
     });
+  }
+  
+  /**
+   * 批量更新所有可见视图的位置
+   * 
+   * 在地图移动/缩放时调用，高效更新所有视图位置
+   * 
+   * @param cameraChanged 相机是否发生变化（影响 transform 计算）
+   */
+  public batchUpdatePositions(cameraChanged: boolean = false): void {
+    let updateCount = 0;
+    this.annotationViews.forEach((viewData, markerId) => {
+      const position = this.calculateScreenPosition(viewData.marker);
+      viewData.screenX = position.x;
+      viewData.screenY = position.y;
+      updateCount++;
+    });
+    
+    if (updateCount > 0) {
+      console.debug(`[AnnotationViewManager] Batch updated ${updateCount} view positions`);
+    }
+  }
+  
+  /**
+   * 获取指定区域内的可见视图
+   * 
+   * 用于虚拟化渲染，只渲染屏幕可见区域的视图
+   * 
+   * @param bounds 屏幕边界
+   * @returns 可见区域内的视图数据数组
+   */
+  public getVisibleViewsInBounds(bounds: ScreenBounds): AnnotationViewData[] {
+    const visibleViews: AnnotationViewData[] = [];
+    
+    this.annotationViews.forEach(viewData => {
+      if (viewData.visible &&
+          viewData.screenX >= bounds.left &&
+          viewData.screenX <= bounds.right &&
+          viewData.screenY >= bounds.top &&
+          viewData.screenY <= bounds.bottom) {
+        visibleViews.push(viewData);
+      }
+    });
+    
+    return visibleViews;
+  }
+  
+  /**
+   * 获取视图总数
+   * 
+   * @returns 当前管理的视图总数
+   */
+  public getViewCount(): number {
+    return this.annotationViews.size;
+  }
+  
+  /**
+   * 获取复用池统计信息
+   * 
+   * @returns 每个 identifier 的复用池大小
+   */
+  public getReusePoolStats(): Map<string, number> {
+    const stats = new Map<string, number>();
+    this.reusePool.forEach((pool, identifier) => {
+      stats.set(identifier, pool.length);
+    });
+    return stats;
   }
 }
 
@@ -522,5 +598,13 @@ class ScreenCoord {
     this.x = x;
     this.y = y;
   }
+}
+
+// 屏幕边界接口
+export interface ScreenBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 

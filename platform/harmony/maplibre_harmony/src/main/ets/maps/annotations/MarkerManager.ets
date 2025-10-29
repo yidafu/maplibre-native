@@ -16,6 +16,7 @@ import { Icon } from './Icon';
 import { IconManager } from './IconManager';
 import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
+import { InfoWindowStyle } from './InfoWindow';
 
 // 使用 NAPI 类型
 type NativeMapView = maplibre.NativeMapView;
@@ -47,6 +48,9 @@ export class MarkerManager {
   // Marker ID -> Icon 映射（因为NAPI Marker不持有Icon对象引用）
   // 注意：虽然保留此映射，但IconManager使用Icon对象作为key，确保引用计数正确
   private markerIconMap: Map<number, Icon> = new Map();
+  
+  // Marker ID -> InfoWindowStyle 映射（存储每个 Marker 的 InfoWindow 样式配置）
+  private markerInfoWindowStyleMap: Map<number, InfoWindowStyle> = new Map();
   
   // 事件监听器
   private onMarkerClickListener: OnMarkerClickListener | null = null;
@@ -135,6 +139,12 @@ export class MarkerManager {
       // 保存Marker -> Icon映射（因为NAPI Marker只存储iconId字符串）
       this.markerIconMap.set(featureId, icon);
       
+      // 保存 InfoWindow 样式配置
+      const infoWindowStyle = options.getInfoWindowStyle();
+      if (infoWindowStyle) {
+        this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
+      }
+      
       console.info(`[MarkerManager] Added marker with ID=${featureId}, icon=${icon.getId()}`);
       
       // 创建自定义视图（如果有适配器）
@@ -197,6 +207,7 @@ export class MarkerManager {
         const marker = markers[i];
         const featureId = featureIds[i];
         const icon = icons[i];
+        const options = optionsList[i];
         
         marker.setId(featureId);
         marker.setMapLibreMap(this.mapLibreMap);
@@ -204,6 +215,12 @@ export class MarkerManager {
         
         // 保存Marker -> Icon映射
         this.markerIconMap.set(featureId, icon);
+        
+        // 保存 InfoWindow 样式配置
+        const infoWindowStyle = options.getInfoWindowStyle();
+        if (infoWindowStyle) {
+          this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
+        }
       }
       
       console.info(`[MarkerManager] Batch added ${markers.length} markers`);
@@ -244,6 +261,9 @@ export class MarkerManager {
       this.iconManager.iconCleanup(icon);
       this.markerIconMap.delete(id);
     }
+    
+    // 移除 InfoWindow 样式配置
+    this.markerInfoWindowStyleMap.delete(id);
     
     // 移除自定义视图
     this.annotationViewManager.removeView(marker);
@@ -740,6 +760,17 @@ export class MarkerManager {
    */
   public getInfoWindowManager(): InfoWindowManager {
     return this.infoWindowManager;
+  }
+  
+  /**
+   * 获取 Marker 的 InfoWindow 样式配置
+   * 
+   * @param marker Marker 实例
+   * @returns InfoWindowStyle 或 undefined
+   */
+  public getInfoWindowStyle(marker: Marker): InfoWindowStyle | undefined {
+    const id = marker.getId();
+    return this.markerInfoWindowStyleMap.get(id);
   }
   
   /**

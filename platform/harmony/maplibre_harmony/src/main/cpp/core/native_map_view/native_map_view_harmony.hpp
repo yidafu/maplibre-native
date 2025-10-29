@@ -30,8 +30,15 @@ public:
     // 资源清理方法
     void cleanupAllResources();
     
+    // 异步资源清理方法（参考 Android/iOS 销毁模式）
+    // onComplete: 清理完成后的回调函数
+    void cleanupAllResourcesAsync(std::function<void()> onComplete);
+    
     // 主动销毁资源（供 TS 层调用）
     static napi_value destroy(napi_env env, napi_callback_info info);
+    
+    // 异步销毁资源（供 TS 层调用，支持回调）
+    static napi_value destroyAsync(napi_env env, napi_callback_info info);
     
     // 设置原生窗口（带尺寸参数）
     void setNativeWindowWithSize(int64_t surfaceId, int width, int height);
@@ -247,6 +254,10 @@ public:
     // Helper methods for notifying style listeners
     void notifyStyleLoaded();
     void notifyStyleLoadError(const std::string& error);
+    
+    // ✅ 线程安全辅助方法
+    bool isOnRenderThread() const;
+    void runOnRenderThread(std::function<void()>&& fn);
 
 private:
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);

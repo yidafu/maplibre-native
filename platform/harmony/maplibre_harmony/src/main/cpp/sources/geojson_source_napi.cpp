@@ -107,16 +107,100 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
     
     try {
         // 解析选项
-        mbgl::Immutable<mbgl::style::GeoJSONOptions> options = mbgl::style::GeoJSONOptions::defaultOptions();
+        mbgl::style::GeoJSONOptions options;
         
         if (argc >= 2) {
-            // TODO: 解析 options 对象
-            // 暂时使用默认选项
-            Logger::debug("GeoJsonSourceNAPI", "Options parsing not yet implemented, using defaults");
+            // 解析 options 对象
+            napi_value optionsObj = args[1];
+            napi_valuetype type;
+            napi_typeof(env, optionsObj, &type);
+            
+            if (type == napi_object) {
+                // 解析 cluster 选项
+                if (HasProperty(env, optionsObj, "cluster")) {
+                    bool cluster = false;
+                    napi_value clusterValue;
+                    napi_get_named_property(env, optionsObj, "cluster", &clusterValue);
+                    napi_get_value_bool(env, clusterValue, &cluster);
+                    options.cluster = cluster;
+                    Logger::debug("GeoJsonSourceNAPI", "Options: cluster=%d", cluster);
+                }
+                
+                // 解析 clusterRadius
+                if (HasProperty(env, optionsObj, "clusterRadius")) {
+                    int32_t radius = 50;
+                    napi_value radiusValue;
+                    napi_get_named_property(env, optionsObj, "clusterRadius", &radiusValue);
+                    napi_get_value_int32(env, radiusValue, &radius);
+                    options.clusterRadius = static_cast<uint16_t>(radius);
+                    Logger::debug("GeoJsonSourceNAPI", "Options: clusterRadius=%d", radius);
+                }
+                
+                // 解析 clusterMaxZoom
+                if (HasProperty(env, optionsObj, "clusterMaxZoom")) {
+                    int32_t maxZoom = 16;
+                    napi_value maxZoomValue;
+                    napi_get_named_property(env, optionsObj, "clusterMaxZoom", &maxZoomValue);
+                    napi_get_value_int32(env, maxZoomValue, &maxZoom);
+                    options.clusterMaxZoom = static_cast<uint8_t>(maxZoom);
+                    Logger::debug("GeoJsonSourceNAPI", "Options: clusterMaxZoom=%d", maxZoom);
+                }
+                
+                // 解析 minzoom
+                if (HasProperty(env, optionsObj, "minzoom")) {
+                    int32_t minzoom = 0;
+                    napi_value minzoomValue;
+                    napi_get_named_property(env, optionsObj, "minzoom", &minzoomValue);
+                    napi_get_value_int32(env, minzoomValue, &minzoom);
+                    options.minzoom = static_cast<uint8_t>(minzoom);
+                    Logger::debug("GeoJsonSourceNAPI", "Options: minzoom=%d", minzoom);
+                }
+                
+                // 解析 maxzoom
+                if (HasProperty(env, optionsObj, "maxzoom")) {
+                    int32_t maxzoom = 18;
+                    napi_value maxzoomValue;
+                    napi_get_named_property(env, optionsObj, "maxzoom", &maxzoomValue);
+                    napi_get_value_int32(env, maxzoomValue, &maxzoom);
+                    options.maxzoom = static_cast<uint8_t>(maxzoom);
+                    Logger::debug("GeoJsonSourceNAPI", "Options: maxzoom=%d", maxzoom);
+                }
+                
+                // 解析 buffer
+                if (HasProperty(env, optionsObj, "buffer")) {
+                    int32_t buffer = 128;
+                    napi_value bufferValue;
+                    napi_get_named_property(env, optionsObj, "buffer", &bufferValue);
+                    napi_get_value_int32(env, bufferValue, &buffer);
+                    options.buffer = static_cast<uint16_t>(buffer);
+                    Logger::debug("GeoJsonSourceNAPI", "Options: buffer=%d", buffer);
+                }
+                
+                // 解析 tolerance
+                if (HasProperty(env, optionsObj, "tolerance")) {
+                    double tolerance = 0.375;
+                    napi_value toleranceValue;
+                    napi_get_named_property(env, optionsObj, "tolerance", &toleranceValue);
+                    napi_get_value_double(env, toleranceValue, &tolerance);
+                    options.tolerance = tolerance;
+                    Logger::debug("GeoJsonSourceNAPI", "Options: tolerance=%.3f", tolerance);
+                }
+                
+                // 解析 lineMetrics
+                if (HasProperty(env, optionsObj, "lineMetrics")) {
+                    bool lineMetrics = false;
+                    napi_value lineMetricsValue;
+                    napi_get_named_property(env, optionsObj, "lineMetrics", &lineMetricsValue);
+                    napi_get_value_bool(env, lineMetricsValue, &lineMetrics);
+                    options.lineMetrics = lineMetrics;
+                    Logger::debug("GeoJsonSourceNAPI", "Options: lineMetrics=%d", lineMetrics);
+                }
+            }
         }
         
         // 创建 GeoJSONSource
-        auto source = std::make_unique<mbgl::style::GeoJSONSource>(sourceId, std::move(options));
+        auto immutableOptions = mbgl::makeMutable<mbgl::style::GeoJSONOptions>(std::move(options));
+        auto source = std::make_unique<mbgl::style::GeoJSONSource>(sourceId, std::move(immutableOptions));
         
         // 创建 C++ NAPI 对象
         GeoJsonSourceNAPI* sourceNapi = new GeoJsonSourceNAPI(sourceId, std::move(source));

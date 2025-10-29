@@ -171,6 +171,13 @@ export class NativeMapView {
      * - 建议在组件 aboutToDisappear() 时调用
      */
     destroy(): void;
+    
+    /**
+     * 异步销毁地图资源（参考 Android/iOS 模式）
+     * 使用异步回调而不是硬编码等待，防止阻塞主线程
+     * @param callback 销毁完成后的回调函数
+     */
+    destroyAsync(callback: () => void): void;
 
     // ========== Style Management ==========
     
