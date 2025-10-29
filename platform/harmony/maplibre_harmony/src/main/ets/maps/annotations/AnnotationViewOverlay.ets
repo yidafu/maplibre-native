@@ -75,7 +75,7 @@ export struct AnnotationViewOverlay {
           this.onAnnotationDeselect(marker);
         }
       },
-      onDragStart: (marker: Marker) => {
+      onMarkerDragStart: (marker: Marker) => {
         console.info('[AnnotationViewOverlay] Drag start:', marker.getId());
         if (this.onAnnotationDragStart) {
           this.onAnnotationDragStart(marker);
@@ -86,7 +86,7 @@ export struct AnnotationViewOverlay {
           this.onAnnotationDrag(marker, screenX, screenY);
         }
       },
-      onDragEnd: (marker: Marker, screenX: number, screenY: number) => {
+      onMarkerDragEnd: (marker: Marker, screenX: number, screenY: number) => {
         console.info('[AnnotationViewOverlay] Drag end:', marker.getId());
         if (this.onAnnotationDragEnd) {
           this.onAnnotationDragEnd(marker, screenX, screenY);

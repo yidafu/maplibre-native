@@ -1,0 +1,22 @@
+{
+  "version": 8,
+  "name": "Simple Background Style",
+  "metadata": {
+    "test": "simple-background"
+  },
+  "center": [120.22636085834802, 30.287941073627294],
+  "zoom": 12,
+  "bearing": 0,
+  "pitch": 0,
+  "sources": {},
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f0f3fa"
+      }
+    }
+  ]
+}
+

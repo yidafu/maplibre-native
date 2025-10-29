@@ -12,9 +12,9 @@ export class PermissionManager {
   private static readonly TAG: string = 'PermissionManager';
   
   // 位置权限列表
-  private static readonly LOCATION_PERMISSIONS: Array<Permissions> = [
-    'ohos.permission.APPROXIMATELY_LOCATION',
-    'ohos.permission.LOCATION'
+  private static readonly LOCATION_PERMISSIONS: Permissions[] = [
+    'ohos.permission.APPROXIMATELY_LOCATION' as Permissions,
+    'ohos.permission.LOCATION' as Permissions
   ];
 
   /**

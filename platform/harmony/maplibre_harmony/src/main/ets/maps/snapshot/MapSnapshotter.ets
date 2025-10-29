@@ -303,7 +303,11 @@ export class MapSnapshotter {
         const imageInfo: image.ImageInfo = {
           size: { height: result.height, width: result.width },
           pixelFormat: image.PixelMapFormat.RGBA_8888,
-          alphaType: image.AlphaType.PREMUL
+          alphaType: image.AlphaType.PREMUL,
+          density: 160,
+          stride: result.width * 4,
+          mimeType: 'image/png',
+          isHdr: false
         };
         
         // 从 ArrayBuffer 创建 PixelMap

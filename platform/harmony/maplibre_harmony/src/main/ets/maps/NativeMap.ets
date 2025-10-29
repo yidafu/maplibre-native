@@ -1,14 +1,42 @@
-import { Feature, Polygon } from './geojson';
+import { Feature, Polygon, Geometry } from './geojson';
 import maplibre from 'libmaplibre_native.so';
-// Marker 现在由 NAPI 提供
+// 类型由 NAPI 提供
 type Marker = maplibre.Marker;
+type Layer = maplibre.FillLayer | maplibre.LineLayer | maplibre.CircleLayer | maplibre.SymbolLayer | 
+  maplibre.RasterLayer | maplibre.BackgroundLayer | maplibre.HeatmapLayer | maplibre.HillshadeLayer | 
+  maplibre.FillExtrusionLayer;
+type Source = maplibre.GeoJSONSource | maplibre.VectorSource | maplibre.RasterSource | 
+  maplibre.RasterDEMSource | maplibre.ImageSource;
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
+import { Point } from './geometry/Point';
+import { Rect } from './geometry/Rect';
+import { ProjectedMeters } from './geometry/ProjectedMeters';
 import { OnFpsChangedListener } from './OnFpsChangedListener';
 import { SnapshotReadyCallback } from './SnapshotReadyCallback';
-import { Layer } from './style/layers/Layer';
-import { Source } from './style/sources/Source';
+import { Expression } from './style/expressions/Expression';
+import { Light } from './style/light/Light';
+import { Polyline } from './annotations/Polyline';
+import type { Image } from './style/images/Image';
+
+/**
+ * EdgeInsets 边缘插入定义
+ */
+export interface EdgeInsets {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
+
+/**
+ * TransitionOptions 过渡选项定义
+ */
+export interface TransitionOptions {
+  duration?: number;
+  delay?: number;
+}
 
 /**
  * NativeMap接口定义

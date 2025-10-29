@@ -1,0 +1,12 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "MapLibre Native for HarmonyOS - Test Entry Module",
+  "main": "",
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "maplibre_harmony": "file:../maplibre_harmony"
+  }
+}
+

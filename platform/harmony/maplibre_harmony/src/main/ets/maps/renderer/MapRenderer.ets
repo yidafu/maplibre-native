@@ -1,16 +1,21 @@
 /**
+ * MapRenderer 选项接口
+ */
+export interface MapRendererOptions {
+  renderingRefreshMode?: number;
+  maximumFps?: number;
+}
+
+/**
  * MapRenderer - 地图渲染器类
  */
 export class MapRenderer {
   public renderingRefreshMode: number;
   public maximumFps: number;
 
-  constructor(options: {
-    renderingRefreshMode?: number;
-    maximumFps?: number;
-  } = {}) {
-    this.renderingRefreshMode = options.renderingRefreshMode || 0; // WHEN_DIRTY
-    this.maximumFps = options.maximumFps || 60;
+  constructor(options: MapRendererOptions = {}) {
+    this.renderingRefreshMode = options.renderingRefreshMode !== undefined ? options.renderingRefreshMode : 0; // WHEN_DIRTY
+    this.maximumFps = options.maximumFps !== undefined ? options.maximumFps : 60;
   }
 
   /**

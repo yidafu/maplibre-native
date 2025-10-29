@@ -1,18 +1,20 @@
+import { Context } from '@kit.AbilityKit';
+
 /**
  * FileSource - 文件源类
  */
 export class FileSource {
   private static instance: FileSource | null = null;
-  private context: any;
+  private context: Context | null = null;
 
-  private constructor(context: any) {
+  private constructor(context: Context) {
     this.context = context;
   }
 
   /**
    * 获取FileSource实例（单例模式）
    */
-  public static getInstance(context: any): FileSource {
+  public static getInstance(context: Context): FileSource {
     if (!FileSource.instance) {
       FileSource.instance = new FileSource(context);
     }
@@ -22,14 +24,14 @@ export class FileSource {
   /**
    * 获取上下文
    */
-  public getContext(): any {
+  public getContext(): Context | null {
     return this.context;
   }
 
   /**
    * 设置上下文
    */
-  public setContext(context: any): void {
+  public setContext(context: Context): void {
     this.context = context;
   }
 }

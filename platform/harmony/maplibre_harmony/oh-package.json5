@@ -1,10 +1,31 @@
 {
   "name": "maplibre_harmony",
   "version": "1.0.0",
-  "description": "Please describe the basic information.",
-  "main": "",
-  "author": "",
-  "license": "",
+  "description": "MapLibre Native for HarmonyOS - OpenGL-based vector map rendering library",
+  "main": "index.ets",
+  "author": "MapLibre Contributors",
+  "license": "BSD-2-Clause",
+  "keywords": [
+    "maplibre",
+    "maps",
+    "vector",
+    "tiles",
+    "opengl",
+    "harmonyos",
+    "ohos"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maplibre/maplibre-native"
+  },
+  "files": [
+    "index.ets",
+    "src/main/ets/**/*",
+    "src/main/cpp/**/*",
+    "src/main/resources/**/*",
+    "build-profile.json5",
+    "obfuscation-rules.txt"
+  ],
   "dependencies": {
     "libmaplibre_native.so": "file:./src/main/cpp/types/libmaplibre_native",
     "@types/geojson": "^7946.0.16"

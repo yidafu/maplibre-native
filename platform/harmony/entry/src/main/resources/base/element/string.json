@@ -1,0 +1,28 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "MapLibre Native for HarmonyOS"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "MapLibre Native Test Application"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "MapLibre"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "Load map tiles and data from remote servers"
+    },
+    {
+      "name": "network_info_permission_reason",
+      "value": "Check network status for map data loading"
+    },
+    {
+      "name": "location_permission_reason",
+      "value": "Display user location on the map"
+    }
+  ]
+}

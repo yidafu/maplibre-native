@@ -1,0 +1,34 @@
+# Build outputs
+build/
+.preview/
+
+# IDE
+.idea/
+.vscode/
+
+# Test files
+test/
+tests/
+*.test.*
+*.spec.*
+
+# Documentation (keep only essential docs in package)
+docs/diagnosis/
+docs/fixes/
+docs/archived/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+.DS_Store
+*.tmp
+*.temp
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+

@@ -105,13 +105,12 @@ export {
   OfflineRegionDefinition,
   OfflineTilePyramidRegionDefinition,
   OfflineRegionStatus,
-  OfflineRegionDownloadState,
+  DownloadState as OfflineRegionDownloadState,
   OfflineRegionError,
   OfflineRegionErrorReason
 } from './offline';
 export type {
-  OfflineRegionObserver,
-  OfflineRegionProgressCallback
+  OfflineRegionObserver
 } from './offline';
 
 // ========== 相机 ==========

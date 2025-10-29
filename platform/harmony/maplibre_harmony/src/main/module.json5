@@ -1,78 +1,10 @@
 {
   "module": {
     "name": "maplibre_harmony",
-    "type": "entry",
-    "description": "$string:module_desc",
-    "mainElement": "MaplibreAbility",
+    "type": "har",
     "deviceTypes": [
-      "phone"
-    ],
-    "deliveryWithInstall": true,
-    "installationFree": false,
-    "pages": "$profile:main_pages",
-    "requestPermissions": [
-      {
-        "name": "ohos.permission.INTERNET",
-        "reason": "$string:internet_permission_reason",
-        "usedScene": {
-          "abilities": [
-            "MaplibreAbility"
-          ],
-          "when": "inuse"
-        }
-      },
-      {
-        "name": "ohos.permission.GET_NETWORK_INFO",
-        "reason": "$string:network_info_permission_reason",
-        "usedScene": {
-          "abilities": [
-            "MaplibreAbility"
-          ],
-          "when": "inuse"
-        }
-      },
-      {
-        "name": "ohos.permission.APPROXIMATELY_LOCATION",
-        "reason": "$string:location_permission_reason",
-        "usedScene": {
-          "abilities": [
-            "MaplibreAbility"
-          ],
-          "when": "inuse"
-        }
-      },
-      {
-        "name": "ohos.permission.LOCATION",
-        "reason": "$string:location_permission_reason",
-        "usedScene": {
-          "abilities": [
-            "MaplibreAbility"
-          ],
-          "when": "inuse"
-        }
-      }
-    ],
-    "abilities": [
-      {
-        "name": "MaplibreAbility",
-        "srcEntry": "./ets/maplibreability/MaplibreAbility.ets",
-        "description": "$string:MaplibreAbility_desc",
-        "icon": "$media:layered_image",
-        "label": "$string:MaplibreAbility_label",
-        "startWindowIcon": "$media:startIcon",
-        "startWindowBackground": "$color:start_window_background",
-        "exported": true,
-        "skills": [
-          {
-            "entities": [
-              "entity.system.home"
-            ],
-            "actions": [
-              "action.system.home"
-            ]
-          }
-        ]
-      }
+      "phone",
+      "tablet"
     ]
   }
 }

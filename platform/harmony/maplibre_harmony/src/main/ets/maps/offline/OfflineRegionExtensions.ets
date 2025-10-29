@@ -5,7 +5,7 @@
  */
 
 import type maplibre from 'libmaplibre_native.so';
-import { OfflineRegionDownloadState } from './OfflineRegionStatus';
+import { DownloadState as OfflineRegionDownloadState } from './OfflineRegionStatus';
 
 /**
  * 扩展 OfflineRegion 接口
