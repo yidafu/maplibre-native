@@ -21,7 +21,7 @@ export class PerformanceMonitor {
    * 启用性能监控
    */
   static enable(): void {
-    this.enabled = true;
+    PerformanceMonitor.enabled = true;
     hilog.info(DOMAIN, PerformanceMonitor.TAG, 'Performance monitoring enabled');
   }
 
@@ -29,7 +29,7 @@ export class PerformanceMonitor {
    * 禁用性能监控
    */
   static disable(): void {
-    this.enabled = false;
+    PerformanceMonitor.enabled = false;
     hilog.info(DOMAIN, PerformanceMonitor.TAG, 'Performance monitoring disabled');
   }
 
@@ -37,7 +37,7 @@ export class PerformanceMonitor {
    * 开始计时
    */
   static startTiming(label: string): void {
-    if (!this.enabled) return;
+    if (!PerformanceMonitor.enabled) return;
     
     const metric: PerformanceMetric = {
       label: label,
@@ -49,16 +49,16 @@ export class PerformanceMonitor {
       avgTime: 0
     };
     
-    this.metrics.set(label, metric);
+    PerformanceMonitor.metrics.set(label, metric);
   }
 
   /**
    * 结束计时
    */
   static endTiming(label: string): void {
-    if (!this.enabled) return;
+    if (!PerformanceMonitor.enabled) return;
     
-    const metric = this.metrics.get(label);
+    const metric = PerformanceMonitor.metrics.get(label);
     if (!metric || !metric.startTime) return;
     
     const duration = Date.now() - metric.startTime;
@@ -78,18 +78,18 @@ export class PerformanceMonitor {
    * 记录帧
    */
   static recordFrame(): void {
-    if (!this.enabled) return;
+    if (!PerformanceMonitor.enabled) return;
     
-    this.frameCount++;
+    PerformanceMonitor.frameCount++;
     
     const now = Date.now();
-    if (now - this.lastFpsTime >= 1000) {
-      this.currentFps = this.frameCount;
-      this.frameCount = 0;
-      this.lastFpsTime = now;
+    if (now - PerformanceMonitor.lastFpsTime >= 1000) {
+      PerformanceMonitor.currentFps = PerformanceMonitor.frameCount;
+      PerformanceMonitor.frameCount = 0;
+      PerformanceMonitor.lastFpsTime = now;
       
-      if (this.currentFps < 50) { // 低于 50 FPS 警告
-        hilog.warn(DOMAIN, PerformanceMonitor.TAG, `Low FPS detected: ${this.currentFps}`);
+      if (PerformanceMonitor.currentFps < 50) { // 低于 50 FPS 警告
+        hilog.warn(DOMAIN, PerformanceMonitor.TAG, `Low FPS detected: ${PerformanceMonitor.currentFps}`);
       }
     }
   }
@@ -98,14 +98,14 @@ export class PerformanceMonitor {
    * 获取当前 FPS
    */
   static getCurrentFps(): number {
-    return this.currentFps;
+    return PerformanceMonitor.currentFps;
   }
 
   /**
    * 记录内存使用
    */
   static recordMemoryUsage(label: string): void {
-    if (!this.enabled) return;
+    if (!PerformanceMonitor.enabled) return;
     
     // 注意：鸿蒙可能没有直接的内存 API，这里简化处理
     hilog.debug(DOMAIN, PerformanceMonitor.TAG, `Memory checkpoint: ${label}`);
@@ -115,12 +115,12 @@ export class PerformanceMonitor {
    * 打印性能报告
    */
   static printReport(): void {
-    if (!this.enabled || this.metrics.size === 0) return;
+    if (!PerformanceMonitor.enabled || PerformanceMonitor.metrics.size === 0) return;
     
     hilog.info(DOMAIN, PerformanceMonitor.TAG, '=== Performance Report ===');
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, `Current FPS: ${this.currentFps}`);
+    hilog.info(DOMAIN, PerformanceMonitor.TAG, `Current FPS: ${PerformanceMonitor.currentFps}`);
     
-    this.metrics.forEach((metric, label) => {
+    PerformanceMonitor.metrics.forEach((metric, label) => {
       if (metric.count > 0) {
         hilog.info(DOMAIN, PerformanceMonitor.TAG, 
           `${label}: count=${metric.count}, avg=${metric.avgTime.toFixed(2)}ms, ` +
@@ -135,10 +135,10 @@ export class PerformanceMonitor {
    * 重置统计
    */
   static reset(): void {
-    this.metrics.clear();
-    this.frameCount = 0;
-    this.lastFpsTime = 0;
-    this.currentFps = 0;
+    PerformanceMonitor.metrics.clear();
+    PerformanceMonitor.frameCount = 0;
+    PerformanceMonitor.lastFpsTime = 0;
+    PerformanceMonitor.currentFps = 0;
     hilog.info(DOMAIN, PerformanceMonitor.TAG, 'Performance metrics reset');
   }
 
@@ -146,15 +146,15 @@ export class PerformanceMonitor {
    * 测量函数执行时间
    */
   static measure<T>(label: string, fn: () => T): T {
-    if (!this.enabled) {
+    if (!PerformanceMonitor.enabled) {
       return fn();
     }
 
-    this.startTiming(label);
+    PerformanceMonitor.startTiming(label);
     try {
       return fn();
     } finally {
-      this.endTiming(label);
+      PerformanceMonitor.endTiming(label);
     }
   }
 
@@ -162,15 +162,15 @@ export class PerformanceMonitor {
    * 测量异步函数执行时间
    */
   static async measureAsync<T>(label: string, fn: () => Promise<T>): Promise<T> {
-    if (!this.enabled) {
+    if (!PerformanceMonitor.enabled) {
       return fn();
     }
 
-    this.startTiming(label);
+    PerformanceMonitor.startTiming(label);
     try {
       return await fn();
     } finally {
-      this.endTiming(label);
+      PerformanceMonitor.endTiming(label);
     }
   }
 }

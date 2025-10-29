@@ -26,7 +26,6 @@ export class CameraChangeDispatcher {
   addOnCameraIdleListener(listener: OnCameraIdleListener): void {
     if (listener && !this.idleListeners.includes(listener)) {
       this.idleListeners.push(listener);
-      console.log('CameraChangeDispatcher: Added idle listener, total:', this.idleListeners.length);
     }
   }
   
@@ -37,7 +36,6 @@ export class CameraChangeDispatcher {
     const index = this.idleListeners.indexOf(listener);
     if (index !== -1) {
       this.idleListeners.splice(index, 1);
-      console.log('CameraChangeDispatcher: Removed idle listener, remaining:', this.idleListeners.length);
     }
   }
   
@@ -47,7 +45,6 @@ export class CameraChangeDispatcher {
   addOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     if (listener && !this.moveStartedListeners.includes(listener)) {
       this.moveStartedListeners.push(listener);
-      console.log('CameraChangeDispatcher: Added move started listener, total:', this.moveStartedListeners.length);
     }
   }
   
@@ -58,7 +55,6 @@ export class CameraChangeDispatcher {
     const index = this.moveStartedListeners.indexOf(listener);
     if (index !== -1) {
       this.moveStartedListeners.splice(index, 1);
-      console.log('CameraChangeDispatcher: Removed move started listener, remaining:', this.moveStartedListeners.length);
     }
   }
   
@@ -68,7 +64,6 @@ export class CameraChangeDispatcher {
   addOnCameraMoveListener(listener: OnCameraMoveListener): void {
     if (listener && !this.moveListeners.includes(listener)) {
       this.moveListeners.push(listener);
-      console.log('CameraChangeDispatcher: Added move listener, total:', this.moveListeners.length);
     }
   }
   
@@ -79,7 +74,6 @@ export class CameraChangeDispatcher {
     const index = this.moveListeners.indexOf(listener);
     if (index !== -1) {
       this.moveListeners.splice(index, 1);
-      console.log('CameraChangeDispatcher: Removed move listener, remaining:', this.moveListeners.length);
     }
   }
   
@@ -89,7 +83,6 @@ export class CameraChangeDispatcher {
   addOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     if (listener && !this.canceledListeners.includes(listener)) {
       this.canceledListeners.push(listener);
-      console.log('CameraChangeDispatcher: Added canceled listener, total:', this.canceledListeners.length);
     }
   }
   
@@ -100,7 +93,6 @@ export class CameraChangeDispatcher {
     const index = this.canceledListeners.indexOf(listener);
     if (index !== -1) {
       this.canceledListeners.splice(index, 1);
-      console.log('CameraChangeDispatcher: Removed canceled listener, remaining:', this.canceledListeners.length);
     }
   }
   
@@ -113,12 +105,10 @@ export class CameraChangeDispatcher {
   notifyCameraMoveStarted(reason: CameraMoveReason): void {
     // 如果已经在移动中，不重复触发
     if (!this.isIdle) {
-      console.log('CameraChangeDispatcher: Camera already moving, skipping moveStarted');
       return;
     }
     
     this.isIdle = false;
-    console.log('CameraChangeDispatcher: Camera move started, reason:', reason);
     
     // 通知所有监听器
     for (const listener of this.moveStartedListeners) {
@@ -155,12 +145,10 @@ export class CameraChangeDispatcher {
   notifyCameraIdle(): void {
     // 如果已经 idle，不重复触发
     if (this.isIdle) {
-      console.log('CameraChangeDispatcher: Camera already idle, skipping');
       return;
     }
     
     this.isIdle = true;
-    console.log('CameraChangeDispatcher: Camera idle');
     
     // 通知所有监听器
     for (const listener of this.idleListeners) {
@@ -181,8 +169,6 @@ export class CameraChangeDispatcher {
       return;
     }
     
-    console.log('CameraChangeDispatcher: Camera move canceled');
-    
     // 通知所有监听器
     for (const listener of this.canceledListeners) {
       try {
@@ -197,7 +183,6 @@ export class CameraChangeDispatcher {
    * 清除所有监听器
    */
   clear(): void {
-    console.log('CameraChangeDispatcher: Clearing all listeners');
     this.idleListeners = [];
     this.moveStartedListeners = [];
     this.moveListeners = [];
@@ -212,4 +197,3 @@ export class CameraChangeDispatcher {
     return this.isIdle;
   }
 }
-

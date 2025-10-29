@@ -154,15 +154,9 @@ export struct AnnotationView {
     
     this.viewState.selected = selected;
     
-    if (animated) {
-      animateTo({ duration: 200, curve: Curve.EaseOut }, () => {
-        this.viewScale = selected ? 1.2 : 1.0;
-        this.viewOpacity = selected ? 1.0 : 0.8;
-      });
-    } else {
-      this.viewScale = selected ? 1.2 : 1.0;
-      this.viewOpacity = selected ? 1.0 : 0.8;
-    }
+    // animation 属性会自动应用到状态变化
+    this.viewScale = selected ? 1.2 : 1.0;
+    this.viewOpacity = selected ? 1.0 : 0.8;
     
     this.updateComputedProperties();
     
@@ -180,17 +174,13 @@ export struct AnnotationView {
   public setDragState(state: DragState, animated: boolean): void {
     this.viewState.dragState = state;
     
-    // 根据拖拽状态调整视觉效果
-    if (animated) {
-      animateTo({ duration: 150, curve: Curve.EaseOut }, () => {
-        if (state === DragState.Dragging) {
-          this.viewScale = 1.3;
-          this.viewOpacity = 0.9;
-        } else if (state === DragState.None) {
-          this.viewScale = 1.0;
-          this.viewOpacity = 1.0;
-        }
-      });
+    // animation 属性会自动应用到状态变化
+    if (state === DragState.Dragging) {
+      this.viewScale = 1.3;
+      this.viewOpacity = 0.9;
+    } else if (state === DragState.None) {
+      this.viewScale = 1.0;
+      this.viewOpacity = 1.0;
     }
     
     this.updateComputedProperties();
@@ -398,6 +388,7 @@ export struct AnnotationView {
     .opacity(this.viewOpacity * this.marker.getAlpha())
     .scale({ x: this.computedScale, y: this.computedScale })
     .rotate({ angle: this.computedRotation })
+    .animation({ duration: 200, curve: Curve.EaseOut })
     .visibility(this.visible ? Visibility.Visible : Visibility.None)
     .gesture(this.createGestures())
     .onAreaChange((oldValue: Area, newValue: Area) => {

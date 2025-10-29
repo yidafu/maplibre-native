@@ -75,7 +75,7 @@ export interface SnapshotErrorHandler {
  * ```
  */
 export class MapSnapshotter {
-  private nativeSnapshotter: any | null = null;
+  private nativeSnapshotter: maplibre.MapSnapshotterNAPI | null = null;
   private options: SnapshotOptions;
   private cancelled: boolean = false;
   
@@ -89,7 +89,7 @@ export class MapSnapshotter {
     
     try {
       // 准备 NAPI 选项对象
-      const napiOptions = {
+      const napiOptions: maplibre.SnapshotOptionsNAPI = {
         width: options.size.width,
         height: options.size.height,
         pixelRatio: options.pixelRatio || 1.0,
@@ -118,7 +118,7 @@ export class MapSnapshotter {
       
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to create snapshotter: ${error}`);
-      throw error;
+      throw new Error(`Failed to create snapshotter: ${error}`);
     }
   }
   
@@ -150,7 +150,7 @@ export class MapSnapshotter {
     
     try {
       // 调用 native start 方法
-      this.nativeSnapshotter.start((error: string | null, result: any) => {
+      this.nativeSnapshotter.start((error: string | null, result: maplibre.SnapshotResultNAPI) => {
         if (error) {
           hilog.error(DOMAIN, 'MapSnapshotter', `Snapshot error: ${error}`);
           if (errorHandler) {
@@ -182,7 +182,7 @@ export class MapSnapshotter {
             hilog.info(DOMAIN, 'MapSnapshotter', `Snapshot ready: ${result.width}x${result.height}`);
             callback.onSnapshotReady(snapshot);
           })
-          .catch(err => {
+          .catch((err: Error) => {
             hilog.error(DOMAIN, 'MapSnapshotter', `Failed to create PixelMap: ${err}`);
             if (errorHandler) {
               errorHandler.onError(`Failed to create PixelMap: ${err}`);
@@ -230,7 +230,7 @@ export class MapSnapshotter {
       hilog.info(DOMAIN, 'MapSnapshotter', `Style URL set: ${styleUrl}`);
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set style URL: ${error}`);
-      throw error;
+      throw new Error(`Failed to set style URL: ${error}`);
     }
   }
   
@@ -255,7 +255,7 @@ export class MapSnapshotter {
       hilog.info(DOMAIN, 'MapSnapshotter', 'Camera position set');
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set camera position: ${error}`);
-      throw error;
+      throw new Error(`Failed to set camera position: ${error}`);
     }
   }
   
@@ -280,7 +280,7 @@ export class MapSnapshotter {
       hilog.info(DOMAIN, 'MapSnapshotter', 'Region set');
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set region: ${error}`);
-      throw error;
+      throw new Error(`Failed to set region: ${error}`);
     }
   }
   
@@ -297,7 +297,7 @@ export class MapSnapshotter {
    * @param result Native 返回的结果对象
    * @returns Promise<PixelMap>
    */
-  private async createPixelMapFromNativeResult(result: any): Promise<image.PixelMap> {
+  private async createPixelMapFromNativeResult(result: maplibre.SnapshotResultNAPI): Promise<image.PixelMap> {
     return new Promise((resolve, reject) => {
       try {
         const imageInfo: image.ImageInfo = {

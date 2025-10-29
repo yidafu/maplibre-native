@@ -1,9 +1,37 @@
 /**
  * NativeMapOptions - 原生地图选项类
  */
-interface NativeMapSize {
+export interface NativeMapSize {
   width: number;
   height: number;
+}
+
+export interface NativeMapOptionsConfig {
+  pixelRatio?: number;
+  contextMode?: string;
+  crossSourceCollisions?: boolean;
+  size?: NativeMapSize;
+  debug?: boolean;
+  attributionEnabled?: boolean;
+  logoEnabled?: boolean;
+  compassEnabled?: boolean;
+  scrollEnabled?: boolean;
+  zoomEnabled?: boolean;
+  rotateEnabled?: boolean;
+  tiltEnabled?: boolean;
+  doubleTapToZoomInEnabled?: boolean;
+  quickZoomEnabled?: boolean;
+  twoFingerTouchRotationEnabled?: boolean;
+  twoFingerTouchPitchEnabled?: boolean;
+  prefetchTiles?: boolean;
+  prefetchZoomDelta?: number;
+  tileCacheEnabled?: boolean;
+  tileLodMinRadius?: number;
+  tileLodScale?: number;
+  tileLodPitchThreshold?: number;
+  tileLodZoomShift?: number;
+  transitionDuration?: number;
+  transitionDelay?: number;
 }
 
 export class NativeMapOptions {
@@ -33,33 +61,7 @@ export class NativeMapOptions {
   public transitionDuration: number;
   public transitionDelay: number;
 
-  constructor(options: {
-    pixelRatio?: number;
-    contextMode?: string;
-    crossSourceCollisions?: boolean;
-    size?: NativeMapSize;
-    debug?: boolean;
-    attributionEnabled?: boolean;
-    logoEnabled?: boolean;
-    compassEnabled?: boolean;
-    scrollEnabled?: boolean;
-    zoomEnabled?: boolean;
-    rotateEnabled?: boolean;
-    tiltEnabled?: boolean;
-    doubleTapToZoomInEnabled?: boolean;
-    quickZoomEnabled?: boolean;
-    twoFingerTouchRotationEnabled?: boolean;
-    twoFingerTouchPitchEnabled?: boolean;
-    prefetchTiles?: boolean;
-    prefetchZoomDelta?: number;
-    tileCacheEnabled?: boolean;
-    tileLodMinRadius?: number;
-    tileLodScale?: number;
-    tileLodPitchThreshold?: number;
-    tileLodZoomShift?: number;
-    transitionDuration?: number;
-    transitionDelay?: number;
-  }) {
+  constructor(options: NativeMapOptionsConfig) {
     this.pixelRatio = options.pixelRatio || 1.0;
     this.contextMode = options.contextMode || 'unique';
     this.crossSourceCollisions = options.crossSourceCollisions !== undefined ? options.crossSourceCollisions : true;
@@ -90,7 +92,7 @@ export class NativeMapOptions {
   /**
    * 转换为JSON
    */
-  public toJSON(): any {
+  public toJSON(): NativeMapOptionsConfig {
     return {
       pixelRatio: this.pixelRatio,
       contextMode: this.contextMode,

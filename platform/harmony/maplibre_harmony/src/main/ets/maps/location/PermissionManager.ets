@@ -27,7 +27,7 @@ export class PermissionManager {
       const tokenID = bundleInfo.appInfo.accessTokenId;
 
       // 检查所有位置权限
-      for (const permission of this.LOCATION_PERMISSIONS) {
+      for (const permission of PermissionManager.LOCATION_PERMISSIONS) {
         const grantStatus = await atManager.checkAccessToken(tokenID, permission);
         if (grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
           hilog.info(DOMAIN, PermissionManager.TAG, `Permission ${permission} is granted`);
@@ -54,7 +54,7 @@ export class PermissionManager {
       
       const requestResult = await atManager.requestPermissionsFromUser(
         context,
-        this.LOCATION_PERMISSIONS
+        PermissionManager.LOCATION_PERMISSIONS
       );
 
       const result: PermissionRequestResult = {
@@ -64,22 +64,24 @@ export class PermissionManager {
       };
 
       // 检查授权结果
-      for (let i = 0; i < requestResult.permissions.length; i++) {
-        const permission = requestResult.permissions[i];
-        const authResult = requestResult.authResults[i];
+      if (requestResult && requestResult.permissions && requestResult.authResults) {
+        for (let i = 0; i < requestResult.permissions.length; i++) {
+          const permission = requestResult.permissions[i];
+          const authResult = requestResult.authResults[i];
 
-        if (authResult === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-          result.granted = true;
-          hilog.info(DOMAIN, PermissionManager.TAG, `Permission granted: ${permission}`);
-        } else {
-          result.deniedPermissions.push(permission);
-          hilog.warn(DOMAIN, PermissionManager.TAG, `Permission denied: ${permission}`);
+          if (authResult === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
+            result.granted = true;
+            hilog.info(DOMAIN, PermissionManager.TAG, `Permission granted: ${permission}`);
+          } else {
+            result.deniedPermissions.push(permission as Permissions);
+            hilog.warn(DOMAIN, PermissionManager.TAG, `Permission denied: ${permission}`);
+          }
         }
       }
 
       // 检查是否永久拒绝
       if (result.deniedPermissions.length > 0) {
-        result.permanentlyDenied = await this.isPermanentlyDenied(context, result.deniedPermissions[0]);
+        result.permanentlyDenied = await PermissionManager.isPermanentlyDenied(context, result.deniedPermissions[0]);
       }
 
       return result;
@@ -87,7 +89,7 @@ export class PermissionManager {
       hilog.error(DOMAIN, PermissionManager.TAG, `Failed to request permissions: ${JSON.stringify(err)}`);
       return {
         granted: false,
-        deniedPermissions: this.LOCATION_PERMISSIONS,
+        deniedPermissions: PermissionManager.LOCATION_PERMISSIONS,
         permanentlyDenied: false,
         error: err as BusinessError
       };

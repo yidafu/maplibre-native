@@ -1,12 +1,5 @@
 import { Feature, Polygon, Geometry } from './geojson';
 import maplibre from 'libmaplibre_native.so';
-// 类型由 NAPI 提供
-type Marker = maplibre.Marker;
-type Layer = maplibre.FillLayer | maplibre.LineLayer | maplibre.CircleLayer | maplibre.SymbolLayer | 
-  maplibre.RasterLayer | maplibre.BackgroundLayer | maplibre.HeatmapLayer | maplibre.HillshadeLayer | 
-  maplibre.FillExtrusionLayer;
-type Source = maplibre.GeoJSONSource | maplibre.VectorSource | maplibre.RasterSource | 
-  maplibre.RasterDEMSource | maplibre.ImageSource;
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
@@ -19,6 +12,14 @@ import { Expression } from './style/expressions/Expression';
 import { Light } from './style/light/Light';
 import { Polyline } from './annotations/Polyline';
 import type { Image } from './style/images/Image';
+
+// 类型由 NAPI 提供
+type Marker = maplibre.Marker;
+type Layer = maplibre.FillLayer | maplibre.LineLayer | maplibre.CircleLayer | maplibre.SymbolLayer | 
+  maplibre.RasterLayer | maplibre.BackgroundLayer | maplibre.HeatmapLayer | maplibre.HillshadeLayer | 
+  maplibre.FillExtrusionLayer;
+type Source = maplibre.GeoJsonSource | maplibre.VectorSource | maplibre.RasterSource | 
+  maplibre.RasterDemSource | maplibre.ImageSource;
 
 /**
  * EdgeInsets 边缘插入定义

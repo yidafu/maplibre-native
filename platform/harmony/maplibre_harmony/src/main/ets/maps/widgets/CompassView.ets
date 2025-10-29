@@ -106,16 +106,8 @@ export struct CompassView {
    * @param animated 是否使用动画
    */
   private show(animated: boolean): void {
-    if (animated) {
-      animateTo({
-        duration: TIME_FADE_ANIMATION,
-        curve: Curve.EaseInOut
-      }, () => {
-        this.compassOpacity = 1.0;
-      });
-    } else {
-      this.compassOpacity = 1.0;
-    }
+    // animation 属性会自动应用到 compassOpacity 的变化
+    this.compassOpacity = 1.0;
   }
   
   /**
@@ -123,16 +115,8 @@ export struct CompassView {
    * @param animated 是否使用动画
    */
   private hide(animated: boolean): void {
-    if (animated) {
-      animateTo({
-        duration: TIME_FADE_ANIMATION,
-        curve: Curve.EaseInOut
-      }, () => {
-        this.compassOpacity = 0;
-      });
-    } else {
-      this.compassOpacity = 0;
-    }
+    // animation 属性会自动应用到 compassOpacity 的变化
+    this.compassOpacity = 0;
   }
   
   /**
@@ -195,6 +179,7 @@ export struct CompassView {
           centerX: '50%',
           centerY: '50%'
         })
+        .animation({ duration: TIME_FADE_ANIMATION, curve: Curve.EaseInOut })
         .onClick(() => {
           this.handleClick();
         })

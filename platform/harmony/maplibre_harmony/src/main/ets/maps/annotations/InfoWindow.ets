@@ -160,8 +160,6 @@ export class InfoWindow {
     if (this.onShowCallback) {
       this.onShowCallback(this.marker, position);
     }
-    
-    console.log(`[InfoWindow] Showing for marker: ${this.marker.getId()} at (${position.x}, ${position.y})`);
   }
   
   /**
@@ -179,8 +177,6 @@ export class InfoWindow {
     if (this.onCloseCallback) {
       this.onCloseCallback(this.marker);
     }
-    
-    console.log(`[InfoWindow] Closed for marker: ${this.marker.getId()}`);
   }
   
   /**
@@ -207,8 +203,6 @@ export class InfoWindow {
     if (this.onUpdateCallback) {
       this.onUpdateCallback(this.marker, position);
     }
-    
-    console.log(`[InfoWindow] Updating for marker: ${this.marker.getId()} at (${position.x}, ${position.y})`);
   }
   
   /**
@@ -352,10 +346,9 @@ export struct InfoWindowComponent {
     // 显示动画
     const animated = this.customStyle?.animated !== false;
     if (animated) {
-      animateTo({ duration: 250, curve: Curve.EaseOut }, () => {
-        this.windowOpacity = 1;
-        this.windowScale = 1;
-      });
+      // 使用 animation 替代废弃的 animateTo
+      this.windowOpacity = 1;
+      this.windowScale = 1;
     } else {
       this.windowOpacity = 1;
       this.windowScale = 1;
@@ -434,6 +427,7 @@ export struct InfoWindowComponent {
     .alignItems(HorizontalAlign.Center)
     .opacity(this.windowOpacity)
     .scale({ x: this.windowScale, y: this.windowScale })
+    .animation({ duration: 250, curve: Curve.EaseOut })
     .onClick(() => {
       console.info('[InfoWindow] Content clicked for marker:', this.marker.getId());
       if (this.onWindowClick) {
