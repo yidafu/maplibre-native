@@ -9,6 +9,7 @@ import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView'
 import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 const TAG = 'MultiMapTestPage';
 
@@ -65,30 +66,9 @@ struct MultiMapTestPage {
   // 动态地图配置
   @State dynamicMapConfigs: MapInstanceConfig[] = [];
 
-  build() {
+  @Builder
+  MapAreaBuilder() {
     Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text('多地图实例测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-
       // 状态信息栏
       Row() {
         Text(`已就绪: ${this.mapInstancesReady}/${this.testMode === 'static' ? this.totalMapInstances : this.dynamicMapsCount}`)
@@ -222,7 +202,25 @@ struct MultiMapTestPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FFFFFF')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    Text('控制区（本页面特殊，主要内容在地图区）')
+      .fontSize(14)
+      .fontColor('#999999')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: '多地图实例测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
+    }
+    .width('100%')
+    .height('100%')
   }
 
   @Builder

@@ -107,7 +107,7 @@ struct OfflineMapTestPage {
       // 定义杭州区域（西湖附近）
       const southwest = createLatLng(30.23, 120.12);
       const northeast = createLatLng(30.31, 120.20);
-      const bounds = LatLngBounds.fromLatLngs(southwest, northeast);
+      const bounds = LatLngBounds.fromLatLngs(northeast, southwest);
       
       const definition = createTilePyramidRegionDefinition(
         'https://demotiles.maplibre.org/style.json',

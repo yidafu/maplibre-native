@@ -20,6 +20,7 @@ import { LogoView } from 'maplibre_harmony/src/main/ets/maps/widgets/LogoView';
 import { ScaleBarView, ScaleBarUnit } from 'maplibre_harmony/src/main/ets/maps/widgets/ScaleBarView';
 import { CompassPosition } from 'maplibre_harmony/src/main/ets/maps/widgets/CompassPosition';
 import { UiSettings } from 'maplibre_harmony/src/main/ets/maps/UiSettings';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 
 @Entry
@@ -39,6 +40,141 @@ struct LogoScaleBarTestPage {
   @State private scaleBarUseDarkStyles: boolean = false;
   @State private scaleBarPosition: CompassPosition = CompassPosition.TopLeft;
   @State private metersPerPixel: number = 0;
+
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      // 地图视图
+      NativeMapView({
+      onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+        this.onMapReady(nativeMapView);
+      }
+      })
+        .width('100%')
+        .height('100%')
+      
+      // Logo 组件
+      if (this.logoEnabled && this.isMapReady) {
+        LogoView({
+          logoEnabled: this.logoEnabled,
+          logoWidth: 50,
+          logoHeight: 30
+        })
+          .offset({ x: this.getLogoX(), y: this.getLogoY() })
+      }
+      
+      // ScaleBar 组件
+      if (this.scaleBarEnabled && this.isMapReady) {
+        ScaleBarView({
+          isEnabled: this.scaleBarEnabled,
+          metersPerPixel: this.metersPerPixel,
+          unitSystem: this.scaleBarUnit,
+          useDarkStyles: this.scaleBarUseDarkStyles
+        })
+          .offset({ x: this.getScaleBarX(), y: this.getScaleBarY() })
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(this.getLogoAlignment())
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 状态信息
+    Text(`比例: 1 px = ${this.metersPerPixel.toFixed(2)} m`)
+      .fontSize(14)
+      .width('100%')
+      .padding(12)
+      .backgroundColor('#F8F8F8')
+      .margin({ bottom: 8 })
+    
+    // Logo 配置
+    Text('Logo 配置')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+      .margin({ bottom: 8 })
+    
+    Row() {
+      Text('显示 Logo:')
+        .fontSize(14)
+        .layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.logoEnabled })
+        .onChange((isOn: boolean) => {
+          this.logoEnabled = isOn;
+          if (this.mapLibreMap) {
+            this.mapLibreMap.getUiSettings().setLogoEnabled(isOn);
+          }
+        })
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#FFFFFF')
+    .border({ width: 1, color: '#E0E0E0' })
+    .borderRadius(4)
+    .margin({ bottom: 12 })
+    
+    Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
+    
+    // ScaleBar 配置
+    Text('ScaleBar 配置')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+      .margin({ bottom: 8 })
+    
+    Row() {
+      Text('显示比例尺:')
+        .fontSize(14)
+        .layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.scaleBarEnabled })
+        .onChange((isOn: boolean) => {
+          this.scaleBarEnabled = isOn;
+          if (this.mapLibreMap) {
+            this.mapLibreMap.getUiSettings().setScaleBarEnabled(isOn);
+          }
+        })
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#FFFFFF')
+    .border({ width: 1, color: '#E0E0E0' })
+    .borderRadius(4)
+    .margin({ bottom: 8 })
+    
+    Row() {
+      Text('深色样式:')
+        .fontSize(14)
+        .layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.scaleBarUseDarkStyles })
+        .onChange((isOn: boolean) => {
+          this.scaleBarUseDarkStyles = isOn;
+          if (this.mapLibreMap) {
+            this.mapLibreMap.getUiSettings().setScaleBarUseDarkStyles(isOn);
+          }
+        })
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#FFFFFF')
+    .border({ width: 1, color: '#E0E0E0' })
+    .borderRadius(4)
+    .margin({ bottom: 8 })
+    
+    Button(`单位: ${this.scaleBarUnit === ScaleBarUnit.Metric ? '公制' : '英制'}`)
+      .fontSize(14)
+      .width('100%')
+      .margin({ top: 4 })
+      .onClick(() => {
+        this.scaleBarUnit = this.scaleBarUnit === ScaleBarUnit.Metric 
+          ? ScaleBarUnit.Imperial 
+          : ScaleBarUnit.Metric;
+        if (this.mapLibreMap) {
+          this.mapLibreMap.getUiSettings().setScaleBarUnit(this.scaleBarUnit);
+        }
+      })
+  }
   
   aboutToAppear() {
     hilog.info(DOMAIN, 'LogoScaleBarTestPage', 'Page loading');
@@ -201,167 +337,11 @@ struct LogoScaleBarTestPage {
   
   build() {
     Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-        
-        Text('Logo & ScaleBar 测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-      
-      // 地图区域（60%）
-      Stack() {
-        // 地图视图
-        NativeMapView({
-        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-          this.onMapReady(nativeMapView);
-        }
-        })
-          .width('100%')
-          .height('100%')
-        
-        // Logo 组件
-        if (this.logoEnabled && this.isMapReady) {
-          LogoView({
-            logoEnabled: this.logoEnabled,
-            logoWidth: 50,
-            logoHeight: 30
-          })
-            .offset({ x: this.getLogoX(), y: this.getLogoY() })
-        }
-        
-        // ScaleBar 组件
-        if (this.scaleBarEnabled && this.isMapReady) {
-          ScaleBarView({
-            isEnabled: this.scaleBarEnabled,
-            metersPerPixel: this.metersPerPixel,
-            unitSystem: this.scaleBarUnit,
-            useDarkStyles: this.scaleBarUseDarkStyles
-          })
-            .offset({ x: this.getScaleBarX(), y: this.getScaleBarY() })
-        }
-      }
-      .width('100%')
-      .height('60%')
-      .alignContent(this.getLogoAlignment())
-      
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column() {
-          // 状态信息
-          Text(`比例: 1 px = ${this.metersPerPixel.toFixed(2)} m`)
-            .fontSize(14)
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#F8F8F8')
-            .margin({ bottom: 8 })
-          
-          // Logo 配置
-          Text('Logo 配置')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Row() {
-            Text('显示 Logo:')
-              .fontSize(14)
-              .layoutWeight(1)
-            Toggle({ type: ToggleType.Switch, isOn: this.logoEnabled })
-              .onChange((isOn: boolean) => {
-                this.logoEnabled = isOn;
-                if (this.mapLibreMap) {
-                  this.mapLibreMap.getUiSettings().setLogoEnabled(isOn);
-                }
-              })
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#FFFFFF')
-          .border({ width: 1, color: '#E0E0E0' })
-          .borderRadius(4)
-          .margin({ bottom: 12 })
-          
-          Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
-          
-          // ScaleBar 配置
-          Text('ScaleBar 配置')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Row() {
-            Text('显示比例尺:')
-              .fontSize(14)
-              .layoutWeight(1)
-            Toggle({ type: ToggleType.Switch, isOn: this.scaleBarEnabled })
-              .onChange((isOn: boolean) => {
-                this.scaleBarEnabled = isOn;
-                if (this.mapLibreMap) {
-                  this.mapLibreMap.getUiSettings().setScaleBarEnabled(isOn);
-                }
-              })
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#FFFFFF')
-          .border({ width: 1, color: '#E0E0E0' })
-          .borderRadius(4)
-          .margin({ bottom: 8 })
-          
-          Row() {
-            Text('深色样式:')
-              .fontSize(14)
-              .layoutWeight(1)
-            Toggle({ type: ToggleType.Switch, isOn: this.scaleBarUseDarkStyles })
-              .onChange((isOn: boolean) => {
-                this.scaleBarUseDarkStyles = isOn;
-                if (this.mapLibreMap) {
-                  this.mapLibreMap.getUiSettings().setScaleBarUseDarkStyles(isOn);
-                }
-              })
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#FFFFFF')
-          .border({ width: 1, color: '#E0E0E0' })
-          .borderRadius(4)
-          .margin({ bottom: 8 })
-          
-          Button(`单位: ${this.scaleBarUnit === ScaleBarUnit.Metric ? '公制' : '英制'}`)
-            .fontSize(14)
-            .width('100%')
-            .margin({ top: 4 })
-            .onClick(() => {
-              this.scaleBarUnit = this.scaleBarUnit === ScaleBarUnit.Metric 
-                ? ScaleBarUnit.Imperial 
-                : ScaleBarUnit.Metric;
-              if (this.mapLibreMap) {
-                this.mapLibreMap.getUiSettings().setScaleBarUnit(this.scaleBarUnit);
-              }
-            })
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+      TestPageLayout({
+        title: 'Logo & ScaleBar 测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')

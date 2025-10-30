@@ -21,6 +21,7 @@ import { CompassView } from 'maplibre_harmony/src/main/ets/maps/widgets/CompassV
 import { CompassVisibility } from 'maplibre_harmony/src/main/ets/maps/widgets/CompassVisibility';
 import { CompassPosition } from 'maplibre_harmony/src/main/ets/maps/widgets/CompassPosition';
 import { UiSettings } from 'maplibre_harmony/src/main/ets/maps/UiSettings';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 
 @Entry
@@ -39,6 +40,130 @@ struct CompassTestPage {
   
   // Compass 引用
   private compassViewRef?: CompassView;
+
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      // 地图视图
+      NativeMapView({
+        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+          this.onMapReady(nativeMapView);
+        }
+      })
+        .width('100%')
+        .height('100%')
+      
+      // 指南针组件
+      if (this.compassEnabled && this.isMapReady) {
+        CompassView({
+          compassEnabled: this.compassEnabled,
+          compassVisibility: this.compassVisibility,
+          fadeWhenFacingNorth: this.compassFadeWhenFacingNorth,
+          onCompassClick: () => {
+            this.handleCompassClick();
+          }
+        })
+          .offset({ x: this.getCompassX(), y: this.getCompassY() })
+      }
+    }
+    .width('100%')
+    .height('100%')
+    .alignContent(this.getCompassAlignment())
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 状态信息
+    Text(`方位角: ${(this.currentBearing ?? 0).toFixed(1)}°`)
+      .fontSize(14)
+      .width('100%')
+      .padding(12)
+      .backgroundColor('#F8F8F8')
+      .margin({ bottom: 8 })
+    
+    // 旋转控制
+    Text('旋转测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+      .margin({ bottom: 8 })
+    
+    Row() {
+      Button('0°')
+        .fontSize(12)
+        .layoutWeight(1)
+        .onClick(() => this.rotateTo(0))
+        .margin({ right: 4 })
+      Button('45°')
+        .fontSize(12)
+        .layoutWeight(1)
+        .onClick(() => this.rotateTo(45))
+        .margin({ right: 4 })
+      Button('90°')
+        .fontSize(12)
+        .layoutWeight(1)
+        .onClick(() => this.rotateTo(90))
+        .margin({ right: 4 })
+      Button('180°')
+        .fontSize(12)
+        .layoutWeight(1)
+        .onClick(() => this.rotateTo(180))
+    }
+    .width('100%')
+    .margin({ bottom: 12 })
+    
+    Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
+    
+    // 指南针配置
+    Text('指南针配置')
+      .fontSize(16)
+      .fontWeight(FontWeight.Medium)
+      .width('100%')
+      .margin({ bottom: 8 })
+    
+    Row() {
+      Text('启用指南针:')
+        .fontSize(14)
+        .layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.compassEnabled })
+        .onChange((isOn: boolean) => {
+          this.compassEnabled = isOn;
+          if (this.mapLibreMap) {
+            this.mapLibreMap.getUiSettings().setCompassEnabled(isOn);
+          }
+        })
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#FFFFFF')
+    .border({ width: 1, color: '#E0E0E0' })
+    .borderRadius(4)
+    .margin({ bottom: 8 })
+    
+    Row() {
+      Text('正北淡出:')
+        .fontSize(14)
+        .layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.compassFadeWhenFacingNorth })
+        .onChange((isOn: boolean) => {
+          this.compassFadeWhenFacingNorth = isOn;
+          if (this.mapLibreMap) {
+            this.mapLibreMap.getUiSettings().setCompassFadeFacingNorth(isOn);
+          }
+        })
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#FFFFFF')
+    .border({ width: 1, color: '#E0E0E0' })
+    .borderRadius(4)
+    .margin({ bottom: 8 })
+    
+    Button(`可见性: ${this.getVisibilityName()}`)
+      .fontSize(14)
+      .width('100%')
+      .onClick(() => this.toggleVisibility())
+  }
   
   /**
    * 页面加载
@@ -219,156 +344,11 @@ struct CompassTestPage {
   
   build() {
     Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-        
-        Text('指南针测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-      
-      // 地图容器
-      Stack() {
-        // 地图视图
-        NativeMapView({
-          onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-            this.onMapReady(nativeMapView);
-          }
-        })
-          .width('100%')
-          .height('100%')
-        
-        // 指南针组件
-        if (this.compassEnabled && this.isMapReady) {
-          CompassView({
-            compassEnabled: this.compassEnabled,
-            compassVisibility: this.compassVisibility,
-            fadeWhenFacingNorth: this.compassFadeWhenFacingNorth,
-            onCompassClick: () => {
-              this.handleCompassClick();
-            }
-          })
-            .offset({ x: this.getCompassX(), y: this.getCompassY() })
-        }
-      }
-      .width('100%')
-      .height('60%')
-      .alignContent(this.getCompassAlignment())
-      
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column() {
-          // 状态信息
-          Text(`方位角: ${(this.currentBearing ?? 0).toFixed(1)}°`)
-            .fontSize(14)
-            .width('100%')
-            .padding(12)
-            .backgroundColor('#F8F8F8')
-            .margin({ bottom: 8 })
-          
-          // 旋转控制
-          Text('旋转测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Row() {
-            Button('0°')
-              .fontSize(12)
-              .layoutWeight(1)
-              .onClick(() => this.rotateTo(0))
-              .margin({ right: 4 })
-            Button('45°')
-              .fontSize(12)
-              .layoutWeight(1)
-              .onClick(() => this.rotateTo(45))
-              .margin({ right: 4 })
-            Button('90°')
-              .fontSize(12)
-              .layoutWeight(1)
-              .onClick(() => this.rotateTo(90))
-              .margin({ right: 4 })
-            Button('180°')
-              .fontSize(12)
-              .layoutWeight(1)
-              .onClick(() => this.rotateTo(180))
-          }
-          .width('100%')
-          .margin({ bottom: 12 })
-          
-          Divider().height(1).color('#E0E0E0').margin({ bottom: 12 })
-          
-          // 指南针配置
-          Text('指南针配置')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-            .margin({ bottom: 8 })
-          
-          Row() {
-            Text('启用指南针:')
-              .fontSize(14)
-              .layoutWeight(1)
-            Toggle({ type: ToggleType.Switch, isOn: this.compassEnabled })
-              .onChange((isOn: boolean) => {
-                this.compassEnabled = isOn;
-                if (this.mapLibreMap) {
-                  this.mapLibreMap.getUiSettings().setCompassEnabled(isOn);
-                }
-              })
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#FFFFFF')
-          .border({ width: 1, color: '#E0E0E0' })
-          .borderRadius(4)
-          .margin({ bottom: 8 })
-          
-          Row() {
-            Text('正北淡出:')
-              .fontSize(14)
-              .layoutWeight(1)
-            Toggle({ type: ToggleType.Switch, isOn: this.compassFadeWhenFacingNorth })
-              .onChange((isOn: boolean) => {
-                this.compassFadeWhenFacingNorth = isOn;
-                if (this.mapLibreMap) {
-                  this.mapLibreMap.getUiSettings().setCompassFadeFacingNorth(isOn);
-                }
-              })
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#FFFFFF')
-          .border({ width: 1, color: '#E0E0E0' })
-          .borderRadius(4)
-          .margin({ bottom: 8 })
-          
-          Button(`可见性: ${this.getVisibilityName()}`)
-            .fontSize(14)
-            .width('100%')
-            .onClick(() => this.toggleVisibility())
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+      TestPageLayout({
+        title: '指南针测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')

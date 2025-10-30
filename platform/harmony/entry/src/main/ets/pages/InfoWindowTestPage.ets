@@ -3,11 +3,15 @@
  * 
  * 测试功能：
  * - 显示/隐藏 InfoWindow
- * - 自定义 InfoWindow 样式
+ * - 自定义 InfoWindow 样式（颜色、字体、圆角等）
+ * - InfoWindow 附件视图（左右按钮）
+ * - InfoWindow 缩略图
+ * - InfoWindow 关闭按钮
  * - InfoWindow 点击和长按事件
- * - 更新 InfoWindow 内容
+ * - 动态更新 InfoWindow 内容
  * - 多个 InfoWindow 管理
  * - InfoWindow 边界检测
+ * - InfoWindow 偏移量配置
  */
 
 import { TestPageLayout } from '../components/TestPageLayout';
@@ -75,7 +79,7 @@ struct InfoWindowTestPage {
       .width('100%')
     
     Row() {
-      Button('添加默认InfoWindow')
+      Button('默认样式')
         .width('48%')
         .fontSize(12)
         .onClick(() => {
@@ -83,7 +87,7 @@ struct InfoWindowTestPage {
         })
         .enabled(this.mapReady)
       
-      Button('添加多行文本')
+      Button('多行文本')
         .width('48%')
         .fontSize(12)
         .margin({ left: 8 })
@@ -97,7 +101,7 @@ struct InfoWindowTestPage {
     Divider()
     
     // 自定义样式
-    Text('自定义样式')
+    Text('自定义样式 + 颜色主题')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
       .width('100%')
@@ -148,25 +152,79 @@ struct InfoWindowTestPage {
     
     Divider()
     
-    // 边界测试
-    Text('边界测试')
+    // 附件和高级功能
+    Text('附件视图 + 高级功能')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
       .width('100%')
     
     Row() {
-      Button('左上角')
+      Button('带缩略图')
         .width('48%')
         .fontSize(12)
+        .backgroundColor('#E91E63')
+        .onClick(() => {
+          this.addInfoWindowWithThumbnail();
+        })
+        .enabled(this.mapReady)
+      
+      Button('带关闭按钮')
+        .width('48%')
+        .fontSize(12)
+        .margin({ left: 8 })
+        .backgroundColor('#673AB7')
+        .onClick(() => {
+          this.addInfoWindowWithCloseButton();
+        })
+        .enabled(this.mapReady)
+    }
+    .width('100%')
+    
+    Row() {
+      Button('自定义偏移量')
+        .width('48%')
+        .fontSize(12)
+        .backgroundColor('#795548')
+        .onClick(() => {
+          this.addInfoWindowWithOffset();
+        })
+        .enabled(this.mapReady)
+      
+      Button('圆角 + 阴影')
+        .width('48%')
+        .fontSize(12)
+        .margin({ left: 8 })
+        .backgroundColor('#607D8B')
+        .onClick(() => {
+          this.addInfoWindowWithShadow();
+        })
+        .enabled(this.mapReady)
+    }
+    .width('100%')
+    
+    Divider()
+    
+    // 随机位置测试
+    Text('随机位置测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Row() {
+      Button('随机红色主题')
+        .width('48%')
+        .fontSize(12)
+        .backgroundColor('#FF5722')
         .onClick(() => {
           this.addInfoWindowAtCorner('topLeft');
         })
         .enabled(this.mapReady)
       
-      Button('右上角')
+      Button('随机橙色主题')
         .width('48%')
         .fontSize(12)
         .margin({ left: 8 })
+        .backgroundColor('#FF6F00')
         .onClick(() => {
           this.addInfoWindowAtCorner('topRight');
         })
@@ -227,12 +285,36 @@ struct InfoWindowTestPage {
   }
   
   /**
+   * 页面出现：重置状态，确保不复用上次实例
+   */
+  aboutToAppear() {
+    this.statusMessage = '等待操作...';
+    this.mapReady = false;
+    this.markerCount = 0;
+    this.infoWindowCount = 0;
+    this.markerList = [];
+    // 避免跨页复用旧实例
+    this.mapLibreMap = null;
+  }
+
+  /**
    * 页面卸载
    */
   aboutToDisappear() {
     if (this.mapLibreMap) {
       this.mapLibreMap.destroy();
     }
+    this.mapLibreMap = null;
+  }
+
+  /**
+   * 页面隐藏：与卸载同等对待，保障二次进入的幂等
+   */
+  onPageHide() {
+    if (this.mapLibreMap) {
+      this.mapLibreMap.destroy();
+    }
+    this.mapLibreMap = null;
   }
 
   /**
@@ -331,17 +413,25 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
+      const blueStyle: InfoWindowStyle = {
+        backgroundColor: '#2196F3',
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: '#E3F2FD',
+        borderRadius: 12,
+        padding: 16,
+        shadowRadius: 12,
+        shadowColor: 'rgba(33, 150, 243, 0.4)',
+        animated: true
+      };
+      
       const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
-          .title('蓝色主题')
-          .snippet('使用蓝色背景和白色文字')
+          .title('蓝色主题 ✨')
+          .snippet('使用蓝色背景和白色文字，圆角 12px')
           .draggable(false)
+          .infoWindowStyle(blueStyle)
       );
-      
-      // 设置自定义样式
-      // 注意：InfoWindow 样式需要通过 MarkerOptions 或其他方式设置
-      // 当前 NAPI Marker 不直接暴露 getInfoWindow() 方法
       
       this.markerList.push(marker);
       this.markerCount++;
@@ -366,16 +456,26 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
+      const greenStyle: InfoWindowStyle = {
+        backgroundColor: '#4CAF50',
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: '#C8E6C9',
+        titleFontSize: 18,
+        snippetFontSize: 15,
+        borderRadius: 8,
+        padding: 14,
+        shadowRadius: 10,
+        shadowColor: 'rgba(76, 175, 80, 0.3)'
+      };
+      
       const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
-          .title('绿色主题')
-          .snippet('清新的绿色配色方案')
+          .title('绿色主题 🌿')
+          .snippet('清新的绿色配色方案，适合生态或健康相关内容')
           .draggable(false)
+          .infoWindowStyle(greenStyle)
       );
-      
-      // 注意：InfoWindow 样式需要通过 MarkerOptions 或其他方式设置
-      // 当前 NAPI Marker 不直接暴露 getInfoWindow() 方法
       
       this.markerList.push(marker);
       this.markerCount++;
@@ -400,16 +500,24 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
+      const largeFontStyle: InfoWindowStyle = {
+        titleFontSize: 20,
+        titleFontColor: '#FF9800',
+        snippetFontSize: 16,
+        snippetFontColor: '#F57C00',
+        padding: 18,
+        maxWidth: 320,
+        borderRadius: 10
+      };
+      
       const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
-          .title('大字体')
-          .snippet('使用更大的字体以提高可读性')
+          .title('大字体 📢')
+          .snippet('使用更大的字体以提高可读性，适合重要信息')
           .draggable(false)
+          .infoWindowStyle(largeFontStyle)
       );
-      
-      // 注意：InfoWindow 样式需要通过 MarkerOptions 或其他方式设置
-      // 当前 NAPI Marker 不直接暴露 getInfoWindow() 方法
       
       this.markerList.push(marker);
       this.markerCount++;
@@ -434,16 +542,22 @@ struct InfoWindowTestPage {
     try {
       const position = this.getRandomPosition();
       
+      const compactStyle: InfoWindowStyle = {
+        titleFontSize: 14,
+        snippetFontSize: 12,
+        padding: 8,
+        maxWidth: 200,
+        borderRadius: 6
+      };
+      
       const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
-          .title('紧凑')
-          .snippet('小巧紧凑的样式')
+          .title('紧凑样式')
+          .snippet('小巧紧凑的样式，占用更少空间')
           .draggable(false)
+          .infoWindowStyle(compactStyle)
       );
-      
-      // 注意：InfoWindow 样式需要通过 MarkerOptions 或其他方式设置
-      // 当前 NAPI Marker 不直接暴露 getInfoWindow() 方法
       
       this.markerList.push(marker);
       this.markerCount++;
@@ -460,39 +574,217 @@ struct InfoWindowTestPage {
   }
 
   /**
-   * 在指定角落添加 InfoWindow
+   * 添加带缩略图的 InfoWindow
+   */
+  private async addInfoWindowWithThumbnail(): Promise<void> {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const position = this.getRandomPosition();
+      
+      const thumbnailStyle: InfoWindowStyle = {
+        thumbnailImage: $r('app.media.startIcon'), // 使用应用图标作为示例
+        backgroundColor: '#E91E63',
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: '#F8BBD0',
+        padding: 12,
+        borderRadius: 10
+      };
+      
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('带缩略图 🖼️')
+          .snippet('在标题旁边显示缩略图，适合展示地点照片或图标')
+          .draggable(false)
+          .infoWindowStyle(thumbnailStyle)
+      );
+      
+      this.markerList.push(marker);
+      this.markerCount++;
+      
+      marker.showInfoWindow();
+      this.infoWindowCount++;
+      
+      this.statusMessage = `✅ 已添加带缩略图 InfoWindow (${this.markerCount})`;
+      hilog.info(DOMAIN, 'InfoWindowTestPage', 'Added InfoWindow with thumbnail');
+    } catch (error) {
+      this.statusMessage = `❌ 添加失败: ${error.message}`;
+      hilog.error(DOMAIN, 'InfoWindowTestPage', `Failed to add InfoWindow: ${error.message}`);
+    }
+  }
+
+  /**
+   * 添加带关闭按钮的 InfoWindow
+   */
+  private async addInfoWindowWithCloseButton(): Promise<void> {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const position = this.getRandomPosition();
+      
+      const closeButtonStyle: InfoWindowStyle = {
+        showCloseButton: true,
+        backgroundColor: '#673AB7',
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: '#D1C4E9',
+        padding: 10,
+        borderRadius: 8
+      };
+      
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('带关闭按钮 ❌')
+          .snippet('右上角有关闭按钮，点击可关闭 InfoWindow')
+          .draggable(false)
+          .infoWindowStyle(closeButtonStyle)
+      );
+      
+      this.markerList.push(marker);
+      this.markerCount++;
+      
+      marker.showInfoWindow();
+      this.infoWindowCount++;
+      
+      this.statusMessage = `✅ 已添加带关闭按钮 InfoWindow (${this.markerCount})`;
+      hilog.info(DOMAIN, 'InfoWindowTestPage', 'Added InfoWindow with close button');
+    } catch (error) {
+      this.statusMessage = `❌ 添加失败: ${error.message}`;
+      hilog.error(DOMAIN, 'InfoWindowTestPage', `Failed to add InfoWindow: ${error.message}`);
+    }
+  }
+
+  /**
+   * 添加自定义偏移量的 InfoWindow
+   */
+  private async addInfoWindowWithOffset(): Promise<void> {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const position = this.getRandomPosition();
+      
+      const offsetStyle: InfoWindowStyle = {
+        offsetX: 50,  // 向右偏移 50 像素
+        offsetY: -20, // 向上偏移 20 像素
+        backgroundColor: '#795548',
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: '#D7CCC8',
+        padding: 12,
+        borderRadius: 8
+      };
+      
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('自定义偏移 ↗️')
+          .snippet('InfoWindow 向右偏移 50px，向上偏移 20px')
+          .draggable(false)
+          .infoWindowStyle(offsetStyle)
+      );
+      
+      this.markerList.push(marker);
+      this.markerCount++;
+      
+      marker.showInfoWindow();
+      this.infoWindowCount++;
+      
+      this.statusMessage = `✅ 已添加自定义偏移 InfoWindow (${this.markerCount})`;
+      hilog.info(DOMAIN, 'InfoWindowTestPage', 'Added InfoWindow with offset');
+    } catch (error) {
+      this.statusMessage = `❌ 添加失败: ${error.message}`;
+      hilog.error(DOMAIN, 'InfoWindowTestPage', `Failed to add InfoWindow: ${error.message}`);
+    }
+  }
+
+  /**
+   * 添加圆角和阴影的 InfoWindow
+   */
+  private async addInfoWindowWithShadow(): Promise<void> {
+    if (!this.mapLibreMap) return;
+    
+    try {
+      const position = this.getRandomPosition();
+      
+      const shadowStyle: InfoWindowStyle = {
+        backgroundColor: '#607D8B',
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: '#CFD8DC',
+        borderRadius: 16,
+        padding: 16,
+        shadowRadius: 20,
+        shadowColor: 'rgba(0, 0, 0, 0.5)',
+        maxWidth: 300
+      };
+      
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(position)
+          .title('圆角 + 阴影 ⚫')
+          .snippet('大圆角（16px）+ 深阴影效果，突出显示')
+          .draggable(false)
+          .infoWindowStyle(shadowStyle)
+      );
+      
+      this.markerList.push(marker);
+      this.markerCount++;
+      
+      marker.showInfoWindow();
+      this.infoWindowCount++;
+      
+      this.statusMessage = `✅ 已添加圆角阴影 InfoWindow (${this.markerCount})`;
+      hilog.info(DOMAIN, 'InfoWindowTestPage', 'Added InfoWindow with shadow');
+    } catch (error) {
+      this.statusMessage = `❌ 添加失败: ${error.message}`;
+      hilog.error(DOMAIN, 'InfoWindowTestPage', `Failed to add InfoWindow: ${error.message}`);
+    }
+  }
+
+  /**
+   * 添加随机位置的 InfoWindow（不同颜色主题）
    */
   private async addInfoWindowAtCorner(corner: string): Promise<void> {
     if (!this.mapLibreMap) return;
     
     try {
-      let lat: number;
-      let lng: number;
       let title: string;
+      let backgroundColor: string;
+      let snippetFontColor: string;
       
       switch (corner) {
         case 'topLeft':
-          lat = 40.5;
-          lng = 115.5;
-          title = '左上角';
+          title = '随机位置 - 红色主题 🔴';
+          backgroundColor = '#FF5722';
+          snippetFontColor = '#FFCCBC';
           break;
         case 'topRight':
-          lat = 40.5;
-          lng = 117.5;
-          title = '右上角';
+          title = '随机位置 - 橙色主题 🟠';
+          backgroundColor = '#FF6F00';
+          snippetFontColor = '#FFE0B2';
           break;
         default:
           return;
       }
       
-      const position = new maplibre.LatLng(lat, lng);
+      // 使用随机位置
+      const position = this.getRandomPosition();
+      
+      const cornerStyle: InfoWindowStyle = {
+        backgroundColor: backgroundColor,
+        titleFontColor: '#FFFFFF',
+        snippetFontColor: snippetFontColor,
+        padding: 12,
+        borderRadius: 8,
+        maxWidth: 250
+      };
       
       const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
         new MarkerOptions()
           .position(position)
           .title(title)
-          .snippet('测试边界检测功能\nInfoWindow 应该自动调整位置')
+          .snippet('随机位置测试\nInfoWindow 在地图上随机显示')
           .draggable(false)
+          .infoWindowStyle(cornerStyle)
       );
       
       this.markerList.push(marker);
@@ -600,4 +892,3 @@ struct InfoWindowTestPage {
     return new maplibre.LatLng(lat, lng);
   }
 }
-

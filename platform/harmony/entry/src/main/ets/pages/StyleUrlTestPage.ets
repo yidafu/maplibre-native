@@ -5,6 +5,7 @@ import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreM
 import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { TestPageLayout } from '../components/TestPageLayout';
 const TAG = 'StyleUrlTestPage';
 
 /**
@@ -67,76 +68,68 @@ struct StyleUrlTestPage {
       name: 'OSM Bright',
       url: 'https://tiles.versatiles.org/assets/styles/osm-bright.json',
       description: 'OSM 明亮样式'
+    },
+    {
+      name: 'OSM Liberty',
+      url: 'https://tiles.versatiles.org/styles/osm-liberty/style.json',
+      description: 'OSM Liberty 样式'
+    },
+    {
+      name: 'Dark Matter',
+      url: 'https://tiles.versatiles.org/styles/dark-matter/style.json',
+      description: '暗黑主题样式'
+    },
+    {
+      name: 'Klokantech Basic',
+      url: 'https://tiles.versatiles.org/styles/klokantech-basic/style.json',
+      description: 'Klokantech 基础样式'
     }
   ];
 
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text(this.message)
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-
-      // 地图区域（60%）
-      Stack() {
-        NativeMapView({
-          styleUrl: this.styleUrls[0].url,
-          initialLatitude: 20.0,
-          initialLongitude: 0.0,
-          initialZoom: 1.5,
-          initialBearing: 0,
-          initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            this.initializeMap(mapView);
-          }
-        })
-          .width('100%')
-          .height('100%')
-        
-        // 加载指示器
-        if (!this.mapReady) {
-          Column() {
-            LoadingProgress()
-              .width(50)
-              .height(50)
-              .color('#2196F3')
-            
-            Text('地图加载中...')
-              .fontSize(16)
-              .margin({ top: 10 })
-          }
-          .width('100%')
-          .height('100%')
-          .justifyContent(FlexAlign.Center)
-          .backgroundColor('rgba(255, 255, 255, 0.8)')
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+        styleUrl: this.styleUrls[0].url,
+        initialLatitude: 20.0,
+        initialLongitude: 0.0,
+        initialZoom: 1.5,
+        initialBearing: 0,
+        initialPitch: 0,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          this.initializeMap(mapView);
         }
+      })
+        .width('100%')
+        .height('100%')
+      
+      // 加载指示器
+      if (!this.mapReady) {
+        Column() {
+          LoadingProgress()
+            .width(50)
+            .height(50)
+            .color('#2196F3')
+          
+          Text('地图加载中...')
+            .fontSize(16)
+            .margin({ top: 10 })
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('rgba(255, 255, 255, 0.8)')
       }
-      .width('100%')
-      .height('60%')
+    }
+    .width('100%')
+    .height('100%')
+  }
 
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column({ space: 8 }) {
-          // 样式信息显示
-          Column() {
-            Text(`当前样式: ${this.currentStyleName}`)
+  @Builder
+  ControlAreaBuilder() {
+    // 样式信息显示
+    Column() {
+      Text(`当前样式: ${this.currentStyleName}`)
               .fontSize(14)
               .fontWeight(FontWeight.Bold)
               .width('100%')
@@ -180,19 +173,21 @@ struct StyleUrlTestPage {
             .width('90%')
           })
 
-          Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
+        Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
 
-          Button('获取当前样式信息')
-            .onClick(() => this.getStyleInfo())
-            .width('90%')
-            .backgroundColor('#FF9800')
-        }
-        .width('100%')
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+        Button('获取当前样式信息')
+          .onClick(() => this.getStyleInfo())
+          .width('90%')
+          .backgroundColor('#FF9800')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: this.message,
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')

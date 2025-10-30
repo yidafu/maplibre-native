@@ -15,6 +15,7 @@ import { OnStyleLoadedListener } from 'maplibre_harmony/src/main/ets/maps/listen
 import { OnCameraTrackingChangedListener } from 'maplibre_harmony/src/main/ets/maps/location/listeners/OnCameraTrackingChangedListener';
 import { OnRenderModeChangedListener } from 'maplibre_harmony/src/main/ets/maps/location/listeners/OnRenderModeChangedListener';
 import { OnLocationStaleListener } from 'maplibre_harmony/src/main/ets/maps/location/listeners/OnLocationStaleListener';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 // 样式加载监听器实现
 class StyleLoadedListenerImpl implements OnStyleLoadedListener {
@@ -266,74 +267,51 @@ struct LocationComponentTestPage {
     console.info(`Simulated location: ${lat}, ${lng}`);
   }
 
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text('LocationComponent 测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+      onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+        this.onMapReady(nativeMapView);
       }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
+      })
+        .width('100%')
+        .height('100%')
 
-      // 地图区域（60%）
-      Stack() {
-        NativeMapView({
-        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-          this.onMapReady(nativeMapView);
-        }
-        })
-          .width('100%')
-          .height('100%')
+      // 状态显示
+      Column() {
+        Text(`定位: ${this.locationEnabled ? '开启' : '关闭'}`)
+          .fontSize(14)
+          .fontColor(Color.White)
+          .padding(8)
+          .backgroundColor('rgba(0,0,0,0.6)')
+          .borderRadius(4)
 
-        // 状态显示
-        Column() {
-          Text(`定位: ${this.locationEnabled ? '开启' : '关闭'}`)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .padding(8)
-            .backgroundColor('rgba(0,0,0,0.6)')
-            .borderRadius(4)
+        Text(`相机: ${this.currentMode}`)
+          .fontSize(14)
+          .fontColor(Color.White)
+          .padding(8)
+          .backgroundColor('rgba(0,0,0,0.6)')
+          .borderRadius(4)
+          .margin({ top: 4 })
 
-          Text(`相机: ${this.currentMode}`)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .padding(8)
-            .backgroundColor('rgba(0,0,0,0.6)')
-            .borderRadius(4)
-            .margin({ top: 4 })
-
-          Text(`渲染: ${this.currentRenderMode}`)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .padding(8)
-            .backgroundColor('rgba(0,0,0,0.6)')
-            .borderRadius(4)
-            .margin({ top: 4 })
-        }
-        .alignItems(HorizontalAlign.Start)
-        .margin({ top: 16, left: 16 })
+        Text(`渲染: ${this.currentRenderMode}`)
+          .fontSize(14)
+          .fontColor(Color.White)
+          .padding(8)
+          .backgroundColor('rgba(0,0,0,0.6)')
+          .borderRadius(4)
+          .margin({ top: 4 })
       }
-      .width('100%')
-      .height('60%')
+      .alignItems(HorizontalAlign.Start)
+      .margin({ top: 16, left: 16 })
+    }
+    .width('100%')
+    .height('100%')
+  }
 
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column() {
+  @Builder
+  ControlAreaBuilder() {
         // 基础控制
         Row() {
           Button(this.locationEnabled ? '关闭定位' : '开启定位')
@@ -439,13 +417,15 @@ struct LocationComponentTestPage {
         }
         .width('100%')
         .padding({ top: 0 })
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: 'LocationComponent 测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')

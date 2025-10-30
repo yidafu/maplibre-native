@@ -10,6 +10,7 @@ import { TestPageLayout } from '../components/TestPageLayout';
 import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
+import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 
@@ -36,8 +37,8 @@ struct QueryFeaturesTestPage {
       initialZoom: 12,
       initialBearing: 0,
       initialPitch: 0,
-      onMapReady: (mapView?: maplibre.NativeMapView, map?: MapLibreMap) => {
-        this.onMapReady(mapView, map);
+      onMapReady: (mapView?: maplibre.NativeMapView) => {
+        this.onMapReady(mapView);
       }
     })
     .width('100%')
@@ -75,14 +76,40 @@ struct QueryFeaturesTestPage {
       .fontWeight(FontWeight.Bold)
       .width('100%')
     
-    Text('• 使用按钮查询地图中心和全屏区域的要素')
+    Text('• 支持点查询和区域查询两种方式')
       .fontSize(13)
       .width('100%')
       .fontColor('#666666')
     
     Divider()
     
-    // 查询测试
+    // 点查询测试
+    Text('点查询测试')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .width('100%')
+    
+    Row() {
+      Button('查询中心点')
+        .width('48%')
+        .onClick(() => {
+          this.handleQueryCenterPoint();
+        })
+        .enabled(this.mapReady)
+      
+      Button('查询屏幕点')
+        .width('48%')
+        .margin({ left: 8 })
+        .onClick(() => {
+          this.handleQueryScreenPoint();
+        })
+        .enabled(this.mapReady)
+    }
+    .width('100%')
+    
+    Divider()
+    
+    // 区域查询测试
     Text('区域查询测试')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
@@ -106,11 +133,27 @@ struct QueryFeaturesTestPage {
     }
     .width('100%')
     
+    Divider()
+    
     Button('清除结果')
       .width('100%')
       .onClick(() => {
         this.handleClearResults();
       })
+  }
+  
+  /**
+   * 处理查询中心点（包装方法）
+   */
+  private handleQueryCenterPoint(): void {
+    this.queryCenterPoint();
+  }
+  
+  /**
+   * 处理查询屏幕点（包装方法）
+   */
+  private handleQueryScreenPoint(): void {
+    this.queryScreenPoint();
   }
   
   /**
@@ -149,13 +192,123 @@ struct QueryFeaturesTestPage {
   /**
    * 地图就绪回调
    */
-  private onMapReady(mapView?: maplibre.NativeMapView, map?: MapLibreMap): void {
-    if (mapView && map) {
+  private onMapReady(mapView?: maplibre.NativeMapView): void {
+    if (mapView) {
       this.mapView = mapView;
-      this.map = map;
+      // 手动创建 MapLibreMap 实例
+      const options = new MapLibreMapOptions();
+      this.map = new MapLibreMap(mapView, options);
       this.mapReady = true;
       this.statusMessage = '✅ 地图加载成功，使用按钮查询要素';
       hilog.info(DOMAIN, 'QueryFeaturesTestPage', 'Map ready');
+    }
+  }
+
+  /**
+   * 查询中心点
+   */
+  private queryCenterPoint(): void {
+    if (!this.map || !this.mapView) return;
+    
+    try {
+      // 获取地图中心点像素坐标（假设屏幕中心）
+      const centerX: number = 200; // 屏幕中心 X
+      const centerY: number = 200; // 屏幕中心 Y
+      
+      // 查询中心点的要素
+      const features = this.map.queryRenderedFeaturesForPoint(centerX, centerY);
+      
+      this.featureCount = features.length;
+      
+      const centerLatLng: maplibre.LatLng = this.mapView.getLatLng();
+      const zoom: number = this.mapView.getZoom();
+      
+      if (features.length > 0) {
+        // 显示前 5 个要素的信息
+        const featureInfo = features.slice(0, 5).map((feature, index) => {
+          const props = feature.getProperties();
+          const propKeys = Object.keys(props);
+          const firstProp = propKeys.length > 0 ? `${propKeys[0]}: ${props[propKeys[0]]}` : 'No properties';
+          const geometry = feature.getGeometry();
+          const geomType = geometry ? 'Feature' : 'Unknown';
+          return `${index + 1}. ${geomType} - ${firstProp}`;
+        }).join('\n');
+        
+        this.queryResult = `✅ 点查询 - 找到 ${features.length} 个要素\n\n` +
+          `查询位置: 屏幕中心 (${centerX}, ${centerY})\n` +
+          `地理坐标: ${centerLatLng.latitude.toFixed(4)}°, ${centerLatLng.longitude.toFixed(4)}°\n` +
+          `缩放级别: ${zoom.toFixed(2)}\n\n` +
+          `前 ${Math.min(5, features.length)} 个要素:\n${featureInfo}`;
+      } else {
+        this.queryResult = `⚠️ 点查询 - 未找到要素\n\n` +
+          `查询位置: 屏幕中心 (${centerX}, ${centerY})\n` +
+          `地理坐标: ${centerLatLng.latitude.toFixed(4)}°, ${centerLatLng.longitude.toFixed(4)}°\n` +
+          `缩放级别: ${zoom.toFixed(2)}\n\n` +
+          `提示: 尝试在有要素的位置查询`;
+      }
+      
+      this.statusMessage = `✅ 中心点查询完成，找到 ${features.length} 个要素`;
+      
+      hilog.info(DOMAIN, 'QueryFeaturesTestPage', 
+        `Center point query (${centerX}, ${centerY}) - Found ${features.length} features`);
+    } catch (error) {
+      this.statusMessage = `❌ 查询失败: ${error.message}`;
+      this.queryResult = `❌ 错误: ${error.message}`;
+      hilog.error(DOMAIN, 'QueryFeaturesTestPage', `Query failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * 查询屏幕特定点
+   */
+  private queryScreenPoint(): void {
+    if (!this.map || !this.mapView) return;
+    
+    try {
+      // 查询屏幕左上角某个点（示例：距离左上角 100, 150）
+      const queryX: number = 100;
+      const queryY: number = 150;
+      
+      // 查询该点的要素
+      const features = this.map.queryRenderedFeaturesForPoint(queryX, queryY);
+      
+      this.featureCount = features.length;
+      
+      const centerLatLng: maplibre.LatLng = this.mapView.getLatLng();
+      const zoom: number = this.mapView.getZoom();
+      
+      if (features.length > 0) {
+        // 显示前 5 个要素的信息
+        const featureInfo = features.slice(0, 5).map((feature, index) => {
+          const props = feature.getProperties();
+          const propKeys = Object.keys(props);
+          const firstProp = propKeys.length > 0 ? `${propKeys[0]}: ${props[propKeys[0]]}` : 'No properties';
+          const geometry = feature.getGeometry();
+          const geomType = geometry ? 'Feature' : 'Unknown';
+          return `${index + 1}. ${geomType} - ${firstProp}`;
+        }).join('\n');
+        
+        this.queryResult = `✅ 点查询 - 找到 ${features.length} 个要素\n\n` +
+          `查询位置: 屏幕坐标 (${queryX}, ${queryY})\n` +
+          `地图中心: ${centerLatLng.latitude.toFixed(4)}°, ${centerLatLng.longitude.toFixed(4)}°\n` +
+          `缩放级别: ${zoom.toFixed(2)}\n\n` +
+          `前 ${Math.min(5, features.length)} 个要素:\n${featureInfo}`;
+      } else {
+        this.queryResult = `⚠️ 点查询 - 未找到要素\n\n` +
+          `查询位置: 屏幕坐标 (${queryX}, ${queryY})\n` +
+          `地图中心: ${centerLatLng.latitude.toFixed(4)}°, ${centerLatLng.longitude.toFixed(4)}°\n` +
+          `缩放级别: ${zoom.toFixed(2)}\n\n` +
+          `提示: 尝试在有要素的位置查询`;
+      }
+      
+      this.statusMessage = `✅ 屏幕点查询完成，找到 ${features.length} 个要素`;
+      
+      hilog.info(DOMAIN, 'QueryFeaturesTestPage', 
+        `Screen point query (${queryX}, ${queryY}) - Found ${features.length} features`);
+    } catch (error) {
+      this.statusMessage = `❌ 查询失败: ${error.message}`;
+      this.queryResult = `❌ 错误: ${error.message}`;
+      hilog.error(DOMAIN, 'QueryFeaturesTestPage', `Query failed: ${error.message}`);
     }
   }
 

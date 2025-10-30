@@ -46,12 +46,24 @@ struct Index {
   aboutToAppear() {
     // 延迟初始化数据，避免阻塞首屏加载
     this.testPageGroups = [
-    // 🗺️ 基础功能
-    new TestPageGroup('基础功能', '🗺️', [
+    // 🗺️ 地图基础
+    new TestPageGroup('地图基础', '🗺️', [
       new TestPageItem(
         '基础地图测试',
         '测试地图渲染、初始化和相机基础移动（jumpTo/easeTo/flyTo）',
         'pages/BasicMapPage',
+        '🗺️'
+      ),
+      new TestPageItem(
+        '卫星影像地图',
+        '测试加载卫星影像栅格图层',
+        'pages/SatelliteMapPage',
+        '🛰️'
+      ),
+      new TestPageItem(
+        'OSM 栅格地图',
+        '测试加载 OpenStreetMap 栅格图层',
+        'pages/OSMRasterMapPage',
         '🗺️'
       ),
       new TestPageItem(
@@ -66,10 +78,12 @@ struct Index {
         'pages/MapStateTestPage',
         '🔄'
       ),
-    ]),
-    
-    // 📷 相机系统
-    new TestPageGroup('相机系统', '📷', [
+      new TestPageItem(
+        '手势系统测试',
+        '测试平移、缩放、旋转、倾斜等手势功能和惯性动画',
+        'pages/GestureTestPage',
+        '👆'
+      ),
       new TestPageItem(
         '相机动画测试',
         '测试 easeTo 平滑动画和 flyTo 飞行动画',
@@ -96,29 +110,13 @@ struct Index {
       ),
     ]),
     
-    // 👆 手势与交互
-    new TestPageGroup('手势与交互', '👆', [
+    // 📍 标注与交互
+    new TestPageGroup('标注与交互', '📍', [
       new TestPageItem(
-        '手势系统测试',
-        '测试平移、缩放、旋转、倾斜等手势功能和惯性动画',
-        'pages/GestureTestPage',
-        '👆'
-      ),
-    ]),
-    
-    // 📍 Marker 与注解
-    new TestPageGroup('Marker 与注解', '📍', [
-      new TestPageItem(
-        'Marker 功能测试',
-        '测试 Marker 添加、删除、事件、动画、拖拽、InfoWindow 等完整功能',
+        'Marker 完整功能测试',
+        '测试 Marker 添加、删除、事件、动画、拖拽、InfoWindow、批量操作等所有功能',
         'pages/MarkerTestPage',
         '📍'
-      ),
-      new TestPageItem(
-        'Marker 高级功能测试',
-        '测试 Marker 的高级功能和复杂场景应用',
-        'pages/MarkerAdvancedTestPage',
-        '⭐'
       ),
       new TestPageItem(
         'InfoWindow 测试',
@@ -132,24 +130,54 @@ struct Index {
         'pages/IconTestPage',
         '🎯'
       ),
+      new TestPageItem(
+        'AnnotationView 测试',
+        '测试自定义注解视图、视图复用、拖拽和变换功能',
+        'pages/AnnotationViewTestPage',
+        '🎨'
+      ),
+      new TestPageItem(
+        '折线/多边形',
+        '测试折线和多边形注解功能',
+        'pages/PolylinePolygonTestPage',
+        '📏'
+      ),
+      new TestPageItem(
+        'LocationComponent 测试',
+        '测试用户定位功能、追踪模式和渲染模式',
+        'pages/LocationComponentTestPage',
+        '🧭'
+      ),
+      new TestPageItem(
+        '定位flyTo测试',
+        '测试获取定位并使用flyTo动画移动到定位位置（zoom=6）',
+        'pages/LocationFlyToTestPage',
+        '🎯'
+      ),
+      new TestPageItem(
+        '坐标转换',
+        '测试各种坐标系转换计算',
+        'pages/CoordinateConversionTestPage',
+        '🧭'
+      ),
     ]),
     
-    // 🎨 样式系统（已拆分为3个独立页面）
+    // 🎨 样式系统
     new TestPageGroup('样式系统', '🎨', [
       new TestPageItem(
-        '1. Source 数据源测试',
+        'Source 数据源测试',
         '测试 GeoJSON、Vector、Raster 等各种数据源类型和配置',
         'pages/SourceTestPage',
         '📊'
       ),
       new TestPageItem(
-        '2. Layer 图层测试',
+        'Layer 图层测试',
         '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
         'pages/LayerTestPage',
         '🔨'
       ),
       new TestPageItem(
-        '3. maplibre.Style 地图样式测试',
+        'Style 地图样式测试',
         '测试地图样式切换、样式信息获取、图层可见性控制等样式相关功能',
         'pages/StyleTestPage',
         '🎨'
@@ -160,10 +188,18 @@ struct Index {
         'pages/StyleUrlTestPage',
         '🔄'
       ),
-    ]),
-    
-    // 🧮 表达式系统
-    new TestPageGroup('表达式系统', '🧮', [
+      new TestPageItem(
+        '光照系统',
+        '测试地图光照配置和效果',
+        'pages/LightTestPage',
+        '💡'
+      ),
+      new TestPageItem(
+        '样式过渡选项',
+        '测试样式切换过渡动画配置',
+        'pages/StyleTransitionTestPage',
+        '🎬'
+      ),
       new TestPageItem(
         'Expression 测试',
         '测试各种 Expression 操作符的功能',
@@ -188,26 +224,34 @@ struct Index {
         'pages/SymbolLayerExpressionExample',
         '🔤'
       ),
-    ]),
-    
-    // 📍 定位功能
-    new TestPageGroup('定位功能', '📍', [
       new TestPageItem(
-        'LocationComponent 测试',
-        '测试用户定位功能、追踪模式和渲染模式',
-        'pages/LocationComponentTestPage',
-        '🧭'
+        'Expression 属性测试',
+        '测试所有新实现的 Expression 属性方法（114个NAPI方法）',
+        'pages/NewExpressionPropertiesTest',
+        '🧪'
       ),
       new TestPageItem(
-        '定位flyTo测试',
-        '测试获取定位并使用flyTo动画移动到定位位置（zoom=6）',
-        'pages/LocationFlyToTestPage',
+        'PropertyFactory 测试',
+        '测试所有新增的 PropertyFactory 属性方法',
+        'pages/NewPropertyFactoryTest',
+        '🏭'
+      ),
+      new TestPageItem(
+        '聚类 Expression 示例',
+        '演示如何使用 Expression 实现数据聚类功能（需API完善）',
+        'pages/ClusterExpressionExample',
         '🎯'
       ),
+      new TestPageItem(
+        '数据驱动样式示例',
+        '演示如何使用 Expression 实现数据驱动样式（需API完善）',
+        'pages/DataDrivenStyleExample',
+        '📊'
+      ),
     ]),
     
-    // 🎛️ UI 组件
-    new TestPageGroup('UI 组件', '🎛️', [
+    // 🛠️ 工具与控件
+    new TestPageGroup('工具与控件', '🛠️', [
       new TestPageItem(
         '指南针测试',
         '测试指南针组件的显示和交互功能',
@@ -220,70 +264,6 @@ struct Index {
         'pages/LogoScaleBarTestPage',
         '📏'
       ),
-    ]),
-    
-    // 🚀 高级功能
-    new TestPageGroup('高级功能', '🚀', [
-      new TestPageItem(
-        '多地图实例测试',
-        '测试多个地图实例的同时显示、独立交互和资源管理',
-        'pages/MultiMapTestPage',
-        '🗺️🗺️🗺️'
-      ),
-    ]),
-    
-    // 💾 离线地图
-    new TestPageGroup('离线地图', '💾', [
-      new TestPageItem(
-        '离线地图下载测试',
-        '测试离线地图区域的创建、下载、暂停、恢复和删除功能',
-        'pages/OfflineMapTestPage',
-        '📥'
-      ),
-      new TestPageItem(
-        '离线缓存管理测试',
-        '测试环境缓存清理、数据库压缩、重置和配置管理功能',
-        'pages/OfflineCacheTestPage',
-        '🗑️'
-      ),
-    ]),
-    
-    // 🔧 高级特性
-    new TestPageGroup('高级特性', '🔧', [
-      new TestPageItem(
-        '特性查询',
-        '测试点击和框选查询地图要素功能',
-        'pages/QueryFeaturesTestPage',
-        '🔍'
-      ),
-      new TestPageItem(
-        '样式过渡选项',
-        '测试样式切换过渡动画配置',
-        'pages/StyleTransitionTestPage',
-        '🎬'
-      ),
-      new TestPageItem(
-        '折线/多边形',
-        '测试折线和多边形注解功能',
-        'pages/PolylinePolygonTestPage',
-        '📏'
-      ),
-      new TestPageItem(
-        '坐标转换',
-        '测试各种坐标系转换计算',
-        'pages/CoordinateConversionTestPage',
-        '🧭'
-      ),
-      new TestPageItem(
-        '光照系统',
-        '测试地图光照配置和效果',
-        'pages/LightTestPage',
-        '💡'
-      ),
-    ]),
-    
-    // 🛠️ 工具与调试
-    new TestPageGroup('工具与调试', '🛠️', [
       new TestPageItem(
         '坐标投影转换',
         '测试地理坐标和屏幕坐标互转、可见区域计算',
@@ -297,15 +277,39 @@ struct Index {
         '📸'
       ),
       new TestPageItem(
+        '特性查询',
+        '测试点击和框选查询地图要素功能',
+        'pages/QueryFeaturesTestPage',
+        '🔍'
+      ),
+      new TestPageItem(
         '事件监听器集成',
         '测试所有 Android/iOS 风格的地图事件监听器',
         'pages/listeners/EventListenersTestPage',
         '📡'
       ),
+      new TestPageItem(
+        'TestPageLayout 使用示例',
+        '展示如何使用 TestPageLayout 组件创建统一风格的测试页面',
+        'pages/TestPageExample',
+        '📝'
+      ),
     ]),
     
-    // ⚡ 性能优化
-    new TestPageGroup('性能优化', '⚡', [
+    // 💾 离线与优化
+    new TestPageGroup('离线与优化', '💾', [
+      new TestPageItem(
+        '离线地图下载测试',
+        '测试离线地图区域的创建、下载、暂停、恢复和删除功能',
+        'pages/OfflineMapTestPage',
+        '📥'
+      ),
+      new TestPageItem(
+        '离线缓存管理测试',
+        '测试环境缓存清理、数据库压缩、重置和配置管理功能',
+        'pages/OfflineCacheTestPage',
+        '🗑️'
+      ),
       new TestPageItem(
         '瓦片LOD配置',
         '测试瓦片细节级别参数配置',
@@ -317,6 +321,22 @@ struct Index {
         '测试瓦片预加载优化功能',
         'pages/TilePrefetchTestPage',
         '🚀'
+      ),
+    ]),
+    
+    // 🚀 高级功能
+    new TestPageGroup('高级功能', '🚀', [
+      new TestPageItem(
+        '多地图实例测试',
+        '测试多个地图实例的同时显示、独立交互和资源管理',
+        'pages/MultiMapTestPage',
+        '🗺️🗺️🗺️'
+      ),
+      new TestPageItem(
+        '二次进入回归测试',
+        '自动化测试二次进入地图的稳定性和资源管理',
+        'pages/SecondEntryRegressionTestPage',
+        '🔄'
       ),
     ]),
     ];

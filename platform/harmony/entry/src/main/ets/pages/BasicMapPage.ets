@@ -9,6 +9,7 @@ import { router } from '@kit.ArkUI';
 import { promptAction } from '@kit.ArkUI';
 import { maplibre } from 'maplibre_harmony';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 const TAG = 'BasicMapPage';
 
@@ -47,114 +48,94 @@ struct BasicMapPage {
     { name: '成都 - 锦里', latitude: 30.6517, longitude: 104.0468, zoom: 6, icon: '🏮' },
   ];
 
+  @Builder
+  MapAreaBuilder() {
+    NativeMapView({
+      styleUrl: "https://demotiles.maplibre.org/style.json",
+      initialLatitude: 39.9042,
+      initialLongitude: 116.4074,
+      initialZoom: 6,
+      initialBearing: 0,
+      initialPitch: 0,
+      onMapReady: (mapView?: maplibre.NativeMapView) => {
+        if (mapView) {
+          globalMapView = mapView;
+          this.mapReady = true;
+          hilog.info(DOMAIN, TAG, 'Map ready and saved');
+        } else {
+          hilog.error(DOMAIN, TAG, 'Map ready callback received null mapView');
+        }
+      }
+    })
+      .width('100%')
+      .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 状态信息
+    Row() {
+      Text(`📍 ${this.currentInfo}`)
+        .fontSize(14)
+        .fontColor('#333333')
+        .layoutWeight(1)
+      
+      Text(this.mapReady ? '✅ 已加载' : '⏳ 加载中...')
+        .fontSize(12)
+        .fontColor(this.mapReady ? '#4CAF50' : '#FF9800')
+    }
+    .width('100%')
+    .padding(12)
+    .backgroundColor('#F8F8F8')
+    .margin({ bottom: 8 })
+
+    // 相机跳转控制
+    this.buildSection('🎯 相机跳转 (jumpTo)', [
+      { title: '北京', action: (): void => this.jumpToLocation(0) },
+      { title: '上海', action: (): void => this.jumpToLocation(1) },
+      { title: '杭州', action: (): void => this.jumpToLocation(2) },
+    ] as ButtonAction[])
+
+    // 飞行动画控制
+    this.buildSection('✈️ 飞行动画 (flyTo)', [
+      { title: '深圳 (3s)', action: (): void => this.flyToLocation(3, 3000) },
+      { title: '成都 (5s)', action: (): void => this.flyToLocation(4, 5000) },
+      { title: '北京 (2s)', action: (): void => this.flyToLocation(0, 2000) },
+    ] as ButtonAction[])
+
+    // 平滑过渡控制
+    this.buildSection('🎬 平滑过渡 (easeTo)', [
+      { title: '上海 (2s)', action: (): void => this.easeToLocation(1, 2000) },
+      { title: '杭州 (3s)', action: (): void => this.easeToLocation(2, 3000) },
+      { title: '旋转视角', action: (): void => this.easeToRotated() },
+    ] as ButtonAction[])
+
+    // 相机属性控制
+    this.buildSection('📐 相机属性', [
+      { title: '放大 (Zoom+)', action: (): void => this.adjustZoom(2) },
+      { title: '缩小 (Zoom-)', action: (): void => this.adjustZoom(-2) },
+      { title: '设置倾斜 60°', action: (): void => this.setPitch(60) },
+      { title: '重置倾斜 0°', action: (): void => this.setPitch(0) },
+      { title: '旋转 45°', action: (): void => this.setBearing(45) },
+      { title: '重置方向', action: (): void => this.setBearing(0) },
+    ] as ButtonAction[])
+
+    // 获取相机信息
+    this.buildSection('ℹ️ 相机信息', [
+      { title: '获取当前位置', action: (): void => this.getCurrentPosition() },
+      { title: '获取缩放级别', action: (): void => this.getCurrentZoom() },
+      { title: '获取方向角度', action: (): void => this.getCurrentBearing() },
+      { title: '获取倾斜角度', action: (): void => this.getCurrentPitch() },
+    ] as ButtonAction[])
+  }
+
   build() {
     Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-
-        Text('基础地图测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-
-      // 地图区域（60%）
-      NativeMapView({
-        styleUrl: "https://demotiles.maplibre.org/style.json",
-        initialLatitude: 39.9042,
-        initialLongitude: 116.4074,
-        initialZoom: 6,
-        initialBearing: 0,
-        initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          if (mapView) {
-            globalMapView = mapView;
-            this.mapReady = true;
-            hilog.info(DOMAIN, TAG, 'Map ready and saved');
-          } else {
-            hilog.error(DOMAIN, TAG, 'Map ready callback received null mapView');
-          }
-        }
+      TestPageLayout({
+        title: '基础地图测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
-        .width('100%')
-        .height('60%')
-
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column() {
-          // 状态信息
-          Row() {
-            Text(`📍 ${this.currentInfo}`)
-              .fontSize(14)
-              .fontColor('#333333')
-              .layoutWeight(1)
-            
-            Text(this.mapReady ? '✅ 已加载' : '⏳ 加载中...')
-              .fontSize(12)
-              .fontColor(this.mapReady ? '#4CAF50' : '#FF9800')
-          }
-          .width('100%')
-          .padding(12)
-          .backgroundColor('#F8F8F8')
-          .margin({ bottom: 8 })
-
-          // 相机跳转控制
-          this.buildSection('🎯 相机跳转 (jumpTo)', [
-            { title: '北京', action: (): void => this.jumpToLocation(0) },
-            { title: '上海', action: (): void => this.jumpToLocation(1) },
-            { title: '杭州', action: (): void => this.jumpToLocation(2) },
-          ] as ButtonAction[])
-
-          // 飞行动画控制
-          this.buildSection('✈️ 飞行动画 (flyTo)', [
-            { title: '深圳 (3s)', action: (): void => this.flyToLocation(3, 3000) },
-            { title: '成都 (5s)', action: (): void => this.flyToLocation(4, 5000) },
-            { title: '北京 (2s)', action: (): void => this.flyToLocation(0, 2000) },
-          ] as ButtonAction[])
-
-          // 平滑过渡控制
-          this.buildSection('🎬 平滑过渡 (easeTo)', [
-            { title: '上海 (2s)', action: (): void => this.easeToLocation(1, 2000) },
-            { title: '杭州 (3s)', action: (): void => this.easeToLocation(2, 3000) },
-            { title: '旋转视角', action: (): void => this.easeToRotated() },
-          ] as ButtonAction[])
-
-          // 相机属性控制
-          this.buildSection('📐 相机属性', [
-            { title: '放大 (Zoom+)', action: (): void => this.adjustZoom(2) },
-            { title: '缩小 (Zoom-)', action: (): void => this.adjustZoom(-2) },
-            { title: '设置倾斜 60°', action: (): void => this.setPitch(60) },
-            { title: '重置倾斜 0°', action: (): void => this.setPitch(0) },
-            { title: '旋转 45°', action: (): void => this.setBearing(45) },
-            { title: '重置方向', action: (): void => this.setBearing(0) },
-          ] as ButtonAction[])
-
-          // 获取相机信息
-          this.buildSection('ℹ️ 相机信息', [
-            { title: '获取当前位置', action: (): void => this.getCurrentPosition() },
-            { title: '获取缩放级别', action: (): void => this.getCurrentZoom() },
-            { title: '获取方向角度', action: (): void => this.getCurrentBearing() },
-            { title: '获取倾斜角度', action: (): void => this.getCurrentPitch() },
-          ] as ButtonAction[])
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')

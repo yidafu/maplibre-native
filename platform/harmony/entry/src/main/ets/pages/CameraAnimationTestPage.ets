@@ -16,6 +16,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import promptAction from '@ohos.promptAction';
 import router from '@ohos.router';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 interface LocationData {
   name: string;
@@ -44,122 +45,106 @@ struct CameraAnimationTestPage {
   ];
   
   private currentLocationIndex: number = 0;
+
+  @Builder
+  MapAreaBuilder() {
+    NativeMapView({
+      styleUrl: 'https://demotiles.maplibre.org/style.json',
+      initialLatitude: 30.2741,
+      initialLongitude: 120.1551,
+      initialZoom: 10,
+      initialBearing: 0,
+      initialPitch: 0,
+      debugMode: false,
+      onMapReady: (mapView?: maplibre.NativeMapView) => {
+        this.onMapReady(mapView);
+      }
+    })
+      .width('100%')
+      .height('100%')
+      .id('camera_animation_test_map')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    Column() {
+      Text('动画测试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      
+      // EaseTo 测试
+      Button('EaseTo 平滑动画')
+        .width('90%')
+        .onClick(() => {
+          this.testEaseTo();
+        })
+        .enabled(this.mapReady)
+      
+      // FlyTo 测试
+      Button('FlyTo 飞行动画')
+        .width('90%')
+        .onClick(() => {
+          this.testFlyTo();
+        })
+        .enabled(this.mapReady)
+      
+      // 取消动画测试
+      Button('取消动画')
+        .width('90%')
+        .backgroundColor('#FF6B6B')
+        .onClick(() => {
+          this.testCancelAnimation();
+        })
+        .enabled(this.mapReady)
+      
+      Divider()
+      
+      // 状态显示
+      Text('动画状态')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      
+      Text(this.animationStatus)
+        .fontSize(14)
+        .width('90%')
+        .fontColor(Color.Gray)
+      
+      Text(`当前位置: ${this.currentLocation}`)
+        .fontSize(14)
+        .width('90%')
+      
+      Divider()
+      
+      // 说明
+      Text('说明')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      
+      Text('• EaseTo: 平滑过渡动画（缓动）\n' +
+           '• FlyTo: 飞行动画（弧线运动）\n' +
+           '• cancelTransitions: 取消正在进行的动画\n' +
+           '• 动画时长: EaseTo=2s, FlyTo=3s')
+        .fontSize(12)
+        .width('90%')
+        .fontColor(Color.Gray)
+    }
+    .width('100%')
+    .padding(16)
+  }
   
   build() {
     Column() {
-      // 标题栏
-      Row() {
-        Text('相机动画回调测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .margin({ left: 16 })
-        
-        Blank()
-        
-        Button('返回')
-          .onClick(() => {
-            hilog.info(DOMAIN, 'CameraAnimationTest', 'Navigating back');
-            router.back();
-          })
-          .margin({ right: 16 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F7F7F7')
-      
-      // 地图视图
-      NativeMapView({
-        styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 30.2741,
-        initialLongitude: 120.1551,
-        initialZoom: 10,
-        initialBearing: 0,
-        initialPitch: 0,
-        debugMode: false,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          this.onMapReady(mapView);
-        }
+      TestPageLayout({
+        title: '相机动画回调测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
       })
-      .width('100%')
-      .height('60%')
-      .id('camera_animation_test_map')
-      
-      // 控制区
-      Scroll() {
-        Column({ space: 12 }) {
-          Text('动画测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          // EaseTo 测试
-          Button('EaseTo 平滑动画')
-            .width('90%')
-            .onClick(() => {
-              this.testEaseTo();
-            })
-            .enabled(this.mapReady)
-          
-          // FlyTo 测试
-          Button('FlyTo 飞行动画')
-            .width('90%')
-            .onClick(() => {
-              this.testFlyTo();
-            })
-            .enabled(this.mapReady)
-          
-          // 取消动画测试
-          Button('取消动画')
-            .width('90%')
-            .backgroundColor('#FF6B6B')
-            .onClick(() => {
-              this.testCancelAnimation();
-            })
-            .enabled(this.mapReady)
-          
-          Divider()
-          
-          // 状态显示
-          Text('动画状态')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          Text(this.animationStatus)
-            .fontSize(14)
-            .width('90%')
-            .fontColor(Color.Gray)
-          
-          Text(`当前位置: ${this.currentLocation}`)
-            .fontSize(14)
-            .width('90%')
-          
-          Divider()
-          
-          // 说明
-          Text('说明')
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          Text('• EaseTo: 平滑过渡动画（缓动）\n' +
-               '• FlyTo: 飞行动画（弧线运动）\n' +
-               '• cancelTransitions: 取消正在进行的动画\n' +
-               '• 动画时长: EaseTo=2s, FlyTo=3s')
-            .fontSize(12)
-            .width('90%')
-            .fontColor(Color.Gray)
-        }
-        .width('100%')
-        .padding(16)
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F5F5')
   }
   
   /**

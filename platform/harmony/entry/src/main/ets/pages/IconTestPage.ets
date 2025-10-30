@@ -1,12 +1,16 @@
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { maplibre } from 'maplibre_harmony';
 import { LatLng } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLng';
-import { Icon, IconFactory, MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/index';
+import { IconFactory, MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/index';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import { CameraPosition, createCameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
 import { router } from '@kit.ArkUI';
 import resourceManager from '@ohos.resourceManager';
+import { TestPageLayout } from '../components/TestPageLayout';
+
+// Use NAPI Icon type
+type Icon = maplibre.Icon;
 
 /**
  * IconTestPage - Icon 管理系统测试页面
@@ -247,42 +251,19 @@ struct IconTestPage {
     }
   }
 
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-        
-        Text(this.message)
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
+  @Builder
+  MapAreaBuilder() {
+    NativeMapView({
+      onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+        this.onMapReady(nativeMapView);
       }
+    })
       .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
+      .height('100%')
+  }
 
-      // 地图区域（60%）
-      NativeMapView({
-        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-          this.onMapReady(nativeMapView);
-        }
-      })
-        .width('100%')
-        .height('60%')
-
-      // 测试按钮区域（40%，可滚动）
-      Scroll() {
-        Column() {
+  @Builder
+  ControlAreaBuilder() {
           // 状态信息
           Column() {
             Text(`状态: ${this.testStatus}`)
@@ -338,13 +319,15 @@ struct IconTestPage {
             .onClick(() => {
               this.runAllTests();
             })
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: this.message,
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')

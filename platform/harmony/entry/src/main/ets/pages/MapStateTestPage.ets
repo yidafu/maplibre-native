@@ -26,7 +26,7 @@ struct MapStateTestPage {
   // 测试样式列表
   private readonly styleUrls: string[] = [
     'https://demotiles.maplibre.org/style.json',
-    'https://demotiles.maplibre.org/styles/osm-bright/style.json',
+    'https://tiles.versatiles.org/styles/dark-matter/style.json',
   ];
 
   /**

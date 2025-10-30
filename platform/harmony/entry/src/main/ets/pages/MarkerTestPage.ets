@@ -23,17 +23,23 @@ import { TestPageLayout } from '../components/TestPageLayout';
 const TAG = 'MarkerTestPage';
 
 /**
- * MarkerTestPage - Marker 功能测试页面
+ * MarkerTestPage - Marker 完整功能测试页面
  * 
  * 完整展示 Marker 的所有功能：
  * 1. ✅ 添加/删除单个 Marker
- * 2. ✅ 批量添加 Marker
+ * 2. ✅ 批量添加 Marker（性能测试）
  * 3. ✅ Marker 点击事件
  * 4. ✅ Marker 拖拽事件监听
  * 5. ✅ InfoWindow 显示/隐藏
  * 6. ✅ 不同样式的 Marker（透明度、旋转、锚点、Z-index）
  * 7. ✅ Marker 动画（位置、透明度、旋转）
  * 8. ✅ 选中/取消选中
+ * 9. ✅ 批量操作（旋转所有、切换可见性）
+ * 10. ✅ 随机位置生成（中国范围）
+ * 11. ✅ 样式控制（可见性、透明度调整、聚焦）
+ * 12. ✅ Position 解析测试（LatLng 类、构造函数）
+ * 
+ * 注：已整合原 MarkerAdvancedTestPage 的功能
  */
 
 /**
@@ -994,7 +1000,7 @@ struct MarkerTestPage {
   build() {
     Column() {
       TestPageLayout({
-        title: 'Marker 功能测试',
+        title: 'Marker 完整功能测试',
         mapArea: (): void => this.MapAreaBuilder(),
         controlArea: (): void => this.ControlAreaBuilder()
       })

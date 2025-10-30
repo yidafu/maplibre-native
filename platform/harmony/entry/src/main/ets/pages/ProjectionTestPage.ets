@@ -15,6 +15,7 @@ import { ScaleBarView, ScaleBarUnit } from 'maplibre_harmony/src/main/ets/maps/w
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
 import router from '@ohos.router';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 @Entry
 @Component
@@ -26,135 +27,119 @@ struct ProjectionTestPage {
   @State private metersPerPixel: number = 0;
   
   private nativeMapView: maplibre.NativeMapView | null = null;
-  
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Text('Projection API 测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .margin({ left: 16 })
-        
-        Blank()
-        
-        Button('返回')
-          .onClick(() => {
-            hilog.info(DOMAIN, 'ProjectionTest', 'Navigating back');
-            router.back();
-          })
-          .margin({ right: 16 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F7F7F7')
-      
-      // 地图视图
-      Stack() {
-        NativeMapView({
-          styleUrl: 'https://demotiles.maplibre.org/style.json',
-          initialLatitude: this.centerLatitude,
-          initialLongitude: this.centerLongitude,
-          initialZoom: 12,
-          initialBearing: 0,
-          initialPitch: 0,
-          debugMode: false,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            this.onMapReady(mapView);
-          }
-        })
-        .width('100%')
-        .height('60%')
-        .id('projection_test_map')
-        
-        // ScaleBar - 左下角
-        ScaleBarView({
-          isEnabled: true,
-          unitSystem: ScaleBarUnit.Metric,
-          maxWidth: 200
-        })
-        .position({ x: 8, y: '60%' })
-        .translate({ y: -40 })
-        .id('scaleBar')
-        
-        // Attribution Button - 右下角
-        AttributionButton({
-          isEnabled: true,
-          tintColor: '#000000',
-          iconSize: 24,
-          attributions: DEFAULT_ATTRIBUTIONS
-        })
-        .position({ x: '100%', y: '60%' })
-        .translate({ x: -40, y: -40 })
-      }
-      .width('100%')
-      .height('60%')
-      
-      // 测试控制区
-      Scroll() {
-        Column({ space: 12 }) {
-          Text('坐标转换测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          // 测试按钮
-          Button('获取可见区域')
-            .width('90%')
-            .onClick(() => {
-              this.testVisibleRegion();
-            })
-            .enabled(this.mapReady)
-          
-          Button('转换屏幕中心点')
-            .width('90%')
-            .onClick(() => {
-              this.testScreenCenter();
-            })
-            .enabled(this.mapReady)
-          
-          Button('批量坐标转换')
-            .width('90%')
-            .onClick(() => {
-              this.testBatchConversion();
-            })
-            .enabled(this.mapReady)
-          
-          Divider()
-          
-          // 结果显示
-          Text('测试结果')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-          
-          Text(`地图中心: ${this.centerLatitude.toFixed(6)}, ${this.centerLongitude.toFixed(6)}`)
-            .fontSize(14)
-            .width('90%')
-          
-          Text(`每像素米数: ${this.metersPerPixel.toFixed(6)}`)
-            .fontSize(14)
-            .width('90%')
-          
-          Text('可见区域:')
-            .fontSize(14)
-            .width('90%')
-          
-          Text(this.visibleRegionText)
-            .fontSize(12)
-            .width('90%')
-            .fontColor(Color.Gray)
+
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+        styleUrl: 'https://demotiles.maplibre.org/style.json',
+        initialLatitude: this.centerLatitude,
+        initialLongitude: this.centerLongitude,
+        initialZoom: 12,
+        initialBearing: 0,
+        initialPitch: 0,
+        debugMode: false,
+        onMapReady: (mapView?: maplibre.NativeMapView) => {
+          this.onMapReady(mapView);
         }
-        .width('100%')
-        .padding(16)
-      }
+      })
       .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+      .height('100%')
+      .id('projection_test_map')
+      
+      // ScaleBar - 左下角
+      ScaleBarView({
+        isEnabled: true,
+        unitSystem: ScaleBarUnit.Metric,
+        maxWidth: 200
+      })
+      .position({ x: 8, y: '100%' })
+      .translate({ y: -40 })
+      .id('scaleBar')
+      
+      // Attribution Button - 右下角
+      AttributionButton({
+        isEnabled: true,
+        tintColor: '#000000',
+        iconSize: 24,
+        attributions: DEFAULT_ATTRIBUTIONS
+      })
+      .position({ x: '100%', y: '100%' })
+      .translate({ x: -40, y: -40 })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F5F5F5')
+  }
+  
+  @Builder
+  ControlAreaBuilder() {
+    Column() {
+      Text('坐标转换测试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      
+      // 测试按钮
+      Button('获取可见区域')
+        .width('90%')
+        .onClick(() => {
+          this.testVisibleRegion();
+        })
+        .enabled(this.mapReady)
+      
+      Button('转换屏幕中心点')
+        .width('90%')
+        .onClick(() => {
+          this.testScreenCenter();
+        })
+        .enabled(this.mapReady)
+      
+      Button('批量坐标转换')
+        .width('90%')
+        .onClick(() => {
+          this.testBatchConversion();
+        })
+        .enabled(this.mapReady)
+      
+      Divider()
+      
+      // 结果显示
+      Text('测试结果')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+      
+      Text(`地图中心: ${this.centerLatitude.toFixed(6)}, ${this.centerLongitude.toFixed(6)}`)
+        .fontSize(14)
+        .width('90%')
+      
+      Text(`每像素米数: ${this.metersPerPixel.toFixed(6)}`)
+        .fontSize(14)
+        .width('90%')
+      
+      Text('可见区域:')
+        .fontSize(14)
+        .width('90%')
+      
+      Text(this.visibleRegionText)
+        .fontSize(12)
+        .width('90%')
+        .fontColor(Color.Gray)
+    }
+    .width('100%')
+    .padding(16)
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: 'Projection API 测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
+    }
+    .width('100%')
+    .height('100%')
   }
   
   /**

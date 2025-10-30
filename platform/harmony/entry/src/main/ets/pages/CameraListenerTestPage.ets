@@ -13,6 +13,7 @@ import { OnCameraIdleListener, OnCameraMoveStartedListener,
          OnCameraMoveListener, OnCameraMoveCanceledListener } from 'maplibre_harmony/src/main/ets/maps/camera/CameraListener';
 import { CameraMoveReason, getCameraMoveReasonText } from 'maplibre_harmony/src/main/ets/maps/camera/CameraMoveReason';
 import { router } from '@kit.ArkUI';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 // 相机空闲监听器实现
 class CameraIdleListenerImpl implements OnCameraIdleListener {
@@ -206,45 +207,22 @@ struct CameraListenerTestPage {
     this.eventLogs = [];
     this.addLog('🧹 日志已清空');
   }
-  
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
-        
-        Text('相机监听器测试')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
+
+  @Builder
+  MapAreaBuilder() {
+    NativeMapView({
+      onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+        this.onMapReady(nativeMapView);
       }
+    })
       .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
-      
-      // 地图区域（60%）
-      NativeMapView({
-        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-          this.onMapReady(nativeMapView);
-        }
-      })
-        .width('100%')
-        .height('60%')
-      
-      // 测试按钮和日志区域（40%，可滚动）
-      Scroll() {
-        Column() {
-          // 状态信息
-          Row() {
+      .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
+    // 状态信息
+    Row() {
             Text(`状态: ${this.cameraStatus}`)
               .fontSize(14)
               .fontColor(this.cameraStatus === 'moving' ? '#FF6B00' : '#4CAF50')
@@ -326,13 +304,15 @@ struct CameraListenerTestPage {
             }, (log: string, index: number) => `${index}-${log}`)
           }
           .width('100%')
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: '相机监听器测试',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')

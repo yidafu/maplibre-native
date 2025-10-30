@@ -305,7 +305,7 @@ struct MapSnapshotterTestPage {
     // 定义西湖区域边界
     const southwest = createLatLng(30.23, 120.12);
     const northeast = createLatLng(30.27, 120.17);
-    const bounds = LatLngBounds.fromLatLngs(southwest, northeast);
+    const bounds = LatLngBounds.fromLatLngs(northeast, southwest);
 
     const options: SnapshotOptions = {
       size: { width: 1080, height: 1920 },

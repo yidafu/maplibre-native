@@ -18,6 +18,7 @@ import geoLocationManager from '@ohos.geoLocationManager';
 import promptAction from '@ohos.promptAction';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { TestPageLayout } from '../components/TestPageLayout';
 
 /**
  * 定位组件测试页面（flyTo功能）
@@ -256,60 +257,28 @@ struct LocationFlyToTestPage {
     }
   }
 
-  build() {
-    Column() {
-      // 标题栏
-      Row() {
-        Button('返回')
-          .fontSize(16)
-          .backgroundColor(Color.Transparent)
-          .fontColor('#2196F3')
-          .onClick(() => {
-            router.back();
-          })
-          .margin({ left: 5 })
+  @Builder
+  MapAreaBuilder() {
+    Stack() {
+      NativeMapView({
+        onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
+          this.onMapReady(nativeMapView);
+        }
+      })
+        .width('100%')
+        .height('100%')
 
-        Text('定位测试（flyTo）')
-          .fontSize(20)
-          .fontWeight(FontWeight.Bold)
-          .layoutWeight(1)
-          .textAlign(TextAlign.Center)
-          .margin({ right: 60 })
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor('#F5F5F5')
+      // 状态显示
+      Column() {
+        Text(`状态: ${this.locationStatus}`)
+          .fontSize(14)
+          .fontColor(Color.White)
+          .padding(8)
+          .backgroundColor('rgba(0,0,0,0.7)')
+          .borderRadius(4)
 
-      // 地图区域（60%）
-      Stack() {
-        NativeMapView({
-          onMapReady: (nativeMapView?: maplibre.NativeMapView) => {
-            this.onMapReady(nativeMapView);
-          }
-        })
-          .width('100%')
-          .height('100%')
-
-        // 状态显示
-        Column() {
-          Text(`状态: ${this.locationStatus}`)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .padding(8)
-            .backgroundColor('rgba(0,0,0,0.7)')
-            .borderRadius(4)
-
-          if (this.currentLocation !== '未获取') {
-            Text(`坐标: ${this.currentLocation}`)
-              .fontSize(12)
-              .fontColor(Color.White)
-              .padding(8)
-              .backgroundColor('rgba(0,0,0,0.7)')
-              .borderRadius(4)
-              .margin({ top: 4 })
-          }
-
-          Text('缩放级别: 6')
+        if (this.currentLocation !== '未获取') {
+          Text(`坐标: ${this.currentLocation}`)
             .fontSize(12)
             .fontColor(Color.White)
             .padding(8)
@@ -317,15 +286,24 @@ struct LocationFlyToTestPage {
             .borderRadius(4)
             .margin({ top: 4 })
         }
-        .alignItems(HorizontalAlign.Start)
-        .margin({ top: 16, left: 16 })
-      }
-      .width('100%')
-      .height('60%')
 
-      // 控制区（40%）
-      Scroll() {
-        Column({ space: 12 }) {
+        Text('缩放级别: 6')
+          .fontSize(12)
+          .fontColor(Color.White)
+          .padding(8)
+          .backgroundColor('rgba(0,0,0,0.7)')
+          .borderRadius(4)
+          .margin({ top: 4 })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .margin({ top: 16, left: 16 })
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  ControlAreaBuilder() {
           // 状态信息
           Text('定位测试')
             .fontSize(18)
@@ -412,13 +390,15 @@ struct LocationFlyToTestPage {
           .backgroundColor('#F5F5F5')
           .borderRadius(8)
           .margin({ top: 8 })
-        }
-        .padding({ left: 12, right: 12, top: 8, bottom: 12 })
-        .width('100%')
-      }
-      .width('100%')
-      .height('40%')
-      .backgroundColor('#FFFFFF')
+  }
+
+  build() {
+    Column() {
+      TestPageLayout({
+        title: '定位测试（flyTo）',
+        mapArea: (): void => this.MapAreaBuilder(),
+        controlArea: (): void => this.ControlAreaBuilder()
+      })
     }
     .width('100%')
     .height('100%')
