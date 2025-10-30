@@ -13,12 +13,10 @@ namespace harmony {
 
 CallbackManager::CallbackManager(napi_env env)
     : env_(env), cleared_(false) {
-    Logger::debug("CallbackManager", "Created");
 }
 
 CallbackManager::~CallbackManager() {
     Clear();
-    Logger::debug("CallbackManager", "Destroyed");
 }
 
 bool CallbackManager::RegisterCallback(const std::string& name, napi_value callback) {
@@ -60,9 +58,6 @@ bool CallbackManager::RegisterCallback(const std::string& name, napi_value callb
     
     // 添加到回调列表
     callbacks_[name].push_back(std::move(tsfn));
-    Logger::debug("CallbackManager", "Registered callback: %s (listeners: %zu, total names: %zu)", 
-                  name.c_str(), callbacks_[name].size(), callbacks_.size());
-    
     return true;
 }
 
@@ -85,9 +80,6 @@ bool CallbackManager::UnregisterCallback(const std::string& name) {
         tsfn->Release();
     }
     callbacks_.erase(it);
-    
-    Logger::debug("CallbackManager", "Unregistered all callbacks for: %s (remaining names: %zu)", 
-                  name.c_str(), callbacks_.size());
     
     return true;
 }
@@ -112,13 +104,9 @@ bool CallbackManager::UnregisterCallback(const std::string& name, napi_value cal
         it->second.back()->Release();
         it->second.pop_back();
         
-        Logger::debug("CallbackManager", "Unregistered one callback for: %s (remaining: %zu)", 
-                      name.c_str(), it->second.size());
-        
         // 如果没有剩余监听器，移除整个条目
         if (it->second.empty()) {
             callbacks_.erase(it);
-            Logger::debug("CallbackManager", "Removed callback name: %s (no more listeners)", name.c_str());
         }
         
         return true;
@@ -271,9 +259,6 @@ void CallbackManager::Clear() {
     
     size_t releasedCount = 0;
     for (auto& pair : callbacks_) {
-        Logger::debug("CallbackManager", "Releasing callbacks for: %s (%zu listeners)", 
-                      pair.first.c_str(), pair.second.size());
-        
         for (auto& callback : pair.second) {
             // 为每个回调添加细粒度的超时监控
             {

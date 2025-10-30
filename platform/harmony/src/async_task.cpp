@@ -115,8 +115,6 @@ public:
             return;
         }
         
-        Logger::debug("AsyncTask", "Destructing AsyncTask::Impl, scheduling async handle close");
-        
         // 🛡️ 使用原子标志跟踪清理状态
         // closeCallback 会设置这个标志并删除它
         auto* completionFlag = new std::atomic<bool>(false);
@@ -132,7 +130,6 @@ public:
         //      但这比崩溃或死锁要好得多
         async = nullptr;
         
-        Logger::debug("AsyncTask", "AsyncTask::Impl destructor completed, handle scheduled for closing");
     }
 
     /**
@@ -185,7 +182,6 @@ private:
             completionFlag->store(true, std::memory_order_release);
             delete completionFlag;
             asyncHandle->data = nullptr;
-            Logger::debug("AsyncTask", "Close callback executed, handle cleanup complete");
         }
         
         // 删除 async handle

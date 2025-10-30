@@ -45,7 +45,6 @@ HarmonyRenderer::HarmonyRenderer()
     : instanceId_(generateRendererInstanceId()),
       uniqueID(util::SimpleIdentity::Empty),
       weakFactory(std::make_shared<mapbox::base::WeakPtrFactory<Scheduler>>(this)) {
-    Logger::info("Renderer", "🆕 [%s] Creating HarmonyRenderer", instanceId_.c_str());
 }
 
 HarmonyRenderer::~HarmonyRenderer() {
@@ -61,15 +60,10 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
     width = width_;
     height = height_;
     pixelRatio = pixelRatio_;
-    Logger::info("HarmonyRenderer", "Initializing: %dx%d, pixelRatio=%.2f", width_, height_, pixelRatio);
-    
-    // Initialize FileSourceManager for network resource loading
-    Logger::info("HarmonyRenderer", "Initializing FileSourceManager...");
     
     // Set SQLite temp path for database operations
     if (!cachePath.empty()) {
         mapbox::sqlite::setTempPath(cachePath);
-        Logger::debug("HarmonyRenderer", "SQLite temp path set to: %s", cachePath.c_str());
     } else {
         Logger::warn("HarmonyRenderer", "No cache path provided, using default temp directory");
     }
@@ -77,9 +71,6 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
     // Initialize FileSourceManager singleton - this registers default file source factories
     // including HTTP network source for downloading styles and tiles
     FileSourceManager::get();
-    Logger::info("HarmonyRenderer", "FileSourceManager initialized successfully");
-    
-    Logger::debug("HarmonyRenderer", "Creating Map+Render thread...");
     
     // Create backend
     auto backend = std::make_unique<HarmonyRendererBackendImpl>();
@@ -109,7 +100,6 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
     
     // Start the thread
     mapRenderThread_->start();
-    Logger::info("HarmonyRenderer", "Map+Render thread created and started");
     
     initialized = true;
     Log::Info(Event::OpenGL, "HarmonyRenderer initialized successfully");
@@ -123,13 +113,11 @@ void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
     
     if (mapRenderThread_) {
         mapRenderThread_->setNativeWindow(window);
-        Logger::info("HarmonyRenderer", "Native window set on Map+Render thread");
         
         // ✅ 关键修复：设置 Native Window 后，初始化 framebuffer 大小
         // 这确保在第一次渲染前 framebuffer 大小正确
         // 因为在 initialize() 时 size 已设置，但 backend 的 framebuffer 还没有调整大小
         if (width > 0 && height > 0) {
-            Logger::info("HarmonyRenderer", "Initializing framebuffer size: %dx%d", width, height);
             mapRenderThread_->resizeFramebuffer(width, height);
         } else {
             Logger::warn("HarmonyRenderer", "Cannot initialize framebuffer: invalid size %dx%d", width, height);
@@ -165,7 +153,6 @@ void HarmonyRenderer::resize(int width_, int height_) {
         mapRenderThread_->invoke([this, width_, height_]() {
             auto& map = mapRenderThread_->getMap();
             map.setSize(Size{static_cast<uint32_t>(width_), static_cast<uint32_t>(height_)});
-            Logger::info("HarmonyRenderer", "✅ Map size updated: %dx%d", width_, height_);
         });
     } else {
         Logger::error("HarmonyRenderer", "mapRenderThread_ is null, cannot resize");
@@ -229,13 +216,10 @@ void HarmonyRenderer::stopAllRequests() {
     try {
         // 停止FileSourceManager的所有网络请求
         if (auto fileSourceManager = mbgl::FileSourceManager::get()) {
-            Logger::debug("HarmonyRenderer", "Stopping FileSourceManager requests...");
-            Logger::debug("HarmonyRenderer", "FileSourceManager cleanup initiated");
         }
         
         // 暂停渲染
         if (mapRenderThread_) {
-            Logger::debug("HarmonyRenderer", "Pausing Map+Render thread...");
             mapRenderThread_->pause();
         }
         
@@ -250,8 +234,6 @@ void HarmonyRenderer::stopAllRequests() {
 }
 
 void HarmonyRenderer::stopAllRequestsAsync(std::function<void()> onComplete) {
-    Logger::info("HarmonyRenderer", "[%s] ========== stopAllRequestsAsync START ==========", instanceId_.c_str());
-    
     try {
         // 1. 立即停止所有请求（同步部分）
         stopAllRequests();
@@ -260,35 +242,27 @@ void HarmonyRenderer::stopAllRequestsAsync(std::function<void()> onComplete) {
         // 在独立线程中执行等待逻辑，避免阻塞主线程
         std::thread([this, onComplete = std::move(onComplete), instanceId = instanceId_]() {
             try {
-                Logger::debug("HarmonyRenderer", "[%s] Async wait thread started", instanceId.c_str());
-                
                 // 等待渲染线程完成当前任务（使用条件变量而不是硬编码等待）
                 // 参考 Android MapRenderer 的 waitForEmpty()
                 if (mapRenderThread_) {
-                    Logger::debug("HarmonyRenderer", "[%s] Waiting for Map+Render thread to finish...", instanceId.c_str());
                     // 给渲染线程时间完成当前帧
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
                 
                 // 等待 RunLoop 完成当前任务
                 // 参考 iOS 的 RunLoop 清理模式
-                Logger::debug("HarmonyRenderer", "[%s] Waiting for RunLoop tasks to complete...", instanceId.c_str());
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 
                 // 等待 ResourceLoader 线程停止
                 // 这是防止 SIGSEGV 的关键（见 CRASH_FIXES_2025_10_29.md）
-                Logger::debug("HarmonyRenderer", "[%s] Waiting for ResourceLoader thread to stop...", instanceId.c_str());
                 std::this_thread::sleep_for(std::chrono::milliseconds(150));
                 
                 Logger::info("HarmonyRenderer", "[%s] All async operations completed", instanceId.c_str());
                 
                 // 3. 调用完成回调
                 if (onComplete) {
-                    Logger::debug("HarmonyRenderer", "[%s] Invoking onComplete callback", instanceId.c_str());
                     onComplete();
                 }
-                
-                Logger::info("HarmonyRenderer", "[%s] ========== stopAllRequestsAsync END ==========", instanceId.c_str());
                 
             } catch (const std::exception& e) {
                 Logger::error("HarmonyRenderer", "[%s] Error in async wait: %s", instanceId.c_str(), e.what());

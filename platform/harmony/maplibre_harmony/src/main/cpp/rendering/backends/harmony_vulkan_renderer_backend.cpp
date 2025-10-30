@@ -57,7 +57,6 @@ public:
      * @return Vector of required device extension names
      */
     std::vector<const char*> getDeviceExtensions() override {
-        Logger::debug("HarmonyVulkan", "Getting device extensions");
         return {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         };
@@ -129,8 +128,6 @@ public:
             Logger::info("HarmonyVulkan", "Successfully created Vulkan surface");
             
             // HarmonyOS may support surface pre-rotation similar to Android
-            Logger::debug("HarmonyVulkan", "Surface transform support will be checked during swapchain creation");
-            
         } catch (const std::exception& e) {
             Logger::error("HarmonyVulkan", "Exception during surface creation: %s", e.what());
             throw;
@@ -151,8 +148,6 @@ public:
      * It also handles synchronization based on the swap behavior setting.
      */
     void swap() override {
-        Logger::debug("HarmonyVulkan", "Swapping buffers");
-        
         // Call base class swap implementation to handle presentation
         vulkan::SurfaceRenderableResource::swap();
 
@@ -161,7 +156,6 @@ public:
         if (swapBehaviour == gfx::Renderable::SwapBehaviour::Flush) {
             // Wait for frame completion in flush mode
             static_cast<vulkan::Context&>(backend.getContext()).waitFrame();
-            Logger::debug("HarmonyVulkan", "Frame flush completed");
         }
     }
 };
@@ -210,7 +204,6 @@ void HarmonyVulkanRendererBackend::setNativeWindow(OHNativeWindow* window_) {
     Logger::info("HarmonyVulkan", "Setting native window: %p", window_);
     
     if (window == window_) {
-        Logger::debug("HarmonyVulkan", "Window unchanged, skipping");
         return;
     }
     
@@ -242,8 +235,6 @@ void HarmonyVulkanRendererBackend::setNativeWindow(OHNativeWindow* window_) {
 }
 
 std::vector<const char*> HarmonyVulkanRendererBackend::getInstanceExtensions() {
-    Logger::debug("HarmonyVulkan", "Getting instance extensions");
-    
     // Get base extensions from parent class
     auto extensions = mbgl::vulkan::RendererBackend::getInstanceExtensions();
     
@@ -258,7 +249,6 @@ std::vector<const char*> HarmonyVulkanRendererBackend::getInstanceExtensions() {
     
     // Log all requested extensions for debugging
     for (size_t i = 0; i < extensions.size(); ++i) {
-        Logger::debug("HarmonyVulkan", "  Extension[%zu]: %s", i, extensions[i]);
     }
     
     return extensions;
@@ -277,7 +267,6 @@ void HarmonyVulkanRendererBackend::resizeFramebuffer(int width, int height) {
     
     // Request surface update if context is available
     if (context) {
-        Logger::debug("HarmonyVulkan", "Requesting surface update for resize");
         static_cast<vulkan::Context&>(*context).requestSurfaceUpdate();
     } else {
         Logger::warn("HarmonyVulkan", "Context not available, resize will be applied on next render");
@@ -285,15 +274,11 @@ void HarmonyVulkanRendererBackend::resizeFramebuffer(int width, int height) {
 }
 
 PremultipliedImage HarmonyVulkanRendererBackend::readFramebuffer() {
-    Logger::debug("HarmonyVulkan", "Reading framebuffer");
-    
     try {
         // Get the current framebuffer size
         const auto& renderableSize = getDefaultRenderable().getSize();
         const uint32_t width = renderableSize.width;
         const uint32_t height = renderableSize.height;
-        
-        Logger::debug("HarmonyVulkan", "Framebuffer size: %ux%u", width, height);
         
         if (width == 0 || height == 0) {
             Logger::warn("HarmonyVulkan", "Invalid framebuffer size for readback");

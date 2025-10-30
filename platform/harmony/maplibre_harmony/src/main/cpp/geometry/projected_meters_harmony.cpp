@@ -26,9 +26,6 @@ napi_value ProjectedMetersHarmony::CreateProjectedMetersObject(napi_env env, con
     napi_create_double(env, projectedMeters.easting(), &eastingValue);
     napi_set_named_property(env, obj, "easting", eastingValue);
     
-    Logger::debug("ProjectedMetersHarmony", "Created ProjectedMeters object: northing=%f, easting=%f", 
-                  projectedMeters.northing(), projectedMeters.easting());
-    
     return obj;
 }
 
@@ -72,8 +69,6 @@ bool ProjectedMetersHarmony::ParseProjectedMeters(napi_env env, napi_value value
     }
     
     outProjectedMeters = mbgl::ProjectedMeters(northing, easting);
-    Logger::debug("ProjectedMetersHarmony", "Parsed ProjectedMeters: northing=%f, easting=%f", northing, easting);
-    
     return true;
 }
 

@@ -119,7 +119,6 @@ napi_value MarkerNAPI::Remove(napi_env env, napi_callback_info info) {
                 napi_value argv[] = { thisVar };
                 napi_value result;
                 napi_call_function(env, mapLibreMapValue, removeMarkerFunc, 1, argv, &result);
-                Logger::debug("MarkerNAPI", "Marker.remove() called mapLibreMap.removeMarker()");
             } else {
                 Logger::warn("MarkerNAPI", "Remove: removeMarker method not found on MapLibreMap");
                 // 如果方法不存在，至少重置 ID
@@ -195,7 +194,6 @@ napi_value MarkerNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
     if (status != napi_ok) {
         Logger::error("MarkerNAPI", "SetMapLibreMap: Failed to create reference");
     } else {
-        Logger::debug("MarkerNAPI", "SetMapLibreMap: Successfully set MapLibreMap reference for marker ID=%ld", marker->annotationId);
     }
     
     napi_value undefined;
@@ -214,8 +212,6 @@ napi_value MarkerNAPI::ShowInfoWindow(napi_env env, napi_callback_info info) {
     if (!marker) return nullptr;
     
     marker->infoWindowShown = true;
-    Logger::debug("MarkerNAPI", "showInfoWindow called for marker ID=%ld", marker->annotationId);
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -231,8 +227,6 @@ napi_value MarkerNAPI::HideInfoWindow(napi_env env, napi_callback_info info) {
     if (!marker) return nullptr;
     
     marker->infoWindowShown = false;
-    Logger::debug("MarkerNAPI", "hideInfoWindow called for marker ID=%ld", marker->annotationId);
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -438,8 +432,6 @@ napi_value MarkerNAPI::SetAnchor(napi_env env, napi_callback_info info) {
     
     marker->anchorU = args.GetDouble(0, "u");
     marker->anchorV = args.GetDouble(1, "v");
-    Logger::debug("MarkerNAPI", "setAnchor: u=%f, v=%f", marker->anchorU, marker->anchorV);
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;

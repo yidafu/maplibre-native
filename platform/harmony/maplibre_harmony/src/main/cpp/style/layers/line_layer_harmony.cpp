@@ -20,11 +20,9 @@ napi_ref LineLayerNAPI::constructor = nullptr;
 
 LineLayerNAPI::LineLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::LineLayer>(layerId, sourceId)) {
-    Logger::debug("LineLayerNAPI", "LineLayer created: %s (source: %s)", layerId.c_str(), sourceId.c_str());
 }
 
 LineLayerNAPI::~LineLayerNAPI() {
-    Logger::debug("LineLayerNAPI", "LineLayer destroyed");
 }
 
 void LineLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {
@@ -683,7 +681,6 @@ napi_value LineLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
         layerObj->layer->setFilter(*filter);
-        Logger::debug("LineLayerNAPI", "Filter set successfully");
     }
     
     return thisVar;

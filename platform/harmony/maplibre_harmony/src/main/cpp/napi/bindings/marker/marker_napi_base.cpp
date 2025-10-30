@@ -31,29 +31,24 @@ MarkerNAPI::MarkerNAPI()
       mapLibreMapRef(nullptr),
       anchorU(0.5),  // 默认底部中心
       anchorV(1.0) {
-    Logger::debug("MarkerNAPI", "MarkerNAPI instance created");
 }
 
 MarkerNAPI::~MarkerNAPI() {
-    Logger::debug("MarkerNAPI", "MarkerNAPI instance destroyed, ID=%lld", annotationId);
 }
 
 void MarkerNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("MarkerNAPI", "Destructor called");
     MarkerNAPI* marker = static_cast<MarkerNAPI*>(nativeObject);
     
     // 清理 Icon 引用
     if (marker->iconRef) {
         napi_delete_reference(env, marker->iconRef);
         marker->iconRef = nullptr;
-        Logger::debug("MarkerNAPI", "Cleaned up Icon reference in destructor");
     }
     
     // 清理 MapLibreMap 引用
     if (marker->mapLibreMapRef) {
         napi_delete_reference(env, marker->mapLibreMapRef);
         marker->mapLibreMapRef = nullptr;
-        Logger::debug("MarkerNAPI", "Cleaned up MapLibreMap reference in destructor");
     }
     
     delete marker;
@@ -430,7 +425,6 @@ napi_value MarkerNAPI::SetIcon(napi_env env, napi_callback_info info) {
     if (type == napi_string) {
         // Backward compatibility: string icon ID
         marker->iconId = args.GetStringOr(0, "");
-        Logger::debug("MarkerNAPI", "SetIcon: using string ID '%s'", marker->iconId.c_str());
     } else if (type == napi_object) {
         // New way: Icon object
         // Import IconNAPI to check if it's an Icon object
@@ -454,14 +448,12 @@ napi_value MarkerNAPI::SetIcon(napi_env env, napi_callback_info info) {
                 if (status != napi_ok) {
                     Logger::error("MarkerNAPI", "SetIcon: Failed to create Icon reference");
                 } else {
-                    Logger::debug("MarkerNAPI", "SetIcon: using Icon object with ID '%s'", marker->iconId.c_str());
                 }
             }
         }
     } else if (type == napi_null || type == napi_undefined) {
         // Clear icon
         marker->iconId = "";
-        Logger::debug("MarkerNAPI", "SetIcon: cleared icon");
     }
     
     napi_value undefined;
@@ -520,8 +512,6 @@ napi_value MarkerNAPI::SetVisible(napi_env env, napi_callback_info info) {
     if (!marker) return nullptr;
     
     marker->visible = args.GetBool(0);
-    Logger::debug("MarkerNAPI", "Marker visible set to %d", marker->visible);
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;

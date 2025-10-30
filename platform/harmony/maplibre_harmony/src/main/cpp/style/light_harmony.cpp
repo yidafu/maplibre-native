@@ -22,7 +22,6 @@ LightHarmony::~LightHarmony() {
 }
 
 void LightHarmony::Destructor(napi_env env, void* nativeObject, void* hint) {
-    Logger::debug("LightHarmony", "Destructor called");
     LightHarmony* lightHarmony = static_cast<LightHarmony*>(nativeObject);
     delete lightHarmony;
 }
@@ -78,8 +77,6 @@ napi_value LightHarmony::Init(napi_env env, napi_value exports) {
 }
 
 napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map, mbgl::style::Light& coreLight) {
-    Logger::debug("LightHarmony", "Creating Light peer");
-    
     if (constructor == nullptr) {
         Logger::error("LightHarmony", "Light constructor not initialized");
         napi_value undefined;

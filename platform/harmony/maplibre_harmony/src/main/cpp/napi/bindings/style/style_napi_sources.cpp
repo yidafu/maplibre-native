@@ -136,7 +136,6 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
         napi_value typeValue = CreateStringValue(env, typeStr);
         napi_set_named_property(env, result, "type", typeValue);
         
-        Logger::debug("StyleNAPI", "GetSource: %s (type: %s)", sourceId.c_str(), typeStr.c_str());
         return result;
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetSource failed: %s", e.what());
@@ -208,7 +207,6 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
             napi_set_element(env, result, index++, sourceObj);
         }
         
-        Logger::debug("StyleNAPI", "GetSources: found %zu sources", sources.size());
         return result;
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetSources failed: %s", e.what());

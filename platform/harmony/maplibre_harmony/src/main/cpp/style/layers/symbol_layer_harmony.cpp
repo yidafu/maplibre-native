@@ -33,7 +33,6 @@ SymbolLayerNAPI::~SymbolLayerNAPI() {
 }
 
 void SymbolLayerNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("SymbolLayerNAPI", "Destructor called");
     SymbolLayerNAPI* layerNapi = static_cast<SymbolLayerNAPI*>(nativeObject);
     delete layerNapi;
 }

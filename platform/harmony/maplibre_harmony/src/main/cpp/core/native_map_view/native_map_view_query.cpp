@@ -19,8 +19,6 @@ namespace mbgl {
 namespace harmony {
 
 napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getMetersPerPixelAtLatitude() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     
@@ -40,7 +38,6 @@ napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callbac
     try {
         double metersPerPixel = mbgl::Projection::getMetersPerPixelAtLatitude(latitude, zoom);
         napi_create_double(env, metersPerPixel, &result);
-        Logger::debug("NativeMapView", "getMetersPerPixelAtLatitude: lat=%f, zoom=%f, result=%f", latitude, zoom, metersPerPixel);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getMetersPerPixelAtLatitude: Failed - %s", e.what());
     }
@@ -49,8 +46,6 @@ napi_value NativeMapView::getMetersPerPixelAtLatitude(napi_env env, napi_callbac
 }
 
 napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "projectedMetersForLatLng() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
@@ -69,8 +64,6 @@ napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_i
         );
         
         napi_value result = ProjectedMetersHarmony::CreateProjectedMetersObject(env, projectedMeters);
-        Logger::debug("NativeMapView", "projectedMetersForLatLng: lat=%f, lng=%f -> northing=%f, easting=%f", 
-                      latitude, longitude, projectedMeters.northing(), projectedMeters.easting());
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "projectedMetersForLatLng: Failed - %s", e.what());
@@ -79,8 +72,6 @@ napi_value NativeMapView::projectedMetersForLatLng(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "pixelForLatLng() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
@@ -105,8 +96,6 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
     try {
         mbgl::ScreenCoordinate pixel = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->pixelForLatLng(mbgl::LatLng(latitude, longitude)); }, mbgl::ScreenCoordinate{});
         napi_value result = PointHarmony::CreatePointObject(env, pixel);
-        Logger::debug("NativeMapView", "pixelForLatLng: lat=%f, lng=%f -> x=%f, y=%f", 
-                      latitude, longitude, pixel.x, pixel.y);
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "pixelForLatLng: Failed - %s", e.what());
@@ -115,8 +104,6 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
 }
 
 napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "pixelsForLatLngs() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     
@@ -199,8 +186,6 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
 }
 
 napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "latLngForProjectedMeters() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
@@ -219,8 +204,6 @@ napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_i
         );
         
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
-        Logger::debug("NativeMapView", "latLngForProjectedMeters: northing=%f, easting=%f -> lat=%f, lng=%f", 
-                      northing, easting, latLng.latitude(), latLng.longitude());
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "latLngForProjectedMeters: Failed - %s", e.what());
@@ -229,8 +212,6 @@ napi_value NativeMapView::latLngForProjectedMeters(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "latLngForPixel() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
@@ -255,8 +236,6 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
     try {
         mbgl::LatLng latLng = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->latLngForPixel(mbgl::ScreenCoordinate(x, y)); }, mbgl::LatLng{});
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
-        Logger::debug("NativeMapView", "latLngForPixel: x=%f, y=%f -> lat=%f, lng=%f", 
-                      x, y, latLng.latitude(), latLng.longitude());
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "latLngForPixel: Failed - %s", e.what());
@@ -265,8 +244,6 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
 }
 
 napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "latLngsForPixels() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     
@@ -349,8 +326,6 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
 }
 
 napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryPointAnnotations() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(4);
     
@@ -395,9 +370,6 @@ napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info
             return emptyArray;
         }
         
-        Logger::debug("NativeMapView", "queryPointAnnotations: box=[%.2f, %.2f, %.2f, %.2f]", 
-                      left, top, right, bottom);
-        
         // 构造 ScreenBox
         mbgl::ScreenBox box{
             mbgl::ScreenCoordinate{left, top},
@@ -428,8 +400,6 @@ napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info
 }
 
 napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryShapeAnnotations() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(4);
     
@@ -474,9 +444,6 @@ napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info
             return emptyArray;
         }
         
-        Logger::debug("NativeMapView", "queryShapeAnnotations: box=[%.2f, %.2f, %.2f, %.2f]", 
-                      left, top, right, bottom);
-        
         // 构造 ScreenBox
         mbgl::ScreenBox box{
             mbgl::ScreenCoordinate{left, top},
@@ -507,8 +474,6 @@ napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info
 }
 
 napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     
@@ -551,8 +516,6 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
             return undefined;
         }
         
-        Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint: x=%.2f, y=%.2f", x, y);
-        
         // 2. 构造 ScreenCoordinate
         mbgl::ScreenCoordinate point(x, y);
         
@@ -588,7 +551,6 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
                     
                     if (!layerIds.empty()) {
                         options.layerIDs = layerIds;
-                        Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint: layerIds count=%zu", layerIds.size());
                     }
                 }
             }
@@ -608,7 +570,6 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
                     auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
                     if (filter) {
                         options.filter = *filter;
-                        Logger::debug("NativeMapView", "queryRenderedFeaturesForPoint: filter applied");
                     }
                 }
             }
@@ -636,8 +597,6 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
 }
 
 napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "queryRenderedFeaturesForBox() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(4);
     
@@ -682,9 +641,6 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
             return undefined;
         }
         
-        Logger::debug("NativeMapView", "queryRenderedFeaturesForBox: left=%.2f, top=%.2f, right=%.2f, bottom=%.2f", 
-                      left, top, right, bottom);
-        
         // 2. 构造 ScreenBox
         mbgl::ScreenBox box{
             mbgl::ScreenCoordinate{left, top},
@@ -723,7 +679,6 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
                     
                     if (!layerIds.empty()) {
                         options.layerIDs = layerIds;
-                        Logger::debug("NativeMapView", "queryRenderedFeaturesForBox: layerIds count=%zu", layerIds.size());
                     }
                 }
             }
@@ -743,7 +698,6 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
                     auto filter = mbgl::harmony::napiArrayToFilter(env, filterValue);
                     if (filter) {
                         options.filter = *filter;
-                        Logger::debug("NativeMapView", "queryRenderedFeaturesForBox: filter applied");
                     }
                 }
             }

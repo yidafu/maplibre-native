@@ -64,8 +64,6 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
 // Note: getStyleUrl, setStyleUrl, getStyleJson, setStyleJson, and setLatLngBounds are now defined in native_map_view_style.cpp
 
 napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "cancelTransitions() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -98,8 +96,6 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
 }
 
 napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setGestureInProgress() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -129,8 +125,6 @@ napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "moveBy() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
@@ -143,7 +137,6 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     if (duration > 0) {
-        Logger::debug("NativeMapView", "moveBy: with animation duration = %lu ms", (unsigned long)duration);
     }
     
     // 获取NativeMapView实例
@@ -188,8 +181,6 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== jumpTo() START ==========");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(5);
     if (args.HasError()) return args.Undefined();
@@ -211,12 +202,6 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance or instance is null");
         return args.Undefined();
     }
-    
-    Logger::debug("NativeMapView", "jumpTo: instance=%p", instance);
-    Logger::debug("NativeMapView", "jumpTo: Current state - map=%s, harmonyRenderer=%s, nativeWindow=%s",
-                  instance->map ? "exists" : "null",
-                  instance->harmonyRenderer ? "exists" : "null",
-                  instance->nativeWindow ? "exists" : "null");
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
@@ -256,8 +241,6 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== easeTo() START ==========");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -291,7 +274,6 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
             if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
                 napi_get_value_double(env, lngValue, &lng) == napi_ok) {
                 cameraOptions.center = LatLng{lat, lng};
-                Logger::debug("NativeMapView", "easeTo: center = (%f, %f)", lat, lng);
             }
         }
     }
@@ -302,7 +284,6 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         double zoom;
         if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
             cameraOptions.zoom = zoom;
-            Logger::debug("NativeMapView", "easeTo: zoom = %f", zoom);
         }
     }
     
@@ -312,7 +293,6 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         double bearing;
         if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
             cameraOptions.bearing = bearing;
-            Logger::debug("NativeMapView", "easeTo: bearing = %f", bearing);
         }
     }
     
@@ -322,7 +302,6 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         double pitch;
         if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
             cameraOptions.pitch = pitch;
-            Logger::debug("NativeMapView", "easeTo: pitch = %f", pitch);
         }
     }
     
@@ -336,15 +315,12 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
             if (napi_get_value_double(env, anchorX, &x) == napi_ok &&
                 napi_get_value_double(env, anchorY, &y) == napi_ok) {
                 cameraOptions.anchor = mbgl::ScreenCoordinate{x, y};
-                Logger::debug("NativeMapView", "easeTo: anchor = (%f, %f)", x, y);
             }
         }
     }
     
     // 获取动画时长（可选，默认 300ms）
     uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 300.0));
-    Logger::debug("NativeMapView", "easeTo: duration = %lu ms", (unsigned long)duration);
-    
     // 执行 easeTo 相机动画
     // 开始事件（UI线程）
     if (instance->callbackManager_) {
@@ -361,8 +337,6 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== flyTo() START ==========");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -390,7 +364,6 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
             if (napi_get_value_double(env, latValue, &lat) == napi_ok &&
                 napi_get_value_double(env, lngValue, &lng) == napi_ok) {
                 cameraOptions.center = LatLng{lat, lng};
-                Logger::debug("NativeMapView", "flyTo: center = (%f, %f)", lat, lng);
             }
         }
     }
@@ -401,7 +374,6 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         double zoom;
         if (napi_get_value_double(env, zoomValue, &zoom) == napi_ok) {
             cameraOptions.zoom = zoom;
-            Logger::debug("NativeMapView", "flyTo: zoom = %f", zoom);
         }
     }
     
@@ -411,7 +383,6 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         double bearing;
         if (napi_get_value_double(env, bearingValue, &bearing) == napi_ok) {
             cameraOptions.bearing = bearing;
-            Logger::debug("NativeMapView", "flyTo: bearing = %f", bearing);
         }
     }
     
@@ -421,14 +392,12 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         double pitch;
         if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
             cameraOptions.pitch = pitch;
-            Logger::debug("NativeMapView", "flyTo: pitch = %f", pitch);
         }
     }
     
     // 获取动画时长（可选，默认使用 flyTo 自动时长）
     uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 0.0));
     if (duration > 0) {
-        Logger::debug("NativeMapView", "flyTo: duration = %lu ms", (unsigned long)duration);
     }
     
     // 执行 flyTo 相机动画
@@ -444,8 +413,6 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getLatLng() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -471,7 +438,6 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
             napi_set_named_property(env, result, "latitude", latValue);
             napi_set_named_property(env, result, "longitude", lngValue);
             
-            Logger::debug("NativeMapView", "getLatLng: lat=%.6f, lng=%.6f", center.latitude(), center.longitude());
             return result;
         }
     }
@@ -480,8 +446,6 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setLatLng() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) {
@@ -521,8 +485,6 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getCameraForLatLngBounds() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
@@ -563,7 +525,6 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
         mbgl::CameraOptions cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->cameraForLatLngBounds(bounds, padding, bearing, tilt); }, mbgl::CameraOptions{});
         
         napi_value result = CameraPositionHarmony::CreateCameraPositionObject(env, cameraOptions, instance->pixelRatio);
-        Logger::debug("NativeMapView", "getCameraForLatLngBounds: Calculated camera position");
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Failed - %s", e.what());
@@ -572,8 +533,6 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getCameraForGeometry() called");
-    
     NapiArgs args(env, info);
     
     // TODO: 需要实现 Geometry 和 CameraPosition 的 NAPI 包装类
@@ -587,15 +546,11 @@ napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info 
 napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info) {
     // 网络可达性由 Harmony 网络管理器处理，不需要手动设置
     // Network reachability handled by Harmony network manager
-    Logger::debug("NativeMapView", "setReachability: Network reachability handled by Harmony system");
-    
     NapiArgs args(env, info);
     return args.Undefined();
 }
 
 napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "resetPosition() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -623,8 +578,6 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getPitch() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -645,7 +598,6 @@ napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
         if (cameraOptions.pitch) {
             napi_value result;
             napi_create_double(env, *cameraOptions.pitch, &result);
-            Logger::debug("NativeMapView", "getPitch: Current pitch = %.2f", *cameraOptions.pitch);
             return result;
         }
     } catch (const std::exception& e) {
@@ -656,8 +608,6 @@ napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setPitch() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -688,10 +638,8 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
             mbgl::AnimationOptions animationOptions;
             animationOptions.duration = std::chrono::milliseconds(duration);
             instance->invokeOnMapThread([options, animationOptions](mbgl::Map* m){ m->easeTo(options, animationOptions); m->triggerRepaint(); });
-            Logger::debug("NativeMapView", "setPitch: Animating to pitch %.2f over %u ms", pitch, duration);
         } else {
             instance->invokeOnMapThread([options](mbgl::Map* m){ m->jumpTo(options); m->triggerRepaint(); });
-            Logger::debug("NativeMapView", "setPitch: Set pitch to %.2f", pitch);
         }
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setPitch: Failed - %s", e.what());
@@ -701,8 +649,6 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setZoom() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
@@ -748,8 +694,6 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getZoom() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -770,7 +714,6 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
         if (cameraOptions.zoom) {
             napi_value result;
             napi_create_double(env, *cameraOptions.zoom, &result);
-            Logger::debug("NativeMapView", "getZoom: Current zoom = %.2f", *cameraOptions.zoom);
             return result;
         }
     }
@@ -779,8 +722,6 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "resetZoom() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -801,8 +742,6 @@ napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setMinZoom() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -828,8 +767,6 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getMinZoom() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -844,7 +781,6 @@ napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
         if (bounds.minZoom) {
             napi_value result;
             napi_create_double(env, *bounds.minZoom, &result);
-            Logger::debug("NativeMapView", "getMinZoom: Current min zoom = %.2f", *bounds.minZoom);
             return result;
         }
     } catch (const std::exception& e) {
@@ -855,8 +791,6 @@ napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setMaxZoom() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -882,8 +816,6 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getMaxZoom() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -898,7 +830,6 @@ napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
         if (bounds.maxZoom) {
             napi_value result;
             napi_create_double(env, *bounds.maxZoom, &result);
-            Logger::debug("NativeMapView", "getMaxZoom: Current max zoom = %.2f", *bounds.maxZoom);
             return result;
         }
     } catch (const std::exception& e) {
@@ -909,8 +840,6 @@ napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setMinPitch() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
@@ -940,8 +869,6 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getMinPitch() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -956,7 +883,6 @@ napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
         if (bounds.minPitch) {
             napi_value result;
             napi_create_double(env, *bounds.minPitch, &result);
-            Logger::debug("NativeMapView", "getMinPitch: Current min pitch = %.2f", *bounds.minPitch);
             return result;
         }
     } catch (const std::exception& e) {
@@ -967,8 +893,6 @@ napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setMaxPitch() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
@@ -998,8 +922,6 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getMaxPitch() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1014,7 +936,6 @@ napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
         if (bounds.maxPitch) {
             napi_value result;
             napi_create_double(env, *bounds.maxPitch, &result);
-            Logger::debug("NativeMapView", "getMaxPitch: Current max pitch = %.2f", *bounds.maxPitch);
             return result;
         }
     } catch (const std::exception& e) {
@@ -1025,8 +946,6 @@ napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "rotateBy() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(4);
     if (args.HasError()) {
@@ -1064,8 +983,6 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setBearing() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -1095,7 +1012,6 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
             instance->invokeOnMapThread([bearing](mbgl::Map* m){ m->jumpTo(mbgl::CameraOptions().withBearing(bearing)); m->triggerRepaint(); });
         }
         instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
-        Logger::debug("NativeMapView", "setBearing: Set bearing to %.2f", bearing);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setBearing: Failed - %s", e.what());
     }
@@ -1104,8 +1020,6 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setBearingXY() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(3);
     if (args.HasError()) {
@@ -1142,8 +1056,6 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getBearing() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1158,7 +1070,6 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
         if (cameraOptions.bearing) {
             napi_value result;
             napi_create_double(env, *cameraOptions.bearing, &result);
-            Logger::debug("NativeMapView", "getBearing: Current bearing = %.2f", *cameraOptions.bearing);
             return result;
         }
     } catch (const std::exception& e) {
@@ -1169,8 +1080,6 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "resetNorth() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1192,8 +1101,6 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setVisibleCoordinateBounds() called");
-    
     NapiArgs args(env, info);
     
     // TODO: 需要实现 LatLng 数组和 RectF 的 NAPI 包装类
@@ -1204,8 +1111,6 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
 }
 
 napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getVisibleCoordinateBounds() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1219,9 +1124,6 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
         auto latLngBounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->latLngBoundsForCameraUnwrapped(m->getCameraOptions(std::nullopt)); }, mbgl::LatLngBounds{});
         
         napi_value result = LatLngBoundsHarmony::CreateLatLngBoundsObject(env, latLngBounds);
-        Logger::debug("NativeMapView", "getVisibleCoordinateBounds: N=%f, E=%f, S=%f, W=%f", 
-                      latLngBounds.north(), latLngBounds.east(), 
-                      latLngBounds.south(), latLngBounds.west());
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getVisibleCoordinateBounds: Failed - %s", e.what());
@@ -1233,15 +1135,11 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
 napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info) {
     // 快照功能需要渲染器回调支持
     // Snapshot functionality requires renderer callback support
-    Logger::debug("NativeMapView", "scheduleSnapshot: Snapshot functionality requires renderer callback support");
-    
     NapiArgs args(env, info);
     return args.Undefined();
 }
 
 napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getCameraPosition() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1293,7 +1191,6 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
             napi_set_named_property(env, result, "target", targetObj);
         }
         
-        Logger::debug("NativeMapView", "getCameraPosition: Returned camera position");
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getCameraPosition: Failed - %s", e.what());

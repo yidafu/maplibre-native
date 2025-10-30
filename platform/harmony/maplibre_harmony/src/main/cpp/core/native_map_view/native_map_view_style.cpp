@@ -23,8 +23,6 @@ napi_value NativeMapView::getStyleUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== setStyleUrl() START ==========");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -41,12 +39,6 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to unwrap instance");
         return undefined;
     }
-    
-    Logger::debug("NativeMapView", "setStyleUrl: instance=%p", instance);
-    Logger::debug("NativeMapView", "setStyleUrl: Current state - map=%s, harmonyRenderer=%s, nativeWindow=%s",
-                  instance->map ? "exists" : "null",
-                  instance->harmonyRenderer ? "exists" : "null",
-                  instance->nativeWindow ? "exists" : "null");
     
     // 检查 Map 对象是否已初始化
     if (!instance->map) {
@@ -125,13 +117,10 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     
     Logger::info("NativeMapView", "setStyleUrl: Style URL load dispatched successfully");
     
-    Logger::info("NativeMapView", "========== setStyleUrl() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getStyleJson() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -148,7 +137,6 @@ napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
         std::string json = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getJSON(); }, std::string{});
         napi_value result;
         napi_create_string_utf8(env, json.c_str(), json.length(), &result);
-        Logger::debug("NativeMapView", "getStyleJson: Returned JSON (%zu bytes)", json.length());
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getStyleJson: Failed - %s", e.what());
@@ -158,8 +146,6 @@ napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setStyleJson() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -204,8 +190,6 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setLatLngBounds() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -232,8 +216,6 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
 napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
     // Debug 可视化功能未在 Harmony 平台实现
     // Debug visualization not implemented for Harmony platform
-    Logger::debug("NativeMapView", "setDebug: Debug visualization not implemented for Harmony platform");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -242,8 +224,6 @@ napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
     // Debug 可视化功能未在 Harmony 平台实现
     // Debug visualization not implemented for Harmony platform
-    Logger::debug("NativeMapView", "getDebug: Debug visualization not implemented for Harmony platform");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     return result;
@@ -252,8 +232,6 @@ napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_info info) {
     // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
     // Action journal requires ActionJournal support, not configured for Harmony
-    Logger::debug("NativeMapView", "getActionJournalLogFiles: Action journal not configured for Harmony");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -262,8 +240,6 @@ napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_i
 napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info info) {
     // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
     // Action journal requires ActionJournal support, not configured for Harmony
-    Logger::debug("NativeMapView", "getActionJournalLog: Action journal not configured for Harmony");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -272,16 +248,12 @@ napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info i
 napi_value NativeMapView::clearActionJournalLog(napi_env env, napi_callback_info info) {
     // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
     // Action journal requires ActionJournal support, not configured for Harmony
-    Logger::debug("NativeMapView", "clearActionJournalLog: Action journal not configured for Harmony");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
 napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "isFullyLoaded() called");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
@@ -297,7 +269,6 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
     try {
         bool loaded = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->isFullyLoaded(); }, false);
         napi_get_boolean(env, loaded, &result);
-        Logger::debug("NativeMapView", "isFullyLoaded: %s", loaded ? "true" : "false");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "isFullyLoaded: Failed - %s", e.what());
     }
@@ -306,8 +277,6 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getStyle() called");
-    
     // 获取NativeMapView实例
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
@@ -359,8 +328,6 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
     napi_value args[1];
     int64_t mapPtr = reinterpret_cast<int64_t>(instance->map);
     napi_create_int64(env, mapPtr, &args[0]);
-    Logger::debug("NativeMapView", "getStyle: Creating Style instance with mapPtr=%p", instance->map);
-    
     // 创建 StyleNAPI 实例
     napi_value styleInstance;
     status = napi_new_instance(env, styleConstructor, 1, args, &styleInstance);
@@ -371,13 +338,10 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    Logger::debug("NativeMapView", "getStyle: Style instance created successfully");
     return styleInstance;
 }
 
 napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getTransitionOptions() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -393,7 +357,6 @@ napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info 
     try {
         const auto transitionOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getTransitionOptions(); }, mbgl::style::TransitionOptions{});
         napi_value result = TransitionOptionsHarmony::CreateTransitionOptionsObject(env, transitionOptions);
-        Logger::debug("NativeMapView", "getTransitionOptions: Retrieved transition options");
         return result;
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTransitionOptions: Failed - %s", e.what());
@@ -403,8 +366,6 @@ napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setTransitionOptions() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) {
@@ -453,8 +414,6 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getLight() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -466,8 +425,6 @@ napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getLayers() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -479,8 +436,6 @@ napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getLayer() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -492,8 +447,6 @@ napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addLayer(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addLayer() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -505,8 +458,6 @@ napi_value NativeMapView::addLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addLayerAbove(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addLayerAbove() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -518,8 +469,6 @@ napi_value NativeMapView::addLayerAbove(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addLayerAt(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addLayerAt() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -531,8 +480,6 @@ napi_value NativeMapView::addLayerAt(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeLayerAt() called");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
@@ -544,8 +491,6 @@ napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeLayer() called");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
@@ -557,8 +502,6 @@ napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getSources() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -570,8 +513,6 @@ napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getSource() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -583,8 +524,6 @@ napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addSource() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -596,8 +535,6 @@ napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeSource() called");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
@@ -609,8 +546,6 @@ napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addImage() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -622,8 +557,6 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addImages() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -635,8 +568,6 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeImage() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     

@@ -20,11 +20,9 @@ napi_ref FillLayerNAPI::constructor = nullptr;
 
 FillLayerNAPI::FillLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::FillLayer>(layerId, sourceId)) {
-    Logger::debug("FillLayerNAPI", "FillLayer created: %s (source: %s)", layerId.c_str(), sourceId.c_str());
 }
 
 FillLayerNAPI::~FillLayerNAPI() {
-    Logger::debug("FillLayerNAPI", "FillLayer destroyed");
 }
 
 void FillLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {
@@ -576,7 +574,6 @@ napi_value FillLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
         layerObj->layer->setFilter(*filter);
-        Logger::debug("FillLayerNAPI", "Filter set successfully");
     }
     
     return thisVar;

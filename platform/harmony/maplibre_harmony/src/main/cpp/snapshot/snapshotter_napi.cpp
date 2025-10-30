@@ -140,7 +140,6 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                 napi_get_value_double(env, latVal, &lat);
                 napi_get_value_double(env, lngVal, &lng);
                 camera.center = mbgl::LatLng(lat, lng);
-                Logger::debug("SnapshotterNAPI", "Camera target: lat=%.6f, lng=%.6f", lat, lng);
             }
             
             // 解析 zoom
@@ -149,7 +148,6 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                 double zoom;
                 napi_get_value_double(env, zoomVal, &zoom);
                 camera.zoom = zoom;
-                Logger::debug("SnapshotterNAPI", "Camera zoom: %.2f", zoom);
             }
             
             // 解析 bearing
@@ -158,7 +156,6 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                 double bearing;
                 napi_get_value_double(env, bearingVal, &bearing);
                 camera.bearing = bearing;
-                Logger::debug("SnapshotterNAPI", "Camera bearing: %.2f", bearing);
             }
             
             // 解析 tilt (pitch)
@@ -167,7 +164,6 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                 double tilt;
                 napi_get_value_double(env, tiltVal, &tilt);
                 camera.pitch = tilt;
-                Logger::debug("SnapshotterNAPI", "Camera tilt: %.2f", tilt);
             }
             
             options.camera = camera;
@@ -198,8 +194,6 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                 mbgl::LatLng(south, west)
             );
             options.region = bounds;
-            Logger::debug("SnapshotterNAPI", "Region bounds: N=%.6f, S=%.6f, E=%.6f, W=%.6f", 
-                         north, south, east, west);
         }
     }
     
@@ -337,7 +331,6 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
                     }
                     
                     napi_set_named_property(env, resultObj, "attributions", attributionsArray);
-                    Logger::debug("SnapshotterNAPI", "Added %zu attributions", attributions.size());
                 }
                 
                 // 调用 callback(null, result)

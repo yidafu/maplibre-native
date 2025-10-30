@@ -476,7 +476,6 @@ void CURLEventLoop::processCURLMessages() {
                 Logger::warn("Network", "  Error: %s", curl_easy_strerror(result));
                 Logger::warn("Network", "  Time: %.2f seconds", total_time);
             } else {
-                Logger::info("Network", "✅ Request COMPLETED:");
                 Logger::info("Network", "  URL: %s", url ? url : "unknown");
                 Logger::info("Network", "  Status: %ld", response_code);
                 Logger::info("Network", "  Time: %.2f seconds", total_time);
@@ -487,10 +486,8 @@ void CURLEventLoop::processCURLMessages() {
             curl_easy_getinfo(handle, CURLINFO_PRIVATE, &privateData);
             
             if (privateData) {
-                Logger::debug("Network", "  Invoking handleHTTPRequestResult with request: %p", privateData);
                 // 调用外部函数处理结果
                 handleHTTPRequestResult(privateData, result);
-                Logger::debug("Network", "  handleHTTPRequestResult completed");
             } else {
                 Logger::error("Network", "❌ No private data found for completed handle (URL: %s)", url ? url : "unknown");
             }

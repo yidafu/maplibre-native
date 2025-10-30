@@ -22,7 +22,6 @@ VectorSourceNAPI::~VectorSourceNAPI() {
 }
 
 void VectorSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("VectorSourceNAPI", "Destructor called");
     VectorSourceNAPI* sourceNapi = static_cast<VectorSourceNAPI*>(nativeObject);
     delete sourceNapi;
 }

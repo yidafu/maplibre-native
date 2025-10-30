@@ -22,7 +22,6 @@ RasterSourceNAPI::~RasterSourceNAPI() {
 }
 
 void RasterSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("RasterSourceNAPI", "Destructor called");
     RasterSourceNAPI* sourceNapi = static_cast<RasterSourceNAPI*>(nativeObject);
     delete sourceNapi;
 }

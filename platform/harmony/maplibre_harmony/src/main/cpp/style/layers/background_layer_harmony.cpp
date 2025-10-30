@@ -18,11 +18,9 @@ napi_ref BackgroundLayerNAPI::constructor = nullptr;
 
 BackgroundLayerNAPI::BackgroundLayerNAPI(const std::string& layerId)
     : layer(std::make_unique<mbgl::style::BackgroundLayer>(layerId)) {
-    Logger::debug("BackgroundLayerNAPI", "BackgroundLayer created: %s", layerId.c_str());
 }
 
 BackgroundLayerNAPI::~BackgroundLayerNAPI() {
-    Logger::debug("BackgroundLayerNAPI", "BackgroundLayer destroyed");
 }
 
 void BackgroundLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

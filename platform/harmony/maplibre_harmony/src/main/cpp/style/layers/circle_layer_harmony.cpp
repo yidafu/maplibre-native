@@ -19,11 +19,9 @@ napi_ref CircleLayerNAPI::constructor = nullptr;
 
 CircleLayerNAPI::CircleLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::CircleLayer>(layerId, sourceId)) {
-    Logger::debug("CircleLayerNAPI", "CircleLayer created: %s (source: %s)", layerId.c_str(), sourceId.c_str());
 }
 
 CircleLayerNAPI::~CircleLayerNAPI() {
-    Logger::debug("CircleLayerNAPI", "CircleLayer destroyed");
 }
 
 void CircleLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {
@@ -627,7 +625,6 @@ napi_value CircleLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
         layerObj->layer->setFilter(*filter);
-        Logger::debug("CircleLayerNAPI", "Filter set successfully");
     }
     
     return thisVar;

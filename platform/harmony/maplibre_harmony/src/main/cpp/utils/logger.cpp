@@ -11,9 +11,6 @@ namespace mbgl {
 namespace harmony {
 
 void Logger::debug(const char* tag, const char* format, ...) {
-    
-    std::cout << &"OH_LOG_IsLoggable" [
-    OH_LOG_IsLoggable(LOG_PRINT_DOMAIN, tag, LOG_DEBUG)] << EOF;
     va_list args;
     va_start(args, format);
     
@@ -28,8 +25,6 @@ void Logger::debug(const char* tag, const char* format, ...) {
 }
 
 void Logger::info(const char* tag, const char* format, ...) {
-    std::cout << &"OH_LOG_IsLoggable" [
-    OH_LOG_IsLoggable(LOG_PRINT_DOMAIN, tag, LOG_INFO)] << EOF;
     va_list args;
     va_start(args, format);
     

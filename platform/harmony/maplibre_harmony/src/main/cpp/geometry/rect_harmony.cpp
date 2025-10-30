@@ -36,9 +36,6 @@ napi_value RectHarmony::CreateRectObject(napi_env env, double left, double top, 
     napi_create_double(env, bottom, &bottomValue);
     napi_set_named_property(env, obj, "bottom", bottomValue);
     
-    Logger::debug("RectHarmony", "Created Rect object: left=%f, top=%f, right=%f, bottom=%f", 
-                  left, top, right, bottom);
-    
     return obj;
 }
 
@@ -84,9 +81,6 @@ bool RectHarmony::ParseRect(napi_env env, napi_value value,
         Logger::error("RectHarmony", "Failed to parse bottom");
         return false;
     }
-    
-    Logger::debug("RectHarmony", "Parsed Rect: left=%f, top=%f, right=%f, bottom=%f", 
-                  outLeft, outTop, outRight, outBottom);
     
     return true;
 }

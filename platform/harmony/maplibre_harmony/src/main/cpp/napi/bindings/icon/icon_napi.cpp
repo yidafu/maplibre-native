@@ -20,17 +20,13 @@ IconNAPI::IconNAPI(std::string id, int width, int height, float scale,
       height(height),
       scale(scale),
       image(std::move(image)) {
-    Logger::debug("IconNAPI", "Icon created: id=%s, size=%dx%d, scale=%f", 
-                  this->id.c_str(), width, height, scale);
 }
 
 IconNAPI::~IconNAPI() {
-    Logger::debug("IconNAPI", "Icon destroyed: id=%s", id.c_str());
     image.reset();
 }
 
 void IconNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("IconNAPI", "Destructor called");
     IconNAPI* icon = static_cast<IconNAPI*>(nativeObject);
     delete icon;
 }
@@ -265,7 +261,6 @@ napi_value IconNAPI::Release(napi_env env, napi_callback_info info) {
     }
     
     if (icon->image) {
-        Logger::debug("IconNAPI", "Releasing icon: id=%s", icon->id.c_str());
         icon->image.reset();
     }
     

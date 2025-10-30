@@ -61,9 +61,6 @@ napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const
     
     napi_set_named_property(env, obj, "padding", paddingObj);
     
-    Logger::debug("CameraPositionHarmony", "Created CameraPosition object: zoom=%f, bearing=%f, tilt=%f", 
-                  options.zoom.value_or(0.0), bearing, options.pitch.value_or(0.0));
-    
     return obj;
 }
 
@@ -147,8 +144,6 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
             }
         }
     }
-    
-    Logger::debug("CameraPositionHarmony", "Parsed CameraOptions successfully");
     
     return true;
 }

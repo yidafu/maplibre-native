@@ -75,7 +75,6 @@ bool ThreadSafeCallback::Initialize(
         return false;
     }
     
-    Logger::debug("ThreadSafeCallback", "Created: %s", resourceName);
     return true;
 }
 
@@ -158,8 +157,6 @@ bool ThreadSafeCallback::CallEmpty() {
 
 void ThreadSafeCallback::Release() {
     if (tsfn_ != nullptr) {
-        Logger::debug("ThreadSafeCallback", "Releasing: %s", resourceName_.c_str());
-        
         // 释放 ThreadSafeFunction
         napi_status status = napi_release_threadsafe_function(
             tsfn_,
@@ -251,7 +248,6 @@ void ThreadSafeCallback::Finalize(
     // ✅ 修复 SIGSEGV：不访问 instance 成员
     // 原因：Finalize 可能在对象析构后调用，访问成员变量会导致崩溃
     // 解决：只记录 Finalize 被调用，不访问对象状态
-    Logger::debug("ThreadSafeCallback", "Finalize callback invoked");
 }
 
 } // namespace harmony

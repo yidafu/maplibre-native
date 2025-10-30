@@ -28,7 +28,6 @@ HarmonyVSyncManager::HarmonyVSyncManager() {
         throw;
     }
     
-    Logger::info("HarmonyVSyncManager", "========== Constructor END ==========");
 }
 
 HarmonyVSyncManager::~HarmonyVSyncManager() {
@@ -38,19 +37,16 @@ HarmonyVSyncManager::~HarmonyVSyncManager() {
     stop();
     
     if (vsync_) {
-        Logger::debug("HarmonyVSyncManager", "Destroying VSync instance: %p", vsync_);
         OH_NativeVSync_Destroy(vsync_);
         vsync_ = nullptr;
         Logger::info("HarmonyVSyncManager", "VSync destroyed");
     }
     
-    Logger::info("HarmonyVSyncManager", "========== Destructor END ==========");
 }
 
 void HarmonyVSyncManager::setRunLoop(util::RunLoop* runLoop) {
     std::lock_guard<std::mutex> lock(callbackMutex_);
     renderRunLoop_ = runLoop;
-    Logger::info("HarmonyVSyncManager", "✅ RunLoop set: %p - VSync will invoke callbacks on RunLoop", runLoop);
 }
 
 void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
@@ -76,7 +72,6 @@ void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
         
         // 防抖：如果已经有待处理的回调，忽略新请求
         if (pendingCallback_) {
-            Logger::debug("HarmonyVSyncManager", "requestFrame() - 已有待处理的回调，忽略新请求");
             return;
         }
         
@@ -126,7 +121,6 @@ void HarmonyVSyncManager::stop() {
     
     frameRequested_ = false;
     
-    Logger::info("HarmonyVSyncManager", "✅ VSync stopped and RunLoop reference cleared");
 }
 
 void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
@@ -149,7 +143,6 @@ void HarmonyVSyncManager::executeCallback() {
     
     // ✅ 双重检查：stopped 和 RunLoop 有效性
     if (stopped_.load()) {
-        Logger::debug("HarmonyVSyncManager", "VSync stopped, skipping callback");
         return;
     }
     
@@ -177,7 +170,6 @@ void HarmonyVSyncManager::executeCallback() {
     }
     
     if (stopped_.load()) {
-        Logger::debug("HarmonyVSyncManager", "VSync stopped during callback, skipping");
         return;
     }
     

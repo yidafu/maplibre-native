@@ -21,8 +21,6 @@ namespace mbgl {
 namespace harmony {
 
 napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== updateMarker() START ==========");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -85,13 +83,10 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
         Logger::error("NativeMapView", "[MarkerDebug] updateMarker: Failed - %s", e.what());
     }
     
-    Logger::info("NativeMapView", "========== updateMarker() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== addMarkers() START ==========");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -222,15 +217,11 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
     // 低内存处理由 Harmony 系统管理
     // Low memory handling delegated to Harmony system
-    Logger::debug("NativeMapView", "onLowMemory: Low memory handling delegated to Harmony system");
-    
     NapiArgs args(env, info);
     return args.Undefined();
 }
 
 napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addPolylines() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -242,8 +233,6 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addPolygons() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -255,8 +244,6 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "updatePolyline() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -268,8 +255,6 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
 }
 
 napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "updatePolygon() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -281,8 +266,6 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== removeAnnotations() START ==========");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -348,7 +331,6 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         
         try {
             instance->invokeOnMapThread([annotationId](mbgl::Map* m){ m->removeAnnotation(static_cast<mbgl::AnnotationID>(annotationId)); });
-            Logger::debug("NativeMapView", "removeAnnotations[%u]: Removed annotation ID=%ld", i, annotationId);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "removeAnnotations[%u]: Failed to remove ID=%ld - %s", i, annotationId, e.what());
         }
@@ -357,16 +339,12 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
     // 触发重绘
     if (length > 0) {
         instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
-        Logger::debug("NativeMapView", "removeAnnotations: Repaint triggered");
     }
     
-    Logger::info("NativeMapView", "========== removeAnnotations() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== addAnnotationIcon() START ==========");
-    
     NapiArgs args(env, info);
     
     // Get NativeMapView instance
@@ -488,8 +466,6 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
 }
 
 napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== removeAnnotationIcon() START ==========");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -537,13 +513,10 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
         Logger::error("NativeMapView", "removeAnnotationIcon: Failed - %s", e.what());
     }
     
-    Logger::info("NativeMapView", "========== removeAnnotationIcon() END ==========");
     return undefined;
 }
 
 napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol() called");
-    
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
@@ -572,7 +545,6 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
     try {
         double offset = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTopOffsetPixelsForAnnotationImage(symbolName); }, 0.0);
         napi_create_double(env, offset, &result);
-        Logger::debug("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: symbol=%s, offset=%f", symbolName.c_str(), offset);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: Failed - %s", e.what());
     }

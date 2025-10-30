@@ -33,11 +33,8 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     
     // ✅ 架构修复：确保回调在渲染线程上执行
     if (!isOnRenderThread()) {
-        Logger::debug("NativeMapView", "onCameraWillChange dispatching to render thread");
         runOnRenderThread([this, mode]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
-            Logger::debug("NativeMapView", "onCameraWillChange [渲染线程]");
-            
             if (callbackManager_) {
                 bool animated = (mode == MapObserver::CameraChangeMode::Animated);
                 callbackManager_->InvokeCallback("onCameraWillChange", [animated](napi_env env) {
@@ -49,8 +46,6 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
         });
         return;
     }
-    
-    Logger::debug("NativeMapView", "onCameraWillChange");
     
     // 通知监听器
     if (callbackManager_) {
@@ -68,18 +63,14 @@ void NativeMapView::onCameraIsChanging() {
     
     // ✅ 架构修复：确保回调在渲染线程上执行
     if (!isOnRenderThread()) {
-        Logger::debug("NativeMapView", "onCameraIsChanging dispatching to render thread");
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
-            Logger::debug("NativeMapView", "onCameraIsChanging [渲染线程]");
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
             }
         });
         return;
     }
-    
-    Logger::debug("NativeMapView", "onCameraIsChanging");
     
     // 通知监听器
     if (callbackManager_) {
@@ -92,11 +83,8 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     
     // ✅ 架构修复：确保回调在渲染线程上执行
     if (!isOnRenderThread()) {
-        Logger::debug("NativeMapView", "onCameraDidChange dispatching to render thread");
         runOnRenderThread([this, mode]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
-            Logger::debug("NativeMapView", "onCameraDidChange [渲染线程]");
-            
             if (callbackManager_) {
                 bool animated = (mode == MapObserver::CameraChangeMode::Animated);
                 callbackManager_->InvokeCallback("onCameraDidChange", [animated](napi_env env) {
@@ -108,8 +96,6 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
         });
         return;
     }
-    
-    Logger::debug("NativeMapView", "onCameraDidChange");
     
     // 通知监听器
     if (callbackManager_) {
@@ -223,8 +209,6 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
         double renderingTime = stats.renderingTime * 1000.0;
         
         if (encodingTime > 0.0 || renderingTime > 0.0) {
-            Logger::debug("NativeMapView", "Rendering stats - encoding: %.2fms, rendering: %.2fms", 
-                         encodingTime, renderingTime);
         }
         
         callbackManager_->InvokeCallback("onDidFinishRenderingFrame", [fully, encodingTime, renderingTime](napi_env env) {
@@ -240,8 +224,6 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
 }
 void NativeMapView::onWillStartRenderingMap() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onWillStartRenderingMap");
-    
     // 通知监听器
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onWillStartRenderingMap");
@@ -257,8 +239,6 @@ void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
     try {
         // ⚠️ 重要：onDidFinishRenderingMap 本身就在渲染线程被 Renderer 调用
         // 不应该被分发！分发会导致渲染流程中断
-        
-        Logger::debug("NativeMapView", "onDidFinishRenderingMap");
         
         // 通知监听器
         if (callbackManager_) {
@@ -279,8 +259,6 @@ void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
 
 void NativeMapView::onDidBecomeIdle() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    Logger::debug("NativeMapView", "onDidBecomeIdle");
-    
     // 通知监听器
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onDidBecomeIdle");
@@ -356,8 +334,6 @@ void NativeMapView::onDidFinishLoadingStyle() {
             Logger::info("NativeMapView", "  - Sources count: %zu", sources.size());
             for (const auto* source : sources) {
                 if (source) {
-                    Logger::debug("NativeMapView", "    * Source: %s (type: %d)", 
-                                  source->getID().c_str(), static_cast<int>(source->getType()));
                 }
             }
             
@@ -366,8 +342,6 @@ void NativeMapView::onDidFinishLoadingStyle() {
             Logger::info("NativeMapView", "  - Layers count: %zu", layers.size());
             for (const auto* layer : layers) {
                 if (layer) {
-                    Logger::debug("NativeMapView", "    * Layer: %s (source: %s)", 
-                                  layer->getID().c_str(), layer->getSourceID().c_str());
                 }
             }
         } catch (const std::exception& e) {
@@ -454,15 +428,12 @@ void NativeMapView::onStyleImageMissing(const std::string& id) {
 }
 
 bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
-    Logger::debug("NativeMapView", "onCanRemoveUnusedStyleImage: %s - returning false (keep image)", id.c_str());
     return false;
 }
 
 // Note: initializeRenderer is defined in native_map_view_base.cpp
 
 napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getImage() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -474,8 +445,6 @@ napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setPrefetchTiles() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -512,8 +481,6 @@ napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info
 }
 
 napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getPrefetchTiles() called");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
@@ -529,7 +496,6 @@ napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info
     try {
         bool enabled = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getPrefetchZoomDelta() > 0; }, false);
         napi_get_boolean(env, enabled, &result);
-        Logger::debug("NativeMapView", "getPrefetchTiles: %s", enabled ? "enabled" : "disabled");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getPrefetchTiles: Failed - %s", e.what());
     }
@@ -538,8 +504,6 @@ napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info
 }
 
 napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setPrefetchZoomDelta() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -575,8 +539,6 @@ napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getPrefetchZoomDelta() called");
-    
     napi_value result;
     napi_create_int32(env, 0, &result);
     
@@ -592,7 +554,6 @@ napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info 
     try {
         int32_t delta = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return static_cast<int32_t>(m->getPrefetchZoomDelta()); }, 0);
         napi_create_int32(env, delta, &result);
-        Logger::debug("NativeMapView", "getPrefetchZoomDelta: %d", delta);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getPrefetchZoomDelta: Failed - %s", e.what());
     }
@@ -603,8 +564,6 @@ napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info 
 napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info info) {
     // Tile 缓存控制需要渲染器前端支持
     // Tile cache control requires renderer frontend support
-    Logger::debug("NativeMapView", "setTileCacheEnabled: Tile cache control requires renderer frontend support");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -613,16 +572,12 @@ napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info i
 napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info info) {
     // Tile 缓存控制需要渲染器前端支持
     // Tile cache control requires renderer frontend support
-    Logger::debug("NativeMapView", "getTileCacheEnabled: Tile cache control requires renderer frontend support");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     return result;
 }
 
 napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setTileLodMinRadius() called");
-    
     // Tile LOD 参数控制已实现
     // Tile LOD parameter control is implemented
     napi_value undefined;
@@ -660,8 +615,6 @@ napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getTileLodMinRadius() called");
-    
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
@@ -677,7 +630,6 @@ napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info i
     try {
         double radius = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodMinRadius(); }, 0.0);
         napi_create_double(env, radius, &result);
-        Logger::debug("NativeMapView", "getTileLodMinRadius: %f", radius);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTileLodMinRadius: Failed - %s", e.what());
     }
@@ -686,8 +638,6 @@ napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setTileLodScale() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -723,8 +673,6 @@ napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getTileLodScale() called");
-    
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
@@ -740,7 +688,6 @@ napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info)
     try {
         double scale = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodScale(); }, 0.0);
         napi_create_double(env, scale, &result);
-        Logger::debug("NativeMapView", "getTileLodScale: %f", scale);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTileLodScale: Failed - %s", e.what());
     }
@@ -749,8 +696,6 @@ napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setTileLodPitchThreshold() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -786,8 +731,6 @@ napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getTileLodPitchThreshold() called");
-    
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
@@ -803,7 +746,6 @@ napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_i
     try {
         double threshold = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodPitchThreshold(); }, 0.0);
         napi_create_double(env, threshold, &result);
-        Logger::debug("NativeMapView", "getTileLodPitchThreshold: %f", threshold);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTileLodPitchThreshold: Failed - %s", e.what());
     }
@@ -812,8 +754,6 @@ napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setTileLodZoomShift() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -849,8 +789,6 @@ napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getTileLodZoomShift() called");
-    
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
@@ -866,7 +804,6 @@ napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info i
     try {
         double shift = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodZoomShift(); }, 0.0);
         napi_create_double(env, shift, &result);
-        Logger::debug("NativeMapView", "getTileLodZoomShift: %f", shift);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getTileLodZoomShift: Failed - %s", e.what());
     }
@@ -895,7 +832,6 @@ napi_value NativeMapView::triggerRepaint(napi_env env, napi_callback_info info) 
     // 请求渲染
     if (instance->harmonyRenderer) {
         instance->harmonyRenderer->requestRender();
-        Logger::debug("NativeMapView", "Render requested");
     }
     
     return undefined;
@@ -903,8 +839,6 @@ napi_value NativeMapView::triggerRepaint(napi_env env, napi_callback_info info) 
 
 // 设置NativeWindow的NAPI方法
 napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== setNativeWindow() START ==========");
-
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -939,14 +873,7 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
         return undefined;
     }
     
-    Logger::debug("NativeMapView", "NativeMapView instance: %p", nativeMapView);
-    Logger::debug("NativeMapView", "Current state - harmonyRenderer=%s, map=%s, nativeWindow=%s",
-                  nativeMapView->harmonyRenderer ? "exists" : "null",
-                  nativeMapView->map ? "exists" : "null",
-                  nativeMapView->nativeWindow ? "exists" : "null");
-
     OHNativeWindow *nativeWindow;
-    Logger::debug("NativeMapView", "Creating native window from surface ID...");
     OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
     
     if (nativeWindow) {
@@ -958,8 +885,6 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
     
     // 保存窗口指针
     nativeMapView->nativeWindow = nativeWindow;
-    Logger::debug("NativeMapView", "Native window saved to NativeMapView");
-    
     // pixelRatio will be determined during renderer initialization from device
     Logger::info("NativeMapView", "pixelRatio will be determined from device DPI");
     
@@ -984,8 +909,6 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
 napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callback_info info) {
     // Rendering stats view 未在 Harmony 平台实现
     // Rendering stats view not implemented for Harmony
-    Logger::debug("NativeMapView", "isRenderingStatsViewEnabled: Rendering stats view not implemented for Harmony");
-    
     napi_value result;
     napi_get_boolean(env, false, &result);
     return result;
@@ -994,8 +917,6 @@ napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callbac
 napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_info info) {
     // Rendering stats view 未在 Harmony 平台实现
     // Rendering stats view not implemented for Harmony
-    Logger::debug("NativeMapView", "enableRenderingStatsView: Rendering stats view not implemented for Harmony");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
@@ -1003,8 +924,6 @@ napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_i
 
 // 设置NativeWindow的NAPI方法（带尺寸参数）
 napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== setNativeWindowWithSize() START ==========");
-
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1060,7 +979,6 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
 mbgl::Map& NativeMapView::getMap() {
     // 返回实际的地图对象，如果map为null则抛出异常
     if (map) {
-        Logger::debug("NativeMapView", "getMap: returning valid map object");
         return *map;
     } else {
         Logger::error("NativeMapView", "getMap: map object is null");
@@ -1115,8 +1033,6 @@ void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>&)
 // ========== 相机监听器方法实现 ==========
 
 napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraIdleListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1143,7 +1059,6 @@ napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_in
     
     // 添加监听器
     if (instance->callbackManager_->RegisterCallback("onCameraIdle", args[0])) {
-        Logger::debug("NativeMapView", "addOnCameraIdleListener: Listener added via CallbackManager");
     } else {
         Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to register callback");
     }
@@ -1152,8 +1067,6 @@ napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_in
 }
 
 napi_value NativeMapView::removeOnCameraIdleListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraIdleListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1177,7 +1090,6 @@ napi_value NativeMapView::removeOnCameraIdleListener(napi_env env, napi_callback
     }
     
     if (instance->callbackManager_->UnregisterCallback("onCameraIdle", args[0])) {
-        Logger::debug("NativeMapView", "removeOnCameraIdleListener: Listener removed via CallbackManager");
     } else {
         Logger::warn("NativeMapView", "removeOnCameraIdleListener: Listener not found");
     }
@@ -1186,8 +1098,6 @@ napi_value NativeMapView::removeOnCameraIdleListener(napi_env env, napi_callback
 }
 
 napi_value NativeMapView::addOnCameraMoveStartedListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraMoveStartedListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1211,7 +1121,6 @@ napi_value NativeMapView::addOnCameraMoveStartedListener(napi_env env, napi_call
     }
     
     if (instance->callbackManager_->RegisterCallback("onCameraMoveStarted", args[0])) {
-        Logger::debug("NativeMapView", "addOnCameraMoveStartedListener: Listener added via CallbackManager");
     } else {
         Logger::error("NativeMapView", "addOnCameraMoveStartedListener: Failed to register callback");
     }
@@ -1220,8 +1129,6 @@ napi_value NativeMapView::addOnCameraMoveStartedListener(napi_env env, napi_call
 }
 
 napi_value NativeMapView::removeOnCameraMoveStartedListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraMoveStartedListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1245,7 +1152,6 @@ napi_value NativeMapView::removeOnCameraMoveStartedListener(napi_env env, napi_c
     }
     
     if (instance->callbackManager_->UnregisterCallback("onCameraMoveStarted", args[0])) {
-        Logger::debug("NativeMapView", "removeOnCameraMoveStartedListener: Listener removed via CallbackManager");
     } else {
         Logger::warn("NativeMapView", "removeOnCameraMoveStartedListener: Listener not found");
     }
@@ -1254,8 +1160,6 @@ napi_value NativeMapView::removeOnCameraMoveStartedListener(napi_env env, napi_c
 }
 
 napi_value NativeMapView::addOnCameraMoveListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraMoveListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1279,7 +1183,6 @@ napi_value NativeMapView::addOnCameraMoveListener(napi_env env, napi_callback_in
     }
     
     if (instance->callbackManager_->RegisterCallback("onCameraMove", args[0])) {
-        Logger::debug("NativeMapView", "addOnCameraMoveListener: Listener added via CallbackManager");
     } else {
         Logger::error("NativeMapView", "addOnCameraMoveListener: Failed to register callback");
     }
@@ -1288,8 +1191,6 @@ napi_value NativeMapView::addOnCameraMoveListener(napi_env env, napi_callback_in
 }
 
 napi_value NativeMapView::removeOnCameraMoveListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraMoveListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1313,7 +1214,6 @@ napi_value NativeMapView::removeOnCameraMoveListener(napi_env env, napi_callback
     }
     
     if (instance->callbackManager_->UnregisterCallback("onCameraMove", args[0])) {
-        Logger::debug("NativeMapView", "removeOnCameraMoveListener: Listener removed via CallbackManager");
     } else {
         Logger::warn("NativeMapView", "removeOnCameraMoveListener: Listener not found");
     }
@@ -1322,8 +1222,6 @@ napi_value NativeMapView::removeOnCameraMoveListener(napi_env env, napi_callback
 }
 
 napi_value NativeMapView::addOnCameraMoveCanceledListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "addOnCameraMoveCanceledListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1347,7 +1245,6 @@ napi_value NativeMapView::addOnCameraMoveCanceledListener(napi_env env, napi_cal
     }
     
     if (instance->callbackManager_->RegisterCallback("onCameraMoveCanceled", args[0])) {
-        Logger::debug("NativeMapView", "addOnCameraMoveCanceledListener: Listener added via CallbackManager");
     } else {
         Logger::error("NativeMapView", "addOnCameraMoveCanceledListener: Failed to register callback");
     }
@@ -1356,8 +1253,6 @@ napi_value NativeMapView::addOnCameraMoveCanceledListener(napi_env env, napi_cal
 }
 
 napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "removeOnCameraMoveCanceledListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1381,7 +1276,6 @@ napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_
     }
     
     if (instance->callbackManager_->UnregisterCallback("onCameraMoveCanceled", args[0])) {
-        Logger::debug("NativeMapView", "removeOnCameraMoveCanceledListener: Listener removed via CallbackManager");
     } else {
         Logger::warn("NativeMapView", "removeOnCameraMoveCanceledListener: Listener not found");
     }
@@ -1392,8 +1286,6 @@ napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_
 // ========== 样式监听器方法实现 ==========
 
 napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setOnStyleLoadedListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1424,7 +1316,6 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
     
     if (valueType == napi_null || valueType == napi_undefined) {
         instance->callbackManager_->UnregisterCallback("onStyleLoaded");
-        Logger::debug("NativeMapView", "setOnStyleLoadedListener: Listener removed");
         return undefined;
     }
     
@@ -1438,7 +1329,6 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
     
     // 注册回调
     if (instance->callbackManager_->RegisterCallback("onStyleLoaded", args[0])) {
-        Logger::debug("NativeMapView", "setOnStyleLoadedListener: Listener registered via CallbackManager");
     } else {
         Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to register callback");
     }
@@ -1447,8 +1337,6 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setOnStyleLoadErrorListener() called");
-    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
@@ -1479,7 +1367,6 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
     
     if (valueType == napi_null || valueType == napi_undefined) {
         instance->callbackManager_->UnregisterCallback("onStyleLoadError");
-        Logger::debug("NativeMapView", "setOnStyleLoadErrorListener: Listener removed");
         return undefined;
     }
     
@@ -1493,7 +1380,6 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
     
     // 注册回调
     if (instance->callbackManager_->RegisterCallback("onStyleLoadError", args[0])) {
-        Logger::debug("NativeMapView", "setOnStyleLoadErrorListener: Listener registered via CallbackManager");
     } else {
         Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to register callback");
     }
@@ -1517,10 +1403,7 @@ void NativeMapView::notifyStyleLoaded() {
         return;
     }
     
-    Logger::info("NativeMapView", "✅ notifyStyleLoaded: Calling JS listener via CallbackManager");
-    
     if (callbackManager_->InvokeCallbackEmpty("onStyleLoaded")) {
-        Logger::info("NativeMapView", "✅ notifyStyleLoaded: Callback invoked successfully");
     } else {
         Logger::error("NativeMapView", "❌ notifyStyleLoaded: Failed to invoke callback");
     }
@@ -1535,14 +1418,10 @@ void NativeMapView::notifyStyleLoadError(const std::string& error) {
     }
     
     if (!callbackManager_->HasCallback("onStyleLoadError")) {
-        Logger::debug("NativeMapView", "notifyStyleLoadError: No listener registered");
         return;
     }
     
-    Logger::debug("NativeMapView", "notifyStyleLoadError: Calling listener via CallbackManager with error: %s", error.c_str());
-    
     if (callbackManager_->InvokeCallbackWithString("onStyleLoadError", error)) {
-        Logger::debug("NativeMapView", "notifyStyleLoadError: Callback invoked successfully");
     } else {
         Logger::error("NativeMapView", "notifyStyleLoadError: Failed to invoke callback");
     }
@@ -1553,7 +1432,6 @@ void NativeMapView::notifyStyleLoadError(const std::string& error) {
 // 辅助宏：简化监听器注册代码
 #define IMPLEMENT_ADD_LISTENER(MethodName, CallbackName) \
 napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
-    Logger::debug("NativeMapView", #MethodName "() called"); \
     napi_value undefined; \
     napi_get_undefined(env, &undefined); \
     napi_value thisObj; \
@@ -1573,7 +1451,6 @@ napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
         return undefined; \
     } \
     if (instance->callbackManager_->RegisterCallback(CallbackName, args[0])) { \
-        Logger::debug("NativeMapView", #MethodName ": Listener added via CallbackManager"); \
     } else { \
         Logger::error("NativeMapView", #MethodName ": Failed to register callback"); \
     } \
@@ -1582,7 +1459,6 @@ napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
 
 #define IMPLEMENT_REMOVE_LISTENER(MethodName, CallbackName) \
 napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
-    Logger::debug("NativeMapView", #MethodName "() called"); \
     napi_value undefined; \
     napi_get_undefined(env, &undefined); \
     napi_value thisObj; \
@@ -1602,7 +1478,6 @@ napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
         return undefined; \
     } \
     if (instance->callbackManager_->UnregisterCallback(CallbackName, args[0])) { \
-        Logger::debug("NativeMapView", #MethodName ": Listener removed via CallbackManager"); \
     } else { \
         Logger::warn("NativeMapView", #MethodName ": Listener not found"); \
     } \

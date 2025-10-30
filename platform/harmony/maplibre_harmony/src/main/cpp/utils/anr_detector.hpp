@@ -47,7 +47,6 @@ public:
             Logger::warn("ANR", "⏱️  %s took %lld ms (WARNING - approaching ANR threshold)", 
                         operation_, ms);
         } else {
-            Logger::debug("ANR", "✅ %s took %lld ms (OK)", operation_, ms);
         }
     }
     
@@ -93,8 +92,6 @@ public:
             Logger::warn("ANR", "⏱️  %s exceeded timeout: %lld ms (limit: %ld ms)", 
                         operation_, ms, timeout_);
         } else {
-            Logger::debug("ANR", "✅ %s completed in %lld ms (within %ld ms limit)", 
-                         operation_, ms, timeout_);
         }
     }
 

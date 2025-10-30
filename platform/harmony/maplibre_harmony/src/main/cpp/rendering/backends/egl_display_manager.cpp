@@ -118,7 +118,6 @@ bool EGLDisplayManager::chooseConfig(const EGLint* attribs, EGLConfig& config) {
         return false;
     }
     
-    Logger::debug("EGLDisplayManager", "EGL config chosen successfully (numConfigs=%d)", numConfigs);
     return true;
 }
 
@@ -190,8 +189,6 @@ bool EGLDisplayManager::initializeDisplay() {
     
     Logger::info("EGLDisplayManager", "EGL Vendor: %s", vendor ? vendor : "NULL");
     Logger::info("EGLDisplayManager", "EGL Version: %s", version ? version : "NULL");
-    Logger::debug("EGLDisplayManager", "EGL Extensions: %s", extensions ? extensions : "NULL");
-    
     return true;
 }
 

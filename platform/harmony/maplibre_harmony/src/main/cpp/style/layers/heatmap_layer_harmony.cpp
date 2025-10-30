@@ -22,11 +22,9 @@ napi_ref HeatmapLayerNAPI::constructor = nullptr;
 
 HeatmapLayerNAPI::HeatmapLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::HeatmapLayer>(layerId, sourceId)) {
-    Logger::debug("HeatmapLayerNAPI", "HeatmapLayer created: %s (source: %s)", layerId.c_str(), sourceId.c_str());
 }
 
 HeatmapLayerNAPI::~HeatmapLayerNAPI() {
-    Logger::debug("HeatmapLayerNAPI", "HeatmapLayer destroyed");
 }
 
 void HeatmapLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {
@@ -203,7 +201,6 @@ napi_value HeatmapLayerNAPI::SetHeatmapColor(napi_env env, napi_callback_info in
         
         if (converted) {
             layerObj->layer->setHeatmapColor(*converted);
-            Logger::debug("HeatmapLayerNAPI", "Heatmap color set successfully");
         } else {
             Logger::error("HeatmapLayerNAPI", "Failed to convert heatmap-color: %s", error.message.c_str());
         }
@@ -549,7 +546,6 @@ napi_value HeatmapLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
         layerObj->layer->setFilter(*filter);
-        Logger::debug("HeatmapLayerNAPI", "Filter set successfully");
     }
     return thisVar;
 }

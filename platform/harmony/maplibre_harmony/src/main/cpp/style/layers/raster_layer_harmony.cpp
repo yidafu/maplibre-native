@@ -15,11 +15,9 @@ napi_ref RasterLayerNAPI::constructor = nullptr;
 
 RasterLayerNAPI::RasterLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::RasterLayer>(layerId, sourceId)) {
-    Logger::debug("RasterLayerNAPI", "RasterLayer created: %s", layerId.c_str());
 }
 
 RasterLayerNAPI::~RasterLayerNAPI() {
-    Logger::debug("RasterLayerNAPI", "RasterLayer destroyed");
 }
 
 void RasterLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

@@ -52,29 +52,23 @@ std::mutex curlGlobalMutex;
 
 void initCURLGlobal() {
     std::call_once(curlGlobalInitFlag, []() {
-        Logger::info("Network", "🌐 Initializing CURL global state (first instance)");
         if (curl_global_init(CURL_GLOBAL_ALL)) {
             Logger::error("Network", "Failed to initialize CURL globally");
             throw std::runtime_error("Could not init cURL globally");
         }
-        Logger::info("Network", "✅ CURL global state initialized");
     });
     
-    int count = curlInstanceCount.fetch_add(1) + 1;
-    Logger::debug("Network", "CURL instance count: %d", count);
+    curlInstanceCount.fetch_add(1);
 }
 
 void cleanupCURLGlobal() {
     int count = curlInstanceCount.fetch_sub(1) - 1;
-    Logger::debug("Network", "CURL instance count: %d", count);
     
     if (count == 0) {
         std::lock_guard<std::mutex> lock(curlGlobalMutex);
         // 再次检查计数（双重检查锁定）
         if (curlInstanceCount.load() == 0) {
-            Logger::info("Network", "🌐 Cleaning up CURL global state (last instance)");
             curl_global_cleanup();
-            Logger::info("Network", "✅ CURL global state cleaned up");
         }
     }
 }
@@ -222,7 +216,6 @@ HTTPFileSource::Impl::~Impl() {
     if (curlEventLoop) {
         ANRDetector stopDetector("curlEventLoop->stop", 50, 200);
         curlEventLoop->stop();
-        Logger::debug("Network", "CURL event loop stopped");
         curlEventLoop.reset();
     }
     
@@ -353,10 +346,8 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
         Logger::info("HTTP", "  Request: %p", this);
         Logger::info("HTTP", "  CURL Handle: %p", handle);
         if (resource.priorEtag) {
-            Logger::debug("HTTP", "  Prior ETag: %s", resource.priorEtag->c_str());
         }
         if (resource.priorModified) {
-            Logger::debug("HTTP", "  Prior Modified: %lld", *resource.priorModified);
         }
 
         // Start requesting the information using CURLEventLoop
@@ -366,7 +357,6 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
                 Logger::error("Network", "❌ Failed to add handle to CURLEventLoop");
                 throw std::runtime_error("Failed to add handle to CURLEventLoop");
             }
-            Logger::debug("HTTP", "  ✅ Added to CURLEventLoop");
         } else {
             Logger::error("Network", "❌ CURLEventLoop is null");
             throw std::runtime_error("CURLEventLoop is null");
@@ -565,9 +555,7 @@ void HTTPRequest::handleResult(CURLcode code) {
     
     // Use AsyncTask to dispatch callback to the correct RunLoop thread
     // This ensures the callback runs on the thread where HTTPRequest was created
-    Logger::debug("HTTP", "🔄 Dispatching callback to RunLoop thread...");
     async.send();
-    Logger::debug("HTTP", "✅ Callback dispatched");
 }
 
 HTTPFileSource::HTTPFileSource(const ResourceOptions &resourceOptions, const ClientOptions &clientOptions)

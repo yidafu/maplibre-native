@@ -109,7 +109,6 @@ napi_value LatLngNapi::Constructor(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    Logger::debug("LatLngNapi", "Created LatLng: lat=%f, lng=%f", latitude, longitude);
     return jsthis;
 }
 
@@ -248,8 +247,6 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
     }
     
     outLatLng = mbgl::LatLng(latitude, longitude);
-    Logger::debug("LatLngHarmony", "Parsed LatLng: lat=%f, lng=%f", latitude, longitude);
-    
     return true;
 }
 
@@ -274,8 +271,6 @@ bool LatLngHarmony::ParseLatLngWithArgs(mbgl::harmony::napi::NapiArgs& args, nap
     }
     
     outLatLng = mbgl::LatLng(latitude, longitude);
-    Logger::debug("LatLngHarmony", "Parsed LatLng with NapiArgs: lat=%f, lng=%f", latitude, longitude);
-    
     return true;
 }
 

@@ -22,7 +22,6 @@ PixelMapGuard::PixelMapGuard(napi_env env, napi_value pixelMap)
         throw std::runtime_error("PixelMapGuard: Failed to lock pixels");
     }
     
-    Logger::debug("PixelMapGuard", "Successfully locked PixelMap pixels");
 }
 
 PixelMapGuard::~PixelMapGuard() {
@@ -31,7 +30,6 @@ PixelMapGuard::~PixelMapGuard() {
         if (result != OHOS_IMAGE_RESULT_SUCCESS) {
             Logger::error("PixelMapGuard", "Failed to unlock pixels, error code: %d", result);
         } else {
-            Logger::debug("PixelMapGuard", "Successfully unlocked PixelMap pixels");
         }
     }
 }
@@ -75,9 +73,6 @@ bool BitmapHarmony::GetPixelMapInfo(napi_env env, napi_value pixelMap, PixelMapI
     info.rowStride = ohosInfo.rowSize;
     info.pixelFormat = ohosInfo.pixelFormat;
 
-    Logger::debug("BitmapHarmony", "PixelMap info: %dx%d, stride=%d, format=%d", 
-                  info.width, info.height, info.rowStride, info.pixelFormat);
-
     return true;
 }
 
@@ -98,8 +93,6 @@ napi_value BitmapHarmony::ConvertFormat(napi_env env, napi_value pixelMap) {
 // ============================================================================
 
 PremultipliedImage BitmapHarmony::GetImage(napi_env env, napi_value pixelMap) {
-    Logger::debug("BitmapHarmony", "GetImage: Converting native PixelMap to PremultipliedImage");
-    
     // Get PixelMap information
     PixelMapInfo info;
     if (!GetPixelMapInfo(env, pixelMap, info)) {
@@ -147,9 +140,6 @@ PremultipliedImage BitmapHarmony::GetImage(napi_env env, napi_value pixelMap) {
 }
 
 napi_value BitmapHarmony::CreateBitmap(napi_env env, const PremultipliedImage& image) {
-    Logger::debug("BitmapHarmony", "CreateBitmap: Creating native PixelMap from PremultipliedImage (%dx%d)",
-                  image.size.width, image.size.height);
-    
     // Note: Creating a new PixelMap from raw data requires using the Image API from ArkTS side
     // The C API OH_GetImageInfo/OH_AccessPixels only provides read access to existing PixelMaps
     // For now, we'll create a simple object representation that can be handled on the JS side
@@ -201,8 +191,6 @@ napi_value BitmapHarmony::CreateBitmap(napi_env env, const PremultipliedImage& i
 }
 
 napi_value BitmapHarmony::CreateBitmap(napi_env env, uint32_t width, uint32_t height, Config config) {
-    Logger::debug("BitmapHarmony", "CreateBitmap: Creating empty bitmap data (%dx%d)", width, height);
-    
     // Create empty image with transparent pixels
     size_t byteLength = width * height * PremultipliedImage::channels;
     auto pixels = std::make_unique<uint8_t[]>(byteLength);
@@ -213,8 +201,6 @@ napi_value BitmapHarmony::CreateBitmap(napi_env env, uint32_t width, uint32_t he
 }
 
 bool BitmapHarmony::GetBitmapInfo(napi_env env, napi_value bitmap, uint32_t& width, uint32_t& height) {
-    Logger::debug("BitmapHarmony", "GetBitmapInfo: Getting dimensions from native PixelMap");
-    
     // Get PixelMap information using native API
     PixelMapInfo info;
     if (!GetPixelMapInfo(env, bitmap, info)) {
@@ -225,7 +211,6 @@ bool BitmapHarmony::GetBitmapInfo(napi_env env, napi_value bitmap, uint32_t& wid
     width = info.width;
     height = info.height;
     
-    Logger::debug("BitmapHarmony", "PixelMap dimensions: %dx%d", width, height);
     return true;
 }
 

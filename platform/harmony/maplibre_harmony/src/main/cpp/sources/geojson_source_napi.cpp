@@ -31,7 +31,6 @@ GeoJsonSourceNAPI::~GeoJsonSourceNAPI() {
 }
 
 void GeoJsonSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("GeoJsonSourceNAPI", "Destructor called");
     GeoJsonSourceNAPI* sourceNapi = static_cast<GeoJsonSourceNAPI*>(nativeObject);
     delete sourceNapi;
 }
@@ -123,7 +122,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "cluster", &clusterValue);
                     napi_get_value_bool(env, clusterValue, &cluster);
                     options.cluster = cluster;
-                    Logger::debug("GeoJsonSourceNAPI", "Options: cluster=%d", cluster);
                 }
                 
                 // 解析 clusterRadius
@@ -133,7 +131,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "clusterRadius", &radiusValue);
                     napi_get_value_int32(env, radiusValue, &radius);
                     options.clusterRadius = static_cast<uint16_t>(radius);
-                    Logger::debug("GeoJsonSourceNAPI", "Options: clusterRadius=%d", radius);
                 }
                 
                 // 解析 clusterMaxZoom
@@ -143,7 +140,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "clusterMaxZoom", &maxZoomValue);
                     napi_get_value_int32(env, maxZoomValue, &maxZoom);
                     options.clusterMaxZoom = static_cast<uint8_t>(maxZoom);
-                    Logger::debug("GeoJsonSourceNAPI", "Options: clusterMaxZoom=%d", maxZoom);
                 }
                 
                 // 解析 minzoom
@@ -153,7 +149,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "minzoom", &minzoomValue);
                     napi_get_value_int32(env, minzoomValue, &minzoom);
                     options.minzoom = static_cast<uint8_t>(minzoom);
-                    Logger::debug("GeoJsonSourceNAPI", "Options: minzoom=%d", minzoom);
                 }
                 
                 // 解析 maxzoom
@@ -163,7 +158,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "maxzoom", &maxzoomValue);
                     napi_get_value_int32(env, maxzoomValue, &maxzoom);
                     options.maxzoom = static_cast<uint8_t>(maxzoom);
-                    Logger::debug("GeoJsonSourceNAPI", "Options: maxzoom=%d", maxzoom);
                 }
                 
                 // 解析 buffer
@@ -173,7 +167,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "buffer", &bufferValue);
                     napi_get_value_int32(env, bufferValue, &buffer);
                     options.buffer = static_cast<uint16_t>(buffer);
-                    Logger::debug("GeoJsonSourceNAPI", "Options: buffer=%d", buffer);
                 }
                 
                 // 解析 tolerance
@@ -183,7 +176,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "tolerance", &toleranceValue);
                     napi_get_value_double(env, toleranceValue, &tolerance);
                     options.tolerance = tolerance;
-                    Logger::debug("GeoJsonSourceNAPI", "Options: tolerance=%.3f", tolerance);
                 }
                 
                 // 解析 lineMetrics
@@ -193,7 +185,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_named_property(env, optionsObj, "lineMetrics", &lineMetricsValue);
                     napi_get_value_bool(env, lineMetricsValue, &lineMetrics);
                     options.lineMetrics = lineMetrics;
-                    Logger::debug("GeoJsonSourceNAPI", "Options: lineMetrics=%d", lineMetrics);
                 }
                 
                 // 解析 clusterProperties
@@ -251,7 +242,6 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                             }
                         }
                         
-                        Logger::debug("GeoJsonSourceNAPI", "Options: clusterProperties count=%zu", options.clusterProperties.size());
                     }
                 }
             }

@@ -33,9 +33,6 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
     napi_create_double(env, static_cast<double>(delayMs), &delayValue);
     napi_set_named_property(env, obj, "delay", delayValue);
     
-    Logger::debug("TransitionOptionsHarmony", "Created TransitionOptions object: duration=%lld ms, delay=%lld ms", 
-                  durationMs, delayMs);
-    
     return obj;
 }
 
@@ -77,8 +74,6 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
             outOptions.enablePlacementTransitions = enable;
         }
     }
-    
-    Logger::debug("TransitionOptionsHarmony", "Parsed TransitionOptions successfully");
     
     return true;
 }

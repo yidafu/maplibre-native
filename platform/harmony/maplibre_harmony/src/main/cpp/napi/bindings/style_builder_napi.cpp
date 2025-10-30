@@ -21,7 +21,6 @@ StyleBuilderNAPI::~StyleBuilderNAPI() {
 }
 
 void StyleBuilderNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("StyleBuilderNAPI", "Destructor called");
     StyleBuilderNAPI* builder = static_cast<StyleBuilderNAPI*>(nativeObject);
     delete builder;
 }
@@ -81,7 +80,6 @@ napi_value StyleBuilderNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    Logger::debug("StyleBuilderNAPI", "StyleBuilder instance created");
     return jsThis;
 }
 
@@ -355,7 +353,6 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
                 int64_t duration;
                 napi_get_value_int64(env, durationValue, &duration);
                 builder->transitionOptions.duration = static_cast<uint64_t>(duration);
-                Logger::debug("StyleBuilderNAPI", "TransitionOptions: duration=%llu", builder->transitionOptions.duration);
             }
             
             // 解析 delay
@@ -364,7 +361,6 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
                 int64_t delay;
                 napi_get_value_int64(env, delayValue, &delay);
                 builder->transitionOptions.delay = static_cast<uint64_t>(delay);
-                Logger::debug("StyleBuilderNAPI", "TransitionOptions: delay=%llu", builder->transitionOptions.delay);
             }
             
             // 解析 enablePlacementTransitions
@@ -373,7 +369,6 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
                 bool enable;
                 napi_get_value_bool(env, enableValue, &enable);
                 builder->transitionOptions.enablePlacementTransitions = enable;
-                Logger::debug("StyleBuilderNAPI", "TransitionOptions: enablePlacementTransitions=%d", enable);
             }
             
             Logger::info("StyleBuilderNAPI", "withTransitionOptions: configured");

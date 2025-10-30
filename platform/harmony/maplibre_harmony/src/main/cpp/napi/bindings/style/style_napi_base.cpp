@@ -31,7 +31,6 @@ StyleNAPI::~StyleNAPI() {
 }
 
 void StyleNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    Logger::debug("StyleNAPI", "Destructor called");
     StyleNAPI* style = static_cast<StyleNAPI*>(nativeObject);
     delete style;
 }
@@ -142,7 +141,6 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    Logger::debug("StyleNAPI", "Style instance created");
     return jsThis;
 }
 

@@ -88,30 +88,14 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string
     
     // 初始化回调管理器
     callbackManager_ = std::make_unique<mbgl::harmony::CallbackManager>(env);
-    Logger::debug("NativeMapView", "[Instance #%d] CallbackManager initialized", instanceId);
-    
-    Logger::info("NativeMapView", "========== 🗺️ [Instance #%d] NativeMapView constructed (this=%p) ==========", instanceId, this);
-    Logger::info("NativeMapView", "[Instance #%d] Cache path: %s", instanceId, cachePath_.c_str());
-    Logger::info("NativeMapView", "[Instance #%d] Active instances: %d (Total created: %d)", instanceId, activeCount, instanceId);
-    Logger::info("NativeMapView", "[Instance #%d] 多实例支持：每个实例都有独立的 EGL Context 和 Surface", instanceId);
-    Logger::info("NativeMapView", "[Instance #%d] 共享资源：所有实例共享进程级别的 EGL Display", instanceId);
 }
 
 NativeMapView::~NativeMapView() {
-    // 实例标识
-    static std::map<void*, int> globalInstanceIds;
-    int instanceId = globalInstanceIds[this];
-    
-    Logger::info("NativeMapView", "========== [Instance #%d] Destructor START (this=%p) ==========", instanceId, this);
-    
     // 立即标记对象正在析构，防止回调访问
     isDestroying.store(true, std::memory_order_release);
-    Logger::debug("NativeMapView", "[Instance #%d] Marked isDestroying=true", instanceId);
     
     // 确保资源按正确顺序清理
     cleanupAllResources();
-    
-    Logger::info("NativeMapView", "========== [Instance #%d] Destructor END ==========", instanceId);
 }
 
 void NativeMapView::cleanupAllResources() {
@@ -127,13 +111,11 @@ void NativeMapView::cleanupAllResources() {
     // 0. 清理回调
     if (callbackManager_) {
         ANRDetector callbackDetector("callbackManager->Clear_sync", 50, 500);
-        Logger::debug("NativeMapView", "[sync] Clearing all callbacks...");
         callbackManager_->Clear();
     }
 
     // 1. 停止渲染并同步退出渲染线程
     if (harmonyRenderer) {
-        Logger::info("NativeMapView", "[sync] Stopping HarmonyRenderer and render thread...");
         try {
             harmonyRenderer->cleanup(); // 同步：内部调用 mapRenderThread_->stop() 并 join
         } catch (const std::exception& e) {
@@ -142,12 +124,10 @@ void NativeMapView::cleanupAllResources() {
             Logger::error("NativeMapView", "[sync] Unknown error during HarmonyRenderer cleanup");
         }
         harmonyRenderer.reset();
-        Logger::info("NativeMapView", "[sync] HarmonyRenderer destroyed");
     }
 
     // 2. 清理 Map 引用
     if (map) {
-        Logger::debug("NativeMapView", "[sync] Clearing Map reference");
         map = nullptr;
     }
 
@@ -162,8 +142,7 @@ void NativeMapView::cleanupAllResources() {
     }
 
     // 5. 更新计数
-    int remaining = --g_activeInstanceCount;
-    Logger::info("NativeMapView", "[sync] Resources cleaned up, remaining active instances: %d", remaining);
+    --g_activeInstanceCount;
 }
 
 void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
@@ -177,33 +156,26 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         return;
     }
     
-    Logger::info("NativeMapView", "========== cleanupAllResourcesAsync START (Android/iOS pattern) ==========");
-    
     try {
         // 0. 清理所有回调（带ANR监控）
         if (callbackManager_) {
             ANRDetector callbackDetector("callbackManager->Clear", 50, 500);
-            Logger::debug("NativeMapView", "Clearing all callbacks...");
             callbackManager_->Clear();
         }
         
         // 1. ✅ 立即停止渲染（参考 iOS destroyDisplayLink 和 Android MapRenderer.onStop()）
         // 关键修复：在异步等待之前先停止渲染，防止 OpenGL attribute location 断言失败
         if (harmonyRenderer) {
-            Logger::debug("NativeMapView", "Immediately pausing renderer to stop rendering loop...");
             harmonyRenderer->pause();
             
             // ✅ 等待正在执行的渲染帧完成（参考 Android GLSurfaceView.onPause()）
             // 原因：pause() 只设置标志，正在执行的渲染可能还在访问资源
             // 解决：等待当前帧完成（通常 1-2帧 = 16-33ms）
-            Logger::debug("NativeMapView", "Waiting for current render frame to complete...");
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            Logger::debug("NativeMapView", "Current render frame should be completed");
         }
         
         // 2. 立即取消所有动画（参考 Android cancelTransitions）——必须在渲染线程执行
         if (harmonyRenderer && map) {
-            Logger::debug("NativeMapView", "Cancelling all map transitions on render thread...");
             harmonyRenderer->runOnRenderThread([this]() {
                 if (map) {
                     try {
@@ -217,30 +189,19 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         
         // 3. 使用异步方式等待所有后台线程完成（参考 Android/iOS）
         if (harmonyRenderer) {
-            Logger::debug("NativeMapView", "Waiting for async operations to complete...");
-            
             // 使用异步回调而不是硬编码等待
             harmonyRenderer->stopAllRequestsAsync([this, onComplete = std::move(onComplete)]() {
-                // 这个回调会在所有异步操作完成后被调用
-                Logger::info("NativeMapView", "Async stop completed, continuing cleanup...");
-                
                 try {
                     // 4. 清理Map对象（参考 iOS destroyCoreObjects 顺序）
                     if (map) {
-                        Logger::debug("NativeMapView", "Destroying Map object...");
-                        
                         // Note: In new architecture, Map is owned by HarmonyMapRenderThread
                         // NativeMapView just holds a reference
-                        Logger::debug("NativeMapView", "Clearing map reference...");
                         map = nullptr;
-                        Logger::debug("NativeMapView", "Map destroyed");
                     }
                     
                     // 5. 清理HarmonyRenderer（参考 iOS destroyCoreObjects）
                     if (harmonyRenderer) {
-                        Logger::debug("NativeMapView", "Destroying HarmonyRenderer...");
                         harmonyRenderer.reset();
-                        Logger::debug("NativeMapView", "HarmonyRenderer destroyed");
                     }
                     
                     // 6. 清理其他资源
@@ -253,30 +214,23 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
                         wrapper_ = nullptr;
                     }
                     
-                    Logger::info("NativeMapView", "All resources cleaned up successfully");
-                    
                     // ✅ 递减活跃实例计数
-                    int remaining = --g_activeInstanceCount;
-                    Logger::info("NativeMapView", "Instance cleaned up, remaining active instances: %d", remaining);
-                    Logger::info("NativeMapView", "========== cleanupAllResourcesAsync END ==========");
+                    --g_activeInstanceCount;
                     
                     // 8. 调用完成回调
                     if (onComplete) {
-                        Logger::debug("NativeMapView", "Invoking cleanup completion callback");
                         onComplete();
                     }
                     
                 } catch (const std::exception& e) {
                     Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
                     // ✅ 即使出错也要递减计数
-                    int remaining = --g_activeInstanceCount;
-                    Logger::info("NativeMapView", "Instance cleanup failed but counted, remaining: %d", remaining);
+                    --g_activeInstanceCount;
                     if (onComplete) onComplete();
                 } catch (...) {
                     Logger::error("NativeMapView", "Unknown error during resource cleanup");
                     // ✅ 即使出错也要递减计数
-                    int remaining = --g_activeInstanceCount;
-                    Logger::info("NativeMapView", "Instance cleanup failed but counted, remaining: %d", remaining);
+                    --g_activeInstanceCount;
                     if (onComplete) onComplete();
                 }
             });
@@ -296,58 +250,40 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         }
         
         // ✅ 递减活跃实例计数
-        int remaining = --g_activeInstanceCount;
-        Logger::info("NativeMapView", "Resources cleaned up (no renderer), remaining instances: %d", remaining);
+        --g_activeInstanceCount;
         if (onComplete) onComplete();
         
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
         // ✅ 即使出错也要递减计数
-        int remaining = --g_activeInstanceCount;
-        Logger::info("NativeMapView", "Cleanup error, remaining instances: %d", remaining);
+        --g_activeInstanceCount;
         if (onComplete) onComplete();
     } catch (...) {
         Logger::error("NativeMapView", "Unknown error during resource cleanup");
         // ✅ 即使出错也要递减计数
-        int remaining = --g_activeInstanceCount;
-        Logger::info("NativeMapView", "Cleanup unknown error, remaining instances: %d", remaining);
+        --g_activeInstanceCount;
         if (onComplete) onComplete();
     }
 }
 
 
 void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int height) {
-    Logger::info("NativeMapView", "========== setNativeWindowWithSize() START ==========");
-    Logger::info("NativeMapView", "Surface ID: %ld, Width: %d, Height: %d", (long)surfaceId, width, height);
-    
     // 更新尺寸
     this->width = width;
     this->height = height;
     
     // 创建原生窗口
     OHNativeWindow *nativeWindow;
-    Logger::debug("NativeMapView", "Creating native window from surface ID...");
     OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
     
     if (nativeWindow) {
-        Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
         this->nativeWindow = nativeWindow;
         
-        // pixelRatio will be determined from device during renderer initialization
-        Logger::info("NativeMapView", "Native window set");
-        
-        Logger::info("NativeMapView", "Initializing with size %dx%d (logical pixels)", width, height);
-        
         // 初始化渲染器（如果尚未初始化）
-        Logger::info("NativeMapView", "Initializing renderer with size %dx%d...", width, height);
         this->initializeRenderer();
-        
-        Logger::info("NativeMapView", "setNativeWindowWithSize completed successfully");
     } else {
         Logger::error("NativeMapView", "Failed to create native window from surface ID");
     }
-    
-    Logger::info("NativeMapView", "========== setNativeWindowWithSize() END ==========");
 }
 
 void NativeMapView::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
@@ -356,8 +292,6 @@ void NativeMapView::Destructor(napi_env env, void* nativeObject, void* finalize_
 
 
 napi_value NativeMapView::Init(napi_env env, napi_value exports) {
-    Logger::info("NativeMapView", "========== Init() - Registering NAPI class ==========");
-    
     napi_status status;
     napi_value cons;
     
@@ -534,8 +468,6 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"removeOnSourceChangedListener", nullptr, removeOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
-    Logger::info("NativeMapView", "Registering %zu methods", properties.size());
-    
     // 定义类构造函数，并传入所有属性描述符
     status = napi_define_class(
         env,
@@ -553,8 +485,6 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    Logger::debug("NativeMapView", "NativeMapView class defined successfully");
-    
     // 设置构造函数的引用 - 使用静态变量存储
     static napi_ref static_wrapper;
     status = napi_create_reference(env, cons, 1, &static_wrapper);
@@ -570,13 +500,9 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    Logger::info("NativeMapView", "NativeMapView class registered successfully with %zu methods", properties.size());
-    
     return exports;
 }
 napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== hardReset() START ==========");
-
     NapiArgs args(env, info);
 
     // 获取NativeMapView实例
@@ -591,7 +517,6 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
 
     // 1) 清理现有渲染器与线程
     if (instance->harmonyRenderer) {
-        Logger::info("NativeMapView", "hardReset: Cleaning up current HarmonyRenderer");
         try {
             instance->harmonyRenderer->cleanup();
         } catch (...) {
@@ -605,7 +530,6 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     // 2) 清理磁盘缓存
     if (!instance->cachePath_.empty()) {
         std::error_code ec;
-        Logger::info("NativeMapView", "hardReset: Purging cache directory: %s", instance->cachePath_.c_str());
         std::filesystem::remove_all(instance->cachePath_, ec);
         if (ec) {
             Logger::warn("NativeMapView", "hardReset: remove_all failed: %s", ec.message().c_str());
@@ -615,13 +539,11 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     }
 
     // 3) 重新创建渲染器并初始化
-    Logger::info("NativeMapView", "hardReset: Recreating HarmonyRenderer with size %dx%d", instance->width, instance->height);
     instance->harmonyRenderer = std::make_unique<HarmonyRenderer>();
     instance->harmonyRenderer->initialize(instance->width, instance->height, instance->pixelRatio, instance->cachePath_);
 
     // 4) 重新设置窗口与尺寸
     if (instance->nativeWindow) {
-        Logger::info("NativeMapView", "hardReset: Rebinding native window");
         instance->harmonyRenderer->setNativeWindow(instance->nativeWindow);
         if (instance->width > 0 && instance->height > 0) {
             instance->harmonyRenderer->resize(instance->width, instance->height);
@@ -639,7 +561,6 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
         instance->harmonyRenderer->requestRender();
     }
 
-    Logger::info("NativeMapView", "========== hardReset() END ==========");
     return args.Undefined();
 }
 
@@ -683,8 +604,6 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     }
     cachePath.resize(strLen);
     
-    Logger::info("NativeMapView", "New: Creating instance with cachePath: %s", cachePath.c_str());
-    
     // 创建NativeMapView实例
     NativeMapView* nativeMapView = new NativeMapView(env, thisVar, cachePath);
     
@@ -710,14 +629,8 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
 // MapObserver 方法实现已全部移至 native_map_view_observers.cpp
 
 void NativeMapView::initializeRenderer() {
-    Logger::debug("NativeMapView", "initializeRenderer() called - harmonyRenderer=%s, nativeWindow=%s, map=%s", 
-                  harmonyRenderer ? "exists" : "null",
-                  nativeWindow ? "exists" : "null",
-                  map ? "exists" : "null");
-    
     // Set SQLite temp path for database operations (must be done before any database access)
     mapbox::sqlite::setTempPath(cachePath_);
-    Logger::info("NativeMapView", "SQLite temp path set to: %s", cachePath_.c_str());
     
     // Pre-fetch device DPI before creating Renderer to ensure all components use correct pixelRatio
     if (pixelRatio <= 1.01f) {  // If still default value
@@ -725,8 +638,6 @@ void NativeMapView::initializeRenderer() {
         int32_t ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&densityDPI);
         if (ret == 0) {
             pixelRatio = static_cast<float>(densityDPI) / 160.0f;
-            Logger::info("NativeMapView", "Pre-fetched DPI: %d, pixelRatio: %.2f", 
-                        densityDPI, pixelRatio);
         } else {
             pixelRatio = 1.0f;
             Logger::warn("NativeMapView", "Failed to pre-fetch DPI, using 1.0");
@@ -735,7 +646,6 @@ void NativeMapView::initializeRenderer() {
     
     // Always create a brand-new HarmonyRenderer to guarantee isolation per NativeMapView instance
     if (harmonyRenderer) {
-        Logger::info("NativeMapView", "Disposing existing HarmonyRenderer to avoid reuse...");
         try {
             harmonyRenderer->cleanup();
         } catch (...) {
@@ -747,56 +657,37 @@ void NativeMapView::initializeRenderer() {
     
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
-    Logger::info("NativeMapView", "HarmonyRenderer initialized fresh with cachePath: %s", cachePath_.c_str());
     
     // 2. 如果有窗口，设置窗口
     if (nativeWindow && harmonyRenderer) {
-        Logger::info("NativeMapView", "Setting native window to HarmonyRenderer");
         harmonyRenderer->setNativeWindow(nativeWindow);
-        Logger::debug("NativeMapView", "Native window set successfully");
     } else {
-        Logger::warn("NativeMapView", "Cannot set native window - nativeWindow=%s, harmonyRenderer=%s",
-                     nativeWindow ? "exists" : "null",
-                     harmonyRenderer ? "exists" : "null");
+        Logger::warn("NativeMapView", "Cannot set native window");
     }
     
     // 3. 获取新的 Map 引用（Map 由新的 HarmonyMapRenderThread 所拥有）
     if (harmonyRenderer) {
-        Logger::info("NativeMapView", "Acquiring Map reference from fresh HarmonyRenderer...");
         map = harmonyRenderer->getMap();
         if (!map) {
             Logger::error("NativeMapView", "Cannot get Map - HarmonyRenderer returned null");
             return;
         }
-        Logger::info("NativeMapView", "Got Map reference: %p", map);
-        return;
     } else {
         Logger::warn("NativeMapView", "Cannot create Map - harmonyRenderer is null");
     }
 }
 
 void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
-    Logger::info("NativeMapView", "ensureResourcesReadyOrRecover(timeout=%dms) invoked", timeoutMs);
     if (!harmonyRenderer) {
         Logger::warn("NativeMapView", "ensureResourcesReadyOrRecover: no renderer, initializing fresh");
         initializeRenderer();
         return;
     }
-    // 快速检查
-//    if (harmonyRenderer->isResourcesReady()) {
-//        Logger::debug("NativeMapView", "ensureResourcesReadyOrRecover: resources already ready");
-//        return;
-//    }
+    
     // 等待就绪
     const auto start = std::chrono::steady_clock::now();
     const auto deadline = start + std::chrono::milliseconds(timeoutMs);
-//    while (!harmonyRenderer->isResourcesReady() && std::chrono::steady_clock::now() < deadline) {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(20));
-//    }
-//    if (harmonyRenderer->isResourcesReady()) {
-//        Logger::info("NativeMapView", "ensureResourcesReadyOrRecover: resources became ready within timeout");
-//        return;
-//    }
+    
     // 自愈重建
     Logger::warn("NativeMapView", "ensureResourcesReadyOrRecover: resources NOT ready, attempting self-heal reinitialize");
     try {
@@ -819,8 +710,6 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
 
 
 napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== destroy() called from TS layer ==========");
-    
     NapiArgs args(env, info);
     
     NativeMapView* nativeMapView = nullptr;
@@ -834,15 +723,13 @@ napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
         {
             std::lock_guard<std::mutex> lock(destroyMutex);
             if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
-                Logger::warn("NativeMapView", "Instance %p already destroyed, skipping", nativeMapView);
+                Logger::warn("NativeMapView", "Instance already destroyed, skipping");
                 return nullptr;
             }
             destroyedInstances.insert(nativeMapView);
         }
         
-        Logger::info("NativeMapView", "Calling cleanupAllResources() for instance %p...", nativeMapView);
         nativeMapView->cleanupAllResources();
-        Logger::info("NativeMapView", "✅ Resources cleaned up successfully for instance %p", nativeMapView);
     } else {
         Logger::warn("NativeMapView", "Cannot destroy: native instance is null");
     }
@@ -851,8 +738,6 @@ napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
-    Logger::info("NativeMapView", "========== destroyAsync() called from TS layer (Android/iOS pattern) ==========");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1); // 需要回调函数参数
     
@@ -879,7 +764,7 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
         {
             std::lock_guard<std::mutex> lock(destroyMutex);
             if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
-                Logger::warn("NativeMapView", "Instance %p already destroyed, skipping", nativeMapView);
+                Logger::warn("NativeMapView", "Instance already destroyed, skipping");
                 
                 // ✅ 使用 ThreadSafeCallback 确保线程安全
                 auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_skip");
@@ -891,8 +776,6 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
             }
             destroyedInstances.insert(nativeMapView);
         }
-        
-        Logger::info("NativeMapView", "Calling cleanupAllResourcesAsync() for instance %p...", nativeMapView);
         
         // ✅ 创建 ThreadSafeCallback（线程安全的跨线程回调）
         auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_complete");
@@ -906,8 +789,6 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
         auto sharedTsfn = std::shared_ptr<ThreadSafeCallback>(std::move(tsfn));
         
         nativeMapView->cleanupAllResourcesAsync([sharedTsfn]() {
-            Logger::info("NativeMapView", "✅ Async cleanup completed, invoking TS callback via ThreadSafeCallback");
-            
             // ✅ ThreadSafeCallback 会自动调度到主线程执行
             // 不需要手动调用 napi_call_function
             if (sharedTsfn && sharedTsfn->IsValid()) {
@@ -916,8 +797,6 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
                 Logger::warn("NativeMapView", "ThreadSafeCallback is invalid or released");
             }
         });
-        
-        Logger::info("NativeMapView", "Async cleanup initiated");
     } else {
         Logger::warn("NativeMapView", "Cannot destroy: native instance is null");
     }
@@ -932,8 +811,6 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
  * 对齐 Android: setContentPadding(double[] padding)
  */
 napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "setContentPadding() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -972,10 +849,6 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
         instance->contentPadding_[i] = value;
     }
     
-    Logger::info("NativeMapView", "setContentPadding: [top=%.1f, left=%.1f, bottom=%.1f, right=%.1f]",
-                 instance->contentPadding_[0], instance->contentPadding_[1],
-                 instance->contentPadding_[2], instance->contentPadding_[3]);
-    
     return args.Undefined();
 }
 
@@ -984,8 +857,6 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
  * 对齐 Android: getContentPadding()
  */
 napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getContentPadding() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1005,10 +876,6 @@ napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info inf
         napi_set_element(env, result, i, element);
     }
     
-    Logger::debug("NativeMapView", "getContentPadding: [%.1f, %.1f, %.1f, %.1f]",
-                  instance->contentPadding_[0], instance->contentPadding_[1],
-                  instance->contentPadding_[2], instance->contentPadding_[3]);
-    
     return result;
 }
 
@@ -1018,8 +885,6 @@ napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info inf
  * 对齐 iOS: contentScaleFactor
  */
 napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getPixelRatio() called");
-    
     NapiArgs args(env, info);
     
     // 获取NativeMapView实例
@@ -1032,8 +897,6 @@ napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
     napi_value result;
     napi_create_double(env, instance->pixelRatio, &result);
     
-    Logger::debug("NativeMapView", "getPixelRatio: %.2f", instance->pixelRatio);
-    
     return result;
 }
 
@@ -1042,8 +905,6 @@ napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
  * 对齐 Android: getDensityDependantRectangle(RectF rectangle)
  */
 napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callback_info info) {
-    Logger::debug("NativeMapView", "getDensityDependantRectangle() called");
-    
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
@@ -1081,11 +942,6 @@ napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callba
     napi_set_named_property(env, result, "top", topValue);
     napi_set_named_property(env, result, "right", rightValue);
     napi_set_named_property(env, result, "bottom", bottomValue);
-    
-    Logger::debug("NativeMapView", "getDensityDependantRectangle: Input=[%.1f,%.1f,%.1f,%.1f], Output=[%.1f,%.1f,%.1f,%.1f] (pixelRatio=%.2f)",
-                  left, top, right, bottom,
-                  left/pixelRatio, top/pixelRatio, right/pixelRatio, bottom/pixelRatio,
-                  pixelRatio);
     
     return result;
 }

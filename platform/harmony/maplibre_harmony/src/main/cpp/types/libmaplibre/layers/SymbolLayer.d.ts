@@ -71,9 +71,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标图片
-         * @param iconImage 图片名称
+         * @param iconImage 图片名称或Expression
          */
-        setIconImage(iconImage: string): void;
+        setIconImage(iconImage: string | Object): void;
         
         /**
          * 获取图标图片
@@ -82,9 +82,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标大小
-         * @param size 大小比例
+         * @param size 大小比例或Expression
          */
-        setIconSize(size: number): void;
+        setIconSize(size: number | Object): void;
         
         /**
          * 获取图标大小
@@ -93,9 +93,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标旋转角度
-         * @param rotate 旋转角度（度）
+         * @param rotate 旋转角度（度）或Expression
          */
-        setIconRotate(rotate: number): void;
+        setIconRotate(rotate: number | Object): void;
         
         /**
          * 获取图标旋转角度
@@ -220,9 +220,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标不透明度
-         * @param opacity 不透明度 (0-1)
+         * @param opacity 不透明度 (0-1) 或 Expression 或 数组
          */
-        setIconOpacity(opacity: number): void;
+        setIconOpacity(opacity: number | Object | Object[]): void;
         
         /**
          * 获取图标不透明度

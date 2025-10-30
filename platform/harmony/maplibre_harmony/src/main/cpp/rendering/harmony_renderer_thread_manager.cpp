@@ -54,7 +54,6 @@ void HarmonyRendererThreadManager::registerRendererThread(
     Logger::info("ThreadMgr", "➕ Register thread: %s (%s)", 
                  instanceId.c_str(), 
                  formatThreadId(threadId).c_str());
-    Logger::debug("ThreadMgr", "  Total threads: %zu", threads_.size());
 }
 
 void HarmonyRendererThreadManager::unregisterRendererThread(const std::string& instanceId) {
@@ -73,7 +72,6 @@ void HarmonyRendererThreadManager::unregisterRendererThread(const std::string& i
     threads_.erase(it);
     
     Logger::info("ThreadMgr", "➖ Unregister thread: %s", instanceId.c_str());
-    Logger::debug("ThreadMgr", "  Remaining threads: %zu", threads_.size());
 }
 
 bool HarmonyRendererThreadManager::invokeOnThread(
@@ -93,10 +91,6 @@ bool HarmonyRendererThreadManager::invokeOnThread(
         Logger::error("ThreadMgr", "Cannot invoke: RunLoop is null for: %s", instanceId.c_str());
         return false;
     }
-    
-    Logger::debug("ThreadMgr", "🌉 Invoke on thread: %s (%s)", 
-                  instanceId.c_str(),
-                  formatThreadId(threadInfo.threadId).c_str());
     
     // 通过 RunLoop 调度任务
     threadInfo.runLoop->invoke(std::move(fn));

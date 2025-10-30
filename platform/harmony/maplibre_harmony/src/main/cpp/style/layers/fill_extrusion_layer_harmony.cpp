@@ -19,11 +19,9 @@ napi_ref FillExtrusionLayerNAPI::constructor = nullptr;
 
 FillExtrusionLayerNAPI::FillExtrusionLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::FillExtrusionLayer>(layerId, sourceId)) {
-    Logger::debug("FillExtrusionLayerNAPI", "FillExtrusionLayer created: %s", layerId.c_str());
 }
 
 FillExtrusionLayerNAPI::~FillExtrusionLayerNAPI() {
-    Logger::debug("FillExtrusionLayerNAPI", "FillExtrusionLayer destroyed");
 }
 
 void FillExtrusionLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

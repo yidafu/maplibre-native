@@ -26,8 +26,6 @@ napi_value PointHarmony::CreatePointObject(napi_env env, double x, double y) {
     napi_create_double(env, y, &yValue);
     napi_set_named_property(env, obj, "y", yValue);
     
-    Logger::debug("PointHarmony", "Created Point object: x=%f, y=%f", x, y);
-    
     return obj;
 }
 
@@ -71,8 +69,6 @@ bool PointHarmony::ParsePoint(napi_env env, napi_value value, double& outX, doub
         Logger::error("PointHarmony", "Failed to parse y as double");
         return false;
     }
-    
-    Logger::debug("PointHarmony", "Parsed Point: x=%f, y=%f", outX, outY);
     
     return true;
 }

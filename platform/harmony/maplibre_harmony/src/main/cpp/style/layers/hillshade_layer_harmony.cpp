@@ -17,11 +17,9 @@ napi_ref HillshadeLayerNAPI::constructor = nullptr;
 
 HillshadeLayerNAPI::HillshadeLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::HillshadeLayer>(layerId, sourceId)) {
-    Logger::debug("HillshadeLayerNAPI", "HillshadeLayer created: %s", layerId.c_str());
 }
 
 HillshadeLayerNAPI::~HillshadeLayerNAPI() {
-    Logger::debug("HillshadeLayerNAPI", "HillshadeLayer destroyed");
 }
 
 void HillshadeLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

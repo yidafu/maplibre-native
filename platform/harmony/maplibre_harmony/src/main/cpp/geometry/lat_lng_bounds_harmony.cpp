@@ -36,9 +36,6 @@ napi_value LatLngBoundsHarmony::CreateLatLngBoundsObject(napi_env env, const mbg
     napi_create_double(env, bounds.west(), &westValue);
     napi_set_named_property(env, obj, "west", westValue);
     
-    Logger::debug("LatLngBoundsHarmony", "Created LatLngBounds object: N=%f, E=%f, S=%f, W=%f", 
-                  bounds.north(), bounds.east(), bounds.south(), bounds.west());
-    
     return obj;
 }
 
@@ -106,8 +103,6 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         mbgl::LatLng(north, east),  // 东北角
         mbgl::LatLng(south, west)   // 西南角
     );
-    
-    Logger::debug("LatLngBoundsHarmony", "Parsed LatLngBounds: N=%f, E=%f, S=%f, W=%f", north, east, south, west);
     
     return true;
 }
