@@ -2,6 +2,7 @@
 #define MAPLIBREHARMONY_NATIVE_MAP_VIEW_HARMONY_HPP
 
 #include "rendering/backends/harmony_renderer_backend.hpp"
+#include "rendering/harmony_renderer.hpp"
 #include "core/callback_manager.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
@@ -9,6 +10,9 @@
 
 #include <string>
 #include <memory>
+#include <future>
+#include <chrono>
+#include <type_traits>
 #include <js_native_api.h>
 
 namespace mbgl {
@@ -17,7 +21,6 @@ namespace harmony {
 class FileSource;
 class MapRenderer;
 class RenderingStats;
-class HarmonyRenderer;
 
 class NativeMapView : public MapObserver {
 public:
@@ -167,6 +170,7 @@ public:
     static napi_value enableRenderingStatsView(napi_env env, napi_callback_info info);
     static napi_value setNativeWindow(napi_env env, napi_callback_info info);
     static napi_value setNativeWindowWithSize(napi_env env, napi_callback_info info);
+    static napi_value hardReset(napi_env env, napi_callback_info info);
 
     // Shader compilation
     void onRegisterShaders(mbgl::gfx::ShaderRegistry&) override;
@@ -266,6 +270,8 @@ private:
     
     // 初始化渲染器
     void initializeRenderer();
+    // 确保资源子系统就绪，如未就绪则尝试自愈重建
+    void ensureResourcesReadyOrRecover(int timeoutMs = 500);
     
     napi_env env_;
     napi_ref wrapper_;
@@ -305,8 +311,79 @@ private:
     // 内容边距 [top, left, bottom, right]
     std::array<double, 4> contentPadding_ = {0.0, 0.0, 0.0, 0.0};
     
+    // ==================== Map Thread Helper Methods ====================
+    
+    /**
+     * 在 Map+Render Thread 执行 Map 操作（异步）
+     * 自动处理线程调度和错误检查
+     * 
+     * @param func 要执行的操作，接收 Map* 参数
+     */
+    template<typename Func>
+    void invokeOnMapThread(Func&& func) {
+        if (!harmonyRenderer) {
+            return;
+        }
+        
+        harmonyRenderer->runOnRenderThread([this, func = std::forward<Func>(func)]() {
+            if (map) {
+                try {
+                    func(map);
+                } catch (...) {
+                    // Error handled internally
+                }
+            }
+        });
+    }
+    
+    /**
+     * 在 Map+Render Thread 执行 Map 操作（同步，等待结果）
+     * 
+     * @param func 要执行的操作，接收 Map* 参数并返回结果
+     * @return 操作的结果，失败时返回默认值
+     */
+    template<typename Func, typename Result = std::invoke_result_t<Func, mbgl::Map*>>
+    Result invokeOnMapThreadSync(Func&& func, Result defaultValue = Result{}) {
+        if (!harmonyRenderer || !map) {
+            return defaultValue;
+        }
+        
+        // 使用 promise/future 实现同步调用
+        std::promise<Result> promise;
+        auto future = promise.get_future();
+        
+        harmonyRenderer->runOnRenderThread([this, func = std::forward<Func>(func), &promise]() mutable {
+            try {
+                if (map) {
+                    Result result = func(map);
+                    promise.set_value(std::move(result));
+                } else {
+                    promise.set_value(Result{});
+                }
+            } catch (...) {
+                try {
+                    promise.set_exception(std::current_exception());
+                } catch (...) {
+                    // Promise may already be set
+                }
+            }
+        });
+        
+        // 等待结果（最多 5 秒）
+        auto status = future.wait_for(std::chrono::seconds(5));
+        if (status == std::future_status::timeout) {
+            return defaultValue;
+        }
+        
+        try {
+            return future.get();
+        } catch (...) {
+            return defaultValue;
+        }
+    }
+    
     // Ensure these are initialised last
-    std::unique_ptr<mbgl::Map> map;
+    mbgl::Map* map = nullptr;  // Reference to Map owned by HarmonyMapRenderThread
 };
 
 } // namespace harmony

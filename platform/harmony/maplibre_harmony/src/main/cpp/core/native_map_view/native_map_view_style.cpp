@@ -1,10 +1,14 @@
 #include "native_map_view_harmony.hpp"
+#include "rendering/harmony_renderer.hpp"
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/image.hpp>
+// 用于资源就绪 gating 的等待
+#include <chrono>
+#include <thread>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -78,21 +82,48 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     styleUrl.resize(strSize);
     
     Logger::info("NativeMapView", "Setting style URL: %s", styleUrl.c_str());
-    
-    // 加载样式
-    try {
-        Logger::error("NativeMapView", "🔴🔴🔴 CALLING map->getStyle().loadURL() 🔴🔴🔴");
-        instance->map->getStyle().loadURL(styleUrl);
-        Logger::error("NativeMapView", "✅ loadURL() returned successfully");
-        
-        Logger::error("NativeMapView", "🔴🔴🔴 CALLING map->triggerRepaint() 🔴🔴🔴");
-        instance->map->triggerRepaint();
-        Logger::error("NativeMapView", "✅ triggerRepaint() returned successfully");
-        
-        Logger::info("NativeMapView", "setStyleUrl: Style URL set successfully");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "❌❌❌ setStyleUrl: EXCEPTION - %s", e.what());
+
+    // 资源就绪 gating：等待渲染线程与窗口/上下文和后台资源子系统完成重建
+    if (instance->harmonyRenderer) {
+        // 等待 500ms；未就绪则尝试自愈重建
+        const auto start = std::chrono::steady_clock::now();
+        const auto timeout = std::chrono::milliseconds(500);
+//        while (!instance->harmonyRenderer->isResourcesReady() &&
+//               std::chrono::steady_clock::now() - start < timeout) {
+//            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+//        }
+//        if (!instance->harmonyRenderer->isResourcesReady()) {
+//            Logger::warn("NativeMapView", "setStyleUrl: resources not ready after 500ms, attempting self-heal");
+//            instance->ensureResourcesReadyOrRecover(300 /* extra wait after rebuild */);
+//        }
     }
+
+    // 加载样式 - 必须在 Map+Render Thread 执行
+    Logger::info("NativeMapView", "Dispatching loadURL to Map+Render Thread...");
+    
+    instance->invokeOnMapThread([styleUrl](Map* m) {
+        auto* scheduler = Scheduler::GetCurrent();
+        auto threadId = std::this_thread::get_id();
+        
+        Logger::error("DIAGNOSTIC", "===== loadURL THREAD DIAGNOSTIC =====");
+        Logger::error("DIAGNOSTIC", "Thread ID: %lu", std::hash<std::thread::id>{}(threadId));
+        Logger::error("DIAGNOSTIC", "Scheduler: %p", scheduler);
+        Logger::error("DIAGNOSTIC", "Scheduler Type: %s", scheduler ? typeid(*scheduler).name() : "null");
+        Logger::error("DIAGNOSTIC", "Map pointer: %p", m);
+        Logger::error("DIAGNOSTIC", "About to call loadURL(%s)", styleUrl.c_str());
+        
+        m->getStyle().loadURL(styleUrl);
+        
+        Logger::error("DIAGNOSTIC", "loadURL returned");
+        Logger::error("DIAGNOSTIC", "Triggering repaint...");
+        
+        m->triggerRepaint();
+        
+        Logger::error("DIAGNOSTIC", "Repaint triggered");
+        Logger::error("DIAGNOSTIC", "======================================");
+    });
+    
+    Logger::info("NativeMapView", "setStyleUrl: Style URL load dispatched successfully");
     
     Logger::info("NativeMapView", "========== setStyleUrl() END ==========");
     return undefined;
@@ -114,7 +145,7 @@ napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
     }
     
     try {
-        std::string json = instance->map->getStyle().getJSON();
+        std::string json = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getJSON(); }, std::string{});
         napi_value result;
         napi_create_string_utf8(env, json.c_str(), json.length(), &result);
         Logger::debug("NativeMapView", "getStyleJson: Returned JSON (%zu bytes)", json.length());
@@ -163,8 +194,7 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "setStyleJson: Loading style JSON (%zu bytes)", json.length());
     
     try {
-        instance->map->getStyle().loadJSON(json);
-        instance->map->triggerRepaint();
+        instance->invokeOnMapThread([json](mbgl::Map* m){ m->getStyle().loadJSON(json); m->triggerRepaint(); });
         Logger::info("NativeMapView", "setStyleJson: Style JSON loaded successfully");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setStyleJson: Failed - %s", e.what());
@@ -188,7 +218,7 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
     // 检查参数是否为 null（允许清除边界限制）
     if (!args.Has(0)) {
         // 清除边界限制
-        instance->map->setBounds(mbgl::BoundOptions());
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions()); });
         Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (no argument)");
         return args.Undefined();
     }
@@ -265,7 +295,7 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
     }
     
     try {
-        bool loaded = instance->map->isFullyLoaded();
+        bool loaded = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->isFullyLoaded(); }, false);
         napi_get_boolean(env, loaded, &result);
         Logger::debug("NativeMapView", "isFullyLoaded: %s", loaded ? "true" : "false");
     } catch (const std::exception& e) {
@@ -327,9 +357,9 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
     
     // 创建参数：mapPtr
     napi_value args[1];
-    int64_t mapPtr = reinterpret_cast<int64_t>(instance->map.get());
+    int64_t mapPtr = reinterpret_cast<int64_t>(instance->map);
     napi_create_int64(env, mapPtr, &args[0]);
-    Logger::debug("NativeMapView", "getStyle: Creating Style instance with mapPtr=%p", instance->map.get());
+    Logger::debug("NativeMapView", "getStyle: Creating Style instance with mapPtr=%p", instance->map);
     
     // 创建 StyleNAPI 实例
     napi_value styleInstance;
@@ -361,7 +391,7 @@ napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info 
     }
     
     try {
-        const auto transitionOptions = instance->map->getStyle().getTransitionOptions();
+        const auto transitionOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getTransitionOptions(); }, mbgl::style::TransitionOptions{});
         napi_value result = TransitionOptionsHarmony::CreateTransitionOptionsObject(env, transitionOptions);
         Logger::debug("NativeMapView", "getTransitionOptions: Retrieved transition options");
         return result;
@@ -411,7 +441,7 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
     }
     
     try {
-        instance->map->getStyle().setTransitionOptions(transitionOptions);
+        instance->invokeOnMapThread([transitionOptions](mbgl::Map* m){ m->getStyle().setTransitionOptions(transitionOptions); });
         Logger::info("NativeMapView", "setTransitionOptions: Set transition options");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setTransitionOptions: Failed - %s", e.what());
@@ -633,7 +663,7 @@ napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
     name.resize(nameLength);
     
     try {
-        instance->map->getStyle().removeImage(name);
+        instance->invokeOnMapThread([name](mbgl::Map* m){ m->getStyle().removeImage(name); });
         Logger::info("NativeMapView", "removeImage: Removed image '%s'", name.c_str());
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "removeImage: Failed - %s", e.what());

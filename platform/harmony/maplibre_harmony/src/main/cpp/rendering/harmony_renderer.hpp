@@ -4,6 +4,9 @@
 #include <mbgl/util/noncopyable.hpp>
 #include <mbgl/actor/scheduler.hpp>
 #include <mbgl/util/identity.hpp>
+#include <mbgl/util/geo.hpp>
+#include <mbgl/util/feature.hpp>
+#include <mbgl/renderer/query.hpp>
 #include <native_window/external_window.h>
 #include <memory>
 #include <functional>
@@ -20,9 +23,9 @@ class HarmonyGLRendererBackend;
 using HarmonyRendererBackendImpl = HarmonyGLRendererBackend;
 #endif
 
-class HarmonyRendererFrontend;
+class HarmonyMapRenderThread;
 
-class HarmonyRenderer : public mbgl::util::noncopyable, public mbgl::Scheduler {
+class HarmonyRenderer : public mbgl::util::noncopyable, public mbgl::Scheduler, public mbgl::MapObserver {
 public:
     HarmonyRenderer();
     ~HarmonyRenderer();
@@ -33,8 +36,8 @@ public:
     // 设置OHNativeWindow
     void setNativeWindow(OHNativeWindow* window);
     
-    // 设置地图（接受裸指针，不持有所有权）
-    void setMap(Map* map);
+    // 获取 Map 引用（用于外部访问）
+    Map* getMap();
     
     // 调整大小
     void resize(int width, int height);
@@ -54,14 +57,21 @@ public:
     // 停止所有网络请求
     void stopAllRequests();
     
+    // 异步停止所有请求（参考 Android/iOS，使用回调而不是硬编码等待）
+    // onComplete: 所有异步操作停止后的回调
+    void stopAllRequestsAsync(std::function<void()> onComplete);
+    
     // 清理资源
     void cleanup();
     
     // 获取渲染后端
     HarmonyRendererBackendImpl* getRendererBackend() const;
     
-    // 获取渲染前端
-    HarmonyRendererFrontend* getRendererFrontend() const;
+    // 查询渲染特征
+    std::vector<Feature> queryRenderedFeatures(const ScreenCoordinate& point,
+                                               const RenderedQueryOptions& options = {}) const;
+    std::vector<Feature> queryRenderedFeatures(const ScreenBox& box,
+                                               const RenderedQueryOptions& options = {}) const;
     
     // 📝 实例标识
     std::string getInstanceId() const { return instanceId_; }
@@ -80,9 +90,7 @@ public:
 
 private:
     std::string instanceId_;  // 唯一标识符
-    std::unique_ptr<HarmonyRendererBackendImpl> rendererBackend;
-    std::unique_ptr<HarmonyRendererFrontend> rendererFrontend;
-    Map* map = nullptr;  // 不持有所有权，只保存引用
+    std::unique_ptr<HarmonyMapRenderThread> mapRenderThread_;  // Map+渲染线程
     int width = 0;
     int height = 0;
     float pixelRatio = 1.0f;

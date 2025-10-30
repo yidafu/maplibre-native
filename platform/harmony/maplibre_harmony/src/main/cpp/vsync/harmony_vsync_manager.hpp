@@ -21,6 +21,8 @@ namespace harmony {
 class HarmonyVSyncManager {
 public:
     using FrameCallback = std::function<void()>;
+    // 归属渲染实例的标识（用于日志）
+    void setOwnerInstanceId(uint64_t id) { ownerInstanceId_ = id; }
     
     /**
      * 构造函数
@@ -60,6 +62,7 @@ private:
     FrameCallback pendingCallback_;
     std::mutex callbackMutex_;
     std::atomic<bool> stopped_{false};
+    uint64_t ownerInstanceId_{0};
     
     /**
      * VSync 回调函数

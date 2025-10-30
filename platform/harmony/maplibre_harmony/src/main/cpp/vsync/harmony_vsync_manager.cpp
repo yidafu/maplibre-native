@@ -7,7 +7,8 @@ namespace mbgl {
 namespace harmony {
 
 HarmonyVSyncManager::HarmonyVSyncManager() {
-    Logger::info("HarmonyVSyncManager", "========== Constructor START ==========");
+    Logger::info("HarmonyVSyncManager", "========== Constructor START (ownerInstanceId=%llu) ==========",
+                 static_cast<unsigned long long>(ownerInstanceId_));
     
     try {
         // 创建 VSync 实例
@@ -19,7 +20,8 @@ HarmonyVSyncManager::HarmonyVSyncManager() {
             throw std::runtime_error("Failed to create OH_NativeVSync");
         }
         
-        Logger::info("HarmonyVSyncManager", "VSync created successfully: %p", vsync_);
+        Logger::info("HarmonyVSyncManager", "VSync created successfully: %p (ownerInstanceId=%llu)",
+                     vsync_, static_cast<unsigned long long>(ownerInstanceId_));
     } catch (const std::exception& e) {
         Logger::error("HarmonyVSyncManager", "Exception during construction: %s", e.what());
         throw;
@@ -29,7 +31,8 @@ HarmonyVSyncManager::HarmonyVSyncManager() {
 }
 
 HarmonyVSyncManager::~HarmonyVSyncManager() {
-    Logger::info("HarmonyVSyncManager", "========== Destructor START ==========");
+    Logger::info("HarmonyVSyncManager", "========== Destructor START (ownerInstanceId=%llu) ==========",
+                 static_cast<unsigned long long>(ownerInstanceId_));
     
     stop();
     

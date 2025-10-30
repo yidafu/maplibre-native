@@ -90,10 +90,10 @@ public:
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
         
         if (ms >= timeout_) {
-            Logger::warn("ANR", "⏱️  %s exceeded timeout: %lld ms (limit: %lld ms)", 
+            Logger::warn("ANR", "⏱️  %s exceeded timeout: %lld ms (limit: %ld ms)", 
                         operation_, ms, timeout_);
         } else {
-            Logger::debug("ANR", "✅ %s completed in %lld ms (within %lld ms limit)", 
+            Logger::debug("ANR", "✅ %s completed in %lld ms (within %ld ms limit)", 
                          operation_, ms, timeout_);
         }
     }

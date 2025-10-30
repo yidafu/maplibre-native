@@ -21,7 +21,6 @@
 
 // 添加Harmony渲染器头文件
 #include "rendering/harmony_renderer.hpp"
-#include "rendering/harmony_renderer_frontend.hpp"
 #include "rendering/backends/harmony_renderer_backend.hpp"
 #include "rendering/backends/harmony_gl_renderer_backend.hpp"
 #include "napi/core/napi_utils.h"
@@ -53,6 +52,7 @@
 #include <vector>
 #include <mutex>
 #include <set>
+#include <filesystem>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -115,8 +115,55 @@ NativeMapView::~NativeMapView() {
 }
 
 void NativeMapView::cleanupAllResources() {
-    // 使用异步版本，但提供空回调
-    cleanupAllResourcesAsync(nullptr);
+    // 同步销毁：阻塞直到渲染线程与资源完全释放
+    ANRDetector detector("cleanupAllResources_sync", 100, 2000);
+
+    // 防止重复清理
+    if (resourcesCleaned_.exchange(true)) {
+        Logger::warn("NativeMapView", "Resources already cleaned (sync), skipping");
+        return;
+    }
+
+    // 0. 清理回调
+    if (callbackManager_) {
+        ANRDetector callbackDetector("callbackManager->Clear_sync", 50, 500);
+        Logger::debug("NativeMapView", "[sync] Clearing all callbacks...");
+        callbackManager_->Clear();
+    }
+
+    // 1. 停止渲染并同步退出渲染线程
+    if (harmonyRenderer) {
+        Logger::info("NativeMapView", "[sync] Stopping HarmonyRenderer and render thread...");
+        try {
+            harmonyRenderer->cleanup(); // 同步：内部调用 mapRenderThread_->stop() 并 join
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "[sync] Error during HarmonyRenderer cleanup: %s", e.what());
+        } catch (...) {
+            Logger::error("NativeMapView", "[sync] Unknown error during HarmonyRenderer cleanup");
+        }
+        harmonyRenderer.reset();
+        Logger::info("NativeMapView", "[sync] HarmonyRenderer destroyed");
+    }
+
+    // 2. 清理 Map 引用
+    if (map) {
+        Logger::debug("NativeMapView", "[sync] Clearing Map reference");
+        map = nullptr;
+    }
+
+    // 3. 其他原生资源
+    mapRenderer = nullptr;
+    nativeWindow = nullptr;
+
+    // 4. 释放 NAPI 引用
+    if (wrapper_) {
+        napi_delete_reference(env_, wrapper_);
+        wrapper_ = nullptr;
+    }
+
+    // 5. 更新计数
+    int remaining = --g_activeInstanceCount;
+    Logger::info("NativeMapView", "[sync] Resources cleaned up, remaining active instances: %d", remaining);
 }
 
 void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
@@ -154,14 +201,18 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             Logger::debug("NativeMapView", "Current render frame should be completed");
         }
         
-        // 2. 立即取消所有动画（参考 Android cancelTransitions）
-        if (map) {
-            Logger::debug("NativeMapView", "Cancelling all map transitions...");
-            try {
-                map->cancelTransitions();
-            } catch (const std::exception& e) {
-                Logger::warn("NativeMapView", "Error cancelling transitions: %s", e.what());
-            }
+        // 2. 立即取消所有动画（参考 Android cancelTransitions）——必须在渲染线程执行
+        if (harmonyRenderer && map) {
+            Logger::debug("NativeMapView", "Cancelling all map transitions on render thread...");
+            harmonyRenderer->runOnRenderThread([this]() {
+                if (map) {
+                    try {
+                        map->cancelTransitions();
+                    } catch (const std::exception& e) {
+                        Logger::warn("NativeMapView", "Error cancelling transitions: %s", e.what());
+                    }
+                }
+            });
         }
         
         // 3. 使用异步方式等待所有后台线程完成（参考 Android/iOS）
@@ -178,13 +229,10 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
                     if (map) {
                         Logger::debug("NativeMapView", "Destroying Map object...");
                         
-                        // 先清空 HarmonyRenderer 的 map 引用，防止 Use-After-Free
-                        if (harmonyRenderer) {
-                            Logger::debug("NativeMapView", "Clearing HarmonyRenderer's map reference...");
-                            harmonyRenderer->setMap(nullptr);
-                        }
-                        
-                        map.reset();
+                        // Note: In new architecture, Map is owned by HarmonyMapRenderThread
+                        // NativeMapView just holds a reference
+                        Logger::debug("NativeMapView", "Clearing map reference...");
+                        map = nullptr;
                         Logger::debug("NativeMapView", "Map destroyed");
                     }
                     
@@ -421,6 +469,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"enableRenderingStatsView", nullptr, enableRenderingStatsView, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setNativeWindow", nullptr, setNativeWindow, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setNativeWindowWithSize", nullptr, setNativeWindowWithSize, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"hardReset", nullptr, hardReset, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"destroy", nullptr, destroy, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"destroyAsync", nullptr, destroyAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
         
@@ -525,6 +574,75 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
     
     return exports;
 }
+napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
+    Logger::info("NativeMapView", "========== hardReset() START ==========");
+
+    NapiArgs args(env, info);
+
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    napi_value thisVar;
+    size_t argc = 0;
+    napi_get_cb_info(env, info, &argc, nullptr, &thisVar, nullptr);
+    if (napi_unwrap(env, thisVar, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "hardReset: Failed to unwrap instance");
+        return args.Undefined();
+    }
+
+    // 1) 清理现有渲染器与线程
+    if (instance->harmonyRenderer) {
+        Logger::info("NativeMapView", "hardReset: Cleaning up current HarmonyRenderer");
+        try {
+            instance->harmonyRenderer->cleanup();
+        } catch (...) {
+            Logger::warn("NativeMapView", "hardReset: cleanup threw but continuing");
+        }
+        instance->harmonyRenderer.reset();
+    }
+    instance->map = nullptr;
+    instance->mapRenderer = nullptr;
+
+    // 2) 清理磁盘缓存
+    if (!instance->cachePath_.empty()) {
+        std::error_code ec;
+        Logger::info("NativeMapView", "hardReset: Purging cache directory: %s", instance->cachePath_.c_str());
+        std::filesystem::remove_all(instance->cachePath_, ec);
+        if (ec) {
+            Logger::warn("NativeMapView", "hardReset: remove_all failed: %s", ec.message().c_str());
+        }
+        // 重新创建目录，避免后续落盘失败
+        std::filesystem::create_directories(instance->cachePath_, ec);
+    }
+
+    // 3) 重新创建渲染器并初始化
+    Logger::info("NativeMapView", "hardReset: Recreating HarmonyRenderer with size %dx%d", instance->width, instance->height);
+    instance->harmonyRenderer = std::make_unique<HarmonyRenderer>();
+    instance->harmonyRenderer->initialize(instance->width, instance->height, instance->pixelRatio, instance->cachePath_);
+
+    // 4) 重新设置窗口与尺寸
+    if (instance->nativeWindow) {
+        Logger::info("NativeMapView", "hardReset: Rebinding native window");
+        instance->harmonyRenderer->setNativeWindow(instance->nativeWindow);
+        if (instance->width > 0 && instance->height > 0) {
+            instance->harmonyRenderer->resize(instance->width, instance->height);
+        }
+    }
+
+    // 5) 重新获取 Map 引用
+    instance->map = instance->harmonyRenderer->getMap();
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "hardReset: getMap() returned null");
+    }
+
+    // 6) 触发首帧
+    if (instance->harmonyRenderer) {
+        instance->harmonyRenderer->requestRender();
+    }
+
+    Logger::info("NativeMapView", "========== hardReset() END ==========");
+    return args.Undefined();
+}
+
 
 napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     napi_status status;
@@ -615,15 +733,21 @@ void NativeMapView::initializeRenderer() {
         }
     }
     
-    // Create HarmonyRenderer (if not exists)
-    if (!harmonyRenderer) {
-        harmonyRenderer = std::make_unique<HarmonyRenderer>();
-        harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
-        
-        Logger::info("NativeMapView", "HarmonyRenderer initialized successfully with cachePath: %s", cachePath_.c_str());
-    } else {
-        Logger::debug("NativeMapView", "HarmonyRenderer already exists, skipping creation");
+    // Always create a brand-new HarmonyRenderer to guarantee isolation per NativeMapView instance
+    if (harmonyRenderer) {
+        Logger::info("NativeMapView", "Disposing existing HarmonyRenderer to avoid reuse...");
+        try {
+            harmonyRenderer->cleanup();
+        } catch (...) {
+            // best-effort cleanup
+        }
+        harmonyRenderer.reset();
+        map = nullptr; // drop old Map reference tied to previous renderer/thread
     }
+    
+    harmonyRenderer = std::make_unique<HarmonyRenderer>();
+    harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
+    Logger::info("NativeMapView", "HarmonyRenderer initialized fresh with cachePath: %s", cachePath_.c_str());
     
     // 2. 如果有窗口，设置窗口
     if (nativeWindow && harmonyRenderer) {
@@ -636,146 +760,61 @@ void NativeMapView::initializeRenderer() {
                      harmonyRenderer ? "exists" : "null");
     }
     
-    // 3. 创建 Map 对象（如果不存在）
-    if (!map && harmonyRenderer) {
-        Logger::info("NativeMapView", "Creating Map object...");
-        
-        auto* rendererFrontend = harmonyRenderer->getRendererFrontend();
-        if (!rendererFrontend) {
-            Logger::error("NativeMapView", "Cannot create Map - RendererFrontend is null");
+    // 3. 获取新的 Map 引用（Map 由新的 HarmonyMapRenderThread 所拥有）
+    if (harmonyRenderer) {
+        Logger::info("NativeMapView", "Acquiring Map reference from fresh HarmonyRenderer...");
+        map = harmonyRenderer->getMap();
+        if (!map) {
+            Logger::error("NativeMapView", "Cannot get Map - HarmonyRenderer returned null");
             return;
         }
-        Logger::debug("NativeMapView", "Got RendererFrontend: %p", rendererFrontend);
-        
-        try {
-            // Configure MapOptions
-            MapOptions mapOptions;
-            mapOptions.withMapMode(MapMode::Continuous)
-                      .withConstrainMode(ConstrainMode::HeightOnly)
-                      .withViewportMode(ViewportMode::Default)
-                      .withCrossSourceCollisions(true)
-                      .withSize(Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)})
-                      .withPixelRatio(pixelRatio);
-            Logger::info("NativeMapView", "🔍 [DPI] MapOptions configured:");
-            Logger::info("NativeMapView", "  - Size: %dx%d (logical pixels)", width, height);
-            Logger::info("NativeMapView", "  - PixelRatio: %.4f", pixelRatio);
-            Logger::info("NativeMapView", "  - Expected framebuffer (physical): %dx%d", 
-                        static_cast<int>(width * pixelRatio),
-                        static_cast<int>(height * pixelRatio));
-            
-            // Configure ResourceOptions
-            // 🔧 关键架构：使用统一的 platformContext，使所有实例共享 FileSource
-            // 参考 Android 和 iOS 的实现：
-            // - Android: FileSource.getInstance() 单例，所有 MapView 共享
-            // - iOS: MLNOfflineStorage.sharedOfflineStorage，所有 MapView 共享
-            // 
-            // 共享 FileSource 的优势：
-            // 1. 第一个实例下载并缓存资源
-            // 2. 后续实例直接使用缓存，快速加载
-            // 3. 减少内存占用和网络请求
-            // 4. FileSourceManager 内部有互斥锁，保证线程安全
-            ResourceOptions resourceOptions;
-            
-            // 使用统一的标识：进程级别的单例指针
-            // 这样所有 Map 实例都会使用相同的 FileSource 实例和缓存
-            static void* sharedPlatformContext = reinterpret_cast<void*>(0x1);
-            
-            resourceOptions.withCachePath(cachePath_ + "/mbgl_cache.db")
-                          .withAssetPath(cachePath_)
-                          .withPlatformContext(sharedPlatformContext); // 统一的 context，共享 FileSource
-            
-            Logger::info("NativeMapView", "ResourceOptions configured with SHARED FileSource (Android/iOS pattern)");
-            Logger::info("NativeMapView", "  Cache path: %s/mbgl_cache.db", cachePath_.c_str());
-            Logger::info("NativeMapView", "  Asset path: %s", cachePath_.c_str());
-            Logger::debug("NativeMapView", "  Shared context: %p (all instances use same FileSource)", sharedPlatformContext);
-            
-            // Configure ClientOptions
-            ClientOptions clientOptions;
-            clientOptions.withName("MapLibre Harmony")
-                         .withVersion("1.0.0");
-            Logger::debug("NativeMapView", "ClientOptions configured");
-            
-            // Create Map object
-            Logger::error("NativeMapView", "🔴🔴🔴 Creating Map object with NativeMapView as Observer 🔴🔴🔴");
-            Logger::error("NativeMapView", "  NativeMapView Observer pointer: %p", this);
-            
-            map = std::make_unique<Map>(
-                *rendererFrontend,
-                *this,  // NativeMapView 作为 MapObserver
-                mapOptions,
-                resourceOptions,
-                clientOptions
-            );
-            
-            Logger::error("NativeMapView", "✅✅✅ Map object created successfully: %p", map.get());
-            Logger::error("NativeMapView", "✅ Observer should be: %p (this NativeMapView instance)", this);
-            
-            // 🔍 诊断：验证 FileSource 是否共享
-            try {
-                auto fileSourceManager = FileSourceManager::get();
-                auto onlineFileSource = fileSourceManager->getFileSource(
-                    FileSourceType::Network,
-                    resourceOptions,
-                    clientOptions
-                );
-                auto databaseFileSource = fileSourceManager->getFileSource(
-                    FileSourceType::Database,
-                    resourceOptions,
-                    clientOptions
-                );
-                
-                Logger::info("NativeMapView", "🔍 FileSource Diagnostic Info:");
-                Logger::info("NativeMapView", "  ✅ OnlineFileSource: %p (should be SAME for all instances)", onlineFileSource.get());
-                Logger::info("NativeMapView", "  ✅ DatabaseFileSource: %p (should be SAME for all instances)", databaseFileSource.get());
-                Logger::info("NativeMapView", "  platformContext: %p", sharedPlatformContext);
-                
-                if (onlineFileSource) {
-                    Logger::info("NativeMapView", "  OnlineFileSource is VALID and ready");
-                } else {
-                    Logger::error("NativeMapView", "  ❌ OnlineFileSource is NULL!");
-                }
-                
-                if (databaseFileSource) {
-                    Logger::info("NativeMapView", "  DatabaseFileSource is VALID and ready");
-                } else {
-                    Logger::error("NativeMapView", "  ❌ DatabaseFileSource is NULL!");
-                }
-            } catch (const std::exception& e) {
-                Logger::error("NativeMapView", "FileSource verification failed: %s", e.what());
-            }
-            
-            // Verify RunLoop exists for network requests
-            auto* currentRunLoop = util::RunLoop::Get();
-            if (!currentRunLoop) {
-                Logger::error("NativeMapView", "❌ CRITICAL: RunLoop is NULL - Map will NOT work!");
-                Logger::error("NativeMapView", "  FileSource callbacks will not be processed!");
-                Logger::error("NativeMapView", "  Style loading will fail silently!");
-                throw std::runtime_error("Map requires a RunLoop on the creating thread");
-            } else {
-                Logger::info("NativeMapView", "✅ RunLoop is available: %p", currentRunLoop);
-                Logger::info("NativeMapView", "  Current thread: %lu", 
-                            std::hash<std::thread::id>{}(std::this_thread::get_id()));
-                Logger::info("NativeMapView", "  This RunLoop will process FileSource callbacks");
-            }
-            
-            // Connect Map to RendererFrontend
-            auto* frontend = harmonyRenderer->getRendererFrontend();
-            if (frontend) {
-                frontend->setMap(map.get());
-            } else {
-                Logger::error("NativeMapView", "Failed to get RendererFrontend");
-            }
-            
-            // Connect Map to HarmonyRenderer (for Transform size updates during resize)
-            harmonyRenderer->setMap(map.get());
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "Failed to create Map object: %s", e.what());
-        }
-    } else if (map) {
-        Logger::debug("NativeMapView", "Map already exists, skipping creation");
+        Logger::info("NativeMapView", "Got Map reference: %p", map);
+        return;
     } else {
         Logger::warn("NativeMapView", "Cannot create Map - harmonyRenderer is null");
     }
+}
+
+void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
+    Logger::info("NativeMapView", "ensureResourcesReadyOrRecover(timeout=%dms) invoked", timeoutMs);
+    if (!harmonyRenderer) {
+        Logger::warn("NativeMapView", "ensureResourcesReadyOrRecover: no renderer, initializing fresh");
+        initializeRenderer();
+        return;
+    }
+    // 快速检查
+//    if (harmonyRenderer->isResourcesReady()) {
+//        Logger::debug("NativeMapView", "ensureResourcesReadyOrRecover: resources already ready");
+//        return;
+//    }
+    // 等待就绪
+    const auto start = std::chrono::steady_clock::now();
+    const auto deadline = start + std::chrono::milliseconds(timeoutMs);
+//    while (!harmonyRenderer->isResourcesReady() && std::chrono::steady_clock::now() < deadline) {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+//    }
+//    if (harmonyRenderer->isResourcesReady()) {
+//        Logger::info("NativeMapView", "ensureResourcesReadyOrRecover: resources became ready within timeout");
+//        return;
+//    }
+    // 自愈重建
+    Logger::warn("NativeMapView", "ensureResourcesReadyOrRecover: resources NOT ready, attempting self-heal reinitialize");
+    try {
+        harmonyRenderer->cleanup();
+    } catch (...) {
+        // best effort
+    }
+    harmonyRenderer.reset();
+    map = nullptr;
+    harmonyRenderer = std::make_unique<HarmonyRenderer>();
+    harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
+    if (nativeWindow) {
+        harmonyRenderer->setNativeWindow(nativeWindow);
+        if (width > 0 && height > 0) {
+            harmonyRenderer->resize(width, height);
+        }
+    }
+    map = harmonyRenderer->getMap();
 }
 
 

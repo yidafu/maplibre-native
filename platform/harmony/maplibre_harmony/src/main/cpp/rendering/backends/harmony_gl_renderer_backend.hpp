@@ -52,6 +52,9 @@ public:
     bool isOnCorrectThread() const;
     std::thread::id getOwnerThreadId() const { return ownerThreadId_; }
     void assertOnCorrectThread() const;  // 调试断言
+    
+    // 🎯 新架构：公开 EGL Context 初始化（在渲染线程调用）
+    bool initializeEGLContext();  // 渲染线程：创建context
 
 protected:
     void activate() override;
@@ -59,9 +62,8 @@ protected:
     std::unique_ptr<gfx::Context> createContext() override;
 
 private:
-    // EGL初始化拆分为两阶段
-    bool initializeEGLDisplay();  // 主线程：创建display和surface
-    bool initializeEGLContext();  // 渲染线程：创建context
+    // EGL初始化拆分为两阶段（共享 Display，实例独立 Surface/Context）
+    bool initializeEGLDisplay();  // 获取共享 display 并创建 surface
     void cleanupEGL();
     
     // 新增：检查Surface有效性
@@ -76,8 +78,7 @@ private:
     GLint bindAttributeWithFallback(GLuint program, GLuint index, const char* name);
     void logShaderInfo(GLuint program);
 
-    // EGL references - note: eglDisplay_ removed, now using shared EGLDisplayManager
-    // Each instance has its own Context and Surface, but shares the Display
+    // EGL references - 共享 Display，实例独立 Context/Surface
     EGLConfig eglConfig_ = EGL_NO_CONFIG_KHR;
     EGLSurface eglSurface_ = EGL_NO_SURFACE;
     EGLContext eglContext_ = EGL_NO_CONTEXT;

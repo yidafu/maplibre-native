@@ -81,26 +81,17 @@ napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info inf
         return args.Undefined();
     }
     
-    try {
-        Logger::info("NativeMapView", "🔵 BEFORE map->cancelTransitions()");
-        instance->map->cancelTransitions();
-        Logger::info("NativeMapView", "✅ map->cancelTransitions() returned");
-        
-        // 触发相机移动取消事件
-        if (instance->callbackManager_) {
-            instance->callbackManager_->InvokeCallbackEmpty("onCameraMoveCanceled");
-            // 取消后相机应该回到 idle 状态
-            instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
-        }
-        
-        // 🔧 触发重绘以确保状态更新
-        Logger::info("NativeMapView", "🔵 BEFORE triggerRepaint() after cancelTransitions");
-        instance->map->triggerRepaint();
-        Logger::info("NativeMapView", "✅ triggerRepaint() completed after cancelTransitions");
-        
-        Logger::debug("NativeMapView", "cancelTransitions: Transitions cancelled successfully, repaint triggered");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "cancelTransitions: Failed - %s", e.what());
+    // 在渲染线程执行 Map 操作
+    instance->invokeOnMapThread([&](mbgl::Map* m) {
+        Logger::info("NativeMapView", "🔵 map->cancelTransitions() on render thread");
+        m->cancelTransitions();
+        m->triggerRepaint();
+    });
+
+    // 回调在当前线程触发
+    if (instance->callbackManager_) {
+        instance->callbackManager_->InvokeCallbackEmpty("onCameraMoveCanceled");
+        instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
     
     return args.Undefined();
@@ -130,12 +121,9 @@ napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info 
         return args.Undefined();
     }
     
-    try {
-        instance->map->setGestureInProgress(inProgress);
-        Logger::debug("NativeMapView", "setGestureInProgress: Set to %s", inProgress ? "true" : "false");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "setGestureInProgress: Failed - %s", e.what());
-    }
+    instance->invokeOnMapThread([inProgress](mbgl::Map* m) {
+        m->setGestureInProgress(inProgress);
+    });
     
     return args.Undefined();
 }
@@ -171,51 +159,29 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    try {
-        // 再次检查 map 是否有效（防止竞态条件）
-        if (!instance->map) {
-            Logger::warn("NativeMapView", "moveBy: Map became null before execution");
-            return args.Undefined();
-        }
-        
-        // 触发相机移动开始事件
-        if (instance->callbackManager_) {
-            int reason = duration > 0 ? CameraMoveReason::REASON_DEVELOPER_ANIMATION 
-                                      : CameraMoveReason::REASON_API_ANIMATION;
-            instance->callbackManager_->InvokeCallback("onCameraMoveStarted", 
-                [reason](napi_env env) -> napi_value {
-                    napi_value reasonValue;
-                    napi_create_int32(env, reason, &reasonValue);
-                    return reasonValue;
-                });
-        }
-        
+    // 触发相机移动开始事件（UI线程）
+    if (instance->callbackManager_) {
+        int reason = duration > 0 ? CameraMoveReason::REASON_DEVELOPER_ANIMATION
+                                  : CameraMoveReason::REASON_API_ANIMATION;
+        instance->callbackManager_->InvokeCallback("onCameraMoveStarted",
+            [reason](napi_env env) -> napi_value {
+                napi_value reasonValue; napi_create_int32(env, reason, &reasonValue); return reasonValue;
+            });
+    }
+
+    // 在渲染线程执行实际移动
+    instance->invokeOnMapThread([dx, dy, duration, instance](mbgl::Map* m) {
         if (duration > 0) {
-            // 带动画的移动
-            instance->map->moveBy(
-                mbgl::ScreenCoordinate{dx, dy},
-                mbgl::AnimationOptions(std::chrono::milliseconds(duration))
-            );
-            Logger::debug("NativeMapView", "moveBy: Animated move by (%.2f, %.2f) over %lu ms", dx, dy, (unsigned long)duration);
+            m->moveBy(mbgl::ScreenCoordinate{dx, dy}, mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
         } else {
-            // 立即移动
-            instance->map->moveBy(mbgl::ScreenCoordinate{dx, dy});
-            Logger::debug("NativeMapView", "moveBy: Instant move by (%.2f, %.2f)", dx, dy);
-            
-            // 立即移动完成后触发 idle
-            if (instance->callbackManager_) {
-                instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
-            }
+            m->moveBy(mbgl::ScreenCoordinate{dx, dy});
         }
-        
-        // 再次检查 map 是否有效
-        if (instance->map) {
-            instance->map->triggerRepaint();
-        }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "moveBy: Failed - %s", e.what());
-    } catch (...) {
-        Logger::error("NativeMapView", "moveBy: Unknown exception");
+        m->triggerRepaint();
+    });
+
+    // 立即移动完成后触发 idle（仅无动画时）
+    if (duration == 0 && instance->callbackManager_) {
+        instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
     
     return args.Undefined();
@@ -269,42 +235,21 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     // if (argc >= 6) { ... }
     
     // 执行相机跳转
-    try {
-        // 再次检查 map 是否有效（防止竞态条件）
-        if (!instance->map) {
-            Logger::error("NativeMapView", "jumpTo: Map became null before execution");
-            return args.Undefined();
-        }
-        
-        // 触发相机移动开始事件
-        if (instance->callbackManager_) {
-            instance->callbackManager_->InvokeCallback("onCameraMoveStarted", 
-                [](napi_env env) -> napi_value {
-                    napi_value reasonValue;
-                    napi_create_int32(env, CameraMoveReason::REASON_API_ANIMATION, &reasonValue);
-                    return reasonValue;
-                });
-        }
-        
-        Logger::debug("NativeMapView", "jumpTo: Executing map->jumpTo()...");
-        instance->map->jumpTo(cameraOptions);
-        
-        Logger::debug("NativeMapView", "jumpTo: Executing map->triggerRepaint()...");
-        instance->map->triggerRepaint();  // Trigger rendering
-        
-        // jumpTo 是立即执行的，所以立即触发 idle 事件
-        if (instance->callbackManager_) {
-            instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
-        }
-        
-        Logger::info("NativeMapView", "jumpTo: Camera jump executed successfully");
-        Logger::info("NativeMapView", "========== jumpTo() END - SUCCESS ==========");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "jumpTo: Failed to jump camera: %s", e.what());
-        Logger::error("NativeMapView", "========== jumpTo() END - FAILED ==========");
-    } catch (...) {
-        Logger::error("NativeMapView", "jumpTo: Unknown exception occurred");
-        Logger::error("NativeMapView", "========== jumpTo() END - UNKNOWN ERROR ==========");
+    // 触发开始事件（UI线程）
+    if (instance->callbackManager_) {
+        instance->callbackManager_->InvokeCallback("onCameraMoveStarted",
+            [](napi_env env) -> napi_value { napi_value v; napi_create_int32(env, CameraMoveReason::REASON_API_ANIMATION, &v); return v; });
+    }
+
+    // 在渲染线程执行
+    instance->invokeOnMapThread([cameraOptions](mbgl::Map* m) {
+        m->jumpTo(cameraOptions);
+        m->triggerRepaint();
+    });
+
+    // 立即完成（jumpTo），触发 idle
+    if (instance->callbackManager_) {
+        instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
     
     return args.Undefined();
@@ -401,29 +346,16 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     Logger::debug("NativeMapView", "easeTo: duration = %lu ms", (unsigned long)duration);
     
     // 执行 easeTo 相机动画
-    try {
-        // 触发相机移动开始事件
-        if (instance->callbackManager_) {
-            instance->callbackManager_->InvokeCallback("onCameraMoveStarted", 
-                [](napi_env env) -> napi_value {
-                    napi_value reasonValue;
-                    napi_create_int32(env, CameraMoveReason::REASON_DEVELOPER_ANIMATION, &reasonValue);
-                    return reasonValue;
-                });
-        }
-        
-        instance->map->easeTo(cameraOptions, 
-                             mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
-        instance->map->triggerRepaint();
-        
-        // TODO: 动画完成后应触发 idle 事件，需要监听动画完成回调
-        
-        Logger::info("NativeMapView", "easeTo: Camera animation started successfully");
-        Logger::info("NativeMapView", "========== easeTo() END - SUCCESS ==========");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "easeTo: Failed - %s", e.what());
-        Logger::error("NativeMapView", "========== easeTo() END - FAILED ==========");
+    // 开始事件（UI线程）
+    if (instance->callbackManager_) {
+        instance->callbackManager_->InvokeCallback("onCameraMoveStarted",
+            [](napi_env env) -> napi_value { napi_value v; napi_create_int32(env, CameraMoveReason::REASON_DEVELOPER_ANIMATION, &v); return v; });
     }
+    // 渲染线程执行
+    instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m) {
+        m->easeTo(cameraOptions, mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
+        m->triggerRepaint();
+    });
     
     return args.Undefined();
 }
@@ -500,37 +432,13 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     }
     
     // 执行 flyTo 相机动画
-    try {
-        Logger::info("NativeMapView", "🔵 BEFORE creating AnimationOptions, duration=%lu", (unsigned long)duration);
-        mbgl::AnimationOptions animationOptions;
-        if (duration > 0) {
-            animationOptions.duration.emplace(mbgl::Milliseconds(duration));
-            Logger::info("NativeMapView", "✅ AnimationOptions.duration set to %lu ms", (unsigned long)duration);
-        } else {
-            Logger::warn("NativeMapView", "⚠️ Using default duration (no duration specified)");
-        }
-        
-        Logger::info("NativeMapView", "🔵 BEFORE map->flyTo() call");
-        Logger::info("NativeMapView", "  → CameraOptions: center=(%f, %f), zoom=%f, bearing=%f, pitch=%f",
-            cameraOptions.center ? cameraOptions.center->latitude() : -999,
-            cameraOptions.center ? cameraOptions.center->longitude() : -999,
-            cameraOptions.zoom ? *cameraOptions.zoom : -999,
-            cameraOptions.bearing ? *cameraOptions.bearing : -999,
-            cameraOptions.pitch ? *cameraOptions.pitch : -999);
-        
-        instance->map->flyTo(cameraOptions, animationOptions);
-        Logger::info("NativeMapView", "✅ map->flyTo() returned successfully");
-        
-        Logger::info("NativeMapView", "🔵 BEFORE triggerRepaint()");
-        instance->map->triggerRepaint();
-        Logger::info("NativeMapView", "✅ triggerRepaint() completed");
-        
-        Logger::info("NativeMapView", "flyTo: Camera flight started successfully");
-        Logger::info("NativeMapView", "========== flyTo() END - SUCCESS ==========");
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "flyTo: Failed - %s", e.what());
-        Logger::error("NativeMapView", "========== flyTo() END - FAILED ==========");
-    }
+    // 渲染线程执行
+    instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m) {
+        mbgl::AnimationOptions anim;
+        if (duration > 0) anim.duration.emplace(mbgl::Milliseconds(duration));
+        m->flyTo(cameraOptions, anim);
+        m->triggerRepaint();
+    });
     
     return args.Undefined();
 }
@@ -547,8 +455,8 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    try {
-        auto cameraOptions = instance->map->getCameraOptions();
+    {
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         if (cameraOptions.center) {
             const auto& center = *cameraOptions.center;
             
@@ -566,8 +474,6 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
             Logger::debug("NativeMapView", "getLatLng: lat=%.6f, lng=%.6f", center.latitude(), center.longitude());
             return result;
         }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getLatLng: Failed - %s", e.what());
     }
     
     return args.Undefined();
@@ -601,10 +507,11 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
     try {
         mbgl::CameraOptions cameraOptions;
         cameraOptions.center = mbgl::LatLng(latitude, longitude);
-        
         // TODO: 处理 padding 参数（args[2]）
-        
-        instance->map->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+        instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m){
+            m->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+            m->triggerRepaint();
+        });
         Logger::info("NativeMapView", "setLatLng: lat=%.6f, lng=%.6f, duration=%.0fms", latitude, longitude, duration);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setLatLng: Failed - %s", e.what());
@@ -653,7 +560,7 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
     double tilt = args.GetDoubleOr(6, 0.0);
     
     try {
-        mbgl::CameraOptions cameraOptions = instance->map->cameraForLatLngBounds(bounds, padding, bearing, tilt);
+        mbgl::CameraOptions cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->cameraForLatLngBounds(bounds, padding, bearing, tilt); }, mbgl::CameraOptions{});
         
         napi_value result = CameraPositionHarmony::CreateCameraPositionObject(env, cameraOptions, instance->pixelRatio);
         Logger::debug("NativeMapView", "getCameraForLatLngBounds: Calculated camera position");
@@ -699,11 +606,14 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->map->jumpTo(mbgl::CameraOptions()
-            .withCenter(mbgl::LatLng{0.0, 0.0})
-            .withZoom(0.0)
-            .withBearing(0.0)
-            .withPitch(0.0));
+        instance->invokeOnMapThread([](mbgl::Map* m){
+            m->jumpTo(mbgl::CameraOptions()
+                .withCenter(mbgl::LatLng{0.0, 0.0})
+                .withZoom(0.0)
+                .withBearing(0.0)
+                .withPitch(0.0));
+            m->triggerRepaint();
+        });
         Logger::info("NativeMapView", "resetPosition: Reset to origin (0,0) zoom 0");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "resetPosition: Failed - %s", e.what());
@@ -731,7 +641,7 @@ napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto cameraOptions = instance->map->getCameraOptions();
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         if (cameraOptions.pitch) {
             napi_value result;
             napi_create_double(env, *cameraOptions.pitch, &result);
@@ -777,10 +687,10 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
         if (duration > 0) {
             mbgl::AnimationOptions animationOptions;
             animationOptions.duration = std::chrono::milliseconds(duration);
-            instance->map->easeTo(options, animationOptions);
+            instance->invokeOnMapThread([options, animationOptions](mbgl::Map* m){ m->easeTo(options, animationOptions); m->triggerRepaint(); });
             Logger::debug("NativeMapView", "setPitch: Animating to pitch %.2f over %u ms", pitch, duration);
         } else {
-            instance->map->jumpTo(options);
+            instance->invokeOnMapThread([options](mbgl::Map* m){ m->jumpTo(options); m->triggerRepaint(); });
             Logger::debug("NativeMapView", "setPitch: Set pitch to %.2f", pitch);
         }
     } catch (const std::exception& e) {
@@ -829,7 +739,7 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
             Logger::info("NativeMapView", "setZoom: zoom=%.2f, duration=%.0fms", zoom, duration);
         }
         
-        instance->map->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+        instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m){ m->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setZoom: Failed - %s", e.what());
     }
@@ -855,16 +765,14 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    try {
-        auto cameraOptions = instance->map->getCameraOptions();
+    {
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         if (cameraOptions.zoom) {
             napi_value result;
             napi_create_double(env, *cameraOptions.zoom, &result);
             Logger::debug("NativeMapView", "getZoom: Current zoom = %.2f", *cameraOptions.zoom);
             return result;
         }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "getZoom: Failed - %s", e.what());
     }
     
     return args.Undefined();
@@ -883,7 +791,7 @@ napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->map->jumpTo(mbgl::CameraOptions().withZoom(0.0));
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->jumpTo(mbgl::CameraOptions().withZoom(0.0)); m->triggerRepaint(); });
         Logger::info("NativeMapView", "resetZoom: Reset zoom to 0");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "resetZoom: Failed - %s", e.what());
@@ -910,7 +818,7 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->map->setBounds(mbgl::BoundOptions().withMinZoom(zoom));
+        instance->invokeOnMapThread([zoom](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMinZoom(zoom)); });
         Logger::info("NativeMapView", "setMinZoom: Set min zoom to %.2f", zoom);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setMinZoom: Failed - %s", e.what());
@@ -932,7 +840,7 @@ napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto bounds = instance->map->getBounds();
+        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
         if (bounds.minZoom) {
             napi_value result;
             napi_create_double(env, *bounds.minZoom, &result);
@@ -964,7 +872,7 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->map->setBounds(mbgl::BoundOptions().withMaxZoom(zoom));
+        instance->invokeOnMapThread([zoom](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMaxZoom(zoom)); });
         Logger::info("NativeMapView", "setMaxZoom: Set max zoom to %.2f", zoom);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setMaxZoom: Failed - %s", e.what());
@@ -986,7 +894,7 @@ napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto bounds = instance->map->getBounds();
+        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
         if (bounds.maxZoom) {
             napi_value result;
             napi_create_double(env, *bounds.maxZoom, &result);
@@ -1022,7 +930,7 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->map->setBounds(mbgl::BoundOptions().withMinPitch(pitch));
+        instance->invokeOnMapThread([pitch](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMinPitch(pitch)); });
         Logger::info("NativeMapView", "setMinPitch: Set min pitch to %.2f", pitch);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setMinPitch: Failed - %s", e.what());
@@ -1044,7 +952,7 @@ napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto bounds = instance->map->getBounds();
+        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
         if (bounds.minPitch) {
             napi_value result;
             napi_create_double(env, *bounds.minPitch, &result);
@@ -1080,7 +988,7 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        instance->map->setBounds(mbgl::BoundOptions().withMaxPitch(pitch));
+        instance->invokeOnMapThread([pitch](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions().withMaxPitch(pitch)); });
         Logger::info("NativeMapView", "setMaxPitch: Set max pitch to %.2f", pitch);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setMaxPitch: Failed - %s", e.what());
@@ -1102,7 +1010,7 @@ napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto bounds = instance->map->getBounds();
+        auto bounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getBounds(); }, mbgl::BoundOptions{});
         if (bounds.maxPitch) {
             napi_value result;
             napi_create_double(env, *bounds.maxPitch, &result);
@@ -1146,7 +1054,7 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
     try {
         mbgl::ScreenCoordinate first(sx, sy);
         mbgl::ScreenCoordinate second(ex, ey);
-        instance->map->rotateBy(first, second, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
+        instance->invokeOnMapThread([first, second, duration](mbgl::Map* m){ m->rotateBy(first, second, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "rotateBy: (%.2f, %.2f) -> (%.2f, %.2f), duration=%.0fms", sx, sy, ex, ey, duration);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "rotateBy: Failed - %s", e.what());
@@ -1182,12 +1090,11 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
     
     try {
         if (duration > 0) {
-            instance->map->easeTo(mbgl::CameraOptions().withBearing(bearing),
-                                mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
+            instance->invokeOnMapThread([bearing, duration](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(bearing), mbgl::AnimationOptions(std::chrono::milliseconds(duration))); m->triggerRepaint(); });
         } else {
-            instance->map->jumpTo(mbgl::CameraOptions().withBearing(bearing));
+            instance->invokeOnMapThread([bearing](mbgl::Map* m){ m->jumpTo(mbgl::CameraOptions().withBearing(bearing)); m->triggerRepaint(); });
         }
-        instance->map->triggerRepaint();
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
         Logger::debug("NativeMapView", "setBearing: Set bearing to %.2f", bearing);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setBearing: Failed - %s", e.what());
@@ -1224,10 +1131,7 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
     
     try {
         mbgl::ScreenCoordinate anchor(cx, cy);
-        instance->map->easeTo(
-            mbgl::CameraOptions().withBearing(degrees).withAnchor(anchor),
-            mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}
-        );
+        instance->invokeOnMapThread([degrees, anchor, duration](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(degrees).withAnchor(anchor), mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "setBearingXY: bearing=%.2f, anchor=(%.2f, %.2f), duration=%.0fms", 
                     degrees, cx, cy, duration);
     } catch (const std::exception& e) {
@@ -1250,7 +1154,7 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
     }
     
     try {
-        auto cameraOptions = instance->map->getCameraOptions();
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         if (cameraOptions.bearing) {
             napi_value result;
             napi_create_double(env, *cameraOptions.bearing, &result);
@@ -1278,10 +1182,7 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
     
     try {
         // 使用 easeTo 将 bearing 设为 0，动画时长 500ms
-        instance->map->easeTo(
-            mbgl::CameraOptions().withBearing(0.0),
-            mbgl::AnimationOptions{mbgl::Milliseconds(500)}
-        );
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(0.0), mbgl::AnimationOptions{mbgl::Milliseconds(500)}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "resetNorth: Reset bearing to 0 with 500ms animation");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "resetNorth: Failed - %s", e.what());
@@ -1315,7 +1216,7 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
     }
     
     try {
-        auto latLngBounds = instance->map->latLngBoundsForCameraUnwrapped(instance->map->getCameraOptions(std::nullopt));
+        auto latLngBounds = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->latLngBoundsForCameraUnwrapped(m->getCameraOptions(std::nullopt)); }, mbgl::LatLngBounds{});
         
         napi_value result = LatLngBoundsHarmony::CreateLatLngBoundsObject(env, latLngBounds);
         Logger::debug("NativeMapView", "getVisibleCoordinateBounds: N=%f, E=%f, S=%f, W=%f", 
@@ -1351,7 +1252,7 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
     }
     
     try {
-        auto cameraOptions = instance->map->getCameraOptions();
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         
         // 创建返回对象
         napi_value result;

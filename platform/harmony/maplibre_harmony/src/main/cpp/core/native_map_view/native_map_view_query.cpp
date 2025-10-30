@@ -7,7 +7,6 @@
 #include "geojson/feature_napi.hpp"
 #include "style/filter_conversion.hpp"
 #include "rendering/harmony_renderer.hpp"
-#include "rendering/harmony_renderer_frontend.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/geo.hpp>
 #include <mbgl/style/filter.hpp>
@@ -104,7 +103,7 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
     }
     
     try {
-        mbgl::ScreenCoordinate pixel = instance->map->pixelForLatLng(mbgl::LatLng(latitude, longitude));
+        mbgl::ScreenCoordinate pixel = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->pixelForLatLng(mbgl::LatLng(latitude, longitude)); }, mbgl::ScreenCoordinate{});
         napi_value result = PointHarmony::CreatePointObject(env, pixel);
         Logger::debug("NativeMapView", "pixelForLatLng: lat=%f, lng=%f -> x=%f, y=%f", 
                       latitude, longitude, pixel.x, pixel.y);
@@ -174,7 +173,7 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
         }
         
         // 调用 Map API 进行批量转换
-        std::vector<mbgl::ScreenCoordinate> coordinates = instance->map->pixelsForLatLngs(latLngs);
+        std::vector<mbgl::ScreenCoordinate> coordinates = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->pixelsForLatLngs(latLngs); }, std::vector<mbgl::ScreenCoordinate>{});
         
         // 创建输出数组
         napi_value outputArray;
@@ -254,7 +253,7 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
     }
     
     try {
-        mbgl::LatLng latLng = instance->map->latLngForPixel(mbgl::ScreenCoordinate(x, y));
+        mbgl::LatLng latLng = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->latLngForPixel(mbgl::ScreenCoordinate(x, y)); }, mbgl::LatLng{});
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
         Logger::debug("NativeMapView", "latLngForPixel: x=%f, y=%f -> lat=%f, lng=%f", 
                       x, y, latLng.latitude(), latLng.longitude());
@@ -324,7 +323,7 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
         }
         
         // 调用 Map API 进行批量转换
-        std::vector<mbgl::LatLng> latLngs = instance->map->latLngsForPixels(coordinates);
+        std::vector<mbgl::LatLng> latLngs = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->latLngsForPixels(coordinates); }, std::vector<mbgl::LatLng>{});
         
         // 创建输出数组
         napi_value outputArray;
@@ -405,17 +404,16 @@ napi_value NativeMapView::queryPointAnnotations(napi_env env, napi_callback_info
             mbgl::ScreenCoordinate{right, bottom}
         };
         
-        // 调用渲染器前端查询
-        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
-        if (!rendererFrontend) {
-            Logger::error("NativeMapView", "queryPointAnnotations: RendererFrontend is null");
+        // 调用 Map 查询功能
+        if (!instance->map) {
+            Logger::error("NativeMapView", "queryPointAnnotations: Map is null");
             return emptyArray;
         }
         
-        // TODO: HarmonyRendererFrontend 需要实现 queryPointAnnotations
-        // mbgl::AnnotationIDs ids = rendererFrontend->queryPointAnnotations(box);
+        // TODO: Map 需要实现 queryPointAnnotations
+        // mbgl::AnnotationIDs ids = instance->map->queryPointAnnotations(box);
         
-        Logger::warn("NativeMapView", "queryPointAnnotations: Not yet implemented in HarmonyRendererFrontend");
+        Logger::warn("NativeMapView", "queryPointAnnotations: Not yet implemented");
         
         // 暂时返回空数组
         napi_value result;
@@ -485,17 +483,16 @@ napi_value NativeMapView::queryShapeAnnotations(napi_env env, napi_callback_info
             mbgl::ScreenCoordinate{right, bottom}
         };
         
-        // 调用渲染器前端查询
-        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
-        if (!rendererFrontend) {
-            Logger::error("NativeMapView", "queryShapeAnnotations: RendererFrontend is null");
+        // 调用 Map 查询功能
+        if (!instance->map) {
+            Logger::error("NativeMapView", "queryShapeAnnotations: Map is null");
             return emptyArray;
         }
         
-        // TODO: HarmonyRendererFrontend 需要实现 queryShapeAnnotations
-        // mbgl::AnnotationIDs ids = rendererFrontend->queryShapeAnnotations(box);
+        // TODO: Map 需要实现 queryShapeAnnotations
+        // mbgl::AnnotationIDs ids = instance->map->queryShapeAnnotations(box);
         
-        Logger::warn("NativeMapView", "queryShapeAnnotations: Not yet implemented in HarmonyRendererFrontend");
+        Logger::warn("NativeMapView", "queryShapeAnnotations: Not yet implemented");
         
         // 暂时返回空数组
         napi_value result;
@@ -617,14 +614,13 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
             }
         }
         
-        // 6. 调用渲染器前端查询
-        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
-        if (!rendererFrontend) {
-            Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: RendererFrontend is null");
+        // 6. 调用 HarmonyRenderer 查询功能
+        if (!instance->harmonyRenderer) {
+            Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: HarmonyRenderer is null");
             return undefined;
         }
         
-        std::vector<mbgl::Feature> features = rendererFrontend->queryRenderedFeatures(point, options);
+        std::vector<mbgl::Feature> features = instance->harmonyRenderer->queryRenderedFeatures(point, options);
         
         Logger::info("NativeMapView", "queryRenderedFeaturesForPoint: Found %zu features", features.size());
         
@@ -753,14 +749,13 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
             }
         }
         
-        // 6. 调用渲染器前端查询
-        auto rendererFrontend = instance->harmonyRenderer->getRendererFrontend();
-        if (!rendererFrontend) {
-            Logger::error("NativeMapView", "queryRenderedFeaturesForBox: RendererFrontend is null");
+        // 6. 调用 HarmonyRenderer 查询功能
+        if (!instance->harmonyRenderer) {
+            Logger::error("NativeMapView", "queryRenderedFeaturesForBox: HarmonyRenderer is null");
             return undefined;
         }
         
-        std::vector<mbgl::Feature> features = rendererFrontend->queryRenderedFeatures(box, options);
+        std::vector<mbgl::Feature> features = instance->harmonyRenderer->queryRenderedFeatures(box, options);
         
         Logger::info("NativeMapView", "queryRenderedFeaturesForBox: Found %zu features", features.size());
         

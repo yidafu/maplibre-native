@@ -329,7 +329,7 @@ void NativeMapView::onDidFinishLoadingStyle() {
     int instanceId = instanceIds[this];
     
     Logger::error("NativeMapView", "🎨 [Instance #%d] [%lld ms] onDidFinishLoadingStyle", instanceId, elapsed);
-    Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p", instanceId, this, map.get());
+    Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p", instanceId, this, map);
     
     // 通知 Android 风格的监听器
     if (callbackManager_) {
@@ -344,15 +344,15 @@ void NativeMapView::onDidFinishLoadingStyle() {
     if (map) {
         try {
             // 获取样式URL和名称
-            std::string styleUrl = map->getStyle().getURL();
-            std::string styleName = map->getStyle().getName();
+            std::string styleUrl = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getURL(); }, std::string{});
+            std::string styleName = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getName(); }, std::string{});
             
             Logger::info("NativeMapView", "Style loaded successfully:");
             Logger::info("NativeMapView", "  - URL: %s", styleUrl.empty() ? "(inline JSON)" : styleUrl.c_str());
             Logger::info("NativeMapView", "  - Name: %s", styleName.empty() ? "(unnamed)" : styleName.c_str());
             
             // 获取Sources列表
-            auto sources = map->getStyle().getSources();
+            auto sources = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getSources(); }, std::vector<mbgl::style::Source*>{});
             Logger::info("NativeMapView", "  - Sources count: %zu", sources.size());
             for (const auto* source : sources) {
                 if (source) {
@@ -362,7 +362,7 @@ void NativeMapView::onDidFinishLoadingStyle() {
             }
             
             // 获取Layers列表
-            auto layers = map->getStyle().getLayers();
+            auto layers = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getLayers(); }, std::vector<mbgl::style::Layer*>{});
             Logger::info("NativeMapView", "  - Layers count: %zu", layers.size());
             for (const auto* layer : layers) {
                 if (layer) {
@@ -502,7 +502,7 @@ napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info
     
     try {
         // 参考 Android: 如果启用则设置默认 zoom delta，否则设为 0
-        instance->map->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0));
+        instance->invokeOnMapThread([enable](mbgl::Map* m){ m->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0)); });
         Logger::info("NativeMapView", "setPrefetchTiles: Set to %s", enable ? "enabled" : "disabled");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setPrefetchTiles: Failed - %s", e.what());
@@ -527,7 +527,7 @@ napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info
     }
     
     try {
-        bool enabled = instance->map->getPrefetchZoomDelta() > 0;
+        bool enabled = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getPrefetchZoomDelta() > 0; }, false);
         napi_get_boolean(env, enabled, &result);
         Logger::debug("NativeMapView", "getPrefetchTiles: %s", enabled ? "enabled" : "disabled");
     } catch (const std::exception& e) {
@@ -565,7 +565,7 @@ napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info 
     }
     
     try {
-        instance->map->setPrefetchZoomDelta(static_cast<uint8_t>(delta));
+        instance->invokeOnMapThread([delta](mbgl::Map* m){ m->setPrefetchZoomDelta(static_cast<uint8_t>(delta)); });
         Logger::info("NativeMapView", "setPrefetchZoomDelta: Set to %d", delta);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setPrefetchZoomDelta: Failed - %s", e.what());
@@ -590,7 +590,7 @@ napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info 
     }
     
     try {
-        int32_t delta = static_cast<int32_t>(instance->map->getPrefetchZoomDelta());
+        int32_t delta = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return static_cast<int32_t>(m->getPrefetchZoomDelta()); }, 0);
         napi_create_int32(env, delta, &result);
         Logger::debug("NativeMapView", "getPrefetchZoomDelta: %d", delta);
     } catch (const std::exception& e) {
@@ -650,7 +650,7 @@ napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info i
     }
     
     try {
-        instance->map->setTileLodMinRadius(radius);
+        instance->invokeOnMapThread([radius](mbgl::Map* m){ m->setTileLodMinRadius(radius); });
         Logger::info("NativeMapView", "setTileLodMinRadius: Set to %f", radius);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setTileLodMinRadius: Failed - %s", e.what());
@@ -675,7 +675,7 @@ napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info i
     }
     
     try {
-        double radius = instance->map->getTileLodMinRadius();
+        double radius = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodMinRadius(); }, 0.0);
         napi_create_double(env, radius, &result);
         Logger::debug("NativeMapView", "getTileLodMinRadius: %f", radius);
     } catch (const std::exception& e) {
@@ -713,7 +713,7 @@ napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info)
     }
     
     try {
-        instance->map->setTileLodScale(scale);
+        instance->invokeOnMapThread([scale](mbgl::Map* m){ m->setTileLodScale(scale); });
         Logger::info("NativeMapView", "setTileLodScale: Set to %f", scale);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setTileLodScale: Failed - %s", e.what());
@@ -738,7 +738,7 @@ napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info)
     }
     
     try {
-        double scale = instance->map->getTileLodScale();
+        double scale = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodScale(); }, 0.0);
         napi_create_double(env, scale, &result);
         Logger::debug("NativeMapView", "getTileLodScale: %f", scale);
     } catch (const std::exception& e) {
@@ -776,7 +776,7 @@ napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_i
     }
     
     try {
-        instance->map->setTileLodPitchThreshold(threshold);
+        instance->invokeOnMapThread([threshold](mbgl::Map* m){ m->setTileLodPitchThreshold(threshold); });
         Logger::info("NativeMapView", "setTileLodPitchThreshold: Set to %f", threshold);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setTileLodPitchThreshold: Failed - %s", e.what());
@@ -801,7 +801,7 @@ napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_i
     }
     
     try {
-        double threshold = instance->map->getTileLodPitchThreshold();
+        double threshold = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodPitchThreshold(); }, 0.0);
         napi_create_double(env, threshold, &result);
         Logger::debug("NativeMapView", "getTileLodPitchThreshold: %f", threshold);
     } catch (const std::exception& e) {
@@ -839,7 +839,7 @@ napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info i
     }
     
     try {
-        instance->map->setTileLodZoomShift(shift);
+        instance->invokeOnMapThread([shift](mbgl::Map* m){ m->setTileLodZoomShift(shift); });
         Logger::info("NativeMapView", "setTileLodZoomShift: Set to %f", shift);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setTileLodZoomShift: Failed - %s", e.what());
@@ -864,7 +864,7 @@ napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info i
     }
     
     try {
-        double shift = instance->map->getTileLodZoomShift();
+        double shift = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTileLodZoomShift(); }, 0.0);
         napi_create_double(env, shift, &result);
         Logger::debug("NativeMapView", "getTileLodZoomShift: %f", shift);
     } catch (const std::exception& e) {

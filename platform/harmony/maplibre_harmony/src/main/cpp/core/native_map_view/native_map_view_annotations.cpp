@@ -73,10 +73,10 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
     try {
         // 更新 Marker (使用 SymbolAnnotation)
         mbgl::SymbolAnnotation annotation(position, iconId);
-        instance->map->updateAnnotation(annotationId, annotation);
-        
-        // 触发重绘
-        instance->map->triggerRepaint();
+        instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
+            m->updateAnnotation(annotationId, annotation);
+            m->triggerRepaint();
+        });
         
         Logger::info("NativeMapView", "[MarkerDebug] updateMarker: Marker updated successfully");
     } catch (const std::exception& e) {
@@ -172,13 +172,13 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
             mbgl::SymbolAnnotation annotation(position, iconId);
             
             // 添加到地图并获取 ID
-            mbgl::AnnotationID annotationId = instance->map->addAnnotation(annotation);
+            mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
             ids.push_back(annotationId);
             
             // 设置 annotation ID 回 Marker
             marker->setAnnotationId(annotationId);
             
-            Logger::info("NativeMapView", "[MarkerDebug] NAPI-Result: marker[%u] created with ID=%llu", i, annotationId);
+            Logger::info("NativeMapView", "[MarkerDebug] NAPI-Result: marker[%u] created with ID=%lu", i, annotationId);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "[MarkerDebug] NAPI-Error: marker[%u] failed to add - %s", i, e.what());
         }
@@ -192,12 +192,8 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
     
     // 触发重绘
     if (!ids.empty()) {
-        try {
-            instance->map->triggerRepaint();
-            Logger::info("NativeMapView", "[MarkerDebug] NAPI-Repaint: Repaint triggered for %zu markers", ids.size());
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "[MarkerDebug] NAPI-Repaint: Failed to trigger repaint - %s", e.what());
-        }
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
+        Logger::info("NativeMapView", "[MarkerDebug] NAPI-Repaint: Repaint triggered for %zu markers", ids.size());
     } else {
         Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Repaint: ⚠️ No markers added, skipping repaint");
     }
@@ -349,21 +345,17 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         }
         
         try {
-            instance->map->removeAnnotation(static_cast<mbgl::AnnotationID>(annotationId));
-            Logger::debug("NativeMapView", "removeAnnotations[%u]: Removed annotation ID=%lld", i, annotationId);
+            instance->invokeOnMapThread([annotationId](mbgl::Map* m){ m->removeAnnotation(static_cast<mbgl::AnnotationID>(annotationId)); });
+            Logger::debug("NativeMapView", "removeAnnotations[%u]: Removed annotation ID=%ld", i, annotationId);
         } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "removeAnnotations[%u]: Failed to remove ID=%lld - %s", i, annotationId, e.what());
+            Logger::error("NativeMapView", "removeAnnotations[%u]: Failed to remove ID=%ld - %s", i, annotationId, e.what());
         }
     }
     
     // 触发重绘
     if (length > 0) {
-        try {
-            instance->map->triggerRepaint();
-            Logger::debug("NativeMapView", "removeAnnotations: Repaint triggered");
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "removeAnnotations: Failed to trigger repaint - %s", e.what());
-        }
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
+        Logger::debug("NativeMapView", "removeAnnotations: Repaint triggered");
     }
     
     Logger::info("NativeMapView", "========== removeAnnotations() END ==========");
@@ -436,31 +428,26 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
     Logger::info("NativeMapView", "addAnnotationIcon: symbol=%s, width=%d, height=%d, scale=%f, pixelLength=%zu", 
                   symbol.c_str(), width, height, scale, pixelLength);
     
-    try {
-        // 创建图片数据
-        mbgl::PremultipliedImage image({static_cast<uint32_t>(width), static_cast<uint32_t>(height)});
-        
-        // 复制像素数据
-        size_t expectedSize = width * height * 4; // RGBA
+    // 在渲染线程构造并添加图片，避免跨线程移动 unique_ptr
+    {
+        size_t expectedSize = static_cast<size_t>(width) * static_cast<size_t>(height) * 4; // RGBA
         if (pixelLength >= expectedSize && pixelData) {
-            std::memcpy(image.data.get(), pixelData, expectedSize);
-            
-            // 创建并添加图片到样式
-            auto styleImage = std::make_unique<mbgl::style::Image>(
-                symbol,
-                std::move(image),
-                static_cast<float>(scale)
-            );
-            
-            instance->map->getStyle().addImage(std::move(styleImage));
-            
-            Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' added successfully", symbol.c_str());
+            std::vector<uint8_t> pixels(expectedSize);
+            std::memcpy(pixels.data(), pixelData, expectedSize);
+            std::string symbolCopy = symbol;
+            float scaleCopy = static_cast<float>(scale);
+            int w = width, h = height;
+            instance->invokeOnMapThread([symbolCopy, scaleCopy, w, h, pixels = std::move(pixels)](mbgl::Map* m) {
+                mbgl::PremultipliedImage image({static_cast<uint32_t>(w), static_cast<uint32_t>(h)});
+                std::memcpy(image.data.get(), pixels.data(), pixels.size());
+                auto styleImage = std::make_unique<mbgl::style::Image>(symbolCopy, std::move(image), scaleCopy);
+                m->getStyle().addImage(std::move(styleImage));
+            });
+            Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add", symbol.c_str());
         } else {
             Logger::error("NativeMapView", "addAnnotationIcon: Invalid pixel data size (expected %zu, got %zu)", 
                          expectedSize, pixelLength);
         }
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "addAnnotationIcon: Failed - %s", e.what());
     }
     
     Logger::info("NativeMapView", "========== addAnnotationIcon() END ==========");
@@ -511,7 +498,7 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
     Logger::info("NativeMapView", "removeAnnotationIcon: symbol=%s", symbol.c_str());
     
     try {
-        instance->map->getStyle().removeImage(symbol);
+        instance->invokeOnMapThread([symbol](mbgl::Map* m){ m->getStyle().removeImage(symbol); });
         Logger::info("NativeMapView", "removeAnnotationIcon: Icon '%s' removed successfully", symbol.c_str());
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "removeAnnotationIcon: Failed - %s", e.what());
@@ -550,7 +537,7 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
     symbolName.resize(symbolLength);
     
     try {
-        double offset = instance->map->getTopOffsetPixelsForAnnotationImage(symbolName);
+        double offset = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getTopOffsetPixelsForAnnotationImage(symbolName); }, 0.0);
         napi_create_double(env, offset, &result);
         Logger::debug("NativeMapView", "getTopOffsetPixelsForAnnotationSymbol: symbol=%s, offset=%f", symbolName.c_str(), offset);
     } catch (const std::exception& e) {

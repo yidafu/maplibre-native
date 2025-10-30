@@ -154,6 +154,15 @@ export class NativeMapView {
     setNativeWindowWithSize(surfaceId: BigInt, width: number, height: number): void;
     
     /**
+     * 强制重置渲染器与上下文（硬重置）
+     * - 释放当前渲染器/线程
+     * - 清空并重建缓存目录
+     * - 重新创建渲染器与上下文
+     * - 若已绑定窗口则自动重新绑定并恢复尺寸
+     */
+    hardReset(): void;
+    
+    /**
      * 销毁地图实例并释放所有资源
      * 
      * 线程隔离模式下会销毁：
