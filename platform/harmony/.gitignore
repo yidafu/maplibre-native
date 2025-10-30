@@ -13,3 +13,5 @@
 *.md
 *.log
 *.sh
+*.bak
+*.py

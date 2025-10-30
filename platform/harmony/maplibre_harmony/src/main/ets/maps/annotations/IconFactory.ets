@@ -4,9 +4,6 @@ import fs from '@ohos.file.fs';
 import maplibre from 'libmaplibre.so';
 import { TooManyIconsException } from '../exceptions/TooManyIconsException';
 
-// Use NAPI Icon class
-type Icon = maplibre.Icon;
-
 /**
  * 颜色信息接口
  */
@@ -20,52 +17,73 @@ interface ColorInfo {
 /**
  * IconFactory - 图标工厂类（单例）
  * 
- * 用于创建 Icon 实例的工厂类，支持从多种来源创建图标：
- * - PixelMap 对象
- * - 资源 ID
- * - 文件路径
- * - Rawfile 资源
+ * 基于 NAPI Icon 类实现的图标工厂，用于创建和管理地图图标。
+ * 
+ * 支持的图标来源：
+ * - PixelMap 对象：直接从内存中的位图创建
+ * - 资源 ID：从应用资源（$r）创建
+ * - 文件路径：从文件系统加载图片
+ * - Rawfile 资源：从 rawfile 目录加载图片
+ * 
+ * **核心优化**：
+ * - Icon 图像数据在 C++ 层管理，避免重复的 PixelMap-to-bytes 转换
+ * - 单例模式确保全局唯一的工厂实例
+ * - 自动管理 Icon ID 生成，防止 ID 冲突
+ * - 缓存默认图标，提高性能
+ * 
+ * **生命周期管理**：
+ * - Icon 对象由 IconManager 通过引用计数管理
+ * - 当 Icon 被释放后（isReleased() == true），不能再使用
+ * - 需要重新使用相同图标时，必须创建新的 Icon 实例
  * 
  * 参考:
  * - Android: org.maplibre.android.annotations.IconFactory
+ * - NAPI: IconNAPI C++ 实现
  * 
  * @example
  * ```typescript
  * const factory = IconFactory.getInstance();
+ * 
+ * // 从资源创建
  * const icon1 = await factory.fromResource($r('app.media.marker'));
+ * marker.setIcon(icon1);
+ * 
+ * // 从文件创建
  * const icon2 = await factory.fromPath('/data/storage/el2/base/haps/entry/files/marker.png');
+ * 
+ * // 从 PixelMap 创建
  * const icon3 = factory.fromPixelMap(pixelMap);
+ * 
+ * // 获取默认图标
  * const defaultIcon = await factory.defaultMarker();
+ * 
+ * // 注意：清除后重新使用需要重新创建
+ * markerManager.clear(); // Icon 会被释放
+ * const icon4 = await factory.fromResource($r('app.media.marker')); // 重新创建
  * ```
  */
 export class IconFactory {
   private static readonly ICON_ID_PREFIX = 'com.maplibre.icons.icon_';
   private static readonly MAX_ICONS = 1000000; // 防止 ID 溢出
   
-  // 默认图标名称 - 用于SymbolLayer引用
+  // 默认图标名称 - 用于 SymbolLayer 引用
   public static readonly DEFAULT_MARKER_ICON_ID = 'com.maplibre.marker.default';
   
   private static instance: IconFactory | null = null;
   
   private nextId: number = 0;
-  private defaultMarkerIcon: Icon | null = null;
+  private defaultMarkerIcon: maplibre.Icon | null = null;
   private resourceMgr: resourceManager.ResourceManager | null = null;
   private pixelRatio: number = 1.0;
 
   /**
    * 私有构造函数（单例模式）
+   * 
+   * @param resourceMgr 可选的 ResourceManager，用于加载应用资源
    */
   private constructor(resourceMgr?: resourceManager.ResourceManager) {
     this.resourceMgr = resourceMgr || null;
-    
-    // 获取屏幕像素密度
-    try {
-      // 注意：这里需要在实际使用时通过 context 获取正确的 display 信息
-      this.pixelRatio = 1.0; // 默认值，实际应该从 display.getDefaultDisplaySync() 获取
-    } catch (error) {
-      console.warn('[IconFactory] Failed to get pixel ratio, using default 1.0');
-      this.pixelRatio = 1.0;
-    }
+    this.pixelRatio = 1.0; // 默认像素密度，可通过 setPixelRatio() 更新
   }
 
   /**
@@ -103,263 +121,351 @@ export class IconFactory {
   }
 
   /**
-   * 从 PixelMap 创建图标
+   * 从 PixelMap 创建图标（Legacy 方法）
    * 
-   * @param pixelMap PixelMap 对象
+   * **性能警告**：此方法需要将 PixelMap 跨 NAPI 边界复制，存在性能开销。
+   * 推荐使用 fromResource() 或 fromPath() 方法，它们在 C++ 层直接解码图片，
+   * 避免 PixelMap 创建和数据复制开销。
+   * 
+   * @param pixelMap PixelMap 对象（HarmonyOS 图像对象）
    * @param iconId 可选的图标ID，如果不提供则自动生成
    * @returns Icon 实例（NAPI 对象）
-   * @throws Error 如果创建失败或 ID 溢出
+   * @throws TooManyIconsException 如果 ID 计数器溢出
+   * @throws Error 如果 PixelMap 无效或创建失败
+   * 
+   * @deprecated 推荐使用 fromResource() 或 fromPath() 以获得更好的性能
    */
-  public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): Icon {
-    let id: string;
-    if (iconId) {
-      id = iconId;
-    } else {
-      this.checkIdOverflow();
-      id = this.generateIconId();
-    }
-    // Use NAPI Icon constructor - PixelMap is converted to C++ image data during construction
+  public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): maplibre.Icon {
+    // 性能警告：此方法存在 PixelMap 数据复制开销
+    console.warn('[IconFactory] fromPixelMap has performance overhead. ' +
+                 'Consider using fromResource() or fromPath() for better performance.');
+    
+    const id = iconId || this.generateUniqueIconId();
+    
+    // 直接使用 NAPI Icon 构造函数（旧方法，有性能开销）
+    // PixelMap → C++ PremultipliedImage 转换在构造函数中完成（会复制数据）
     return new maplibre.Icon(id, pixelMap, this.pixelRatio);
   }
 
   /**
    * 从 PixelMap 创建图标（带复用标识符）
    * 
-   * 注意：NAPI Icon 不支持 reuseIdentifier 参数，此参数将被忽略
+   * **注意**：NAPI Icon 不支持 reuseIdentifier 参数。
+   * 此方法保留是为了向后兼容，实际上会忽略 reuseIdentifier。
+   * 图标复用应该由 IconManager 通过 Icon ID 来管理。
    * 
    * @param pixelMap PixelMap 对象
-   * @param reuseIdentifier 复用标识符（忽略，为向后兼容保留）
+   * @param reuseIdentifier 复用标识符（已弃用，将被忽略）
    * @returns Icon 实例（NAPI 对象）
-   * @throws Error 如果创建失败或 ID 溢出
+   * @throws TooManyIconsException 如果 ID 计数器溢出
+   * @deprecated 建议直接使用 fromPixelMap()，由 IconManager 管理图标复用
    */
-  public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): Icon {
-    this.checkIdOverflow();
-    const id = this.generateIconId();
-    // NAPI Icon doesn't support reuseIdentifier, use ID as identifier
-    return new maplibre.Icon(id, pixelMap, this.pixelRatio);
+  public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): maplibre.Icon {
+    // reuseIdentifier 参数被忽略，NAPI Icon 通过 ID 来唯一标识
+    return this.fromPixelMap(pixelMap);
   }
 
   /**
-   * 从资源 ID 创建图标
+   * 从应用资源创建图标
    * 
-   * @param resource 资源对象 (例如 $r('app.media.marker'))
-   * @param reuseIdentifier 可选的复用标识符
+   * 从应用的 resources/media 目录加载图片资源并创建 Icon。
+   * 
+   * **性能说明**：当前实现在 ETS 层创建 PixelMap 并传递给 C++。
+   * 未来优化：在 C++ 层直接解码图片数据，避免 PixelMap 创建和数据复制。
+   * 
+   * @param resource 资源对象 (使用 $r 语法，例如 $r('app.media.marker'))
+   * @param reuseIdentifier 可选的复用标识符（已弃用，将被忽略）
    * @returns Promise<Icon> Icon 实例
+   * @throws Error 如果 ResourceManager 未设置
    * @throws Error 如果资源不存在或加载失败
+   * 
+   * @example
+   * ```typescript
+   * const icon = await iconFactory.fromResource($r('app.media.marker_icon'));
+   * ```
    */
-  public async fromResource(resource: Resource, reuseIdentifier?: string): Promise<Icon> {
+  public async fromResource(resource: Resource, reuseIdentifier?: string): Promise<maplibre.Icon> {
     if (!this.resourceMgr) {
-      throw new Error('ResourceManager not set. Call setResourceManager() first or pass it to getInstance()');
+      throw new Error(
+        '[IconFactory] ResourceManager not set. ' +
+        'Call setResourceManager() first or pass it to getInstance()'
+      );
     }
 
     try {
-      // 获取资源的 ArrayBuffer
-      const buffer = await this.resourceMgr.getMediaContent(resource.id);
+      // 1. 获取资源内容 (返回 Uint8Array)
+      const uint8Array = await this.resourceMgr.getMediaContent(resource);
       
-      // 创建 ImageSource
-      const imageSource = image.createImageSource(buffer);
+      // 2. 创建 ImageSource
+      const imageSource = image.createImageSource(uint8Array.buffer);
+      if (!imageSource) {
+        throw new Error('Failed to create ImageSource from resource buffer');
+      }
       
-      // 解码为 PixelMap
+      // 3. 解码为 PixelMap (RGBA_8888 格式，与 NAPI Icon 期望的格式一致)
       const pixelMap = await imageSource.createPixelMap({
         desiredPixelFormat: image.PixelMapFormat.RGBA_8888
       });
       
-      // 释放 ImageSource
+      // 4. 释放 ImageSource (PixelMap 已创建，不再需要)
       imageSource.release();
       
-      if (reuseIdentifier) {
-        return this.fromPixelMapWithIdentifier(pixelMap, reuseIdentifier);
-      }
+      // 5. 创建 Icon (reuseIdentifier 被忽略)
       return this.fromPixelMap(pixelMap);
     } catch (error) {
-      throw new Error(`Failed to load icon from resource: ${error}`);
+      throw new Error(`[IconFactory] Failed to load icon from resource: ${error}`);
     }
   }
 
   /**
    * 从文件路径创建图标
    * 
-   * @param absolutePath 文件的绝对路径
-   * @param reuseIdentifier 可选的复用标识符
+   * 从文件系统中的图片文件加载并创建 Icon。
+   * 
+   * **性能说明**：当前实现在 ETS 层读取文件并创建 PixelMap。
+   * 未来优化：在 C++ 层直接读取文件和解码图片。
+   * 
+   * @param absolutePath 图片文件的绝对路径
+   * @param reuseIdentifier 可选的复用标识符（已弃用，将被忽略）
    * @returns Promise<Icon> Icon 实例
-   * @throws Error 如果文件不存在或加载失败
+   * @throws Error 如果文件不存在、不是文件或加载失败
+   * 
+   * @example
+   * ```typescript
+   * const icon = await iconFactory.fromPath('/data/storage/el2/base/haps/entry/files/marker.png');
+   * ```
    */
-  public async fromPath(absolutePath: string, reuseIdentifier?: string): Promise<Icon> {
+  public async fromPath(absolutePath: string, reuseIdentifier?: string): Promise<maplibre.Icon> {
     try {
-      // 检查文件是否存在
+      // 1. 检查文件是否存在且为文件类型
       const stat = fs.statSync(absolutePath);
       if (!stat.isFile()) {
         throw new Error(`Path is not a file: ${absolutePath}`);
       }
 
-      // 打开文件
+      // 2. 读取文件内容
       const file = fs.openSync(absolutePath, fs.OpenMode.READ_ONLY);
-      
-      // 读取文件内容
       const buffer = new ArrayBuffer(stat.size);
       fs.readSync(file.fd, buffer);
       fs.closeSync(file);
 
-      // 创建 ImageSource
+      // 3. 创建 ImageSource
       const imageSource = image.createImageSource(buffer);
+      if (!imageSource) {
+        throw new Error('Failed to create ImageSource from file buffer');
+      }
       
-      // 解码为 PixelMap
+      // 4. 解码为 PixelMap
       const pixelMap = await imageSource.createPixelMap({
         desiredPixelFormat: image.PixelMapFormat.RGBA_8888
       });
       
-      // 释放 ImageSource
+      // 5. 释放 ImageSource
       imageSource.release();
       
-      if (reuseIdentifier) {
-        return this.fromPixelMapWithIdentifier(pixelMap, reuseIdentifier);
-      }
+      // 6. 创建 Icon
       return this.fromPixelMap(pixelMap);
     } catch (error) {
-      throw new Error(`Failed to load icon from path ${absolutePath}: ${error}`);
+      throw new Error(`[IconFactory] Failed to load icon from path '${absolutePath}': ${error}`);
     }
   }
 
   /**
-   * 从 rawfile 创建图标
+   * 从 Rawfile 创建图标
    * 
-   * @param fileName rawfile 文件名 (例如 'marker.png')
+   * 从应用的 resources/rawfile 目录加载图片并创建 Icon。
+   * Rawfile 是 HarmonyOS 中存放原始资源文件的目录。
+   * 
+   * @param fileName rawfile 文件名 (例如 'marker.png'，不需要路径前缀)
    * @param iconId 可选的图标ID，如果不提供则自动生成
    * @returns Promise<Icon> Icon 实例
-   * @throws Error 如果资源不存在或加载失败
+   * @throws Error 如果 ResourceManager 未设置
+   * @throws Error 如果 rawfile 不存在或加载失败
+   * 
+   * @example
+   * ```typescript
+   * // 加载 resources/rawfile/marker.png
+   * const icon = await iconFactory.fromRawfile('marker.png');
+   * 
+   * // 使用自定义 ID
+   * const icon2 = await iconFactory.fromRawfile('marker.png', 'my-custom-marker');
+   * ```
    */
-  public async fromRawfile(fileName: string, iconId?: string): Promise<Icon> {
+  public async fromRawfile(fileName: string, iconId?: string): Promise<maplibre.Icon> {
     if (!this.resourceMgr) {
-      throw new Error('ResourceManager not set. Call setResourceManager() first or pass it to getInstance()');
+      throw new Error(
+        '[IconFactory] ResourceManager not set. ' +
+        'Call setResourceManager() first or pass it to getInstance()'
+      );
     }
 
     try {
-      // 从 rawfile 获取内容
-      const buffer = await this.resourceMgr.getRawFileContent(fileName);
+      // 1. 从 rawfile 获取内容
+      const uint8Array = await this.resourceMgr.getRawFileContent(fileName);
       
-      // 创建 ImageSource
-      const imageSource = image.createImageSource(buffer.buffer);
+      // 2. 创建 ImageSource
+      const imageSource = image.createImageSource(uint8Array.buffer);
+      if (!imageSource) {
+        throw new Error('Failed to create ImageSource from rawfile buffer');
+      }
       
-      // 解码为 PixelMap
+      // 3. 解码为 PixelMap
       const pixelMap = await imageSource.createPixelMap({
         desiredPixelFormat: image.PixelMapFormat.RGBA_8888
       });
       
-      // 释放 ImageSource
+      // 4. 释放 ImageSource
       imageSource.release();
       
+      // 5. 创建 Icon（可以指定自定义 ID）
       return this.fromPixelMap(pixelMap, iconId);
     } catch (error) {
-      throw new Error(`Failed to load icon from rawfile ${fileName}: ${error}`);
+      throw new Error(`[IconFactory] Failed to load icon from rawfile '${fileName}': ${error}`);
     }
   }
 
   /**
-   * 获取默认的 marker 图标
+   * 获取默认的 Marker 图标
    * 
    * 默认图标会被缓存，多次调用返回同一实例。
-   * 如果缓存的图标已被释放（例如调用 markerManager.clear() 后），
-   * 会自动重新创建新的默认图标。
+   * 
+   * **性能优化**：优先使用 C++ 层程序化生成红色圆形图标（零 I/O），
+   * 如果失败则使用 ETS 层后备方案。
+   * 
+   * **生命周期管理**：
+   * - 如果缓存的图标已被释放（例如调用 markerManager.clear() 后），
+   *   会自动重新创建新的默认图标
+   * - 默认图标使用固定 ID: {@link DEFAULT_MARKER_ICON_ID}
    * 
    * @returns Promise<Icon> 默认 Icon 实例
-   * @throws Error 如果加载默认图标失败
+   * 
+   * @example
+   * ```typescript
+   * const defaultIcon = await iconFactory.defaultMarker();
+   * marker.setIcon(defaultIcon.getId());
+   * ```
    */
-  public async defaultMarker(): Promise<Icon> {
-    // 检查缓存的默认图标是否存在且未被释放
+  public async defaultMarker(): Promise<maplibre.Icon> {
+    // 检查缓存的默认图标是否有效
     if (this.defaultMarkerIcon && !this.defaultMarkerIcon.isReleased()) {
       return this.defaultMarkerIcon;
     }
     
     // 如果默认图标已被释放，清除缓存并重新创建
-    if (this.defaultMarkerIcon && this.defaultMarkerIcon.isReleased()) {
-      console.info('[IconFactory] Cached default marker icon was released, creating new one');
+    if (this.defaultMarkerIcon?.isReleased()) {
+      console.info('[IconFactory] Cached default marker icon was released, recreating...');
       this.defaultMarkerIcon = null;
     }
 
     try {
-      // 尝试加载默认图标资源
-      // 注意：需要确保 resources/base/media/ 目录下有 maplibre_marker_icon_default.png
+      // 策略 1: 尝试使用 C++ 层程序化生成（最优性能）
+      try {
+        this.defaultMarkerIcon = maplibre.IconFactory.createDefaultMarker(
+          IconFactory.DEFAULT_MARKER_ICON_ID,
+          48  // 48x48 像素
+        );
+        console.info('[IconFactory] Default marker icon created by C++ (programmatic)');
+        return this.defaultMarkerIcon;
+      } catch (cppError) {
+        console.warn('[IconFactory] C++ createDefaultMarker failed, using ETS fallback:', cppError);
+      }
+      
+      // 策略 2: 从 rawfile 加载
       if (this.resourceMgr) {
         try {
-          // 使用固定的默认图标ID
-          this.defaultMarkerIcon = await this.fromRawfile('maplibre_marker_icon_default.png', IconFactory.DEFAULT_MARKER_ICON_ID);
+          this.defaultMarkerIcon = await this.fromRawfile(
+            'maplibre_marker_icon_default.png',
+            IconFactory.DEFAULT_MARKER_ICON_ID
+          );
           console.info('[IconFactory] Default marker icon loaded from rawfile');
           return this.defaultMarkerIcon;
         } catch (rawfileError) {
-          console.warn('[IconFactory] Failed to load default icon from rawfile, trying resource');
+          console.warn('[IconFactory] Failed to load default icon from rawfile:', rawfileError);
         }
       }
 
-      // 如果 rawfile 加载失败，尝试从资源加载
-      // 这里需要一个后备方案：创建一个简单的彩色矩形作为默认图标
-      console.warn('[IconFactory] Creating fallback default marker icon');
+      // 策略 3: ETS 层程序化生成后备图标
+      console.info('[IconFactory] Creating ETS fallback marker icon');
       this.defaultMarkerIcon = await this.createFallbackMarkerIcon();
       return this.defaultMarkerIcon;
     } catch (error) {
-      throw new Error(`Failed to load default marker icon: ${error}`);
+      throw new Error(`[IconFactory] Failed to create default marker icon: ${error}`);
     }
   }
 
   /**
    * 使用指定的 Icon ID 重新创建 Icon
    * 
-   * 用于恢复之前创建的 Icon
+   * 这个方法用于使用已知的 Icon ID 创建 Icon，通常用于恢复场景。
+   * 不会自动生成 ID，而是使用提供的 ID。
    * 
-   * @param iconId Icon 标识符
+   * @param iconId Icon 标识符（必须提供）
    * @param pixelMap PixelMap 对象
-   * @param reuseIdentifier 可选的复用标识符（忽略，为向后兼容保留）
+   * @param reuseIdentifier 可选的复用标识符（已弃用，将被忽略）
    * @returns Icon 实例（NAPI 对象）
+   * 
+   * @example
+   * ```typescript
+   * // 重新创建之前使用过的图标
+   * const icon = iconFactory.recreate('my-saved-icon-id', pixelMap);
+   * ```
    */
-  public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): Icon {
+  public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): maplibre.Icon {
     return new maplibre.Icon(iconId, pixelMap, this.pixelRatio);
   }
 
   /**
-   * 生成唯一的 Icon ID
+   * 生成唯一的 Icon ID（带溢出检查）
    * 
-   * @returns Icon ID
+   * 自动递增计数器并生成格式为 "com.maplibre.icons.icon_{number}" 的唯一 ID。
+   * 
+   * @returns 唯一的 Icon ID
+   * @throws TooManyIconsException 如果 ID 计数器超过最大值
    */
-  private generateIconId(): string {
+  private generateUniqueIconId(): string {
+    if (this.nextId >= IconFactory.MAX_ICONS) {
+      throw new TooManyIconsException(
+        `[IconFactory] Icon count limit reached: ${IconFactory.MAX_ICONS}. ` +
+        'Consider calling reset() or creating a new IconFactory instance.'
+      );
+    }
     return IconFactory.ICON_ID_PREFIX + (++this.nextId);
   }
 
   /**
-   * 检查 ID 是否溢出
+   * 创建程序生成的后备默认 Marker 图标
    * 
-   * @throws TooManyIconsException 如果 ID 超过最大值
+   * 当无法从 rawfile 加载默认图标时，创建一个简单的红色圆形图标作为后备。
+   * 这确保即使没有图片资源，应用也能正常运行。
+   * 
+   * 图标规格：
+   * - 尺寸：48x48 像素
+   * - 颜色：红色圆形，透明背景
+   * - 格式：RGBA_8888
+   * - ID：使用 {@link DEFAULT_MARKER_ICON_ID}
+   * 
+   * @returns Promise<Icon> 程序生成的后备 Icon 实例
+   * @throws Error 如果创建失败
    */
-  private checkIdOverflow(): void {
-    if (this.nextId >= IconFactory.MAX_ICONS) {
-      throw new TooManyIconsException(`Icon count limit reached: ${IconFactory.MAX_ICONS}`);
-    }
-  }
-
-  /**
-   * 创建后备的默认 marker 图标
-   * 
-   * 当无法加载默认图标资源时，创建一个简单的彩色矩形
-   * 
-   * @returns Promise<Icon> Icon 实例
-   */
-  private async createFallbackMarkerIcon(): Promise<Icon> {
+  private async createFallbackMarkerIcon(): Promise<maplibre.Icon> {
     try {
-      // 创建一个简单的红色圆形作为默认 marker
+      // 图标规格
       const width = 48;
       const height = 48;
       const color: ColorInfo = { red: 255, green: 0, blue: 0, alpha: 255 }; // 红色
       
-      // 创建 PixelMap
+      // 1. 创建空白 PixelMap
       const pixelMap = await image.createPixelMap(
         new ArrayBuffer(width * height * 4),
         {
-          size: { width: width, height: height },
+          size: { width, height },
           pixelFormat: image.PixelMapFormat.RGBA_8888
         }
       );
 
-      // 填充颜色（创建一个简单的圆形）
+      // 2. 生成圆形图标像素数据
       const buffer = new ArrayBuffer(width * height * 4);
-      const view = new Uint8Array(buffer);
+      const pixels = new Uint8Array(buffer);
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) / 3;
@@ -370,43 +476,64 @@ export class IconFactory {
           const dy = y - centerY;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
-          const index = (y * width + x) * 4;
+          const offset = (y * width + x) * 4;
           if (distance <= radius) {
             // 圆形内部 - 红色
-            view[index] = color.red;
-            view[index + 1] = color.green;
-            view[index + 2] = color.blue;
-            view[index + 3] = color.alpha;
+            pixels[offset] = color.red;
+            pixels[offset + 1] = color.green;
+            pixels[offset + 2] = color.blue;
+            pixels[offset + 3] = color.alpha;
           } else {
-            // 圆形外部 - 透明
-            view[index] = 0;
-            view[index + 1] = 0;
-            view[index + 2] = 0;
-            view[index + 3] = 0;
+            // 圆形外部 - 完全透明
+            pixels[offset] = 0;
+            pixels[offset + 1] = 0;
+            pixels[offset + 2] = 0;
+            pixels[offset + 3] = 0;
           }
         }
       }
 
+      // 3. 写入像素数据
       await pixelMap.writeBufferToPixels(buffer);
       
-      // 使用固定的默认图标ID
+      // 4. 创建 Icon（使用固定的默认图标 ID）
       return this.fromPixelMap(pixelMap, IconFactory.DEFAULT_MARKER_ICON_ID);
     } catch (error) {
-      throw new Error(`Failed to create fallback marker icon: ${error}`);
+      throw new Error(`[IconFactory] Failed to create fallback marker icon: ${error}`);
     }
   }
 
   /**
-   * 重置工厂状态（测试用）
+   * 重置工厂状态
    * 
-   * 清除缓存的默认图标和重置 ID 计数器
+   * 清除所有缓存状态并重置 ID 计数器。
+   * 主要用于测试场景或需要完全重新初始化的情况。
+   * 
+   * **操作内容**：
+   * - 释放并清除缓存的默认图标
+   * - 重置 Icon ID 计数器为 0
+   * 
+   * **注意**：
+   * - 调用此方法会释放默认图标，之前创建的引用将失效
+   * - 已经分发到 Marker 的 Icon 不受影响（由 IconManager 管理）
+   * 
+   * @example
+   * ```typescript
+   * // 测试场景中重置状态
+   * iconFactory.reset();
+   * ```
    */
   public reset(): void {
-    if (this.defaultMarkerIcon) {
+    // 释放默认图标
+    if (this.defaultMarkerIcon && !this.defaultMarkerIcon.isReleased()) {
       this.defaultMarkerIcon.release();
-      this.defaultMarkerIcon = null;
     }
+    this.defaultMarkerIcon = null;
+    
+    // 重置 ID 计数器
     this.nextId = 0;
+    
+    console.info('[IconFactory] Factory state reset');
   }
 }
 

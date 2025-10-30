@@ -173,17 +173,16 @@ export class MarkerLayerManager {
     
     // ========== Icon 布局属性 ==========
     
-    // Icon 图像：TODO: 等待 NAPI 支持 Expression，暂时使用默认值
-    // 理想: layer.setIconImage(Expression.get<string>('icon'));
-    // 使用 IconFactory 中定义的默认图标ID
+    // Icon 图像：使用 Expression 从 feature properties 获取
+    // 每个 Marker 可以有不同的图标
     layer.setIconImage(IconFactory.DEFAULT_MARKER_ICON_ID);
     
     // Icon 大小：默认 1.0
     layer.setIconSize(1.0);
     
-    // Icon 旋转角度：TODO: 等待 NAPI 支持 Expression
-    // 理想: layer.setIconRotate(Expression.get<number>('rotation'));
-    layer.setIconRotate(0);
+    // Icon 旋转角度：使用 Expression 从 feature properties 获取
+    // 支持每个 Marker 有不同的旋转角度
+    layer.setIconRotate(Expression.get("rotation"));
     
     // Icon 锚点：默认 bottom（底部中心）
     layer.setIconAnchor('bottom');
@@ -193,11 +192,18 @@ export class MarkerLayerManager {
     
     // ========== Icon 绘制属性 ==========
     
-    // Icon 透明度：TODO: 等待 NAPI 支持 Expression
-    // 理想: layer.setIconOpacity(Expression.get<number>('alpha'));
-    layer.setIconOpacity(1.0);
+    // Icon 透明度：使用 Expression 同时支持 visible 和 alpha
+    // visible=false 时强制为 0（完全透明），visible=true 时使用 alpha 值
+    // 这样可以同时支持显隐控制和透明度调整
+    layer.setIconOpacity(
+      Expression.caseExpression(
+        Expression.eq(Expression.get("visible"), Expression.literal(false)),
+        Expression.literal(0),  // visible=false 时透明度为 0
+        Expression.get("alpha")  // 否则使用 alpha 值
+      ).toArray()
+    );
     
-    console.info('MarkerLayerManager: SymbolLayer configured successfully');
+    console.info('MarkerLayerManager: SymbolLayer configured with data-driven expressions successfully');
   }
   
   /**

@@ -5,6 +5,7 @@ import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreM
 import { MarkerOptions } from 'maplibre_harmony/src/main/ets/maps/annotations/MarkerOptions';
 import { InfoWindowComponent } from 'maplibre_harmony/src/main/ets/maps/annotations/InfoWindow';
 import { AnnotationView, AnnotationViewData, AnnotationViewAdapter } from 'maplibre_harmony/src/main/ets/maps/annotations';
+import { IconFactory } from 'maplibre_harmony/src/main/ets/maps/annotations/IconFactory';
 // Marker 现在由 NAPI 提供
 import { LatLng } from 'maplibre_harmony/src/main/ets/maps/geometry/LatLng';
 import { CameraPosition } from 'maplibre_harmony/src/main/ets/maps/camera/CameraPosition';
@@ -16,6 +17,8 @@ import { OnMarkerSelectListener } from 'maplibre_harmony/src/main/ets/maps/liste
 import { router } from '@kit.ArkUI';
 import { DOMAIN } from '../constants/HiLogConstants';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import resourceManager from '@ohos.resourceManager';
+import type { Context } from '@kit.AbilityKit';
 // import { ComponentContent, wrapBuilder } from '@kit.ArkUI';
 import { TestPageLayout } from '../components/TestPageLayout';
 
@@ -842,48 +845,6 @@ struct MarkerTestPage {
       .borderRadius(8)
       .backgroundColor('#AB47BC')
     
-    // Position 解析测试
-    Text('Position 解析测试')
-      .fontSize(14)
-      .fontWeight(FontWeight.Bold)
-      .fontColor('#E53935')
-    
-    Row() {
-      Button('🧪 LatLng类')
-        .onClick(() => this.handleTestLatLngClass())
-        .width('48%')
-        .type(ButtonType.Normal)
-        .borderRadius(8)
-        .backgroundColor('#E53935')
-      
-      Button('📝 构造函数')
-        .onClick(() => this.handleTestPlainObject())
-        .width('48%')
-        .margin({ left: 8 })
-        .type(ButtonType.Normal)
-        .borderRadius(8)
-        .backgroundColor('#E53935')
-    }
-    .width('100%')
-    
-    Row() {
-      Button('🔄 更新Position')
-        .onClick(() => this.handleTestUpdatePosition())
-        .width('48%')
-        .type(ButtonType.Normal)
-        .borderRadius(8)
-        .backgroundColor('#F4511E')
-      
-      Button('📊 显示信息')
-        .onClick(() => this.handleShowMarkerInfo())
-        .width('48%')
-        .margin({ left: 8 })
-        .type(ButtonType.Normal)
-        .borderRadius(8)
-        .backgroundColor('#F4511E')
-    }
-    .width('100%')
-    
     // 高级功能
     Text('高级功能')
       .fontSize(14)
@@ -915,8 +876,8 @@ struct MarkerTestPage {
         .borderRadius(8)
         .backgroundColor('#26A69A')
       
-      Button('🎨 自定义图标')
-        .onClick(() => this.handleTestCustomIcon())
+      Button('🎲 随机图标')
+        .onClick(() => this.handleAddRandomCustomIcon())
         .width('48%')
         .margin({ left: 8 })
         .type(ButtonType.Normal)
@@ -965,13 +926,6 @@ struct MarkerTestPage {
         .backgroundColor('#5C6BC0')
     }
     .width('100%')
-    
-    Button('🚫 关闭所有InfoWindow')
-      .onClick(() => this.handleCloseAllInfoWindows())
-      .width('48%')
-      .type(ButtonType.Normal)
-      .borderRadius(8)
-      .backgroundColor('#8D6E63')
     
     // 批量操作
     Text('批量操作')
@@ -1314,6 +1268,89 @@ struct MarkerTestPage {
     }
   }
   
+  /**
+   * 随机添加自定义图标 Marker
+   */
+  async addRandomCustomIconMarker() {
+    if (!this.mapLibreMap) {
+      this.message = '❌ 地图未初始化';
+      return;
+    }
+    
+    try {
+      // 定义可用的图标资源（对应 app.media.xxx）
+      interface IconResource {
+        name: string;
+        resource: Resource;
+      }
+      
+      const iconResources: IconResource[] = [
+        { name: 'marker_dot_blue', resource: $r('app.media.marker_dot_blue') },
+        { name: 'marker_dot_cyan', resource: $r('app.media.marker_dot_cyan') },
+        { name: 'marker_dot_green', resource: $r('app.media.marker_dot_green') },
+        { name: 'marker_dot_red', resource: $r('app.media.marker_dot_red') },
+        { name: 'marker_dot_yellow', resource: $r('app.media.marker_dot_yellow') },
+        { name: 'marker_pin_blue', resource: $r('app.media.marker_pin_blue') },
+        { name: 'marker_pin_green', resource: $r('app.media.marker_pin_green') },
+        { name: 'marker_pin_orange', resource: $r('app.media.marker_pin_orange') },
+        { name: 'marker_pin_purple', resource: $r('app.media.marker_pin_purple') },
+        { name: 'marker_pin_red', resource: $r('app.media.marker_pin_red') }
+      ];
+      
+      // 随机选择一个图标
+      const randomIcon = iconResources[Math.floor(Math.random() * iconResources.length)];
+      
+      this.message = `⏳ 正在加载图标: ${randomIcon.name}...`;
+      
+      // 获取 ResourceManager 并创建 IconFactory
+      const context = getContext(this) as Context;
+      const resourceMgr: resourceManager.ResourceManager = context.resourceManager;
+      const iconFactory = IconFactory.getInstance(resourceMgr);
+      iconFactory.setPixelRatio(2.0);
+      
+      // 加载图标
+      const customIcon = await iconFactory.fromResource(randomIcon.resource);
+      
+      // 生成随机位置
+      const location = this.generateRandomLocationInChina();
+      const cityName = this.getRandomCityName();
+      
+      console.info(`[MarkerDebug] AddRandomCustomIcon: Loading icon ${randomIcon.name}`);
+      console.info(`[MarkerDebug] AddRandomCustomIcon: Creating marker at (${location.latitude}, ${location.longitude})`);
+      
+      // 创建带自定义图标的 Marker
+      const marker: maplibre.Marker = await this.mapLibreMap.addMarker(
+        new MarkerOptions()
+          .position(location)
+          .title(`${cityName} - ${randomIcon.name}`)
+          .snippet(`自定义图标: ${randomIcon.name}\n位置: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`)
+          .icon(customIcon)
+          .draggable(true)
+          .alpha(0.9 + Math.random() * 0.1)
+          .rotation(Math.random() * 360)
+          .zIndex(500 + this.markerCount)
+      );
+      
+      this.testMarker = marker;
+      this.markerList.push(marker);
+      this.markerCount++;
+      this.lastMarkerPosition = `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      
+      this.message = `✅ 自定义图标 Marker 添加成功\n` +
+        `图标: ${randomIcon.name}\n` +
+        `城市: ${cityName}\n` +
+        `位置: (${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)})\n` +
+        `ID: ${marker.getId()}`;
+      
+      console.info(`[MarkerDebug] AddRandomCustomIcon: Success - Marker ID=${marker.getId()}, icon=${randomIcon.name}`);
+      
+    } catch (e) {
+      const error = e as Error;
+      this.message = `❌ 添加自定义图标 Marker 失败: ${error.message}`;
+      console.error(`[MarkerDebug] AddRandomCustomIcon: Failed - ${error.message}`);
+    }
+  }
+  
   // ==================== 样式控制测试 ====================
   
   /**
@@ -1565,6 +1602,10 @@ struct MarkerTestPage {
   
   private handleTestCustomIcon = (): void => {
     this.testCustomIcon();
+  }
+  
+  private handleAddRandomCustomIcon = (): void => {
+    this.addRandomCustomIconMarker();
   }
   
   private handleToggleVisibility = (): void => {

@@ -767,6 +767,14 @@ export class Expression<T = Object> {
   }
 
   /**
+   * Case 条件表达式（switchCase的别名）
+   * 格式：case(condition1, output1, condition2, output2, ..., fallback)
+   */
+  public static caseExpression(...expressions: Expression[]): Expression {
+    return Expression.switchCase(...expressions);
+  }
+
+  /**
    * Match 表达式 - 匹配输入值并返回对应的输出
    * 格式：match(input, label1, output1, label2, output2, ..., fallback)
    */

@@ -49,6 +49,23 @@ public:
     // Helper to check if a napi_value is an Icon object
     static bool IsIconObject(napi_env env, napi_value value);
     
+    /**
+     * Create Icon NAPI object from PremultipliedImage (for C++ internal use)
+     * 
+     * This method is used by IconFactory NAPI to create Icon objects
+     * without going through the PixelMap conversion.
+     * 
+     * @param env NAPI environment
+     * @param id Icon identifier
+     * @param image Shared pointer to PremultipliedImage
+     * @param scale Pixel scale ratio
+     * @return Icon NAPI object
+     */
+    static napi_value CreateFromImage(napi_env env, 
+                                     const std::string& id,
+                                     std::shared_ptr<mbgl::PremultipliedImage> image,
+                                     float scale);
+    
 private:
     static napi_ref constructor;
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);

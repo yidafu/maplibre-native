@@ -282,6 +282,53 @@ bool IconNAPI::IsIconObject(napi_env env, napi_value value) {
     return (status == napi_ok && icon != nullptr);
 }
 
+napi_value IconNAPI::CreateFromImage(napi_env env, 
+                                      const std::string& id,
+                                      std::shared_ptr<mbgl::PremultipliedImage> image,
+                                      float scale) {
+    if (!image) {
+        Logger::error("IconNAPI", "Cannot create Icon from null image");
+        napi_throw_error(env, nullptr, "Image is null");
+        return nullptr;
+    }
+    
+    int width = static_cast<int>(image->size.width);
+    int height = static_cast<int>(image->size.height);
+    
+    Logger::info("IconNAPI", "Creating Icon from PremultipliedImage: id=%s, size=%dx%d, scale=%f",
+                 id.c_str(), width, height, scale);
+    
+    // Get Icon constructor
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("IconNAPI", "Failed to get Icon constructor reference");
+        return nullptr;
+    }
+    
+    // Create new Icon instance (empty constructor call)
+    napi_value instance;
+    status = napi_new_instance(env, cons, 0, nullptr, &instance);
+    if (status != napi_ok) {
+        Logger::error("IconNAPI", "Failed to create Icon instance");
+        return nullptr;
+    }
+    
+    // Create IconNAPI object
+    IconNAPI* iconNapi = new IconNAPI(id, width, height, scale, image);
+    
+    // Wrap native object
+    status = napi_wrap(env, instance, iconNapi, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        Logger::error("IconNAPI", "Failed to wrap Icon object");
+        delete iconNapi;
+        return nullptr;
+    }
+    
+    Logger::info("IconNAPI", "Icon created successfully from PremultipliedImage: id=%s", id.c_str());
+    return instance;
+}
+
 } // namespace harmony
 } // namespace maplibre
 

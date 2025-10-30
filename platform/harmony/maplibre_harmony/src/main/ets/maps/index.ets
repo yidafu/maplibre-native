@@ -7,6 +7,7 @@
 // ========== 核心组件 ==========
 export { NativeMapView } from './NativeMapView';
 export { MapLibreMap } from './MapLibreMap';
+export { MapLibreMapOptions } from './MapLibreMapOptions';
 
 // ========== 类型定义 ==========
 export { 
@@ -143,7 +144,8 @@ export {
   BackgroundLayer,
   HeatmapLayer,
   HillshadeLayer,
-  FillExtrusionLayer
+  FillExtrusionLayer,
+  PropertyFactory
 } from './style/layers';
 export type {
   LayerOptions,
@@ -152,6 +154,25 @@ export type {
   LayerPaint,
   LayerMetadata
 } from './style/layers';
+
+// ========== 表达式 ==========
+export {
+  Expression,
+  ExpressionLiteral,
+  ExpressionLiteralArray,
+  ExpressionMap,
+  CollatorExpression
+} from './style/expressions';
+export {
+  Interpolator
+} from './style/expressions/Interpolator';
+export {
+  Stop
+} from './style/expressions/Stop';
+export type {
+  ValueExpression,
+  ExpressionValue
+} from './style/expressions';
 
 // ========== 数据源 ==========
 export {

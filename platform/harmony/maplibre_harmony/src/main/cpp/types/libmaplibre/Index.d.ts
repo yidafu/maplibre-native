@@ -33,6 +33,12 @@ export { Marker, MarkerOptions } from './Marker';
 export { Icon } from './Icon';
 
 /**
+ * IconFactory - 图标工厂类（静态工厂方法）
+ * 提供零复制的高性能图标创建方法，由 C++ NAPI 层实现
+ */
+export { IconFactory } from './IconFactory';
+
+/**
  * Style - 样式管理类 (NAPI 对象)
  * 提供面向对象的样式管理接口
  * 

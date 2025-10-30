@@ -102,7 +102,7 @@ export class MarkerManager {
       }
       
       // 获取Icon对象（优先使用复用标识符）
-      let icon = options.getIcon();
+      let icon: Icon | undefined = options.getIcon();
       const reuseIdentifier = options.getReuseIdentifier();
       
       if (!icon && reuseIdentifier) {

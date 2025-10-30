@@ -2,6 +2,7 @@
 #include "core/native_map_view/native_map_view_harmony.hpp"
 #include "napi/bindings/marker/marker_napi.hpp"
 #include "napi/bindings/icon/icon_napi.hpp"
+#include "napi/bindings/icon_factory/icon_factory_napi.hpp"
 // Geometry types
 #include "geometry/lat_lng_harmony.hpp"
 // GeoJSON NAPI 类
@@ -72,6 +73,9 @@ static napi_value Init(napi_env env, napi_value exports) {
     
     // 初始化 Icon 类
     maplibre::harmony::IconNAPI::Init(env, exports);
+    
+    // 初始化 IconFactory 类
+    maplibre::harmony::IconFactoryNAPI::Init(env, exports);
     
     // 初始化 Style API 绑定 (NAPI 对象)
     maplibre::harmony::StyleNAPI::Init(env, exports);
