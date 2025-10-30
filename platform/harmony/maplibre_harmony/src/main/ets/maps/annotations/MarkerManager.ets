@@ -12,11 +12,13 @@ import { InfoWindowAdapter } from './InfoWindowAdapter';
 import { InfoWindowManager } from './InfoWindowManager';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { AnnotationViewManager } from './AnnotationViewManager';
-import { Icon } from './Icon';
 import { IconManager } from './IconManager';
 import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
 import { InfoWindowStyle } from './InfoWindow';
+
+// 使用 NAPI Icon 类型
+type Icon = maplibre.Icon;
 
 // 使用 NAPI 类型
 type NativeMapView = maplibre.NativeMapView;
@@ -775,12 +777,27 @@ export class MarkerManager {
   
   /**
    * 显示 Marker 的 InfoWindow
-   * 注意：此方法需要屏幕坐标信息，应从外部调用 InfoWindowManager.show
    */
   public showInfoWindow(marker: Marker): void {
-    // InfoWindowManager.show 需要屏幕坐标等参数
-    // 此方法应由外部调用，这里只提供接口
-    console.warn('[MarkerManager] showInfoWindow should be called from external with screen coordinates');
+    try {
+      // 获取 Marker 屏幕坐标
+      const pos = marker.getPosition();
+      const screenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
+      
+      // 获取视图尺寸
+      const viewWidth: number = this.mapLibreMap.getViewWidth();
+      const viewHeight: number = this.mapLibreMap.getViewHeight();
+      
+      // 获取 InfoWindow 样式
+      const style = this.getInfoWindowStyle(marker);
+      
+      // 显示 InfoWindow
+      this.infoWindowManager.show(marker, viewWidth, viewHeight, screenPoint, style);
+      
+      console.info(`[MarkerManager] Showing InfoWindow for marker ${marker.getId()}`);
+    } catch (error) {
+      console.error(`[MarkerManager] Failed to show InfoWindow: ${error.message}`);
+    }
   }
   
   /**

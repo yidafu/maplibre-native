@@ -37,7 +37,7 @@ export struct ScaleBarView {
   @Prop isEnabled: boolean = true;
   
   // 每个像素代表的米数（由外部传入）
-  @State private metersPerPixel: number = 0;
+  @Prop @Watch('onMetersPerPixelChanged') metersPerPixel: number = 0;
   
   // 单位系统
   @Prop unitSystem: ScaleBarUnit = ScaleBarUnit.Metric;
@@ -59,6 +59,22 @@ export struct ScaleBarView {
   @State private barWidth: number = 0;
   
   /**
+   * 监听 metersPerPixel 变化
+   */
+  onMetersPerPixelChanged(): void {
+    hilog.info(DOMAIN, 'ScaleBarView', `metersPerPixel changed: ${this.metersPerPixel}`);
+    this.recalculate();
+  }
+  
+  /**
+   * 组件初始化
+   */
+  aboutToAppear(): void {
+    hilog.info(DOMAIN, 'ScaleBarView', `Component initialized, isEnabled: ${this.isEnabled}, metersPerPixel: ${this.metersPerPixel}`);
+    this.recalculate();
+  }
+  
+  /**
    * 更新比例尺
    * @param metersPerPixel 每像素米数
    */
@@ -71,7 +87,10 @@ export struct ScaleBarView {
    * 重新计算比例尺
    */
   private recalculate(): void {
+    hilog.info(DOMAIN, 'ScaleBarView', `recalculate: metersPerPixel=${this.metersPerPixel}, isEnabled=${this.isEnabled}`);
+    
     if (this.metersPerPixel <= 0 || !this.isEnabled) {
+      hilog.warn(DOMAIN, 'ScaleBarView', `recalculate: Cannot display - metersPerPixel=${this.metersPerPixel}, isEnabled=${this.isEnabled}`);
       this.currentRow = null;
       return;
     }
@@ -82,6 +101,8 @@ export struct ScaleBarView {
     
     const maxDistance = this.maxWidth * unitsPerPixel;
     
+    hilog.info(DOMAIN, 'ScaleBarView', `recalculate: unitsPerPixel=${unitsPerPixel}, maxDistance=${maxDistance}`);
+    
     // 选择合适的比例尺行
     const row = this.selectPreferredRow(maxDistance);
     
@@ -89,14 +110,19 @@ export struct ScaleBarView {
       // 计算实际宽度
       const actualWidth = row.distance / unitsPerPixel;
       
+      hilog.info(DOMAIN, 'ScaleBarView', `recalculate: Selected row - distance=${row.distance}, bars=${row.numberOfBars}, actualWidth=${actualWidth}`);
+      
       if (actualWidth >= MIN_BAR_WIDTH_DP) {
         this.currentRow = row;
         // 计算每个条的宽度
         this.barWidth = Math.floor(actualWidth / row.numberOfBars);
+        hilog.info(DOMAIN, 'ScaleBarView', `recalculate: ✅ ScaleBar configured - barWidth=${this.barWidth}, label=${row.label}`);
       } else {
+        hilog.warn(DOMAIN, 'ScaleBarView', `recalculate: actualWidth ${actualWidth} < MIN_BAR_WIDTH_DP ${MIN_BAR_WIDTH_DP}`);
         this.currentRow = null;
       }
     } else {
+      hilog.warn(DOMAIN, 'ScaleBarView', `recalculate: No suitable row found for maxDistance=${maxDistance}`);
       this.currentRow = null;
     }
   }
@@ -193,10 +219,13 @@ export struct ScaleBarView {
   }
   
   build() {
-    Column() {
-      if (this.isEnabled && this.currentRow && this.barWidth > 0) {
+    if (this.isEnabled && this.currentRow && this.barWidth > 0) {
+      Column() {
         this.buildScaleBar()
       }
+    } else {
+      // 返回空容器，避免影响布局（不占空间）
+      Column().width(0).height(0)
     }
   }
 

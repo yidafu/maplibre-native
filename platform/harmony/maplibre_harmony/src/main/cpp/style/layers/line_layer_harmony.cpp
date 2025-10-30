@@ -69,6 +69,20 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // New properties
+        { "setLineTranslate", nullptr, SetLineTranslate, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getLineTranslate", nullptr, GetLineTranslate, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setLineTranslateAnchor", nullptr, SetLineTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getLineTranslateAnchor", nullptr, GetLineTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setLineMiterLimit", nullptr, SetLineMiterLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getLineMiterLimit", nullptr, GetLineMiterLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setLineRoundLimit", nullptr, SetLineRoundLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getLineRoundLimit", nullptr, GetLineRoundLimit, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setLineGradient", nullptr, SetLineGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getLineGradient", nullptr, GetLineGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setLineSortKey", nullptr, SetLineSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getLineSortKey", nullptr, GetLineSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -690,6 +704,270 @@ napi_value LineLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     
     const auto& filter = layerObj->layer->getFilter();
     return filterToNapiArray(env, filter);
+}
+
+// ============================================================================
+// New Properties
+// ============================================================================
+
+napi_value LineLayerNAPI::SetLineTranslate(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, std::array<float, 2>>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-translate",
+        &mbgl::style::LineLayer::setLineTranslate
+    );
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetLineTranslate(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, std::array<float, 2>>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineTranslate
+    );
+}
+
+napi_value LineLayerNAPI::SetLineTranslateAnchor(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, mbgl::style::TranslateAnchorType>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-translate-anchor",
+        &mbgl::style::LineLayer::setLineTranslateAnchor
+    );
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetLineTranslateAnchor(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, mbgl::style::TranslateAnchorType>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineTranslateAnchor
+    );
+}
+
+napi_value LineLayerNAPI::SetLineMiterLimit(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-miter-limit",
+        &mbgl::style::LineLayer::setLineMiterLimit
+    );
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetLineMiterLimit(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineMiterLimit
+    );
+}
+
+napi_value LineLayerNAPI::SetLineRoundLimit(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-round-limit",
+        &mbgl::style::LineLayer::setLineRoundLimit
+    );
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetLineRoundLimit(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineRoundLimit
+    );
+}
+
+napi_value LineLayerNAPI::SetLineGradient(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    // lineGradient uses ColorRampPropertyValue which requires expression
+    // TODO: Implement ColorRampPropertyValue conversion in future version
+    Logger::warn("LineLayerNAPI", "setLineGradient: ColorRampPropertyValue conversion not yet fully implemented");
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetLineGradient(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    // ColorRampPropertyValue requires special handling
+    // Return undefined for now - gradient is expression-only
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+
+napi_value LineLayerNAPI::SetLineSortKey(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        argv[0],
+        "line-sort-key",
+        &mbgl::style::LineLayer::setLineSortKey
+    );
+    
+    return thisVar;
+}
+
+napi_value LineLayerNAPI::GetLineSortKey(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    LineLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
+        env,
+        layerObj->layer.get(),
+        &mbgl::style::LineLayer::getLineSortKey
+    );
 }
 
 } // namespace harmony

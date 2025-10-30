@@ -9,7 +9,8 @@ export { Annotation } from './Annotation';
 export { AnnotationType } from './AnnotationType';
 
 // Icon 相关
-export { Icon } from './Icon';
+// Icon 现在由 NAPI 提供，从 libmaplibre.so 导入
+// 用户可以通过 maplibre.Icon 访问，或通过 IconFactory 创建
 export { IconFactory } from './IconFactory';
 export { IconManager } from './IconManager';
 

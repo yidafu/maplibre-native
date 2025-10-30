@@ -59,4 +59,13 @@ export class FillExtrusionLayer {
      * 获取数据源 ID
      */
     getSourceId(): string;
+    
+    // ==================== 新增属性 ====================
+    
+    /**
+     * 设置填充挤出平移锚点
+     * @param anchor 'map' | 'viewport'
+     */
+    setFillExtrusionTranslateAnchor(anchor: string): this;
+    getFillExtrusionTranslateAnchor(): string | undefined;
 }

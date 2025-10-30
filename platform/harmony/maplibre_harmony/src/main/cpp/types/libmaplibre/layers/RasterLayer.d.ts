@@ -71,4 +71,20 @@ export class RasterLayer {
      * 获取数据源 ID
      */
     getSourceId(): string;
+    
+    // ==================== 新增属性 ====================
+    
+    /**
+     * 设置栅格淡入淡出持续时间（毫秒）
+     * @param duration 持续时间
+     */
+    setRasterFadeDuration(duration: number): this;
+    getRasterFadeDuration(): number | undefined;
+    
+    /**
+     * 设置栅格重采样方式
+     * @param resampling 'linear' | 'nearest'
+     */
+    setRasterResampling(resampling: string): this;
+    getRasterResampling(): string | undefined;
 }

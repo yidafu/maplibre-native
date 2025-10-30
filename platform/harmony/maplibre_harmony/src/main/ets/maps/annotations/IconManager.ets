@@ -1,8 +1,8 @@
-import { Icon } from './Icon';
 import { IconFactory } from './IconFactory';
 import maplibre from 'libmaplibre.so';
 
-// 使用 NAPI Marker 和 NativeMapView 类型
+// 使用 NAPI 类型
+type Icon = maplibre.Icon;
 type Marker = maplibre.Marker;
 type NativeMapView = maplibre.NativeMapView;
 
@@ -167,11 +167,8 @@ export class IconManager {
     }
     
     await this.addIcon(icon, true);
-    // 同时添加到复用标识符映射
-    const reuseId = icon.getReuseIdentifier();
-    if (reuseId && !this.reuseIdentifierMap.has(reuseId)) {
-      this.reuseIdentifierMap.set(reuseId, icon);
-    }
+    // Note: NAPI Icon doesn't support reuseIdentifier
+    // Use icon ID for caching instead
   }
 
   /**
@@ -277,7 +274,10 @@ export class IconManager {
   /**
    * 加载图标到 Native 层
    * 
-   * @param icon Icon 实例
+   * 将图标数据上传到 Native 地图样式中。
+   * 使用新的 NAPI Icon 对象方式，直接传递 Icon 引用，无需数据转换。
+   * 
+   * @param icon Icon 实例（NAPI 对象）
    * @throws Error 如果 Icon 已被释放或加载失败
    */
   private async loadIconToNative(icon: Icon): Promise<void> {
@@ -294,17 +294,18 @@ export class IconManager {
       const width = icon.getWidth();
       const height = icon.getHeight();
       const scale = icon.getScale();
-      const bytes = await icon.toBytes();
       
       console.info(`[IconManager] Loading icon to native: id=${iconId}, size=${width}x${height}, scale=${scale}`);
       
-      // 调用 Native 方法添加图标
+      // 调用 Native 方法添加图标 - 新方式：直接传递 Icon 对象
       if (!this.nativeMapView) {
         throw new Error('[IconManager] NativeMapView is not initialized');
       }
-      this.nativeMapView.addAnnotationIcon(iconId, width, height, scale, bytes);
       
-      console.debug(`[IconManager] Icon ${iconId} loaded to native successfully`);
+      // Use new Icon object API - no need for toBytes() conversion!
+      this.nativeMapView.addAnnotationIcon(icon);
+      
+      console.debug(`[IconManager] Icon ${iconId} loaded to native successfully (using Icon object API)`);
     } catch (error) {
       console.error(`[IconManager] Failed to load icon ${icon.getId()} to native:`, error);
       throw new Error(`Failed to load icon ${icon.getId()} to native: ` + error);
@@ -347,7 +348,7 @@ export class IconManager {
    */
   private remove(icon: Icon): void {
     const iconId = icon.getId();
-    const reuseId = icon.getReuseIdentifier();
+    // Note: NAPI Icon doesn't support reuseIdentifier
     
     try {
       // 从 Native 层删除
@@ -361,11 +362,7 @@ export class IconManager {
       this.iconMap.delete(iconId);
       console.debug(`[IconManager] Icon ${iconId} removed from cache`);
       
-      // 从复用标识符映射中删除
-      if (reuseId && this.reuseIdentifierMap.get(reuseId) === icon) {
-        this.reuseIdentifierMap.delete(reuseId);
-        console.debug(`[IconManager] Icon ${iconId} removed from reuse map (${reuseId})`);
-      }
+      // Note: Reuse identifier map is not used with NAPI Icon
       
       // 释放 Icon 资源
       icon.release();

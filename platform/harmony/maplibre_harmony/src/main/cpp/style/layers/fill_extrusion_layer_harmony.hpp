@@ -44,6 +44,10 @@ public:
     static napi_value SetFilter(napi_env env, napi_callback_info info);
     static napi_value GetFilter(napi_env env, napi_callback_info info);
     
+    // New properties
+    static napi_value SetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info);
+    
     std::unique_ptr<mbgl::style::Layer> releaseLayer() {
         if (!layer) throw std::runtime_error("Layer already added to style");
         return std::move(layer);

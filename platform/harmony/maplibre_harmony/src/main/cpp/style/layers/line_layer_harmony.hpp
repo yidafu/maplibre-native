@@ -65,6 +65,20 @@ public:
     static napi_value SetFilter(napi_env env, napi_callback_info info);
     static napi_value GetFilter(napi_env env, napi_callback_info info);
     
+    // New properties
+    static napi_value SetLineTranslate(napi_env env, napi_callback_info info);
+    static napi_value GetLineTranslate(napi_env env, napi_callback_info info);
+    static napi_value SetLineTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetLineTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value SetLineMiterLimit(napi_env env, napi_callback_info info);
+    static napi_value GetLineMiterLimit(napi_env env, napi_callback_info info);
+    static napi_value SetLineRoundLimit(napi_env env, napi_callback_info info);
+    static napi_value GetLineRoundLimit(napi_env env, napi_callback_info info);
+    static napi_value SetLineGradient(napi_env env, napi_callback_info info);
+    static napi_value GetLineGradient(napi_env env, napi_callback_info info);
+    static napi_value SetLineSortKey(napi_env env, napi_callback_info info);
+    static napi_value GetLineSortKey(napi_env env, napi_callback_info info);
+    
     // Internal methods for Style API
     std::string getId() const { return layer ? layer->getID() : ""; }
     

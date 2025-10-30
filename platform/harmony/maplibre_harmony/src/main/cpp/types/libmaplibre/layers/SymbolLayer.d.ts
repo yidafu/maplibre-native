@@ -307,6 +307,224 @@ declare namespace maplibre {
          * 获取文本光晕宽度
          */
         getTextHaloWidth(): number;
+        
+        // ==================== 新增图标布局属性 ====================
+        
+        /**
+         * 设置图标忽略放置
+         */
+        setIconIgnorePlacement(ignore: boolean): void;
+        getIconIgnorePlacement(): boolean;
+        
+        /**
+         * 设置图标可选
+         */
+        setIconOptional(optional: boolean): void;
+        getIconOptional(): boolean;
+        
+        /**
+         * 设置图标填充
+         */
+        setIconPadding(padding: number): void;
+        getIconPadding(): number;
+        
+        /**
+         * 设置防止图标上下颠倒
+         */
+        setIconKeepUpright(keep: boolean): void;
+        getIconKeepUpright(): boolean;
+        
+        /**
+         * 设置图标倾斜对齐
+         */
+        setIconPitchAlignment(alignment: string): void;
+        getIconPitchAlignment(): string;
+        
+        /**
+         * 设置图标旋转对齐
+         */
+        setIconRotationAlignment(alignment: string): void;
+        getIconRotationAlignment(): string;
+        
+        /**
+         * 设置图标文本适配
+         */
+        setIconTextFit(fit: string): void;
+        getIconTextFit(): string;
+        
+        /**
+         * 设置图标文本适配填充
+         */
+        setIconTextFitPadding(padding: number[]): void;
+        getIconTextFitPadding(): number[];
+        
+        /**
+         * 设置图标平移
+         */
+        setIconTranslate(translate: number[]): void;
+        getIconTranslate(): number[];
+        
+        /**
+         * 设置图标平移锚点
+         */
+        setIconTranslateAnchor(anchor: string): void;
+        getIconTranslateAnchor(): string;
+        
+        /**
+         * 设置图标光晕模糊
+         */
+        setIconHaloBlur(blur: number): void;
+        getIconHaloBlur(): number;
+        
+        // ==================== 新增文本布局属性 ====================
+        
+        /**
+         * 设置文本字母间距
+         */
+        setTextLetterSpacing(spacing: number): void;
+        getTextLetterSpacing(): number;
+        
+        /**
+         * 设置文本对齐方式
+         */
+        setTextJustify(justify: string): void;
+        getTextJustify(): string;
+        
+        /**
+         * 设置文本径向偏移
+         */
+        setTextRadialOffset(offset: number): void;
+        getTextRadialOffset(): number;
+        
+        /**
+         * 设置文本可变锚点
+         */
+        setTextVariableAnchor(anchors: string[]): void;
+        getTextVariableAnchor(): string[];
+        
+        /**
+         * 设置文本可变锚点偏移
+         */
+        setTextVariableAnchorOffset(offset: number[]): void;
+        getTextVariableAnchorOffset(): number[];
+        
+        /**
+         * 设置文本旋转角度
+         */
+        setTextRotate(rotate: number): void;
+        getTextRotate(): number;
+        
+        /**
+         * 设置文本填充
+         */
+        setTextPadding(padding: number): void;
+        getTextPadding(): number;
+        
+        /**
+         * 设置防止文本上下颠倒
+         */
+        setTextKeepUpright(keep: boolean): void;
+        getTextKeepUpright(): boolean;
+        
+        /**
+         * 设置文本转换
+         */
+        setTextTransform(transform: string): void;
+        getTextTransform(): string;
+        
+        /**
+         * 设置文本最大角度
+         */
+        setTextMaxAngle(angle: number): void;
+        getTextMaxAngle(): number;
+        
+        /**
+         * 设置文本旋转对齐
+         */
+        setTextRotationAlignment(alignment: string): void;
+        getTextRotationAlignment(): string;
+        
+        /**
+         * 设置文本倾斜对齐
+         */
+        setTextPitchAlignment(alignment: string): void;
+        getTextPitchAlignment(): string;
+        
+        /**
+         * 设置文本行高
+         */
+        setTextLineHeight(lineHeight: number): void;
+        getTextLineHeight(): number;
+        
+        /**
+         * 设置文本书写模式
+         */
+        setTextWritingMode(mode: string[]): void;
+        getTextWritingMode(): string[];
+        
+        /**
+         * 设置文本忽略放置
+         */
+        setTextIgnorePlacement(ignore: boolean): void;
+        getTextIgnorePlacement(): boolean;
+        
+        /**
+         * 设置文本可选
+         */
+        setTextOptional(optional: boolean): void;
+        getTextOptional(): boolean;
+        
+        // ==================== 新增文本绘制属性 ====================
+        
+        /**
+         * 设置文本光晕模糊
+         */
+        setTextHaloBlur(blur: number): void;
+        getTextHaloBlur(): number;
+        
+        /**
+         * 设置文本平移
+         */
+        setTextTranslate(translate: number[]): void;
+        getTextTranslate(): number[];
+        
+        /**
+         * 设置文本平移锚点
+         */
+        setTextTranslateAnchor(anchor: string): void;
+        getTextTranslateAnchor(): string;
+        
+        // ==================== 符号通用属性 ====================
+        
+        /**
+         * 设置符号放置方式
+         */
+        setSymbolPlacement(placement: string): void;
+        getSymbolPlacement(): string;
+        
+        /**
+         * 设置符号间距
+         */
+        setSymbolSpacing(spacing: number): void;
+        getSymbolSpacing(): number;
+        
+        /**
+         * 设置符号避免边缘
+         */
+        setSymbolAvoidEdges(avoid: boolean): void;
+        getSymbolAvoidEdges(): boolean;
+        
+        /**
+         * 设置符号排序键
+         */
+        setSymbolSortKey(sortKey: number): void;
+        getSymbolSortKey(): number;
+        
+        /**
+         * 设置符号Z顺序
+         */
+        setSymbolZOrder(zOrder: string): void;
+        getSymbolZOrder(): string;
     }
 }
 

@@ -2,6 +2,7 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/bindings/marker/marker_napi.hpp"
 #include "napi/bindings/style/style_napi.hpp"
+#include "napi/bindings/icon/icon_napi.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 #include "geometry/point_harmony.hpp"
 #include "geometry/projected_meters_harmony.hpp"
@@ -14,6 +15,7 @@ using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
 using maplibre::harmony::MarkerNAPI;
 using maplibre::harmony::StyleNAPI;
+using maplibre::harmony::IconNAPI;
 
 namespace mbgl {
 namespace harmony {
@@ -365,64 +367,95 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
 napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "========== addAnnotationIcon() START ==========");
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
-    // 获取 this 对象
-    napi_value thisObj;
-    size_t argc = 5;
-    napi_value args[5];
-    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
-        Logger::error("NativeMapView", "addAnnotationIcon: Failed to get arguments");
-        return undefined;
-    }
-    
-    if (argc < 5) {
-        Logger::error("NativeMapView", "addAnnotationIcon: Requires 5 arguments (symbol, width, height, scale, pixels)");
-        return undefined;
-    }
-    
-    // 获取 NativeMapView 实例
+    // Get NativeMapView instance
     NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "addAnnotationIcon: Failed to unwrap instance");
-        return undefined;
+        return args.Undefined();
     }
     
     if (!instance->map) {
         Logger::error("NativeMapView", "addAnnotationIcon: Map not initialized");
-        return undefined;
+        return args.Undefined();
     }
     
-    // 解析参数：symbol (string), width, height, scale, pixels (Uint8Array)
-    // 获取 symbol 字符串
-    size_t symbolLength = 0;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &symbolLength);
-    std::string symbol;
-    if (symbolLength > 0) {
-        symbol.resize(symbolLength);
-        napi_get_value_string_utf8(env, args[0], &symbol[0], symbolLength + 1, &symbolLength);
+    // Check if using new Icon object API (1 argument) or old byte array API (5 arguments)
+    if (args.Count() == 1) {
+        // New way: Icon object
+        Logger::info("NativeMapView", "addAnnotationIcon: Using Icon object API");
+        
+        napi_value iconObj = args.GetObject(0, "icon");
+        if (args.HasError()) {
+            Logger::error("NativeMapView", "addAnnotationIcon: Failed to get Icon object");
+            return args.Undefined();
+        }
+        
+        // Try to unwrap Icon object to get direct access to image data
+        IconNAPI* iconNapi = nullptr;
+        if (napi_unwrap(env, iconObj, reinterpret_cast<void**>(&iconNapi)) != napi_ok || !iconNapi) {
+            Logger::error("NativeMapView", "addAnnotationIcon: Argument is not a valid Icon object");
+            return args.Undefined();
+        }
+        
+        // Direct access to image data
+        auto image = iconNapi->getImage();
+        if (!image) {
+            Logger::error("NativeMapView", "addAnnotationIcon: Icon has been released");
+            return args.Undefined();
+        }
+        
+        std::string iconId = iconNapi->getId();
+        float scale = iconNapi->getScale();
+        
+        Logger::info("NativeMapView", "addAnnotationIcon: Icon object - id=%s, size=%dx%d, scale=%f",
+                     iconId.c_str(), iconNapi->getWidth(), iconNapi->getHeight(), scale);
+        
+        // Add image to style directly (no data copy needed!)
+        instance->invokeOnMapThread([iconId, scale, image](mbgl::Map* m) {
+            auto styleImage = std::make_unique<mbgl::style::Image>(
+                iconId, 
+                image->clone(),  // Clone the image for the style
+                scale
+            );
+            m->getStyle().addImage(std::move(styleImage));
+        });
+        
+        Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add (using Icon object)", iconId.c_str());
+        Logger::info("NativeMapView", "========== addAnnotationIcon() END (Icon object) ==========");
+        return args.Undefined();
     }
     
-    // 获取尺寸和缩放比例
-    int32_t width, height;
-    double scale;
-    if (napi_get_value_int32(env, args[1], &width) != napi_ok ||
-        napi_get_value_int32(env, args[2], &height) != napi_ok ||
-        napi_get_value_double(env, args[3], &scale) != napi_ok) {
-        Logger::error("NativeMapView", "addAnnotationIcon: Failed to parse numeric arguments");
-        return undefined;
+    // Old way: byte array (backward compatibility)
+    if (args.Count() < 5) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Requires either 1 argument (Icon) or 5 arguments (symbol, width, height, scale, pixels)");
+        return args.Undefined();
     }
     
-    // 获取 Uint8Array 像素数据
+    Logger::info("NativeMapView", "addAnnotationIcon: Using byte array API (backward compatibility)");
+    
+    // Parse arguments using NapiArgs
+    std::string symbol = args.GetString(0, "symbol");
+    int32_t width = args.GetInt32(1, "width");
+    int32_t height = args.GetInt32(2, "height");
+    double scale = args.GetDouble(3, "scale");
+    
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addAnnotationIcon: Failed to parse arguments: %s", args.GetError().c_str());
+        return args.Undefined();
+    }
+    
+    // Get Uint8Array pixel data (still need manual handling for TypedArray)
+    napi_value pixelsArg = args.Get(4);
     void* pixelData = nullptr;
     size_t pixelLength = 0;
     napi_value arrayBuffer;
     
-    // 尝试获取 TypedArray 的 ArrayBuffer
-    if (napi_get_typedarray_info(env, args[4], nullptr, &pixelLength, &pixelData, &arrayBuffer, nullptr) != napi_ok) {
+    if (napi_get_typedarray_info(env, pixelsArg, nullptr, &pixelLength, &pixelData, &arrayBuffer, nullptr) != napi_ok) {
         Logger::error("NativeMapView", "addAnnotationIcon: Failed to get pixel data");
-        return undefined;
+        return args.Undefined();
     }
     
     Logger::info("NativeMapView", "addAnnotationIcon: symbol=%s, width=%d, height=%d, scale=%f, pixelLength=%zu", 
@@ -450,8 +483,8 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
         }
     }
     
-    Logger::info("NativeMapView", "========== addAnnotationIcon() END ==========");
-    return undefined;
+    Logger::info("NativeMapView", "========== addAnnotationIcon() END (byte array) ==========");
+    return args.Undefined();
 }
 
 napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info info) {

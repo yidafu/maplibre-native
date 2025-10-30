@@ -103,6 +103,8 @@ add_library(maplibre
     napi/bindings/marker/marker_napi.hpp
     napi/bindings/marker/marker_napi_base.cpp
     napi/bindings/marker/marker_napi_options.cpp
+    napi/bindings/icon/icon_napi.hpp
+    napi/bindings/icon/icon_napi.cpp
     napi/bindings/style/style_napi.hpp
     napi/bindings/style/style_napi_base.cpp
     napi/bindings/style/style_napi_layers.cpp

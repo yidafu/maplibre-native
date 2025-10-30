@@ -60,6 +60,12 @@ public:
     static napi_value SetFilter(napi_env env, napi_callback_info info);
     static napi_value GetFilter(napi_env env, napi_callback_info info);
     
+    // New properties
+    static napi_value SetFillTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetFillTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value SetFillSortKey(napi_env env, napi_callback_info info);
+    static napi_value GetFillSortKey(napi_env env, napi_callback_info info);
+    
     // Internal methods for Style API
     std::string getId() const { return layer ? layer->getID() : ""; }
     

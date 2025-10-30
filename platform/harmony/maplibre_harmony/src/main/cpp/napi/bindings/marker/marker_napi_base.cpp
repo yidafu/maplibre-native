@@ -24,6 +24,7 @@ MarkerNAPI::MarkerNAPI()
       rotation(0.0),
       draggable(false),
       zIndex(0),
+      iconRef(nullptr),
       infoWindowShown(false),
       selected(false),
       dragState(0),
@@ -40,6 +41,13 @@ MarkerNAPI::~MarkerNAPI() {
 void MarkerNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
     Logger::debug("MarkerNAPI", "Destructor called");
     MarkerNAPI* marker = static_cast<MarkerNAPI*>(nativeObject);
+    
+    // 清理 Icon 引用
+    if (marker->iconRef) {
+        napi_delete_reference(env, marker->iconRef);
+        marker->iconRef = nullptr;
+        Logger::debug("MarkerNAPI", "Cleaned up Icon reference in destructor");
+    }
     
     // 清理 MapLibreMap 引用
     if (marker->mapLibreMapRef) {
@@ -408,7 +416,53 @@ napi_value MarkerNAPI::SetIcon(napi_env env, napi_callback_info info) {
     
     if (!marker) return nullptr;
     
-    marker->iconId = args.GetStringOr(0, "");
+    // Check argument type: string ID or Icon object
+    napi_valuetype type;
+    napi_value iconArg = args.Get(0);
+    napi_typeof(env, iconArg, &type);
+    
+    // Clear old icon reference if exists
+    if (marker->iconRef) {
+        napi_delete_reference(env, marker->iconRef);
+        marker->iconRef = nullptr;
+    }
+    
+    if (type == napi_string) {
+        // Backward compatibility: string icon ID
+        marker->iconId = args.GetStringOr(0, "");
+        Logger::debug("MarkerNAPI", "SetIcon: using string ID '%s'", marker->iconId.c_str());
+    } else if (type == napi_object) {
+        // New way: Icon object
+        // Import IconNAPI to check if it's an Icon object
+        // We'll use a simple check by trying to get the getId method
+        napi_value getIdFunc;
+        napi_status status = napi_get_named_property(env, iconArg, "getId", &getIdFunc);
+        
+        if (status == napi_ok) {
+            // Call getId() to get the icon ID
+            napi_value idValue;
+            status = napi_call_function(env, iconArg, getIdFunc, 0, nullptr, &idValue);
+            
+            if (status == napi_ok) {
+                size_t length;
+                napi_get_value_string_utf8(env, idValue, nullptr, 0, &length);
+                marker->iconId.resize(length);
+                napi_get_value_string_utf8(env, idValue, &marker->iconId[0], length + 1, &length);
+                
+                // Keep a reference to the Icon object
+                status = napi_create_reference(env, iconArg, 1, &marker->iconRef);
+                if (status != napi_ok) {
+                    Logger::error("MarkerNAPI", "SetIcon: Failed to create Icon reference");
+                } else {
+                    Logger::debug("MarkerNAPI", "SetIcon: using Icon object with ID '%s'", marker->iconId.c_str());
+                }
+            }
+        }
+    } else if (type == napi_null || type == napi_undefined) {
+        // Clear icon
+        marker->iconId = "";
+        Logger::debug("MarkerNAPI", "SetIcon: cleared icon");
+    }
     
     napi_value undefined;
     napi_get_undefined(env, &undefined);

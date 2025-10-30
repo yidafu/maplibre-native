@@ -52,4 +52,14 @@ export class HeatmapLayer {
      * 获取数据源 ID
      */
     getSourceId(): string;
+    
+    // ==================== 新增属性 ====================
+    
+    /**
+     * 设置热力图颜色渐变（仅支持 Expression）
+     * 必须使用 heatmap-density 表达式
+     * @param color 颜色表达式数组
+     */
+    setHeatmapColor(color: any[]): this;
+    getHeatmapColor(): any[] | undefined;
 }

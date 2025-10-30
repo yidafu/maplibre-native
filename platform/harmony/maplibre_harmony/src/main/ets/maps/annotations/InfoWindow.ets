@@ -454,7 +454,7 @@ export struct InfoWindowComponent {
               Text(this.marker.getSnippet())
                 .fontSize(this.customStyle?.snippetFontSize ?? 14)
                 .fontColor(this.customStyle?.snippetFontColor ?? '#666666')
-                .maxLines(2)
+                // 移除 maxLines 限制，支持多行文本自动换行
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .margin({ top: 4 })
                 .width('100%')

@@ -20,8 +20,8 @@ export struct LogoView {
   build() {
     if (this.logoEnabled) {
       Image(this.logoImage)
-        .width(this.logoWidth)
-        .height(this.logoHeight)
+        .width(this.logoWidth === 'auto' ? 80 : this.logoWidth)
+        .height(this.logoHeight === 'auto' ? 40 : this.logoHeight)
         .objectFit(ImageFit.Contain)
     }
   }

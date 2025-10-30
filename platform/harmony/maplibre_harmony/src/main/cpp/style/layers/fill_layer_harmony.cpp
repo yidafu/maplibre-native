@@ -70,6 +70,12 @@ napi_value FillLayerNAPI::Init(napi_env env, napi_value exports) {
         // Filter
         { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // New properties
+        { "setFillTranslateAnchor", nullptr, SetFillTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFillTranslateAnchor", nullptr, GetFillTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setFillSortKey", nullptr, SetFillSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFillSortKey", nullptr, GetFillSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -592,6 +598,82 @@ napi_value FillLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     // Get filter and convert to NAPI array
     const auto& filter = layerObj->layer->getFilter();
     return filterToNapiArray(env, filter);
+}
+
+// ============================================================================
+// New Properties
+// ============================================================================
+
+napi_value FillLayerNAPI::SetFillTranslateAnchor(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    FillLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    
+    mbgl::harmony::setPaintProperty<mbgl::style::FillLayer, mbgl::style::TranslateAnchorType>(
+        env, layerObj->layer.get(), argv[0], "fill-translate-anchor",
+        &mbgl::style::FillLayer::setFillTranslateAnchor
+    );
+    return thisVar;
+}
+
+napi_value FillLayerNAPI::GetFillTranslateAnchor(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    FillLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::FillLayer, mbgl::style::TranslateAnchorType>(
+        env, layerObj->layer.get(), &mbgl::style::FillLayer::getFillTranslateAnchor
+    );
+}
+
+napi_value FillLayerNAPI::SetFillSortKey(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    FillLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    
+    mbgl::harmony::setLayoutProperty<mbgl::style::FillLayer, float>(
+        env, layerObj->layer.get(), argv[0], "fill-sort-key",
+        &mbgl::style::FillLayer::setFillSortKey
+    );
+    return thisVar;
+}
+
+napi_value FillLayerNAPI::GetFillSortKey(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    FillLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::FillLayer, float>(
+        env, layerObj->layer.get(), &mbgl::style::FillLayer::getFillSortKey
+    );
 }
 
 } // namespace harmony

@@ -4,6 +4,7 @@
  */
 
 import type { Style } from './Style';
+import type { Icon } from './Icon';
 
 // ==================== Type Definitions ====================
 
@@ -539,6 +540,34 @@ export class NativeMapView {
      * @param height 高度
      * @param scale 缩放比例
      * @param pixels 像素数据
+     */
+    /**
+     * 添加标注图标（推荐方式）
+     * 
+     * 使用 Icon 对象添加图标，性能更好，无需数据拷贝。
+     * 
+     * @param icon Icon 对象（由 IconFactory 创建）
+     * 
+     * @example
+     * ```typescript
+     * const factory = IconFactory.getInstance();
+     * const icon = await factory.fromResource($r('app.media.marker'));
+     * nativeMapView.addAnnotationIcon(icon);
+     * ```
+     */
+    addAnnotationIcon(icon: Icon): void;
+    
+    /**
+     * 添加标注图标（向后兼容方式）
+     * 
+     * 使用字节数组添加图标，需要手动转换 PixelMap 为字节数组。
+     * 此方式为向后兼容保留，建议使用 Icon 对象方式。
+     * 
+     * @param symbol 图标 ID
+     * @param width 宽度（像素）
+     * @param height 高度（像素）
+     * @param scale 缩放比例
+     * @param pixels 像素数据（RGBA 格式的 Uint8Array）
      */
     addAnnotationIcon(symbol: string, width: number, height: number, scale: number, pixels: Uint8Array): void;
     

@@ -94,6 +94,68 @@ private:
     static napi_value SetTextAllowOverlap(napi_env env, napi_callback_info info);
     static napi_value GetTextAllowOverlap(napi_env env, napi_callback_info info);
     
+    // New Icon layout properties
+    static napi_value SetIconIgnorePlacement(napi_env env, napi_callback_info info);
+    static napi_value GetIconIgnorePlacement(napi_env env, napi_callback_info info);
+    static napi_value SetIconOptional(napi_env env, napi_callback_info info);
+    static napi_value GetIconOptional(napi_env env, napi_callback_info info);
+    static napi_value SetIconPadding(napi_env env, napi_callback_info info);
+    static napi_value GetIconPadding(napi_env env, napi_callback_info info);
+    static napi_value SetIconKeepUpright(napi_env env, napi_callback_info info);
+    static napi_value GetIconKeepUpright(napi_env env, napi_callback_info info);
+    static napi_value SetIconPitchAlignment(napi_env env, napi_callback_info info);
+    static napi_value GetIconPitchAlignment(napi_env env, napi_callback_info info);
+    static napi_value SetIconRotationAlignment(napi_env env, napi_callback_info info);
+    static napi_value GetIconRotationAlignment(napi_env env, napi_callback_info info);
+    static napi_value SetIconTextFit(napi_env env, napi_callback_info info);
+    static napi_value GetIconTextFit(napi_env env, napi_callback_info info);
+    static napi_value SetIconTextFitPadding(napi_env env, napi_callback_info info);
+    static napi_value GetIconTextFitPadding(napi_env env, napi_callback_info info);
+    
+    // New Text layout properties
+    static napi_value SetTextLetterSpacing(napi_env env, napi_callback_info info);
+    static napi_value GetTextLetterSpacing(napi_env env, napi_callback_info info);
+    static napi_value SetTextJustify(napi_env env, napi_callback_info info);
+    static napi_value GetTextJustify(napi_env env, napi_callback_info info);
+    static napi_value SetTextRadialOffset(napi_env env, napi_callback_info info);
+    static napi_value GetTextRadialOffset(napi_env env, napi_callback_info info);
+    static napi_value SetTextVariableAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetTextVariableAnchor(napi_env env, napi_callback_info info);
+    static napi_value SetTextRotate(napi_env env, napi_callback_info info);
+    static napi_value GetTextRotate(napi_env env, napi_callback_info info);
+    static napi_value SetTextPadding(napi_env env, napi_callback_info info);
+    static napi_value GetTextPadding(napi_env env, napi_callback_info info);
+    static napi_value SetTextKeepUpright(napi_env env, napi_callback_info info);
+    static napi_value GetTextKeepUpright(napi_env env, napi_callback_info info);
+    static napi_value SetTextTransform(napi_env env, napi_callback_info info);
+    static napi_value GetTextTransform(napi_env env, napi_callback_info info);
+    static napi_value SetTextMaxAngle(napi_env env, napi_callback_info info);
+    static napi_value GetTextMaxAngle(napi_env env, napi_callback_info info);
+    static napi_value SetTextRotationAlignment(napi_env env, napi_callback_info info);
+    static napi_value GetTextRotationAlignment(napi_env env, napi_callback_info info);
+    static napi_value SetTextPitchAlignment(napi_env env, napi_callback_info info);
+    static napi_value GetTextPitchAlignment(napi_env env, napi_callback_info info);
+    static napi_value SetTextLineHeight(napi_env env, napi_callback_info info);
+    static napi_value GetTextLineHeight(napi_env env, napi_callback_info info);
+    static napi_value SetTextWritingMode(napi_env env, napi_callback_info info);
+    static napi_value GetTextWritingMode(napi_env env, napi_callback_info info);
+    static napi_value SetTextIgnorePlacement(napi_env env, napi_callback_info info);
+    static napi_value GetTextIgnorePlacement(napi_env env, napi_callback_info info);
+    static napi_value SetTextOptional(napi_env env, napi_callback_info info);
+    static napi_value GetTextOptional(napi_env env, napi_callback_info info);
+    
+    // Symbol common layout properties
+    static napi_value SetSymbolPlacement(napi_env env, napi_callback_info info);
+    static napi_value GetSymbolPlacement(napi_env env, napi_callback_info info);
+    static napi_value SetSymbolSpacing(napi_env env, napi_callback_info info);
+    static napi_value GetSymbolSpacing(napi_env env, napi_callback_info info);
+    static napi_value SetSymbolAvoidEdges(napi_env env, napi_callback_info info);
+    static napi_value GetSymbolAvoidEdges(napi_env env, napi_callback_info info);
+    static napi_value SetSymbolSortKey(napi_env env, napi_callback_info info);
+    static napi_value GetSymbolSortKey(napi_env env, napi_callback_info info);
+    static napi_value SetSymbolZOrder(napi_env env, napi_callback_info info);
+    static napi_value GetSymbolZOrder(napi_env env, napi_callback_info info);
+    
     // Paint properties
     static napi_value SetIconOpacity(napi_env env, napi_callback_info info);
     static napi_value GetIconOpacity(napi_env env, napi_callback_info info);
@@ -103,6 +165,12 @@ private:
     static napi_value GetIconHaloColor(napi_env env, napi_callback_info info);
     static napi_value SetIconHaloWidth(napi_env env, napi_callback_info info);
     static napi_value GetIconHaloWidth(napi_env env, napi_callback_info info);
+    static napi_value SetIconHaloBlur(napi_env env, napi_callback_info info);
+    static napi_value GetIconHaloBlur(napi_env env, napi_callback_info info);
+    static napi_value SetIconTranslate(napi_env env, napi_callback_info info);
+    static napi_value GetIconTranslate(napi_env env, napi_callback_info info);
+    static napi_value SetIconTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetIconTranslateAnchor(napi_env env, napi_callback_info info);
     
     static napi_value SetTextOpacity(napi_env env, napi_callback_info info);
     static napi_value GetTextOpacity(napi_env env, napi_callback_info info);
@@ -112,6 +180,12 @@ private:
     static napi_value GetTextHaloColor(napi_env env, napi_callback_info info);
     static napi_value SetTextHaloWidth(napi_env env, napi_callback_info info);
     static napi_value GetTextHaloWidth(napi_env env, napi_callback_info info);
+    static napi_value SetTextHaloBlur(napi_env env, napi_callback_info info);
+    static napi_value GetTextHaloBlur(napi_env env, napi_callback_info info);
+    static napi_value SetTextTranslate(napi_env env, napi_callback_info info);
+    static napi_value GetTextTranslate(napi_env env, napi_callback_info info);
+    static napi_value SetTextTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetTextTranslateAnchor(napi_env env, napi_callback_info info);
     
 private:
     std::unique_ptr<mbgl::style::SymbolLayer> layer;

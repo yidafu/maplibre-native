@@ -106,6 +106,7 @@ private:
     double rotation;
     bool draggable;
     int zIndex;
+    napi_ref iconRef;  // Reference to Icon object (if using Icon object instead of string ID)
     
     // Extended state
     bool infoWindowShown;

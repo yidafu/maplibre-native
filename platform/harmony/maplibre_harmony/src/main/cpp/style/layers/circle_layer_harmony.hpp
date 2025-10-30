@@ -62,6 +62,18 @@ public:
     static napi_value SetFilter(napi_env env, napi_callback_info info);
     static napi_value GetFilter(napi_env env, napi_callback_info info);
     
+    // New properties
+    static napi_value SetCircleTranslate(napi_env env, napi_callback_info info);
+    static napi_value GetCircleTranslate(napi_env env, napi_callback_info info);
+    static napi_value SetCircleTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value GetCircleTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value SetCirclePitchScale(napi_env env, napi_callback_info info);
+    static napi_value GetCirclePitchScale(napi_env env, napi_callback_info info);
+    static napi_value SetCirclePitchAlignment(napi_env env, napi_callback_info info);
+    static napi_value GetCirclePitchAlignment(napi_env env, napi_callback_info info);
+    static napi_value SetCircleSortKey(napi_env env, napi_callback_info info);
+    static napi_value GetCircleSortKey(napi_env env, napi_callback_info info);
+    
     // Internal methods for Style API
     std::string getId() const { return layer ? layer->getID() : ""; }
     

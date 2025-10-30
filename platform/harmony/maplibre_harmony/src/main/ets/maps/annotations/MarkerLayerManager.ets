@@ -130,12 +130,11 @@ export class MarkerLayerManager {
       };
       
       // 创建 GeoJsonSource（使用 NAPI 类）
-      const options: GeoJsonOptions = {
+      this.source = new maplibre.GeoJsonSource(MarkerLayerManager.SOURCE_ID, {
         cluster: false,
         tolerance: 0.375,
         buffer: 128
-      };
-      this.source = new maplibre.GeoJsonSource(MarkerLayerManager.SOURCE_ID, options);
+      } as ESObject);
       
       // 设置初始数据
       this.source.setGeoJsonSync(emptyFeatureCollection);

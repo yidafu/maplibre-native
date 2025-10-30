@@ -1,3 +1,5 @@
+import { Icon } from './Icon';
+
 /**
  * Marker - 地图标记点
  * 
@@ -101,9 +103,24 @@ export class Marker {
   /**
    * 设置 Marker 的图标
    * 
-   * @param icon 图标 ID
+   * 支持两种方式：
+   * 1. Icon 对象：推荐方式，由 IconFactory 创建的 NAPI Icon 对象（性能更好）
+   * 2. 图标 ID 字符串：向后兼容方式，需要先通过 addAnnotationIcon 添加图标资源
+   * 
+   * @param icon Icon 对象或图标 ID 字符串（null 表示清除图标）
+   * 
+   * @example
+   * ```typescript
+   * // 推荐：使用 Icon 对象
+   * const factory = IconFactory.getInstance();
+   * const icon = await factory.fromResource($r('app.media.marker'));
+   * marker.setIcon(icon);
+   * 
+   * // 向后兼容：使用字符串 ID
+   * marker.setIcon('my-icon-id');
+   * ```
    */
-  setIcon(icon: string | null): void;
+  setIcon(icon: Icon | string | null): void;
   
   /**
    * 设置 Marker 的标题

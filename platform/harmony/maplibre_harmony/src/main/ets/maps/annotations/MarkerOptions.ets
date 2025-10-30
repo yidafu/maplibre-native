@@ -1,9 +1,9 @@
 import { LatLng } from '../geometry/LatLng';
-import { Icon } from './Icon';
 import { InfoWindowStyle } from './InfoWindow';
 import maplibre from 'libmaplibre.so';
 
-// 使用 NAPI Marker 类型
+// 使用 NAPI 类型
+type Icon = maplibre.Icon;
 type Marker = maplibre.Marker;
 
 /**

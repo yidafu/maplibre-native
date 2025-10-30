@@ -26,6 +26,13 @@ export * from './NativeMapView';
 export { Marker, MarkerOptions } from './Marker';
 
 /**
+ * Icon - 图标类
+ * 表示地图标注的图标，由 C++ NAPI 层实现
+ * 包含图标的位图数据和元信息
+ */
+export { Icon } from './Icon';
+
+/**
  * Style - 样式管理类 (NAPI 对象)
  * 提供面向对象的样式管理接口
  * 

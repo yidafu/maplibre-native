@@ -117,4 +117,78 @@ export class LineLayer {
      * 获取数据源 ID
      */
     getSourceId(): string;
+    
+    // ==================== 新增属性 ====================
+    
+    /**
+     * 设置线条平移
+     * @param translate 平移量 [x, y]（单位：像素）
+     * @returns 返回 this 以支持链式调用
+     */
+    setLineTranslate(translate: number[]): this;
+    
+    /**
+     * 获取线条平移
+     */
+    getLineTranslate(): number[] | undefined;
+    
+    /**
+     * 设置线条平移锚点
+     * @param anchor 'map' | 'viewport'
+     * @returns 返回 this 以支持链式调用
+     */
+    setLineTranslateAnchor(anchor: string): this;
+    
+    /**
+     * 获取线条平移锚点
+     */
+    getLineTranslateAnchor(): string | undefined;
+    
+    /**
+     * 设置斜接限制
+     * @param limit 斜接限制值
+     * @returns 返回 this 以支持链式调用
+     */
+    setLineMiterLimit(limit: number): this;
+    
+    /**
+     * 获取斜接限制
+     */
+    getLineMiterLimit(): number | undefined;
+    
+    /**
+     * 设置圆角限制
+     * @param limit 圆角限制值
+     * @returns 返回 this 以支持链式调用
+     */
+    setLineRoundLimit(limit: number): this;
+    
+    /**
+     * 获取圆角限制
+     */
+    getLineRoundLimit(): number | undefined;
+    
+    /**
+     * 设置线条渐变色（仅支持 Expression）
+     * @param gradient 渐变色表达式
+     * @returns 返回 this 以支持链式调用
+     */
+    setLineGradient(gradient: any[]): this;
+    
+    /**
+     * 获取线条渐变色
+     */
+    getLineGradient(): any[] | undefined;
+    
+    /**
+     * 设置线条排序键
+     * @param sortKey 排序键
+     * @returns 返回 this 以支持链式调用
+     */
+    setLineSortKey(sortKey: number): this;
+    
+    /**
+     * 获取线条排序键
+     */
+    getLineSortKey(): number | undefined;
 }

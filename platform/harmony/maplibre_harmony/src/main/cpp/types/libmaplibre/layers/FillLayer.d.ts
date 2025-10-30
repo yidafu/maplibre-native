@@ -127,4 +127,20 @@ export class FillLayer {
      * 获取图层过滤器
      */
     getFilter(): any[] | null;
+    
+    // ==================== 新增属性 ====================
+    
+    /**
+     * 设置填充平移锚点
+     * @param anchor 'map' | 'viewport'
+     */
+    setFillTranslateAnchor(anchor: string): this;
+    getFillTranslateAnchor(): string | undefined;
+    
+    /**
+     * 设置填充排序键
+     * @param sortKey 排序键
+     */
+    setFillSortKey(sortKey: number): this;
+    getFillSortKey(): number | undefined;
 }

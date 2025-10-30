@@ -19,8 +19,27 @@ export class LatLngBounds {
 
   /**
    * 从两个点创建边界
+   * 
+   * @param northeast 东北角点（纬度更大、经度更大的点）
+   * @param southwest 西南角点（纬度更小、经度更小的点）
+   * @returns LatLngBounds 边界对象
+   * 
+   * @example
+   * ```typescript
+   * const southwest = createLatLng(30.23, 120.12);
+   * const northeast = createLatLng(30.31, 120.20);
+   * const bounds = LatLngBounds.fromLatLngs(northeast, southwest);
+   * ```
    */
   public static fromLatLngs(northeast: LatLng, southwest: LatLng): LatLngBounds {
+    // 验证参数
+    if (northeast.latitude < southwest.latitude) {
+      throw new Error(`Invalid bounds: northeast latitude (${northeast.latitude}) must be >= southwest latitude (${southwest.latitude})`);
+    }
+    if (northeast.longitude < southwest.longitude) {
+      throw new Error(`Invalid bounds: northeast longitude (${northeast.longitude}) must be >= southwest longitude (${southwest.longitude})`);
+    }
+    
     return new LatLngBounds(northeast.latitude, northeast.longitude, southwest.latitude, southwest.longitude);
   }
 

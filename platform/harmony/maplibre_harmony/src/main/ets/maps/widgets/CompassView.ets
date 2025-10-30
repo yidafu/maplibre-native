@@ -16,7 +16,10 @@ const ROTATION_THRESHOLD = 1.0; // 正北判断阈值（度）
 
 @Component
 export struct CompassView {
-  // 当前旋转角度
+  // 原始 bearing 值（用于判断朝北）
+  private bearing: number = 0;
+  
+  // 当前旋转角度（用于视图旋转，取反的 bearing）
   @State private rotation: number = 0;
   
   // 透明度
@@ -35,7 +38,7 @@ export struct CompassView {
   @Prop compassImage: Resource = $r('app.media.compass_icon');
   
   // 外部传入的 bearing（地图方向）
-  @Prop @Watch('onBearingChanged') bearing: number = 0;
+  @Prop @Watch('onBearingChanged') externalBearing: number = 0;
   
   // 点击回调
   onCompassClick?: () => void;
@@ -47,14 +50,14 @@ export struct CompassView {
    * Bearing 变化监听器
    */
   onBearingChanged(): void {
-    this.update(this.bearing);
+    this.update(this.externalBearing);
   }
   
   /**
    * 组件初始化
    */
   aboutToAppear(): void {
-    this.update(this.bearing);
+    this.update(this.externalBearing);
   }
 
   /**
@@ -62,6 +65,9 @@ export struct CompassView {
    * @param bearing 地图方位角（顺时针，0为正北）
    */
   update(bearing: number): void {
+    // 保存原始 bearing 值（用于判断朝北，参考 Android/iOS）
+    this.bearing = bearing;
+    
     // 取反作为旋转角度（参考 iOS 实现）
     this.rotation = -bearing;
     
@@ -72,11 +78,13 @@ export struct CompassView {
     // 根据可见性模式和方位角决定显示/隐藏
     switch (this.compassVisibility) {
       case CompassVisibility.Adaptive:
+        // 参考 iOS: if (direction > 0) show else hide
+        // 参考 Android: if (!isHidden()) show else scheduleFadeOut
         if (this.isFacingNorth() && this.fadeWhenFacingNorth) {
-          // 延迟淡出
+          // 延迟淡出（面向正北）
           this.scheduleFadeOut();
         } else {
-          // 立即显示
+          // 立即显示（不面向正北）
           this.cancelFadeOut();
           this.show(true);
         }
@@ -94,10 +102,12 @@ export struct CompassView {
   
   /**
    * 判断是否面向正北
+   * 参考 Android: Math.abs(rotation) >= 359.0 || Math.abs(rotation) <= 1.0
+   * 参考 iOS: direction == 0 (实际上有容差)
    */
   private isFacingNorth(): boolean {
-    // 容差范围：±1度
-    const absBearing = Math.abs(this.rotation);
+    // 使用原始 bearing 值判断（参考 Android/iOS）
+    const absBearing = Math.abs(this.bearing);
     return absBearing <= ROTATION_THRESHOLD || absBearing >= (360 - ROTATION_THRESHOLD);
   }
   
@@ -161,8 +171,8 @@ export struct CompassView {
     this.compassEnabled = enabled;
     
     if (enabled) {
-      // 重新计算可见性
-      this.update(this.rotation);
+      // 重新计算可见性（使用原始 bearing 值）
+      this.update(this.bearing);
     } else {
       this.hide(false);
     }

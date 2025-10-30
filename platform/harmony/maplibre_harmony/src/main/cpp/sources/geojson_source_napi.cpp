@@ -195,6 +195,65 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.lineMetrics = lineMetrics;
                     Logger::debug("GeoJsonSourceNAPI", "Options: lineMetrics=%d", lineMetrics);
                 }
+                
+                // 解析 clusterProperties
+                if (HasProperty(env, optionsObj, "clusterProperties")) {
+                    napi_value clusterPropsValue;
+                    napi_get_named_property(env, optionsObj, "clusterProperties", &clusterPropsValue);
+                    
+                    napi_valuetype clusterPropsType;
+                    napi_typeof(env, clusterPropsValue, &clusterPropsType);
+                    
+                    if (clusterPropsType == napi_object) {
+                        // clusterProperties 是一个对象，格式为:
+                        // { propertyName: [mapExpr, reduceExpr], ... }
+                        napi_value propertyNames;
+                        napi_get_property_names(env, clusterPropsValue, &propertyNames);
+                        
+                        uint32_t propertyCount = 0;
+                        napi_get_array_length(env, propertyNames, &propertyCount);
+                        
+                        for (uint32_t i = 0; i < propertyCount; i++) {
+                            napi_value propertyNameValue;
+                            napi_get_element(env, propertyNames, i, &propertyNameValue);
+                            
+                            std::string propertyName;
+                            size_t nameLen = 0;
+                            napi_get_value_string_utf8(env, propertyNameValue, nullptr, 0, &nameLen);
+                            propertyName.resize(nameLen);
+                            napi_get_value_string_utf8(env, propertyNameValue, &propertyName[0], nameLen + 1, &nameLen);
+                            
+                            // 获取该属性的表达式数组 [mapExpr, reduceExpr]
+                            napi_value expressionArray;
+                            napi_get_property(env, clusterPropsValue, propertyNameValue, &expressionArray);
+                            
+                            bool isArray = false;
+                            napi_is_array(env, expressionArray, &isArray);
+                            
+                            if (isArray) {
+                                uint32_t arrayLength = 0;
+                                napi_get_array_length(env, expressionArray, &arrayLength);
+                                
+                                if (arrayLength >= 2) {
+                                    // 获取 map 表达式和 reduce 表达式
+                                    napi_value mapExprValue, reduceExprValue;
+                                    napi_get_element(env, expressionArray, 0, &mapExprValue);
+                                    napi_get_element(env, expressionArray, 1, &reduceExprValue);
+                                    
+                                    // 转换为 mbgl Expression
+                                    // TODO: clusterProperties需要特殊的Expression转换
+                                    // 当前暂时跳过clusterProperties的解析
+                                    // 在未来版本中可以通过JSON字符串方式传递
+                                    Logger::warn("GeoJsonSourceNAPI", 
+                                                "clusterProperties[\"%s\"]: Expression conversion not yet implemented", 
+                                                propertyName.c_str());
+                                }
+                            }
+                        }
+                        
+                        Logger::debug("GeoJsonSourceNAPI", "Options: clusterProperties count=%zu", options.clusterProperties.size());
+                    }
+                }
             }
         }
         

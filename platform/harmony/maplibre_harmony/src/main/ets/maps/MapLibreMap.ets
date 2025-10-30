@@ -37,6 +37,7 @@ import { UiSettings } from './UiSettings';
 import { LocationComponent } from './location/LocationComponent';
 import { Projection } from './projection/Projection';
 import { CameraAnimationCallback } from './camera/CameraAnimationCallback';
+import { registerMapLibreMap } from './NativeMapView';
 
 // Marker 和 Style 现在由 NAPI 提供
 type Marker = maplibre.Marker;
@@ -119,6 +120,9 @@ export class MapLibreMap {
     
     // 设置相机移动监听器，自动更新 ScaleBar
     this.setupScaleBarCameraListener();
+    
+    // 注册到 NativeMapView 以启用 InfoWindow 功能
+    registerMapLibreMap(nativeMapView, this);
   }
   
   /**
@@ -442,6 +446,32 @@ export class MapLibreMap {
     this.projection.updateViewSize(width, height);
     
     this.nativeMapView.resizeView(width, height);
+    
+    // 视图大小改变后，触发 ScaleBar 更新（确保有初始值）
+    if (this.onScaleBarUpdate) {
+      try {
+        const latLng = this.getLatLng();
+        const metersPerPixel = this.getMetersPerPixelAtLatitude(latLng.latitude);
+        this.onScaleBarUpdate(metersPerPixel);
+        console.info(`[MapLibreMap] resizeView triggered ScaleBar update: ${metersPerPixel}`);
+      } catch (error) {
+        console.error(`[MapLibreMap] Failed to update ScaleBar on resize: ${error}`);
+      }
+    }
+  }
+  
+  /**
+   * 获取视图宽度
+   */
+  public getViewWidth(): number {
+    return this.viewWidth;
+  }
+  
+  /**
+   * 获取视图高度
+   */
+  public getViewHeight(): number {
+    return this.viewHeight;
   }
 
   // 样式管理
@@ -1942,6 +1972,16 @@ export class MapLibreMap {
       console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
       return [];
     }
+  }
+  
+  // ========== InfoWindow 支持方法 ==========
+  
+  /**
+   * 获取 InfoWindowManager（内部使用）
+   * @internal
+   */
+  public getInfoWindowManager(): InfoWindowManager {
+    return this.infoWindowManager;
   }
 }
 

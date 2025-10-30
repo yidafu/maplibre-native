@@ -166,4 +166,46 @@ export class CircleLayer {
      * @returns 过滤器表达式数组或 null
      */
     getFilter(): any[] | null;
+    
+    // ==================== 新增属性 ====================
+    
+    /**
+     * 设置圆形平移
+     * @param translate 平移量 [x, y]（单位：像素）
+     * @returns 返回 this 以支持链式调用
+     */
+    setCircleTranslate(translate: number[]): this;
+    getCircleTranslate(): number[] | undefined;
+    
+    /**
+     * 设置圆形平移锚点
+     * @param anchor 'map' | 'viewport'
+     * @returns 返回 this 以支持链式调用
+     */
+    setCircleTranslateAnchor(anchor: string): this;
+    getCircleTranslateAnchor(): string | undefined;
+    
+    /**
+     * 设置圆形缩放行为
+     * @param scale 'map' | 'viewport'
+     * @returns 返回 this 以支持链式调用
+     */
+    setCirclePitchScale(scale: string): this;
+    getCirclePitchScale(): string | undefined;
+    
+    /**
+     * 设置圆形倾斜对齐
+     * @param alignment 'map' | 'viewport'
+     * @returns 返回 this 以支持链式调用
+     */
+    setCirclePitchAlignment(alignment: string): this;
+    getCirclePitchAlignment(): string | undefined;
+    
+    /**
+     * 设置圆形排序键
+     * @param sortKey 排序键
+     * @returns 返回 this 以支持链式调用
+     */
+    setCircleSortKey(sortKey: number): this;
+    getCircleSortKey(): number | undefined;
 }

@@ -1,8 +1,11 @@
 import image from '@ohos.multimedia.image';
 import resourceManager from '@ohos.resourceManager';
 import fs from '@ohos.file.fs';
-import { Icon } from './Icon';
+import maplibre from 'libmaplibre.so';
 import { TooManyIconsException } from '../exceptions/TooManyIconsException';
+
+// Use NAPI Icon class
+type Icon = maplibre.Icon;
 
 /**
  * 颜色信息接口
@@ -104,7 +107,7 @@ export class IconFactory {
    * 
    * @param pixelMap PixelMap 对象
    * @param iconId 可选的图标ID，如果不提供则自动生成
-   * @returns Icon 实例
+   * @returns Icon 实例（NAPI 对象）
    * @throws Error 如果创建失败或 ID 溢出
    */
   public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): Icon {
@@ -115,21 +118,25 @@ export class IconFactory {
       this.checkIdOverflow();
       id = this.generateIconId();
     }
-    return new Icon(id, pixelMap, this.pixelRatio);
+    // Use NAPI Icon constructor - PixelMap is converted to C++ image data during construction
+    return new maplibre.Icon(id, pixelMap, this.pixelRatio);
   }
 
   /**
    * 从 PixelMap 创建图标（带复用标识符）
    * 
+   * 注意：NAPI Icon 不支持 reuseIdentifier 参数，此参数将被忽略
+   * 
    * @param pixelMap PixelMap 对象
-   * @param reuseIdentifier 复用标识符
-   * @returns Icon 实例
+   * @param reuseIdentifier 复用标识符（忽略，为向后兼容保留）
+   * @returns Icon 实例（NAPI 对象）
    * @throws Error 如果创建失败或 ID 溢出
    */
   public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): Icon {
     this.checkIdOverflow();
     const id = this.generateIconId();
-    return new Icon(id, pixelMap, this.pixelRatio, reuseIdentifier);
+    // NAPI Icon doesn't support reuseIdentifier, use ID as identifier
+    return new maplibre.Icon(id, pixelMap, this.pixelRatio);
   }
 
   /**
@@ -300,11 +307,11 @@ export class IconFactory {
    * 
    * @param iconId Icon 标识符
    * @param pixelMap PixelMap 对象
-   * @param reuseIdentifier 可选的复用标识符
-   * @returns Icon 实例
+   * @param reuseIdentifier 可选的复用标识符（忽略，为向后兼容保留）
+   * @returns Icon 实例（NAPI 对象）
    */
   public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): Icon {
-    return new Icon(iconId, pixelMap, this.pixelRatio, reuseIdentifier);
+    return new maplibre.Icon(iconId, pixelMap, this.pixelRatio);
   }
 
   /**

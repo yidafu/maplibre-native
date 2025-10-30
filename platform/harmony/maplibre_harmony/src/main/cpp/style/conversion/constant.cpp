@@ -272,6 +272,17 @@ template Result<napi_value> convertToNapi(napi_env, mbgl::style::LineCapType, vo
 template Result<napi_value> convertToNapi(napi_env, mbgl::style::LineJoinType, void*);
 template Result<napi_value> convertToNapi(napi_env, mbgl::style::HillshadeIlluminationAnchorType, void*);
 
+// Explicit instantiations for new enum types (Expression support)
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::TranslateAnchorType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::CirclePitchScaleType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::AlignmentType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::RasterResamplingType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::IconTextFitType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::TextJustifyType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::TextTransformType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::SymbolPlacementType, void*);
+template Result<napi_value> convertToNapi(napi_env, mbgl::style::SymbolZOrderType, void*);
+
 } // namespace conversion
 } // namespace harmony
 } // namespace mbgl

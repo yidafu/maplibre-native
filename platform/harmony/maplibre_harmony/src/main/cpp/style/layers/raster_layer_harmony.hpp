@@ -25,6 +25,12 @@ public:
     static napi_value SetRasterSaturation(napi_env env, napi_callback_info info);
     static napi_value SetRasterContrast(napi_env env, napi_callback_info info);
     
+    // New properties
+    static napi_value SetRasterFadeDuration(napi_env env, napi_callback_info info);
+    static napi_value GetRasterFadeDuration(napi_env env, napi_callback_info info);
+    static napi_value SetRasterResampling(napi_env env, napi_callback_info info);
+    static napi_value GetRasterResampling(napi_env env, napi_callback_info info);
+    
     // Layer base methods
     static napi_value GetId(napi_env env, napi_callback_info info);
     static napi_value GetType(napi_env env, napi_callback_info info);

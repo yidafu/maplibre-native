@@ -1,4 +1,30 @@
 /**
+ * 聚类属性配置
+ * 
+ * 用于在聚类时计算自定义聚合属性
+ * 
+ * 格式：`{ "propertyName": [operatorExpression, mapExpression] }`
+ * 
+ * - operatorExpression: 聚合操作符（如 "+", "max", "min" 等）或完整的聚合表达式
+ * - mapExpression: 从单个点提取值的 Expression
+ * 
+ * @example
+ * ```
+ * {
+ *   // 计算最大值
+ *   "max": [["max", ["accumulated"], ["get", "sum"]], ["get", "mag"]],
+ *   
+ *   // 简单求和
+ *   "sum": ["+", ["get", "value"]],
+ *   
+ *   // 计算是否有任何点满足条件
+ *   "hasSpecial": ["any", ["==", ["get", "type"], "special"]]
+ * }
+ * ```
+ */
+export type ClusterProperties = Record<string, [any[] | string, any[]]>;
+
+/**
  * GeoJSON 数据源选项
  */
 export interface GeoJsonOptions {
@@ -10,14 +36,36 @@ export interface GeoJsonOptions {
     tolerance?: number;
     /** 是否启用聚类 */
     cluster?: boolean;
-    /** 聚类半径 */
+    /** 聚类半径（默认 50） */
     clusterRadius?: number;
     /** 聚类最大缩放级别 */
     clusterMaxZoom?: number;
-    /** 聚类最小点数 */
+    /** 聚类最小点数（默认 2） */
     clusterMinPoints?: number;
-    /** 聚类属性 */
-    clusterProperties?: Record<string, any>;
+    /** 
+     * 聚类属性 - 使用 Expression 计算聚合属性
+     * 
+     * 支持在聚类时计算自定义属性，可用于：
+     * - 计算聚类中的最大/最小值
+     * - 求和、平均值
+     * - 检查是否满足某些条件
+     * 
+     * 每个属性定义为：`[operatorExpr, mapExpr]`
+     * - operatorExpr: 聚合操作符或表达式数组
+     * - mapExpr: 从单个要素提取值的表达式数组
+     * 
+     * @example
+     * ```typescript
+     * clusterProperties: {
+     *   "max_magnitude": [
+     *     ["max", ["accumulated"], ["get", "max"]],
+     *     ["get", "magnitude"]
+     *   ],
+     *   "sum_value": ["+", ["get", "value"]]
+     * }
+     * ```
+     */
+    clusterProperties?: ClusterProperties;
     /** 是否计算线段度量 */
     lineMetrics?: boolean;
     /** 是否生成要素 ID */
