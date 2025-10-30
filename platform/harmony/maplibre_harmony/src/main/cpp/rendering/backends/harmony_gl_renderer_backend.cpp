@@ -122,18 +122,26 @@ HarmonyGLRendererBackend::HarmonyGLRendererBackend()
 }
 
 HarmonyGLRendererBackend::~HarmonyGLRendererBackend() {
+    Logger::info("HarmonyGLRendererBackend", "========== Destructor START ==========");
+    
     // 🛡️ CRITICAL FIX: 设置停止标志，防止析构期间的跨线程 EGL Context 访问
     // 问题：EGL Context 在渲染线程创建，但析构函数在主线程执行
     // 解决：在清理前设置标志，activate() 会检查此标志并跳过操作
     isStopped_ = true;
+    Logger::debug("HarmonyGLRendererBackend", "isStopped flag set to true");
     
+    Logger::info("HarmonyGLRendererBackend", "Calling cleanupEGL()...");
     cleanupEGL();
+    Logger::info("HarmonyGLRendererBackend", "cleanupEGL() completed");
     
     // 注销实例（减少活跃计数）
+    Logger::info("HarmonyGLRendererBackend", "Unregistering instance...");
     EGLDisplayManager::getInstance().unregisterInstance();
-    Logger::info("HarmonyGLRendererBackend", "Instance destroyed (active: %d/%d)",
+    Logger::info("HarmonyGLRendererBackend", "✅ Instance destroyed (active: %d/%d)",
                 EGLDisplayManager::getInstance().getActiveInstanceCount(),
                 EGLDisplayManager::getMaxConcurrentInstances());
+    
+    Logger::info("HarmonyGLRendererBackend", "========== Destructor END ==========");
     
     // 🛡️ CRITICAL FIX: 移除 debug 断言，避免跨线程访问 Context
     // 原因：此时可能不在 EGL Context 创建的线程上，访问 getContext() 会导致线程冲突

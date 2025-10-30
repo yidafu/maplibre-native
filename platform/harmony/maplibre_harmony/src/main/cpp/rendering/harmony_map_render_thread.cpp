@@ -1,5 +1,6 @@
 #include "harmony_map_render_thread.hpp"
 #include "backends/harmony_gl_renderer_backend.hpp"
+#include "backends/egl_display_manager.hpp"
 #include "../utils/logger.h"
 
 #include <mbgl/gfx/backend_scope.hpp>
@@ -251,6 +252,16 @@ void HarmonyMapRenderThread::cleanup() {
         Logger::info("MapRenderThread", "Cleaning up EGL...");
         auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
         glBackend->cleanupEGL();
+        
+        // ⚡ 关键修复：手动注销实例
+        // 原因：gfx::Backend 没有虚析构函数，backend_.reset() 不会调用派生类析构
+        // 因此必须手动调用 unregisterInstance()，否则实例计数永远不减少
+        Logger::info("MapRenderThread", "Manually unregistering instance before backend reset...");
+        EGLDisplayManager::getInstance().unregisterInstance();
+        Logger::info("MapRenderThread", "✅ Instance unregistered (active: %d/%d)",
+                    EGLDisplayManager::getInstance().getActiveInstanceCount(),
+                    EGLDisplayManager::getMaxConcurrentInstances());
+        
         backend_.reset();
         Logger::info("MapRenderThread", "✅ Backend destroyed");
     }
