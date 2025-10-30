@@ -216,6 +216,7 @@ private:
     std::atomic<bool> started_{false};
     std::atomic<bool> shouldStop_{false};
     std::atomic<bool> initialized_{false};
+    std::atomic<bool> destroying_{false};  // ✅ 销毁标志，防止竞态条件
     
     // 核心对象（在线程内创建和销毁）
     std::unique_ptr<util::RunLoop> runLoop_;

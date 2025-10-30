@@ -171,32 +171,44 @@ void HarmonyGLRendererBackend::setNativeWindow(void* window) {
                 "setNativeWindow: Changing window from %lu to %lu", 
                 eglWindow_, newWindow);
     
-    // 清理旧的 EGL 资源
-    cleanupEGL();
-    
-    // 🛡️ 修复第二次进入崩溃：添加 window 有效性检查
-    if (!newWindow) {
-        Logger::warn("HarmonyGLRendererBackend", "setNativeWindow: null window provided, skipping initialization");
-        return;
+    // ✅ 原子操作：使用全局互斥锁保护整个清理→初始化流程
+    // 目的：消除时序竞态窗口，防止 activate() 在中间状态执行
+    // 效果：activate() 会等待此操作完成，看到正确的 isStopped_ 状态
+    {
+        std::lock_guard<std::mutex> lock(g_eglMutex);
+        
+        Logger::debug("HarmonyGLRendererBackend", "🔒 Acquired g_eglMutex for atomic window switch");
+        
+        // 清理旧的 EGL 资源（不设置 isStopped_）
+        cleanupEGL();
+        
+        // 🛡️ 修复第二次进入崩溃：添加 window 有效性检查
+        if (!newWindow) {
+            Logger::warn("HarmonyGLRendererBackend", "setNativeWindow: null window provided, skipping initialization");
+            return;
+        }
+        
+        eglWindow_ = newWindow;
+        
+        // 🛡️ 短暂延迟，让 Native Window 稳定（修复页面转换时的时序问题）
+        // 注意：这里的延迟很短（10ms），主要延迟在 TypeScript 层（500ms）
+        Logger::debug("HarmonyGLRendererBackend", "Waiting 10ms for window to stabilize...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        
+        // 初始化 EGL Display 和 Surface
+        if (!initializeEGLDisplay()) {
+            Logger::error("HarmonyGL", "Failed to initialize EGL display/surface");
+            eglWindow_ = 0;
+            // 不要设置 isStopped_，让恢复机制有机会修复
+        } else {
+            Logger::info("HarmonyGLRendererBackend", "✅ EGL display/surface initialized successfully");
+            // Update device DPI and pixelRatio
+            updatePixelRatioFromDevice();
+        }
+        
+        Logger::debug("HarmonyGLRendererBackend", "🔓 Releasing g_eglMutex, window switch complete");
     }
-    
-    eglWindow_ = newWindow;
-    
-    // 🛡️ 短暂延迟，让 Native Window 稳定（修复页面转换时的时序问题）
-    // 注意：这里的延迟很短（10ms），主要延迟在 TypeScript 层（500ms）
-    Logger::debug("HarmonyGLRendererBackend", "Waiting 10ms for window to stabilize...");
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    
-    // 初始化 EGL Display 和 Surface
-    if (!initializeEGLDisplay()) {
-        Logger::error("HarmonyGL", "Failed to initialize EGL display/surface");
-        eglWindow_ = 0;
-        // 不要设置 isStopped_，让恢复机制有机会修复
-    } else {
-        Logger::info("HarmonyGLRendererBackend", "✅ EGL display/surface initialized successfully");
-        // Update device DPI and pixelRatio
-        updatePixelRatioFromDevice();
-    }
+    // ✅ lock 自动释放，其他线程的 activate() 可以继续，看到正确的状态
 }
 
 bool HarmonyGLRendererBackend::initializeEGLDisplay() {
@@ -374,8 +386,10 @@ void HarmonyGLRendererBackend::cleanupEGL() {
     // 🔍 ANR监控：记录EGL清理耗时
     harmony::ANRDetector detector("cleanupEGL", 100, 500);
     
-    // 🛡️ CRITICAL FIX: 标记渲染已停止，防止并发访问
-    isStopped_ = true;
+    // ✅ 不在这里设置 isStopped_
+    // 原因：cleanupEGL() 可能在重新初始化时被调用（setNativeWindow）
+    // 设置 isStopped_ = true 会在时序窗口期间阻止渲染，导致黑屏
+    // isStopped_ 只应在析构函数中设置，保护析构期间的并发访问
     
     try {
         // 使用共享 Display
@@ -906,21 +920,17 @@ void HarmonyGLRendererBackend::activate() {
                      std::hash<std::thread::id>{}(ownerThreadId_));
     }
     
-    // 🔒 线程安全检查
-    assertOnCorrectThread();
-    
-    // ✅ 关键修复：阻止跨线程调用，防止 EGL Context 线程亲和性违规
-    // EGL Context 必须在创建它的线程上使用，否则会导致 EGL_BAD_ACCESS 和崩溃
+    // 🎯 允许跨线程调用：不强制断言，支持迁移到当前线程
+    // 注意：RunLoop/Actor 可能调度到不同线程，这里只在后续 eglMakeCurrent 绑定
+    (void)0;
     if (renderThreadId_ != std::thread::id()) {
         auto currentThread = std::this_thread::get_id();
         if (currentThread != renderThreadId_) {
-            Logger::error("HarmonyGLRendererBackend", 
-                        "❌ CRITICAL: activate() called from wrong thread! "
-                        "Context created on: %lu, Called from: %lu. "
-                        "EGL Context MUST be used on render thread. Skipping to prevent crash.",
-                        std::hash<std::thread::id>{}(renderThreadId_),
-                        std::hash<std::thread::id>{}(currentThread));
-            return;  // ✅ 直接返回，不执行任何 EGL 操作
+            Logger::warn("HarmonyGLRendererBackend",
+                         "⚠️ activate() called on different thread. Will migrate context. Prev=%lu, Curr=%lu",
+                         std::hash<std::thread::id>{}(renderThreadId_),
+                         std::hash<std::thread::id>{}(currentThread));
+            // 不在此处返回，后续通过 eglMakeCurrent 迁移，并在成功后更新 renderThreadId_
         }
     }
     
@@ -1024,6 +1034,9 @@ void HarmonyGLRendererBackend::activate() {
             throw std::runtime_error("eglMakeCurrent failed: " + std::string(eglErrorString(error)));
         }
         
+        // 🎯 迁移成功后，更新渲染线程 ID
+        renderThreadId_ = std::this_thread::get_id();
+
         // 🔍 诊断日志：激活后验证 viewport 和 framebuffer 状态
         GLint viewport[4];
         glGetIntegerv(GL_VIEWPORT, viewport);

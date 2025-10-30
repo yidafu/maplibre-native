@@ -6,6 +6,11 @@
 #include <mutex>
 
 namespace mbgl {
+
+namespace util {
+class RunLoop;
+}
+
 namespace harmony {
 
 /**
@@ -23,6 +28,13 @@ public:
     using FrameCallback = std::function<void()>;
     // 归属渲染实例的标识（用于日志）
     void setOwnerInstanceId(uint64_t id) { ownerInstanceId_ = id; }
+    
+    /**
+     * 设置渲染线程的 RunLoop（用于调度回调）
+     * 
+     * @param runLoop 渲染线程的 RunLoop 指针
+     */
+    void setRunLoop(util::RunLoop* runLoop);
     
     /**
      * 构造函数
@@ -58,6 +70,7 @@ public:
 
 private:
     OH_NativeVSync* vsync_ = nullptr;
+    util::RunLoop* renderRunLoop_ = nullptr;  // 渲染线程的 RunLoop
     std::atomic<bool> frameRequested_{false};
     FrameCallback pendingCallback_;
     std::mutex callbackMutex_;

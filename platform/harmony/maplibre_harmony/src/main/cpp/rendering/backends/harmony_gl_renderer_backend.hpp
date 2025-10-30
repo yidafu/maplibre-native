@@ -55,6 +55,9 @@ public:
     
     // 🎯 新架构：公开 EGL Context 初始化（在渲染线程调用）
     bool initializeEGLContext();  // 渲染线程：创建context
+    
+    // ✅ 公开 EGL 清理方法（需要在 cleanup() 中显式调用）
+    void cleanupEGL();
 
 protected:
     void activate() override;
@@ -64,7 +67,6 @@ protected:
 private:
     // EGL初始化拆分为两阶段（共享 Display，实例独立 Surface/Context）
     bool initializeEGLDisplay();  // 获取共享 display 并创建 surface
-    void cleanupEGL();
     
     // 新增：检查Surface有效性
     bool isSurfaceValid() const;

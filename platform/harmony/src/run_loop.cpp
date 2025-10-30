@@ -327,12 +327,26 @@ void RunLoop::wake() {
 void RunLoop::run() {
     MBGL_VERIFY_THREAD(tid);
     
+    // ✅ 关键修复：确保当前线程的 Scheduler 设置正确
+    // 参考 Android MapRenderer::render() 的做法（line 231）
+    // 防御性编程：即使构造函数已设置，在事件循环开始前再次确认
+    Scheduler::SetCurrent(this);
+    
+    Logger::info("RunLoop", "🔧 RunLoop::run() - Scheduler::SetCurrent(this=%p) called", this);
+    Logger::info("RunLoop", "   Thread ID: %lu", std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    Logger::info("RunLoop", "   Scheduler::GetCurrent() returns: %p", Scheduler::GetCurrent());
+    
     uv_ref(impl->holderHandle());
     uv_run(impl->loop, UV_RUN_DEFAULT);
 }
 
 void RunLoop::runOnce() {
     MBGL_VERIFY_THREAD(tid);
+    
+    // ✅ 确保 Scheduler 正确
+    // 参考 Android 的防御性编程模式
+    Scheduler::SetCurrent(this);
+    
     uv_run(impl->loop, UV_RUN_NOWAIT);
 }
 
@@ -425,7 +439,30 @@ void RunLoop::stop() {
             }, &handleCount);
             
             Logger::warn("RunLoop", "   Total handles found: %d", handleCount);
-            Logger::warn("RunLoop", "   These will be force-closed in destructor");
+            
+            // ⚡ 关键修复：强制关闭所有剩余的 handles
+            Logger::warn("RunLoop", "   ⚡ Force-closing all remaining handles NOW");
+            uv_walk(impl->loop, [](uv_handle_t* handle, void*) {
+                if (!uv_is_closing(handle)) {
+                    const char* typeName = uv_handle_type_name(uv_handle_get_type(handle));
+                    Logger::warn("RunLoop", "      Force closing handle: type=%s, handle=%p", 
+                                 typeName, handle);
+                    uv_close(handle, nullptr);
+                }
+            }, nullptr);
+            
+            // 再次运行循环处理 close callbacks
+            Logger::warn("RunLoop", "   Running loop to process force-close callbacks...");
+            for (int i = 0; i < 50; i++) {
+                int result = uv_run(impl->loop, UV_RUN_NOWAIT);
+                if (result == 0) {
+                    Logger::info("RunLoop", "   ✅ All handles closed after force-close + %d iterations", i + 1);
+                    break;
+                }
+                if (i == 49) {
+                    Logger::error("RunLoop", "   ⚠️  Still %d active handles after force-close!", result);
+                }
+            }
         } else {
             Logger::info("RunLoop", "✅ stop() completed successfully - no active handles remaining");
         }
@@ -504,6 +541,9 @@ void RunLoop::addWatch(int fd, Event event, std::function<void(int, Event)>&& ca
         throw std::runtime_error("Invalid file descriptor");
     }
 
+    Logger::info("RunLoop", "addWatch(fd=%d, event=%d) - thread=%lu", fd, static_cast<int>(event),
+                 std::hash<std::thread::id>{}(std::this_thread::get_id()));
+
     Watch* watch = nullptr;
     auto watchPollIter = impl->watchPoll.find(fd);
 
@@ -554,6 +594,8 @@ void RunLoop::addWatch(int fd, Event event, std::function<void(int, Event)>&& ca
         Logger::error("RunLoop", "Failed to start poll for fd=%d: %s", fd, uvErrorString(err));
         throw std::runtime_error("Failed to start poll on file descriptor: " + std::string(uvErrorString(err)));
     }
+
+    Logger::info("RunLoop", "addWatch(fd=%d) started poll successfully", fd);
 }
 
 /**
@@ -567,8 +609,12 @@ void RunLoop::removeWatch(int fd) {
 
     auto watchPollIter = impl->watchPoll.find(fd);
     if (watchPollIter == impl->watchPoll.end()) {
+        Logger::warn("RunLoop", "removeWatch(fd=%d) - not found", fd);
         return;
     }
+
+    Logger::info("RunLoop", "removeWatch(fd=%d) - thread=%lu", fd,
+                 std::hash<std::thread::id>{}(std::this_thread::get_id()));
 
     Watch* watch = watchPollIter->second.release();
     impl->watchPoll.erase(watchPollIter);
@@ -582,6 +628,8 @@ void RunLoop::removeWatch(int fd) {
     }
 
     uv_close(reinterpret_cast<uv_handle_t*>(&watch->poll), &Watch::onClose);
+
+    Logger::info("RunLoop", "removeWatch(fd=%d) - close scheduled", fd);
 }
 
 } // namespace util
