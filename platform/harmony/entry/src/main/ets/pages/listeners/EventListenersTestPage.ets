@@ -33,7 +33,7 @@ import {
   OnDidBecomeIdleListener,
   OnSourceChangedListener
 } from 'maplibre_harmony/src/main/ets/maps/listeners/MapEventListeners';
-import { RenderingStats } from 'maplibre_harmony/src/main/ets/maps/RenderingStats';
+import { RenderingStats } from 'maplibre_harmony/src/main/ets/maps/renderer/RenderingStats';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
