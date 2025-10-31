@@ -8,6 +8,7 @@
 #include "../camera/camera_position_harmony.hpp"
 #include "../geometry/lat_lng_bounds_harmony.hpp"
 #include "../core/thread_safe_callback.hpp"
+#include "../napi/core/napi_args.hpp"
 
 #include <mbgl/map/camera.hpp>
 #include <napi/native_api.h>
@@ -16,6 +17,8 @@
 
 namespace mbgl {
 namespace harmony {
+
+using mbgl::harmony::napi::NapiArgs;
 
 /**
  * MapSnapshotter 内部实例类
@@ -46,125 +49,51 @@ public:
  * const snapshotter = maplibre.createMapSnapshotter(options);
  */
 napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_value thisArg;
-    
-    napi_status status = napi_get_cb_info(env, info, &argc, args, &thisArg, nullptr);
-    if (status != napi_ok || argc < 1) {
-        napi_throw_error(env, nullptr, "Expected 1 argument: options");
-        return nullptr;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
 
     // 解析选项对象
-    napi_value optionsObj = args[0];
+    napi_value optionsObj = args.GetObject(0, "options");
+    if (args.HasError()) return args.Undefined();
     
     MapSnapshotterHarmony::SnapshotOptions options;
     
-    // 解析 width
-    napi_value widthVal;
-    napi_get_named_property(env, optionsObj, "width", &widthVal);
-    int32_t width;
-    napi_get_value_int32(env, widthVal, &width);
-    options.width = static_cast<uint32_t>(width);
-    
-    // 解析 height
-    napi_value heightVal;
-    napi_get_named_property(env, optionsObj, "height", &heightVal);
-    int32_t height;
-    napi_get_value_int32(env, heightVal, &height);
-    options.height = static_cast<uint32_t>(height);
-    
-    // 解析 pixelRatio
-    napi_value pixelRatioVal;
-    napi_get_named_property(env, optionsObj, "pixelRatio", &pixelRatioVal);
-    double pixelRatio;
-    napi_get_value_double(env, pixelRatioVal, &pixelRatio);
-    options.pixelRatio = static_cast<float>(pixelRatio);
-    
-    // 解析 styleUrl
-    napi_value styleUrlVal;
-    napi_get_named_property(env, optionsObj, "styleUrl", &styleUrlVal);
-    size_t str_size;
-    napi_get_value_string_utf8(env, styleUrlVal, nullptr, 0, &str_size);
-    std::string styleUrl(str_size, '\0');
-    napi_get_value_string_utf8(env, styleUrlVal, &styleUrl[0], str_size + 1, &str_size);
-    options.styleURL = styleUrl;
-    
-    // 解析 showLogo（可选，默认 true）
-    napi_value showLogoVal;
-    napi_get_named_property(env, optionsObj, "showLogo", &showLogoVal);
-    bool showLogo = true;
-    if (showLogoVal != nullptr) {
-        napi_get_value_bool(env, showLogoVal, &showLogo);
-    }
-    options.showLogo = showLogo;
-    
-    // 解析可选参数
+    // 解析必需的参数
+    options.width = static_cast<uint32_t>(args.GetInt64Property(optionsObj, "width", 0));
+    options.height = static_cast<uint32_t>(args.GetInt64Property(optionsObj, "height", 0));
+    options.pixelRatio = static_cast<float>(args.GetDoubleProperty(optionsObj, "pixelRatio", 1.0));
+    options.styleURL = args.GetStringProperty(optionsObj, "styleUrl", "");
+    options.showLogo = args.GetBoolProperty(optionsObj, "showLogo", true);
     
     // 解析 styleJSON（可选）
-    napi_value styleJSONVal;
-    status = napi_get_named_property(env, optionsObj, "styleJSON", &styleJSONVal);
-    if (status == napi_ok) {
-        napi_valuetype styleJSONType;
-        napi_typeof(env, styleJSONVal, &styleJSONType);
-        if (styleJSONType == napi_string) {
-            size_t jsonSize;
-            napi_get_value_string_utf8(env, styleJSONVal, nullptr, 0, &jsonSize);
-            if (jsonSize > 0) {
-                std::string styleJSON(jsonSize, '\0');
-                napi_get_value_string_utf8(env, styleJSONVal, &styleJSON[0], jsonSize + 1, &jsonSize);
-                options.styleJSON = styleJSON;
-                Logger::info("SnapshotterNAPI", "Using styleJSON: %zu bytes", jsonSize);
-            }
-        }
+    std::string styleJSON = args.GetStringProperty(optionsObj, "styleJSON", "");
+    if (!styleJSON.empty()) {
+        options.styleJSON = styleJSON;
+        Logger::info("SnapshotterNAPI", "Using styleJSON: %zu bytes", styleJSON.size());
     }
     
     // 解析 camera（可选）
     napi_value cameraVal;
-    status = napi_get_named_property(env, optionsObj, "camera", &cameraVal);
+    napi_status status = napi_get_named_property(env, optionsObj, "camera", &cameraVal);
     if (status == napi_ok) {
         napi_valuetype cameraType;
         napi_typeof(env, cameraVal, &cameraType);
         if (cameraType == napi_object) {
-            // 解析 camera position
             mbgl::CameraOptions camera;
             
             // 解析 target (LatLng)
             napi_value targetVal;
             if (napi_get_named_property(env, cameraVal, "target", &targetVal) == napi_ok) {
-                napi_value latVal, lngVal;
-                napi_get_named_property(env, targetVal, "latitude", &latVal);
-                napi_get_named_property(env, targetVal, "longitude", &lngVal);
-                double lat, lng;
-                napi_get_value_double(env, latVal, &lat);
-                napi_get_value_double(env, lngVal, &lng);
+                double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
+                double lng = args.GetDoubleProperty(targetVal, "longitude", 0.0);
                 camera.center = mbgl::LatLng(lat, lng);
             }
             
-            // 解析 zoom
-            napi_value zoomVal;
-            if (napi_get_named_property(env, cameraVal, "zoom", &zoomVal) == napi_ok) {
-                double zoom;
-                napi_get_value_double(env, zoomVal, &zoom);
-                camera.zoom = zoom;
-            }
-            
-            // 解析 bearing
-            napi_value bearingVal;
-            if (napi_get_named_property(env, cameraVal, "bearing", &bearingVal) == napi_ok) {
-                double bearing;
-                napi_get_value_double(env, bearingVal, &bearing);
-                camera.bearing = bearing;
-            }
-            
-            // 解析 tilt (pitch)
-            napi_value tiltVal;
-            if (napi_get_named_property(env, cameraVal, "tilt", &tiltVal) == napi_ok) {
-                double tilt;
-                napi_get_value_double(env, tiltVal, &tilt);
-                camera.pitch = tilt;
-            }
+            // 解析 zoom, bearing, tilt
+            camera.zoom = args.GetDoubleProperty(cameraVal, "zoom", 0.0);
+            camera.bearing = args.GetDoubleProperty(cameraVal, "bearing", 0.0);
+            camera.pitch = args.GetDoubleProperty(cameraVal, "tilt", 0.0);
             
             options.camera = camera;
         }
@@ -177,17 +106,10 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         napi_valuetype regionType;
         napi_typeof(env, regionVal, &regionType);
         if (regionType == napi_object) {
-            napi_value northVal, southVal, eastVal, westVal;
-            napi_get_named_property(env, regionVal, "north", &northVal);
-            napi_get_named_property(env, regionVal, "south", &southVal);
-            napi_get_named_property(env, regionVal, "east", &eastVal);
-            napi_get_named_property(env, regionVal, "west", &westVal);
-            
-            double north, south, east, west;
-            napi_get_value_double(env, northVal, &north);
-            napi_get_value_double(env, southVal, &south);
-            napi_get_value_double(env, eastVal, &east);
-            napi_get_value_double(env, westVal, &west);
+            double north = args.GetDoubleProperty(regionVal, "north", 0.0);
+            double south = args.GetDoubleProperty(regionVal, "south", 0.0);
+            double east = args.GetDoubleProperty(regionVal, "east", 0.0);
+            double west = args.GetDoubleProperty(regionVal, "west", 0.0);
             
             mbgl::LatLngBounds bounds = mbgl::LatLngBounds::hull(
                 mbgl::LatLng(north, east),
@@ -236,19 +158,13 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
  * snapshotter.start((error, imageData) => { ... });
  */
 napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_value thisArg;
-    
-    napi_status status = napi_get_cb_info(env, info, &argc, args, &thisArg, nullptr);
-    if (status != napi_ok || argc < 1) {
-        napi_throw_error(env, nullptr, "Expected 1 argument: callback");
-        return nullptr;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
 
     // 获取 native 实例
     MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, thisArg, reinterpret_cast<void**>(&snapshotterInstance));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -256,7 +172,8 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     }
 
     // 保存回调函数引用
-    napi_value callback = args[0];
+    napi_value callback = args.GetFunction(0, "callback");
+    if (args.HasError()) return args.Undefined();
     napi_create_reference(env, callback, 1, &snapshotterInstance->callbackRef);
 
     Logger::info("SnapshotterNAPI", "Starting snapshot");
@@ -357,12 +274,11 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
  * snapshotter.cancel();
  */
 napi_value SnapshotterCancel(napi_env env, napi_callback_info info) {
-    napi_value thisArg;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, nullptr);
+    NapiArgs args(env, info);
 
     // 获取 native 实例
     MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, thisArg, reinterpret_cast<void**>(&snapshotterInstance));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -379,20 +295,13 @@ napi_value SnapshotterCancel(napi_env env, napi_callback_info info) {
  * 设置样式 URL
  */
 napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_value thisArg;
-    
-    napi_get_cb_info(env, info, &argc, args, &thisArg, nullptr);
-    
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "Expected 1 argument: styleUrl");
-        return nullptr;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
 
     // 获取 native 实例
     MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, thisArg, reinterpret_cast<void**>(&snapshotterInstance));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -400,10 +309,8 @@ napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
     }
 
     // 解析 styleUrl
-    size_t str_size;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &str_size);
-    std::string styleUrl(str_size, '\0');
-    napi_get_value_string_utf8(env, args[0], &styleUrl[0], str_size + 1, &str_size);
+    std::string styleUrl = args.GetString(0, "styleUrl");
+    if (args.HasError()) return args.Undefined();
     
     snapshotterInstance->snapshotter->setStyleURL(styleUrl);
 
@@ -414,20 +321,13 @@ napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
  * 设置相机位置
  */
 napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_value thisArg;
-    
-    napi_get_cb_info(env, info, &argc, args, &thisArg, nullptr);
-    
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "Expected 1 argument: cameraPosition");
-        return nullptr;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
 
     // 获取 native 实例
     MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, thisArg, reinterpret_cast<void**>(&snapshotterInstance));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -435,44 +335,23 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     }
 
     // 解析 CameraPosition
-    napi_value cameraObj = args[0];
+    napi_value cameraObj = args.GetObject(0, "cameraPosition");
+    if (args.HasError()) return args.Undefined();
+    
     mbgl::CameraOptions camera;
     
     // 解析 target (LatLng)
     napi_value targetVal;
     if (napi_get_named_property(env, cameraObj, "target", &targetVal) == napi_ok) {
-        napi_value latVal, lngVal;
-        napi_get_named_property(env, targetVal, "latitude", &latVal);
-        napi_get_named_property(env, targetVal, "longitude", &lngVal);
-        double lat, lng;
-        napi_get_value_double(env, latVal, &lat);
-        napi_get_value_double(env, lngVal, &lng);
+        double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
+        double lng = args.GetDoubleProperty(targetVal, "longitude", 0.0);
         camera.center = mbgl::LatLng(lat, lng);
     }
     
-    // 解析 zoom
-    napi_value zoomVal;
-    if (napi_get_named_property(env, cameraObj, "zoom", &zoomVal) == napi_ok) {
-        double zoom;
-        napi_get_value_double(env, zoomVal, &zoom);
-        camera.zoom = zoom;
-    }
-    
-    // 解析 bearing
-    napi_value bearingVal;
-    if (napi_get_named_property(env, cameraObj, "bearing", &bearingVal) == napi_ok) {
-        double bearing;
-        napi_get_value_double(env, bearingVal, &bearing);
-        camera.bearing = bearing;
-    }
-    
-    // 解析 tilt (pitch)
-    napi_value tiltVal;
-    if (napi_get_named_property(env, cameraObj, "tilt", &tiltVal) == napi_ok) {
-        double tilt;
-        napi_get_value_double(env, tiltVal, &tilt);
-        camera.pitch = tilt;
-    }
+    // 解析 zoom, bearing, tilt
+    camera.zoom = args.GetDoubleProperty(cameraObj, "zoom", 0.0);
+    camera.bearing = args.GetDoubleProperty(cameraObj, "bearing", 0.0);
+    camera.pitch = args.GetDoubleProperty(cameraObj, "tilt", 0.0);
     
     snapshotterInstance->snapshotter->setCameraOptions(camera);
     Logger::info("SnapshotterNAPI", "Camera position set");

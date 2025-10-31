@@ -66,50 +66,27 @@ void LatLngNapi::Destructor(napi_env env, void* nativeObject, void* finalize_hin
 }
 
 napi_value LatLngNapi::Constructor(napi_env env, napi_callback_info info) {
-    napi_status status;
-    napi_value target;
-    status = napi_get_cb_info(env, info, nullptr, nullptr, &target, nullptr);
-    if (status != napi_ok) {
-        Logger::error("LatLngNapi", "Failed to get callback info");
-        return nullptr;
-    }
-    
-    // 获取参数
-    size_t argc = 2;
-    napi_value args[2];
-    napi_value jsthis;
-    status = napi_get_cb_info(env, info, &argc, args, &jsthis, nullptr);
-    if (status != napi_ok || argc < 2) {
-        napi_throw_error(env, nullptr, "LatLng constructor requires 2 arguments: latitude, longitude");
-        return nullptr;
-    }
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) return args.Undefined();
     
     // 解析参数
-    double latitude, longitude;
-    status = napi_get_value_double(env, args[0], &latitude);
-    if (status != napi_ok) {
-        napi_throw_error(env, nullptr, "Invalid latitude argument");
-        return nullptr;
-    }
-    
-    status = napi_get_value_double(env, args[1], &longitude);
-    if (status != napi_ok) {
-        napi_throw_error(env, nullptr, "Invalid longitude argument");
-        return nullptr;
-    }
+    double latitude = args.GetDouble(0, "latitude");
+    double longitude = args.GetDouble(1, "longitude");
+    if (args.HasError()) return args.Undefined();
     
     // 创建 C++ 对象
     LatLngNapi* obj = new LatLngNapi(latitude, longitude);
     
     // 包装为 NAPI 对象
-    status = napi_wrap(env, jsthis, obj, Destructor, nullptr, nullptr);
+    napi_status status = napi_wrap(env, args.This(), obj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete obj;
         Logger::error("LatLngNapi", "Failed to wrap native object");
         return nullptr;
     }
     
-    return jsthis;
+    return args.This();
 }
 
 napi_value LatLngNapi::CreateInstance(napi_env env, const mbgl::LatLng& latLng) {

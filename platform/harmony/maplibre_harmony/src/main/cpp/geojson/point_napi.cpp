@@ -72,9 +72,6 @@ napi_value PointNAPI::Init(napi_env env, napi_value exports) {
 napi_value PointNAPI::New(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
     // Point 构造函数支持多种形式:
     // new Point(lng, lat)
     // new Point(lng, lat, altitude)
@@ -136,14 +133,14 @@ napi_value PointNAPI::New(napi_env env, napi_callback_info info) {
             return nullptr;
         }
         
-        napi_status status = napi_wrap(env, jsThis, point, Destructor, nullptr, nullptr);
+        napi_status status = napi_wrap(env, args.This(), point, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete point;
             napi_throw_error(env, nullptr, "Failed to wrap Point object");
             return nullptr;
         }
         
-        return jsThis;
+        return args.This();
     } catch (const std::exception& e) {
         if (point) delete point;
         Logger::error("PointNAPI", "Failed to create Point: %s", e.what());

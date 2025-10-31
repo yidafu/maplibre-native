@@ -1,9 +1,11 @@
 #include "style_builder_napi.hpp"
 #include "napi/core/napi_utils.h"
+#include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
+using mbgl::harmony::napi::NapiArgs;
 
 namespace maplibre {
 namespace harmony {
@@ -66,75 +68,64 @@ napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value StyleBuilderNAPI::New(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     // 创建 C++ 对象
     StyleBuilderNAPI* builder = new StyleBuilderNAPI();
     
     // Wrap 到 JS 对象
-    napi_status status = napi_wrap(env, jsThis, builder, Destructor, nullptr, nullptr);
+    napi_status status = napi_wrap(env, args.This(), builder, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete builder;
         napi_throw_error(env, nullptr, "Failed to wrap StyleBuilder object");
         return nullptr;
     }
     
-    return jsThis;
+    return args.This();
 }
 
 // ==================== Builder 方法 ====================
 
 napi_value StyleBuilderNAPI::FromUri(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
     StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&builder));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&builder));
     
     if (!builder) {
         napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "fromUri requires uri argument");
-        return nullptr;
-    }
-    
-    builder->styleUri = GetStringFromValue(env, args[0]);
+    builder->styleUri = args.GetString(0, "uri");
+    if (args.HasError()) return args.Undefined();
     Logger::info("StyleBuilderNAPI", "fromUri: %s", builder->styleUri.c_str());
     
     // 返回 this 支持链式调用
-    return jsThis;
+    return args.This();
 }
 
 napi_value StyleBuilderNAPI::FromJson(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
     StyleBuilderNAPI* builder = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&builder));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&builder));
     
     if (!builder) {
         napi_throw_error(env, nullptr, "Invalid StyleBuilder instance");
         return nullptr;
     }
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "fromJson requires json argument");
-        return nullptr;
-    }
-    
-    builder->styleJson = GetStringFromValue(env, args[0]);
+    builder->styleJson = args.GetString(0, "json");
+    if (args.HasError()) return args.Undefined();
     Logger::info("StyleBuilderNAPI", "fromJson: %zu bytes", builder->styleJson.length());
     
     // 返回 this 支持链式调用
-    return jsThis;
+    return args.This();
 }
 
 napi_value StyleBuilderNAPI::WithSource(napi_env env, napi_callback_info info) {

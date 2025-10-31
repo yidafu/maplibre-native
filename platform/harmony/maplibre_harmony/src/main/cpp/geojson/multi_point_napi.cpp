@@ -62,8 +62,6 @@ napi_value MultiPointNAPI::Init(napi_env env, napi_value exports) {
 
 napi_value MultiPointNAPI::New(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
     MultiPointNAPI* multiPoint = nullptr;
     
@@ -78,14 +76,14 @@ napi_value MultiPointNAPI::New(napi_env env, napi_callback_info info) {
             multiPoint = new MultiPointNAPI(points);
         }
         
-        napi_status status = napi_wrap(env, jsThis, multiPoint, Destructor, nullptr, nullptr);
+        napi_status status = napi_wrap(env, args.This(), multiPoint, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete multiPoint;
             napi_throw_error(env, nullptr, "Failed to wrap MultiPoint object");
             return nullptr;
         }
         
-        return jsThis;
+        return args.This();
     } catch (const std::exception& e) {
         if (multiPoint) delete multiPoint;
         Logger::error("MultiPointNAPI", "Failed to create MultiPoint: %s", e.what());
@@ -100,11 +98,10 @@ napi_value MultiPointNAPI::New(napi_env env, const mbgl::MultiPoint<double>& mul
 }
 
 napi_value MultiPointNAPI::GetCoordinates(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     MultiPointNAPI* multiPoint = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&multiPoint));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&multiPoint));
     
     if (status != napi_ok || !multiPoint) {
         napi_throw_error(env, nullptr, "Failed to unwrap MultiPoint object");
@@ -119,11 +116,8 @@ napi_value MultiPointNAPI::SetCoordinates(napi_env env, napi_callback_info info)
     args.RequireMinArgs(1);
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
     MultiPointNAPI* multiPoint = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&multiPoint));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&multiPoint));
     
     if (status != napi_ok || !multiPoint) {
         napi_throw_error(env, nullptr, "Failed to unwrap MultiPoint object");
@@ -135,7 +129,7 @@ napi_value MultiPointNAPI::SetCoordinates(napi_env env, napi_callback_info info)
         if (args.HasError()) return nullptr;
         
         multiPoint->points_ = NapiArrayToPointVector(env, coordsArray);
-        return jsThis;
+        return args.Undefined();
     } catch (const std::exception& e) {
         napi_throw_error(env, nullptr, e.what());
         return nullptr;
@@ -143,11 +137,10 @@ napi_value MultiPointNAPI::SetCoordinates(napi_env env, napi_callback_info info)
 }
 
 napi_value MultiPointNAPI::ToJSON(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     MultiPointNAPI* multiPoint = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&multiPoint));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&multiPoint));
     
     if (status != napi_ok || !multiPoint) {
         napi_throw_error(env, nullptr, "Failed to unwrap MultiPoint object");

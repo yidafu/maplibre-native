@@ -71,9 +71,6 @@ napi_value LineStringNAPI::Init(napi_env env, napi_value exports) {
 napi_value LineStringNAPI::New(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
     // LineString 构造函数: new LineString(coordinates)
     // coordinates: [[lng, lat], [lng, lat], ...]
     
@@ -91,14 +88,14 @@ napi_value LineStringNAPI::New(napi_env env, napi_callback_info info) {
             lineString = new LineStringNAPI(points);
         }
         
-        napi_status status = napi_wrap(env, jsThis, lineString, Destructor, nullptr, nullptr);
+        napi_status status = napi_wrap(env, args.This(), lineString, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete lineString;
             napi_throw_error(env, nullptr, "Failed to wrap LineString object");
             return nullptr;
         }
         
-        return jsThis;
+        return args.This();
     } catch (const std::exception& e) {
         if (lineString) delete lineString;
         Logger::error("LineStringNAPI", "Failed to create LineString: %s", e.what());
@@ -136,11 +133,10 @@ napi_value LineStringNAPI::New(napi_env env, const mbgl::LineString<double>& lin
 }
 
 napi_value LineStringNAPI::GetCoordinates(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     LineStringNAPI* lineString = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lineString));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&lineString));
     
     if (status != napi_ok || !lineString) {
         napi_throw_error(env, nullptr, "Failed to unwrap LineString object");
@@ -155,11 +151,8 @@ napi_value LineStringNAPI::SetCoordinates(napi_env env, napi_callback_info info)
     args.RequireMinArgs(1);
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
     LineStringNAPI* lineString = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lineString));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&lineString));
     
     if (status != napi_ok || !lineString) {
         napi_throw_error(env, nullptr, "Failed to unwrap LineString object");
@@ -171,7 +164,7 @@ napi_value LineStringNAPI::SetCoordinates(napi_env env, napi_callback_info info)
         if (args.HasError()) return nullptr;
         
         lineString->points_ = NapiArrayToPointVector(env, coordsArray);
-        return jsThis;
+        return args.Undefined();
     } catch (const std::exception& e) {
         napi_throw_error(env, nullptr, e.what());
         return nullptr;

@@ -69,9 +69,6 @@ napi_value PolygonNAPI::Init(napi_env env, napi_value exports) {
 napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
     // Polygon 构造函数: new Polygon(coordinates)
     // coordinates: [[[lng, lat], [lng, lat], ...], ...]  (外环 + 可选内环)
     
@@ -88,14 +85,14 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
             polygon = new PolygonNAPI(rings);
         }
         
-        napi_status status = napi_wrap(env, jsThis, polygon, Destructor, nullptr, nullptr);
+        napi_status status = napi_wrap(env, args.This(), polygon, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete polygon;
             napi_throw_error(env, nullptr, "Failed to wrap Polygon object");
             return nullptr;
         }
         
-        return jsThis;
+        return args.This();
     } catch (const std::exception& e) {
         if (polygon) delete polygon;
         Logger::error("PolygonNAPI", "Failed to create Polygon: %s", e.what());
@@ -132,11 +129,10 @@ napi_value PolygonNAPI::New(napi_env env, const mbgl::Polygon<double>& polygon) 
 }
 
 napi_value PolygonNAPI::GetCoordinates(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     PolygonNAPI* polygon = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&polygon));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&polygon));
     
     if (status != napi_ok || !polygon) {
         napi_throw_error(env, nullptr, "Failed to unwrap Polygon object");
@@ -151,11 +147,8 @@ napi_value PolygonNAPI::SetCoordinates(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
     PolygonNAPI* polygon = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&polygon));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&polygon));
     
     if (status != napi_ok || !polygon) {
         napi_throw_error(env, nullptr, "Failed to unwrap Polygon object");
@@ -167,7 +160,7 @@ napi_value PolygonNAPI::SetCoordinates(napi_env env, napi_callback_info info) {
         if (args.HasError()) return nullptr;
         
         polygon->rings_ = NapiArrayToLinearRingVector(env, coordsArray);
-        return jsThis;
+        return args.This();
     } catch (const std::exception& e) {
         napi_throw_error(env, nullptr, e.what());
         return nullptr;
@@ -175,11 +168,10 @@ napi_value PolygonNAPI::SetCoordinates(napi_env env, napi_callback_info info) {
 }
 
 napi_value PolygonNAPI::ToJSON(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     PolygonNAPI* polygon = nullptr;
-    napi_status status = napi_unwrap(env, jsThis, reinterpret_cast<void**>(&polygon));
+    napi_status status = napi_unwrap(env, args.This(), reinterpret_cast<void**>(&polygon));
     
     if (status != napi_ok || !polygon) {
         napi_throw_error(env, nullptr, "Failed to unwrap Polygon object");
