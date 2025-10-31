@@ -45,6 +45,12 @@ public:
     // Internal methods
     std::shared_ptr<mbgl::PremultipliedImage> getImage() const { return image; }
     
+    // Helper to check if a napi_value is a Bitmap object
+    static bool IsBitmapObject(napi_env env, napi_value value);
+    
+    // Helper to unwrap BitmapNAPI from napi_value
+    static BitmapNAPI* Unwrap(napi_env env, napi_value value);
+    
     // Constructor reference
     static napi_ref constructor;
     

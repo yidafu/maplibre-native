@@ -216,6 +216,28 @@ napi_value BitmapNAPI::CreateFromImage(napi_env env,
     return instance;
 }
 
+bool BitmapNAPI::IsBitmapObject(napi_env env, napi_value value) {
+    if (!constructor) {
+        return false;
+    }
+    
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        return false;
+    }
+    
+    bool isInstance = false;
+    status = napi_instanceof(env, value, cons, &isInstance);
+    return (status == napi_ok) && isInstance;
+}
+
+BitmapNAPI* BitmapNAPI::Unwrap(napi_env env, napi_value value) {
+    BitmapNAPI* bitmap = nullptr;
+    napi_status status = napi_unwrap(env, value, reinterpret_cast<void**>(&bitmap));
+    return (status == napi_ok) ? bitmap : nullptr;
+}
+
 } // namespace harmony
 } // namespace mbgl
 

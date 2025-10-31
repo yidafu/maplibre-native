@@ -1,14 +1,10 @@
-import { LatLng } from '../geometry/LatLng';
-
 /**
- * GeoBounds - 地理边界接口
+ * Polyline - 折线封装类
+ * 
+ * 符合 ArkTS 规范的封装实现
  */
-export interface GeoBounds {
-  north: number;
-  east: number;
-  south: number;
-  west: number;
-}
+import maplibre from 'libmaplibre.so';
+import { LatLng } from '../geometry/LatLng';
 
 /**
  * PolylineOptions - 折线选项接口
@@ -27,236 +23,204 @@ export interface PolylineOptions {
 }
 
 /**
- * Polyline - 折线类
+ * 内部创建标记
+ */
+class InternalPolyline {
+  static readonly INSTANCE = new InternalPolyline();
+  private constructor() {}
+}
+
+/**
+ * Polyline 封装类
  */
 export class Polyline {
-  public id: string;
-  public points: LatLng[];
-  public color: string;
-  public width: number;
-  public alpha: number;
-  public visible: boolean;
-  public zIndex: number;
-  public pattern: number[] | null;
-  public jointType: string;
-  public capType: string;
-
-  constructor(options: PolylineOptions) {
-    this.id = options.id || this.generateId();
-    this.points = options.points;
-    this.color = options.color || '#000000';
-    this.width = options.width || 5;
-    this.alpha = options.alpha !== undefined ? options.alpha : 1.0;
-    this.visible = options.visible !== undefined ? options.visible : true;
-    this.zIndex = options.zIndex || 0;
-    this.pattern = options.pattern || null;
-    this.jointType = options.jointType || 'round';
-    this.capType = options.capType || 'round';
-  }
+  private nativeInstance: maplibre.Polyline;
 
   /**
-   * 生成唯一ID
+   * 构造函数
+   * 支持两种模式：
+   * 1. 从选项创建: new Polyline(options)
+   * 2. 从 NAPI 实例创建（内部使用）: new Polyline(marker, nativeInstance)
    */
-  private generateId(): string {
-    return 'polyline_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  }
-
-  /**
-   * 设置点列表
-   */
-  public setPoints(points: LatLng[]): void {
-    this.points = points;
-  }
-
-  /**
-   * 获取点列表
-   */
-  public getPoints(): LatLng[] {
-    return this.points;
-  }
-
-  /**
-   * 添加点
-   */
-  public addPoint(point: LatLng): void {
-    this.points.push(point);
-  }
-
-  /**
-   * 插入点
-   */
-  public insertPoint(index: number, point: LatLng): void {
-    this.points.splice(index, 0, point);
-  }
-
-  /**
-   * 移除点
-   */
-  public removePoint(index: number): LatLng | null {
-    if (index >= 0 && index < this.points.length) {
-      return this.points.splice(index, 1)[0];
+  constructor(optionsOrPolyline: PolylineOptions | InternalPolyline, nativeInstance?: maplibre.Polyline) {
+    if (optionsOrPolyline === InternalPolyline.INSTANCE && nativeInstance) {
+      // 内部模式：从 NAPI 实例创建
+      this.nativeInstance = nativeInstance;
+    } else if (typeof optionsOrPolyline === 'object') {
+      // 正常模式：从选项对象创建
+      const options = optionsOrPolyline as PolylineOptions;
+      
+      // 转换 LatLng 对象为原生格式
+      const nativeOptions: ESObject = {
+        points: options.points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude }),
+        color: options.color || '#000000',
+        width: options.width !== undefined ? options.width : 10,
+        alpha: options.alpha !== undefined ? options.alpha : 1.0,
+        visible: options.visible !== undefined ? options.visible : true,
+        zIndex: options.zIndex || 0,
+        pattern: options.pattern || null,
+        jointType: options.jointType || 'round',
+        capType: options.capType || 'round'
+      };
+      
+      this.nativeInstance = new maplibre.Polyline(nativeOptions);
+    } else {
+      throw new Error('Invalid Polyline constructor arguments');
     }
-    return null;
   }
 
   /**
-   * 设置颜色
+   * 从 NAPI 实例创建（内部使用）
    */
-  public setColor(color: string): void {
-    this.color = color;
+  static fromNative(nativeInstance: maplibre.Polyline): Polyline {
+    return new Polyline(InternalPolyline.INSTANCE, nativeInstance);
   }
 
   /**
-   * 获取颜色
+   * 创建 Polyline（静态工厂方法）
    */
-  public getColor(): string {
-    return this.color;
+  static createFromOptions(options: PolylineOptions): Polyline {
+    return new Polyline(options);
   }
 
   /**
-   * 设置宽度
+   * 获取 NAPI 实例（内部使用）
    */
-  public setWidth(width: number): void {
-    this.width = Math.max(0, width);
+  getNative(): maplibre.Polyline {
+    return this.nativeInstance;
+  }
+
+  // ========== Polyline API 方法 ==========
+
+  getPoints(): LatLng[] {
+    const nativePoints: Object[] = this.nativeInstance.getPoints();
+    return nativePoints.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng));
+  }
+
+  setPoints(points: LatLng[]): Polyline {
+    const nativePoints = points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude });
+    this.nativeInstance.setPoints(nativePoints);
+    return this;
+  }
+
+  addPoint(point: LatLng): void {
+    this.nativeInstance.addPoint(point.getNative ? point.getNative() : { latitude: point.latitude, longitude: point.longitude });
+  }
+
+  insertPoint(index: number, point: LatLng): void {
+    this.nativeInstance.insertPoint(index, point.getNative ? point.getNative() : { latitude: point.latitude, longitude: point.longitude });
+  }
+
+  removePoint(index: number): LatLng | null {
+    const nativePoint: Object = this.nativeInstance.removePoint(index);
+    return nativePoint ? LatLng.fromNative(nativePoint as maplibre.LatLng) : null;
+  }
+
+  getColor(): string {
+    return this.nativeInstance.getColor();
+  }
+
+  setColor(color: string): Polyline {
+    this.nativeInstance.setColor(color);
+    return this;
+  }
+
+  getWidth(): number {
+    return this.nativeInstance.getWidth();
+  }
+
+  setWidth(width: number): Polyline {
+    this.nativeInstance.setWidth(width);
+    return this;
+  }
+
+  getAlpha(): number {
+    return this.nativeInstance.getAlpha();
+  }
+
+  setAlpha(alpha: number): Polyline {
+    this.nativeInstance.setAlpha(alpha);
+    return this;
+  }
+
+  getVisible(): boolean {
+    return this.nativeInstance.getVisible();
+  }
+
+  setVisible(visible: boolean): Polyline {
+    this.nativeInstance.setVisible(visible);
+    return this;
+  }
+
+  isVisible(): boolean {
+    return this.getVisible();
+  }
+
+  getZIndex(): number {
+    return this.nativeInstance.getZIndex();
+  }
+
+  setZIndex(zIndex: number): Polyline {
+    this.nativeInstance.setZIndex(zIndex);
+    return this;
+  }
+
+  getPattern(): number[] | null {
+    return this.nativeInstance.getPattern();
+  }
+
+  setPattern(pattern: number[] | null): Polyline {
+    this.nativeInstance.setPattern(pattern);
+    return this;
+  }
+
+  getJointType(): string {
+    return this.nativeInstance.getJointType();
+  }
+
+  setJointType(jointType: string): Polyline {
+    this.nativeInstance.setJointType(jointType);
+    return this;
+  }
+
+  getCapType(): string {
+    return this.nativeInstance.getCapType();
+  }
+
+  setCapType(capType: string): Polyline {
+    this.nativeInstance.setCapType(capType);
+    return this;
+  }
+
+  // ========== 扩展方法（内部使用）==========
+
+  /**
+   * 获取 Polyline ID（内部使用）
+   */
+  getId(): number {
+    return this.nativeInstance.getId();
   }
 
   /**
-   * 获取宽度
+   * 设置 Polyline ID（内部使用）
    */
-  public getWidth(): number {
-    return this.width;
+  setId(id: number): Polyline {
+    this.nativeInstance.setId(id);
+    return this;
   }
 
   /**
-   * 设置透明度
+   * 设置所属的 MapLibreMap（内部使用）
    */
-  public setAlpha(alpha: number): void {
-    this.alpha = Math.max(0, Math.min(1, alpha));
-  }
-
-  /**
-   * 获取透明度
-   */
-  public getAlpha(): number {
-    return this.alpha;
-  }
-
-  /**
-   * 设置可见性
-   */
-  public setVisible(visible: boolean): void {
-    this.visible = visible;
-  }
-
-  /**
-   * 是否可见
-   */
-  public isVisible(): boolean {
-    return this.visible;
-  }
-
-  /**
-   * 设置Z轴顺序
-   */
-  public setZIndex(zIndex: number): void {
-    this.zIndex = zIndex;
-  }
-
-  /**
-   * 获取Z轴顺序
-   */
-  public getZIndex(): number {
-    return this.zIndex;
-  }
-
-  /**
-   * 设置虚线模式
-   */
-  public setPattern(pattern: number[] | null): void {
-    this.pattern = pattern;
-  }
-
-  /**
-   * 获取虚线模式
-   */
-  public getPattern(): number[] | null {
-    return this.pattern;
-  }
-
-  /**
-   * 设置连接类型
-   */
-  public setJointType(jointType: string): void {
-    this.jointType = jointType;
-  }
-
-  /**
-   * 获取连接类型
-   */
-  public getJointType(): string {
-    return this.jointType;
-  }
-
-  /**
-   * 设置端点类型
-   */
-  public setCapType(capType: string): void {
-    this.capType = capType;
-  }
-
-  /**
-   * 获取端点类型
-   */
-  public getCapType(): string {
-    return this.capType;
-  }
-
-  /**
-   * 计算长度（米）
-   */
-  public getLength(): number {
-    if (this.points.length < 2) {
-      return 0;
-    }
-
-    let length = 0;
-    for (let i = 1; i < this.points.length; i++) {
-      const p1 = this.points[i - 1];
-      const p2 = this.points[i];
-      const dx = p2.longitude - p1.longitude;
-      const dy = p2.latitude - p1.latitude;
-      length += Math.sqrt(dx * dx + dy * dy) * 111000; // 简化的距离计算
-    }
-    return length;
-  }
-
-  /**
-   * 计算边界框
-   */
-  public getBounds(): GeoBounds {
-    if (this.points.length === 0) {
-      return { north: 0, east: 0, south: 0, west: 0 };
-    }
-
-    let north = this.points[0].latitude;
-    let east = this.points[0].longitude;
-    let south = this.points[0].latitude;
-    let west = this.points[0].longitude;
-
-    for (const point of this.points) {
-      north = Math.max(north, point.latitude);
-      east = Math.max(east, point.longitude);
-      south = Math.min(south, point.latitude);
-      west = Math.min(west, point.longitude);
-    }
-
-    return { north, east, south, west };
+  setMapLibreMap(map: Object): Polyline {
+    this.nativeInstance.setMapLibreMap(map);
+    return this;
   }
 
   /**
    * 转换为字符串
    */
   public toString(): string {
-    return `Polyline(id=${this.id}, points=${this.points.length}, color=${this.color})`;
+    return `Polyline(id=${this.getId()}, points=${this.getPoints().length}, color=${this.getColor()})`;
   }
 }

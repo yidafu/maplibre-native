@@ -142,8 +142,9 @@ export class UiSettings {
   /**
    * 设置是否启用滚动手势（平移）
    */
-  setScrollGesturesEnabled(enabled: boolean): void {
+  setScrollGesturesEnabled(enabled: boolean): UiSettings {
     this.scrollGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -156,8 +157,9 @@ export class UiSettings {
   /**
    * 设置是否启用缩放手势
    */
-  setZoomGesturesEnabled(enabled: boolean): void {
+  setZoomGesturesEnabled(enabled: boolean): UiSettings {
     this.zoomGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -170,8 +172,9 @@ export class UiSettings {
   /**
    * 设置是否启用旋转手势
    */
-  setRotateGesturesEnabled(enabled: boolean): void {
+  setRotateGesturesEnabled(enabled: boolean): UiSettings {
     this.rotateGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -184,8 +187,9 @@ export class UiSettings {
   /**
    * 设置是否启用倾斜手势（双指拖动调整 pitch）
    */
-  setTiltGesturesEnabled(enabled: boolean): void {
+  setTiltGesturesEnabled(enabled: boolean): UiSettings {
     this.tiltGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -198,8 +202,9 @@ export class UiSettings {
   /**
    * 设置是否启用双击缩放手势
    */
-  setDoubleTapGesturesEnabled(enabled: boolean): void {
+  setDoubleTapGesturesEnabled(enabled: boolean): UiSettings {
     this.doubleTapGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -212,8 +217,9 @@ export class UiSettings {
   /**
    * 设置是否启用快速缩放手势（双击并拖动）
    */
-  setQuickZoomGesturesEnabled(enabled: boolean): void {
+  setQuickZoomGesturesEnabled(enabled: boolean): UiSettings {
     this.quickZoomGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -226,8 +232,9 @@ export class UiSettings {
   /**
    * 设置是否启用水平滚动
    */
-  setHorizontalScrollGesturesEnabled(enabled: boolean): void {
+  setHorizontalScrollGesturesEnabled(enabled: boolean): UiSettings {
     this.horizontalScrollGesturesEnabled = enabled;
+    return this;
   }
 
   /**
@@ -241,8 +248,9 @@ export class UiSettings {
    * 设置手势焦点
    * @param point 焦点坐标，null 表示使用默认焦点
    */
-  setFocalPoint(point: FocalPoint | null): void {
+  setFocalPoint(point: FocalPoint | null): UiSettings {
     this.focalPoint = point;
+    return this;
   }
 
   /**
@@ -255,13 +263,14 @@ export class UiSettings {
   /**
    * 启用所有手势
    */
-  setAllGesturesEnabled(enabled: boolean): void {
+  setAllGesturesEnabled(enabled: boolean): UiSettings {
     this.scrollGesturesEnabled = enabled;
     this.zoomGesturesEnabled = enabled;
     this.rotateGesturesEnabled = enabled;
     this.tiltGesturesEnabled = enabled;
     this.doubleTapGesturesEnabled = enabled;
     this.quickZoomGesturesEnabled = enabled;
+    return this;
   }
 
   // ==================== 惯性动画配置 ====================
@@ -270,8 +279,9 @@ export class UiSettings {
    * 设置是否启用 Fling 速度动画
    * @param enabled 是否启用
    */
-  setFlingVelocityAnimationEnabled(enabled: boolean): void {
+  setFlingVelocityAnimationEnabled(enabled: boolean): UiSettings {
     this.flingVelocityAnimationEnabled = enabled;
+    return this;
   }
 
   /**
@@ -285,8 +295,9 @@ export class UiSettings {
    * 设置是否启用缩放速度动画
    * @param enabled 是否启用
    */
-  setScaleVelocityAnimationEnabled(enabled: boolean): void {
+  setScaleVelocityAnimationEnabled(enabled: boolean): UiSettings {
     this.scaleVelocityAnimationEnabled = enabled;
+    return this;
   }
 
   /**
@@ -300,8 +311,9 @@ export class UiSettings {
    * 设置是否启用旋转速度动画
    * @param enabled 是否启用
    */
-  setRotateVelocityAnimationEnabled(enabled: boolean): void {
+  setRotateVelocityAnimationEnabled(enabled: boolean): UiSettings {
     this.rotateVelocityAnimationEnabled = enabled;
+    return this;
   }
 
   /**
@@ -315,10 +327,11 @@ export class UiSettings {
    * 批量设置所有速度动画开关
    * @param enabled 是否启用
    */
-  setAllVelocityAnimationsEnabled(enabled: boolean): void {
+  setAllVelocityAnimationsEnabled(enabled: boolean): UiSettings {
     this.flingVelocityAnimationEnabled = enabled;
     this.scaleVelocityAnimationEnabled = enabled;
     this.rotateVelocityAnimationEnabled = enabled;
+    return this;
   }
 
   /**

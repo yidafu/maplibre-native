@@ -10,7 +10,7 @@ import { CollatorOptions, ValueExpression } from './ExpressionTypes';
 /**
  * Collator 表达式类
  */
-export class CollatorExpression extends Expression<Object> {
+export class CollatorExpression<T extends  Object> extends Expression<T> {
   /**
    * 创建 Collator 表达式
    * 
@@ -22,14 +22,14 @@ export class CollatorExpression extends Expression<Object> {
     caseSensitive: Expression<boolean>,
     diacriticSensitive: Expression<boolean>,
     locale: Expression<string>
-  ): CollatorExpression;
+  ): CollatorExpression<boolean>;
 
   /**
    * 创建 Collator 表达式（使用选项对象）
    * 
    * @param options Collator 选项
    */
-  public static collator(options: CollatorOptions): CollatorExpression;
+  public static collator(options: CollatorOptions): CollatorExpression<boolean>;
 
   /**
    * 创建 Collator 表达式的实现
@@ -38,7 +38,7 @@ export class CollatorExpression extends Expression<Object> {
     caseSensitiveOrOptions: Expression<boolean> | CollatorOptions,
     diacriticSensitive?: Expression<boolean>,
     locale?: Expression<string>
-  ): CollatorExpression {
+  ): CollatorExpression<boolean> {
     const optionsMap = new Map<string, Expression>();
     
     // 判断是否使用选项对象

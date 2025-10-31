@@ -1,3 +1,5 @@
+import { Image } from '../images/Image';
+
 /**
  * ImageSource - 图像数据源
  * 
@@ -23,12 +25,21 @@ export class ImageSource {
     /**
      * 设置图像 URL
      * @param url 图像 URL
+     * @returns this（支持链式调用）
      */
-    setUrl(url: string): void;
+    setUrl(url: string): ImageSource;
+    
+    /**
+     * 设置图像对象
+     * @param image 图像对象
+     * @returns this（支持链式调用）
+     */
+    setImage(image: Image): ImageSource;
     
     /**
      * 设置图像四个角的坐标
      * @param coordinates 四个角的坐标数组 [[lon, lat], [lon, lat], [lon, lat], [lon, lat]]
+     * @returns this（支持链式调用）
      */
-    setCoordinates(coordinates: number[][]): void;
+    setCoordinates(coordinates: number[][]): ImageSource;
 }

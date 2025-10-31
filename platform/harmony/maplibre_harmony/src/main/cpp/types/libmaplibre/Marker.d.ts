@@ -97,8 +97,9 @@ export class Marker {
    * 设置 Marker 的位置
    * 
    * @param position LatLng 位置对象
+   * @returns this（支持链式调用）
    */
-  setPosition(position: LatLng): void;
+  setPosition(position: LatLng): Marker;
   
   /**
    * 设置 Marker 的图标
@@ -108,6 +109,7 @@ export class Marker {
    * 2. 图标 ID 字符串：向后兼容方式，需要先通过 addAnnotationIcon 添加图标资源
    * 
    * @param icon Icon 对象或图标 ID 字符串（null 表示清除图标）
+   * @returns this（支持链式调用）
    * 
    * @example
    * ```typescript
@@ -120,56 +122,63 @@ export class Marker {
    * marker.setIcon('my-icon-id');
    * ```
    */
-  setIcon(icon: Icon | string | null): void;
+  setIcon(icon: Icon | string | null): Marker;
   
   /**
    * 设置 Marker 的标题
    * 
    * @param title 标题文本
+   * @returns this（支持链式调用）
    */
-  setTitle(title: string): void;
+  setTitle(title: string): Marker;
   
   /**
    * 设置 Marker 的描述信息
    * 
    * @param snippet 描述文本
+   * @returns this（支持链式调用）
    */
-  setSnippet(snippet: string): void;
+  setSnippet(snippet: string): Marker;
   
   /**
    * 设置 Marker 是否可见
    * 
    * @param visible true 表示可见
+   * @returns this（支持链式调用）
    */
-  setVisible(visible: boolean): void;
+  setVisible(visible: boolean): Marker;
   
   /**
    * 设置 Marker 的透明度
    * 
    * @param alpha 透明度值 (0.0 - 1.0)
+   * @returns this（支持链式调用）
    */
-  setAlpha(alpha: number): void;
+  setAlpha(alpha: number): Marker;
   
   /**
    * 设置 Marker 的旋转角度
    * 
    * @param rotation 旋转角度（度）
+   * @returns this（支持链式调用）
    */
-  setRotation(rotation: number): void;
+  setRotation(rotation: number): Marker;
   
   /**
    * 设置 Marker 是否可拖拽
    * 
    * @param draggable true 表示可拖拽
+   * @returns this（支持链式调用）
    */
-  setDraggable(draggable: boolean): void;
+  setDraggable(draggable: boolean): Marker;
   
   /**
    * 设置 Marker 的 Z 轴顺序
    * 
    * @param zIndex Z 轴顺序值
+   * @returns this（支持链式调用）
    */
-  setZIndex(zIndex: number): void;
+  setZIndex(zIndex: number): Marker;
   
   /**
    * 从地图移除此 Marker
@@ -205,8 +214,9 @@ export class Marker {
   
   /**
    * 设置 Marker 选中状态
+   * @returns this（支持链式调用）
    */
-  setSelected(selected: boolean): void;
+  setSelected(selected: boolean): Marker;
   
   // Drag state methods
   
@@ -218,20 +228,23 @@ export class Marker {
   
   /**
    * 设置拖拽状态
+   * @returns this（支持链式调用）
    */
-  setDragState(state: number): void;
+  setDragState(state: number): Marker;
   
   // Internal methods (used by MarkerManager)
   
   /**
    * 设置 annotation ID（内部使用）
+   * @returns this（支持链式调用）
    */
-  setId(id: number): void;
+  setId(id: number): Marker;
   
   /**
    * 设置关联的 MapLibreMap（内部使用）
+   * @returns this（支持链式调用）
    */
-  setMapLibreMap(map: any): void;
+  setMapLibreMap(map: any): Marker;
   
   // Animation methods
   
@@ -281,8 +294,9 @@ export class Marker {
    * 
    * @param u 水平锚点（0.0 - 1.0）
    * @param v 垂直锚点（0.0 - 1.0）
+   * @returns this（支持链式调用）
    */
-  setAnchor(u: number, v: number): void;
+  setAnchor(u: number, v: number): Marker;
 }
 
 /**

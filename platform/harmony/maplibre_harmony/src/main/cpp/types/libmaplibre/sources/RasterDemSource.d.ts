@@ -28,6 +28,7 @@ export class RasterDemSource {
     /**
      * 设置数据 URL
      * @param url 数据 URL
+     * @returns this（支持链式调用）
      */
-    setUrl(url: string): void;
+    setUrl(url: string): RasterDemSource;
 }

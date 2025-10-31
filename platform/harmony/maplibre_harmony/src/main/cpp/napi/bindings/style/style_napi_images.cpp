@@ -1,6 +1,7 @@
 #include "style_napi.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
+#include "napi/bindings/image/image_napi.hpp"
 #include "utils/logger.h"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/image.hpp>
@@ -18,7 +19,7 @@ namespace harmony {
 
 napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
     napi_value jsThis;
-    size_t argc = 5;  // name, buffer, width, height, pixelRatio (sdf is optional)
+    size_t argc = 6;  // Support both Image object and raw parameters
     napi_value args[6];
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
     
@@ -30,6 +31,41 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "AddImage requires at least 1 argument");
+        return nullptr;
+    }
+    
+    // Check if first argument is an Image object
+    if (ImageNAPI::IsImageObject(env, args[0])) {
+        // New way: Accept Image NAPI object
+        ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, args[0]);
+        if (!imageNapi) {
+            napi_throw_error(env, nullptr, "Failed to unwrap Image object");
+            return nullptr;
+        }
+        
+        try {
+            // Convert to style::Image
+            auto styleImage = imageNapi->toStyleImage();
+            std::string imageName = styleImage->getID();
+            
+            // Add to Style
+            style->map->getStyle().addImage(std::move(styleImage));
+            style->images[imageName] = true;
+            
+            Logger::info("StyleNAPI", "AddImage from Image object: %s (%dx%d)", 
+                        imageName.c_str(), imageNapi->getWidth(), imageNapi->getHeight());
+        } catch (const std::exception& e) {
+            Logger::error("StyleNAPI", "AddImage from Image object failed: %s", e.what());
+            napi_throw_error(env, nullptr, e.what());
+            return nullptr;
+        }
+        
+        return nullptr;
+    }
+    
+    // Old way: Accept raw parameters (name, buffer, width, height, pixelRatio, sdf)
     if (argc < 5) {
         napi_throw_error(env, nullptr, "AddImage requires at least 5 arguments: name, buffer, width, height, pixelRatio");
         return nullptr;

@@ -5,12 +5,13 @@
 /**
  * ValueExpression 接口
  * 用于可以直接转换为值的表达式
+ * @template T 表达式返回值的类型
  */
-export interface ValueExpression {
+export interface ValueExpression<T = Object> {
   /**
    * 将表达式转换为原始值
    */
-  toValue(): Object | null;
+  toValue(): T | null;
 }
 
 /**

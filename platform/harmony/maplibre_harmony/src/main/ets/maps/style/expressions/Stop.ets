@@ -77,7 +77,8 @@ export class Stop {
       } else if (typeof inputValue === 'boolean') {
         expressions.push(Expression.literal(inputValue));
       } else if (inputValue !== null) {
-        expressions.push(Expression.literal(inputValue as Object));
+        // 将对象包装为数组传递给 literal
+        expressions.push(Expression.literal([inputValue]));
       }
 
       // 处理输出值
@@ -92,7 +93,8 @@ export class Stop {
       } else if (typeof outputValue === 'boolean') {
         expressions.push(Expression.literal(outputValue));
       } else if (outputValue !== null) {
-        expressions.push(Expression.literal(outputValue as Object));
+        // 将对象包装为数组传递给 literal
+        expressions.push(Expression.literal([outputValue]));
       }
     }
 

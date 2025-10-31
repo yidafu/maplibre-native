@@ -1,8 +1,11 @@
 #include "napi/native_api.h"
 #include "core/native_map_view/native_map_view_harmony.hpp"
 #include "napi/bindings/marker/marker_napi.hpp"
+#include "napi/bindings/polyline/polyline_napi.hpp"
+#include "napi/bindings/polygon/polygon_napi.hpp"
 #include "napi/bindings/icon/icon_napi.hpp"
 #include "napi/bindings/icon_factory/icon_factory_napi.hpp"
+#include "napi/bindings/image/image_napi.hpp"
 // Bitmap
 #include "bitmap/bitmap_napi.hpp"
 // Geometry types
@@ -25,8 +28,6 @@
 // Style API bindings (NAPI 对象)
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/bindings/style_builder_napi.hpp"
-// Expression NAPI 类
-#include "napi/bindings/expression/expression_napi.hpp"
 // Source NAPI 类
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
@@ -75,14 +76,20 @@ static napi_value Init(napi_env env, napi_value exports) {
     // 初始化 Marker 类
     maplibre::harmony::MarkerNAPI::Init(env, exports);
     
+    // 初始化 Polyline 类
+    maplibre::harmony::PolylineNAPI::Init(env, exports);
+    
+    // 初始化 Polygon 类 (annotations)
+    maplibre::harmony::PolygonNAPI::Init(env, exports);
+    
     // 初始化 Icon 类
     maplibre::harmony::IconNAPI::Init(env, exports);
     
     // 初始化 IconFactory 类
     maplibre::harmony::IconFactoryNAPI::Init(env, exports);
     
-    // 初始化 Expression 类
-    maplibre::harmony::ExpressionNAPI::Init(env, exports);
+    // 初始化 Image 类
+    maplibre::harmony::ImageNAPI::Init(env, exports);
     
     // 初始化 Bitmap 类
     mbgl::harmony::BitmapNAPI::Init(env, exports);

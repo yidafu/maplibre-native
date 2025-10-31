@@ -103,14 +103,18 @@ add_library(maplibre
     napi/bindings/marker/marker_napi.hpp
     napi/bindings/marker/marker_napi_base.cpp
     napi/bindings/marker/marker_napi_options.cpp
+    napi/bindings/polyline/polyline_napi.hpp
+    napi/bindings/polyline/polyline_napi.cpp
+    napi/bindings/polygon/polygon_napi.hpp
+    napi/bindings/polygon/polygon_napi.cpp
     napi/bindings/icon/icon_napi.hpp
     napi/bindings/icon/icon_napi.cpp
     napi/bindings/icon_factory/icon_factory_napi.hpp
     napi/bindings/icon_factory/icon_factory_napi.cpp
-    napi/bindings/expression/expression_napi.hpp
-    napi/bindings/expression/expression_napi.cpp
     icon/icon_factory.hpp
     icon/icon_factory.cpp
+    napi/bindings/image/image_napi.hpp
+    napi/bindings/image/image_napi.cpp
     napi/bindings/style/style_napi.hpp
     napi/bindings/style/style_napi_base.cpp
     napi/bindings/style/style_napi_layers.cpp

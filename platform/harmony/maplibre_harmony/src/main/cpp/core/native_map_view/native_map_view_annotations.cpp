@@ -1,6 +1,8 @@
 #include "native_map_view_harmony.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/bindings/marker/marker_napi.hpp"
+#include "napi/bindings/polyline/polyline_napi.hpp"
+#include "napi/bindings/polygon/polygon_napi.hpp"
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/bindings/icon/icon_napi.hpp"
 #include "geometry/lat_lng_harmony.hpp"
@@ -14,6 +16,8 @@
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
 using maplibre::harmony::MarkerNAPI;
+using maplibre::harmony::PolylineNAPI;
+using maplibre::harmony::PolygonNAPI;
 using maplibre::harmony::StyleNAPI;
 using maplibre::harmony::IconNAPI;
 
@@ -225,31 +229,274 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Polyline 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/annotation/polyline.cpp
-    Logger::warn("NativeMapView", "addPolylines: Not implemented - requires Polyline wrapper class");
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "addPolylines: Failed to get arguments");
+        return undefined;
+    }
     
-    return undefined;
+    if (argc < 1) {
+        Logger::error("NativeMapView", "addPolylines: Requires 1 argument (polylines array)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "addPolylines: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "addPolylines: Map not initialized");
+        return undefined;
+    }
+    
+    // 检查参数是否是数组
+    bool isArray = false;
+    if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
+        Logger::error("NativeMapView", "addPolylines: First argument must be an array");
+        return undefined;
+    }
+    
+    // 获取数组长度
+    uint32_t length = 0;
+    if (napi_get_array_length(env, args[0], &length) != napi_ok) {
+        Logger::error("NativeMapView", "addPolylines: Failed to get array length");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "addPolylines: Processing %u polylines", length);
+    
+    // 存储生成的 annotation IDs
+    std::vector<mbgl::AnnotationID> ids;
+    ids.reserve(length);
+    
+    // 遍历 Polyline 数组
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value polylineObj;
+        if (napi_get_element(env, args[0], i, &polylineObj) != napi_ok) {
+            Logger::error("NativeMapView", "addPolylines: Failed to get polyline at index %u", i);
+            continue;
+        }
+        
+        // Unwrap PolylineNAPI 对象
+        PolylineNAPI* polyline = nullptr;
+        if (napi_unwrap(env, polylineObj, reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
+            Logger::error("NativeMapView", "addPolylines: Failed to unwrap Polyline at index %u", i);
+            continue;
+        }
+        
+        try {
+            // 转换为 LineAnnotation
+            mbgl::LineAnnotation annotation = polyline->toAnnotation();
+            
+            // 添加到地图并获取 ID
+            mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
+            ids.push_back(annotationId);
+            
+            // 设置 annotation ID 回 Polyline
+            polyline->setAnnotationId(annotationId);
+            
+            Logger::info("NativeMapView", "addPolylines: polyline[%u] created with ID=%lu", i, annotationId);
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "addPolylines: polyline[%u] failed to add - %s", i, e.what());
+        }
+    }
+    
+    Logger::info("NativeMapView", "addPolylines: Added %zu/%u polylines successfully", ids.size(), length);
+    
+    // 触发重绘
+    if (!ids.empty()) {
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
+    }
+    
+    // 创建返回的 ID 数组
+    napi_value resultArray;
+    if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
+        Logger::error("NativeMapView", "addPolylines: Failed to create result array");
+        return undefined;
+    }
+    
+    // 填充 ID 数组
+    for (size_t i = 0; i < ids.size(); i++) {
+        napi_value idValue;
+        if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
+            napi_set_element(env, resultArray, i, idValue);
+        }
+    }
+    
+    return resultArray;
 }
 
 napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Polygon 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/annotation/polygon.cpp
-    Logger::warn("NativeMapView", "addPolygons: Not implemented - requires Polygon wrapper class");
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "addPolygons: Failed to get arguments");
+        return undefined;
+    }
     
-    return undefined;
+    if (argc < 1) {
+        Logger::error("NativeMapView", "addPolygons: Requires 1 argument (polygons array)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "addPolygons: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "addPolygons: Map not initialized");
+        return undefined;
+    }
+    
+    // 检查参数是否是数组
+    bool isArray = false;
+    if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
+        Logger::error("NativeMapView", "addPolygons: First argument must be an array");
+        return undefined;
+    }
+    
+    // 获取数组长度
+    uint32_t length = 0;
+    if (napi_get_array_length(env, args[0], &length) != napi_ok) {
+        Logger::error("NativeMapView", "addPolygons: Failed to get array length");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "addPolygons: Processing %u polygons", length);
+    
+    // 存储生成的 annotation IDs
+    std::vector<mbgl::AnnotationID> ids;
+    ids.reserve(length);
+    
+    // 遍历 Polygon 数组
+    for (uint32_t i = 0; i < length; i++) {
+        napi_value polygonObj;
+        if (napi_get_element(env, args[0], i, &polygonObj) != napi_ok) {
+            Logger::error("NativeMapView", "addPolygons: Failed to get polygon at index %u", i);
+            continue;
+        }
+        
+        // Unwrap PolygonNAPI 对象
+        PolygonNAPI* polygon = nullptr;
+        if (napi_unwrap(env, polygonObj, reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
+            Logger::error("NativeMapView", "addPolygons: Failed to unwrap Polygon at index %u", i);
+            continue;
+        }
+        
+        try {
+            // 转换为 FillAnnotation
+            mbgl::FillAnnotation annotation = polygon->toAnnotation();
+            
+            // 添加到地图并获取 ID
+            mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
+            ids.push_back(annotationId);
+            
+            // 设置 annotation ID 回 Polygon
+            polygon->setAnnotationId(annotationId);
+            
+            Logger::info("NativeMapView", "addPolygons: polygon[%u] created with ID=%lu", i, annotationId);
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "addPolygons: polygon[%u] failed to add - %s", i, e.what());
+        }
+    }
+    
+    Logger::info("NativeMapView", "addPolygons: Added %zu/%u polygons successfully", ids.size(), length);
+    
+    // 触发重绘
+    if (!ids.empty()) {
+        instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
+    }
+    
+    // 创建返回的 ID 数组
+    napi_value resultArray;
+    if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
+        Logger::error("NativeMapView", "addPolygons: Failed to create result array");
+        return undefined;
+    }
+    
+    // 填充 ID 数组
+    for (size_t i = 0; i < ids.size(); i++) {
+        napi_value idValue;
+        if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
+            napi_set_element(env, resultArray, i, idValue);
+        }
+    }
+    
+    return resultArray;
 }
 
 napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Polyline 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:866-869
-    Logger::warn("NativeMapView", "updatePolyline: Not implemented - requires Polyline wrapper class");
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "updatePolyline: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "updatePolyline: Requires 1 argument (Polyline object)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "updatePolyline: Failed to unwrap NativeMapView instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "updatePolyline: Map not initialized");
+        return undefined;
+    }
+    
+    // Unwrap Polyline NAPI 对象
+    PolylineNAPI* polyline = nullptr;
+    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
+        Logger::error("NativeMapView", "updatePolyline: Failed to unwrap Polyline object");
+        return undefined;
+    }
+    
+    // 从 Polyline 获取数据
+    auto annotationId = polyline->getAnnotationId();
+    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
+        Logger::error("NativeMapView", "updatePolyline: Polyline has invalid ID (not added to map yet)");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "updatePolyline: Updating polyline with ID=%lu", annotationId);
+    
+    try {
+        // 更新 Polyline (使用 LineAnnotation)
+        mbgl::LineAnnotation annotation = polyline->toAnnotation();
+        instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
+            m->updateAnnotation(annotationId, annotation);
+            m->triggerRepaint();
+        });
+        
+        Logger::info("NativeMapView", "updatePolyline: Polyline updated successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "updatePolyline: Failed - %s", e.what());
+    }
     
     return undefined;
 }
@@ -258,9 +505,60 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Polygon 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:871-874
-    Logger::warn("NativeMapView", "updatePolygon: Not implemented - requires Polygon wrapper class");
+    // 获取 this 对象
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "updatePolygon: Failed to get arguments");
+        return undefined;
+    }
+    
+    if (argc < 1) {
+        Logger::error("NativeMapView", "updatePolygon: Requires 1 argument (Polygon object)");
+        return undefined;
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "updatePolygon: Failed to unwrap NativeMapView instance");
+        return undefined;
+    }
+    
+    if (!instance->map) {
+        Logger::error("NativeMapView", "updatePolygon: Map not initialized");
+        return undefined;
+    }
+    
+    // Unwrap Polygon NAPI 对象
+    PolygonNAPI* polygon = nullptr;
+    if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
+        Logger::error("NativeMapView", "updatePolygon: Failed to unwrap Polygon object");
+        return undefined;
+    }
+    
+    // 从 Polygon 获取数据
+    auto annotationId = polygon->getAnnotationId();
+    if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
+        Logger::error("NativeMapView", "updatePolygon: Polygon has invalid ID (not added to map yet)");
+        return undefined;
+    }
+    
+    Logger::info("NativeMapView", "updatePolygon: Updating polygon with ID=%lu", annotationId);
+    
+    try {
+        // 更新 Polygon (使用 FillAnnotation)
+        mbgl::FillAnnotation annotation = polygon->toAnnotation();
+        instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
+            m->updateAnnotation(annotationId, annotation);
+            m->triggerRepaint();
+        });
+        
+        Logger::info("NativeMapView", "updatePolygon: Polygon updated successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "updatePolygon: Failed - %s", e.what());
+    }
     
     return undefined;
 }

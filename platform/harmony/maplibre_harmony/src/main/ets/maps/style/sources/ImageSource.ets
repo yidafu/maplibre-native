@@ -2,6 +2,7 @@
  * ImageSource - 图片数据源封装类
  */
 import maplibre from 'libmaplibre.so';
+import { Image } from '../images/Image';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -41,11 +42,19 @@ export class ImageSource {
     return this.nativeInstance.getId();
   }
 
-  setCoordinates(coordinates: number[][]): void {
+  setCoordinates(coordinates: number[][]): ImageSource {
     this.nativeInstance.setCoordinates(coordinates);
+    return this;
   }
 
-  setUrl(url: string): void {
+  setUrl(url: string): ImageSource {
     this.nativeInstance.setUrl(url);
+    return this;
+  }
+
+  setImage(image: Image): ImageSource {
+    // 获取 Image 的 native 实例并传递给 ImageSource
+    this.nativeInstance.setImage(image.getNative());
+    return this;
   }
 }

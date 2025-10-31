@@ -37,15 +37,17 @@ export class RasterSource {
     return this.nativeInstance.getId();
   }
 
-  setUrl(url: string): void {
+  setUrl(url: string): RasterSource {
     this.nativeInstance.setUrl(url);
+    return this;
   }
 
   getUrl(): string {
     return this.nativeInstance.getUrl();
   }
 
-  setTileSize(size: number): void {
+  setTileSize(size: number): RasterSource {
     this.nativeInstance.setTileSize(size);
+    return this;
   }
 }

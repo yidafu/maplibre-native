@@ -1,4 +1,10 @@
 /**
+ * 聚类属性类型
+ * 格式：{ "propertyName": [operatorExpression, mapExpression] }
+ */
+export type ClusterProperties = Record<string, [Object[] | string, Object[]]>;
+
+/**
  * GeoJsonOptions - GeoJSON数据源选项配置
  */
 export interface GeoJsonOptions {
@@ -24,7 +30,7 @@ export interface GeoJsonOptions {
   clusterMinPoints?: number;
   
   // 聚类属性
-  clusterProperties?: Record<string, Object>;
+  clusterProperties?: ClusterProperties;
   
   // 是否为每个要素生成ID
   generateId?: boolean;
@@ -77,7 +83,7 @@ export class GeoJsonOptionsBuilder {
     return this;
   }
 
-  public withClusterProperties(clusterProperties: Record<string, Object>): GeoJsonOptionsBuilder {
+  public withClusterProperties(clusterProperties: ClusterProperties): GeoJsonOptionsBuilder {
     this.options.clusterProperties = clusterProperties;
     return this;
   }

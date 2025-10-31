@@ -189,24 +189,27 @@ export class Marker {
   /**
    * 设置 Marker ID（内部使用）
    */
-  setId(id: number): void {
+  setId(id: number): Marker {
     // MarkerManager 使用的内部方法
     // 实际不修改 NAPI Marker，只是占位
+    return this;
   }
 
   /**
    * 设置所属的 MapLibreMap（内部使用）
    */
-  setMapLibreMap(map: Object): void {
+  setMapLibreMap(map: Object): Marker {
     // MarkerManager 使用的内部方法
     // 实际不修改 NAPI Marker，只是占位
+    return this;
   }
 
   /**
    * 设置选中状态（内部使用）
    */
-  setSelected(selected: boolean): void {
+  setSelected(selected: boolean): Marker {
     // MarkerManager 使用的内部方法
+    return this;
   }
 
   /**
@@ -220,8 +223,9 @@ export class Marker {
   /**
    * 设置拖拽状态（内部使用）
    */
-  setDragState(state: number): void {
+  setDragState(state: number): Marker {
     // MarkerManager 使用的内部方法
+    return this;
   }
 
   /**

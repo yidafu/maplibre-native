@@ -28,6 +28,7 @@ public:
     
     // Setters
     static napi_value SetUrl(napi_env env, napi_callback_info info);
+    static napi_value SetImage(napi_env env, napi_callback_info info);
     static napi_value SetCoordinates(napi_env env, napi_callback_info info);
     
     // 内部方法

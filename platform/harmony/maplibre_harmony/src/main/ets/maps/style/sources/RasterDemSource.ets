@@ -37,8 +37,9 @@ export class RasterDemSource {
     return this.nativeInstance.getId();
   }
 
-  setUrl(url: string): void {
+  setUrl(url: string): RasterDemSource {
     this.nativeInstance.setUrl(url);
+    return this;
   }
 
   getUrl(): string {

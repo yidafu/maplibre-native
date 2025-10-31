@@ -26,6 +26,18 @@ export * from './NativeMapView';
 export { Marker, MarkerOptions } from './Marker';
 
 /**
+ * Polygon - 多边形标注
+ * 表示地图上的多边形标注，由 C++ NAPI 层实现
+ */
+export { Polygon } from './annotations/Polygon';
+
+/**
+ * Polyline - 折线标注
+ * 表示地图上的折线标注，由 C++ NAPI 层实现
+ */
+export { Polyline } from './annotations/Polyline';
+
+/**
  * Icon - 图标类
  * 表示地图标注的图标，由 C++ NAPI 层实现
  * 包含图标的位图数据和元信息
@@ -86,6 +98,12 @@ export { RasterDemSource } from './sources/RasterDemSource';
  * 用于在指定的地理坐标范围内显示单张图像
  */
 export { ImageSource } from './sources/ImageSource';
+
+/**
+ * Image - 样式图像类（NAPI 对象）
+ * 用于在地图样式中添加自定义图片资源
+ */
+export { Image, ImageOptions } from './images/Image';
 
 // ========== 图层 (Layers) ==========
 

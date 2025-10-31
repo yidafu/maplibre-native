@@ -39,8 +39,9 @@ declare namespace maplibre {
         /**
          * 设置源图层
          * @param sourceLayer 源图层名称
+         * @returns this（支持链式调用）
          */
-        setSourceLayer(sourceLayer: string): void;
+        setSourceLayer(sourceLayer: string): SymbolLayer;
         
         /**
          * 获取源图层
@@ -50,8 +51,9 @@ declare namespace maplibre {
         /**
          * 设置最小缩放级别
          * @param minZoom 最小缩放级别
+         * @returns this（支持链式调用）
          */
-        setMinZoom(minZoom: number): void;
+        setMinZoom(minZoom: number): SymbolLayer;
         
         /**
          * 获取最小缩放级别
@@ -61,8 +63,9 @@ declare namespace maplibre {
         /**
          * 设置最大缩放级别
          * @param maxZoom 最大缩放级别
+         * @returns this（支持链式调用）
          */
-        setMaxZoom(maxZoom: number): void;
+        setMaxZoom(maxZoom: number): SymbolLayer;
         
         /**
          * 获取最大缩放级别
@@ -74,8 +77,9 @@ declare namespace maplibre {
         /**
          * 设置图标图片
          * @param iconImage 图片名称或Expression
+         * @returns this（支持链式调用）
          */
-        setIconImage(iconImage: StringValue): void;
+        setIconImage(iconImage: StringValue): SymbolLayer;
         
         /**
          * 获取图标图片
@@ -85,8 +89,9 @@ declare namespace maplibre {
         /**
          * 设置图标大小
          * @param size 大小比例或Expression
+         * @returns this（支持链式调用）
          */
-        setIconSize(size: NumberValue): void;
+        setIconSize(size: NumberValue): SymbolLayer;
         
         /**
          * 获取图标大小
@@ -96,8 +101,9 @@ declare namespace maplibre {
         /**
          * 设置图标旋转角度
          * @param rotate 旋转角度（度）或Expression
+         * @returns this（支持链式调用）
          */
-        setIconRotate(rotate: NumberValue): void;
+        setIconRotate(rotate: NumberValue): SymbolLayer;
         
         /**
          * 获取图标旋转角度
@@ -107,8 +113,9 @@ declare namespace maplibre {
         /**
          * 设置图标偏移
          * @param offset 偏移量或Expression
+         * @returns this（支持链式调用）
          */
-        setIconOffset(offset: PropertyValue<number[]>): void;
+        setIconOffset(offset: PropertyValue<number[]>): SymbolLayer;
         
         /**
          * 获取图标偏移
@@ -118,8 +125,9 @@ declare namespace maplibre {
         /**
          * 设置图标锚点
          * @param anchor 锚点位置或Expression
+         * @returns this（支持链式调用）
          */
-        setIconAnchor(anchor: StringValue): void;
+        setIconAnchor(anchor: StringValue): SymbolLayer;
         
         /**
          * 获取图标锚点
@@ -129,8 +137,9 @@ declare namespace maplibre {
         /**
          * 设置图标是否允许重叠
          * @param allow 是否允许或Expression
+         * @returns this（支持链式调用）
          */
-        setIconAllowOverlap(allow: BooleanValue): void;
+        setIconAllowOverlap(allow: BooleanValue): SymbolLayer;
         
         /**
          * 获取图标是否允许重叠
@@ -142,8 +151,9 @@ declare namespace maplibre {
         /**
          * 设置文本内容
          * @param text 文本内容或Expression
+         * @returns this（支持链式调用）
          */
-        setTextField(text: StringValue): void;
+        setTextField(text: StringValue): SymbolLayer;
         
         /**
          * 获取文本内容
@@ -153,8 +163,9 @@ declare namespace maplibre {
         /**
          * 设置文本字体
          * @param font 字体名称或Expression
+         * @returns this（支持链式调用）
          */
-        setTextFont(font: PropertyValue<string[]>): void;
+        setTextFont(font: PropertyValue<string[]>): SymbolLayer;
         
         /**
          * 获取文本字体
@@ -164,8 +175,9 @@ declare namespace maplibre {
         /**
          * 设置文本大小
          * @param size 字体大小或Expression
+         * @returns this（支持链式调用）
          */
-        setTextSize(size: NumberValue): void;
+        setTextSize(size: NumberValue): SymbolLayer;
         
         /**
          * 获取文本大小
@@ -175,8 +187,9 @@ declare namespace maplibre {
         /**
          * 设置文本最大宽度
          * @param maxWidth 最大宽度或Expression
+         * @returns this（支持链式调用）
          */
-        setTextMaxWidth(maxWidth: NumberValue): void;
+        setTextMaxWidth(maxWidth: NumberValue): SymbolLayer;
         
         /**
          * 获取文本最大宽度
@@ -186,8 +199,9 @@ declare namespace maplibre {
         /**
          * 设置文本偏移
          * @param offset 偏移量或Expression
+         * @returns this（支持链式调用）
          */
-        setTextOffset(offset: PropertyValue<number[]>): void;
+        setTextOffset(offset: PropertyValue<number[]>): SymbolLayer;
         
         /**
          * 获取文本偏移
@@ -197,8 +211,9 @@ declare namespace maplibre {
         /**
          * 设置文本锚点
          * @param anchor 锚点位置或Expression
+         * @returns this（支持链式调用）
          */
-        setTextAnchor(anchor: StringValue): void;
+        setTextAnchor(anchor: StringValue): SymbolLayer;
         
         /**
          * 获取文本锚点
@@ -208,8 +223,9 @@ declare namespace maplibre {
         /**
          * 设置文本是否允许重叠
          * @param allow 是否允许或Expression
+         * @returns this（支持链式调用）
          */
-        setTextAllowOverlap(allow: BooleanValue): void;
+        setTextAllowOverlap(allow: BooleanValue): SymbolLayer;
         
         /**
          * 获取文本是否允许重叠
@@ -221,8 +237,9 @@ declare namespace maplibre {
         /**
          * 设置图标不透明度
          * @param opacity 不透明度 (0-1) 或 Expression
+         * @returns this（支持链式调用）
          */
-        setIconOpacity(opacity: NumberValue): void;
+        setIconOpacity(opacity: NumberValue): SymbolLayer;
         
         /**
          * 获取图标不透明度
@@ -232,8 +249,9 @@ declare namespace maplibre {
         /**
          * 设置图标颜色
          * @param color 颜色值或Expression
+         * @returns this（支持链式调用）
          */
-        setIconColor(color: ColorValue): void;
+        setIconColor(color: ColorValue): SymbolLayer;
         
         /**
          * 获取图标颜色
@@ -243,8 +261,9 @@ declare namespace maplibre {
         /**
          * 设置图标光晕颜色
          * @param color 颜色值或Expression
+         * @returns this（支持链式调用）
          */
-        setIconHaloColor(color: ColorValue): void;
+        setIconHaloColor(color: ColorValue): SymbolLayer;
         
         /**
          * 获取图标光晕颜色
@@ -254,8 +273,9 @@ declare namespace maplibre {
         /**
          * 设置图标光晕宽度
          * @param width 宽度或Expression
+         * @returns this（支持链式调用）
          */
-        setIconHaloWidth(width: NumberValue): void;
+        setIconHaloWidth(width: NumberValue): SymbolLayer;
         
         /**
          * 获取图标光晕宽度
@@ -267,8 +287,9 @@ declare namespace maplibre {
         /**
          * 设置文本不透明度
          * @param opacity 不透明度 (0-1) 或Expression
+         * @returns this（支持链式调用）
          */
-        setTextOpacity(opacity: NumberValue): void;
+        setTextOpacity(opacity: NumberValue): SymbolLayer;
         
         /**
          * 获取文本不透明度
@@ -278,8 +299,9 @@ declare namespace maplibre {
         /**
          * 设置文本颜色
          * @param color 颜色值或Expression
+         * @returns this（支持链式调用）
          */
-        setTextColor(color: ColorValue): void;
+        setTextColor(color: ColorValue): SymbolLayer;
         
         /**
          * 获取文本颜色
@@ -289,8 +311,9 @@ declare namespace maplibre {
         /**
          * 设置文本光晕颜色
          * @param color 颜色值或Expression
+         * @returns this（支持链式调用）
          */
-        setTextHaloColor(color: ColorValue): void;
+        setTextHaloColor(color: ColorValue): SymbolLayer;
         
         /**
          * 获取文本光晕颜色
@@ -300,8 +323,9 @@ declare namespace maplibre {
         /**
          * 设置文本光晕宽度
          * @param width 宽度或Expression
+         * @returns this（支持链式调用）
          */
-        setTextHaloWidth(width: NumberValue): void;
+        setTextHaloWidth(width: NumberValue): SymbolLayer;
         
         /**
          * 获取文本光晕宽度
@@ -312,233 +336,270 @@ declare namespace maplibre {
         
         /**
          * 设置图标忽略放置
+         * @returns this（支持链式调用）
          */
-        setIconIgnorePlacement(ignore: boolean): void;
+        setIconIgnorePlacement(ignore: boolean): SymbolLayer;
         getIconIgnorePlacement(): boolean;
         
         /**
          * 设置图标可选
+         * @returns this（支持链式调用）
          */
-        setIconOptional(optional: boolean): void;
+        setIconOptional(optional: boolean): SymbolLayer;
         getIconOptional(): boolean;
         
         /**
          * 设置图标填充
+         * @returns this（支持链式调用）
          */
-        setIconPadding(padding: number): void;
+        setIconPadding(padding: number): SymbolLayer;
         getIconPadding(): number;
         
         /**
          * 设置防止图标上下颠倒
+         * @returns this（支持链式调用）
          */
-        setIconKeepUpright(keep: boolean): void;
+        setIconKeepUpright(keep: boolean): SymbolLayer;
         getIconKeepUpright(): boolean;
         
         /**
          * 设置图标倾斜对齐
+         * @returns this（支持链式调用）
          */
-        setIconPitchAlignment(alignment: string): void;
+        setIconPitchAlignment(alignment: string): SymbolLayer;
         getIconPitchAlignment(): string;
         
         /**
          * 设置图标旋转对齐
+         * @returns this（支持链式调用）
          */
-        setIconRotationAlignment(alignment: string): void;
+        setIconRotationAlignment(alignment: string): SymbolLayer;
         getIconRotationAlignment(): string;
         
         /**
          * 设置图标文本适配
+         * @returns this（支持链式调用）
          */
-        setIconTextFit(fit: string): void;
+        setIconTextFit(fit: string): SymbolLayer;
         getIconTextFit(): string;
         
         /**
          * 设置图标文本适配填充
+         * @returns this（支持链式调用）
          */
-        setIconTextFitPadding(padding: number[]): void;
+        setIconTextFitPadding(padding: number[]): SymbolLayer;
         getIconTextFitPadding(): number[];
         
         /**
          * 设置图标平移
+         * @returns this（支持链式调用）
          */
-        setIconTranslate(translate: number[]): void;
+        setIconTranslate(translate: number[]): SymbolLayer;
         getIconTranslate(): number[];
         
         /**
          * 设置图标平移锚点
+         * @returns this（支持链式调用）
          */
-        setIconTranslateAnchor(anchor: string): void;
+        setIconTranslateAnchor(anchor: string): SymbolLayer;
         getIconTranslateAnchor(): string;
         
         /**
          * 设置图标光晕模糊
+         * @returns this（支持链式调用）
          */
-        setIconHaloBlur(blur: number): void;
+        setIconHaloBlur(blur: number): SymbolLayer;
         getIconHaloBlur(): number;
         
         // ==================== 新增文本布局属性 ====================
         
         /**
          * 设置文本字母间距
+         * @returns this（支持链式调用）
          */
-        setTextLetterSpacing(spacing: number): void;
+        setTextLetterSpacing(spacing: number): SymbolLayer;
         getTextLetterSpacing(): number;
         
         /**
          * 设置文本对齐方式
+         * @returns this（支持链式调用）
          */
-        setTextJustify(justify: string): void;
+        setTextJustify(justify: string): SymbolLayer;
         getTextJustify(): string;
         
         /**
          * 设置文本径向偏移
+         * @returns this（支持链式调用）
          */
-        setTextRadialOffset(offset: number): void;
+        setTextRadialOffset(offset: number): SymbolLayer;
         getTextRadialOffset(): number;
         
         /**
          * 设置文本可变锚点
+         * @returns this（支持链式调用）
          */
-        setTextVariableAnchor(anchors: string[]): void;
+        setTextVariableAnchor(anchors: string[]): SymbolLayer;
         getTextVariableAnchor(): string[];
         
         /**
          * 设置文本可变锚点偏移
+         * @returns this（支持链式调用）
          */
-        setTextVariableAnchorOffset(offset: number[]): void;
+        setTextVariableAnchorOffset(offset: number[]): SymbolLayer;
         getTextVariableAnchorOffset(): number[];
         
         /**
          * 设置文本旋转角度
+         * @returns this（支持链式调用）
          */
-        setTextRotate(rotate: number): void;
+        setTextRotate(rotate: number): SymbolLayer;
         getTextRotate(): number;
         
         /**
          * 设置文本填充
+         * @returns this（支持链式调用）
          */
-        setTextPadding(padding: number): void;
+        setTextPadding(padding: number): SymbolLayer;
         getTextPadding(): number;
         
         /**
          * 设置防止文本上下颠倒
+         * @returns this（支持链式调用）
          */
-        setTextKeepUpright(keep: boolean): void;
+        setTextKeepUpright(keep: boolean): SymbolLayer;
         getTextKeepUpright(): boolean;
         
         /**
          * 设置文本转换
+         * @returns this（支持链式调用）
          */
-        setTextTransform(transform: string): void;
+        setTextTransform(transform: string): SymbolLayer;
         getTextTransform(): string;
         
         /**
          * 设置文本最大角度
+         * @returns this（支持链式调用）
          */
-        setTextMaxAngle(angle: number): void;
+        setTextMaxAngle(angle: number): SymbolLayer;
         getTextMaxAngle(): number;
         
         /**
          * 设置文本旋转对齐
+         * @returns this（支持链式调用）
          */
-        setTextRotationAlignment(alignment: string): void;
+        setTextRotationAlignment(alignment: string): SymbolLayer;
         getTextRotationAlignment(): string;
         
         /**
          * 设置文本倾斜对齐
+         * @returns this（支持链式调用）
          */
-        setTextPitchAlignment(alignment: string): void;
+        setTextPitchAlignment(alignment: string): SymbolLayer;
         getTextPitchAlignment(): string;
         
         /**
          * 设置文本行高
+         * @returns this（支持链式调用）
          */
-        setTextLineHeight(lineHeight: number): void;
+        setTextLineHeight(lineHeight: number): SymbolLayer;
         getTextLineHeight(): number;
         
         /**
          * 设置文本书写模式
+         * @returns this（支持链式调用）
          */
-        setTextWritingMode(mode: string[]): void;
+        setTextWritingMode(mode: string[]): SymbolLayer;
         getTextWritingMode(): string[];
         
         /**
          * 设置文本忽略放置
+         * @returns this（支持链式调用）
          */
-        setTextIgnorePlacement(ignore: boolean): void;
+        setTextIgnorePlacement(ignore: boolean): SymbolLayer;
         getTextIgnorePlacement(): boolean;
         
         /**
          * 设置文本可选
+         * @returns this（支持链式调用）
          */
-        setTextOptional(optional: boolean): void;
+        setTextOptional(optional: boolean): SymbolLayer;
         getTextOptional(): boolean;
         
         // ==================== 新增文本绘制属性 ====================
         
         /**
          * 设置文本光晕模糊
+         * @returns this（支持链式调用）
          */
-        setTextHaloBlur(blur: number): void;
+        setTextHaloBlur(blur: number): SymbolLayer;
         getTextHaloBlur(): number;
         
         /**
          * 设置文本平移
+         * @returns this（支持链式调用）
          */
-        setTextTranslate(translate: number[]): void;
+        setTextTranslate(translate: number[]): SymbolLayer;
         getTextTranslate(): number[];
         
         /**
          * 设置文本平移锚点
+         * @returns this（支持链式调用）
          */
-        setTextTranslateAnchor(anchor: string): void;
+        setTextTranslateAnchor(anchor: string): SymbolLayer;
         getTextTranslateAnchor(): string;
         
         // ==================== 符号通用属性 ====================
         
         /**
          * 设置符号放置方式
+         * @returns this（支持链式调用）
          */
-        setSymbolPlacement(placement: string): void;
+        setSymbolPlacement(placement: string): SymbolLayer;
         getSymbolPlacement(): string;
         
         /**
          * 设置符号间距
+         * @returns this（支持链式调用）
          */
-        setSymbolSpacing(spacing: number): void;
+        setSymbolSpacing(spacing: number): SymbolLayer;
         getSymbolSpacing(): number;
         
         /**
          * 设置符号避免边缘
+         * @returns this（支持链式调用）
          */
-        setSymbolAvoidEdges(avoid: boolean): void;
+        setSymbolAvoidEdges(avoid: boolean): SymbolLayer;
         getSymbolAvoidEdges(): boolean;
         
         /**
          * 设置符号排序键
+         * @returns this（支持链式调用）
          */
-        setSymbolSortKey(sortKey: number): void;
+        setSymbolSortKey(sortKey: number): SymbolLayer;
         getSymbolSortKey(): number;
         
         /**
          * 设置符号Z顺序
+         * @returns this（支持链式调用）
          */
-        setSymbolZOrder(zOrder: string): void;
+        setSymbolZOrder(zOrder: string): SymbolLayer;
         getSymbolZOrder(): string;
         
         // ==================== 通用 Layer 方法 ====================
         
         /**
          * 设置图层可见性
+         * @returns this（支持链式调用）
          */
-        setVisibility(visibility: 'visible' | 'none'): void;
+        setVisibility(visibility: 'visible' | 'none'): SymbolLayer;
         getVisibility(): 'visible' | 'none';
         
         /**
          * 设置图层过滤器
          * @param filter 过滤器表达式数组
+         * @returns this（支持链式调用）
          */
-        setFilter(filter: Object[]): void;
+        setFilter(filter: Object[]): SymbolLayer;
         getFilter(): Object[] | null;
     }
 }

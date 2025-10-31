@@ -1,5 +1,10 @@
+/**
+ * Polygon - 多边形封装类
+ * 
+ * 符合 ArkTS 规范的封装实现
+ */
+import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
-import { GeoBounds } from './Polyline';
 
 /**
  * PolygonOptions - 多边形选项接口
@@ -18,351 +23,223 @@ export interface PolygonOptions {
 }
 
 /**
- * Polygon - 多边形类
+ * 内部创建标记
+ */
+class InternalPolygon {
+  static readonly INSTANCE = new InternalPolygon();
+  private constructor() {}
+}
+
+/**
+ * Polygon 封装类
  */
 export class Polygon {
-  public id: string;
-  public points: LatLng[];
-  public holes: LatLng[][];
-  public fillColor: string;
-  public strokeColor: string;
-  public strokeWidth: number;
-  public fillAlpha: number;
-  public strokeAlpha: number;
-  public visible: boolean;
-  public zIndex: number;
-
-  constructor(options: PolygonOptions) {
-    this.id = options.id || this.generateId();
-    this.points = options.points;
-    this.holes = options.holes || [];
-    this.fillColor = options.fillColor || '#000000';
-    this.strokeColor = options.strokeColor || '#000000';
-    this.strokeWidth = options.strokeWidth || 1;
-    this.fillAlpha = options.fillAlpha !== undefined ? options.fillAlpha : 0.5;
-    this.strokeAlpha = options.strokeAlpha !== undefined ? options.strokeAlpha : 1.0;
-    this.visible = options.visible !== undefined ? options.visible : true;
-    this.zIndex = options.zIndex || 0;
-  }
+  private nativeInstance: maplibre.Polygon;
 
   /**
-   * 生成唯一ID
+   * 构造函数
+   * 支持两种模式：
+   * 1. 从选项创建: new Polygon(options)
+   * 2. 从 NAPI 实例创建（内部使用）: new Polygon(marker, nativeInstance)
    */
-  private generateId(): string {
-    return 'polygon_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-  }
-
-  /**
-   * 设置点列表
-   */
-  public setPoints(points: LatLng[]): void {
-    this.points = points;
-  }
-
-  /**
-   * 获取点列表
-   */
-  public getPoints(): LatLng[] {
-    return this.points;
-  }
-
-  /**
-   * 添加点
-   */
-  public addPoint(point: LatLng): void {
-    this.points.push(point);
-  }
-
-  /**
-   * 插入点
-   */
-  public insertPoint(index: number, point: LatLng): void {
-    this.points.splice(index, 0, point);
-  }
-
-  /**
-   * 移除点
-   */
-  public removePoint(index: number): LatLng | null {
-    if (index >= 0 && index < this.points.length) {
-      return this.points.splice(index, 1)[0];
-    }
-    return null;
-  }
-
-  /**
-   * 设置洞
-   */
-  public setHoles(holes: LatLng[][]): void {
-    this.holes = holes;
-  }
-
-  /**
-   * 获取洞
-   */
-  public getHoles(): LatLng[][] {
-    return this.holes;
-  }
-
-  /**
-   * 添加洞
-   */
-  public addHole(hole: LatLng[]): void {
-    this.holes.push(hole);
-  }
-
-  /**
-   * 移除洞
-   */
-  public removeHole(index: number): LatLng[] | null {
-    if (index >= 0 && index < this.holes.length) {
-      return this.holes.splice(index, 1)[0];
-    }
-    return null;
-  }
-
-  /**
-   * 设置填充颜色
-   */
-  public setFillColor(color: string): void {
-    this.fillColor = color;
-  }
-
-  /**
-   * 获取填充颜色
-   */
-  public getFillColor(): string {
-    return this.fillColor;
-  }
-
-  /**
-   * 设置描边颜色
-   */
-  public setStrokeColor(color: string): void {
-    this.strokeColor = color;
-  }
-
-  /**
-   * 获取描边颜色
-   */
-  public getStrokeColor(): string {
-    return this.strokeColor;
-  }
-
-  /**
-   * 设置描边宽度
-   */
-  public setStrokeWidth(width: number): void {
-    this.strokeWidth = Math.max(0, width);
-  }
-
-  /**
-   * 获取描边宽度
-   */
-  public getStrokeWidth(): number {
-    return this.strokeWidth;
-  }
-
-  /**
-   * 设置填充透明度
-   */
-  public setFillAlpha(alpha: number): void {
-    this.fillAlpha = Math.max(0, Math.min(1, alpha));
-  }
-
-  /**
-   * 获取填充透明度
-   */
-  public getFillAlpha(): number {
-    return this.fillAlpha;
-  }
-
-  /**
-   * 设置描边透明度
-   */
-  public setStrokeAlpha(alpha: number): void {
-    this.strokeAlpha = Math.max(0, Math.min(1, alpha));
-  }
-
-  /**
-   * 获取描边透明度
-   */
-  public getStrokeAlpha(): number {
-    return this.strokeAlpha;
-  }
-
-  /**
-   * 设置可见性
-   */
-  public setVisible(visible: boolean): void {
-    this.visible = visible;
-  }
-
-  /**
-   * 是否可见
-   */
-  public isVisible(): boolean {
-    return this.visible;
-  }
-
-  /**
-   * 设置Z轴顺序
-   */
-  public setZIndex(zIndex: number): void {
-    this.zIndex = zIndex;
-  }
-
-  /**
-   * 获取Z轴顺序
-   */
-  public getZIndex(): number {
-    return this.zIndex;
-  }
-
-  /**
-   * 计算周长（米）
-   */
-  public getPerimeter(): number {
-    if (this.points.length < 3) {
-      return 0;
-    }
-
-    let perimeter = 0;
-    for (let i = 0; i < this.points.length; i++) {
-      const current = this.points[i];
-      const next = this.points[(i + 1) % this.points.length];
-      const dx = next.longitude - current.longitude;
-      const dy = next.latitude - current.latitude;
-      perimeter += Math.sqrt(dx * dx + dy * dy) * 111000; // 简化的距离计算
-    }
-    return perimeter;
-  }
-
-  /**
-   * 计算面积（平方米）
-   */
-  public getArea(): number {
-    if (this.points.length < 3) {
-      return 0;
-    }
-
-    // 使用球面几何计算面积
-    const R = 6371000; // 地球半径（米）
-    let area = 0;
-    
-    for (let i = 0; i < this.points.length; i++) {
-      const current = this.points[i];
-      const next = this.points[(i + 1) % this.points.length];
+  constructor(optionsOrPolygon: PolygonOptions | InternalPolygon, nativeInstance?: maplibre.Polygon) {
+    if (optionsOrPolygon === InternalPolygon.INSTANCE && nativeInstance) {
+      // 内部模式：从 NAPI 实例创建
+      this.nativeInstance = nativeInstance;
+    } else if (typeof optionsOrPolygon === 'object') {
+      // 正常模式：从选项对象创建
+      const options = optionsOrPolygon as PolygonOptions;
       
-      const lat1 = current.latitude * Math.PI / 180;
-      const lat2 = next.latitude * Math.PI / 180;
-      const dLon = (next.longitude - current.longitude) * Math.PI / 180;
+      // 转换 LatLng 对象为原生格式
+      const nativeOptions: ESObject = {
+        points: options.points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude }),
+        holes: options.holes ? options.holes.map(hole => 
+          hole.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude })
+        ) : [],
+        fillColor: options.fillColor || '#000000',
+        strokeColor: options.strokeColor || '#000000',
+        strokeWidth: options.strokeWidth !== undefined ? options.strokeWidth : 1,
+        fillAlpha: options.fillAlpha !== undefined ? options.fillAlpha : 0.5,
+        strokeAlpha: options.strokeAlpha !== undefined ? options.strokeAlpha : 1.0,
+        visible: options.visible !== undefined ? options.visible : true,
+        zIndex: options.zIndex || 0
+      };
       
-      area += dLon * (2 + Math.sin(lat1) + Math.sin(lat2));
+      this.nativeInstance = new maplibre.Polygon(nativeOptions);
+    } else {
+      throw new Error('Invalid Polygon constructor arguments');
     }
-    
-    area = Math.abs(area * R * R / 2);
-    
-    // 减去洞的面积
-    for (const hole of this.holes) {
-      if (hole.length >= 3) {
-        let holeArea = 0;
-        for (let i = 0; i < hole.length; i++) {
-          const current = hole[i];
-          const next = hole[(i + 1) % hole.length];
-          
-          const lat1 = current.latitude * Math.PI / 180;
-          const lat2 = next.latitude * Math.PI / 180;
-          const dLon = (next.longitude - current.longitude) * Math.PI / 180;
-          
-          holeArea += dLon * (2 + Math.sin(lat1) + Math.sin(lat2));
-        }
-        area -= Math.abs(holeArea * R * R / 2);
-      }
-    }
-    
-    return area;
   }
 
   /**
-   * 计算边界框
+   * 从 NAPI 实例创建（内部使用）
    */
-  public getBounds(): GeoBounds {
-    if (this.points.length === 0) {
-      return { north: 0, east: 0, south: 0, west: 0 };
-    }
-
-    let north = this.points[0].latitude;
-    let east = this.points[0].longitude;
-    let south = this.points[0].latitude;
-    let west = this.points[0].longitude;
-
-    for (const point of this.points) {
-      north = Math.max(north, point.latitude);
-      east = Math.max(east, point.longitude);
-      south = Math.min(south, point.latitude);
-      west = Math.min(west, point.longitude);
-    }
-
-    return { north, east, south, west };
+  static fromNative(nativeInstance: maplibre.Polygon): Polygon {
+    return new Polygon(InternalPolygon.INSTANCE, nativeInstance);
   }
 
   /**
-   * 检查点是否在多边形内
+   * 创建 Polygon（静态工厂方法）
    */
-  public contains(point: LatLng): boolean {
-    if (this.points.length < 3) {
-      return false;
-    }
-
-    let inside = false;
-    for (let i = 0, j = this.points.length - 1; i < this.points.length; j = i++) {
-      const pi = this.points[i];
-      const pj = this.points[j];
-      
-      if (((pi.latitude > point.latitude) !== (pj.latitude > point.latitude)) &&
-          (point.longitude < (pj.longitude - pi.longitude) * (point.latitude - pi.latitude) / (pj.latitude - pi.latitude) + pi.longitude)) {
-        inside = !inside;
-      }
-    }
-
-    // 检查是否在洞内
-    for (const hole of this.holes) {
-      if (this.isPointInPolygon(point, hole)) {
-        inside = false;
-        break;
-      }
-    }
-
-    return inside;
+  static createFromOptions(options: PolygonOptions): Polygon {
+    return new Polygon(options);
   }
 
   /**
-   * 检查点是否在简单多边形内
+   * 获取 NAPI 实例（内部使用）
    */
-  private isPointInPolygon(point: LatLng, polygon: LatLng[]): boolean {
-    if (polygon.length < 3) {
-      return false;
-    }
+  getNative(): maplibre.Polygon {
+    return this.nativeInstance;
+  }
 
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const pi = polygon[i];
-      const pj = polygon[j];
-      
-      if (((pi.latitude > point.latitude) !== (pj.latitude > point.latitude)) &&
-          (point.longitude < (pj.longitude - pi.longitude) * (point.latitude - pi.latitude) / (pj.latitude - pi.latitude) + pi.longitude)) {
-        inside = !inside;
-      }
-    }
+  // ========== Polygon API 方法 ==========
 
-    return inside;
+  getPoints(): LatLng[] {
+    const nativePoints: Object[] = this.nativeInstance.getPoints();
+    return nativePoints.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng));
+  }
+
+  setPoints(points: LatLng[]): Polygon {
+    const nativePoints = points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude });
+    this.nativeInstance.setPoints(nativePoints);
+    return this;
+  }
+
+  addPoint(point: LatLng): void {
+    this.nativeInstance.addPoint(point.getNative ? point.getNative() : { latitude: point.latitude, longitude: point.longitude });
+  }
+
+  insertPoint(index: number, point: LatLng): void {
+    this.nativeInstance.insertPoint(index, point.getNative ? point.getNative() : { latitude: point.latitude, longitude: point.longitude });
+  }
+
+  removePoint(index: number): LatLng | null {
+    const nativePoint: Object = this.nativeInstance.removePoint(index);
+    return nativePoint ? LatLng.fromNative(nativePoint as maplibre.LatLng) : null;
+  }
+
+  getHoles(): LatLng[][] {
+    const nativeHoles: Object[][] = this.nativeInstance.getHoles();
+    return nativeHoles.map((hole: Object[]) => 
+      hole.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng))
+    );
+  }
+
+  setHoles(holes: LatLng[][]): Polygon {
+    const nativeHoles = holes.map(hole => 
+      hole.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude })
+    );
+    this.nativeInstance.setHoles(nativeHoles);
+    return this;
+  }
+
+  addHole(hole: LatLng[]): void {
+    const nativeHole = hole.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude });
+    this.nativeInstance.addHole(nativeHole);
+  }
+
+  removeHole(index: number): LatLng[] | null {
+    const nativeHole: Object[] = this.nativeInstance.removeHole(index);
+    if (!nativeHole) return null;
+    return nativeHole.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng));
+  }
+
+  getFillColor(): string {
+    return this.nativeInstance.getFillColor();
+  }
+
+  setFillColor(color: string): Polygon {
+    this.nativeInstance.setFillColor(color);
+    return this;
+  }
+
+  getStrokeColor(): string {
+    return this.nativeInstance.getStrokeColor();
+  }
+
+  setStrokeColor(color: string): Polygon {
+    this.nativeInstance.setStrokeColor(color);
+    return this;
+  }
+
+  getStrokeWidth(): number {
+    return this.nativeInstance.getStrokeWidth();
+  }
+
+  setStrokeWidth(width: number): Polygon {
+    this.nativeInstance.setStrokeWidth(width);
+    return this;
+  }
+
+  getFillAlpha(): number {
+    return this.nativeInstance.getFillAlpha();
+  }
+
+  setFillAlpha(alpha: number): Polygon {
+    this.nativeInstance.setFillAlpha(alpha);
+    return this;
+  }
+
+  getStrokeAlpha(): number {
+    return this.nativeInstance.getStrokeAlpha();
+  }
+
+  setStrokeAlpha(alpha: number): Polygon {
+    this.nativeInstance.setStrokeAlpha(alpha);
+    return this;
+  }
+
+  getVisible(): boolean {
+    return this.nativeInstance.getVisible();
+  }
+
+  setVisible(visible: boolean): Polygon {
+    this.nativeInstance.setVisible(visible);
+    return this;
+  }
+
+  isVisible(): boolean {
+    return this.getVisible();
+  }
+
+  getZIndex(): number {
+    return this.nativeInstance.getZIndex();
+  }
+
+  setZIndex(zIndex: number): Polygon {
+    this.nativeInstance.setZIndex(zIndex);
+    return this;
+  }
+
+  // ========== 扩展方法（内部使用）==========
+
+  /**
+   * 获取 Polygon ID（内部使用）
+   */
+  getId(): number {
+    return this.nativeInstance.getId();
+  }
+
+  /**
+   * 设置 Polygon ID（内部使用）
+   */
+  setId(id: number): Polygon {
+    this.nativeInstance.setId(id);
+    return this;
+  }
+
+  /**
+   * 设置所属的 MapLibreMap（内部使用）
+   */
+  setMapLibreMap(map: Object): Polygon {
+    this.nativeInstance.setMapLibreMap(map);
+    return this;
   }
 
   /**
    * 转换为字符串
    */
   public toString(): string {
-    return `Polygon(id=${this.id}, points=${this.points.length}, holes=${this.holes.length})`;
+    return `Polygon(id=${this.getId()}, points=${this.getPoints().length}, holes=${this.getHoles().length})`;
   }
 }

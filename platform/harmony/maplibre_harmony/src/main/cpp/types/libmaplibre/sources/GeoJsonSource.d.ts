@@ -90,7 +90,7 @@ export interface FeatureCollection {
     features: Feature[];
 }
 
-export type GeoJsonData = string | Geometry | Feature | FeatureCollection;
+export type GeoJsonData = string | Geometry | Feature | FeatureCollection | Object;
 
 /**
  * GeoJsonSource - GeoJSON 数据源
@@ -118,8 +118,9 @@ export class GeoJsonSource {
      * - Feature 对象
      * - FeatureCollection 对象
      * @param data GeoJSON 数据
+     * @returns this（支持链式调用）
      */
-    setGeoJson(data: GeoJsonData): void;
+    setGeoJson(data: GeoJsonData): GeoJsonSource;
     
     /**
      * 设置 GeoJSON 数据（同步）
@@ -129,14 +130,16 @@ export class GeoJsonSource {
      * - Feature 对象
      * - FeatureCollection 对象
      * @param data GeoJSON 数据
+     * @returns this（支持链式调用）
      */
-    setGeoJsonSync(data: GeoJsonData): void;
+    setGeoJsonSync(data: GeoJsonData): GeoJsonSource;
     
     /**
      * 从 URL 加载 GeoJSON 数据
      * @param url GeoJSON 数据 URL
+     * @returns this（支持链式调用）
      */
-    setUrl(url: string): void;
+    setUrl(url: string): GeoJsonSource;
     
     /**
      * 获取数据 URL

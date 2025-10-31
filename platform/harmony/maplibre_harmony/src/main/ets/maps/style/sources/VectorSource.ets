@@ -37,8 +37,9 @@ export class VectorSource {
     return this.nativeInstance.getId();
   }
 
-  setUrl(url: string): void {
+  setUrl(url: string): VectorSource {
     this.nativeInstance.setUrl(url);
+    return this;
   }
 
   getUrl(): string {

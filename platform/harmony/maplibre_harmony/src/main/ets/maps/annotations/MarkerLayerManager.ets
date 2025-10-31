@@ -135,8 +135,8 @@ export class MarkerLayerManager {
         buffer: 128
       });
       
-      // 设置初始数据
-      this.source.setGeoJsonSync(emptyFeatureCollection);
+      // 设置初始数据（类型转换为 Object）
+      this.source.setGeoJsonSync(emptyFeatureCollection as Object);
       
       // 添加 Source 到 Style
       style.addSource(this.source);

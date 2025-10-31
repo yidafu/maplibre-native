@@ -22,8 +22,9 @@ class InternalMarker {
 
 /**
  * GeoJSON 数据类型
+ * 支持字符串、GeoJSON 对象和原生 NAPI 对象
  */
-export type GeoJsonData = string | Feature | FeatureCollection | Geometry;
+export type GeoJsonData = string | Feature | FeatureCollection | Geometry | Object;
 
 /**
  * GeoJsonSource 类
@@ -182,7 +183,7 @@ export class GeoJsonSource {
    * source.setGeoJson(collection);
    * ```
    */
-  setGeoJson(data: GeoJsonData): void {
+  setGeoJson(data: GeoJsonData): GeoJsonSource {
     if (typeof data === 'string') {
       // 字符串类型，使用异步方法
       this.nativeInstance.setGeoJson(data);
@@ -190,6 +191,7 @@ export class GeoJsonSource {
       // 对象类型，使用同步方法（NAPI 层会处理类型转换）
       this.nativeInstance.setGeoJsonSync(data);
     }
+    return this;
   }
 
   /**
@@ -208,7 +210,7 @@ export class GeoJsonSource {
    * const features = source.querySourceFeatures();
    * ```
    */
-  setGeoJsonSync(data: GeoJsonData): void {
+  setGeoJsonSync(data: GeoJsonData): GeoJsonSource {
     if (typeof data === 'string') {
       // 字符串类型也使用同步方法
       this.nativeInstance.setGeoJsonSync(data);
@@ -216,6 +218,7 @@ export class GeoJsonSource {
       // 对象类型
       this.nativeInstance.setGeoJsonSync(data);
     }
+    return this;
   }
 
   /**
@@ -234,8 +237,9 @@ export class GeoJsonSource {
    * source.setUrl('resource://rawfile/data.geojson');
    * ```
    */
-  setUrl(url: string): void {
+  setUrl(url: string): GeoJsonSource {
     this.nativeInstance.setUrl(url);
+    return this;
   }
 
   /**
@@ -266,7 +270,8 @@ export class GeoJsonSource {
    * ```
    */
   querySourceFeatures(filter?: Expression): Feature[] {
-    return this.nativeInstance.querySourceFeatures(filter);
+    // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
+    return this.nativeInstance.querySourceFeatures(filter) as Object as Feature[];
   }
 
   // ==================== 聚类功能 ====================
@@ -287,7 +292,8 @@ export class GeoJsonSource {
    * ```
    */
   getClusterChildren(clusterId: number): Feature[] {
-    return this.nativeInstance.getClusterChildren(clusterId);
+    // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
+    return this.nativeInstance.getClusterChildren(clusterId) as Object as Feature[];
   }
 
   /**
@@ -312,7 +318,8 @@ export class GeoJsonSource {
    * ```
    */
   getClusterLeaves(clusterId: number, limit: number = 10, offset: number = 0): Feature[] {
-    return this.nativeInstance.getClusterLeaves(clusterId, limit, offset);
+    // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
+    return this.nativeInstance.getClusterLeaves(clusterId, limit, offset) as Object as Feature[];
   }
 
   /**

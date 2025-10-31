@@ -1,6 +1,8 @@
 #include "image_source_napi.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
+#include "napi/bindings/image/image_napi.hpp"
+#include "bitmap/bitmap_napi.hpp"
 #include "utils/logger.h"
 #include <mbgl/util/geo.hpp>
 
@@ -32,6 +34,7 @@ napi_value ImageSourceNAPI::Init(napi_env env, napi_value exports) {
     napi_property_descriptor properties[] = {
         { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setUrl", nullptr, SetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setImage", nullptr, SetImage, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setCoordinates", nullptr, SetCoordinates, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
@@ -199,6 +202,82 @@ napi_value ImageSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     } catch (const std::exception& e) {
         Logger::error("ImageSourceNAPI", "SetUrl failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
+    }
+    
+    return nullptr;
+}
+
+napi_value ImageSourceNAPI::SetImage(napi_env env, napi_callback_info info) {
+    napi_value jsThis;
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    
+    ImageSourceNAPI* sourceNapi = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
+        napi_throw_error(env, nullptr, "Invalid source");
+        return nullptr;
+    }
+    
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "SetImage requires an image argument");
+        return nullptr;
+    }
+    
+    try {
+        napi_value imageArg = args[0];
+        
+        // Check if it's an Image NAPI object
+        if (ImageNAPI::IsImageObject(env, imageArg)) {
+            // Unwrap ImageNAPI and get the image data
+            ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, imageArg);
+            if (!imageNapi) {
+                napi_throw_error(env, nullptr, "Failed to unwrap Image object");
+                return nullptr;
+            }
+            
+            // Convert to style::Image and get the PremultipliedImage
+            auto styleImage = imageNapi->toStyleImage();
+            source->setImage(styleImage->getImage().clone());
+            
+            Logger::info("ImageSourceNAPI", "SetImage from Image object: %s -> %s", 
+                        sourceNapi->id.c_str(), imageNapi->getName().c_str());
+        }
+        // Check if it's a Bitmap object
+        else if (mbgl::harmony::BitmapNAPI::IsBitmapObject(env, imageArg)) {
+            // Get Bitmap data
+            mbgl::harmony::BitmapNAPI* bitmapNapi = mbgl::harmony::BitmapNAPI::Unwrap(env, imageArg);
+            if (!bitmapNapi) {
+                napi_throw_error(env, nullptr, "Failed to unwrap Bitmap object");
+                return nullptr;
+            }
+            
+            auto image = bitmapNapi->getImage();
+            if (!image) {
+                napi_throw_error(env, nullptr, "Bitmap has no image data");
+                return nullptr;
+            }
+            
+            source->setImage(image->clone());
+            
+            Logger::info("ImageSourceNAPI", "SetImage from Bitmap: %s", sourceNapi->id.c_str());
+        }
+        else {
+            napi_throw_error(env, nullptr, "SetImage requires an Image or Bitmap object");
+            return nullptr;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("ImageSourceNAPI", "SetImage failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return nullptr;
     }
     
     return nullptr;
