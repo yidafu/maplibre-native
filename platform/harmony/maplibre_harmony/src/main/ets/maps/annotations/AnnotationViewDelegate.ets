@@ -2,7 +2,7 @@ import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 import { CenterOffset } from './AnnotationView';
 
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * AnnotationViewConfig - AnnotationView 配置

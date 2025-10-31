@@ -1,4 +1,5 @@
 import { IconFactory } from './IconFactory';
+import { Icon } from './Icon';
 import maplibre from 'libmaplibre.so';
 
 /**
@@ -7,7 +8,7 @@ import maplibre from 'libmaplibre.so';
  * 存储 Icon 对象及其被 Marker 引用的次数
  */
 interface IconRefData {
-  icon: maplibre.Icon;
+  icon: Icon;
   refCount: number;
 }
 
@@ -69,7 +70,7 @@ export class IconManager {
   private iconMap: Map<string, IconRefData> = new Map();
   
   // 复用标识符 → Icon 映射（用于图标复用）
-  private reuseIdentifierMap: Map<string, maplibre.Icon> = new Map();
+  private reuseIdentifierMap: Map<string, Icon> = new Map();
   
   // Native 地图视图引用
   private nativeMapView: maplibre.NativeMapView | null = null;
@@ -102,14 +103,14 @@ export class IconManager {
    * 4. 首次使用时自动加载到 Native 层
    * 
    * @param marker Marker 实例
-   * @returns Promise<Icon> 加载的 Icon 实例
+   * @returns Promise<Icon> 加载的 Icon 封装类实例
    * @throws Error 如果图标不在缓存中或加载失败
    */
-  public async loadIconForMarker(marker: maplibre.Marker): Promise<maplibre.Icon> {
+  public async loadIconForMarker(marker: maplibre.Marker): Promise<Icon> {
     try {
       // 获取 Marker 的图标 ID
       let iconId: string | null = marker.getIcon();
-      let icon: maplibre.Icon;
+      let icon: Icon;
       
       if (!iconId) {
         // Marker 没有图标，加载默认图标
@@ -148,10 +149,10 @@ export class IconManager {
    * 从 IconFactory 获取默认图标并设置到 Marker。
    * 
    * @param marker Marker 实例
-   * @returns Promise<Icon> 默认 Icon 实例
+   * @returns Promise<Icon> 默认 Icon 封装类实例
    * @throws Error 如果 IconFactory 未初始化或加载失败
    */
-  private async loadDefaultIconForMarker(marker: maplibre.Marker): Promise<maplibre.Icon> {
+  private async loadDefaultIconForMarker(marker: maplibre.Marker): Promise<Icon> {
     if (!this.iconFactory) {
       throw new Error('[IconManager] IconFactory is not initialized');
     }
@@ -177,10 +178,10 @@ export class IconManager {
    * - 首次添加：refCount = 1，同时加载到 Native 层
    * - 重复添加：refCount++，不重复加载
    * 
-   * @param icon Icon 实例
+   * @param icon Icon 封装类实例
    * @param addIconToMap 是否加载到 Native 层（默认 true）
    */
-  private async addIcon(icon: maplibre.Icon, addIconToMap: boolean = true): Promise<void> {
+  private async addIcon(icon: Icon, addIconToMap: boolean = true): Promise<void> {
     const iconId = icon.getId();
     const cached = this.iconMap.get(iconId);
     
@@ -215,7 +216,7 @@ export class IconManager {
    * - 自动管理引用计数
    * - 检查 Icon 是否已释放
    * 
-   * @param icon Icon 实例（必须是有效的，未释放的）
+   * @param icon Icon 封装类实例（必须是有效的，未释放的）
    * @throws Error 如果 Icon 已被释放
    * 
    * @example
@@ -225,7 +226,7 @@ export class IconManager {
    * await iconManager.addIconToManager(icon);  // 纳入管理
    * ```
    */
-  public async addIconToManager(icon: maplibre.Icon): Promise<void> {
+  public async addIconToManager(icon: Icon): Promise<void> {
     // 检查 Icon 是否已释放
     if (icon.isReleased()) {
       throw new Error(
@@ -246,9 +247,9 @@ export class IconManager {
    * 类似 iOS 的 dequeueReusableAnnotationImageWithIdentifier
    * 
    * @param reuseIdentifier 复用标识符
-   * @returns Icon 实例，如果不存在或已释放则返回 null
+   * @returns Icon 封装类实例，如果不存在或已释放则返回 null
    */
-  public dequeueReusableIcon(reuseIdentifier: string): maplibre.Icon | null {
+  public dequeueReusableIcon(reuseIdentifier: string): Icon | null {
     const icon = this.reuseIdentifierMap.get(reuseIdentifier);
     
     // 检查图标是否存在且未被释放
@@ -269,12 +270,12 @@ export class IconManager {
    * 
    * @param marker Marker 实例
    * @param defaultIconProvider 可选的默认图标提供函数
-   * @returns Promise<Icon> Icon 实例
+   * @returns Promise<Icon> Icon 封装类实例
    */
-  public async getOrLoadIcon(marker: maplibre.Marker, defaultIconProvider?: () => Promise<maplibre.Icon>): Promise<maplibre.Icon> {
+  public async getOrLoadIcon(marker: maplibre.Marker, defaultIconProvider?: () => Promise<Icon>): Promise<Icon> {
     try {
       let iconId: string | null = marker.getIcon();
-      let icon: maplibre.Icon;
+      let icon: Icon;
       
       if (!iconId) {
         // 如果没有图标，使用默认图标或提供的图标
@@ -314,10 +315,10 @@ export class IconManager {
    * 自动处理旧图标的引用计数减少和新图标的引用计数增加
    * 
    * @param marker Marker 实例
-   * @param oldIcon 旧的 Icon 实例（可为 null）
-   * @param newIcon 新的 Icon 实例
+   * @param oldIcon 旧的 Icon 封装类实例（可为 null）
+   * @param newIcon 新的 Icon 封装类实例
    */
-  public async updateMarkerIcon(marker: maplibre.Marker, oldIcon: maplibre.Icon | null, newIcon: maplibre.Icon): Promise<void> {
+  public async updateMarkerIcon(marker: maplibre.Marker, oldIcon: Icon | null, newIcon: Icon): Promise<void> {
     try {
       // 减少旧图标的引用计数
       if (oldIcon) {
@@ -350,10 +351,10 @@ export class IconManager {
    * - C++ 层直接访问 PremultipliedImage 数据
    * - 避免了数据复制和序列化开销
    * 
-   * @param icon Icon 实例（NAPI 对象）
+   * @param icon Icon 封装类实例
    * @throws Error 如果 Icon 已被释放或 NativeMapView 未初始化
    */
-  private async loadIconToNative(icon: maplibre.Icon): Promise<void> {
+  private async loadIconToNative(icon: Icon): Promise<void> {
     try {
       // 1. 检查 Icon 状态
       if (icon.isReleased()) {
@@ -379,9 +380,9 @@ export class IconManager {
         `size=${width}x${height}, scale=${scale}`
       );
       
-      // 4. 调用 Native API - 直接传递 Icon 对象
+      // 4. 调用 Native API - 传递 NAPI Icon 对象
       // 优势：C++ 层直接访问 PremultipliedImage，无需数据转换
-      this.nativeMapView.addAnnotationIcon(icon);
+      this.nativeMapView.addAnnotationIcon(icon.getNative());
       
       console.debug(`[IconManager] Icon '${iconId}' loaded to native successfully`);
     } catch (error) {
@@ -409,7 +410,7 @@ export class IconManager {
    * - Icon 一旦释放，不能再使用（isReleased() == true）
    * - 需要重新使用时，必须通过 IconFactory 创建新实例
    * 
-   * @param iconOrId Icon 实例或图标 ID 字符串
+   * @param iconOrId Icon 封装类实例或图标 ID 字符串
    * 
    * @example
    * ```typescript
@@ -420,7 +421,7 @@ export class IconManager {
    * iconManager.iconCleanup('com.maplibre.icons.icon_1');
    * ```
    */
-  public iconCleanup(iconOrId: maplibre.Icon | string): void {
+  public iconCleanup(iconOrId: Icon | string): void {
     const iconId = typeof iconOrId === 'string' ? iconOrId : iconOrId.getId();
     const cached = this.iconMap.get(iconId);
     
@@ -448,9 +449,9 @@ export class IconManager {
    * 2. 从本地缓存中移除
    * 3. 调用 icon.release() 释放 C++ 层资源
    * 
-   * @param icon Icon 实例
+   * @param icon Icon 封装类实例
    */
-  private remove(icon: maplibre.Icon): void {
+  private remove(icon: Icon): void {
     const iconId = icon.getId();
     
     try {
@@ -524,10 +525,10 @@ export class IconManager {
   /**
    * 获取图标的 Top Offset（用于锚点计算）
    * 
-   * @param icon Icon 实例
+   * @param icon Icon 封装类实例
    * @returns Top offset 像素值
    */
-  public getTopOffsetPixelsForIcon(icon: maplibre.Icon): number {
+  public getTopOffsetPixelsForIcon(icon: Icon): number {
     try {
       if (!this.nativeMapView) {
         throw new Error('[IconManager] NativeMapView is not initialized');
@@ -563,10 +564,10 @@ export class IconManager {
   /**
    * 更新最大图标尺寸（Icon 版本）
    * 
-   * @param iconOrWidth Icon 实例或宽度
+   * @param iconOrWidth Icon 封装类实例或宽度
    * @param height 高度（可选）
    */
-  private updateHighestIconSize(iconOrWidth: maplibre.Icon | number, height?: number): void {
+  private updateHighestIconSize(iconOrWidth: Icon | number, height?: number): void {
     let width: number;
     let h: number;
     
@@ -664,10 +665,10 @@ export class IconManager {
   /**
    * 获取指定图标的引用计数
    * 
-   * @param icon Icon 对象
+   * @param icon Icon 封装类对象
    * @returns 引用计数，如果图标不存在返回 0
    */
-  public getRefCount(icon: maplibre.Icon): number {
+  public getRefCount(icon: Icon): number {
     const cached = this.iconMap.get(icon.getId());
     return cached ? cached.refCount : 0;
   }

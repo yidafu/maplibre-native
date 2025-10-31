@@ -16,15 +16,11 @@ import { IconManager } from './IconManager';
 import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
 import { InfoWindowStyle } from './InfoWindow';
+import { Icon } from './Icon';
+import { Marker } from './Marker';
 
-// 使用 NAPI Icon 类型
-type Icon = maplibre.Icon;
-
-// 使用 NAPI 类型
+// 使用 NAPI NativeMapView 类型
 type NativeMapView = maplibre.NativeMapView;
-
-// 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
 
 /**
  * MarkerManager - Marker 管理器

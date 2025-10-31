@@ -91,7 +91,7 @@ export {
 // ========== 几何类型 ==========
 export { LatLng } from './geometry/LatLng';
 export { LatLngBounds } from './geometry/LatLngBounds';
-export { Point } from './geometry/Point';
+export { Point as ScreenPoint } from './geometry/Point';  // 屏幕像素坐标
 export { ProjectedMeters } from './geometry/ProjectedMeters';
 export { Rect } from './geometry/Rect';
 
@@ -103,20 +103,28 @@ export { VisibleRegion } from './projection/VisibleRegion';
 export {
   OfflineManager,
   OfflineRegion,
+  DownloadState as OfflineRegionDownloadState,
   OfflineRegionDefinition,
   OfflineTilePyramidRegionDefinition,
   OfflineRegionStatus,
-  DownloadState as OfflineRegionDownloadState,
-  OfflineRegionError,
   OfflineRegionErrorReason
 } from './offline';
 export type {
-  OfflineRegionObserver
+  OfflineRegionObserver,
+  OfflineRegionError
 } from './offline';
 
 // ========== 相机 ==========
 export { CameraPosition } from './camera/CameraPosition';
 export { CameraAnimationCallback, OnFinishCallback, AnimationOptions } from './camera/CameraAnimationCallback';
+export {
+  OnCameraIdleListener,
+  OnCameraMoveStartedListener,
+  OnCameraMoveListener,
+  OnCameraMoveCanceledListener,
+  OnAnimationFinishedListener,
+  CameraChangeListener
+} from './camera/CameraListener';
 
 // ========== UI 组件 ==========
 export { CompassView } from './widgets/CompassView';
@@ -128,11 +136,36 @@ export { AttributionButton, DEFAULT_ATTRIBUTIONS } from './widgets/AttributionBu
 export type { AttributionInfo } from './widgets/AttributionButton';
 
 // ========== 标注 ==========
+export { Marker } from './annotations/Marker';
+export { Icon } from './annotations/Icon';
+export { IconFactory } from './annotations/IconFactory';
 export { MarkerOptions } from './annotations/MarkerOptions';
 export { Annotation } from './annotations/Annotation';
+export { Polyline } from './annotations/Polyline';
+export { InfoWindow, InfoWindowComponent } from './annotations/InfoWindow';
+export { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
+export { AnnotationView } from './annotations/AnnotationView';
+export { AnnotationViewAdapter } from './annotations/AnnotationViewAdapter';
+export { AnnotationViewManager, AnnotationViewData } from './annotations/AnnotationViewManager';
+
+// ========== GeoJSON 类型（直接导出 NAPI 类型）==========
+export {
+  Point as GeoJsonPoint,
+  LineString,
+  Polygon,
+  MultiPoint,
+  MultiLineString,
+  MultiPolygon,
+  GeometryCollection,
+  Feature,
+  FeatureCollection
+} from './geojson';
+export type { Geometry } from './geojson';
 
 // ========== 样式 ==========
 export { Style, StyleBuilder } from './style/Style';
+export { Light } from './style/light/Light';
+export type { LightOptions } from './style/light/Light';
 
 // ========== 图层 ==========
 export {
@@ -200,3 +233,30 @@ export type {
   SnapshotErrorHandler
 } from './snapshot';
 
+// ========== 位置组件 ==========
+export {
+  LocationComponent,
+  LocationComponentOptions,
+  LocationComponentOptionsBuilder,
+  RenderMode,
+  CameraMode,
+  LocationEngine,
+  LocationEngineCallback,
+  LocationEngineRequest,
+  LocationEngineRequestBuilder,
+  HarmonyLocationEngine,
+  CompassEngine,
+  OnLocationClickListener,
+  OnCameraTrackingChangedListener,
+  OnRenderModeChangedListener,
+  OnLocationStaleListener,
+  LocationComponentConstants,
+  PermissionManager
+} from './location';
+export type {
+  CompassListener,
+  PermissionRequestResult
+} from './location';
+
+// ========== 地图组件 ==========
+export  * from './widgets'

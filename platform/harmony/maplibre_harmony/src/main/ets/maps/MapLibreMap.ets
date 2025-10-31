@@ -34,14 +34,13 @@ import { OnCameraIdleListener, OnCameraMoveStartedListener,
          OnCameraMoveListener, OnCameraMoveCanceledListener } from './camera/CameraListener';
 import { CameraMoveReason } from './camera/CameraMoveReason';
 import { UiSettings } from './UiSettings';
+import { OnMapClickListener, OnMapLongClickListener } from './gestures/GestureListeners';
 import { LocationComponent } from './location/LocationComponent';
 import { Projection } from './projection/Projection';
 import { CameraAnimationCallback } from './camera/CameraAnimationCallback';
 import { registerMapLibreMap } from './NativeMapView';
-
-// Marker 和 Style 现在由 NAPI 提供
-type Marker = maplibre.Marker;
-type Style = maplibre.Style;
+import { Marker } from './annotations/Marker';
+import { Style } from './style/Style';
 
 /**
  * 操作队列项类型
@@ -358,6 +357,8 @@ export class MapLibreMap {
       this.styleLoadedListeners = [];
       this.styleLoadErrorListeners = [];
       this.pendingOperations = [];
+      this.mapClickListeners = [];
+      this.mapLongClickListeners = [];
       
       // 2. 取消所有动画
       if (this.animationTimerId !== null) {
@@ -502,14 +503,18 @@ export class MapLibreMap {
   /**
    * 获取样式对象
    * 
-   * @returns Style 对象，如果地图未初始化或样式未加载则返回 null
+   * @returns Style 封装类对象，如果地图未初始化或样式未加载则返回 null
    */
   public getStyle(): Style | null {
     if (this.destroyed) return null;
     if (!this.nativeMapView) return null;
     
     try {
-      return this.nativeMapView.getStyle();
+      const nativeStyle = this.nativeMapView.getStyle();
+      if (nativeStyle) {
+        return Style.fromNative(nativeStyle);
+      }
+      return null;
     } catch (error) {
       console.error('Failed to get style:', error);
       return null;
@@ -583,6 +588,51 @@ export class MapLibreMap {
     }
     
     this.nativeMapView.flyTo(options, duration);
+  }
+  
+  /**
+   * 相机动画（Android 风格的 animateCamera）
+   * 使用 CameraPosition 对象动画到新的相机位置
+   * 
+   * @param position CameraPosition 对象
+   * @param durationMs 动画时长（毫秒），可选，默认 300ms
+   * @param callback 动画回调，可选
+   * 
+   * 示例：
+   * ```typescript
+   * // 基本用法
+   * map.animateCamera(new CameraPosition(
+   *   new LatLng(lat, lng),
+   *   15,
+   *   0,
+   *   0
+   * ), 1000);
+   * 
+   * // 使用回调
+   * map.animateCamera(cameraPosition, 1000, {
+   *   onFinish: () => console.log('Animation finished'),
+   *   onCancel: () => console.log('Animation cancelled')
+   * });
+   * ```
+   */
+  public animateCamera(position: CameraPosition, durationMs?: number, callback?: CameraAnimationCallback): void {
+    if (this.destroyed) return;
+    
+    const duration = durationMs ?? 300; // 默认 300ms
+    
+    // 构建相机选项
+    const options: maplibre.CameraOptions = {
+      center: position.target ? {
+        latitude: position.target.latitude,
+        longitude: position.target.longitude
+      } : undefined,
+      zoom: position.zoom,
+      bearing: position.bearing,
+      pitch: position.tilt
+    };
+    
+    // 使用 easeTo 执行动画
+    this.easeTo(options, duration, callback);
   }
   
   /**
@@ -664,8 +714,9 @@ export class MapLibreMap {
 
   // 位置和相机
   public getLatLng(): LatLng {
-    if (this.destroyed) return new maplibre.LatLng(0, 0);
-    return this.nativeMapView.getLatLng();
+    if (this.destroyed) return LatLng.create(0, 0);
+    const nativeLatLng = this.nativeMapView.getLatLng();
+    return LatLng.fromNative(nativeLatLng);
   }
 
   public setLatLng(latitude: number, longitude: number, padding?: number[], duration?: number): void {
@@ -855,8 +906,9 @@ export class MapLibreMap {
       console.info(`[MarkerDebug] MapLibreMap: [${i}] position={${pos.latitude}, ${pos.longitude}}, icon=${icon || 'null'}`);
     }
     
-    // 直接传递 NAPI Marker 对象数组
-    const ids = this.nativeMapView.addMarkers(markers);
+    // 将封装的 Marker 转换为 NAPI Marker 对象数组
+    const nativeMarkers = markers.map(m => m.getNative());
+    const ids = this.nativeMapView.addMarkers(nativeMarkers);
     
     // [MarkerDebug] 记录 NAPI 返回结果
     console.info(`[MarkerDebug] MapLibreMap: NAPI returned ${ids.length} IDs: [${ids.join(', ')}]`);
@@ -960,13 +1012,15 @@ export class MapLibreMap {
   }
 
   public latLngForProjectedMeters(northing: number, easting: number): LatLng {
-    if (this.destroyed) return new maplibre.LatLng(0, 0);
-    return this.nativeMapView.latLngForProjectedMeters(northing, easting);
+    if (this.destroyed) return LatLng.create(0, 0);
+    const nativeLatLng = this.nativeMapView.latLngForProjectedMeters(northing, easting);
+    return LatLng.fromNative(nativeLatLng);
   }
 
   public latLngForPixel(x: number, y: number): LatLng {
-    if (this.destroyed) return new maplibre.LatLng(0, 0);
-    return this.nativeMapView.latLngForPixel(x, y);
+    if (this.destroyed) return LatLng.create(0, 0);
+    const nativeLatLng = this.nativeMapView.latLngForPixel(x, y);
+    return LatLng.fromNative(nativeLatLng);
   }
 
   public latLngsForPixels(input: number[], output: number[]): void {
@@ -1281,6 +1335,27 @@ export class MapLibreMap {
   public clearMarkers(): void {
     if (this.destroyed) return;
     this.markerManager.clear();
+  }
+  
+  /**
+   * 清空所有标注（Android 风格的 clear() 方法）
+   * 清除所有标记、折线、多边形等
+   */
+  public clear(): void {
+    if (this.destroyed) return;
+    
+    console.info(`MapLibreMap: Clearing all annotations (Android clear pattern)`);
+    // 清除所有 Marker
+    this.markerManager.clear();
+    
+    // 关闭所有 InfoWindow
+    this.infoWindowManager.closeAll();
+    
+    // 清除所有 AnnotationView
+    this.annotationViewManager.clear();
+    
+    // TODO: 清除 Polyline 和 Polygon（当实现后）
+    console.warn('MapLibreMap: Polyline and Polygon clearing not fully implemented');
   }
   
   /**
@@ -1711,6 +1786,109 @@ export class MapLibreMap {
   public _notifyCameraIdle(): void {
     if (this.destroyed) return;
     this.cameraChangeDispatcher.notifyCameraIdle();
+  }
+  
+  // ========== 地图点击监听器管理 ==========
+  
+  private mapClickListeners: OnMapClickListener[] = [];
+  private mapLongClickListeners: OnMapLongClickListener[] = [];
+  
+  /**
+   * 添加地图点击监听器
+   * 当用户点击地图时触发（参考 Android addOnMapClickListener）
+   * 
+   * @param listener OnMapClickListener 实例
+   */
+  public addOnMapClickListener(listener: OnMapClickListener): void {
+    if (this.destroyed) return;
+    if (!this.mapClickListeners.includes(listener)) {
+      this.mapClickListeners.push(listener);
+      console.info('MapLibreMap: Map click listener added');
+    }
+  }
+  
+  /**
+   * 移除地图点击监听器
+   * 
+   * @param listener 要移除的监听器
+   */
+  public removeOnMapClickListener(listener: OnMapClickListener): void {
+    if (this.destroyed) return;
+    const index = this.mapClickListeners.indexOf(listener);
+    if (index > -1) {
+      this.mapClickListeners.splice(index, 1);
+      console.info('MapLibreMap: Map click listener removed');
+    }
+  }
+  
+  /**
+   * 添加地图长按监听器
+   * 当用户长按地图时触发（参考 Android addOnMapLongClickListener）
+   * 
+   * @param listener OnMapLongClickListener 实例
+   */
+  public addOnMapLongClickListener(listener: OnMapLongClickListener): void {
+    if (this.destroyed) return;
+    if (!this.mapLongClickListeners.includes(listener)) {
+      this.mapLongClickListeners.push(listener);
+      console.info('MapLibreMap: Map long click listener added');
+    }
+  }
+  
+  /**
+   * 移除地图长按监听器
+   * 
+   * @param listener 要移除的监听器
+   */
+  public removeOnMapLongClickListener(listener: OnMapLongClickListener): void {
+    if (this.destroyed) return;
+    const index = this.mapLongClickListeners.indexOf(listener);
+    if (index > -1) {
+      this.mapLongClickListeners.splice(index, 1);
+      console.info('MapLibreMap: Map long click listener removed');
+    }
+  }
+  
+  /**
+   * 内部方法：触发地图点击事件
+   * @param x 点击位置 X 坐标
+   * @param y 点击位置 Y 坐标
+   * @returns 是否有监听器消费了该事件
+   * @internal
+   */
+  public _notifyMapClick(x: number, y: number): boolean {
+    if (this.destroyed) return false;
+    for (const listener of this.mapClickListeners) {
+      try {
+        if (listener.onMapClick(x, y)) {
+          return true; // 事件被消费
+        }
+      } catch (error) {
+        console.error(`MapLibreMap: Error in map click listener: ${error}`);
+      }
+    }
+    return false;
+  }
+  
+  /**
+   * 内部方法：触发地图长按事件
+   * @param x 长按位置 X 坐标
+   * @param y 长按位置 Y 坐标
+   * @returns 是否有监听器消费了该事件
+   * @internal
+   */
+  public _notifyMapLongClick(x: number, y: number): boolean {
+    if (this.destroyed) return false;
+    for (const listener of this.mapLongClickListeners) {
+      try {
+        if (listener.onMapLongClick(x, y)) {
+          return true; // 事件被消费
+        }
+      } catch (error) {
+        console.error(`MapLibreMap: Error in map long click listener: ${error}`);
+      }
+    }
+    return false;
   }
   
   // ========== AnnotationView 管理方法 ==========

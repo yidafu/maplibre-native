@@ -11,7 +11,6 @@
  * - 支持 rotation, alpha, zIndex, anchor, draggable 等高级功能
  */
 
-import maplibre from 'libmaplibre.so';
 import { MapLibreMap } from '../MapLibreMap';
 import { LatLng } from '../geometry/LatLng';
 import { GeoJsonSource } from '../style/sources/GeoJsonSource';
@@ -20,7 +19,7 @@ import { SymbolLayer } from '../style/layers/SymbolLayer';
 import { Expression } from '../style/expressions/Expression';
 import { IconFactory } from './IconFactory';
 
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * MarkerGeometry - Marker 几何对象接口
@@ -78,8 +77,8 @@ export class MarkerLayerManager {
   private static readonly LAYER_ID = 'maplibre-marker-layer';
   
   private mapLibreMap: MapLibreMap;
-  private source: maplibre.GeoJsonSource | null = null;
-  private layer: maplibre.SymbolLayer | null = null;
+  private source: GeoJsonSource | null = null;
+  private layer: SymbolLayer | null = null;
   private markers: Map<number, Marker> = new Map();
   private features: Map<number, MarkerFeature> = new Map();
   private nextFeatureId: number = 1;
@@ -130,11 +129,11 @@ export class MarkerLayerManager {
       };
       
       // 创建 GeoJsonSource（使用 NAPI 类）
-      this.source = new maplibre.GeoJsonSource(MarkerLayerManager.SOURCE_ID, {
+      this.source = new GeoJsonSource(MarkerLayerManager.SOURCE_ID, {
         cluster: false,
         tolerance: 0.375,
         buffer: 128
-      } as ESObject);
+      });
       
       // 设置初始数据
       this.source.setGeoJsonSync(emptyFeatureCollection);
@@ -143,7 +142,7 @@ export class MarkerLayerManager {
       style.addSource(this.source);
       
       // 创建 SymbolLayer 使用数据驱动样式（使用 NAPI 类）
-      this.layer = new maplibre.SymbolLayer(
+      this.layer = new SymbolLayer(
         MarkerLayerManager.LAYER_ID,
         MarkerLayerManager.SOURCE_ID
       );
@@ -168,7 +167,7 @@ export class MarkerLayerManager {
   /**
    * 配置 SymbolLayer 的数据驱动样式
    */
-  private configureLayer(layer: maplibre.SymbolLayer): void {
+  private configureLayer(layer: SymbolLayer): void {
     console.info('MarkerLayerManager: Configuring SymbolLayer with data-driven styling');
     
     // ========== Icon 布局属性 ==========

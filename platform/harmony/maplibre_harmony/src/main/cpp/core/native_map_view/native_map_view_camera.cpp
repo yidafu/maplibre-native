@@ -216,8 +216,45 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     cameraOptions.bearing = angle;
     cameraOptions.pitch = pitch;
     
-    // TODO: 解析可选的 padding 参数（如果提供）
-    // if (argc >= 6) { ... }
+    // 解析可选的 padding 参数（如果提供）
+    // padding 格式: [left, top, right, bottom]
+    if (args.Count() >= 6) {
+        napi_value paddingValue = args.GetValue(5);
+        bool isArray = false;
+        napi_is_array(env, paddingValue, &isArray);
+        
+        if (isArray) {
+            uint32_t length = 0;
+            napi_get_array_length(env, paddingValue, &length);
+            
+            if (length == 4) {
+                napi_value leftVal, topVal, rightVal, bottomVal;
+                double left = 0, top = 0, right = 0, bottom = 0;
+                
+                if (napi_get_element(env, paddingValue, 0, &leftVal) == napi_ok &&
+                    napi_get_element(env, paddingValue, 1, &topVal) == napi_ok &&
+                    napi_get_element(env, paddingValue, 2, &rightVal) == napi_ok &&
+                    napi_get_element(env, paddingValue, 3, &bottomVal) == napi_ok) {
+                    
+                    napi_get_value_double(env, leftVal, &left);
+                    napi_get_value_double(env, topVal, &top);
+                    napi_get_value_double(env, rightVal, &right);
+                    napi_get_value_double(env, bottomVal, &bottom);
+                    
+                    // 应用pixelRatio缩放
+                    cameraOptions.padding = EdgeInsets{
+                        top * instance->pixelRatio,
+                        left * instance->pixelRatio,
+                        bottom * instance->pixelRatio,
+                        right * instance->pixelRatio
+                    };
+                    
+                    Logger::info("NativeMapView", "jumpTo: padding=[%.1f, %.1f, %.1f, %.1f]", 
+                                left, top, right, bottom);
+                }
+            }
+        }
+    }
     
     // 执行相机跳转
     // 触发开始事件（UI线程）
@@ -302,6 +339,46 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         double pitch;
         if (napi_get_value_double(env, pitchValue, &pitch) == napi_ok) {
             cameraOptions.pitch = pitch;
+        }
+    }
+    
+    // 获取 padding (可选)
+    // padding 格式: [left, top, right, bottom] 或 {left, top, right, bottom}
+    napi_value paddingValue;
+    if (napi_get_named_property(env, cameraObj, "padding", &paddingValue) == napi_ok) {
+        bool isArray = false;
+        napi_is_array(env, paddingValue, &isArray);
+        
+        if (isArray) {
+            uint32_t length = 0;
+            napi_get_array_length(env, paddingValue, &length);
+            
+            if (length == 4) {
+                napi_value leftVal, topVal, rightVal, bottomVal;
+                double left = 0, top = 0, right = 0, bottom = 0;
+                
+                if (napi_get_element(env, paddingValue, 0, &leftVal) == napi_ok &&
+                    napi_get_element(env, paddingValue, 1, &topVal) == napi_ok &&
+                    napi_get_element(env, paddingValue, 2, &rightVal) == napi_ok &&
+                    napi_get_element(env, paddingValue, 3, &bottomVal) == napi_ok) {
+                    
+                    napi_get_value_double(env, leftVal, &left);
+                    napi_get_value_double(env, topVal, &top);
+                    napi_get_value_double(env, rightVal, &right);
+                    napi_get_value_double(env, bottomVal, &bottom);
+                    
+                    // 应用pixelRatio缩放
+                    cameraOptions.padding = EdgeInsets{
+                        top * instance->pixelRatio,
+                        left * instance->pixelRatio,
+                        bottom * instance->pixelRatio,
+                        right * instance->pixelRatio
+                    };
+                    
+                    Logger::info("NativeMapView", "easeTo: padding=[%.1f, %.1f, %.1f, %.1f]", 
+                                left, top, right, bottom);
+                }
+            }
         }
     }
     
@@ -471,7 +548,47 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
     try {
         mbgl::CameraOptions cameraOptions;
         cameraOptions.center = mbgl::LatLng(latitude, longitude);
-        // TODO: 处理 padding 参数（args[2]）
+        
+        // 处理 padding 参数（args[2]）
+        // padding 格式: [left, top, right, bottom]
+        if (args.Count() >= 3) {
+            napi_value paddingValue = args.GetValue(2);
+            bool isArray = false;
+            napi_is_array(env, paddingValue, &isArray);
+            
+            if (isArray) {
+                uint32_t length = 0;
+                napi_get_array_length(env, paddingValue, &length);
+                
+                if (length == 4) {
+                    napi_value leftVal, topVal, rightVal, bottomVal;
+                    double left = 0, top = 0, right = 0, bottom = 0;
+                    
+                    if (napi_get_element(env, paddingValue, 0, &leftVal) == napi_ok &&
+                        napi_get_element(env, paddingValue, 1, &topVal) == napi_ok &&
+                        napi_get_element(env, paddingValue, 2, &rightVal) == napi_ok &&
+                        napi_get_element(env, paddingValue, 3, &bottomVal) == napi_ok) {
+                        
+                        napi_get_value_double(env, leftVal, &left);
+                        napi_get_value_double(env, topVal, &top);
+                        napi_get_value_double(env, rightVal, &right);
+                        napi_get_value_double(env, bottomVal, &bottom);
+                        
+                        // 应用pixelRatio缩放
+                        cameraOptions.padding = mbgl::EdgeInsets{
+                            top * instance->pixelRatio,
+                            left * instance->pixelRatio,
+                            bottom * instance->pixelRatio,
+                            right * instance->pixelRatio
+                        };
+                        
+                        Logger::info("NativeMapView", "setLatLng: padding=[%.1f, %.1f, %.1f, %.1f]", 
+                                    left, top, right, bottom);
+                    }
+                }
+            }
+        }
+        
         instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m){
             m->easeTo(cameraOptions, mbgl::AnimationOptions{mbgl::Milliseconds(static_cast<int64_t>(duration))});
             m->triggerRepaint();

@@ -36,7 +36,7 @@ export class Style {
      * 添加数据源
      * @param source 数据源对象（GeoJsonSource、VectorSource、RasterSource 等 NAPI 对象）
      */
-    addSource(source: any): void;
+    addSource(source: Object): void;
 
     /**
      * 移除数据源
@@ -50,13 +50,13 @@ export class Style {
      * @param sourceId 数据源 ID
      * @returns 数据源对象，如果不存在则返回 null
      */
-    getSource(sourceId: string): any | null;
+    getSource(sourceId: string): Object | null;
 
     /**
      * 获取所有数据源
      * @returns 数据源列表
      */
-    getSources(): any[];
+    getSources(): Object[];
 
     // ========== 图层管理 ==========
 
@@ -64,28 +64,28 @@ export class Style {
      * 添加图层（添加到顶部）
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      */
-    addLayer(layer: any): void;
+    addLayer(layer: Object): void;
 
     /**
      * 在指定图层下方添加图层
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      * @param belowLayerId 参考图层 ID（新图层将添加到此图层下方）
      */
-    addLayerBelow(layer: any, belowLayerId: string): void;
+    addLayerBelow(layer: Object, belowLayerId: string): void;
 
     /**
      * 在指定图层上方添加图层
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      * @param aboveLayerId 参考图层 ID（新图层将添加到此图层上方）
      */
-    addLayerAbove(layer: any, aboveLayerId: string): void;
+    addLayerAbove(layer: Object, aboveLayerId: string): void;
 
     /**
      * 在指定索引位置添加图层
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      * @param index 索引位置
      */
-    addLayerAt(layer: any, index: number): void;
+    addLayerAt(layer: Object, index: number): void;
 
     /**
      * 移除指定图层
@@ -106,13 +106,13 @@ export class Style {
      * @param layerId 图层 ID
      * @returns 图层对象，如果不存在则返回 null
      */
-    getLayer(layerId: string): any | null;
+    getLayer(layerId: string): Object | null;
 
     /**
      * 获取所有图层
      * @returns 图层列表
      */
-    getLayers(): any[];
+    getLayers(): Object[];
 
     // ========== 图像管理 ==========
 
@@ -124,7 +124,7 @@ export class Style {
      * @param height 图像高度
      * @param sdf 是否为 SDF (Signed Distance Field) 图像
      */
-    addImage(name: string, imageData: any, width: number, height: number, sdf?: boolean): void;
+    addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void;
 
     /**
      * 移除图像
@@ -138,7 +138,7 @@ export class Style {
      * @param name 图像名称
      * @returns 图像数据，如果不存在则返回 null
      */
-    getImage(name: string): any | null;
+    getImage(name: string): Object | null;
 
     // ========== 光照管理 ==========
 
@@ -146,7 +146,7 @@ export class Style {
      * 获取光照设置
      * @returns 光照对象，如果不存在则返回 null
      */
-    getLight(): any | null;
+    getLight(): Object | null;
 
     /**
      * 设置光照
@@ -160,7 +160,7 @@ export class Style {
      * 获取过渡效果设置
      * @returns 过渡效果对象，如果不存在则返回 null
      */
-    getTransition(): any | null;
+    getTransition(): Object | null;
 
     /**
      * 设置过渡效果
@@ -214,14 +214,14 @@ export class StyleBuilder {
      * @param source 数据源对象
      * @returns this 支持链式调用
      */
-    withSource(source: any): this;
+    withSource(source: Object): this;
 
     /**
      * 添加图层（样式加载完成后添加）
      * @param layer 图层对象
      * @returns this 支持链式调用
      */
-    withLayer(layer: any): this;
+    withLayer(layer: Object): this;
 
     /**
      * 添加图像（样式加载完成后添加）
@@ -229,13 +229,13 @@ export class StyleBuilder {
      * @param image 图像对象
      * @returns this 支持链式调用
      */
-    withImage(name: string, image: any): this;
+    withImage(name: string, image: Object): this;
 
     /**
      * 设置过渡选项
      * @param options 过渡选项
      * @returns this 支持链式调用
      */
-    withTransitionOptions(options: any): this;
+    withTransitionOptions(options: Object): this;
 }
 

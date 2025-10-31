@@ -2,7 +2,7 @@ import maplibre from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 
 // 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * InfoWindowAdapter - InfoWindow 适配器接口

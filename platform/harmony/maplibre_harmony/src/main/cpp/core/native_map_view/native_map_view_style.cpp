@@ -4,8 +4,12 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
+#include "style/layer_source_factory_harmony.hpp"
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/image.hpp>
+#include <mbgl/style/layer.hpp>
+#include <mbgl/style/source.hpp>
+#include <mbgl/style/light.hpp>
 // 用于资源就绪 gating 的等待
 #include <chrono>
 #include <thread>
@@ -414,36 +418,104 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
-    // TODO: 需要实现 Light 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
-    Logger::warn("NativeMapView", "getLight: Not implemented - requires Light wrapper class");
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getLight: Map not initialized");
+        return args.Undefined();
+    }
     
-    return undefined;
+    try {
+        mbgl::style::Light* light = instance->map->getStyle().getLight();
+        if (!light) {
+            Logger::warn("NativeMapView", "getLight: No light in style");
+            return args.Undefined();
+        }
+        
+        // Create a simple object with light properties
+        // TODO: Implement full Light NAPI wrapper class for property modification
+        napi_value lightObj;
+        napi_create_object(env, &lightObj);
+        
+        // Add anchor property
+        auto anchor = light->getAnchor();
+        napi_value anchorValue;
+        const char* anchorStr = (anchor == mbgl::style::LightAnchorType::Map) ? "map" : "viewport";
+        napi_create_string_utf8(env, anchorStr, NAPI_AUTO_LENGTH, &anchorValue);
+        napi_set_named_property(env, lightObj, "anchor", anchorValue);
+        
+        Logger::info("NativeMapView", "getLight: Returned light object");
+        return lightObj;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getLight: Exception - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/layers/
-    Logger::warn("NativeMapView", "getLayers: Not implemented - requires Layer wrapper classes");
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getLayers: Map not initialized");
+        return args.Undefined();
+    }
     
-    return undefined;
+    try {
+        // Get all layers from style
+        std::vector<mbgl::style::Layer*> layers = instance->map->getStyle().getLayers();
+        
+        // Create array
+        napi_value layersArray;
+        napi_create_array_with_length(env, layers.size(), &layersArray);
+        
+        // Convert each layer to NAPI object
+        for (size_t i = 0; i < layers.size(); i++) {
+            napi_value layerObj = LayerSourceFactory::createLayerWrapper(env, layers[i]);
+            napi_set_element(env, layersArray, i, layerObj);
+        }
+        
+        Logger::info("NativeMapView", "getLayers: Returned %zu layers", layers.size());
+        return layersArray;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getLayers: Exception - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/layers/
-    Logger::warn("NativeMapView", "getLayer: Not implemented - requires Layer wrapper classes");
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getLayer: Map not initialized");
+        return args.Undefined();
+    }
     
-    return undefined;
+    // 获取layerId参数
+    std::string layerId = args.GetString(0, "layerId");
+    if (args.HasError()) return args.Undefined();
+    
+    try {
+        mbgl::style::Layer* layer = instance->map->getStyle().getLayer(layerId);
+        if (!layer) {
+            Logger::warn("NativeMapView", "getLayer: Layer '%s' not found", layerId.c_str());
+            return args.Undefined();
+        }
+        
+        napi_value layerObj = LayerSourceFactory::createLayerWrapper(env, layer);
+        Logger::info("NativeMapView", "getLayer: Returned layer '%s'", layerId.c_str());
+        return layerObj;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getLayer: Exception - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::addLayer(napi_env env, napi_callback_info info) {
@@ -491,36 +563,101 @@ napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1155-1165
-    Logger::warn("NativeMapView", "removeLayer: Not implemented - requires Layer wrapper classes");
+    if (args.HasError()) return result;
     
-    return result;
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "removeLayer: Map not initialized");
+        return result;
+    }
+    
+    // 获取layerId参数
+    std::string layerId = args.GetString(0, "layerId");
+    if (args.HasError()) return result;
+    
+    try {
+        // Remove layer from style
+        instance->map->getStyle().removeLayer(layerId);
+        instance->map->triggerRepaint();
+        
+        napi_get_boolean(env, true, &result);
+        Logger::info("NativeMapView", "removeLayer: Removed layer '%s'", layerId.c_str());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "removeLayer: Exception - %s", e.what());
+        return result;
+    }
 }
 
 napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
     
-    // TODO: 需要实现 Source 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/sources/
-    Logger::warn("NativeMapView", "getSources: Not implemented - requires Source wrapper classes");
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getSources: Map not initialized");
+        return args.Undefined();
+    }
     
-    return undefined;
+    try {
+        // Get all sources from style
+        std::vector<mbgl::style::Source*> sources = instance->map->getStyle().getSources();
+        
+        // Create array
+        napi_value sourcesArray;
+        napi_create_array_with_length(env, sources.size(), &sourcesArray);
+        
+        // Convert each source to NAPI object
+        for (size_t i = 0; i < sources.size(); i++) {
+            napi_value sourceObj = LayerSourceFactory::createSourceWrapper(env, sources[i]);
+            napi_set_element(env, sourcesArray, i, sourceObj);
+        }
+        
+        Logger::info("NativeMapView", "getSources: Returned %zu sources", sources.size());
+        return sourcesArray;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getSources: Exception - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // TODO: 需要实现 Source 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/sources/
-    Logger::warn("NativeMapView", "getSource: Not implemented - requires Source wrapper classes");
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getSource: Map not initialized");
+        return args.Undefined();
+    }
     
-    return undefined;
+    // 获取sourceId参数
+    std::string sourceId = args.GetString(0, "sourceId");
+    if (args.HasError()) return args.Undefined();
+    
+    try {
+        mbgl::style::Source* source = instance->map->getStyle().getSource(sourceId);
+        if (!source) {
+            Logger::warn("NativeMapView", "getSource: Source '%s' not found", sourceId.c_str());
+            return args.Undefined();
+        }
+        
+        napi_value sourceObj = LayerSourceFactory::createSourceWrapper(env, source);
+        Logger::info("NativeMapView", "getSource: Returned source '%s'", sourceId.c_str());
+        return sourceObj;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getSource: Exception - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
@@ -535,14 +672,37 @@ napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    
     napi_value result;
     napi_get_boolean(env, false, &result);
     
-    // TODO: 需要实现 Source 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1206-1216
-    Logger::warn("NativeMapView", "removeSource: Not implemented - requires Source wrapper classes");
+    if (args.HasError()) return result;
     
-    return result;
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "removeSource: Map not initialized");
+        return result;
+    }
+    
+    // 获取sourceId参数
+    std::string sourceId = args.GetString(0, "sourceId");
+    if (args.HasError()) return result;
+    
+    try {
+        // Remove source from style
+        instance->map->getStyle().removeSource(sourceId);
+        instance->map->triggerRepaint();
+        
+        napi_get_boolean(env, true, &result);
+        Logger::info("NativeMapView", "removeSource: Removed source '%s'", sourceId.c_str());
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "removeSource: Exception - %s", e.what());
+        return result;
+    }
 }
 
 napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {

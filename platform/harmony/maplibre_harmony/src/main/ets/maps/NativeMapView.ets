@@ -56,9 +56,10 @@ import { InfoWindowPosition } from './annotations/InfoWindow';
 import { AnnotationViewOverlay } from './annotations/AnnotationViewOverlay';
 import { AnnotationViewData } from './annotations/AnnotationViewManager';
 import { MapLibreMap } from './MapLibreMap';
+import { MapLibreMapOptions } from './MapLibreMapOptions';
 
-// 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+// 使用封装的 Marker 类型
+import { Marker } from './annotations/Marker';
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
 
@@ -1624,7 +1625,7 @@ export struct NativeMapView {
   @Prop initialPitch: number = 0;
   @Prop debugMode: boolean = false;
   // 回调函数
-  onMapReady?: (mapView?: maplibre.NativeMapView) => void;
+  onMapReady?: (map: MapLibreMap) => void | Promise<void>;
   onMapLoaded?: () => void;
   onMapError?: (error: string) => void;
   
@@ -1658,13 +1659,20 @@ export struct NativeMapView {
         
         // 包装 onMapReady 回调以设置 InfoWindowManager 回调
         this.controller.onMapReadyCallback = (mapView?: maplibre.NativeMapView) => {
-          // 先调用用户的回调
-          if (this.onMapReady) {
-            this.onMapReady(mapView);
+          // 创建 MapLibreMap 实例
+          if (mapView && !this.controller.getMapLibreMapInstance()) {
+            const options = new MapLibreMapOptions();
+            const mapLibreMap = new MapLibreMap(mapView, options);
+            this.controller.setMapLibreMapInstance(mapLibreMap);
           }
           
-          // 在用户回调中创建 MapLibreMap 后，设置 InfoWindowManager 回调
-          // 使用延迟确保 MapLibreMap 已创建
+          // 调用用户的回调，传入 MapLibreMap 实例
+          const mapLibreMap = this.controller.getMapLibreMapInstance();
+          if (this.onMapReady && mapLibreMap) {
+            this.onMapReady(mapLibreMap);
+          }
+          
+          // 设置 InfoWindowManager 回调
           setTimeout(() => {
             this.setupInfoWindowCallbacks();
           }, 100);
@@ -2125,9 +2133,10 @@ export struct NativeMapView {
             // 将屏幕坐标转换为地理坐标
             const mapView = this.controller.getMapView();
             if (mapView) {
-              const latLng = mapView.latLngForPixel(screenX, screenY);
+              const nativeLatLng = mapView.latLngForPixel(screenX, screenY);
               const mapLibreMap = this.controller.getMapLibreMapInstance();
-              if (mapLibreMap && latLng) {
+              if (mapLibreMap && nativeLatLng) {
+                const latLng = LatLng.fromNative(nativeLatLng);
                 mapLibreMap.getMarkerManager().handleDrag(marker, latLng);
               }
             }

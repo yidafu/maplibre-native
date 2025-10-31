@@ -30,5 +30,5 @@ export class ImageSource {
      * 设置图像四个角的坐标
      * @param coordinates 四个角的坐标数组 [[lon, lat], [lon, lat], [lon, lat], [lon, lat]]
      */
-    setCoordinates(coordinates: [[number, number], [number, number], [number, number], [number, number]]): void;
+    setCoordinates(coordinates: number[][]): void;
 }

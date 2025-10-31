@@ -1,7 +1,7 @@
 import maplibre from 'libmaplibre.so';
 
 // 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+import { Marker } from '../annotations/Marker';
 
 /**
  * OnInfoWindowCloseListener - InfoWindow 关闭事件监听器

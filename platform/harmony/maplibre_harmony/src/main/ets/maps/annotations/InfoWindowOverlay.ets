@@ -1,9 +1,7 @@
 import maplibre from 'libmaplibre.so';
 import { InfoWindowComponent, InfoWindowPosition, InfoWindowStyle } from './InfoWindow';
 import { InfoWindowManager } from './InfoWindowManager';
-
-// 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * InfoWindow 状态数据

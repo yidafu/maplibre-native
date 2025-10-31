@@ -72,7 +72,7 @@ export class Projection {
    * @returns 地理坐标
    */
   public screenLocationToLatLng(point: Point): LatLng {
-    return this.nativeMapView.latLngForPixel(point.x, point.y);
+    return LatLng.fromNative(this.nativeMapView.latLngForPixel(point.x, point.y));
   }
   
   // ========== 批量坐标转换 ==========
@@ -132,8 +132,8 @@ export class Projection {
     const east = Math.max(...longitudes);
     const west = Math.min(...longitudes);
     
-    const northeast = new LatLng(north, east);
-    const southwest = new LatLng(south, west);
+    const northeast = LatLng.create(north, east);
+    const southwest = LatLng.create(south, west);
     const bounds = LatLngBounds.fromLatLngs(northeast, southwest);
     
     return new VisibleRegion(nearLeft, nearRight, farLeft, farRight, bounds);
@@ -183,7 +183,7 @@ export class Projection {
    * @returns 地理坐标
    */
   public fromProjectedMeters(projectedMeters: maplibre.ProjectedMeters): LatLng {
-    return this.nativeMapView.latLngForProjectedMeters(projectedMeters.northing, projectedMeters.easting);
+    return LatLng.fromNative(this.nativeMapView.latLngForProjectedMeters(projectedMeters.northing, projectedMeters.easting));
   }
   
   /**

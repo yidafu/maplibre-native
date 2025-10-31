@@ -3,6 +3,8 @@
  * 热力图层 API (NAPI 类)
  */
 
+import type { NumberValue } from '../LayerPropertyTypes';
+
 /**
  * HeatmapLayer - 热力图层
  * 用于渲染密度热力图
@@ -19,24 +21,21 @@ export class HeatmapLayer {
 
     /**
      * 设置热力图半径
-     * @param radius 半径（单位：像素）
-     * @returns 返回 this 以支持链式调用
+     * @param radius 半径或Expression
      */
-    setHeatmapRadius(radius: number): this;
+    setHeatmapRadius(radius: NumberValue): this;
 
     /**
      * 设置热力图强度
-     * @param intensity 强度值
-     * @returns 返回 this 以支持链式调用
+     * @param intensity 强度值或Expression
      */
-    setHeatmapIntensity(intensity: number): this;
+    setHeatmapIntensity(intensity: NumberValue): this;
 
     /**
      * 设置热力图不透明度
-     * @param opacity 不透明度（0.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setHeatmapOpacity(opacity: number): this;
+    setHeatmapOpacity(opacity: NumberValue): this;
 
     /**
      * 获取图层 ID
@@ -52,6 +51,33 @@ export class HeatmapLayer {
      * 获取数据源 ID
      */
     getSourceId(): string;
+
+    /**
+     * 设置图层可见性
+     */
+    setVisibility(visibility: 'visible' | 'none'): this;
+    getVisibility(): 'visible' | 'none';
+
+    /**
+     * 设置最小/最大缩放级别
+     */
+    setMinZoom(zoom: number): this;
+    getMinZoom(): number;
+    setMaxZoom(zoom: number): this;
+    getMaxZoom(): number;
+
+    /**
+     * 设置源图层
+     */
+    setSourceLayer(sourceLayer: string): this;
+    getSourceLayer(): string;
+
+    /**
+     * 设置图层过滤器
+     * @param filter 过滤器表达式数组
+     */
+    setFilter(filter: Object[]): this;
+    getFilter(): Object[] | null;
     
     // ==================== 新增属性 ====================
     

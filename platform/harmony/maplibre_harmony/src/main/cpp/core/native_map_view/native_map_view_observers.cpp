@@ -2,6 +2,7 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
+#include "bitmap/bitmap_napi.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include <mbgl/gfx/shader_registry.hpp>
 #include <mbgl/style/style.hpp>
@@ -434,14 +435,42 @@ bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
 // Note: initializeRenderer is defined in native_map_view_base.cpp
 
 napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
     
-    // TODO: 需要实现 Bitmap 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1241-1246
-    Logger::warn("NativeMapView", "getImage: Not implemented - requires Bitmap wrapper class");
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getImage: Map not initialized");
+        return args.Undefined();
+    }
     
-    return undefined;
+    // 获取图像ID
+    std::string imageId = args.GetString(0, "imageId");
+    if (args.HasError()) return args.Undefined();
+    
+    try {
+        // Get image from style (returns std::optional<Image>)
+        auto optionalImage = instance->map->getStyle().getImage(imageId);
+        if (!optionalImage) {
+            Logger::warn("NativeMapView", "getImage: Image '%s' not found", imageId.c_str());
+            return args.Undefined();
+        }
+        
+        // Copy image data
+        auto image = std::make_shared<mbgl::PremultipliedImage>(optionalImage->getImage().clone());
+        
+        // Create Bitmap NAPI wrapper
+        napi_value bitmapObj = BitmapNAPI::CreateFromImage(env, imageId, image);
+        
+        Logger::info("NativeMapView", "getImage: Returned image '%s' (%ux%u)", 
+                    imageId.c_str(), image->size.width, image->size.height);
+        return bitmapObj;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getImage: Exception - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info) {

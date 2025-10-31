@@ -1,8 +1,51 @@
 /**
- * RasterSource - 栅格瓦片数据源
- * 
- * 直接从 NAPI 层重新导出 RasterSource 类
+ * RasterSource - 栅格数据源封装类
  */
+import maplibre from 'libmaplibre.so';
 
-// 重新导出 NAPI 类
-export { RasterSource } from 'libmaplibre.so';
+class InternalMarker {
+  static readonly INSTANCE = new InternalMarker();
+  private constructor() {}
+}
+
+export class RasterSource {
+  private nativeInstance: maplibre.RasterSource;
+
+  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: ESObject | maplibre.RasterSource) {
+    if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
+      this.nativeInstance = optionsOrNative as maplibre.RasterSource;
+    } else if (typeof idOrMarker === 'string') {
+      this.nativeInstance = new maplibre.RasterSource(idOrMarker, optionsOrNative as ESObject);
+    } else {
+      throw new Error('Invalid RasterSource constructor arguments');
+    }
+  }
+
+  static create(id: string, options?: ESObject): RasterSource {
+    return new RasterSource(id, options);
+  }
+
+  static fromNative(nativeInstance: maplibre.RasterSource): RasterSource {
+    return new RasterSource(InternalMarker.INSTANCE, nativeInstance);
+  }
+
+  getNative(): maplibre.RasterSource {
+    return this.nativeInstance;
+  }
+
+  getId(): string {
+    return this.nativeInstance.getId();
+  }
+
+  setUrl(url: string): void {
+    this.nativeInstance.setUrl(url);
+  }
+
+  getUrl(): string {
+    return this.nativeInstance.getUrl();
+  }
+
+  setTileSize(size: number): void {
+    this.nativeInstance.setTileSize(size);
+  }
+}

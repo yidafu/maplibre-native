@@ -3,7 +3,7 @@ import { AnnotationView, CenterOffset } from './AnnotationView';
 import { AnnotationViewData } from './AnnotationViewManager';
 import { LatLng } from '../geometry/LatLng';
 
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * AnnotationViewOverlay - AnnotationView 渲染层

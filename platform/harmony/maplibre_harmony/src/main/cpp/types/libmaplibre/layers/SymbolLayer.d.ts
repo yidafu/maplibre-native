@@ -3,6 +3,8 @@
  * 符号图层类型定义
  */
 
+import type { PropertyValue, ColorValue, NumberValue, StringValue, BooleanValue } from '../LayerPropertyTypes';
+
 declare namespace maplibre {
     /**
      * SymbolLayer - 符号图层
@@ -73,7 +75,7 @@ declare namespace maplibre {
          * 设置图标图片
          * @param iconImage 图片名称或Expression
          */
-        setIconImage(iconImage: string | Object): void;
+        setIconImage(iconImage: StringValue): void;
         
         /**
          * 获取图标图片
@@ -84,7 +86,7 @@ declare namespace maplibre {
          * 设置图标大小
          * @param size 大小比例或Expression
          */
-        setIconSize(size: number | Object): void;
+        setIconSize(size: NumberValue): void;
         
         /**
          * 获取图标大小
@@ -95,7 +97,7 @@ declare namespace maplibre {
          * 设置图标旋转角度
          * @param rotate 旋转角度（度）或Expression
          */
-        setIconRotate(rotate: number | Object): void;
+        setIconRotate(rotate: NumberValue): void;
         
         /**
          * 获取图标旋转角度
@@ -104,10 +106,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标偏移
-         * @param offsetX X方向偏移
-         * @param offsetY Y方向偏移
+         * @param offset 偏移量或Expression
          */
-        setIconOffset(offsetX: number, offsetY: number): void;
+        setIconOffset(offset: PropertyValue<number[]>): void;
         
         /**
          * 获取图标偏移
@@ -116,9 +117,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标锚点
-         * @param anchor 锚点位置
+         * @param anchor 锚点位置或Expression
          */
-        setIconAnchor(anchor: string): void;
+        setIconAnchor(anchor: StringValue): void;
         
         /**
          * 获取图标锚点
@@ -127,9 +128,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标是否允许重叠
-         * @param allow 是否允许
+         * @param allow 是否允许或Expression
          */
-        setIconAllowOverlap(allow: boolean): void;
+        setIconAllowOverlap(allow: BooleanValue): void;
         
         /**
          * 获取图标是否允许重叠
@@ -140,9 +141,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本内容
-         * @param text 文本内容
+         * @param text 文本内容或Expression
          */
-        setTextField(text: string): void;
+        setTextField(text: StringValue): void;
         
         /**
          * 获取文本内容
@@ -151,9 +152,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本字体
-         * @param font 字体名称
+         * @param font 字体名称或Expression
          */
-        setTextFont(font: string): void;
+        setTextFont(font: PropertyValue<string[]>): void;
         
         /**
          * 获取文本字体
@@ -162,9 +163,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本大小
-         * @param size 字体大小
+         * @param size 字体大小或Expression
          */
-        setTextSize(size: number): void;
+        setTextSize(size: NumberValue): void;
         
         /**
          * 获取文本大小
@@ -173,9 +174,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本最大宽度
-         * @param maxWidth 最大宽度
+         * @param maxWidth 最大宽度或Expression
          */
-        setTextMaxWidth(maxWidth: number): void;
+        setTextMaxWidth(maxWidth: NumberValue): void;
         
         /**
          * 获取文本最大宽度
@@ -184,10 +185,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本偏移
-         * @param offsetX X方向偏移
-         * @param offsetY Y方向偏移
+         * @param offset 偏移量或Expression
          */
-        setTextOffset(offsetX: number, offsetY: number): void;
+        setTextOffset(offset: PropertyValue<number[]>): void;
         
         /**
          * 获取文本偏移
@@ -196,9 +196,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本锚点
-         * @param anchor 锚点位置
+         * @param anchor 锚点位置或Expression
          */
-        setTextAnchor(anchor: string): void;
+        setTextAnchor(anchor: StringValue): void;
         
         /**
          * 获取文本锚点
@@ -207,9 +207,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本是否允许重叠
-         * @param allow 是否允许
+         * @param allow 是否允许或Expression
          */
-        setTextAllowOverlap(allow: boolean): void;
+        setTextAllowOverlap(allow: BooleanValue): void;
         
         /**
          * 获取文本是否允许重叠
@@ -220,9 +220,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标不透明度
-         * @param opacity 不透明度 (0-1) 或 Expression 或 数组
+         * @param opacity 不透明度 (0-1) 或 Expression
          */
-        setIconOpacity(opacity: number | Object | Object[]): void;
+        setIconOpacity(opacity: NumberValue): void;
         
         /**
          * 获取图标不透明度
@@ -231,9 +231,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标颜色
-         * @param color 颜色值
+         * @param color 颜色值或Expression
          */
-        setIconColor(color: string): void;
+        setIconColor(color: ColorValue): void;
         
         /**
          * 获取图标颜色
@@ -242,9 +242,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标光晕颜色
-         * @param color 颜色值
+         * @param color 颜色值或Expression
          */
-        setIconHaloColor(color: string): void;
+        setIconHaloColor(color: ColorValue): void;
         
         /**
          * 获取图标光晕颜色
@@ -253,9 +253,9 @@ declare namespace maplibre {
         
         /**
          * 设置图标光晕宽度
-         * @param width 宽度
+         * @param width 宽度或Expression
          */
-        setIconHaloWidth(width: number): void;
+        setIconHaloWidth(width: NumberValue): void;
         
         /**
          * 获取图标光晕宽度
@@ -266,9 +266,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本不透明度
-         * @param opacity 不透明度 (0-1)
+         * @param opacity 不透明度 (0-1) 或Expression
          */
-        setTextOpacity(opacity: number): void;
+        setTextOpacity(opacity: NumberValue): void;
         
         /**
          * 获取文本不透明度
@@ -277,9 +277,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本颜色
-         * @param color 颜色值
+         * @param color 颜色值或Expression
          */
-        setTextColor(color: string): void;
+        setTextColor(color: ColorValue): void;
         
         /**
          * 获取文本颜色
@@ -288,9 +288,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本光晕颜色
-         * @param color 颜色值
+         * @param color 颜色值或Expression
          */
-        setTextHaloColor(color: string): void;
+        setTextHaloColor(color: ColorValue): void;
         
         /**
          * 获取文本光晕颜色
@@ -299,9 +299,9 @@ declare namespace maplibre {
         
         /**
          * 设置文本光晕宽度
-         * @param width 宽度
+         * @param width 宽度或Expression
          */
-        setTextHaloWidth(width: number): void;
+        setTextHaloWidth(width: NumberValue): void;
         
         /**
          * 获取文本光晕宽度
@@ -525,6 +525,21 @@ declare namespace maplibre {
          */
         setSymbolZOrder(zOrder: string): void;
         getSymbolZOrder(): string;
+        
+        // ==================== 通用 Layer 方法 ====================
+        
+        /**
+         * 设置图层可见性
+         */
+        setVisibility(visibility: 'visible' | 'none'): void;
+        getVisibility(): 'visible' | 'none';
+        
+        /**
+         * 设置图层过滤器
+         * @param filter 过滤器表达式数组
+         */
+        setFilter(filter: Object[]): void;
+        getFilter(): Object[] | null;
     }
 }
 

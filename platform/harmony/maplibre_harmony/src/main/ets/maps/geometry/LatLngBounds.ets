@@ -1,5 +1,4 @@
 import { LatLng } from './LatLng';
-import maplibre from 'libmaplibre.so';
 
 /**
  * LatLngBounds - 经纬度边界类
@@ -70,21 +69,21 @@ export class LatLngBounds {
    * 获取东北角
    */
   public getNortheast(): LatLng {
-    return new maplibre.LatLng(this.north, this.east);
+    return LatLng.create(this.north, this.east);
   }
 
   /**
    * 获取西南角
    */
   public getSouthwest(): LatLng {
-    return new maplibre.LatLng(this.south, this.west);
+    return LatLng.create(this.south, this.west);
   }
 
   /**
    * 获取中心点
    */
   public getCenter(): LatLng {
-    return new maplibre.LatLng(
+    return LatLng.create(
       (this.north + this.south) / 2,
       (this.east + this.west) / 2
     );

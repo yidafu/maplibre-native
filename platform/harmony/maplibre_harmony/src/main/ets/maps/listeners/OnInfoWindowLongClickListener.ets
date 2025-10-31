@@ -1,7 +1,7 @@
 import maplibre from 'libmaplibre.so';
 
 // 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+import { Marker } from '../annotations/Marker';
 
 /**
  * OnInfoWindowLongClickListener - InfoWindow 长按事件监听器

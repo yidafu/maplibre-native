@@ -1188,8 +1188,14 @@ export class MapGestureDetector {
    * @returns 动画时长（毫秒）
    */
   private calculateFlingDuration(speed: number): number {
-    // 简化版本：暂不考虑 tilt 因素
-    const tiltFactor = 1.0;  // TODO: 从地图获取实际 tilt
+    // 获取实际 tilt 并计算因子（tilt 越大，惯性越弱）
+    let tiltFactor = 1.0;
+    if (this.mapController && this.mapController.getPitch) {
+      const pitch = this.mapController.getPitch() as number;
+      // pitch 范围 [0, 60]，转换为 tilt 因子 [1.0, 1.5]
+      // pitch 越大，tiltFactor 越大，惯性时长越短
+      tiltFactor = 1.0 + (pitch / 60.0) * 0.5;
+    }
     const duration = speed / 7 / tiltFactor + this.uiSettings.getFlingAnimationBaseTime();
     
     // 限制动画时长在合理范围（100ms - 2000ms）

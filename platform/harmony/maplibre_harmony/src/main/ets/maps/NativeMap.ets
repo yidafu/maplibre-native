@@ -13,8 +13,8 @@ import { Light } from './style/light/Light';
 import { Polyline } from './annotations/Polyline';
 import type { Image } from './style/images/Image';
 
-// 类型由 NAPI 提供
-type Marker = maplibre.Marker;
+// 类型由封装类提供
+import { Marker } from './annotations/Marker';
 type Layer = maplibre.FillLayer | maplibre.LineLayer | maplibre.CircleLayer | maplibre.SymbolLayer | 
   maplibre.RasterLayer | maplibre.BackgroundLayer | maplibre.HeatmapLayer | maplibre.HillshadeLayer | 
   maplibre.FillExtrusionLayer;

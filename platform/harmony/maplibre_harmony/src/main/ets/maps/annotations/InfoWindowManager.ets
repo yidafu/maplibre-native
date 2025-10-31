@@ -5,8 +5,7 @@ import { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListene
 import { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseListener';
 import { OnInfoWindowLongClickListener } from '../listeners/OnInfoWindowLongClickListener';
 import { Point } from '../geometry/Point';
-
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * InfoWindowManager - 信息窗口管理器

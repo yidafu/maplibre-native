@@ -3,6 +3,8 @@
  * 线图层 API (NAPI 类)
  */
 
+import type { PropertyValue, ColorValue, NumberValue, StringValue } from '../LayerPropertyTypes';
+
 /**
  * LineLayer - 线图层
  * 用于渲染线要素
@@ -17,89 +19,76 @@ export class LineLayer {
 
     /**
      * 设置线条颜色
-     * @param color 颜色值（CSS 颜色字符串）
-     * @returns 返回 this 以支持链式调用
+     * @param color 颜色值或Expression
      */
-    setLineColor(color: string): this;
+    setLineColor(color: ColorValue): this;
 
     /**
      * 设置线条宽度
-     * @param width 宽度（单位：像素）
-     * @returns 返回 this 以支持链式调用
+     * @param width 宽度或Expression
      */
-    setLineWidth(width: number): this;
+    setLineWidth(width: NumberValue): this;
 
     /**
      * 设置线条不透明度
-     * @param opacity 不透明度（0.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setLineOpacity(opacity: number): this;
+    setLineOpacity(opacity: NumberValue): this;
 
     /**
      * 设置线条图案
-     * @param pattern 图案名称（需要先通过 addImage 添加）
-     * @returns 返回 this 以支持链式调用
+     * @param pattern 图案名称或Expression
      */
-    setLinePattern(pattern: string): this;
+    setLinePattern(pattern: StringValue): this;
 
     /**
      * 设置线条间隙宽度
-     * @param gapWidth 间隙宽度（单位：像素）
-     * @returns 返回 this 以支持链式调用
+     * @param gapWidth 间隙宽度或Expression
      */
-    setLineGapWidth(gapWidth: number): this;
+    setLineGapWidth(gapWidth: NumberValue): this;
 
     /**
      * 设置虚线样式
-     * @param dasharray 虚线数组，例如 [2, 2] 表示 2 像素实线，2 像素空白
-     * @returns 返回 this 以支持链式调用
+     * @param dasharray 虚线数组或Expression
      */
-    setLineDasharray(dasharray: number[]): this;
+    setLineDasharray(dasharray: PropertyValue<number[]>): this;
 
     /**
      * 设置线条模糊
-     * @param blur 模糊量（单位：像素）
-     * @returns 返回 this 以支持链式调用
+     * @param blur 模糊量或Expression
      */
-    setLineBlur(blur: number): this;
+    setLineBlur(blur: NumberValue): this;
 
     /**
      * 设置线条偏移
-     * @param offset 偏移量（单位：像素，正值向右，负值向左）
-     * @returns 返回 this 以支持链式调用
+     * @param offset 偏移量或Expression
      */
-    setLineOffset(offset: number): this;
+    setLineOffset(offset: NumberValue): this;
 
     /**
      * 设置线条端点样式
-     * @param cap 端点样式：'butt' | 'round' | 'square'
-     * @returns 返回 this 以支持链式调用
+     * @param cap 端点样式或Expression
      */
-    setLineCap(cap: string): this;
+    setLineCap(cap: StringValue): this;
 
     /**
      * 设置线条连接样式
-     * @param join 连接样式：'miter' | 'round' | 'bevel'
-     * @returns 返回 this 以支持链式调用
+     * @param join 连接样式或Expression
      */
-    setLineJoin(join: string): this;
+    setLineJoin(join: StringValue): this;
 
     /**
      * 获取线条颜色
-     * @returns 颜色字符串，如果是表达式则返回 undefined
      */
     getLineColor(): string | undefined;
 
     /**
      * 获取线条宽度
-     * @returns 宽度值，如果是表达式则返回 undefined
      */
     getLineWidth(): number | undefined;
 
     /**
      * 获取线条不透明度
-     * @returns 不透明度值，如果是表达式则返回 undefined
      */
     getLineOpacity(): number | undefined;
 
@@ -118,77 +107,72 @@ export class LineLayer {
      */
     getSourceId(): string;
     
-    // ==================== 新增属性 ====================
+    /**
+     * 设置图层可见性
+     */
+    setVisibility(visibility: 'visible' | 'none'): this;
+    getVisibility(): 'visible' | 'none';
+
+    /**
+     * 设置最小/最大缩放级别
+     */
+    setMinZoom(zoom: number): this;
+    getMinZoom(): number;
+    setMaxZoom(zoom: number): this;
+    getMaxZoom(): number;
+
+    /**
+     * 设置源图层
+     */
+    setSourceLayer(sourceLayer: string): this;
+    getSourceLayer(): string;
+
+    /**
+     * 设置图层过滤器
+     * @param filter 过滤器表达式数组
+     */
+    setFilter(filter: Object[]): this;
+    getFilter(): Object[] | null;
     
     /**
      * 设置线条平移
-     * @param translate 平移量 [x, y]（单位：像素）
-     * @returns 返回 this 以支持链式调用
+     * @param translate 平移量或Expression
      */
-    setLineTranslate(translate: number[]): this;
-    
-    /**
-     * 获取线条平移
-     */
+    setLineTranslate(translate: PropertyValue<number[]>): this;
     getLineTranslate(): number[] | undefined;
     
     /**
      * 设置线条平移锚点
-     * @param anchor 'map' | 'viewport'
-     * @returns 返回 this 以支持链式调用
+     * @param anchor 'map' | 'viewport' 或Expression
      */
-    setLineTranslateAnchor(anchor: string): this;
-    
-    /**
-     * 获取线条平移锚点
-     */
+    setLineTranslateAnchor(anchor: StringValue): this;
     getLineTranslateAnchor(): string | undefined;
     
     /**
      * 设置斜接限制
-     * @param limit 斜接限制值
-     * @returns 返回 this 以支持链式调用
+     * @param limit 斜接限制值或Expression
      */
-    setLineMiterLimit(limit: number): this;
-    
-    /**
-     * 获取斜接限制
-     */
+    setLineMiterLimit(limit: NumberValue): this;
     getLineMiterLimit(): number | undefined;
     
     /**
      * 设置圆角限制
-     * @param limit 圆角限制值
-     * @returns 返回 this 以支持链式调用
+     * @param limit 圆角限制值或Expression
      */
-    setLineRoundLimit(limit: number): this;
-    
-    /**
-     * 获取圆角限制
-     */
+    setLineRoundLimit(limit: NumberValue): this;
     getLineRoundLimit(): number | undefined;
     
     /**
      * 设置线条渐变色（仅支持 Expression）
      * @param gradient 渐变色表达式
-     * @returns 返回 this 以支持链式调用
      */
-    setLineGradient(gradient: any[]): this;
-    
-    /**
-     * 获取线条渐变色
-     */
-    getLineGradient(): any[] | undefined;
+    setLineGradient(gradient: Object): this;
+    getLineGradient(): Object | undefined;
     
     /**
      * 设置线条排序键
-     * @param sortKey 排序键
-     * @returns 返回 this 以支持链式调用
+     * @param sortKey 排序键或Expression
      */
-    setLineSortKey(sortKey: number): this;
-    
-    /**
-     * 获取线条排序键
-     */
+    setLineSortKey(sortKey: NumberValue): this;
     getLineSortKey(): number | undefined;
 }

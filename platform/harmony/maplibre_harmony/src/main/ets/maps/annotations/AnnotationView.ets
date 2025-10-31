@@ -2,7 +2,7 @@ import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 // import { ComponentContent } from '@kit.ArkUI';
 
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 // 常量定义（参考 iOS/mbgl）
 const PITCH_MAX_DEGREES = 60; // mbgl::util::PITCH_MAX 约为 60度

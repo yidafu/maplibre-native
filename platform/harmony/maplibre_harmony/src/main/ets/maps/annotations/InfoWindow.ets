@@ -4,7 +4,7 @@ import { Point } from '../geometry/Point';
 // import { ComponentContent } from '@kit.ArkUI';
 
 // 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * InfoWindow 位置信息

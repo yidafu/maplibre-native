@@ -1,10 +1,8 @@
-import { LatLng } from '../geometry/LatLng';
 import { InfoWindowStyle } from './InfoWindow';
 import maplibre from 'libmaplibre.so';
-
-// 使用 NAPI 类型
-type Icon = maplibre.Icon;
-type Marker = maplibre.Marker;
+import { Icon } from './Icon';
+import { LatLng } from '../geometry/LatLng';
+import { Marker } from './Marker';
 
 /**
  * MarkerOptions - Marker 构建器类
@@ -329,7 +327,7 @@ export class MarkerOptions {
   /**
    * 创建 Marker 实例
    * 
-   * @returns NAPI Marker 实例
+   * @returns Marker 封装类实例
    * @throws Error 如果未设置位置
    */
   public getMarker(): Marker {
@@ -340,13 +338,13 @@ export class MarkerOptions {
     // 构建 options 对象
     // 注意：ESObject 用于与 NAPI 层交互的动态对象，这是 HarmonyOS 官方推荐的方式
     const options: ESObject = {
-      position: this._position
+      position: this._position.getNative()  // 传递 NAPI LatLng
     };
     
     // 添加可选属性
     if (this._icon !== undefined) {
-      // 传递 Icon 的 ID 到 Native 层
-      options.icon = this._icon.getId();
+      // 传递 Icon 的 native 实例
+      options.icon = this._icon.getNative();
     }
     if (this._title !== undefined) {
       options.title = this._title;
@@ -376,8 +374,8 @@ export class MarkerOptions {
                  `icon=${iconStatus}, visible=${this._visible}, alpha=${this._alpha}, ` +
                  `rotation=${this._rotation}, zIndex=${this._zIndex}, draggable=${this._draggable}`);
     
-    // 创建 NAPI Marker 实例
-    return new maplibre.Marker(options);
+    // 创建 Marker 封装类实例
+    return Marker.createFromOptions(options);
   }
 }
 

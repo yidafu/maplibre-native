@@ -1,7 +1,7 @@
 import maplibre from 'libmaplibre.so';
 
 // 使用 NAPI Marker 类型
-type Marker = maplibre.Marker;
+import { Marker } from '../annotations/Marker';
 
 /**
  * OnMarkerSelectListener - Marker 选中状态变化监听器

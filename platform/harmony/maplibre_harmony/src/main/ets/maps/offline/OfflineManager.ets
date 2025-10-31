@@ -78,20 +78,21 @@ export class OfflineManager {
   /**
    * 列出所有离线区域
    * 
-   * @returns Promise<OfflineRegion[]> 离线区域列表
+   * @returns Promise<OfflineRegion[]> 离线区域列表（封装类型）
    */
   public async listOfflineRegions(): Promise<OfflineRegion[]> {
     return new Promise((resolve, reject) => {
       try {
-        this.nativeManager.listOfflineRegions((result: OfflineRegion[] | string) => {
+        this.nativeManager.listOfflineRegions((result: maplibre.OfflineRegion[] | string) => {
           if (typeof result === 'string') {
             // 错误情况
             hilog.error(DOMAIN, 'OfflineManager', `Failed to list offline regions: ${result}`);
             reject(new Error(result));
           } else {
-            // 成功情况 - result 已经是 OfflineRegion[] 数组
-            hilog.info(DOMAIN, 'OfflineManager', `Found ${result.length} offline regions`);
-            resolve(result);
+            // 成功情况 - 转换为封装类型
+            const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
+            hilog.info(DOMAIN, 'OfflineManager', `Found ${wrappedRegions.length} offline regions`);
+            resolve(wrappedRegions);
           }
         });
       } catch (error) {
@@ -107,7 +108,7 @@ export class OfflineManager {
    * 
    * @param definition 区域定义
    * @param metadata 元数据（可选，用于存储自定义信息如区域名称）
-   * @returns Promise<OfflineRegion> 创建的离线区域
+   * @returns Promise<OfflineRegion> 创建的离线区域（封装类型）
    */
   public async createOfflineRegion(
     definition: maplibre.OfflineTilePyramidRegionDefinition,
@@ -122,14 +123,15 @@ export class OfflineManager {
         this.nativeManager.createOfflineRegion(
           definition,
           metadataBuffer,
-          (result: OfflineRegion | string) => {
+          (result: maplibre.OfflineRegion | string) => {
             if (typeof result === 'string') {
               hilog.error(DOMAIN, 'OfflineManager', `Failed to create offline region: ${result}`);
               reject(new Error(result));
             } else {
-              // result 已经是 OfflineRegion 对象
+              // 转换为封装类型
+              const wrappedRegion = OfflineRegion.fromNative(result);
               hilog.info(DOMAIN, 'OfflineManager', 'Offline region created successfully');
-              resolve(result);
+              resolve(wrappedRegion);
             }
           }
         );
@@ -144,11 +146,12 @@ export class OfflineManager {
   /**
    * 删除离线区域
    * 
-   * @param region 要删除的离线区域
+   * @param region 要删除的离线区域（封装类型）
    */
   public async deleteOfflineRegion(region: OfflineRegion): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // 直接调用封装类的方法
         region.delete((error?: string) => {
           if (error) {
             reject(new Error(error));

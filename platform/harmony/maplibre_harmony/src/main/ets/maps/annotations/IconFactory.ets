@@ -3,6 +3,7 @@ import resourceManager from '@ohos.resourceManager';
 import fs from '@ohos.file.fs';
 import maplibre from 'libmaplibre.so';
 import { TooManyIconsException } from '../exceptions/TooManyIconsException';
+import { Icon } from './Icon';
 
 /**
  * 颜色信息接口
@@ -72,7 +73,7 @@ export class IconFactory {
   private static instance: IconFactory | null = null;
   
   private nextId: number = 0;
-  private defaultMarkerIcon: maplibre.Icon | null = null;
+  private defaultMarkerIcon: Icon | null = null;
   private resourceMgr: resourceManager.ResourceManager | null = null;
   private pixelRatio: number = 1.0;
 
@@ -129,22 +130,21 @@ export class IconFactory {
    * 
    * @param pixelMap PixelMap 对象（HarmonyOS 图像对象）
    * @param iconId 可选的图标ID，如果不提供则自动生成
-   * @returns Icon 实例（NAPI 对象）
+   * @returns Icon 封装类实例
    * @throws TooManyIconsException 如果 ID 计数器溢出
    * @throws Error 如果 PixelMap 无效或创建失败
    * 
    * @deprecated 推荐使用 fromResource() 或 fromPath() 以获得更好的性能
    */
-  public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): maplibre.Icon {
+  public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): Icon {
     // 性能警告：此方法存在 PixelMap 数据复制开销
     console.warn('[IconFactory] fromPixelMap has performance overhead. ' +
                  'Consider using fromResource() or fromPath() for better performance.');
     
     const id = iconId || this.generateUniqueIconId();
     
-    // 直接使用 NAPI Icon 构造函数（旧方法，有性能开销）
-    // PixelMap → C++ PremultipliedImage 转换在构造函数中完成（会复制数据）
-    return new maplibre.Icon(id, pixelMap, this.pixelRatio);
+    // 使用封装类的内部创建方法
+    return Icon.createInternal(id, pixelMap, this.pixelRatio);
   }
 
   /**
@@ -156,11 +156,11 @@ export class IconFactory {
    * 
    * @param pixelMap PixelMap 对象
    * @param reuseIdentifier 复用标识符（已弃用，将被忽略）
-   * @returns Icon 实例（NAPI 对象）
+   * @returns Icon 封装类实例
    * @throws TooManyIconsException 如果 ID 计数器溢出
    * @deprecated 建议直接使用 fromPixelMap()，由 IconManager 管理图标复用
    */
-  public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): maplibre.Icon {
+  public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): Icon {
     // reuseIdentifier 参数被忽略，NAPI Icon 通过 ID 来唯一标识
     return this.fromPixelMap(pixelMap);
   }
@@ -175,7 +175,7 @@ export class IconFactory {
    * 
    * @param resource 资源对象 (使用 $r 语法，例如 $r('app.media.marker'))
    * @param reuseIdentifier 可选的复用标识符（已弃用，将被忽略）
-   * @returns Promise<Icon> Icon 实例
+   * @returns Promise<Icon> Icon 封装类实例
    * @throws Error 如果 ResourceManager 未设置
    * @throws Error 如果资源不存在或加载失败
    * 
@@ -184,7 +184,7 @@ export class IconFactory {
    * const icon = await iconFactory.fromResource($r('app.media.marker_icon'));
    * ```
    */
-  public async fromResource(resource: Resource, reuseIdentifier?: string): Promise<maplibre.Icon> {
+  public async fromResource(resource: Resource, reuseIdentifier?: string): Promise<Icon> {
     if (!this.resourceMgr) {
       throw new Error(
         '[IconFactory] ResourceManager not set. ' +
@@ -227,7 +227,7 @@ export class IconFactory {
    * 
    * @param absolutePath 图片文件的绝对路径
    * @param reuseIdentifier 可选的复用标识符（已弃用，将被忽略）
-   * @returns Promise<Icon> Icon 实例
+   * @returns Promise<Icon> Icon 封装类实例
    * @throws Error 如果文件不存在、不是文件或加载失败
    * 
    * @example
@@ -235,7 +235,7 @@ export class IconFactory {
    * const icon = await iconFactory.fromPath('/data/storage/el2/base/haps/entry/files/marker.png');
    * ```
    */
-  public async fromPath(absolutePath: string, reuseIdentifier?: string): Promise<maplibre.Icon> {
+  public async fromPath(absolutePath: string, reuseIdentifier?: string): Promise<Icon> {
     try {
       // 1. 检查文件是否存在且为文件类型
       const stat = fs.statSync(absolutePath);
@@ -278,7 +278,7 @@ export class IconFactory {
    * 
    * @param fileName rawfile 文件名 (例如 'marker.png'，不需要路径前缀)
    * @param iconId 可选的图标ID，如果不提供则自动生成
-   * @returns Promise<Icon> Icon 实例
+   * @returns Promise<Icon> Icon 封装类实例
    * @throws Error 如果 ResourceManager 未设置
    * @throws Error 如果 rawfile 不存在或加载失败
    * 
@@ -291,7 +291,7 @@ export class IconFactory {
    * const icon2 = await iconFactory.fromRawfile('marker.png', 'my-custom-marker');
    * ```
    */
-  public async fromRawfile(fileName: string, iconId?: string): Promise<maplibre.Icon> {
+  public async fromRawfile(fileName: string, iconId?: string): Promise<Icon> {
     if (!this.resourceMgr) {
       throw new Error(
         '[IconFactory] ResourceManager not set. ' +
@@ -337,7 +337,7 @@ export class IconFactory {
    *   会自动重新创建新的默认图标
    * - 默认图标使用固定 ID: {@link DEFAULT_MARKER_ICON_ID}
    * 
-   * @returns Promise<Icon> 默认 Icon 实例
+   * @returns Promise<Icon> 默认 Icon 封装类实例
    * 
    * @example
    * ```typescript
@@ -345,7 +345,7 @@ export class IconFactory {
    * marker.setIcon(defaultIcon.getId());
    * ```
    */
-  public async defaultMarker(): Promise<maplibre.Icon> {
+  public async defaultMarker(): Promise<Icon> {
     // 检查缓存的默认图标是否有效
     if (this.defaultMarkerIcon && !this.defaultMarkerIcon.isReleased()) {
       return this.defaultMarkerIcon;
@@ -360,10 +360,11 @@ export class IconFactory {
     try {
       // 策略 1: 尝试使用 C++ 层程序化生成（最优性能）
       try {
-        this.defaultMarkerIcon = maplibre.IconFactory.createDefaultMarker(
+        const nativeIcon = maplibre.IconFactory.createDefaultMarker(
           IconFactory.DEFAULT_MARKER_ICON_ID,
           48  // 48x48 像素
         );
+        this.defaultMarkerIcon = Icon.fromNative(nativeIcon);
         console.info('[IconFactory] Default marker icon created by C++ (programmatic)');
         return this.defaultMarkerIcon;
       } catch (cppError) {
@@ -402,7 +403,7 @@ export class IconFactory {
    * @param iconId Icon 标识符（必须提供）
    * @param pixelMap PixelMap 对象
    * @param reuseIdentifier 可选的复用标识符（已弃用，将被忽略）
-   * @returns Icon 实例（NAPI 对象）
+   * @returns Icon 封装类实例
    * 
    * @example
    * ```typescript
@@ -410,8 +411,8 @@ export class IconFactory {
    * const icon = iconFactory.recreate('my-saved-icon-id', pixelMap);
    * ```
    */
-  public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): maplibre.Icon {
-    return new maplibre.Icon(iconId, pixelMap, this.pixelRatio);
+  public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): Icon {
+    return Icon.createInternal(iconId, pixelMap, this.pixelRatio);
   }
 
   /**
@@ -444,10 +445,10 @@ export class IconFactory {
    * - 格式：RGBA_8888
    * - ID：使用 {@link DEFAULT_MARKER_ICON_ID}
    * 
-   * @returns Promise<Icon> 程序生成的后备 Icon 实例
+   * @returns Promise<Icon> 程序生成的后备 Icon 封装类实例
    * @throws Error 如果创建失败
    */
-  private async createFallbackMarkerIcon(): Promise<maplibre.Icon> {
+  private async createFallbackMarkerIcon(): Promise<Icon> {
     try {
       // 图标规格
       const width = 48;

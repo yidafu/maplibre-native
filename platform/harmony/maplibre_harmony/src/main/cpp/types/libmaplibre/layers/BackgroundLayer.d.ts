@@ -3,6 +3,8 @@
  * 背景图层 API (NAPI 类)
  */
 
+import type { ColorValue, NumberValue, StringValue } from '../LayerPropertyTypes';
+
 /**
  * BackgroundLayer - 背景图层
  * 用于渲染地图背景
@@ -16,24 +18,21 @@ export class BackgroundLayer {
 
     /**
      * 设置背景颜色
-     * @param color 颜色值（CSS 颜色字符串）
-     * @returns 返回 this 以支持链式调用
+     * @param color 颜色值或Expression
      */
-    setBackgroundColor(color: string): this;
+    setBackgroundColor(color: ColorValue): this;
 
     /**
      * 设置背景不透明度
-     * @param opacity 不透明度（0.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setBackgroundOpacity(opacity: number): this;
+    setBackgroundOpacity(opacity: NumberValue): this;
 
     /**
      * 设置背景图案
-     * @param pattern 图案名称（需要先通过 addImage 添加）
-     * @returns 返回 this 以支持链式调用
+     * @param pattern 图案名称或Expression
      */
-    setBackgroundPattern(pattern: string): this;
+    setBackgroundPattern(pattern: StringValue): this;
 
     /**
      * 获取背景颜色
@@ -56,4 +55,18 @@ export class BackgroundLayer {
      * 获取图层类型
      */
     getType(): string;
+
+    /**
+     * 设置图层可见性
+     */
+    setVisibility(visibility: 'visible' | 'none'): this;
+    getVisibility(): 'visible' | 'none';
+
+    /**
+     * 设置最小/最大缩放级别
+     */
+    setMinZoom(zoom: number): this;
+    getMinZoom(): number;
+    setMaxZoom(zoom: number): this;
+    getMaxZoom(): number;
 }

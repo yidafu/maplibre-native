@@ -9,13 +9,14 @@ export { Annotation } from './Annotation';
 export { AnnotationType } from './AnnotationType';
 
 // Icon 相关
-// Icon 现在由 NAPI 提供，从 libmaplibre.so 导入
-// 用户可以通过 maplibre.Icon 访问，或通过 IconFactory 创建
+// Icon 封装类，不再直接暴露 NAPI Icon
+export { Icon } from './Icon';
 export { IconFactory } from './IconFactory';
 export { IconManager } from './IconManager';
 
 // Marker 相关
-// Marker 现在由 NAPI 提供，从 libmaplibre.so 导入
+// Marker 封装类，不再直接暴露 NAPI Marker
+export { Marker } from './Marker';
 export { MarkerOptions } from './MarkerOptions';
 export { MarkerDragState } from './MarkerDragState';
 export { MarkerManager } from './MarkerManager';

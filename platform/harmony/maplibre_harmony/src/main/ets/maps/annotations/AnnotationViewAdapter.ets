@@ -1,7 +1,7 @@
 import maplibre from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 
-type Marker = maplibre.Marker;
+import { Marker } from './Marker';
 
 /**
  * AnnotationViewAdapter - 自定义 Annotation 视图适配器

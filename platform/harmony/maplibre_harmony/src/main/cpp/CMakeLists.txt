@@ -107,6 +107,8 @@ add_library(maplibre
     napi/bindings/icon/icon_napi.cpp
     napi/bindings/icon_factory/icon_factory_napi.hpp
     napi/bindings/icon_factory/icon_factory_napi.cpp
+    napi/bindings/expression/expression_napi.hpp
+    napi/bindings/expression/expression_napi.cpp
     icon/icon_factory.hpp
     icon/icon_factory.cpp
     napi/bindings/style/style_napi.hpp
@@ -143,6 +145,8 @@ add_library(maplibre
     # Bitmap API 绑定
     bitmap/bitmap_harmony.hpp
     bitmap/bitmap_harmony.cpp
+    bitmap/bitmap_napi.hpp
+    bitmap/bitmap_napi.cpp
     
     # Camera API 绑定
     camera/camera_position_harmony.hpp
@@ -159,6 +163,10 @@ add_library(maplibre
     # Style components - Light
     style/light_harmony.hpp
     style/light_harmony.cpp
+    
+    # Style factory for creating wrappers
+    style/layer_source_factory_harmony.hpp
+    style/layer_source_factory_harmony.cpp
     
     # GeoJSON NAPI 转换层
     geojson/util.hpp

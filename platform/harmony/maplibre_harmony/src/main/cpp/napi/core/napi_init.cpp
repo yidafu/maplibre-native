@@ -3,6 +3,8 @@
 #include "napi/bindings/marker/marker_napi.hpp"
 #include "napi/bindings/icon/icon_napi.hpp"
 #include "napi/bindings/icon_factory/icon_factory_napi.hpp"
+// Bitmap
+#include "bitmap/bitmap_napi.hpp"
 // Geometry types
 #include "geometry/lat_lng_harmony.hpp"
 // GeoJSON NAPI 类
@@ -23,6 +25,8 @@
 // Style API bindings (NAPI 对象)
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/bindings/style_builder_napi.hpp"
+// Expression NAPI 类
+#include "napi/bindings/expression/expression_napi.hpp"
 // Source NAPI 类
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
@@ -76,6 +80,12 @@ static napi_value Init(napi_env env, napi_value exports) {
     
     // 初始化 IconFactory 类
     maplibre::harmony::IconFactoryNAPI::Init(env, exports);
+    
+    // 初始化 Expression 类
+    maplibre::harmony::ExpressionNAPI::Init(env, exports);
+    
+    // 初始化 Bitmap 类
+    mbgl::harmony::BitmapNAPI::Init(env, exports);
     
     // 初始化 Style API 绑定 (NAPI 对象)
     maplibre::harmony::StyleNAPI::Init(env, exports);

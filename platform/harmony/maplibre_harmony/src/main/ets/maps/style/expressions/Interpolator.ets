@@ -4,13 +4,13 @@
  * 用于 interpolate 表达式的第一个参数
  */
 
-import { Expression } from './Expression';
+import { ExpressionBuilder } from './Expression';
 
 /**
  * 插值器基类
  */
-export class Interpolator extends Expression<Object> {
-  constructor(operator: string, ...args: Expression[]) {
+export class Interpolator extends ExpressionBuilder<Object> {
+  constructor(operator: string, ...args: ExpressionBuilder[]) {
     super(operator, ...args);
   }
 
@@ -24,13 +24,13 @@ export class Interpolator extends Expression<Object> {
   }
 
   /**
-   * 创建指数插值器（Expression 参数）
+   * 创建指数插值器（ExpressionBuilder 参数）
    * 
    * 指数插值使用指定的底数进行指数变化
    * 
-   * @param base 指数底数（Expression）
+   * @param base 指数底数（ExpressionBuilder）
    */
-  public static exponential(base: Expression<number>): Interpolator;
+  public static exponential(base: ExpressionBuilder<number>): Interpolator;
 
   /**
    * 创建指数插值器（数字参数）
@@ -42,13 +42,13 @@ export class Interpolator extends Expression<Object> {
   /**
    * 创建指数插值器的实现
    */
-  public static exponential(base: Expression<number> | number): Interpolator {
-    const baseExpr = typeof base === 'number' ? Expression.literal(base) : base;
+  public static exponential(base: ExpressionBuilder<number> | number): Interpolator {
+    const baseExpr = typeof base === 'number' ? ExpressionBuilder.literal(base) : base;
     return new Interpolator('exponential', baseExpr);
   }
 
   /**
-   * 创建三次贝塞尔曲线插值器（Expression 参数）
+   * 创建三次贝塞尔曲线插值器（ExpressionBuilder 参数）
    * 
    * 使用四个控制点定义的三次贝塞尔曲线进行插值
    * 
@@ -58,10 +58,10 @@ export class Interpolator extends Expression<Object> {
    * @param y2 第二个控制点 y 坐标
    */
   public static cubicBezier(
-    x1: Expression<number>,
-    y1: Expression<number>,
-    x2: Expression<number>,
-    y2: Expression<number>
+    x1: ExpressionBuilder<number>,
+    y1: ExpressionBuilder<number>,
+    x2: ExpressionBuilder<number>,
+    y2: ExpressionBuilder<number>
   ): Interpolator;
 
   /**
@@ -78,15 +78,15 @@ export class Interpolator extends Expression<Object> {
    * 创建三次贝塞尔曲线插值器的实现
    */
   public static cubicBezier(
-    x1: Expression<number> | number,
-    y1: Expression<number> | number,
-    x2: Expression<number> | number,
-    y2: Expression<number> | number
+    x1: ExpressionBuilder<number> | number,
+    y1: ExpressionBuilder<number> | number,
+    x2: ExpressionBuilder<number> | number,
+    y2: ExpressionBuilder<number> | number
   ): Interpolator {
-    const x1Expr = typeof x1 === 'number' ? Expression.literal(x1) : x1;
-    const y1Expr = typeof y1 === 'number' ? Expression.literal(y1) : y1;
-    const x2Expr = typeof x2 === 'number' ? Expression.literal(x2) : x2;
-    const y2Expr = typeof y2 === 'number' ? Expression.literal(y2) : y2;
+    const x1Expr = typeof x1 === 'number' ? ExpressionBuilder.literal(x1) : x1;
+    const y1Expr = typeof y1 === 'number' ? ExpressionBuilder.literal(y1) : y1;
+    const x2Expr = typeof x2 === 'number' ? ExpressionBuilder.literal(x2) : x2;
+    const y2Expr = typeof y2 === 'number' ? ExpressionBuilder.literal(y2) : y2;
     return new Interpolator('cubic-bezier', x1Expr, y1Expr, x2Expr, y2Expr);
   }
 }

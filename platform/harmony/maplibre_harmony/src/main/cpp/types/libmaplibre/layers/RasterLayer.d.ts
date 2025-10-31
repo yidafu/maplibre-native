@@ -3,6 +3,8 @@
  * 栅格图层 API (NAPI 类)
  */
 
+import type { NumberValue } from '../LayerPropertyTypes';
+
 /**
  * RasterLayer - 栅格图层
  * 用于渲染栅格瓦片数据
@@ -17,45 +19,39 @@ export class RasterLayer {
 
     /**
      * 设置栅格不透明度
-     * @param opacity 不透明度（0.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setRasterOpacity(opacity: number): this;
+    setRasterOpacity(opacity: NumberValue): this;
 
     /**
      * 设置栅格色相旋转
-     * @param hueRotate 色相旋转角度（度）
-     * @returns 返回 this 以支持链式调用
+     * @param hueRotate 色相旋转角度或Expression
      */
-    setRasterHueRotate(hueRotate: number): this;
+    setRasterHueRotate(hueRotate: NumberValue): this;
 
     /**
      * 设置栅格最小亮度
-     * @param brightnessMin 最小亮度（0.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param brightnessMin 最小亮度或Expression（0.0 - 1.0）
      */
-    setRasterBrightnessMin(brightnessMin: number): this;
+    setRasterBrightnessMin(brightnessMin: NumberValue): this;
 
     /**
      * 设置栅格最大亮度
-     * @param brightnessMax 最大亮度（0.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param brightnessMax 最大亮度或Expression（0.0 - 1.0）
      */
-    setRasterBrightnessMax(brightnessMax: number): this;
+    setRasterBrightnessMax(brightnessMax: NumberValue): this;
 
     /**
      * 设置栅格饱和度
-     * @param saturation 饱和度（-1.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param saturation 饱和度或Expression（-1.0 - 1.0）
      */
-    setRasterSaturation(saturation: number): this;
+    setRasterSaturation(saturation: NumberValue): this;
 
     /**
      * 设置栅格对比度
-     * @param contrast 对比度（-1.0 - 1.0）
-     * @returns 返回 this 以支持链式调用
+     * @param contrast 对比度或Expression（-1.0 - 1.0）
      */
-    setRasterContrast(contrast: number): this;
+    setRasterContrast(contrast: NumberValue): this;
 
     /**
      * 获取图层 ID
@@ -71,6 +67,33 @@ export class RasterLayer {
      * 获取数据源 ID
      */
     getSourceId(): string;
+
+    /**
+     * 设置图层可见性
+     */
+    setVisibility(visibility: 'visible' | 'none'): this;
+    getVisibility(): 'visible' | 'none';
+
+    /**
+     * 设置最小/最大缩放级别
+     */
+    setMinZoom(zoom: number): this;
+    getMinZoom(): number;
+    setMaxZoom(zoom: number): this;
+    getMaxZoom(): number;
+
+    /**
+     * 设置源图层
+     */
+    setSourceLayer(sourceLayer: string): this;
+    getSourceLayer(): string;
+
+    /**
+     * 设置图层过滤器
+     * @param filter 过滤器表达式数组
+     */
+    setFilter(filter: Object[]): this;
+    getFilter(): Object[] | null;
     
     // ==================== 新增属性 ====================
     
