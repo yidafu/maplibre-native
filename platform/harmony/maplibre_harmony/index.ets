@@ -14,11 +14,7 @@ export type {
   RectangleLiteral,
   Size,
   Padding,
-  CameraOptionsLiteral,
-  GeoJsonGeometry,
-  GeoJsonProperties,
-  GeoJsonFeature,
-  GeoJsonFeatureCollection
+  CameraOptionsLiteral
 } from './src/main/ets/maps/types/NativeTypes';
 
 

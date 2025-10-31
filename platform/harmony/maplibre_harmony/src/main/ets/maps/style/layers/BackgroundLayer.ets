@@ -52,17 +52,17 @@ export class BackgroundLayer {
     return this;
   }
 
-  setBackgroundColor(color: string | Object): BackgroundLayer {
+  setBackgroundColor(color: ESObject): BackgroundLayer {
     this.nativeInstance.setBackgroundColor(color);
     return this;
   }
 
-  setBackgroundOpacity(opacity: number | Object): BackgroundLayer {
+  setBackgroundOpacity(opacity: ESObject): BackgroundLayer {
     this.nativeInstance.setBackgroundOpacity(opacity);
     return this;
   }
 
-  setBackgroundPattern(pattern: string | Object): BackgroundLayer {
+  setBackgroundPattern(pattern: ESObject): BackgroundLayer {
     this.nativeInstance.setBackgroundPattern(pattern);
     return this;
   }

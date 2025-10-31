@@ -3,8 +3,8 @@
  * 对齐 Android MapView 的所有监听器接口
  */
 
-import { RenderingStats } from '../RenderingStats';
-import { TileOperation } from '../types';
+import { RenderingStats } from '../renderer/RenderingStats';
+import { TileOperation } from '../types/NativeTypes';
 
 // ========== 相机事件监听器 ==========
 

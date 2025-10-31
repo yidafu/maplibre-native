@@ -63,12 +63,12 @@ export class FillLayer {
 
   // ========== Fill 绘制属性方法 ==========
 
-  setFillColor(value: Object): FillLayer {
+  setFillColor(value: ESObject): FillLayer {
     this.nativeInstance.setFillColor(value);
     return this;
   }
 
-  setFillOpacity(value: Object): FillLayer {
+  setFillOpacity(value: ESObject): FillLayer {
     this.nativeInstance.setFillOpacity(value);
     return this;
   }

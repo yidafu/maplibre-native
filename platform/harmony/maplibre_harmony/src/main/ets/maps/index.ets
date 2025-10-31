@@ -16,11 +16,11 @@ export {
   TileOperation,
   UserTrackingMode,
   CameraMoveReason
-} from './types';
-export type { Margins } from './types';
+} from './types/NativeTypes';
+export type { Margins } from './types/NativeTypes';
 
 // ========== 渲染统计 ==========
-export { RenderingStats } from './RenderingStats';
+export { RenderingStats } from './renderer/RenderingStats';
 
 // ========== UI 设置 ==========
 export { UiSettings, FocalPoint, CompassMargins } from './UiSettings';
@@ -191,6 +191,7 @@ export type {
 // ========== 表达式 ==========
 export {
   Expression,
+  ExpressionBuilder, // deprecated: use Expression instead
   ExpressionLiteral,
   ExpressionLiteralArray,
   ExpressionMap,

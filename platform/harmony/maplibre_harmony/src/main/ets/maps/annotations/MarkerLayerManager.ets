@@ -181,7 +181,7 @@ export class MarkerLayerManager {
     
     // Icon 旋转角度：使用 Expression 从 feature properties 获取
     // 支持每个 Marker 有不同的旋转角度
-    layer.setIconRotate(Expression.get("rotation"));
+    layer.setIconRotate(Expression.get("rotation").toArray() as Object);
     
     // Icon 锚点：默认 bottom（底部中心）
     layer.setIconAnchor('bottom');
@@ -199,7 +199,7 @@ export class MarkerLayerManager {
         Expression.eq(Expression.get("visible"), Expression.literal(false)),
         Expression.literal(0),  // visible=false 时透明度为 0
         Expression.get("alpha")  // 否则使用 alpha 值
-      ).toArray()
+      ).toArray() as Object
     );
     
     console.info('MarkerLayerManager: SymbolLayer configured with data-driven expressions successfully');

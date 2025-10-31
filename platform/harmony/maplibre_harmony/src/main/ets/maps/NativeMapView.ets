@@ -20,8 +20,8 @@ import { LogoView } from './widgets/LogoView';
 import { ScaleBarView, ScaleBarUnit } from './widgets/ScaleBarView';
 import { CompassPosition } from './widgets/CompassPosition';
 import { CompassVisibility } from './widgets/CompassVisibility';
-import { RenderingStats } from './RenderingStats';
-import { RenderingRefreshMode } from './types';
+import { RenderingStats } from './renderer/RenderingStats';
+import { RenderingRefreshMode } from './types/NativeTypes';
 import {
   OnCameraWillChangeListener,
   OnCameraIsChangingListener,

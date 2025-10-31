@@ -86,7 +86,7 @@ export class UiSettings {
   // ==================== 指南针配置 ====================
   
   // 指南针启用状态
-  private compassEnabled: boolean = false;
+  private compassEnabled: boolean = true;
   
   // 指南针可见性模式
   private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
@@ -106,7 +106,7 @@ export class UiSettings {
   // ==================== Logo 配置 ====================
   
   // Logo 启用状态
-  private logoEnabled: boolean = false;
+  private logoEnabled: boolean = true;
   
   // Logo 边距
   private logoMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
@@ -120,7 +120,7 @@ export class UiSettings {
   // ==================== ScaleBar 配置 ====================
   
   // ScaleBar 启用状态
-  private scaleBarEnabled: boolean = false;  // 默认不启用
+  private scaleBarEnabled: boolean = true;  // 默认启用
   
   // ScaleBar 单位系统
   private scaleBarUnit: ScaleBarUnit = ScaleBarUnit.Metric;

@@ -63,32 +63,32 @@ export class SymbolLayer {
 
   // ========== Symbol 图标属性方法 ==========
 
-  setIconImage(value: Object): SymbolLayer {
+  setIconImage(value: ESObject): SymbolLayer {
     this.nativeInstance.setIconImage(value);
     return this;
   }
 
-  setIconSize(value: Object): SymbolLayer {
+  setIconSize(value: ESObject): SymbolLayer {
     this.nativeInstance.setIconSize(value);
     return this;
   }
 
-  setIconRotate(value: Object): SymbolLayer {
+  setIconRotate(value: ESObject): SymbolLayer {
     this.nativeInstance.setIconRotate(value);
     return this;
   }
 
-  setIconAnchor(value: Object): SymbolLayer {
+  setIconAnchor(value: ESObject): SymbolLayer {
     this.nativeInstance.setIconAnchor(value);
     return this;
   }
 
-  setIconAllowOverlap(value: Object): SymbolLayer {
+  setIconAllowOverlap(value: ESObject): SymbolLayer {
     this.nativeInstance.setIconAllowOverlap(value);
     return this;
   }
 
-  setIconOpacity(value: Object): SymbolLayer {
+  setIconOpacity(value: ESObject): SymbolLayer {
     this.nativeInstance.setIconOpacity(value);
     return this;
   }

@@ -55,3 +55,8 @@ export {
   OnMapReadyCallback
 } from './MapEventListeners';
 
+// 回调接口
+export { OnFpsChangedListener } from './OnFpsChangedListener';
+export { StateCallback } from './StateCallback';
+export { ViewCallback } from './ViewCallback';
+
