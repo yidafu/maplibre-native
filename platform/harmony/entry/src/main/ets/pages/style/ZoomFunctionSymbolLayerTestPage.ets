@@ -1,0 +1,130 @@
+/**
+ * Zoom Function Symbol Layer Test Page
+ * 缩放函数符号图层测试页面
+ */
+
+import { TestPageLayout } from '../common/TestPageLayout';
+import { NativeMapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+
+@Entry
+@Component
+struct ZoomFunctionSymbolLayerTestPage {
+  private mapController: MapLibreMap | null = null;
+  @State private currentZoom: number = 10;
+  
+  aboutToDisappear() {
+    if (this.mapController) {
+      this.mapController.destroy();
+      this.mapController = null;
+    }
+  }
+  
+  private onMapReady = (mapView: NativeMapView): void => {
+    const options = new MapLibreMapOptions();
+    this.mapController = new MapLibreMap(mapView, options);
+    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, this.currentZoom);
+    
+    setTimeout(() => this.addSymbolLayer(), 1000);
+  };
+  
+  private addSymbolLayer = (): void => {
+    if (!this.mapController) return;
+    
+    const geojson = {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [116.4074, 39.9042]
+        },
+        properties: {
+          title: '缩放测试'
+        }
+      }]
+    };
+    
+    const source = new GeoJsonSource('zoom-source', JSON.stringify(geojson));
+    this.mapController.getStyle()?.addSource(source);
+    
+    const layer = new SymbolLayer('zoom-layer', 'zoom-source');
+    layer.setProperties({
+      'text-field': ['get', 'title'],
+      'text-size': 14
+    });
+    this.mapController.getStyle()?.addLayer(layer);
+    
+    showToast('缩放函数图层已添加');
+  };
+  
+  private changeZoom = (zoom: number): void => {
+    if (!this.mapController) return;
+    
+    this.currentZoom = zoom;
+    this.mapController.easeTo({ zoom: zoom }, 500);
+    showToast(`缩放级别: ${zoom}`);
+  };
+  
+  @Builder
+  buildMapContent() {
+    NativeMapView({
+      onMapReady: this.onMapReady
+    })
+    .width('100%')
+    .height('100%')
+  }
+  
+  @Builder
+  buildControlPanel() {
+    Column({ space: 12 }) {
+      Text('缩放函数')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+      
+      Text(`当前缩放: ${this.currentZoom.toFixed(1)}`)
+        .fontSize(14)
+        .fontColor('#666')
+      
+      Row() {
+        Text('缩放:')
+          .fontSize(14)
+          .width(60)
+        Slider({
+          value: this.currentZoom,
+          min: 1,
+          max: 20,
+          step: 1
+        })
+        .layoutWeight(1)
+        .onChange((value: number) => {
+          this.changeZoom(value);
+        })
+      }
+      
+      Text('说明: 符号大小随缩放级别变化')
+        .fontSize(12)
+        .fontColor('#666')
+        .margin({ top: 8 })
+    }
+    .width('100%')
+    .padding(16)
+  }
+  
+  build() {
+    Column() {
+      TestPageLayout({
+        title: 'Zoom Function Symbol Layer',
+        description: '缩放函数符号图层',
+        showActionBar: true,
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
+      })
+    }
+    .width('100%')
+    .height('100%')
+  }
+}
+
+

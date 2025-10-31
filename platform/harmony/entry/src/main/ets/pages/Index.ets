@@ -1,13 +1,18 @@
 /**
  * MapLibre Native for HarmonyOS
  * 测试页面导航首页
+ * 
+ * 基于 Android 和 iOS 测试应用的结构重新实现
+ * 包含 18 个主要分类，涵盖所有 MapLibre 功能
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
 import { DOMAIN } from '../constants/HiLogConstants';
 
-// 测试页面配置
+/**
+ * 测试页面项配置
+ */
 class TestPageItem {
   title: string = '';
   description: string = '';
@@ -22,7 +27,9 @@ class TestPageItem {
   }
 }
 
-// 测试页面分组
+/**
+ * 测试页面分组
+ */
 class TestPageGroup {
   groupName: string = '';
   groupIcon: string = '';
@@ -44,302 +51,187 @@ struct Index {
   @State private selectedGroupIndex: number = 0;
   
   aboutToAppear() {
-    // 延迟初始化数据，避免阻塞首屏加载
-    this.testPageGroups = [
-    // 🗺️ 地图基础
-    new TestPageGroup('地图基础', '🗺️', [
-      new TestPageItem(
-        '基础地图测试',
-        '测试地图渲染、初始化和相机基础移动（jumpTo/easeTo/flyTo）',
-        'pages/BasicMapPage',
-        '🗺️'
-      ),
-      new TestPageItem(
-        '卫星影像地图',
-        '测试加载卫星影像栅格图层',
-        'pages/SatelliteMapPage',
-        '🛰️'
-      ),
-      new TestPageItem(
-        'OSM 栅格地图',
-        '测试加载 OpenStreetMap 栅格图层',
-        'pages/OSMRasterMapPage',
-        '🗺️'
-      ),
-      new TestPageItem(
-        '核心 API 测试',
-        '测试内容边距、像素比例、矩形转换等新增核心 API',
-        'pages/CoreAPITestPage',
-        '🔧'
-      ),
-      new TestPageItem(
-        '地图状态',
-        '测试地图加载状态和重绘功能',
-        'pages/MapStateTestPage',
-        '🔄'
-      ),
-      new TestPageItem(
-        '手势系统测试',
-        '测试平移、缩放、旋转、倾斜等手势功能和惯性动画',
-        'pages/GestureTestPage',
-        '👆'
-      ),
-      new TestPageItem(
-        '相机动画测试',
-        '测试 easeTo 平滑动画和 flyTo 飞行动画',
-        'pages/CameraAnimationTestPage',
-        '🎬'
-      ),
-      new TestPageItem(
-        '相机事件监听器',
-        '测试相机移动、空闲等各种相机事件监听器（onMove/onIdle）',
-        'pages/CameraListenerTestPage',
-        '👂'
-      ),
-      new TestPageItem(
-        '相机边界计算',
-        '测试边界计算和可视区域控制功能',
-        'pages/CameraBoundsTestPage',
-        '📐'
-      ),
-      new TestPageItem(
-        '相机参数限制',
-        '测试缩放和倾斜角度限制功能',
-        'pages/CameraLimitsTestPage',
-        '🔒'
-      ),
-    ]),
-    
-    // 📍 标注与交互
-    new TestPageGroup('标注与交互', '📍', [
-      new TestPageItem(
-        'Marker 完整功能测试',
-        '测试 Marker 添加、删除、事件、动画、拖拽、InfoWindow、批量操作等所有功能',
-        'pages/MarkerTestPage',
-        '📍'
-      ),
-      new TestPageItem(
-        'InfoWindow 测试',
-        '测试 InfoWindow 显示、隐藏、样式定制、边界检测等功能',
-        'pages/InfoWindowTestPage',
-        '💬'
-      ),
-      new TestPageItem(
-        'Icon 管理测试',
-        '测试 Icon 创建、共享、引用计数和自动清理功能',
-        'pages/IconTestPage',
-        '🎯'
-      ),
-      new TestPageItem(
-        'AnnotationView 测试',
-        '测试自定义注解视图、视图复用、拖拽和变换功能',
-        'pages/AnnotationViewTestPage',
-        '🎨'
-      ),
-      new TestPageItem(
-        '折线/多边形',
-        '测试折线和多边形注解功能',
-        'pages/PolylinePolygonTestPage',
-        '📏'
-      ),
-      new TestPageItem(
-        'LocationComponent 测试',
-        '测试用户定位功能、追踪模式和渲染模式',
-        'pages/LocationComponentTestPage',
-        '🧭'
-      ),
-      new TestPageItem(
-        '定位flyTo测试',
-        '测试获取定位并使用flyTo动画移动到定位位置（zoom=6）',
-        'pages/LocationFlyToTestPage',
-        '🎯'
-      ),
-      new TestPageItem(
-        '坐标转换',
-        '测试各种坐标系转换计算',
-        'pages/CoordinateConversionTestPage',
-        '🧭'
-      ),
-    ]),
-    
-    // 🎨 样式系统
-    new TestPageGroup('样式系统', '🎨', [
-      new TestPageItem(
-        'Source 数据源测试',
-        '测试 GeoJSON、Vector、Raster 等各种数据源类型和配置',
-        'pages/SourceTestPage',
-        '📊'
-      ),
-      new TestPageItem(
-        'Layer 图层测试',
-        '测试 Fill、Line、Circle、Symbol、Heatmap 等各种图层类型',
-        'pages/LayerTestPage',
-        '🔨'
-      ),
-      new TestPageItem(
-        'Style 地图样式测试',
-        '测试地图样式切换、样式信息获取、图层可见性控制等样式相关功能',
-        'pages/StyleTestPage',
-        '🎨'
-      ),
-      new TestPageItem(
-        'Style URL 切换',
-        '测试不同地图样式 URL 的动态切换和样式信息获取',
-        'pages/StyleUrlTestPage',
-        '🔄'
-      ),
-      new TestPageItem(
-        '光照系统',
-        '测试地图光照配置和效果',
-        'pages/LightTestPage',
-        '💡'
-      ),
-      new TestPageItem(
-        '样式过渡选项',
-        '测试样式切换过渡动画配置',
-        'pages/StyleTransitionTestPage',
-        '🎬'
-      ),
-      new TestPageItem(
-        'Expression 测试',
-        '测试各种 Expression 操作符的功能',
-        'pages/ExpressionTestPage',
-        '🧮'
-      ),
-      new TestPageItem(
-        'Expression 性能测试',
-        '测试 Expression 系统的性能和优化效果',
-        'pages/ExpressionPerformanceTest',
-        '⚡'
-      ),
-      new TestPageItem(
-        'Expression 实际案例',
-        '展示 Expression 在实际场景中的应用示例',
-        'pages/ExpressionRealWorldExamples',
-        '💡'
-      ),
-      new TestPageItem(
-        'SymbolLayer Expression 示例',
-        '演示 Symbol 图层中 Expression 的应用',
-        'pages/SymbolLayerExpressionExample',
-        '🔤'
-      ),
-      new TestPageItem(
-        'Expression 属性测试',
-        '测试所有新实现的 Expression 属性方法（114个NAPI方法）',
-        'pages/NewExpressionPropertiesTest',
-        '🧪'
-      ),
-      new TestPageItem(
-        'PropertyFactory 测试',
-        '测试所有新增的 PropertyFactory 属性方法',
-        'pages/NewPropertyFactoryTest',
-        '🏭'
-      ),
-      new TestPageItem(
-        '聚类 Expression 示例',
-        '演示如何使用 Expression 实现数据聚类功能（需API完善）',
-        'pages/ClusterExpressionExample',
-        '🎯'
-      ),
-      new TestPageItem(
-        '数据驱动样式示例',
-        '演示如何使用 Expression 实现数据驱动样式（需API完善）',
-        'pages/DataDrivenStyleExample',
-        '📊'
-      ),
-    ]),
-    
-    // 🛠️ 工具与控件
-    new TestPageGroup('工具与控件', '🛠️', [
-      new TestPageItem(
-        '指南针测试',
-        '测试指南针组件的显示和交互功能',
-        'pages/CompassTestPage',
-        '🧭'
-      ),
-      new TestPageItem(
-        'Logo 和比例尺测试',
-        '测试地图 Logo 和比例尺组件的显示和配置',
-        'pages/LogoScaleBarTestPage',
-        '📏'
-      ),
-      new TestPageItem(
-        '坐标投影转换',
-        '测试地理坐标和屏幕坐标互转、可见区域计算',
-        'pages/ProjectionTestPage',
-        '🗺️'
-      ),
-      new TestPageItem(
-        '地图快照',
-        '测试后台渲染地图生成高质量快照图像',
-        'pages/MapSnapshotterTestPage',
-        '📸'
-      ),
-      new TestPageItem(
-        '特性查询',
-        '测试点击和框选查询地图要素功能',
-        'pages/QueryFeaturesTestPage',
-        '🔍'
-      ),
-      new TestPageItem(
-        '事件监听器集成',
-        '测试所有 Android/iOS 风格的地图事件监听器',
-        'pages/listeners/EventListenersTestPage',
-        '📡'
-      ),
-      new TestPageItem(
-        'TestPageLayout 使用示例',
-        '展示如何使用 TestPageLayout 组件创建统一风格的测试页面',
-        'pages/TestPageExample',
-        '📝'
-      ),
-    ]),
-    
-    // 💾 离线与优化
-    new TestPageGroup('离线与优化', '💾', [
-      new TestPageItem(
-        '离线地图下载测试',
-        '测试离线地图区域的创建、下载、暂停、恢复和删除功能',
-        'pages/OfflineMapTestPage',
-        '📥'
-      ),
-      new TestPageItem(
-        '离线缓存管理测试',
-        '测试环境缓存清理、数据库压缩、重置和配置管理功能',
-        'pages/OfflineCacheTestPage',
-        '🗑️'
-      ),
-      new TestPageItem(
-        '瓦片LOD配置',
-        '测试瓦片细节级别参数配置',
-        'pages/TileLodTestPage',
-        '🎚️'
-      ),
-      new TestPageItem(
-        '瓦片预加载',
-        '测试瓦片预加载优化功能',
-        'pages/TilePrefetchTestPage',
-        '🚀'
-      ),
-    ]),
-    
-    // 🚀 高级功能
-    new TestPageGroup('高级功能', '🚀', [
-      new TestPageItem(
-        '多地图实例测试',
-        '测试多个地图实例的同时显示、独立交互和资源管理',
-        'pages/MultiMapTestPage',
-        '🗺️🗺️🗺️'
-      ),
-      new TestPageItem(
-        '二次进入回归测试',
-        '自动化测试二次进入地图的稳定性和资源管理',
-        'pages/SecondEntryRegressionTestPage',
-        '🔄'
-      ),
-    ]),
+    // 初始化测试页面数据，采用 Android 的 18 个分类结构
+    this.testPageGroups = this.initializeTestPages();
+  }
+  
+  /**
+   * 初始化所有测试页面，按照 Android TestApp 的分类结构
+   * 参考: platform/android/MapLibreAndroidTestApp
+   */
+  private initializeTestPages(): TestPageGroup[] {
+    return [
+      // ==================== 1. _Basic ====================
+      this.createBasicGroup(),
+      
+      // ==================== 2. Annotation ====================
+      this.createAnnotationGroup(),
+      
+      // ==================== 3. Camera ====================
+      this.createCameraGroup(),
+      
+      // ==================== 4. Custom Layer ====================
+      this.createCustomLayerGroup(),
+      
+      // ==================== 5. Fragment ====================
+      this.createFragmentGroup(),
+      
+      // ==================== 8. Offline ====================
+      this.createOfflineGroup(),
+      
+      // ==================== 9. Styling ====================
+      this.createStylingGroup(),
+      
+      // ==================== 10. Features ====================
+      this.createFeaturesGroup(),
+      
+      // ==================== 11. Storage ====================
+      this.createStorageGroup(),
+      
+      // ==================== 12. Events ====================
+      this.createEventsGroup(),
+      
     ];
+  }
+  
+  /**
+   * 1. _Basic - 基础地图功能
+   */
+  private createBasicGroup(): TestPageGroup {
+    return new TestPageGroup('Basic', '🗺️', [
+      new TestPageItem('Simple Map', '简单地图显示', 'pages/basic/SimpleMapTestPage', '🗺️'),
+      new TestPageItem('Debug Mode', '调试模式和性能信息', 'pages/basic/DebugModeTestPage', '🐛'),
+      new TestPageItem('Double Map', '双地图实例', 'pages/basic/DoubleMapTestPage', '🗺️🗺️'),
+      new TestPageItem('Map Padding', '地图内边距', 'pages/basic/MapPaddingTestPage', '📐'),
+      new TestPageItem('Map Change', '地图事件监听', 'pages/basic/MapChangeTestPage', '📡'),
+      new TestPageItem('Map In Dialog', '对话框中的地图', 'pages/basic/MapInDialogTestPage', '💬'),
+      new TestPageItem('Overlay Map', '叠加层地图', 'pages/basic/OverlayMapTestPage', '📄'),
+      new TestPageItem('Bottom Sheet', '底部抽屉', 'pages/basic/BottomSheetTestPage', '📋'),
+      new TestPageItem('Visibility Change', '可见性变化', 'pages/basic/VisibilityChangeTestPage', '👁️'),
+      new TestPageItem('Local Glyph', '本地字体', 'pages/basic/LocalGlyphTestPage', '🔤'),
+    ]);
+  }
+  
+  /**
+   * 2. Annotation - 标注功能
+   */
+  private createAnnotationGroup(): TestPageGroup {
+    return new TestPageGroup('Annotation', '📍', [
+      new TestPageItem('Bulk Marker', '批量标注 (1000+)', 'pages/annotation/BulkMarkerTestPage', '📍'),
+    ]);
+  }
+  
+  /**
+   * 3. Camera - 相机控制（已有测试页面）
+   */
+  private createCameraGroup(): TestPageGroup {
+    return new TestPageGroup('Camera', '📷', [
+      new TestPageItem('Camera Position', '相机位置控制', 'pages/camera/CameraPositionTestPage', '📍'),
+      new TestPageItem('Camera Update', '相机更新方法', 'pages/camera/CameraUpdateTestPage', '🔄'),
+      new TestPageItem('Animation Type', '动画类型', 'pages/camera/CameraAnimationTypeTestPage', '🎭'),
+      new TestPageItem('LatLng Bounds', 'LatLng 边界', 'pages/camera/LatLngBoundsTestPage', '🗺️'),
+      new TestPageItem('Bounds For Camera', '相机边界适配', 'pages/camera/LatLngBoundsForCameraTestPage', '📐'),
+      new TestPageItem('Manual Zoom', '手动缩放', 'pages/camera/ManualZoomTestPage', '🔍'),
+      new TestPageItem('Max Min Zoom', '缩放限制', 'pages/camera/MaxMinZoomTestPage', '🎚️'),
+      new TestPageItem('Pitch', '倾斜控制', 'pages/camera/PitchTestPage', '⛰️'),
+      new TestPageItem('Rotate By', '旋转控制', 'pages/camera/RotateByTestPage', '🔄'),
+      new TestPageItem('Scroll By', '滚动偏移', 'pages/camera/ScrollByTestPage', '⬆️'),
+      new TestPageItem('Gesture Detector', '手势检测', 'pages/camera/GestureDetectorTestPage', '👆'),
+      new TestPageItem('Gesture', '手势系统', 'pages/camera/GestureTestPage', '👋'),
+    ]);
+  }
+  
+  /**
+   * 4. Custom Layer - 自定义图层
+   */
+  private createCustomLayerGroup(): TestPageGroup {
+    return new TestPageGroup('Custom Layer', '🎨', [
+      new TestPageItem('Custom Layer', '自定义渲染图层', 'pages/customlayer/CustomLayerTestPage', '🎨'),
+    ]);
+  }
+  
+  /**
+   * 5. Fragment - 片段和多实例
+   */
+  private createFragmentGroup(): TestPageGroup {
+    return new TestPageGroup('Fragment', '🧩', [
+      new TestPageItem('Multi Map', '多地图实例', 'pages/fragment/MultiMapTestPage', '🗺️🗺️'),
+    ]);
+  }
+  
+  
+  /**
+   * 8. Offline - 离线地图
+   */
+  private createOfflineGroup(): TestPageGroup {
+    return new TestPageGroup('Offline', '💾', [
+      new TestPageItem('Offline Manager', '离线管理器', 'pages/offline/OfflineManagerTestPage', '💾'),
+      new TestPageItem('Download Region', '下载区域', 'pages/offline/DownloadRegionTestPage', '⬇️'),
+      new TestPageItem('Delete Region', '删除区域', 'pages/offline/DeleteRegionTestPage', '🗑️'),
+    ]);
+  }
+  
+  /**
+   * 9. Styling - 样式系统
+   */
+  private createStylingGroup(): TestPageGroup {
+    return new TestPageGroup('Styling', '🎨', [
+      new TestPageItem('Runtime Style', '运行时样式', 'pages/style/RuntimeStyleTestPage', '🎨'),
+      new TestPageItem('Style', '样式管理', 'pages/style/StyleTestPage', '🎨'),
+      new TestPageItem('Style URL', '样式URL切换', 'pages/style/StyleUrlTestPage', '🔗'),
+      new TestPageItem('Style Transition', '样式过渡', 'pages/style/StyleTransitionTestPage', '🎬'),
+      new TestPageItem('Circle Layer', '圆形图层', 'pages/style/CircleLayerTestPage', '⭕'),
+      new TestPageItem('Fill Layer', '填充图层', 'pages/style/FillLayerTestPage', '🔷'),
+      new TestPageItem('Line Layer', '线条图层', 'pages/style/LineLayerTestPage', '📈'),
+      new TestPageItem('Symbol Layer', '符号图层', 'pages/style/SymbolLayerTestPage', '🔤'),
+      new TestPageItem('Background Layer', '背景图层', 'pages/style/BackgroundLayerTestPage', '⬜'),
+      new TestPageItem('Fill Extrusion', '填充拉伸', 'pages/style/FillExtrusionTestPage', '🏢'),
+      new TestPageItem('Heatmap Layer', '热力图', 'pages/style/HeatmapLayerTestPage', '🔥'),
+      new TestPageItem('Hillshade Layer', '山体阴影', 'pages/style/HillshadeLayerTestPage', '⛰️'),
+      new TestPageItem('Raster Source', '栅格数据源', 'pages/style/RasterSourceTestPage', '🖼️'),
+      new TestPageItem('Animated Image', '动画图片', 'pages/style/AnimatedImageSourceTestPage', '🎞️'),
+      new TestPageItem('Real Time GeoJSON', '实时 GeoJSON', 'pages/style/RealTimeGeoJsonTestPage', '⚡'),
+      new TestPageItem('GeoJSON Clustering', 'GeoJSON 聚类', 'pages/style/GeoJsonClusteringTestPage', '🎯'),
+      new TestPageItem('Data Driven Style', '数据驱动样式', 'pages/style/DataDrivenStyleTestPage', '📊'),
+      new TestPageItem('Gradient Line', '渐变线', 'pages/style/GradientLineTestPage', '🌈'),
+      new TestPageItem('Custom Sprite', '自定义精灵', 'pages/style/CustomSpriteTestPage', '🖼️'),
+      new TestPageItem('Source', '数据源管理', 'pages/style/SourceTestPage', '📊'),
+      new TestPageItem('Layer', '图层管理', 'pages/style/LayerTestPage', '🔨'),
+      new TestPageItem('Light', '光照系统', 'pages/style/LightTestPage', '💡'),
+      new TestPageItem('Expression', 'Expression 测试', 'pages/style/ExpressionTestPage', '🧮'),
+    ]);
+  }
+  
+  /**
+   * 10. Features - 要素查询
+   */
+  private createFeaturesGroup(): TestPageGroup {
+    return new TestPageGroup('Features', '🔍', [
+      new TestPageItem('Point Click Query', '点击查询', 'pages/feature/PointClickQueryTestPage', '👆'),
+      new TestPageItem('Box Count', '框选计数', 'pages/feature/QueryRenderedFeaturesBoxCountTestPage', '🔢'),
+      new TestPageItem('Box Highlight', '框选高亮', 'pages/feature/QueryRenderedFeaturesBoxHighlightTestPage', '✨'),
+      new TestPageItem('Symbol Count', '符号计数', 'pages/feature/QueryRenderedFeaturesBoxSymbolCountTestPage', '🔤'),
+      new TestPageItem('Feature Properties', '要素属性', 'pages/feature/QueryRenderedFeaturesPropertiesTestPage', '📋'),
+      new TestPageItem('Source Features', '数据源要素', 'pages/feature/QuerySourceFeaturesTestPage', '📊'),
+    ]);
+  }
+  
+  /**
+   * 11. Storage - 存储管理
+   */
+  private createStorageGroup(): TestPageGroup {
+    return new TestPageGroup('Storage', '💿', [
+      new TestPageItem('Cache Management', '缓存管理', 'pages/storage/CacheManagementTestPage', '🗑️'),
+    ]);
+  }
+  
+  /**
+   * 12. Events - 事件监听
+   */
+  private createEventsGroup(): TestPageGroup {
+    return new TestPageGroup('Events', '📡', [
+      new TestPageItem('Observer', '事件观察者', 'pages/events/ObserverTestPage', '👁️'),
+    ]);
   }
 
   build() {

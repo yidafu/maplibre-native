@@ -1,0 +1,117 @@
+import { FillLayer, GeoJsonSource, MapLibreMap, NativeMapView, Polygon } from 'maplibre_harmony';
+/**
+ * Runtime Style Test Page
+ * 运行时样式测试
+ * 参考 Android: RuntimeStyleActivity
+ */
+import { TestPageLayout } from '../common/TestPageLayout';
+import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+
+@Entry
+@Component
+struct RuntimeStyleTestPage {
+  private mapController: MapLibreMap | null = null;
+  @State private layerCount: number = 0;
+  
+  build() {
+    Column() {
+    TestPageLayout({
+      title: 'Runtime Style',
+      description: '运行时修改样式',
+      showActionBar: true,
+      mapContent: this.buildMapContent,
+      actionButtons: this.buildActionButtons
+    })
+      .width('100%')
+      .height('100%')
+    }
+  }
+
+  @Builder
+  buildMapContent() {
+    NativeMapView({
+      styleUrl: DEFAULT_STYLE_URLS.streets,
+      onMapReady: (map: MapLibreMap) => {
+        this.mapController = map;
+        map.jumpTo(0, 39.9, 116.4, 0, 10);
+      }
+    })
+    .width('100%')
+    .height('100%')
+  }
+
+  @Builder
+  buildActionButtons() {
+    Button('添加图层')
+      .onClick(() => {
+        this.addTestLayer();
+      })
+    
+    Button('移除图层')
+      .onClick(() => {
+        this.removeTestLayer();
+      })
+    
+    Button('获取图层列表')
+      .onClick(() => {
+        if (this.mapController) {
+          const layers = this.mapController.getLayers();
+          this.layerCount = layers.length;
+          showToast(`当前有 ${layers.length} 个图层`);
+        }
+      })
+  }
+
+  private addTestLayer(): void {
+    if (!this.mapController) return;
+    
+    try {
+      // 添加数据源
+      const source = new GeoJsonSource('test-fill-source');
+      const geojson = {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [116.3, 39.8],
+              [116.5, 39.8],
+              [116.5, 40.0],
+              [116.3, 40.0],
+              [116.3, 39.8]
+            ]]
+          }
+        }]
+      };
+      source.setGeoJson(JSON.stringify(geojson));
+      this.mapController.addSource(source);
+      
+      // 添加填充图层
+      const layer = new FillLayer('test-fill-layer', 'test-fill-source');
+      layer.setFillColor('#8033B5E5');
+      layer.setFillOpacity(0.6);
+      this.mapController.addLayer(layer);
+      
+      showToast('已添加测试图层');
+    } catch (error) {
+      showToast(`添加失败: ${error}`);
+    }
+      .width('100%')
+      .height('100%')
+  }
+
+  private removeTestLayer(): void {
+    if (!this.mapController) return;
+    
+    try {
+      this.mapController.removeLayer('test-fill-layer');
+      this.mapController.removeSource('test-fill-source');
+      showToast('已移除测试图层');
+    } catch (error) {
+      showToast(`移除失败: ${error}`);
+    }
+      .width('100%')
+      .height('100%')
+}
+

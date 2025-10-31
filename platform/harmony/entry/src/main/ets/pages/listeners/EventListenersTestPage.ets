@@ -11,7 +11,7 @@
  * 参考: Android/iOS MapLibre 事件监听器 API
  */
 
-import { TestPageLayout } from '../../components/TestPageLayout';
+import { TestPageLayout } from '../common/TestPageLayout';
 import { maplibre } from 'maplibre_harmony';
 import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
@@ -492,7 +492,7 @@ struct EventListenersTestPage {
     this.logEvent('测试', '🎬 重置视图 (返回北京)');
     
     try {
-      this.map.jumpTo(39.9042, 116.4074, 12, 0, 0);
+      this.map.jumpTo(0, 39.9042, 116.4074, 0, 12);
       this.statusMessage = '视图已重置';
     } catch (error) {
       this.logEvent('测试', `❌ 重置视图失败: ${error.message}`);
