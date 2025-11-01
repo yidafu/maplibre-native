@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -62,7 +62,7 @@ struct MapInDialogTestPage {
         .fontWeight(FontWeight.Bold)
         .margin({ bottom: 12 });
       
-      NativeMapView({
+      MapView({
         onMapReady: this.onDialogMapReady
       })
         .width('100%')
@@ -83,6 +83,19 @@ struct MapInDialogTestPage {
     .borderRadius(12);
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Stack() {
       TestPageLayout({
@@ -90,13 +103,7 @@ struct MapInDialogTestPage {
         description: '对话框中的地图',
         showActionBar: true,
         actionButtons: this.actionButtonsBuilder,
-        mapContent: () => {
-          NativeMapView({
-            onMapReady: this.onMapReady
-          })
-            .width('100%')
-            .height('100%');
-        }
+        mapContent: (): void => this.mapContentBuilder()
       });
       
       // 自定义对话框

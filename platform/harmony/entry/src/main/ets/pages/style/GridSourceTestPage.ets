@@ -4,8 +4,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, LineLayer, GeoJsonSource } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, LineLayer, GeoJsonSource, GeoJson, IFeature, IFeatureCollection } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -20,17 +20,16 @@ struct GridSourceTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
     
     setTimeout(() => this.addGrid(), 1000);
   };
   
-  private generateGrid = (): string => {
-    const features = [];
+  private generateGrid = (): IFeatureCollection => {
+    const features: IFeature[] = [];
     const minLat = 39.85, maxLat = 39.95;
     const minLng = 116.35, maxLng = 116.45;
     const latStep = (maxLat - minLat) / this.gridSize;
@@ -39,46 +38,31 @@ struct GridSourceTestPage {
     // 水平线
     for (let i = 0; i <= this.gridSize; i++) {
       const lat = minLat + i * latStep;
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: [[minLng, lat], [maxLng, lat]]
-        }
-      });
+      features.push(GeoJson.lineStringFeature([[minLng, lat], [maxLng, lat]]));
     }
     
     // 垂直线
     for (let i = 0; i <= this.gridSize; i++) {
       const lng = minLng + i * lngStep;
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: [[lng, minLat], [lng, maxLat]]
-        }
-      });
+      features.push(GeoJson.lineStringFeature([[lng, minLat], [lng, maxLat]]));
     }
     
-    return JSON.stringify({
-      type: 'FeatureCollection',
-      features: features
-    });
+    return GeoJson.featureCollection(features);
   };
   
   private addGrid = (): void => {
     if (!this.mapController) return;
     
     const gridGeoJson = this.generateGrid();
-    const source = new GeoJsonSource('grid-source', gridGeoJson);
+    const source = new GeoJsonSource('grid-source');
+    source.setGeoJson(gridGeoJson);
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new LineLayer('grid-layer', 'grid-source');
-    layer.setProperties({
-      'line-color': '#888888',
-      'line-width': 1,
-      'line-opacity': 0.6
-    });
+    // TODO: setProperties() not available - layer.setProperties({
+    //   'line-width': 1,
+    //   'line-opacity': 0.6
+    // });
     this.mapController.getStyle()?.addLayer(layer);
     
     showToast('网格已添加');
@@ -96,11 +80,13 @@ struct GridSourceTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
@@ -133,7 +119,7 @@ struct GridSourceTestPage {
     .width('100%')
     .padding(16)
   }
-  
+
   build() {
     Column() {
       TestPageLayout({

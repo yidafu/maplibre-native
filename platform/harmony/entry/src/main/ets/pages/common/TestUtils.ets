@@ -1,4 +1,5 @@
-import { LatLng } from 'maplibre_harmony';
+import { LatLng, DEFAULT_STYLE_URLS as MAPLIBRE_DEFAULT_STYLE_URLS } from 'maplibre_harmony';
+import type { DefaultStyleUrls } from 'maplibre_harmony';
 /**
  * 测试工具函数
  * 提供测试页面常用的工具方法
@@ -48,10 +49,10 @@ export function randomLatLng(
  * 生成随机颜色
  */
 export function randomColor(): string {
-  const letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+  const letters = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
   let color = '#';
   for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
+    color += letters[Math.floor(Math.random() * 16)]
   }
   return color;
 }
@@ -65,14 +66,9 @@ export function delay(ms: number): Promise<void> {
 
 /**
  * 默认地图样式 URL
+ * 从 maplibre_harmony 导入并重新导出
  */
-export class StyleUrls {
-  streets: string = 'https://demotiles.maplibre.org/style.json';
-  satellite: string = 'https://api.maptiler.com/maps/hybrid/style.json?key=YOUR_KEY';
-  dark: string = 'https://api.maptiler.com/maps/dark/style.json?key=YOUR_KEY';
-}
-
-export const DEFAULT_STYLE_URLS = new StyleUrls();
+export const DEFAULT_STYLE_URLS: DefaultStyleUrls = MAPLIBRE_DEFAULT_STYLE_URLS;
 
 /**
  * 默认测试坐标
@@ -93,6 +89,39 @@ export class TestLocations {
 }
 
 export const TEST_LOCATIONS = new TestLocations();
+
+/**
+ * 默认地图配置接口
+ */
+export interface MapConfig {
+  // 纬度（杭州）
+  latitude: number;
+  // 经度（杭州）
+  longitude: number;
+  // 默认缩放级别
+  zoom: number;
+  // 默认方位角
+  bearing: number;
+  // 默认倾斜角
+  pitch: number;
+}
+
+/**
+ * 默认地图配置实现类
+ */
+export class DefaultMapConfig implements MapConfig {
+  // 杭州经纬度
+  latitude: number = 30.2741;
+  longitude: number = 120.1551;
+  // 默认缩放级别
+  zoom: number = 8;
+  // 默认方位角
+  bearing: number = 0;
+  // 默认倾斜角
+  pitch: number = 0;
+}
+
+export const DEFAULT_MAP_CONFIG = new DefaultMapConfig();
 
 /**
  * 加载 GeoJSON 数据（示例）

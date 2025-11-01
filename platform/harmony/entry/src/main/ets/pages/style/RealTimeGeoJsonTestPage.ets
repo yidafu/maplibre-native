@@ -1,11 +1,12 @@
-import { CircleLayer, GeoJsonSource, LatLng, MapLibreMap, NativeMapView, ScreenPoint } from 'maplibre_harmony';
 /**
  * Real Time GeoJson Test Page
  * 实时 GeoJSON 数据更新测试
  * 参考 Android: RealTimeGeoJsonActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
+import { CircleLayer, GeoJson, GeoJsonSource, LatLng, MapLibreMap, MapView, ScreenPoint } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -35,16 +36,17 @@ struct RealTimeGeoJsonTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 12);
         this.initRealtimeLayer(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -62,19 +64,12 @@ struct RealTimeGeoJsonTestPage {
   
   private initRealtimeLayer(map: MapLibreMap): void {
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [this.currentLng, this.currentLat]
-          }
-        }]
-      };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.pointFeature([this.currentLng, this.currentLat])
+      ]);
       
       const source = new GeoJsonSource('realtime-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       map.addSource(source);
       
       const layer = new CircleLayer('realtime-layer', 'realtime-source');
@@ -110,21 +105,14 @@ struct RealTimeGeoJsonTestPage {
       this.currentLat += (Math.random() - 0.5) * 0.01;
       this.currentLng += (Math.random() - 0.5) * 0.01;
       
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [this.currentLng, this.currentLat]
-          }
-        }]
-      };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.pointFeature([this.currentLng, this.currentLat])
+      ]);
       
       try {
         const source = this.mapController?.getSource('realtime-source');
         if (source) {
-          (source as GeoJsonSource).setGeoJson(JSON.stringify(geojson));
+          (source as GeoJsonSource).setGeoJson(geojson);
           this.updateCount++;
         }
       } catch (error) {

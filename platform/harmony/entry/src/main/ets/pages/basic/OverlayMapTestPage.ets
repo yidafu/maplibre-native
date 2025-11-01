@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -70,6 +70,19 @@ struct OverlayMapTestPage {
     }
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Stack() {
       TestPageLayout({
@@ -77,13 +90,7 @@ struct OverlayMapTestPage {
         description: '叠加层地图',
         showActionBar: true,
         actionButtons: this.actionButtonsBuilder,
-        mapContent: () => {
-          NativeMapView({
-            onMapReady: this.onMapReady
-          })
-            .width('100%')
-            .height('100%');
-        }
+        mapContent: (): void => this.mapContentBuilder()
       });
       
       // 叠加层

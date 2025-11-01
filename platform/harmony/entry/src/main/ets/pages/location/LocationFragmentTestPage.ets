@@ -17,7 +17,8 @@ import {
   RenderMode,
   PermissionManager
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView } from 'maplibre_harmony';
 
 @Entry
 @Component
@@ -26,7 +27,7 @@ struct LocationFragmentTestPage {
   private locationComponent: LocationComponent | null = null;
   @State private fragmentActive: boolean = true;
   @State private locationActive: boolean = false;
-  @State private lifecycleLog: string[] = [];
+  @State private lifecycleLog:  string[] = [];
   
   aboutToAppear() {
     this.addLifecycleLog('aboutToAppear');
@@ -53,10 +54,12 @@ struct LocationFragmentTestPage {
   
   private onMapReady = async (mapView: NativeMapView): Promise<void> => {
     this.addLifecycleLog('onMapReady');
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+    if (!mapView) return;
+    this.mapController = mapView as Object as MapLibreMap;
+    if (this.mapController) {
+      this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
+      this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+    }
     
     setTimeout(() => this.initLocationComponent(), 1500);
   };
@@ -65,8 +68,8 @@ struct LocationFragmentTestPage {
     if (!this.mapController) return;
     
     try {
-      const permissionManager = new PermissionManager(getContext(this));
-      const granted = await permissionManager.requestLocationPermissions();
+      const result = await PermissionManager.requestLocationPermission(getContext(this));
+      const granted = result.granted;
       
       if (!granted) {
         this.addLifecycleLog('权限被拒绝');
@@ -123,8 +126,12 @@ struct LocationFragmentTestPage {
   @Builder
   buildMapContent() {
     if (this.fragmentActive) {
-      NativeMapView({
-        onMapReady: this.onMapReady
+      MapView({
+        onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
       })
       .width('100%')
       .height('100%')

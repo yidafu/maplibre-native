@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -50,8 +50,12 @@ struct SimpleMapTestPage {
    */
   @Builder
   mapContentBuilder() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
       .width('100%')
       .height('100%');
@@ -63,7 +67,7 @@ struct SimpleMapTestPage {
         title: 'Simple Map',
         description: '简单地图显示',
         showActionBar: false,
-        mapContent: this.mapContentBuilder
+        mapContent: ():void => this.mapContentBuilder()
       });
     }
     .width('100%')

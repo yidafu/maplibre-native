@@ -1,4 +1,4 @@
-import { LatLng, NativeMapView, maplibre, Marker, Icon } from 'maplibre_harmony';
+import { LatLng, MapView, maplibre, Marker, Icon, MapLibreMap, NativeMapView } from 'maplibre_harmony';
 import router from '@ohos.router';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
@@ -15,8 +15,8 @@ type NullableNativeMapView = NativeMapView | null;
 @Component
 struct CoreAPITestPage {
   private mapView: NullableNativeMapView = null;
-  @State private testResults: string[] = [];
-  @State private currentPadding: number[] = [0, 0, 0, 0];
+  @State private testResults:  string[] = [];
+  @State private currentPadding: number[] = [0, 0, 0, 0]
   @State private pixelRatio: number = 1.0;
   @State private showPaddingOverlay: boolean = true;
   
@@ -49,13 +49,13 @@ struct CoreAPITestPage {
     
     try {
       // 测试设置边距
-      const newPadding = [100, 50, 80, 50];
+      const newPadding = [100, 50, 80, 50]
       this.mapView.setContentPadding(newPadding);
       this.addTestResult(`✅ setContentPadding: [${newPadding.join(', ')}]`);
       
       // 测试获取边距
-      const padding = this.mapView.getContentPadding();
-      this.currentPadding = padding as number[];
+      const padding: number[] = this.mapView.getContentPadding() as number[];
+      this.currentPadding = padding;
       this.addTestResult(`✅ getContentPadding: [${this.currentPadding.join(', ')}]`);
       
       // 验证值是否正确
@@ -79,8 +79,8 @@ struct CoreAPITestPage {
     }
     
     try {
-      const ratio = this.mapView.getPixelRatio();
-      this.pixelRatio = ratio as number;
+      const ratio: number = this.mapView.getPixelRatio();
+      this.pixelRatio = ratio;
       this.addTestResult(`✅ getPixelRatio: ${this.pixelRatio.toFixed(2)}x`);
       
       // 测试矩形转换
@@ -192,18 +192,19 @@ struct CoreAPITestPage {
     try {
       // 测试 latLng -> pixel
       const latLng = LatLng.create(39.9042, 116.4074);
-      const pixel = this.mapView.pixelForLatLng(latLng.latitude, latLng.longitude);
+      const pixel: maplibre.ScreenCoordinate = this.mapView.pixelForLatLng(latLng.latitude, latLng.longitude) as maplibre.ScreenCoordinate;
       this.addTestResult(`✅ pixelForLatLng: (${pixel.x.toFixed(1)}, ${pixel.y.toFixed(1)})`);
       
       // 测试 pixel -> latLng
-      const convertedLatLng = this.mapView.latLngForPixel(pixel.x, pixel.y) as maplibre.LatLng;
+      const convertedLatLng: maplibre.LatLng = this.mapView.latLngForPixel(pixel.x, pixel.y) as maplibre.LatLng;
       this.addTestResult(`✅ latLngForPixel: (${convertedLatLng.latitude.toFixed(4)}, ${convertedLatLng.longitude.toFixed(4)})`);
       
       // 测试投影米坐标
-      const projectedMeters = this.mapView.projectedMetersForLatLng(39.9042, 116.4074) as maplibre.ProjectedMeters;
+      const projectedMeters: maplibre.ProjectedMeters = this.mapView.projectedMetersForLatLng(39.9042, 116.4074) as maplibre.ProjectedMeters;
       this.addTestResult(`✅ projectedMeters: northing=${projectedMeters.northing.toFixed(2)}, easting=${projectedMeters.easting.toFixed(2)}`);
     } catch (error) {
-      this.addTestResult(`❌ 坐标转换测试失败: ${error.message}`);
+      const err = error as Error;
+      this.addTestResult(`❌ 坐标转换测试失败: ${err.message}`);
     }
   }
   
@@ -303,7 +304,7 @@ struct CoreAPITestPage {
     
     try {
       this.mapView.setContentPadding([0, 0, 0, 0]);
-      this.currentPadding = [0, 0, 0, 0];
+      this.currentPadding = [0, 0, 0, 0]
       this.addTestResult('✅ 边距已清除');
     } catch (error) {
       this.addTestResult(`❌ 清除边距失败: ${error.message}`);
@@ -318,7 +319,7 @@ struct CoreAPITestPage {
     
     try {
       // 顶部导航栏 80px，底部工具栏 120px
-      const padding = [80, 0, 120, 0];
+      const padding = [80, 0, 120, 0]
       this.mapView.setContentPadding(padding);
       this.currentPadding = padding;
       this.addTestResult(`✅ 应用示例边距: 顶${padding[0]}px, 底${padding[2]}px`);
@@ -331,26 +332,27 @@ struct CoreAPITestPage {
   buildMapContent() {
     Stack() {
       // 地图组件
-      NativeMapView({
+      MapView({
         styleUrl: "https://demotiles.maplibre.org/style.json",
-        initialLatitude: 30.2741,
-        initialLongitude: 120.1551,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
         initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView) => {
-          this.mapView = mapView as maplibre.NativeMapView;
+        onMapReady: (map: MapLibreMap) => {
+          // TODO: MapLibreMap 类型的API与 NativeMapView 不同
+          // this.mapView = map;
           hilog.info(DOMAIN, 'CoreAPITestPage', 'Map ready, running initial tests...');
           
-          // 获取设备像素比
-          if (this.mapView) {
-            try {
-              this.pixelRatio = this.mapView.getPixelRatio() as number;
-              this.addTestResult(`📱 设备像素比: ${this.pixelRatio.toFixed(2)}x`);
-            } catch (error) {
-              hilog.error(DOMAIN, 'CoreAPITestPage', `Failed to get pixel ratio: ${error.message}`);
-            }
-          }
+          // 获取设备像素比 - MapLibreMap 可能没有此方法
+          // if (this.mapView) {
+          //   try {
+          //     this.pixelRatio = this.mapView.getPixelRatio() as number;
+          //     this.addTestResult(`📱 设备像素比: ${this.pixelRatio.toFixed(2)}x`);
+          //   } catch (error) {
+          //     hilog.error(DOMAIN, 'CoreAPITestPage', `Failed to get pixel ratio: ${error.message}`);
+          //   }
+          // }
         }
       })
       
@@ -579,8 +581,8 @@ struct CoreAPITestPage {
       TestPageLayout({
         showActionBar: true,
         title: '核心 API 测试',
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')

@@ -4,8 +4,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
+import { showToast, DEFAULT_MAP_CONFIG, DEFAULT_STYLE_URLS } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -20,9 +20,8 @@ struct NoStyleTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     // 不设置样式
     showToast('地图已初始化（无样式）');
   };
@@ -38,11 +37,13 @@ struct NoStyleTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

@@ -4,8 +4,9 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, CircleLayer, GeoJsonSource } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, CircleLayer, GeoJson, GeoJsonSource } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -23,9 +24,8 @@ struct RuntimeStyleTimingTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
   };
@@ -35,25 +35,19 @@ struct RuntimeStyleTimingTestPage {
     
     const startTime = Date.now();
     
-    const geojson = {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [116.4074, 39.9042]
-        }
-      }]
-    };
+    const geojson = GeoJson.featureCollection([
+      GeoJson.pointFeature([116.4074, 39.9042])
+    ]);
     
-    const source = new GeoJsonSource(`test-source-${this.layerCount}`, JSON.stringify(geojson));
+    const source = new GeoJsonSource(`test-source-${this.layerCount}`);
+    source.setGeoJson(geojson);
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new CircleLayer(`test-layer-${this.layerCount}`, `test-source-${this.layerCount}`);
-    layer.setProperties({
-      'circle-radius': 8,
-      'circle-color': '#E74C3C'
-    });
+    // TODO: setProperties() not available - layer.setProperties({
+    //   'circle-radius': 10,
+    //   'circle-color': '#E74C3C'
+    // });
     this.mapController.getStyle()?.addLayer(layer);
     
     this.addLayerTime = Date.now() - startTime;
@@ -76,11 +70,13 @@ struct RuntimeStyleTimingTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

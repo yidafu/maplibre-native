@@ -16,7 +16,7 @@ import { router } from '@kit.ArkUI';
 @Entry
 @Component
 struct SymbolLayerExpressionExample {
-  @State examples: string[] = [];
+  @State examples:  string[] = [];
 
   aboutToAppear() {
     this.generateExamples();
@@ -34,7 +34,7 @@ struct SymbolLayerExpressionExample {
       this.example5_ColorByProperty(),
       this.example6_CombinedExpressions(),
       this.example7_TextFormatting()
-    ];
+    ]
   }
 
   /**

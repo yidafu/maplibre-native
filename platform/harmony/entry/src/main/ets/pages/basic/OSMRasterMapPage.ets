@@ -1,4 +1,4 @@
-import { LatLng, RasterLayer, RasterSource, NativeMapView, MapLibreMap, MapLibreMapOptions, Marker, Icon} from 'maplibre_harmony';
+import { LatLng, RasterLayer, RasterSource, MapView, MapLibreMap, MapLibreMapOptions, Marker, Icon, NativeMapView} from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
@@ -51,7 +51,7 @@ struct OSMRasterMapPage {
     { name: '开罗', longitude: 31.2357, latitude: 30.0444, zoom: 12 },
     { name: '里约热内卢', longitude: -43.1729, latitude: -22.9068, zoom: 12 },
     { name: '莫斯科', longitude: 37.6173, latitude: 55.7558, zoom: 12 }
-  ];
+  ]
 
   /**
    * 地图区域构建器
@@ -59,16 +59,16 @@ struct OSMRasterMapPage {
   @Builder
   buildMapContent() {
     Stack() {
-      NativeMapView({
+      MapView({
         // 使用空样式，稍后添加 OSM 栅格图层
         styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 39.9042,
-        initialLongitude: 116.4074,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
         initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView?: NativeMapView) => {
-          this.onMapReady(mapView);
+        onMapReady: (map: MapLibreMap) => {
+          this.onMapReady(map);
         }
       })
       .width('100%')
@@ -183,8 +183,8 @@ struct OSMRasterMapPage {
       TestPageLayout({
         showActionBar: true,
         title: 'OSM 栅格瓦片地图',
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -194,13 +194,13 @@ struct OSMRasterMapPage {
   /**
    * 地图就绪回调
    */
-  private onMapReady(mapView?: NativeMapView): void {
-    if (mapView) {
-      this.mapView = mapView;
+  private onMapReady(map?: MapLibreMap): void {
+    if (this.mapView) {
+      this.mapView = this.mapView;
       
       // 创建 MapLibreMap 实例
       const options = new MapLibreMapOptions();
-      this.map = new MapLibreMap(mapView, options);
+      this.map = new MapLibreMap(this.mapView, options);
       
       // 等待样式加载完成后添加 OSM 栅格图层
       setTimeout(() => {
@@ -286,7 +286,7 @@ struct OSMRasterMapPage {
    */
   private jumpToRandomLocation(): void {
     const randomIndex = Math.floor(Math.random() * this.locations.length);
-    const location = this.locations[randomIndex];
+    const location = this.locations[randomIndex]
     this.jumpToLocation(location);
   }
 

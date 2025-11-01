@@ -1,7 +1,8 @@
-import { FillLayer, LineLayer, Polygon, Polyline, NativeMapView, Marker, Icon} from 'maplibre_harmony';
+import { FillLayer, LineLayer, Polygon, Polyline, MapView, Marker, Icon, MapLibreMap, NativeMapView} from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
+import { DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 /**
  * PolylinePolygonTestPage - 折线/多边形注解测试页面
@@ -28,21 +29,23 @@ struct PolylinePolygonTestPage {
   /**
    * 地图区域构建器
    */
+  private onMapReady: (map: MapLibreMap) => void = (map: MapLibreMap): void => {
+    this.mapReady = true;
+    this.statusMessage = '⚠️ Polyline/Polygon API 尚未在 C++ 层完全实现';
+    hilog.info(DOMAIN, 'PolylinePolygonTestPage', 'Map ready');
+  };
+
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: 'https://demotiles.maplibre.org/style.json',
-      initialLatitude: 35.0,
-      initialLongitude: 115.0,
-      initialZoom: 5,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       initialBearing: 0,
       initialPitch: 0,
-      onMapReady: (mapView?: NativeMapView) => {
-        this.onMapReady(mapView);
-      }
+      onMapReady: this.onMapReady
     })
-    .width('100%')
-    .height('100%')
   }
 
   /**
@@ -133,23 +136,12 @@ struct PolylinePolygonTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '折线/多边形注解测试',
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
     .height('100%')
-
-  /**
-   * 地图就绪回调
-   */
-  private onMapReady(mapView?: NativeMapView): void {
-    if (mapView) {
-      this.mapView = mapView;
-      this.mapReady = true;
-      this.statusMessage = '⚠️ Polyline/Polygon API 尚未在 C++ 层完全实现';
-      hilog.info(DOMAIN, 'PolylinePolygonTestPage', 'Map ready');
-    }
   }
 
   /**

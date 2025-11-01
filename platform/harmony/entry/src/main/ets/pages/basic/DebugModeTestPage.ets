@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -88,21 +88,28 @@ struct DebugModeTestPage {
       .onClick(this.toggleCollisionBoxes);
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
-      title: 'Debug Mode',
-      description: '调试模式和性能信息',
-      showActionBar: true,
-      actionButtons: this.actionButtonsBuilder,
-      mapContent: () => {
-        NativeMapView({
-          onMapReady: this.onMapReady
-        })
-          .width('100%')
-          .height('100%');
-      }
-    });
+        title: 'Debug Mode',
+        description: '调试模式和性能信息',
+        showActionBar: true,
+        actionButtons: this.actionButtonsBuilder,
+        mapContent: (): void => this.mapContentBuilder()
+      });
     }
     .width('100%')
     .height('100%');

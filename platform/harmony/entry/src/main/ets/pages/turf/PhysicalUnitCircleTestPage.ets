@@ -10,8 +10,10 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, FillLayer, GeoJsonSource } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, FillLayer, GeoJson, GeoJsonSource } from 'maplibre_harmony';
+import type { Position } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -19,7 +21,7 @@ struct PhysicalUnitCircleTestPage {
   private mapController: MapLibreMap | null = null;
   @State private radius: number = 5000; // 米
   @State private steps: number = 64;
-  private center: number[] = [116.4074, 39.9042];
+  private center: number[] = [116.4074, 39.9042]
   
   aboutToDisappear() {
     if (this.mapController) {
@@ -28,9 +30,8 @@ struct PhysicalUnitCircleTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
     
@@ -40,7 +41,7 @@ struct PhysicalUnitCircleTestPage {
   /**
    * 生成物理单位圆的GeoJSON
    */
-  private generateCircle = (): string => {
+  private generateCircle = () => {
     const coordinates: number[][] = [];
     const radiusInDegrees = this.radius / 111320; // 近似转换为度
     
@@ -48,34 +49,30 @@ struct PhysicalUnitCircleTestPage {
       const angle = (i * 360 / this.steps) * Math.PI / 180;
       const lat = this.center[1] + radiusInDegrees * Math.sin(angle);
       const lng = this.center[0] + radiusInDegrees * Math.cos(angle) / Math.cos(this.center[1] * Math.PI / 180);
-      coordinates.push([lng, lat]);
+      coordinates.push([lng, lat, 0]);
     }
     
-    return JSON.stringify({
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [coordinates]
-        }
-      }]
-    });
+    const coords3d: Position[] = coordinates.map((coord: number[]): Position => [coord[0], coord[1], coord[2] || 0] as Position);
+    return GeoJson.featureCollection([
+      GeoJson.polygonFeature([coords3d])
+    ]);
   };
   
   private addCircle = (): void => {
     if (!this.mapController) return;
     
     const circleGeoJson = this.generateCircle();
-    const source = new GeoJsonSource('circle-source', circleGeoJson);
+    const source = new GeoJsonSource('circle-source');
+    source.setGeoJson(circleGeoJson);
     this.mapController.getStyle()?.addSource(source);
     
     const circleLayer = new FillLayer('circle-layer', 'circle-source');
-    circleLayer.setProperties({
-      'fill-color': '#4A90E2',
-      'fill-opacity': 0.4,
-      'fill-outline-color': '#2196F3'
-    });
+    // TODO: setProperties() not available -
+    //  circleLayer.setProperties({
+    //   'fill-color': '#4A90E2',
+    //   'fill-opacity': 0.4,
+    //   'fill-outline-color': '#2196F3'
+    // });
     this.mapController.getStyle()?.addLayer(circleLayer);
     
     showToast('物理单位圆已添加');
@@ -85,8 +82,8 @@ struct PhysicalUnitCircleTestPage {
     if (!this.mapController) return;
     
     const circleGeoJson = this.generateCircle();
-    const source = this.mapController.getStyle()?.getSourceAs('circle-source') as GeoJsonSource;
-    if (source) {
+    const source = this.mapController.getStyle()?.getSource('circle-source');
+    if (source && source instanceof GeoJsonSource) {
       source.setGeoJson(circleGeoJson);
       showToast(`半径已更新: ${this.radius}米`);
     }
@@ -94,11 +91,13 @@ struct PhysicalUnitCircleTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

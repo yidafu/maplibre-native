@@ -1,11 +1,11 @@
-import { MapLibreMap, NativeMapView, OnMapClickListener, ScreenPoint } from 'maplibre_harmony';
+import { MapLibreMap, MapView, OnMapClickListener, ScreenPoint } from 'maplibre_harmony';
 /**
  * Query Rendered Features Properties Test Page
  * 查询要素属性
  * 参考 Android: QueryRenderedFeaturesPropertiesActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -29,16 +29,17 @@ struct QueryRenderedFeaturesPropertiesTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 12);
         this.setupClickListener(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -60,30 +61,34 @@ struct QueryRenderedFeaturesPropertiesTestPage {
   }
 
   private setupClickListener(map: MapLibreMap): void {
-    const clickListener: OnMapClickListener = {
-      onMapClick: (x: number, y: number): boolean => {
-        this.queryFeatureAtPoint(x, y);
+    class MapClickListener implements OnMapClickListener {
+      page: QueryRenderedFeaturesPropertiesTestPage;
+      
+      constructor(page: QueryRenderedFeaturesPropertiesTestPage) {
+        this.page = page;
+      }
+      
+      onMapClick(x: number, y: number): boolean {
+        this.page.queryFeatureAtPoint(x, y);
         return true;
       }
-    };
+    }
     
-    map.addOnMapClickListener(clickListener);
-      .width('100%')
-
-      .height('100%')
+    map.addOnMapClickListener(new MapClickListener(this));
   }
 
   private queryFeatureAtPoint(x: number, y: number): void {
     if (!this.mapController) return;
-    
+
     try {
       const features = this.mapController.queryRenderedFeaturesForPoint(x, y);
-      
+
       if (features.length > 0) {
         const feature = features[0];
-        const props = feature.properties || {};
+        const props: Record<string, Object> = feature.properties || {};
         const propStr = JSON.stringify(props, null, 2);
-        this.featureInfo = `类型: ${feature.type}\n图层: ${feature.layer || '未知'}\n属性:\n${propStr}`;
+        const layerName: string = feature.layer || '未知';
+        this.featureInfo = `类型: ${feature.type}\n图层: ${layerName}\n属性:\n${propStr}`;
         showToast(`查询到 ${features.length} 个要素`);
       } else {
         this.featureInfo = '未查询到要素';
@@ -92,8 +97,5 @@ struct QueryRenderedFeaturesPropertiesTestPage {
     } catch (error) {
       this.featureInfo = `查询失败: ${error}`;
     }
-      .width('100%')
-
-      .height('100%')
+  }
 }
-

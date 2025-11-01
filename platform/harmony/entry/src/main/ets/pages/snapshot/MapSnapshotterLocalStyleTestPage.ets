@@ -15,18 +15,51 @@ import {
   MapSnapshotter,
   SnapshotOptions,
   MapSnapshot,
+  LatLng,
   CameraPosition,
-  LatLng
+  MapView,
+  SnapshotReadyCallback,
+  SnapshotErrorHandler
 } from 'maplibre_harmony';
-import { showToast } from '../common/TestUtils';
+import { showToast , DEFAULT_MAP_CONFIG, DEFAULT_STYLE_URLS } from '../common/TestUtils';
 import { util } from '@kit.ArkTS';
+
+class ReadyCallback implements SnapshotReadyCallback {
+  page: MapSnapshotterLocalStyleTestPage;
+  snapshotter: MapSnapshotter;
+
+  constructor(page: MapSnapshotterLocalStyleTestPage, snapshotter: MapSnapshotter) {
+    this.page = page;
+    this.snapshotter = snapshotter;
+  }
+
+  onSnapshotReady(snapshot: MapSnapshot): void {
+    this.page.snapshotImage = snapshot.getImage();
+    this.page.isGenerating = false;
+    showToast('本地样式快照已生成');
+    this.snapshotter.cancel();
+  }
+}
+
+class ErrorCallback implements SnapshotErrorHandler {
+  page: MapSnapshotterLocalStyleTestPage;
+
+  constructor(page: MapSnapshotterLocalStyleTestPage) {
+    this.page = page;
+  }
+
+  onError(error: string): void {
+    this.page.isGenerating = false;
+    showToast(`快照失败: ${error}`);
+  }
+}
 
 @Entry
 @Component
 struct MapSnapshotterLocalStyleTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private snapshotImage: PixelMap | null = null;
-  @State private isGenerating: boolean = false;
+  @State snapshotImage: PixelMap | null = null;  // 改为公开，供回调类访问
+  @State isGenerating: boolean = false;
   @State private styleJson: string = '';
   
   aboutToDisappear() {
@@ -36,9 +69,8 @@ struct MapSnapshotterLocalStyleTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.loadLocalStyle();
   };
   
@@ -72,7 +104,7 @@ struct MapSnapshotterLocalStyleTestPage {
     this.isGenerating = true;
     
     try {
-      const cameraPosition = new CameraPosition(
+      const cameraPosition = CameraPosition.create(
         LatLng.create(30, 120),
         5,
         0,
@@ -89,23 +121,8 @@ struct MapSnapshotterLocalStyleTestPage {
       };
       
       const snapshotter = new MapSnapshotter(options);
-      
-      snapshotter.start(
-        {
-          onSnapshotReady: (snapshot: MapSnapshot) => {
-            this.snapshotImage = snapshot.getImage();
-            this.isGenerating = false;
-            showToast('本地样式快照已生成');
-            snapshotter.cancel();
-          }
-        },
-        {
-          onError: (error: string) => {
-            this.isGenerating = false;
-            showToast(`快照失败: ${error}`);
-          }
-        }
-      );
+
+      snapshotter.start(new ReadyCallback(this, snapshotter) , new ErrorCallback(this) );
     } catch (error) {
       this.isGenerating = false;
       showToast(`生成失败: ${error}`);
@@ -114,11 +131,13 @@ struct MapSnapshotterLocalStyleTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

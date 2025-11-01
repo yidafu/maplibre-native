@@ -16,7 +16,7 @@ import { router } from '@kit.ArkUI';
 @Entry
 @Component
 struct ExpressionTestPage {
-  @State testResults: string[] = [];
+  @State testResults:  string[] = [];
 
   aboutToAppear() {
     this.runTests();

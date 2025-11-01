@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -42,6 +42,19 @@ struct DownloadRegionTestPage {
       });
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
@@ -49,13 +62,7 @@ struct DownloadRegionTestPage {
         description: '下载区域',
         showActionBar: true,
         actionButtons: this.actionButtonsBuilder,
-        mapContent: () => {
-          NativeMapView({
-            onMapReady: this.onMapReady
-          })
-            .width('100%')
-            .height('100%');
-        }
+        mapContent: (): void => this.mapContentBuilder()
       });
     }
     .width('100%')

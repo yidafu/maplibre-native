@@ -10,7 +10,7 @@ import { router } from '@kit.ArkUI';
 @Entry
 @Component
 struct NewPropertyFactoryTest {
-  @State testResults: string[] = [];
+  @State testResults:  string[] = [];
   @State passedCount: number = 0;
   @State failedCount: number = 0;
   @State totalCount: number = 0;

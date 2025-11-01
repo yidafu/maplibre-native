@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -102,8 +102,12 @@ struct VisibilityChangeTestPage {
       // 内容区
       Column() {
         if (this.isMapVisible) {
-          NativeMapView({
-            onMapReady: this.onMapReady
+          MapView({
+            onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
           })
             .width('100%')
             .layoutWeight(1);

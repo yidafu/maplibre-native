@@ -19,9 +19,19 @@ import {
   SnapshotOptions,
   MapSnapshot,
   CameraPosition,
-  LatLng
+  LatLng,
+  MapView,
+  SnapshotReadyCallback,
+  SnapshotErrorHandler
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+
+interface LocationInfo {
+  name: string;
+  latitude: number;
+  longitude: number;
+  zoom: number;
+}
 
 @Entry
 @Component
@@ -38,9 +48,8 @@ struct MapSnapshotterTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
   };
@@ -50,7 +59,7 @@ struct MapSnapshotterTestPage {
    */
   private captureSnapshot = async (lat: number, lng: number, zoom: number, name: string): Promise<void> => {
     try {
-      const cameraPosition = new CameraPosition(
+      const cameraPosition = CameraPosition.create(
         LatLng.create(lat, lng),
         zoom,
         0,
@@ -67,23 +76,34 @@ struct MapSnapshotterTestPage {
       
       const snapshotter = new MapSnapshotter(options);
       
-      snapshotter.start(
-        {
-          onSnapshotReady: (snapshot: MapSnapshot) => {
-            const pixelMap = snapshot.getImage();
-            this.snapshots.push(pixelMap);
-            this.snapshotCount++;
-            showToast(`快照 ${this.snapshotCount} 已生成: ${name}`);
-            snapshotter.cancel();
-          }
-        },
-        {
-          onError: (error: string) => {
-            console.error('[MapSnapshotterTestPage] Snapshot failed:', error);
-            showToast(`快照失败: ${error}`);
-          }
+      class ReadyCallback implements SnapshotReadyCallback {
+        page: MapSnapshotterTestPage;
+        snapshotter: MapSnapshotter;
+        name: string;
+        
+        constructor(page: MapSnapshotterTestPage, snapshotter: MapSnapshotter, name: string) {
+          this.page = page;
+          this.snapshotter = snapshotter;
+          this.name = name;
         }
-      );
+        
+        onSnapshotReady(snapshot: MapSnapshot): void {
+          const pixelMap = snapshot.getImage();
+          this.page.snapshots.push(pixelMap);
+          this.page.snapshotCount++;
+          showToast(`快照 ${this.page.snapshotCount} 已生成: ${this.name}`);
+          this.snapshotter.cancel();
+        }
+      }
+      
+      class ErrorCallback implements SnapshotErrorHandler {
+        onError(error: string): void {
+          console.error('[MapSnapshotterTestPage] Snapshot failed:', error);
+          showToast(`快照失败: ${error}`);
+        }
+      }
+      
+      snapshotter.start(new ReadyCallback(this, snapshotter, name) , new ErrorCallback() );
     } catch (error) {
       console.error('[MapSnapshotterTestPage] Snapshot creation failed:', error);
       showToast(`创建快照失败: ${error}`);
@@ -112,16 +132,16 @@ struct MapSnapshotterTestPage {
     
     this.isCapturing = true;
     
-    const locations = [
-      { name: '北京', ...TEST_LOCATIONS.beijing, zoom: 12 },
-      { name: '上海', ...TEST_LOCATIONS.shanghai, zoom: 12 },
-      { name: '广州', ...TEST_LOCATIONS.guangzhou, zoom: 12 },
-      { name: '深圳', ...TEST_LOCATIONS.shenzhen, zoom: 12 }
+    const locations: LocationInfo[] = [
+      { latitude: TEST_LOCATIONS.beijing.latitude, longitude: TEST_LOCATIONS.beijing.longitude, name: '北京', zoom: 12 },
+      { latitude: TEST_LOCATIONS.shanghai.latitude, longitude: TEST_LOCATIONS.shanghai.longitude, name: '上海', zoom: 12 },
+      { latitude: TEST_LOCATIONS.guangzhou.latitude, longitude: TEST_LOCATIONS.guangzhou.longitude, name: '广州', zoom: 12 },
+      { latitude: TEST_LOCATIONS.shenzhen.latitude, longitude: TEST_LOCATIONS.shenzhen.longitude, name: '深圳', zoom: 14 }
     ];
     
     for (let loc of locations) {
       await this.captureSnapshot(loc.latitude, loc.longitude, loc.zoom, loc.name);
-      await new Promise(resolve => setTimeout(resolve, 500)); // 间隔500ms
+      await new Promise<void>(resolve => setTimeout(resolve, 500)); // 间隔500ms
     }
     
     this.isCapturing = false;
@@ -139,11 +159,13 @@ struct MapSnapshotterTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

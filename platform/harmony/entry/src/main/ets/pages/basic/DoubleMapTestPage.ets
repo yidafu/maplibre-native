@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -112,8 +112,12 @@ struct DoubleMapTestPage {
             .padding(8)
             .backgroundColor('#F5F5F5');
           
-          NativeMapView({
-            onMapReady: this.onMap1Ready
+          MapView({
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            onMapReady: this.onMap1Ready,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
           })
             .width('100%')
             .layoutWeight(1);
@@ -134,8 +138,12 @@ struct DoubleMapTestPage {
             .padding(8)
             .backgroundColor('#F5F5F5');
           
-          NativeMapView({
-            onMapReady: this.onMap2Ready
+          MapView({
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            onMapReady: this.onMap2Ready,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
           })
             .width('100%')
             .layoutWeight(1);

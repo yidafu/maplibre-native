@@ -25,8 +25,9 @@ import {
   OnCameraTrackingChangedListener,
   PermissionManager
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import geoLocationManager from '@ohos.geoLocationManager';
+import { MapView } from 'maplibre_harmony';
 
 @Entry
 @Component
@@ -49,10 +50,9 @@ struct LocationModesTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
+  private onMapReady = (map: MapLibreMap): void => {
     console.info('[LocationModesTestPage] onMapReady');
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
@@ -82,24 +82,31 @@ struct LocationModesTestPage {
       this.locationComponent.activateLocationComponent(options);
       
       // 添加定位点击监听器
-      const clickListener: OnLocationClickListener = {
-        onLocationComponentClick: () => {
+      class ClickListener implements OnLocationClickListener {
+        onLocationComponentClick(): void {
           showToast('定位点被点击');
         }
-      };
-      this.locationComponent.addOnLocationClickListener(clickListener);
+      }
+      this.locationComponent.addOnLocationClickListener(new ClickListener());
       
       // 添加相机跟踪监听器
-      const trackingListener: OnCameraTrackingChangedListener = {
-        onCameraTrackingDismissed: () => {
-          this.statusMessage = '相机跟踪已取消';
-        },
-        onCameraTrackingChanged: (currentMode: number) => {
-          this.currentCameraMode = currentMode;
-          this.statusMessage = `相机模式: ${CameraMode.getName(currentMode)}`;
+      class TrackingListener implements OnCameraTrackingChangedListener {
+        page: LocationModesTestPage;
+        
+        constructor(page: LocationModesTestPage) {
+          this.page = page;
         }
-      };
-      this.locationComponent.addOnCameraTrackingChangedListener(trackingListener);
+        
+        onCameraTrackingDismissed(): void {
+          this.page.statusMessage = '相机跟踪已取消';
+        }
+        
+        onCameraTrackingChanged(currentMode: number): void {
+          this.page.currentCameraMode = currentMode;
+          this.page.statusMessage = `相机模式: ${CameraMode.getName(currentMode)}`;
+        }
+      }
+      this.locationComponent.addOnCameraTrackingChangedListener(new TrackingListener(this));
       
       this.statusMessage = '定位组件已初始化';
       showToast('定位组件已初始化');
@@ -115,8 +122,8 @@ struct LocationModesTestPage {
    */
   private requestPermissions = async (): Promise<void> => {
     try {
-      const permissionManager = new PermissionManager(getContext(this));
-      const granted = await permissionManager.requestLocationPermissions();
+      const result = await PermissionManager.requestLocationPermission(getContext(this));
+      const granted = result.granted;
       this.permissionGranted = granted;
       
       if (granted) {
@@ -207,11 +214,13 @@ struct LocationModesTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

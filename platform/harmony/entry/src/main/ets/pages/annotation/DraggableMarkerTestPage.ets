@@ -1,6 +1,6 @@
-import { LatLng, Marker, MapLibreMap, MarkerOptions, NativeMapView, OnMarkerDragListener } from 'maplibre_harmony';
+import { LatLng, Marker, MapLibreMap, MarkerOptions, MapView, OnMarkerDragListener } from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast, formatLatLng } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast, formatLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 /**
  * Draggable Marker Activity
@@ -8,11 +8,34 @@ import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast, formatLatLng } from '../
  * 参考 Android: DraggableMarkerActivity
  */
 
+class DraggableMarkerDragListener implements OnMarkerDragListener {
+  private page: DraggableMarkerTestPage;
+  
+  constructor(page: DraggableMarkerTestPage) {
+    this.page = page;
+  }
+  
+  onMarkerDragStart(marker: Marker): void {
+    this.page.dragStatus = '开始拖拽...';
+  }
+  
+  onMarkerDrag(marker: Marker): void {
+    const pos = marker.getPosition();
+    this.page.dragStatus = `拖拽中: ${formatLatLng(pos.latitude, pos.longitude, 4)}`;
+  }
+  
+  onMarkerDragEnd(marker: Marker): void {
+    const pos = marker.getPosition();
+    this.page.dragStatus = `拖拽结束: ${formatLatLng(pos.latitude, pos.longitude, 4)}`;
+    showToast('标记已移动');
+  }
+}
+
 @Entry
 @Component
 struct DraggableMarkerTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private dragStatus: string = '长按标记开始拖拽';
+  @State dragStatus: string = '长按标记开始拖拽';
   
   build() {
     Column() {
@@ -31,8 +54,11 @@ struct DraggableMarkerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: async (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 12);
@@ -47,8 +73,6 @@ struct DraggableMarkerTestPage {
         this.setupDragListener(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -67,21 +91,7 @@ struct DraggableMarkerTestPage {
   }
   
   private setupDragListener(map: MapLibreMap): void {
-    const dragListener: OnMarkerDragListener = {
-      onMarkerDragStart: (marker: Marker) => {
-        this.dragStatus = '开始拖拽...';
-      },
-      onMarkerDrag: (marker: Marker) => {
-        const pos = marker.getPosition();
-        this.dragStatus = `拖拽中: ${formatLatLng(pos.latitude, pos.longitude, 4)}`;
-      },
-      onMarkerDragEnd: (marker: Marker) => {
-        const pos = marker.getPosition();
-        this.dragStatus = `拖拽结束: ${formatLatLng(pos.latitude, pos.longitude, 4)}`;
-        showToast('标记已移动');
-      }
-    };
-    
+    const dragListener = new DraggableMarkerDragListener(this);
     map.setOnMarkerDragListener(dragListener);
   }
   
@@ -108,6 +118,5 @@ struct DraggableMarkerTestPage {
           showToast('已清除所有标记');
         }
       })
-    .width('100%')
-    .height('100%')
+  }
 }

@@ -1,4 +1,4 @@
-import { CameraPosition, CircleLayer, Expression, GeoJsonSource, Interpolator, LatLng, MapLibreMap, MapLibreMapOptions, Point, PropertyFactory, Stop, SymbolLayer, NativeMapView, maplibre } from 'maplibre_harmony';
+import { CameraPosition, CircleLayer, Expression, GeoJsonSource, Interpolator, LatLng, MapLibreMap, MapLibreMapOptions, Point, PropertyFactory, Stop, SymbolLayer, MapView, maplibre } from 'maplibre_harmony';
 /**
  * ClusterExpressionExample - 聚类 Expression 使用示例
  * 
@@ -203,23 +203,21 @@ struct ClusterExpressionExample {
       
       // 地图容器
       Stack() {
-        NativeMapView({
+        MapView({
           styleUrl: 'https://demotiles.maplibre.org/style.json',
           initialLatitude: 39.9,
           initialLongitude: 116.4,
-          initialZoom: 8,
+          initialZoom: 10,
           initialBearing: 0,
           initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            if (mapView) {
+          onMapReady: (map: MapLibreMap) => {
+            if (map) {
               const options = new MapLibreMapOptions();
-              this.mapLibreMap = new MapLibreMap(mapView, options);
+              this.mapLibreMap = new MapLibreMap(map, options);
               this.onMapReady(this.mapLibreMap);
             }
           }
         })
-    .width('100%')
-    .height('100%')
       .layoutWeight(1)
       
       // 返回按钮

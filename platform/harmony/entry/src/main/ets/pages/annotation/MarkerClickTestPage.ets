@@ -1,6 +1,6 @@
-import { LatLng, MapLibreMap, Marker, MarkerOptions, NativeMapView, OnMarkerClickListener } from 'maplibre_harmony';
+import { LatLng, MapLibreMap, Marker, MarkerOptions, MapView, OnMarkerClickListener } from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 /**
  * Marker Click Activity
@@ -8,12 +8,27 @@ import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUti
  * 参考 Android OnMarkerClickListener
  */
 
+class MarkerClickListener implements OnMarkerClickListener {
+  private page: MarkerClickTestPage;
+  
+  constructor(page: MarkerClickTestPage) {
+    this.page = page;
+  }
+  
+  onMarkerClick(marker: Marker): boolean {
+    this.page.clickCount++;
+    this.page.lastClickedMarker = marker.getTitle() || `ID ${marker.getId()}`;
+    showToast(`点击了: ${this.page.lastClickedMarker}`);
+    return false; // false 表示继续显示 InfoWindow
+  }
+}
+
 @Entry
 @Component
 struct MarkerClickTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private clickCount: number = 0;
-  @State private lastClickedMarker: string = '';
+  @State clickCount: number = 0;
+  @State lastClickedMarker: string = '';
   
   build() {
     Column() {
@@ -32,8 +47,11 @@ struct MarkerClickTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: async (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -43,8 +61,6 @@ struct MarkerClickTestPage {
         this.setupClickListener(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -68,7 +84,7 @@ struct MarkerClickTestPage {
       TEST_LOCATIONS.guangzhou,
       TEST_LOCATIONS.shenzhen,
       TEST_LOCATIONS.hangzhou
-    ];
+    ]
     
     const options: MarkerOptions[] = cities.map((latLng, index) => 
       new MarkerOptions()
@@ -80,15 +96,7 @@ struct MarkerClickTestPage {
   }
   
   private setupClickListener(map: MapLibreMap): void {
-    const clickListener: OnMarkerClickListener = {
-      onMarkerClick: (marker: Marker): boolean => {
-        this.clickCount++;
-        this.lastClickedMarker = marker.getTitle() || `ID ${marker.getId()}`;
-        showToast(`点击了: ${this.lastClickedMarker}`);
-        return false; // false 表示继续显示 InfoWindow
-      }
-    };
-    
+    const clickListener = new MarkerClickListener(this);
     map.setOnMarkerClickListener(clickListener);
   }
   
@@ -100,5 +108,5 @@ struct MarkerClickTestPage {
         this.lastClickedMarker = '';
         showToast('计数已重置');
       })
-    .width('100%')
-    .height('100%')
+  }
+}

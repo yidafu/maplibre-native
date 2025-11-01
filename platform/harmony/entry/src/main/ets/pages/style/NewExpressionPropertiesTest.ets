@@ -1,4 +1,4 @@
-import { CircleLayer, Expression, FillLayer, GeoJsonSource, LineLayer, MapLibreMap, MapLibreMapOptions, NativeMapView, Point, Polygon, SymbolLayer, maplibre } from 'maplibre_harmony';
+import { CircleLayer, Expression, FillLayer, GeoJsonSource, LineLayer, MapLibreMap, MapLibreMapOptions, MapView, Point, Polygon, SymbolLayer, maplibre } from 'maplibre_harmony';
 /**
  * NewExpressionPropertiesTest - 新实现的Expression属性测试
  * 
@@ -12,7 +12,7 @@ import { router } from '@kit.ArkUI';
 @Component
 struct NewExpressionPropertiesTest {
   @State mapReady: boolean = false;
-  @State testResults: string[] = [];
+  @State testResults:  string[] = [];
   @State passedCount: number = 0;
   @State failedCount: number = 0;
   @State currentCategory: string = 'SymbolLayer';
@@ -557,17 +557,17 @@ struct NewExpressionPropertiesTest {
       .backgroundColor('#f5f5f5')
 
       // 地图
-      NativeMapView({
+      MapView({
         styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 35.0,
-        initialLongitude: 105.0,
-        initialZoom: 4,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
+        initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          if (mapView) {
+        onMapReady: (map: MapLibreMap) => {
+          if (map) {
             const options = new MapLibreMapOptions();
-            this.mapLibreMap = new MapLibreMap(mapView, options);
+            this.mapLibreMap = new MapLibreMap(map, options);
             this.onMapReady(this.mapLibreMap);
           }
         }

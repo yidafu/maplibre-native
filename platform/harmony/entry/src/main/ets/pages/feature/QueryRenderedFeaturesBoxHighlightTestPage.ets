@@ -1,11 +1,11 @@
-import { MapLibreMap, NativeMapView } from 'maplibre_harmony';
+import { MapLibreMap, MapView } from 'maplibre_harmony';
 /**
  * Query Rendered Features Box Highlight Test Page  
  * 框选高亮要素
  * 参考 Android: QueryRenderedFeaturesBoxHighlightActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -29,15 +29,16 @@ struct QueryRenderedFeaturesBoxHighlightTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 14);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -68,15 +69,12 @@ struct QueryRenderedFeaturesBoxHighlightTestPage {
     } catch (error) {
       showToast(`查询失败: ${error}`);
     }
-      .width('100%')
-      .height('100%')
   }
 
   private clearHighlight(): void {
     this.highlightedCount = 0;
     showToast('高亮已清除');
     // TODO: 实现清除高亮逻辑
-      .width('100%')
-      .height('100%')
+  }
 }
 

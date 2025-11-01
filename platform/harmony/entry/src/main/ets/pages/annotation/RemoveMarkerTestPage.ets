@@ -1,6 +1,6 @@
-import { LatLng, Marker, MapLibreMap, MarkerOptions, NativeMapView, OnMarkerClickListener } from 'maplibre_harmony';
+import { LatLng, Marker, MapLibreMap, MarkerOptions, MapView, OnMarkerClickListener } from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 /**
  * Remove Marker Activity
@@ -8,11 +8,29 @@ import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUti
  * 补充 Android 功能测试
  */
 
+class RemoveMarkerClickListener implements OnMarkerClickListener {
+  private page: RemoveMarkerTestPage;
+  private mapRef: MapLibreMap;
+  
+  constructor(page: RemoveMarkerTestPage, map: MapLibreMap) {
+    this.page = page;
+    this.mapRef = map;
+  }
+  
+  onMarkerClick(marker: Marker): boolean {
+    // 点击时移除标记
+    this.mapRef.removeMarker(marker);
+    this.page.markerCount--;
+    showToast(`已移除标记，剩余 ${this.page.markerCount} 个`);
+    return true; // true 表示消费事件
+  }
+}
+
 @Entry
 @Component
 struct RemoveMarkerTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private markerCount: number = 0;
+  @State markerCount: number = 0;
   
   build() {
     Column() {
@@ -31,8 +49,11 @@ struct RemoveMarkerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: async (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -42,8 +63,6 @@ struct RemoveMarkerTestPage {
         this.setupClickListener(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -71,7 +90,7 @@ struct RemoveMarkerTestPage {
       TEST_LOCATIONS.chengdu,
       TEST_LOCATIONS.xian,
       TEST_LOCATIONS.wuhan
-    ];
+    ]
     
     const options: MarkerOptions[] = cities.map((latLng, index) => 
       new MarkerOptions()
@@ -81,24 +100,11 @@ struct RemoveMarkerTestPage {
     
     await map.addMarkersBatch(options);
     this.markerCount = cities.length;
-      .width('100%')
-      .height('100%')
   }
 
   private setupClickListener(map: MapLibreMap): void {
-    const clickListener: OnMarkerClickListener = {
-      onMarkerClick: (marker: Marker): boolean => {
-        // 点击时移除标记
-        map.removeMarker(marker);
-        this.markerCount--;
-        showToast(`已移除标记，剩余 ${this.markerCount} 个`);
-        return true; // true 表示消费事件
-      }
-    };
-    
+    const clickListener = new RemoveMarkerClickListener(this, map);
     map.setOnMarkerClickListener(clickListener);
-      .width('100%')
-      .height('100%')
   }
 
   @Builder
@@ -111,5 +117,5 @@ struct RemoveMarkerTestPage {
           showToast('已重新添加标记');
         }
       })
-    .width('100%')
-    .height('100%')
+  }
+}

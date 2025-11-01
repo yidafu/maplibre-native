@@ -17,7 +17,8 @@ import {
   RenderMode,
   PermissionManager
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView } from 'maplibre_harmony';
 
 @Entry
 @Component
@@ -30,7 +31,7 @@ struct CustomizedLocationPulsingCircleTestPage {
   @State private permissionGranted: boolean = false;
   
   // 颜色预设
-  private colorPresets: string[] = ['#4A90E2', '#E74C3C', '#2ECC71', '#F39C12', '#9B59B6', '#1ABC9C'];
+  private colorPresets: string[] = ['#4A90E2', '#E74C3C', '#2ECC71', '#F39C12', '#9B59B6', '#1ABC9C']
   
   aboutToDisappear() {
     if (this.locationComponent) {
@@ -42,9 +43,8 @@ struct CustomizedLocationPulsingCircleTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 15);
     
@@ -55,8 +55,8 @@ struct CustomizedLocationPulsingCircleTestPage {
     if (!this.mapController) return;
     
     try {
-      const permissionManager = new PermissionManager(getContext(this));
-      this.permissionGranted = await permissionManager.requestLocationPermissions();
+      const result = await PermissionManager.requestLocationPermission(getContext(this));
+      this.permissionGranted = result.granted;
       
       if (!this.permissionGranted) {
         showToast('定位权限被拒绝');
@@ -79,9 +79,9 @@ struct CustomizedLocationPulsingCircleTestPage {
     if (!this.locationComponent) return;
     
     const options = new LocationComponentOptions();
-    options.pulsingEnabled = true;
-    options.pulsingColor = this.pulseColor;
-    options.pulsingMaxRadius = this.pulseMaxRadius;
+    options.pulseEnabled = true;
+    options.pulseColor = this.pulseColor;
+    options.pulseMaxRadius = this.pulseMaxRadius;
     
     this.locationComponent.applyStyle(options);
   };
@@ -123,11 +123,13 @@ struct CustomizedLocationPulsingCircleTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

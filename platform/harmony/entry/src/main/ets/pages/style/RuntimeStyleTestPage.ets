@@ -1,11 +1,12 @@
-import { FillLayer, GeoJsonSource, MapLibreMap, NativeMapView, Polygon } from 'maplibre_harmony';
 /**
  * Runtime Style Test Page
  * 运行时样式测试
  * 参考 Android: RuntimeStyleActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { FillLayer, GeoJson, GeoJsonSource, MapLibreMap, MapView } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -29,15 +30,16 @@ struct RuntimeStyleTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 10);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -68,23 +70,16 @@ struct RuntimeStyleTestPage {
     try {
       // 添加数据源
       const source = new GeoJsonSource('test-fill-source');
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[
-              [116.3, 39.8],
-              [116.5, 39.8],
-              [116.5, 40.0],
-              [116.3, 40.0],
-              [116.3, 39.8]
-            ]]
-          }
-        }]
-      };
-      source.setGeoJson(JSON.stringify(geojson));
+      const geojson = GeoJson.featureCollection([
+        GeoJson.polygonFeature([[
+            [116.3, 39.8],
+            [116.5, 39.8],
+            [116.5, 40.0],
+            [116.3, 40.0],
+            [116.3, 39.8]
+          ]])
+      ]);
+      source.setGeoJson(geojson);
       this.mapController.addSource(source);
       
       // 添加填充图层
@@ -97,8 +92,6 @@ struct RuntimeStyleTestPage {
     } catch (error) {
       showToast(`添加失败: ${error}`);
     }
-      .width('100%')
-      .height('100%')
   }
 
   private removeTestLayer(): void {
@@ -111,7 +104,6 @@ struct RuntimeStyleTestPage {
     } catch (error) {
       showToast(`移除失败: ${error}`);
     }
-      .width('100%')
-      .height('100%')
+  }
 }
 

@@ -1,11 +1,11 @@
-import { BackgroundLayer, MapLibreMap, NativeMapView } from 'maplibre_harmony';
+import { BackgroundLayer, MapLibreMap, MapView } from 'maplibre_harmony';
 /**
  * Background Layer Test Page
  * 背景图层测试
  * 参考 Android BackgroundLayer 测试
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -29,15 +29,16 @@ struct BackgroundLayerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 0, 0, 0, 2);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -64,12 +65,8 @@ struct BackgroundLayerTestPage {
     try {
       const layers = this.mapController.getLayers();
       for (const layer of layers) {
-        const layerObj = layer as ESObject;
-        const type = layerObj['type'] as string;
-        if (type === 'background') {
-          (layer as BackgroundLayer).setBackgroundColor(color);
-          showToast(`背景颜色已更改`);
-          return;
+        if (layer instanceof BackgroundLayer) {
+          layer.setBackgroundColor(color)
         }
       }
       showToast('未找到背景图层');

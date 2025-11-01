@@ -7,8 +7,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource, LatLng, GeoJson, IFeature } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -28,9 +28,8 @@ struct AnimatedSymbolLayerTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
@@ -40,26 +39,19 @@ struct AnimatedSymbolLayerTestPage {
   private addSymbolLayer = (): void => {
     if (!this.mapController) return;
     
-    const geojson = {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [this.markerPosition.longitude, this.markerPosition.latitude]
-        }
-      }]
-    };
+    const geojson = GeoJson.featureCollection([
+      GeoJson.pointFeature([this.markerPosition.longitude, this.markerPosition.latitude])
+    ]);
     
-    const source = new GeoJsonSource('marker-source', JSON.stringify(geojson));
+    const source = new GeoJsonSource('marker-source');
+    source.setGeoJson(geojson);
     this.mapController.getStyle()?.addSource(source);
     
     const symbolLayer = new SymbolLayer('marker-layer', 'marker-source');
-    symbolLayer.setProperties({
-      'icon-image': 'marker',
-      'icon-size': 1.5,
-      'icon-allow-overlap': true
-    });
+    // TODO: setProperties() not available - symbolLayer.setProperties({
+    //   'icon-size': 1.5,
+    //   'icon-allow-overlap': true
+    // });
     this.mapController.getStyle()?.addLayer(symbolLayer);
   };
   
@@ -97,30 +89,25 @@ struct AnimatedSymbolLayerTestPage {
   private updateMarkerPosition = (): void => {
     if (!this.mapController) return;
     
-    const geojson = {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [this.markerPosition.longitude, this.markerPosition.latitude]
-        }
-      }]
-    };
+    const geojson = GeoJson.featureCollection([
+      GeoJson.pointFeature([this.markerPosition.longitude, this.markerPosition.latitude])
+    ]);
     
     const source = this.mapController.getStyle()?.getSourceAs('marker-source') as GeoJsonSource;
     if (source) {
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
     }
   };
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

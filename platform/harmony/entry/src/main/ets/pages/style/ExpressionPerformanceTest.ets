@@ -24,7 +24,7 @@ interface PerformanceResult {
 @Entry
 @Component
 struct ExpressionPerformanceTest {
-  @State testResults: PerformanceResult[] = [];
+  @State testResults: PerformanceResult[] = [];;
   @State isRunning: boolean = false;
   @State totalTime: number = 0;
 
@@ -216,7 +216,7 @@ struct ExpressionPerformanceTest {
         Expression.literal('B'), Expression.literal(2),
         Expression.literal(0)
       )
-    ];
+    ]
     
     const startTime = Date.now();
     
@@ -242,7 +242,7 @@ struct ExpressionPerformanceTest {
       ['interpolate', ['linear'], ['zoom'], 5, 10, 15, 20],
       ['match', ['get', 'type'], 'A', 1, 'B', 2, 0],
       ['+', ['get', 'value'], 10]
-    ];
+    ]
     
     const startTime = Date.now();
     

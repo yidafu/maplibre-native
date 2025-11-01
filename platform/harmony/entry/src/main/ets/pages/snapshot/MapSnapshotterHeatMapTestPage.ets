@@ -18,9 +18,13 @@ import {
   CameraPosition,
   LatLng,
   HeatmapLayer,
-  GeoJsonSource
+  GeoJsonSource, GeoJson,
+  MapView,
+  SnapshotReadyCallback,
+  SnapshotErrorHandler
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import type { IFeatureCollection, IFeature } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -36,59 +40,52 @@ struct MapSnapshotterHeatMapTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 35, 105, 0, 4);
     
-    setTimeout(() => this.addHeatmapLayer(), 1000);
+    setTimeout((): void => this.addHeatmapLayer(), 1000);
   };
   
   /**
    * 生成热力图GeoJSON数据
    */
-  private generateHeatmapData = (): string => {
-    const features = [];
+  private generateHeatmapData(): IFeatureCollection {
+    const features: IFeature[] = [];
     for (let i = 0; i < 100; i++) {
-      features.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [100 + Math.random() * 20, 30 + Math.random() * 15]
-        },
-        properties: {
-          intensity: Math.random()
-        }
-      });
+      const props: Record<string, Object> = {
+        'intensity': Math.random()
+      };
+      features.push(GeoJson.pointFeature(
+        [100 + Math.random() * 20, 30 + Math.random() * 15],
+        props
+      ));
     }
     
-    return JSON.stringify({
-      type: 'FeatureCollection',
-      features: features
-    });
-  };
+    return GeoJson.featureCollection(features);
+  }
   
   /**
    * 添加热力图层
    */
-  private addHeatmapLayer = (): void => {
+  private addHeatmapLayer() {
     if (!this.mapController) return;
-    
+
     try {
       const geojson = this.generateHeatmapData();
       const source = new GeoJsonSource('heatmap-source', geojson);
       this.mapController.getStyle()?.addSource(source);
-      
+
       const heatmapLayer = new HeatmapLayer('heatmap-layer', 'heatmap-source');
-      heatmapLayer.setProperties({
-        'heatmap-weight': 1,
-        'heatmap-intensity': 1,
-        'heatmap-radius': 20,
-        'heatmap-opacity': 0.8
-      });
+      // TODO: setProperties() not available -
+      // heatmapLayer.setProperties({
+      //   'heatmap-intensity': 1,
+      //   'heatmap-radius': 20,
+      //   'heatmap-opacity': 0.8
+      // });
       this.mapController.getStyle()?.addLayer(heatmapLayer);
-      
+
       showToast('热力图已添加');
     } catch (error) {
       console.error('[MapSnapshotterHeatMapTestPage] Add heatmap failed:', error);
@@ -98,13 +95,13 @@ struct MapSnapshotterHeatMapTestPage {
   /**
    * 捕获热力图快照
    */
-  private captureSnapshot = async (): Promise<void> => {
+   async captureSnapshot(): Promise<void> {
     if (this.isGenerating) return;
     
     this.isGenerating = true;
     
     try {
-      const cameraPosition = new CameraPosition(
+      const cameraPosition = CameraPosition.create(
         LatLng.create(35, 105),
         4,
         0,
@@ -125,22 +122,37 @@ struct MapSnapshotterHeatMapTestPage {
       
       const snapshotter = new MapSnapshotter(options);
       
-      snapshotter.start(
-        {
-          onSnapshotReady: (snapshot: MapSnapshot) => {
-            this.snapshotImage = snapshot.getImage();
-            this.isGenerating = false;
-            showToast('热力图快照已生成');
-            snapshotter.cancel();
-          }
-        },
-        {
-          onError: (error: string) => {
-            this.isGenerating = false;
-            showToast(`快照失败: ${error}`);
-          }
+      class ReadyCallback implements SnapshotReadyCallback {
+        page: MapSnapshotterHeatMapTestPage;
+        snapshotter: MapSnapshotter;
+        
+        constructor(page: MapSnapshotterHeatMapTestPage, snapshotter: MapSnapshotter) {
+          this.page = page;
+          this.snapshotter = snapshotter;
         }
-      );
+        
+        onSnapshotReady(snapshot: MapSnapshot): void {
+          this.page.snapshotImage = snapshot.getImage();
+          this.page.isGenerating = false;
+          showToast('热力图快照已生成');
+          this.snapshotter.cancel();
+        }
+      }
+      
+      class ErrorCallback implements SnapshotErrorHandler {
+        page: MapSnapshotterHeatMapTestPage;
+        
+        constructor(page: MapSnapshotterHeatMapTestPage) {
+          this.page = page;
+        }
+        
+        onError(error: string): void {
+          this.page.isGenerating = false;
+          showToast(`快照失败: ${error}`);
+        }
+      }
+      
+      snapshotter.start(new ReadyCallback(this, snapshotter) , new ErrorCallback(this) );
     } catch (error) {
       this.isGenerating = false;
       showToast(`生成失败: ${error}`);
@@ -149,11 +161,13 @@ struct MapSnapshotterHeatMapTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

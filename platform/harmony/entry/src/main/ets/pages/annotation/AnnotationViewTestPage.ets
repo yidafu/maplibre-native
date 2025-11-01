@@ -16,6 +16,9 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import common from '@ohos.app.ability.common';
 import promptAction from '@ohos.promptAction';
+import { DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import maplibre from 'libmaplibre.so';
+import { MapView } from 'maplibre_harmony';
 
 /**
  * AnnotationViewTestPage - AnnotationView 自定义视图测试页面
@@ -124,10 +127,9 @@ struct AnnotationViewTestPage {
   @State autoFlyToMarkers: boolean = true; // 添加 Markers 后自动 flyTo
   @State currentIconTheme: string = 'all-random'; // 当前图标主题，默认为随机模式
   
-  private nativeMapView: NativeMapView | null = null;
   private mapLibreMap: MapLibreMap | null = null;
-  private markerList: Marker[] = [];
-  private markerLocations: TestMarkerData[] = [];
+  private markerList: Marker[] = [];;
+  private markerLocations: TestMarkerData[] = [];;
   private annotationViewAdapter: TestAnnotationViewAdapter = new TestAnnotationViewAdapter();
   private iconFactory: IconFactory | null = null;
   // 存储所有可用的图标
@@ -145,18 +147,19 @@ struct AnnotationViewTestPage {
    */
   @Builder
   buildMapContent() {
-      Stack() {
-      NativeMapView({
+    Stack() {
+      MapView({
         styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 35.0,
-        initialLongitude: 105.0,
-        initialZoom: 5,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
+        initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView?: NativeMapView) => {
-          this.onMapReady(mapView);
-        }
+        onMapReady: this.onMapReady
       })
+      .width('100%')
+      .height('100%')
+    }
     .width('100%')
     .height('100%')
   }
@@ -189,15 +192,17 @@ struct AnnotationViewTestPage {
         
         Button('添加自定义 Markers')
           .width('100%')
+          .onClick(() => {
             this.addCustomMarkers();
           })
         
         Button('清除所有 Markers')
           .width('100%')
+          .onClick(() => {
             this.clearMarkers();
           })
         
-      Row() {
+        Row() {
           Text('添加后自动定位')
             .fontSize(14)
           .layoutWeight(1)
@@ -362,15 +367,17 @@ struct AnnotationViewTestPage {
           Row() {
             Text('选中: ')
               .fontSize(12)
-          .fontWeight(FontWeight.Bold)
+              .fontWeight(FontWeight.Bold)
             Text(this.selectedMarkerId >= 0 ? `ID ${this.selectedMarkerId}` : '无')
               .fontSize(12)
               .fontColor('#2196F3')
           }
           .width('100%')
+        }
         .width('100%')
         .backgroundColor('#e3f2fd')
         .borderRadius(8)
+        .padding(12)
         
         Text(this.statusMessage)
           .fontSize(12)
@@ -438,33 +445,22 @@ struct AnnotationViewTestPage {
           Text('• 跟随旋转效果（需要自定义视图）')
             .fontSize(10)
             .width('100%')
-      }
-      .width('100%')
-      .backgroundColor('#f9f9f9')
+        }
+        .width('100%')
+        .backgroundColor('#f9f9f9')
         .borderRadius(8)
+        .padding(16)
       }
       .padding(16)
       .width('100%')
+    }
     .width('100%')
     .height('100%')
   }
 
-  /**
-   * 地图准备完成
-   */
-  private async onMapReady(mapView?: NativeMapView): Promise<void> {
-    if (!mapView) {
-      hilog.error(DOMAIN, 'AnnotationViewTest', 'onMapReady: mapView is null');
-      this.statusMessage = '❌ 地图初始化失败';
-      return;
-    }
-    
+  private onMapReady = async (map: MapLibreMap): Promise<void> => {
     try {
-      this.nativeMapView = mapView;
-      
-      // 创建 MapLibreMap 实例
-      const options = new MapLibreMapOptions();
-      this.mapLibreMap = new MapLibreMap(mapView, options);
+      this.mapLibreMap = map;
       
       this.mapReady = true;
       this.statusMessage = '✅ 地图已就绪 - 正在加载自定义图标...';
@@ -472,8 +468,8 @@ struct AnnotationViewTestPage {
       // 设置事件监听器
       this.setupEventListeners();
       
-      // 设置 AnnotationView 适配器
-      this.setupAnnotationViewAdapter();
+      // 设置 AnnotationView 适配器（已在 MapLibreMap 中设置）
+      // this.setupAnnotationViewAdapter();
       
       // 加载自定义图标（异步）
       await this.loadCustomIcons();
@@ -512,12 +508,9 @@ struct AnnotationViewTestPage {
    * 设置 AnnotationView 适配器
    */
   private setupAnnotationViewAdapter(): void {
-    if (!this.mapLibreMap || !this.nativeMapView) return;
+    if (!this.mapLibreMap) return;
     
     const markerManager = this.mapLibreMap.getMarkerManager();
-    
-    // 设置 Native MapView（用于坐标转换）
-    markerManager.setNativeMapView(this.nativeMapView);
     
     // 设置 AnnotationView 适配器
     markerManager.setAnnotationViewAdapter(this.annotationViewAdapter);
@@ -650,7 +643,7 @@ struct AnnotationViewTestPage {
     if (!this.iconFactory) return;
     
     // 加载所有 Pin 图标
-    const pinColors = ['red', 'blue', 'green', 'orange', 'purple'];
+    const pinColors = ['red', 'blue', 'green', 'orange', 'purple']
     for (const color of pinColors) {
       const icon = await this.iconFactory.fromResource(
         $r(`app.media.marker_pin_${color}`),
@@ -660,7 +653,7 @@ struct AnnotationViewTestPage {
     }
     
     // 加载所有 Dot 图标
-    const dotColors = ['red', 'blue', 'green', 'yellow', 'cyan'];
+    const dotColors = ['red', 'blue', 'green', 'yellow', 'cyan']
     for (const color of dotColors) {
       const icon = await this.iconFactory.fromResource(
         $r(`app.media.marker_dot_${color}`),
@@ -674,10 +667,10 @@ struct AnnotationViewTestPage {
    * 切换图标主题
    */
   private async switchIconTheme(): Promise<void> {
-    const themes = ['all-random', 'blue-green', 'red-yellow', 'orange-cyan', 'purple-blue'];
+    const themes = ['all-random', 'blue-green', 'red-yellow', 'orange-cyan', 'purple-blue']
     const currentIndex = themes.indexOf(this.currentIconTheme);
     const nextIndex = (currentIndex + 1) % themes.length;
-    this.currentIconTheme = themes[nextIndex];
+    this.currentIconTheme = themes[nextIndex]
     
     this.statusMessage = '正在切换图标主题...';
     
@@ -785,7 +778,7 @@ struct AnnotationViewTestPage {
       
       for (const marker of this.markerList as Marker[]) {
         // 随机选择一个图标 ID
-        const randomIconId: string = availableIconIds[Math.floor(Math.random() * availableIconIds.length)];
+        const randomIconId: string = availableIconIds[Math.floor(Math.random() * availableIconIds.length)]
         marker.setIcon(randomIconId);
       }
       
@@ -819,8 +812,8 @@ struct AnnotationViewTestPage {
     
     try {
       for (let i = 0; i < this.markerList.length; i++) {
-        const marker: Marker = this.markerList[i];
-        const loc = this.markerLocations[i];
+        const marker: Marker = this.markerList[i]
+        const loc = this.markerLocations[i]
         
         const customIcon: Icon | undefined = this.markerIcons.get(loc.type);
         if (customIcon) {
@@ -857,7 +850,7 @@ struct AnnotationViewTestPage {
     }
   }
 
-/**
+  /**
    * 添加自定义 Markers
    */
   private async addCustomMarkers(): Promise<void> {
@@ -879,7 +872,7 @@ struct AnnotationViewTestPage {
       { lat: 31.2304, lng: 121.4737, type: 'custom-dot', title: '上海' },
       { lat: 23.1291, lng: 113.2644, type: 'custom-pin', title: '广州' },
       { lat: 30.5728, lng: 104.0668, type: 'custom-dot', title: '成都' },
-    ];
+    ]
     
     let addedCount = 0;
     
@@ -896,7 +889,7 @@ struct AnnotationViewTestPage {
         if (this.currentIconTheme === 'all-random' && this.markerIcons.size > 0) {
           // 随机模式：从所有图标中随机选择
           const availableIcons: Icon[] = Array.from(this.markerIcons.values());
-          const randomIcon: Icon = availableIcons[Math.floor(Math.random() * availableIcons.length)];
+          const randomIcon: Icon = availableIcons[Math.floor(Math.random() * availableIcons.length)]
           options.icon(randomIcon)
             .alpha(1.0)
             .zIndex(Math.floor(Math.random() * 20));
@@ -1043,7 +1036,7 @@ struct AnnotationViewTestPage {
    * 飞到所有 Markers（计算边界并显示所有 Markers）
    */
   private flyToAllMarkers(): void {
-    if (!this.nativeMapView || this.markerLocations.length === 0) {
+    if (!this.mapLibreMap || this.markerLocations.length === 0) {
       this.statusMessage = '没有可飞往的 Markers';
       promptAction.showToast({
         message: '请先添加 Markers',
@@ -1068,9 +1061,9 @@ struct AnnotationViewTestPage {
       // 使用 flyTo 方法飞到中心点（缩小 zoom 以显示更大范围）
       const options: maplibre.CameraOptions = {
         center: LatLng.create(centerLat, centerLng),
-        zoom: 5  // 降低 zoom 级别以显示整个中国范围
+        zoom: 5
       };
-      this.nativeMapView.flyTo(options, 2000);
+      this.mapLibreMap.flyTo(options, 2000);
       
       this.statusMessage = `飞往 ${this.markerLocations.length} 个 Markers 的中心位置\n` +
                           `中心坐标: (${centerLat.toFixed(4)}, ${centerLng.toFixed(4)})`;
@@ -1092,7 +1085,7 @@ struct AnnotationViewTestPage {
    * 飞到指定索引的 Marker
    */
   private flyToMarkerByIndex(index: number): void {
-    if (!this.nativeMapView || index < 0 || index >= this.markerLocations.length) {
+    if (!this.mapLibreMap || index < 0 || index >= this.markerLocations.length) {
       this.statusMessage = 'Marker 不存在';
       promptAction.showToast({
         message: `Marker ${index + 1} 不存在`,
@@ -1102,18 +1095,18 @@ struct AnnotationViewTestPage {
     }
     
     try {
-      const loc = this.markerLocations[index];
+      const loc = this.markerLocations[index]
       
       // 飞到指定 Marker，zoom 10，动画时长 2000ms
       const options: maplibre.CameraOptions = {
         center: LatLng.create(loc.lat, loc.lng),
         zoom: 10
       };
-      this.nativeMapView.flyTo(options, 2000);
+      this.mapLibreMap.flyTo(options, 2000);
       
       // 如果有对应的 Marker 对象，选中它
       if (index < this.markerList.length) {
-        const marker = this.markerList[index];
+        const marker = this.markerList[index]
         this.selectedMarkerId = marker.getId();
       }
       
@@ -1137,7 +1130,7 @@ struct AnnotationViewTestPage {
    * 逐个飞往 Markers（循环展示）
    */
   private flyToMarkersSequentially(): void {
-    if (!this.nativeMapView || this.markerLocations.length === 0) {
+    if (!this.mapLibreMap || this.markerLocations.length === 0) {
       this.statusMessage = '没有可飞往的 Markers';
       promptAction.showToast({
         message: '请先添加 Markers',
@@ -1223,12 +1216,12 @@ struct AnnotationViewTestPage {
    * 设置地图倾斜角度
    */
   private setPitch(pitch: number): void {
-    if (!this.nativeMapView) {
+    if (!this.mapLibreMap) {
       return;
     }
     
     try {
-      this.nativeMapView.setPitch(pitch, 500);
+      this.mapLibreMap.setPitch(pitch, 500);
       
       this.statusMessage = `地图倾斜至 ${pitch}°\n` +
                           (this.scalesEnabled ? 'Marker 会根据距离自动缩放（待实现）' : '未启用距离缩放');
@@ -1248,12 +1241,13 @@ struct AnnotationViewTestPage {
    * 设置地图旋转角度
    */
   private setBearing(bearing: number): void {
-    if (!this.nativeMapView) {
+    if (!this.mapLibreMap) {
       return;
     }
     
     try {
-      this.nativeMapView.setBearing(bearing, 500);
+      // 使用 setBearing 方法
+      this.mapLibreMap.setBearing(bearing, 500);
       
       this.statusMessage = `地图旋转至 ${bearing}°\n` +
                           (this.rotatesEnabled ? 'Marker 会跟随地图旋转（待实现）' : '未启用跟随旋转');
@@ -1273,7 +1267,7 @@ struct AnnotationViewTestPage {
    * 恢复正常视角
    */
   private resetCamera(): void {
-    if (!this.nativeMapView) {
+    if (!this.mapLibreMap) {
       return;
     }
     
@@ -1285,7 +1279,7 @@ struct AnnotationViewTestPage {
         bearing: 0,
         pitch: 0
       };
-      this.nativeMapView.easeTo(options, 1000);
+      this.mapLibreMap.easeTo(options, 1000);
       
       this.statusMessage = '相机已恢复正常视角';
       
@@ -1321,10 +1315,11 @@ struct AnnotationViewTestPage {
       TestPageLayout({
         showActionBar: true,
         title: 'AnnotationView 测试',
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildActionButtons()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildActionButtons
       })
     }
     .width('100%')
     .height('100%')
+  }
 }

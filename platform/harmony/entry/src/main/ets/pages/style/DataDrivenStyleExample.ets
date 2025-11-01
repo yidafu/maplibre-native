@@ -1,4 +1,4 @@
-import { Expression, FillLayer, GeoJsonSource, Interpolator, LineLayer, MapLibreMap, MapLibreMapOptions, NativeMapView, PropertyFactory, Stop, SymbolLayer, maplibre } from 'maplibre_harmony';
+import { Expression, FillLayer, GeoJsonSource, Interpolator, LineLayer, MapLibreMap, MapLibreMapOptions, MapView, PropertyFactory, Stop, SymbolLayer, maplibre } from 'maplibre_harmony';
 /**
  * DataDrivenStyleExample - 数据驱动样式示例
  * 
@@ -132,23 +132,21 @@ struct DataDrivenStyleExample {
       
       // 地图容器
       Stack() {
-        NativeMapView({
+        MapView({
           styleUrl: 'https://demotiles.maplibre.org/style.json',
-          initialLatitude: 35.0,
-          initialLongitude: 105.0,
-          initialZoom: 4,
+          initialLatitude: 39.9,
+          initialLongitude: 116.4,
+          initialZoom: 10,
           initialBearing: 0,
           initialPitch: 0,
-          onMapReady: (mapView?: maplibre.NativeMapView) => {
-            if (mapView) {
+          onMapReady: (map: MapLibreMap) => {
+            if (map) {
               const options = new MapLibreMapOptions();
-              this.mapLibreMap = new MapLibreMap(mapView, options);
+              this.mapLibreMap = new MapLibreMap(map, options);
               this.onMapReady(this.mapLibreMap);
             }
           }
         })
-    .width('100%')
-    .height('100%')
       .layoutWeight(1)
       
       // 控制按钮

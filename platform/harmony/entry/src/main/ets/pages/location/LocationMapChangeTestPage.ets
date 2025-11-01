@@ -18,7 +18,8 @@ import {
   CameraMode,
   PermissionManager
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView } from 'maplibre_harmony';
 
 @Entry
 @Component
@@ -29,11 +30,11 @@ struct LocationMapChangeTestPage {
   @State private currentStyle: string = 'Streets';
   @State private permissionGranted: boolean = false;
   
-  private styles = [
-    { name: 'Streets', url: DEFAULT_STYLE_URLS.streets },
-    { name: 'Satellite', url: DEFAULT_STYLE_URLS.satellite },
-    { name: 'OSM', url: 'https://demotiles.maplibre.org/style.json' }
-  ];
+  private styles: Array<Record<string, string>> = [
+    { 'name': 'Streets', 'url': DEFAULT_STYLE_URLS.streets },
+    { 'name': 'Satellite', 'url': DEFAULT_STYLE_URLS.satellite },
+    { 'name': 'OSM', 'url': 'https://demotiles.maplibre.org/style.json' }
+  ]
   
   aboutToDisappear() {
     if (this.locationComponent) {
@@ -45,9 +46,8 @@ struct LocationMapChangeTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(this.styles[0].url);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
@@ -58,8 +58,8 @@ struct LocationMapChangeTestPage {
     if (!this.mapController) return;
     
     try {
-      const permissionManager = new PermissionManager(getContext(this));
-      this.permissionGranted = await permissionManager.requestLocationPermissions();
+      const result = await PermissionManager.requestLocationPermission(getContext(this));
+      this.permissionGranted = result.granted;
       
       if (!this.permissionGranted) {
         showToast('定位权限被拒绝');
@@ -119,11 +119,13 @@ struct LocationMapChangeTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
@@ -153,7 +155,7 @@ struct LocationMapChangeTestPage {
         .fontSize(14)
         .fontColor('#666')
       
-      ForEach(this.styles, (style: { name: string, url: string }) => {
+      ForEach(this.styles, (style: Record<string, string>) => {
         Button(style.name)
           .width('100%')
           .backgroundColor(this.currentStyle === style.name ? '#2196F3' : '#9E9E9E')

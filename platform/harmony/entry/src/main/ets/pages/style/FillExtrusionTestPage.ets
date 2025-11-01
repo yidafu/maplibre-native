@@ -1,11 +1,12 @@
-import { FillExtrusionLayer, GeoJsonSource, MapLibreMap, NativeMapView, Polygon } from 'maplibre_harmony';
 /**
  * Fill Extrusion Test Page
  * 3D 拉伸图层测试
  * 参考 Android: FillExtrusionActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { FillExtrusionLayer, GeoJson, GeoJsonSource, MapLibreMap, MapView } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -29,56 +30,42 @@ struct FillExtrusionTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 45, 16);
         this.addExtrusionLayer(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addExtrusionLayer(map: MapLibreMap): void {
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: {
-              type: 'Polygon',
-              coordinates: [[
-                [116.39, 39.89],
-                [116.40, 39.89],
-                [116.40, 39.90],
-                [116.39, 39.90],
-                [116.39, 39.89]
-              ]]
-            },
-            properties: { height: 100 }
-          },
-          {
-            type: 'Feature',
-            geometry: {
-              type: 'Polygon',
-              coordinates: [[
-                [116.40, 39.90],
-                [116.41, 39.90],
-                [116.41, 39.91],
-                [116.40, 39.91],
-                [116.40, 39.90]
-              ]]
-            },
-            properties: { height: 150 }
-          }
-        ]
-      };
+      const props1: Record<string, Object> = { 'height': 100 };
+      const props2: Record<string, Object> = { 'height': 150 };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.polygonFeature([[
+            [116.39, 39.89],
+            [116.40, 39.89],
+            [116.40, 39.90],
+            [116.39, 39.90],
+            [116.39, 39.89]
+          ]], props1),
+        GeoJson.polygonFeature([[
+            [116.40, 39.90],
+            [116.41, 39.90],
+            [116.41, 39.91],
+            [116.40, 39.91],
+            [116.40, 39.90]
+          ]], props2)
+      ]);
       
       const source = new GeoJsonSource('extrusion-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       map.addSource(source);
       
       const layer = new FillExtrusionLayer('extrusion-layer', 'extrusion-source');

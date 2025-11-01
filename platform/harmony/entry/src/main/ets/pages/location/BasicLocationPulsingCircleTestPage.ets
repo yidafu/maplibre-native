@@ -17,7 +17,8 @@ import {
   RenderMode,
   PermissionManager
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView } from 'maplibre_harmony';
 
 @Entry
 @Component
@@ -38,10 +39,9 @@ struct BasicLocationPulsingCircleTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
+  private onMapReady = (map: MapLibreMap): void => {
     console.info('[BasicLocationPulsingCircleTestPage] onMapReady');
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 15);
     
@@ -56,8 +56,8 @@ struct BasicLocationPulsingCircleTestPage {
     
     try {
       // 请求权限
-      const permissionManager = new PermissionManager(getContext(this));
-      this.permissionGranted = await permissionManager.requestLocationPermissions();
+      const result = await PermissionManager.requestLocationPermission(getContext(this));
+      this.permissionGranted = result.granted;
       
       if (!this.permissionGranted) {
         this.statusMessage = '定位权限被拒绝';
@@ -70,9 +70,9 @@ struct BasicLocationPulsingCircleTestPage {
       
       // 配置脉冲圆选项
       const options = new LocationComponentOptions();
-      options.pulsingEnabled = true;
-      options.pulsingColor = '#4A90E2';
-      options.pulsingMaxRadius = 50;
+      options.pulseEnabled = true;
+      options.pulseColor = '#4A90E2';
+      options.pulseMaxRadius = 50;
       
       // 激活定位组件
       this.locationComponent.activateLocationComponent(options);
@@ -123,11 +123,13 @@ struct BasicLocationPulsingCircleTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

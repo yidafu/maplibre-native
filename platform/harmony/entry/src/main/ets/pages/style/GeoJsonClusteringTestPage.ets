@@ -6,8 +6,11 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng, GeoJsonSource, CircleLayer, SymbolLayer, Expression } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng, GeoJsonSource, CircleLayer, SymbolLayer, Expression, GeoJson,
+  IFeature } from 'maplibre_harmony';
+import type { IFeatureCollection } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -18,36 +21,22 @@ struct GeoJsonClusteringTestPage {
   @State private clusterMaxZoom: number = 14;
   
   // 示例 GeoJSON 数据
-  private sampleGeoJson = {
-    "type": "FeatureCollection",
-    "features": [
-      {
-        "type": "Feature",
-        "geometry": { "type": "Point", "coordinates": [116.4074, 39.9042] },
-        "properties": { "name": "北京", "type": "city" }
-      },
-      {
-        "type": "Feature",
-        "geometry": { "type": "Point", "coordinates": [121.4737, 31.2304] },
-        "properties": { "name": "上海", "type": "city" }
-      },
-      {
-        "type": "Feature",
-        "geometry": { "type": "Point", "coordinates": [113.2644, 23.1291] },
-        "properties": { "name": "广州", "type": "city" }
-      },
-      {
-        "type": "Feature",
-        "geometry": { "type": "Point", "coordinates": [114.0579, 22.5431] },
-        "properties": { "name": "深圳", "type": "city" }
-      },
-      {
-        "type": "Feature",
-        "geometry": { "type": "Point", "coordinates": [120.1551, 30.2741] },
-        "properties": { "name": "杭州", "type": "city" }
-      }
-    ]
-  };
+  private sampleGeoJson: Object = this.createInitialGeoJson();
+  
+  private createInitialGeoJson(): Object {
+    const props1: Record<string, Object> = { 'name': '北京', 'type': 'city' };
+    const props2: Record<string, Object> = { 'name': '上海', 'type': 'city' };
+    const props3: Record<string, Object> = { 'name': '广州', 'type': 'city' };
+    const props4: Record<string, Object> = { 'name': '深圳', 'type': 'city' };
+    const props5: Record<string, Object> = { 'name': '杭州', 'type': 'city' };
+    return GeoJson.featureCollection([
+      GeoJson.pointFeature([116.4074, 39.9042], props1),
+      GeoJson.pointFeature([121.4737, 31.2304], props2),
+      GeoJson.pointFeature([113.2644, 23.1291], props3),
+      GeoJson.pointFeature([114.0579, 22.5431], props4),
+      GeoJson.pointFeature([120.1551, 30.2741], props5)
+    ]);
+  }
   
   aboutToDisappear() {
     if (this.mapController) {
@@ -61,13 +50,8 @@ struct GeoJsonClusteringTestPage {
     this.mapController = map;
     map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     
-    const initialPosition = // new CameraPosition(
-      new LatLng(31, 115),
-      5,
-      0,
-      0
-    );
-    // TODO: map.setCameraPosition(initialPosition);
+    // 设置初始位置
+    map.jumpTo(0, 31, 115, 0, 5);
     
     // 等待样式加载后添加聚类层
     setTimeout(() => {
@@ -78,7 +62,7 @@ struct GeoJsonClusteringTestPage {
   /**
    * 添加聚类图层
    */
-  private addClusteringLayers(): void => {
+  private addClusteringLayers(): void {
     if (!this.mapController) return;
     
     try {
@@ -151,26 +135,22 @@ struct GeoJsonClusteringTestPage {
    * 生成随机点数据
    */
   private generateRandomPoints = (count: number): void => {
-    const features: any[] = [];
+    const features: IFeature[] = [];;
     
     for (let i = 0; i < count; i++) {
       const lat = 20 + Math.random() * 30;
       const lng = 100 + Math.random() * 30;
       
-      features.push({
-        "type": "Feature",
-        "geometry": {
-          "type": "Point",
-          "coordinates": [lng, lat]
-        },
-        "properties": {
-          "name": `Point ${i + 1}`,
-          "value": Math.floor(Math.random() * 100)
-        }
-      });
+      const props: Record<string, Object> = {
+        'name': `Point ${i + 1}`,
+        'value': Math.floor(Math.random() * 100)
+      };
+      const feature = GeoJson.pointFeature([lng, lat], props);
+      features.push(feature);
     }
     
-    this.sampleGeoJson.features = features;
+    const featureCollection = GeoJson.featureCollection(features);
+    this.sampleGeoJson = featureCollection as Object;
     this.pointCount = count;
     
     // 重新添加图层
@@ -264,22 +244,29 @@ struct GeoJsonClusteringTestPage {
     .width(280);
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
-      title: 'GeoJSON Clustering',
-      description: 'GeoJSON 聚类',
-      showActionBar: true,
-      actionButtons: this.actionButtonsBuilder,
-      controlPanel: this.controlPanelBuilder,
-      mapContent: () => {
-        NativeMapView({
-          onMapReady: this.onMapReady
-        })
-          .width('100%')
-          .height('100%');
-      }
-    });
+        title: 'GeoJSON Clustering',
+        description: 'GeoJSON 聚类',
+        showActionBar: true,
+        actionButtons: this.actionButtonsBuilder,
+        controlPanel: this.controlPanelBuilder,
+        mapContent: this.mapContentBuilder
+      });
     }
     .width('100%')
     .height('100%');

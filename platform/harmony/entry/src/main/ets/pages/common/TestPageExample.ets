@@ -1,4 +1,4 @@
-import { LatLng, maplibre } from 'maplibre_harmony';
+import {LatLng, maplibre, NativeMapView} from 'maplibre_harmony';
 /**
  * TestPageExample - TestPageLayout 使用示例
  * 
@@ -6,7 +6,7 @@ import { LatLng, maplibre } from 'maplibre_harmony';
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -18,7 +18,7 @@ struct TestPageExample {
   @State mapReady: boolean = false;
   @State statusMessage: string = '等待操作...';
   
-  private mapView: maplibre.NativeMapView | null = null;
+  private mapView: NativeMapView | null = null;
 
   /**
    * 地图区域构建器
@@ -27,10 +27,10 @@ struct TestPageExample {
   @Builder
   buildMapContent() {
     // 示例1：使用真实地图
-    NativeMapView({
+    MapView({
       styleUrl: 'https://demotiles.maplibre.org/style.json',
-      initialLatitude: 39.9042,
-      initialLongitude: 116.4074,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
       initialZoom: 10,
       initialBearing: 0,
       initialPitch: 0,
@@ -38,8 +38,6 @@ struct TestPageExample {
         this.onMapReady(map);
       }
     })
-    .width('100%')
-    .height('100%')
     
     // 示例2：无地图时，可以显示说明信息
     // Column() {
@@ -160,8 +158,8 @@ struct TestPageExample {
       TestPageLayout({
         showActionBar: true,
         title: this.currentTitle,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -181,7 +179,7 @@ struct TestPageExample {
    */
   private onMapReady(map: MapLibreMap): void {
     if (map) {
-      // this.mapView = mapView;
+      // this.mapView = this.mapView;
       this.mapReady = true;
       this.statusMessage = '✅ 地图加载成功';
       hilog.info(DOMAIN, 'TestPageExample', 'Map ready');

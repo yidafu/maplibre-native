@@ -1,11 +1,11 @@
-import { CircleLayer, GeoJsonSource, MapLibreMap, NativeMapView, ScreenPoint } from 'maplibre_harmony';
 /**
  * Circle Layer Test Page
  * 圆形图层测试
  * 参考 Android: CircleLayerActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { CircleLayer, GeoJsonSource, MapLibreMap, MapView, ScreenPoint, GeoJson, IFeature } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -23,38 +23,35 @@ struct CircleLayerTestPage {
       })
     }
     .width('100%')
-
     .height('100%')
   }
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
         this.addCircleLayer(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addCircleLayer(map: MapLibreMap): void {
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [
-          { type: 'Feature', geometry: { type: 'Point', coordinates: [116.4, 39.9] } },
-          { type: 'Feature', geometry: { type: 'Point', coordinates: [121.5, 31.2] } },
-          { type: 'Feature', geometry: { type: 'Point', coordinates: [113.3, 23.1] } },
-          { type: 'Feature', geometry: { type: 'Point', coordinates: [114.1, 22.5] } }
-        ]
-      };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.pointFeature([116.4, 39.9]),
+        GeoJson.pointFeature([121.5, 31.2]),
+        GeoJson.pointFeature([113.3, 23.1]),
+        GeoJson.pointFeature([114.1, 22.5])
+      ]);
       
       const source = new GeoJsonSource('circle-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       map.addSource(source);
       
       const layer = new CircleLayer('circle-layer', 'circle-source');
@@ -77,9 +74,9 @@ struct CircleLayerTestPage {
           try {
             const layer = this.mapController.getLayer('circle-layer');
             if (layer) {
-              const colors = ['#FF2196F3', '#FFFF9800', '#FF4CAF50', '#FFF44336'];
-              const randomColor = colors[Math.floor(Math.random() * colors.length)];
-              (layer as CircleLayer).setCircleColor(randomColor);
+              const colors: string[] = ['#FF2196F3', '#FFFF9800', '#FF4CAF50', '#FFF44336'];
+              const randomColorValue: string = colors[Math.floor(Math.random() * colors.length)];
+              (layer as CircleLayer).setCircleColor(randomColorValue);
               showToast('颜色已更改');
             }
           } catch (error) {

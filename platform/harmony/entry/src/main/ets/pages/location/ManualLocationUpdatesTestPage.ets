@@ -18,8 +18,9 @@ import {
   RenderMode,
   PermissionManager
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import geoLocationManager from '@ohos.geoLocationManager';
+import { MapView } from 'maplibre_harmony';
 
 @Entry
 @Component
@@ -33,12 +34,12 @@ struct ManualLocationUpdatesTestPage {
   @State private permissionGranted: boolean = false;
   
   // 预设位置
-  private presetLocations = [
-    { name: '北京', lat: 39.9042, lng: 116.4074 },
-    { name: '上海', lat: 31.2304, lng: 121.4737 },
-    { name: '广州', lat: 23.1291, lng: 113.2644 },
-    { name: '深圳', lat: 22.5431, lng: 114.0579 }
-  ];
+  private presetLocations: Array<Record<string, Object>> = [
+    { 'name': '北京', 'lat': 39.9042, 'lng': 116.4074 },
+    { 'name': '上海', 'lat': 31.2304, 'lng': 121.4737 },
+    { 'name': '广州', 'lat': 23.1291, 'lng': 113.2644 },
+    { 'name': '深圳', 'lat': 22.5431, 'lng': 114.0579 }
+  ]
   
   aboutToDisappear() {
     if (this.locationComponent) {
@@ -51,8 +52,9 @@ struct ManualLocationUpdatesTestPage {
   }
   
   private onMapReady = async (mapView: NativeMapView): Promise<void> => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+    if (!mapView) return;
+    this.mapController = mapView as Object as MapLibreMap;
+    if (!this.mapController) return;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, this.currentLat, this.currentLng, 0, 12);
     
@@ -63,8 +65,8 @@ struct ManualLocationUpdatesTestPage {
     if (!this.mapController) return;
     
     try {
-      const permissionManager = new PermissionManager(getContext(this));
-      this.permissionGranted = await permissionManager.requestLocationPermissions();
+      const result = await PermissionManager.requestLocationPermission(getContext(this));
+      this.permissionGranted = result.granted;
       
       if (!this.permissionGranted) {
         showToast('定位权限被拒绝');
@@ -104,11 +106,11 @@ struct ManualLocationUpdatesTestPage {
       timeSinceBoot: Date.now(),
       additions: [],
       additionSize: 0,
-      isFromMock: true
+      // isFromMock: true
     };
     
     try {
-      this.locationComponent.forceLocationUpdate(mockLocation);
+      this.locationComponent.forceLocationUpdate(lat, lng, bearing);
       this.currentLat = lat;
       this.currentLng = lng;
       if (bearing !== undefined) {
@@ -116,11 +118,13 @@ struct ManualLocationUpdatesTestPage {
       }
       this.updateCount++;
       
-      this.mapController?.easeTo({
-        center: { latitude: lat, longitude: lng },
-        bearing: this.heading,
-        zoom: 15
-      }, 1000);
+      const centerData: Record<string, number> = {
+        'latitude': lat,
+        'longitude': lng
+      };
+      // this.mapController?.easeTo(...) 需要使用 CameraPosition
+      // 简化处理：直接使用 jumpTo
+      this.mapController?.jumpTo(this.heading, lat, lng, 0, 15);
       
       showToast(`位置已更新 (${this.updateCount})`);
     } catch (error) {
@@ -146,11 +150,13 @@ struct ManualLocationUpdatesTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
@@ -181,11 +187,11 @@ struct ManualLocationUpdatesTestPage {
           .fontSize(16)
           .fontWeight(FontWeight.Bold)
         
-        ForEach(this.presetLocations, (preset: { name: string, lat: number, lng: number }) => {
-          Button(preset.name)
+        ForEach(this.presetLocations, (preset: Record<string, Object>) => {
+          Button(preset['name'] as string)
             .width('100%')
             .enabled(this.permissionGranted)
-            .onClick(() => this.forceLocationUpdate(preset.lat, preset.lng))
+            .onClick(() => this.forceLocationUpdate(preset['lat'] as number, preset['lng'] as number))
         })
         
         Divider()

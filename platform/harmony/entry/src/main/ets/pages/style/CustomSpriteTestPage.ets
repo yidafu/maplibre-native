@@ -1,11 +1,12 @@
-import { GeoJsonSource, MapLibreMap, NativeMapView, Point, SymbolLayer } from 'maplibre_harmony';
 /**
  * Custom Sprite Test Page
  * 自定义精灵图测试
  * 参考 Android: CustomSpriteActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
+import { GeoJson, GeoJsonSource, MapLibreMap, MapView, SymbolLayer } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -29,15 +30,16 @@ struct CustomSpriteTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -68,19 +70,13 @@ struct CustomSpriteTestPage {
     if (!this.mapController) return;
     
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [116.4, 39.9] },
-            properties: { icon: 'custom-icon' }
-          }
-        ]
-      };
+      const props: Record<string, Object> = { 'icon': 'custom-icon' };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.pointFeature([116.4, 39.9], props)
+      ]);
       
       const source = new GeoJsonSource('icon-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       this.mapController.addSource(source);
       
       const layer = new SymbolLayer('icon-layer', 'icon-source');

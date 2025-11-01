@@ -6,15 +6,15 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, randomLatLng } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, randomLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
 struct BulkMarkerTestPage {
   private mapController: MapLibreMap | null = null;
   @State private markerCount: number = 0;
-  private markers: Marker[] = [];
+  private markers: Marker[] = [];;
   
   aboutToDisappear() {
     this.clearMarkers();
@@ -122,6 +122,19 @@ struct BulkMarkerTestPage {
     .alignItems(HorizontalAlign.Start);
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
@@ -129,14 +142,8 @@ struct BulkMarkerTestPage {
         description: '批量标注 (1000+)',
         showActionBar: true,
         actionButtons: this.actionButtonsBuilder,
-        controlPanel: this.controlPanelBuilder,
-        mapContent: () => {
-          NativeMapView({
-            onMapReady: this.onMapReady
-          })
-            .width('100%')
-            .height('100%');
-        }
+        controlPanel: (): void => this.controlPanelBuilder(),
+        mapContent: (): void => this.mapContentBuilder()
       });
     }
     .width('100%')

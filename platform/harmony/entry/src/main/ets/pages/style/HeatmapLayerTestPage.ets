@@ -1,11 +1,11 @@
-import { GeoJsonSource, HeatmapLayer, LatLng, MapLibreMap, NativeMapView, ScreenPoint } from 'maplibre_harmony';
 /**
  * Heatmap Layer Test Page
  * 热力图图层测试
  * 参考 Android: HeatmapLayerActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast, randomLatLng } from '../common/TestUtils';
+import { GeoJsonSource, HeatmapLayer, LatLng, MapLibreMap, MapView, ScreenPoint, GeoJson, IFeature } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast, randomLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -29,38 +29,36 @@ struct HeatmapLayerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
         this.addHeatmapLayer(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addHeatmapLayer(map: MapLibreMap): void {
     try {
       // 生成密集点数据（模拟地震数据）
-      const features = [];
+      const features: IFeature[] = [];
       for (let i = 0; i < 500; i++) {
         const latLng = randomLatLng(18, 54, 73, 135);
-        features.push({
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [latLng.longitude, latLng.latitude]
-          },
-          properties: {
-            magnitude: Math.random() * 10
-          }
-        });
+        const props: Record<string, Object> = {
+          'magnitude': Math.random() * 10
+        };
+        features.push(GeoJson.pointFeature(
+          [latLng.longitude, latLng.latitude],
+          props
+        ));
       }
       
       const source = new GeoJsonSource('heatmap-source');
-      source.setGeoJson(JSON.stringify({ type: 'FeatureCollection', features }));
+      source.setGeoJson(GeoJson.featureCollection(features));
       map.addSource(source);
       
       const layer = new HeatmapLayer('heatmap-layer', 'heatmap-source');

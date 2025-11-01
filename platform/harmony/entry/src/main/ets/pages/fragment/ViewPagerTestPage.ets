@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions , NativeMapView} from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -15,6 +15,7 @@ struct ViewPagerTestPage {
   private mapController1: MapLibreMap | null = null;
   private mapController2: MapLibreMap | null = null;
   @State private currentIndex: number = 0;
+  private mapView: NativeMapView | null = null;
   
   aboutToDisappear() {
     if (this.mapController1) {
@@ -29,14 +30,14 @@ struct ViewPagerTestPage {
   
   private onMap1Ready = (mapView: NativeMapView): void => {
     const options = new MapLibreMapOptions();
-    this.mapController1 = new MapLibreMap(mapView, options);
+    this.mapController1 = new MapLibreMap(this.mapView, options);
     this.mapController1.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController1.jumpTo(0, 39.9042, 116.4074, 0, 12);
   };
   
   private onMap2Ready = (mapView: NativeMapView): void => {
     const options = new MapLibreMapOptions();
-    this.mapController2 = new MapLibreMap(mapView, options);
+    this.mapController2 = new MapLibreMap(this.mapView, options);
     this.mapController2.setStyleUrl(DEFAULT_STYLE_URLS.satellite);
     this.mapController2.jumpTo(0, 31.2304, 121.4737, 0, 12);
   };
@@ -49,9 +50,13 @@ struct ViewPagerTestPage {
         Text('地图1 - 北京')
           .fontSize(18)
           .margin(8)
-        NativeMapView({
-          onMapReady: this.onMap1Ready
-        })
+        MapView({
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            onMapReady: this.onMap1Ready,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
+          })
         .width('100%')
         .layoutWeight(1)
       }
@@ -61,9 +66,13 @@ struct ViewPagerTestPage {
         Text('地图2 - 上海')
           .fontSize(18)
           .margin(8)
-        NativeMapView({
-          onMapReady: this.onMap2Ready
-        })
+        MapView({
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            onMapReady: this.onMap2Ready,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
+          })
         .width('100%')
         .layoutWeight(1)
       }

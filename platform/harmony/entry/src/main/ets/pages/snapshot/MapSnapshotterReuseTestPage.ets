@@ -16,9 +16,18 @@ import {
   SnapshotOptions,
   MapSnapshot,
   CameraPosition,
-  LatLng
+  LatLng,
+  MapView,
+  SnapshotReadyCallback,
+  SnapshotErrorHandler
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+
+interface LocationInfo {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
 
 @Entry
 @Component
@@ -36,9 +45,8 @@ struct MapSnapshotterReuseTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
   };
@@ -52,21 +60,21 @@ struct MapSnapshotterReuseTestPage {
     this.isCapturing = true;
     const startTime = Date.now();
     
-    const locations = [
-      { name: '北京', ...TEST_LOCATIONS.beijing },
-      { name: '上海', ...TEST_LOCATIONS.shanghai },
-      { name: '广州', ...TEST_LOCATIONS.guangzhou }
+    const locations: LocationInfo[] = [
+      { latitude: TEST_LOCATIONS.beijing.latitude, longitude: TEST_LOCATIONS.beijing.longitude, name: '北京' },
+      { latitude: TEST_LOCATIONS.shanghai.latitude, longitude: TEST_LOCATIONS.shanghai.longitude, name: '上海' },
+      { latitude: TEST_LOCATIONS.guangzhou.latitude, longitude: TEST_LOCATIONS.guangzhou.longitude, name: '广州' }
     ];
     
     // 并行生成快照（测试性能）
     const promises = locations.map((loc, index) => {
       return new Promise<void>((resolve) => {
-        const cameraPosition = new CameraPosition(
-          LatLng.create(loc.latitude, loc.longitude),
+        const cameraPosition = CameraPosition.create(
+           LatLng.create(loc.latitude, loc.longitude),
           12,
-          0,
+           0,
           0
-        );
+        )
         
         const options: SnapshotOptions = {
           size: { width: 400, height: 300 },
@@ -78,22 +86,41 @@ struct MapSnapshotterReuseTestPage {
         
         const snapshotter = new MapSnapshotter(options);
         
-        snapshotter.start(
-          {
-            onSnapshotReady: (snapshot: MapSnapshot) => {
-              this.snapshots.push(snapshot.getImage());
-              this.captureCount++;
-              snapshotter.cancel();
-              resolve();
-            }
-          },
-          {
-            onError: (error: string) => {
-              console.error(`[MapSnapshotterReuseTestPage] Snapshot ${index} failed:`, error);
-              resolve();
-            }
+        class ReadyCallback implements SnapshotReadyCallback {
+          page: MapSnapshotterReuseTestPage;
+          snapshotter: MapSnapshotter;
+          resolve: () => void;
+          
+          constructor(page: MapSnapshotterReuseTestPage, snapshotter: MapSnapshotter, resolve: () => void) {
+            this.page = page;
+            this.snapshotter = snapshotter;
+            this.resolve = resolve;
           }
-        );
+          
+          onSnapshotReady(snapshot: MapSnapshot): void {
+            this.page.snapshots.push(snapshot.getImage());
+            this.page.captureCount++;
+            this.snapshotter.cancel();
+            this.resolve();
+          }
+        }
+        
+        class ErrorCallback implements SnapshotErrorHandler {
+          index: number;
+          resolve: () => void;
+          
+          constructor(index: number, resolve: () => void) {
+            this.index = index;
+            this.resolve = resolve;
+          }
+          
+          onError(error: string): void {
+            console.error(`[MapSnapshotterReuseTestPage] Snapshot ${this.index} failed:`, error);
+            this.resolve();
+          }
+        }
+        
+        snapshotter.start(new ReadyCallback(this, snapshotter, resolve), new ErrorCallback(index, resolve));
       });
     });
     
@@ -116,11 +143,13 @@ struct MapSnapshotterReuseTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

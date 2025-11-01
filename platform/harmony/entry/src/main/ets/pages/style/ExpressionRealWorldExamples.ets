@@ -37,7 +37,7 @@ struct ExpressionRealWorldExamples {
     { title: '📊 数据统计图', description: '根据统计数据动态调整标记大小' },
     { title: '🚇 地铁线路图', description: '不同线路显示不同颜色和宽度' },
     { title: '⭐ 评分展示', description: '根据评分显示星级和颜色' }
-  ];
+  ]
 
   aboutToAppear() {
     this.generateExampleCode(0);

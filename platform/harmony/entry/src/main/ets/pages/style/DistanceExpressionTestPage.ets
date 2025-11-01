@@ -4,8 +4,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, CircleLayer, GeoJsonSource, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, CircleLayer, GeoJsonSource, LatLng, GeoJson, IFeature } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -21,9 +21,8 @@ struct DistanceExpressionTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
     
@@ -34,34 +33,25 @@ struct DistanceExpressionTestPage {
     if (!this.mapController) return;
     
     // 生成圆形区域的点
-    const points = [];
+    const points: IFeature[] = [];
     for (let angle = 0; angle < 360; angle += 10) {
       const rad = angle * Math.PI / 180;
       const offsetLat = (this.distance / 111320) * Math.sin(rad);
       const offsetLng = (this.distance / 111320) * Math.cos(rad) / Math.cos(this.centerPoint.latitude * Math.PI / 180);
       
-      points.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [this.centerPoint.longitude + offsetLng, this.centerPoint.latitude + offsetLat]
-        }
-      });
+      points.push(GeoJson.pointFeature([this.centerPoint.longitude + offsetLng, this.centerPoint.latitude + offsetLat]));
     }
     
-    const geojson = {
-      type: 'FeatureCollection',
-      features: points
-    };
+    const geojson = GeoJson.featureCollection(points);
     
-    const source = new GeoJsonSource('distance-points', JSON.stringify(geojson));
+    const source = new GeoJsonSource('distance-points');
+    source.setGeoJson(geojson);
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new CircleLayer('distance-layer', 'distance-points');
-    layer.setProperties({
-      'circle-radius': 6,
-      'circle-color': '#4A90E2'
-    });
+    // TODO: setProperties() not available - layer.setProperties({
+    //   'circle-color': '#4A90E2'
+    // });
     this.mapController.getStyle()?.addLayer(layer);
     
     showToast('距离表达式图层已添加');
@@ -72,35 +62,28 @@ struct DistanceExpressionTestPage {
     
     const source = this.mapController.getStyle()?.getSourceAs('distance-points') as GeoJsonSource;
     if (source) {
-      const points = [];
+      const points: IFeature[] = [];
       for (let angle = 0; angle < 360; angle += 10) {
         const rad = angle * Math.PI / 180;
         const offsetLat = (this.distance / 111320) * Math.sin(rad);
         const offsetLng = (this.distance / 111320) * Math.cos(rad) / Math.cos(this.centerPoint.latitude * Math.PI / 180);
         
-        points.push({
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [this.centerPoint.longitude + offsetLng, this.centerPoint.latitude + offsetLat]
-          }
-        });
+        points.push(GeoJson.pointFeature([this.centerPoint.longitude + offsetLng, this.centerPoint.latitude + offsetLat]));
       }
       
-      source.setGeoJson(JSON.stringify({
-        type: 'FeatureCollection',
-        features: points
-      }));
+      source.setGeoJson(GeoJson.featureCollection(points));
     }
   };
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

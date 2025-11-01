@@ -1,4 +1,4 @@
-import { NativeMapView, Marker, Icon } from 'maplibre_harmony';
+import { MapView, Marker, Icon, NativeMapView, MapLibreMap } from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
@@ -26,26 +26,24 @@ struct MapStateTestPage {
   private readonly styleUrls: string[] = [
     'https://demotiles.maplibre.org/style.json',
     'https://tiles.versatiles.org/styles/dark-matter/style.json',
-  ];
+  ]
 
   /**
    * 地图区域构建器
    */
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: this.styleUrls[0],
-      initialLatitude: 39.9042,
-      initialLongitude: 116.4074,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
       initialZoom: 10,
       initialBearing: 0,
       initialPitch: 0,
-      onMapReady: (mapView?: NativeMapView) => {
-        this.onMapReady(mapView);
+      onMapReady: (map: MapLibreMap) => {
+        this.onMapReady(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   /**
@@ -137,8 +135,8 @@ struct MapStateTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '地图状态测试',
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -148,9 +146,9 @@ struct MapStateTestPage {
   /**
    * 地图就绪回调
    */
-  private onMapReady(mapView?: NativeMapView): void {
-    if (mapView) {
-      this.mapView = mapView;
+  private onMapReady(map?: MapLibreMap): void {
+    if (this.mapView) {
+      this.mapView = this.mapView;
       this.mapReady = true;
       this.statusMessage = '✅ 地图初始化成功';
       
@@ -255,7 +253,7 @@ struct MapStateTestPage {
     try {
       // 切换到下一个样式
       this.currentStyleIndex = (this.currentStyleIndex + 1) % this.styleUrls.length;
-      const newStyleUrl = this.styleUrls[this.currentStyleIndex];
+      const newStyleUrl = this.styleUrls[this.currentStyleIndex]
       
       this.mapView.setStyleUrl(newStyleUrl);
       

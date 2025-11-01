@@ -1,11 +1,12 @@
-import { CircleLayer, Expression, GeoJsonSource, MapLibreMap, NativeMapView, ScreenPoint } from 'maplibre_harmony';
 /**
  * Data Driven Style Test Page
  * 数据驱动样式测试
  * 参考 Android: DataDrivenStyleActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { CircleLayer, Expression, GeoJson, GeoJsonSource, MapLibreMap, MapView, ScreenPoint } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -28,44 +29,33 @@ struct DataDrivenStyleTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
         this.addDataDrivenLayer(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addDataDrivenLayer(map: MapLibreMap): void {
     try {
       // 添加带数据的 GeoJSON 源
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [116.4, 39.9] },
-            properties: { population: 2154, type: 'capital' }
-          },
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [121.5, 31.2] },
-            properties: { population: 2424, type: 'major' }
-          },
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [113.3, 23.1] },
-            properties: { population: 1501, type: 'major' }
-          }
-        ]
-      };
+      const props1: Record<string, Object> = { 'population': 2154, 'type': 'capital' };
+      const props2: Record<string, Object> = { 'population': 2424, 'type': 'major' };
+      const props3: Record<string, Object> = { 'population': 1501, 'type': 'major' };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.pointFeature([116.4, 39.9], props1),
+        GeoJson.pointFeature([121.5, 31.2], props2),
+        GeoJson.pointFeature([113.3, 23.1], props3)
+      ]);
       
       const source = new GeoJsonSource('cities-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       map.addSource(source);
       
       // 添加使用数据驱动样式的圆形图层
@@ -96,9 +86,6 @@ struct DataDrivenStyleTestPage {
     } catch (error) {
       showToast(`添加失败: ${error}`);
     }
-      .width('100%')
-
-      .height('100%')
   }
 
   @Builder
@@ -107,6 +94,5 @@ struct DataDrivenStyleTestPage {
       .onClick(() => {
         showToast('更新数据功能待实现');
       })
-    .width('100%')
-    .height('100%')
+  }
 }

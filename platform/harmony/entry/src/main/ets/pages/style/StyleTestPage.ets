@@ -5,7 +5,7 @@ import { util } from '@kit.ArkTS';
 import { resourceManager } from '@kit.LocalizationKit';
 import { TestPageLayout } from '../common/TestPageLayout';
 
-import { LatLng, MapLibreMap, NativeMapView, maplibre, MapLibreMapOptions, OnStyleLoadedListener } from 'maplibre_harmony';
+import { LatLng, MapLibreMap, MapView, maplibre, MapLibreMapOptions, OnStyleLoadedListener , NativeMapView} from 'maplibre_harmony';
 const TAG = 'StyleTestPage';
 
 /**
@@ -51,9 +51,9 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
         // 🔥 关键修复2：应用样式中的初始位置
         const styleRecord = this.styleObj as Record<string, Object>;
         if (this.styleObj && styleRecord['center'] && styleRecord['zoom'] !== undefined) {
-          const centerArray = styleRecord['center'] as number[];
-          const lon = centerArray[0];
-          const lat: number = centerArray[1];
+          const centerArray = styleRecord['center'] as number[]
+          const lon = centerArray[0]
+          const lat: number = centerArray[1]
           const zoom = styleRecord['zoom'] as number;
           const bearing = styleRecord['bearing'] !== undefined ? styleRecord['bearing'] as number : 0;
           const pitch = styleRecord['pitch'] !== undefined ? styleRecord['pitch'] as number : 0;
@@ -119,7 +119,7 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
 @Component
 struct StyleTestPage {
   @State message: string = '地图样式测试';
-  nativeMapView: maplibre.NativeMapView | null = null;  // 改为 public，供监听器访问
+  nativeMapView: NativeMapView | null = null;  // 改为 public，供监听器访问
   mapLibreMap: MapLibreMap | null = null;  // 改为 public，供监听器访问
   @State currentStyleName: string = 'MapLibre Demo';
   @State currentStyleUrl: string = '';
@@ -161,20 +161,20 @@ struct StyleTestPage {
       description: '简约中性风格',
       category: '特色样式'
     }
-  ];
+  ]
 
   @Builder
   buildMapContent() {
     Stack() {
-      NativeMapView({
+      MapView({
         styleUrl: this.styleUrls[0].url,
-        initialLatitude: 39.9042,
-        initialLongitude: 116.4074,
-        initialZoom: 3,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
+        initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          this.initializeMap(mapView);
+        onMapReady: (map: MapLibreMap) => {
+          this.initializeMap(map);
         }
       })
         .width('100%')
@@ -246,6 +246,7 @@ struct StyleTestPage {
           .margin({ top: -5 })
       }
       .width('100%')
+    }, (item: StyleUrlItem) => item.url)
 
     Divider().strokeWidth(2)
 
@@ -358,14 +359,15 @@ struct StyleTestPage {
         .backgroundColor('#607D8B')
     }
     .width('100%')
+  }
 
   build() {
     Column() {
       TestPageLayout({
         showActionBar: true,
         title: this.message,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -444,14 +446,14 @@ struct StyleTestPage {
   /**
    * 初始化地图
    */
-  private initializeMap(mapView?: maplibre.NativeMapView) {
+  private initializeMap(map?: MapLibreMap) {
     if (this.isInitializing) {
       hilog.warn(DOMAIN, TAG, 'Map is already initializing');
       return;
     }
     
-    if (!mapView) {
-      hilog.error(DOMAIN, TAG, 'onMapReady: mapView is null');
+    if (!map) {
+      hilog.error(DOMAIN, TAG, 'onMapReady: this.mapView is null');
       this.message = '❌ 地图初始化失败';
       return;
     }
@@ -459,9 +461,8 @@ struct StyleTestPage {
     this.isInitializing = true;
     
     try {
-      this.nativeMapView = mapView;
-      const options = new MapLibreMapOptions();
-      this.mapLibreMap = new MapLibreMap(mapView, options);
+      this.nativeMapView = map.getNativeMapView();
+      this.mapLibreMap = map;
       
       // 获取初始样式信息
       this.currentStyleUrl = this.styleUrls[0].url;

@@ -2,7 +2,7 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapLibreMap, MapLibreMapOptions, maplibre } from 'maplibre_harmony';
+import { MapLibreMap, MapLibreMapOptions, maplibre, MapView , NativeMapView} from 'maplibre_harmony';
 const TAG = 'StyleUrlTestPage';
 
 /**
@@ -31,8 +31,8 @@ interface StyleUrlItem {
 @Component
 struct StyleUrlTestPage {
   @State message: string = 'Style URL 切换测试';
-  private nativeMapView: maplibre.NativeMapView | null = null;
-  private mapLibreMap: MapLibreMap | null = null;
+  private nativeMapView: NativeMapView | undefined = undefined;
+  private mapLibreMap: MapLibreMap | undefined = undefined;
   @State currentStyleName: string = 'MapLibre Demo';
   @State currentStyleUrl: string = '';
   @State styleJsonLength: number = 0;
@@ -81,20 +81,20 @@ struct StyleUrlTestPage {
       url: 'https://tiles.versatiles.org/styles/klokantech-basic/style.json',
       description: 'Klokantech 基础样式'
     }
-  ];
+  ]
 
   @Builder
   buildMapContent() {
     Stack() {
-      NativeMapView({
+      MapView({
         styleUrl: this.styleUrls[0].url,
-        initialLatitude: 20.0,
-        initialLongitude: 0.0,
-        initialZoom: 1.5,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
+        initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          this.initializeMap(mapView);
+        onMapReady: (map: MapLibreMap) => {
+          this.initializeMap(map);
         }
       })
         .width('100%')
@@ -176,8 +176,8 @@ struct StyleUrlTestPage {
       TestPageLayout({
         showActionBar: true,
         title: this.message,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -187,14 +187,14 @@ struct StyleUrlTestPage {
   /**
    * 初始化地图
    */
-  private initializeMap(mapView?: maplibre.NativeMapView) {
+  private initializeMap(map?: MapLibreMap) {
     if (this.isInitializing) {
       hilog.warn(DOMAIN, TAG, 'Map is already initializing');
       return;
     }
     
-    if (!mapView) {
-      hilog.error(DOMAIN, TAG, 'onMapReady: mapView is null');
+    if (!map) {
+      hilog.error(DOMAIN, TAG, 'onMapReady: this.mapView is null');
       this.message = '❌ 地图初始化失败';
       return;
     }
@@ -202,9 +202,9 @@ struct StyleUrlTestPage {
     this.isInitializing = true;
     
     try {
-      this.nativeMapView = mapView;
-      const options = new MapLibreMapOptions();
-      this.mapLibreMap = new MapLibreMap(mapView, options);
+      this.nativeMapView = map?.getNativeMapView();
+      // const options = new MapLibreMapOptions();
+      this.mapLibreMap = map;
       
       this.mapReady = true;
       this.message = '✅ 地图已就绪';

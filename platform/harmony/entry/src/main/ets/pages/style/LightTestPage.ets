@@ -1,4 +1,4 @@
-import { maplibre, NativeMapView } from 'maplibre_harmony';
+import { maplibre, MapLibreMap, MapView , NativeMapView} from 'maplibre_harmony';
 /**
  * LightTestPage - 光照系统测试页面
  * 
@@ -17,26 +17,24 @@ struct LightTestPage {
   @State mapReady: boolean = false;
   @State lightInfo: string = '';
   
-  private mapView: maplibre.NativeMapView | null = null;
+  private mapView: NativeMapView | null = null;
 
   /**
    * 地图区域构建器
    */
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: 'https://demotiles.maplibre.org/style.json',
-      initialLatitude: 39.9042,
-      initialLongitude: 116.4074,
-      initialZoom: 12,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       initialBearing: 0,
-      initialPitch: 60, // 设置倾斜角以更好地观察光照效果
-      onMapReady: (mapView?: maplibre.NativeMapView) => {
-        this.onMapReady(mapView);
+      initialPitch: 0, // 设置倾斜角以更好地观察光照效果
+      onMapReady: (map: MapLibreMap) => {
+        this.onMapReady(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   /**
@@ -107,8 +105,8 @@ struct LightTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '光照系统测试',
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -118,9 +116,9 @@ struct LightTestPage {
   /**
    * 地图就绪回调
    */
-  private onMapReady(mapView?: maplibre.NativeMapView): void {
-    if (mapView) {
-      this.mapView = mapView;
+  private onMapReady(map?: MapLibreMap): void {
+    if (this.mapView) {
+      this.mapView = this.mapView;
       this.mapReady = true;
       this.statusMessage = '✅ 地图加载成功';
       // 自动获取光照信息

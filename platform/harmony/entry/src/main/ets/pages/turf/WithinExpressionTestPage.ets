@@ -4,8 +4,10 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, FillLayer, CircleLayer, GeoJsonSource, Expression } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, FillLayer, CircleLayer, GeoJson, GeoJsonSource, Expression,
+  IFeature } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -20,71 +22,59 @@ struct WithinExpressionTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 11);
     
     setTimeout(() => this.addLayers(), 1000);
   };
   
-  private addLayers = (): void => {
+  private addLayers (): void  {
     if (!this.mapController) return;
     
     // 添加多边形
-    const polygon = {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: [[
-            [116.38, 39.88],
-            [116.43, 39.88],
-            [116.43, 39.92],
-            [116.38, 39.92],
-            [116.38, 39.88]
-          ]]
-        }
-      }]
-    };
+    const polygon = GeoJson.featureCollection([
+      GeoJson.polygonFeature([[
+        [116.38, 39.88],
+        [116.43, 39.88],
+        [116.43, 39.92],
+        [116.38, 39.92],
+        [116.38, 39.88]
+      ]])
+    ]);
     
     // 添加随机点
-    const points = {
-      type: 'FeatureCollection',
-      features: Array.from({ length: 50 }, () => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [
+    const randomProps: Record<string, Object> = {};
+    const points = GeoJson.featureCollection(
+      Array.from<number>({ length: 50 }).fill(1).map((): IFeature => {
+        return GeoJson.pointFeature([
             116.35 + Math.random() * 0.1,
-            39.85 + Math.random() * 0.1
-          ]
-        },
-        properties: { id: Math.random() }
-      }))
-    };
-    
-    const polygonSource = new GeoJsonSource('polygon-source', JSON.stringify(polygon));
-    const pointsSource = new GeoJsonSource('points-source', JSON.stringify(points));
+            39.85 + Math.random() * 0.1,
+            0
+          ], randomProps)
+      }));
+
+
+    const polygonSource = new GeoJsonSource('polygon-source');
+    polygonSource.setGeoJson(polygon);
+    const pointsSource = new GeoJsonSource('points-source');
+    pointsSource.setGeoJson(points);
     
     this.mapController.getStyle()?.addSource(polygonSource);
     this.mapController.getStyle()?.addSource(pointsSource);
     
     const polygonLayer = new FillLayer('polygon-layer', 'polygon-source');
-    polygonLayer.setProperties({
-      'fill-color': '#4A90E2',
-      'fill-opacity': 0.3,
-      'fill-outline-color': '#2196F3'
-    });
+    // TODO: setProperties() not available - polygonLayer.setProperties({
+    //   'fill-opacity': 0.3,
+    //   'fill-outline-color': '#2196F3'
+    // });
     this.mapController.getStyle()?.addLayer(polygonLayer);
     
     const pointsLayer = new CircleLayer('points-layer', 'points-source');
-    pointsLayer.setProperties({
-      'circle-radius': 6,
-      'circle-color': '#E74C3C'
-    });
+    // TODO: setProperties() not available - pointsLayer.setProperties({
+    //   'circle-color': '#E74C3C'
+    // });
     this.mapController.getStyle()?.addLayer(pointsLayer);
     
     showToast('Within表达式测试已设置');
@@ -92,11 +82,13 @@ struct WithinExpressionTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

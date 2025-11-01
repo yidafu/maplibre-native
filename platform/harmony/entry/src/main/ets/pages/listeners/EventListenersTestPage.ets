@@ -12,8 +12,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { maplibre } from 'maplibre_harmony';
-import { NativeMapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import {maplibre, NativeMapView} from 'maplibre_harmony';
+import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
 import {
@@ -43,12 +43,12 @@ struct EventListenersTestPage {
   @State statusMessage: string = '等待地图加载...';
   @State eventCount: number = 0;
   @State mapReady: boolean = false;
-  @State eventLog: string[] = [];
+  @State eventLog:  string[] = [];
   @State eventStats: Record<string, number> = {}; // 事件统计
   @State showRenderingEvents: boolean = false; // 是否显示渲染事件（会很频繁）
   @State lastRenderingStats: string = '等待渲染数据...'; // 最后的渲染统计
   
-  private mapView: maplibre.NativeMapView | null = null;
+  private mapView: NativeMapView | null = null;
   private map: MapLibreMap | null = null;
   private nativeMapViewComponent: NativeMapView | null = null;
   
@@ -57,26 +57,24 @@ struct EventListenersTestPage {
   private styleUrls: string[] = [
     'https://demotiles.maplibre.org/style.json',
     'https://demotiles.maplibre.org/style.json', // 同一个样式用于测试重载
-  ];
+  ]
 
   /**
    * 地图区域构建器
    */
   @Builder
   MapAreaBuilder() {
-    NativeMapView({
+    MapView({
       styleUrl: 'https://demotiles.maplibre.org/style.json',
-      initialLatitude: 39.9042,
-      initialLongitude: 116.4074,
-      initialZoom: 12,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       initialBearing: 0,
       initialPitch: 0,
-      onMapReady: (mapView?: maplibre.NativeMapView) => {
-        this.onMapReady(mapView);
+      onMapReady: (map: MapLibreMap) => {
+        this.onMapReady(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   /**
@@ -280,13 +278,13 @@ struct EventListenersTestPage {
   /**
    * 地图准备完成
    */
-  private onMapReady(mapView?: maplibre.NativeMapView): void {
-    if (mapView) {
-      this.mapView = mapView;
+  private onMapReady(map?: MapLibreMap): void {
+    if (this.mapView) {
+      this.mapView = this.mapView;
       
       // 创建 MapLibreMap 实例
       const options = new MapLibreMapOptions();
-      this.map = new MapLibreMap(mapView, options);
+      this.map = new MapLibreMap(this.mapView, options);
       
       this.mapReady = true;
       this.logEvent('生命周期', '✅ 地图初始化完成');
@@ -304,12 +302,12 @@ struct EventListenersTestPage {
    */
   private registerAllListeners(): void {
     if (!this.mapView) {
-      hilog.error(DOMAIN, 'EventListenersTest', 'Cannot register listeners: mapView is null');
+      hilog.error(DOMAIN, 'EventListenersTest', 'Cannot register listeners: this.mapView is null');
       return;
     }
     
     // 保存 NativeMapView 组件引用（通过全局查找）
-    // 注意：这里我们直接使用 mapView 的方法，因为 NativeMapView 组件已经在 onMapReady 中准备好了
+    // 注意：这里我们直接使用 this.mapView 的方法，因为 NativeMapView 组件已经在 onMapReady 中准备好了
     
     // ========== 相机事件监听器 ==========
     
@@ -467,7 +465,7 @@ struct EventListenersTestPage {
     }
     
     this.currentStyleIndex = (this.currentStyleIndex + 1) % this.styleUrls.length;
-    const newStyle = this.styleUrls[this.currentStyleIndex];
+    const newStyle = this.styleUrls[this.currentStyleIndex]
     
     this.logEvent('测试', `🎬 切换样式 (索引: ${this.currentStyleIndex})`);
     
@@ -581,8 +579,8 @@ struct EventListenersTestPage {
     Column() {
       TestPageLayout({
         title: '事件监听器测试',
-        mapArea: (): void => this.MapAreaBuilder(),
-        controlArea: (): void => this.ControlButtonsBuilder()
+        mapContent: this.MapAreaBuilder,
+        controlPanel: this.ControlButtonsBuilder
       })
     }
     .width('100%')

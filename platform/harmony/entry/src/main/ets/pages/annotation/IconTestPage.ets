@@ -12,6 +12,8 @@ import {
 import { router } from '@kit.ArkUI';
 import resourceManager from '@ohos.resourceManager';
 import { TestPageLayout } from '../common/TestPageLayout';
+import { DEFAULT_STYLE_URLS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView } from 'maplibre_harmony';
 
 /**
  * IconTestPage - Icon 管理系统测试页面
@@ -33,7 +35,7 @@ struct IconTestPage {
   
   private mapLibreMap: MapLibreMap | null = null;
   private iconFactory: IconFactory | null = null;
-  private markers: Marker[] = [];
+  private markers: Marker[] = [];;
   private testIcon: Icon | null = null;
 
   aboutToAppear() {
@@ -157,12 +159,12 @@ struct IconTestPage {
       if (this.testIcon) {
         const isReleased = this.testIcon.isReleased();
         const iconId = this.testIcon.getId();
-        const width = this.testIcon.getWidth();
-        const height = this.testIcon.getHeight();
+        const iconWidth = this.testIcon.getWidth();
+        const iconHeight = this.testIcon.getHeight();
         
         this.testStatus = `✅ Icon状态检查:\n` +
           `ID: ${iconId}\n` +
-          `尺寸: ${width}x${height}\n` +
+          `尺寸: ${iconWidth}x${iconHeight}\n` +
           `已释放: ${isReleased}\n` +
           `说明: 使用中的Icon不应被释放`;
         
@@ -193,7 +195,7 @@ struct IconTestPage {
         LatLng.create(39.9242, 116.4274),
         LatLng.create(39.9342, 116.4374),
         LatLng.create(39.9442, 116.4474)
-      ];
+      ]
 
       for (let i = 0; i < positions.length; i++) {
         const markerOptions = new MarkerOptions()
@@ -289,15 +291,26 @@ struct IconTestPage {
     }
   }
 
+  /**
+   * 地图就绪回调
+   */
+  private onMapReady = async (map: MapLibreMap): Promise<void> => {
+    console.info('[IconTestPage] onMapReady');
+    this.mapLibreMap = map;
+    
+    // 初始化 Icon 系统
+    await this.initIconSystem();
+  };
+
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: (nativeMapView?: NativeMapView) => {
-        this.onMapReady(nativeMapView);
-      }
+    MapView({
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      onMapReady: this.onMapReady,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder

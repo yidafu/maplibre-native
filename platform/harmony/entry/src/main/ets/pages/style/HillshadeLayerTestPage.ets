@@ -1,11 +1,11 @@
-import { HillshadeLayer, MapLibreMap, NativeMapView, RasterDemSource } from 'maplibre_harmony';
+import { HillshadeLayer, MapLibreMap, MapView, RasterDemSource } from 'maplibre_harmony';
 /**
  * Hillshade Layer Test Page
  * 山体阴影图层测试
  * 参考 Android: HillshadeLayerActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -29,16 +29,17 @@ struct HillshadeLayerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 30, 105, 0, 8);
         this.addHillshadeLayer(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addHillshadeLayer(map: MapLibreMap): void {

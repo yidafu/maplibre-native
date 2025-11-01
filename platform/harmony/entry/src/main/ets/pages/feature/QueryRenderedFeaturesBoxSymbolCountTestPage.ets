@@ -1,11 +1,11 @@
-import { MapLibreMap, NativeMapView } from 'maplibre_harmony';
+import { MapLibreMap, MapView } from 'maplibre_harmony';
 /**
  * Query Rendered Features Box Symbol Count Test Page
  * 框选查询符号数量
  * 参考 Android: QueryRenderedFeaturesBoxSymbolCountActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -30,8 +30,11 @@ struct QueryRenderedFeaturesBoxSymbolCountTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 12);
@@ -93,7 +96,5 @@ struct QueryRenderedFeaturesBoxSymbolCountTestPage {
     } catch (error) {
       showToast(`查询失败: ${error}`);
     }
-      .width('100%')
-      .height('100%')
+  }
 }
-

@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -28,10 +28,9 @@ struct MapPaddingTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[MapPaddingTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     
-    // TODO: Use jumpTo instead of CameraPosition
-    // TODO: map.setCameraPosition(initialPosition);
+    // 设置初始相机位置
+    map.jumpTo(0, 39.9, 116.4, 0, 10);
   };
   
   /**
@@ -104,17 +103,25 @@ struct MapPaddingTestPage {
       description: '地图内边距',
       showActionBar: true,
       actionButtons: this.actionButtonsBuilder,
-      controlPanel: this.controlPanelBuilder,
-      mapContent: () => {
-        NativeMapView({
-          onMapReady: this.onMapReady
-        })
-          .width('100%')
-          .height('100%');
-      }
+      controlPanel: (): void => this.controlPanelBuilder(),
+      mapContent: (): void => this.mapContentBuilder()
+
     });
     }
     .width('100%')
     .height('100%');
+  }
+
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      onMapReady: this.onMapReady,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
   }
 }

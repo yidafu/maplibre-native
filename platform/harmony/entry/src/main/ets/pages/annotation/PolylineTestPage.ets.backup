@@ -1,0 +1,347 @@
+/**
+ * Polyline Test Page
+ * 折线注解测试页面
+ * 
+ * 参考: platform/android/MapLibreAndroidTestApp/src/main/java/org/maplibre/android/testapp/activity/annotation/PolylineActivity.kt
+ * 
+ * 功能:
+ * - 添加折线注解（使用 GeoJSON Source + LineLayer）
+ * - 修改折线属性（颜色、宽度、透明度）
+ * - 批量添加/删除折线
+ * - 折线点击事件
+ */
+
+import { TestPageLayout } from '../common/TestPageLayout';
+import { MapLibreMap, MapView, GeoJsonSource, LineLayer, GeoJson, IFeature } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG  } from '../common/TestUtils';
+
+interface PolylineConfig {
+  start: number[]
+  end: number[]
+  color: string;
+  id: string;
+}
+
+interface LineStringGeometry {
+  type: string;
+  coordinates: number[][]
+}
+
+interface LineFeatureProperties {
+  color: string;
+  id: string;
+}
+
+interface LineFeature {
+  type: string;
+  properties: LineFeatureProperties;
+  geometry: LineStringGeometry;
+}
+
+interface LineFeatureCollection {
+  type: string;
+  features: LineFeature[]
+}
+
+@Entry
+@Component
+struct PolylineTestPage {
+  private mapController: MapLibreMap | null = null;
+  @State private currentColor: string = '#F44336';
+  @State private currentWidth: number = 3.0;
+  @State private currentAlpha: number = 1.0;
+  @State private polylineCount: number = 0;
+  
+  // 欧洲小国坐标
+  private readonly ANDORRA: number[] = [1.52529, 42.505777]
+  private readonly LUXEMBOURG: number[] = [6.129583, 49.815273]
+  private readonly MONACO: number[] = [7.424616, 43.738418]
+  private readonly VATICAN_CITY: number[] = [12.453389, 41.902916]
+  private readonly SAN_MARINO: number[] = [12.457777, 43.942360]
+  private readonly LIECHTENSTEIN: number[] = [9.555373, 47.166000]
+  
+  // 所有折线配置
+  private polylines: PolylineConfig[] = [
+    { start: this.ANDORRA, end: this.LUXEMBOURG, color: '#F44336', id: 'line-1' } as PolylineConfig,
+    { start: this.ANDORRA, end: this.MONACO, color: '#FF5722', id: 'line-2' } as PolylineConfig,
+    { start: this.MONACO, end: this.VATICAN_CITY, color: '#673AB7', id: 'line-3' } as PolylineConfig,
+    { start: this.VATICAN_CITY, end: this.SAN_MARINO, color: '#009688', id: 'line-4' } as PolylineConfig,
+    { start: this.SAN_MARINO, end: this.LIECHTENSTEIN, color: '#795548', id: 'line-5' } as PolylineConfig,
+    { start: this.LIECHTENSTEIN, end: this.LUXEMBOURG, color: '#3F51B5', id: 'line-6' } as PolylineConfig
+  ]
+  
+  aboutToDisappear() {
+    if (this.mapController) {
+      this.mapController.destroy();
+      this.mapController = null;
+    }
+  }
+  
+  private onMapReady = (map: MapLibreMap): void => {
+    console.info('[PolylineTestPage] onMapReady');
+    this.mapController = map;
+    map.setStyleUrl(DEFAULT_STYLE_URLS.bright);
+    
+    // 设置初始位置（欧洲中心）
+    map.jumpTo(0, 39.9, 116.4, 0, 10);
+    
+    // 添加所有折线
+    this.addAllPolylines();
+  };
+  
+  /**
+   * 添加所有折线
+   */
+  private addAllPolylines = (): void => {
+    if (!this.mapController) {
+      showToast('地图未就绪');
+      return;
+    }
+    
+    try {
+      // 清除现有折线
+      this.clearAllPolylines();
+      
+      // 创建 GeoJSON FeatureCollection
+      const features: IFeature[] = this.polylines.map((line: PolylineConfig): IFeature => {
+        return GeoJson.lineStringFeature(
+          [line.start, line.end],
+          {
+            color: line.color,
+            id: line.id
+          }
+        );
+      });
+      
+      const geojson = GeoJson.featureCollection(features);
+      
+      // 添加数据源
+      const source = new GeoJsonSource('polylines-source');
+      source.setGeoJson(geojson);
+      this.mapController.addSource(source);
+      
+      // 添加图层 - 使用数据驱动样式
+      const lineLayer = new LineLayer('polylines-layer', 'polylines-source');
+      
+      // 设置颜色（从 feature properties 获取）
+      lineLayer.setLineColor(['get', 'color']);
+      
+      // 设置宽度和透明度
+      lineLayer.setLineWidth(this.currentWidth);
+      const alphaHex = Math.round(this.currentAlpha * 255).toString(16).padStart(2, '0');
+      lineLayer.setLineOpacity(this.currentAlpha);
+      
+      this.mapController.addLayer(lineLayer);
+      
+      this.polylineCount = this.polylines.length;
+      showToast(`已添加 ${this.polylineCount} 条折线`);
+    } catch (error) {
+      console.error(`添加折线失败: ${error}`);
+      showToast(`添加失败: ${error}`);
+    }
+  };
+  
+  /**
+   * 添加随机折线
+   */
+  private addRandomPolyline = (): void => {
+    if (!this.mapController) {
+      showToast('地图未就绪');
+      return;
+    }
+    
+    try {
+      // 清除现有折线
+      this.clearAllPolylines();
+      
+      // 随机选择一条折线
+      const randomLine = this.polylines[Math.floor(Math.random() * this.polylines.length)];
+      
+      const feature = new IFeature({
+        geometry: new GeoJson.LineString([randomLine.start, randomLine.end]),
+        properties: {
+          color: randomLine.color,
+          id: randomLine.id
+        }
+      });
+      
+      const geojson = new IFeatureCollection([feature]);
+      
+      // 添加数据源
+      const source = new GeoJsonSource('polylines-source');
+      source.setGeoJson(geojson);
+      this.mapController.addSource(source);
+      
+      // 添加图层
+      const lineLayer = new LineLayer('polylines-layer', 'polylines-source');
+      lineLayer.setLineColor(['get', 'color']);
+      lineLayer.setLineWidth(this.currentWidth);
+      lineLayer.setLineOpacity(this.currentAlpha);
+      
+      this.mapController.addLayer(lineLayer);
+      
+      this.polylineCount = 1;
+      showToast('已添加随机折线');
+    } catch (error) {
+      console.error(`添加折线失败: ${error}`);
+      showToast(`添加失败: ${error}`);
+    }
+  };
+  
+  /**
+   * 清除所有折线
+   */
+  private clearAllPolylines = (): void => {
+    if (!this.mapController) return;
+    
+    try {
+      // 移除图层
+      const layer = this.mapController.getLayer('polylines-layer');
+      if (layer) {
+        this.mapController.removeLayer('polylines-layer');
+      }
+      
+      // 移除数据源
+      const source = this.mapController.getSource('polylines-source');
+      if (source) {
+        this.mapController.removeSource('polylines-source');
+      }
+      
+      this.polylineCount = 0;
+    } catch (error) {
+      console.error(`清除折线失败: ${error}`);
+    }
+  };
+  
+  /**
+   * 切换透明度
+   */
+  private toggleAlpha = (): void => {
+    this.currentAlpha = this.currentAlpha === 1.0 ? 0.5 : 1.0;
+    this.addAllPolylines();
+    showToast(`透明度: ${(this.currentAlpha * 100).toFixed(0)}%`);
+  };
+  
+  /**
+   * 切换颜色
+   */
+  private toggleColor = (): void => {
+    if (!this.mapController) return;
+    
+    try {
+      const layer = this.mapController.getLayer('polylines-layer');
+      if (layer) {
+        this.currentColor = this.currentColor === '#F44336' ? '#2196F3' : '#F44336';
+        (layer as LineLayer).setLineColor(this.currentColor);
+        showToast(`颜色已更改`);
+      }
+    } catch (error) {
+      console.error(`切换颜色失败: ${error}`);
+    }
+  };
+  
+  /**
+   * 切换宽度
+   */
+  private toggleWidth = (): void => {
+    if (!this.mapController) return;
+    
+    try {
+      const layer = this.mapController.getLayer('polylines-layer');
+      if (layer) {
+        this.currentWidth = this.currentWidth === 3.0 ? 5.0 : 3.0;
+        (layer as LineLayer).setLineWidth(this.currentWidth);
+        showToast(`宽度: ${this.currentWidth}px`);
+      }
+    } catch (error) {
+      console.error(`切换宽度失败: ${error}`);
+    }
+  };
+  
+  @Builder
+  actionButtonsBuilder() {
+    Button('所有折线')
+      .fontSize(14)
+      .onClick(this.addAllPolylines);
+    
+    Button('随机折线')
+      .fontSize(14)
+      .onClick(this.addRandomPolyline);
+    
+    Button('透明度')
+      .fontSize(14)
+      .onClick(this.toggleAlpha);
+    
+    Button('颜色')
+      .fontSize(14)
+      .onClick(this.toggleColor);
+    
+    Button('宽度')
+      .fontSize(14)
+      .onClick(this.toggleWidth);
+    
+    Button('清除')
+      .fontSize(14)
+      .backgroundColor('#F44336')
+      .onClick(() => {
+        this.clearAllPolylines();
+        showToast('已清除所有折线');
+      });
+  }
+  
+  @Builder
+  controlPanelBuilder() {
+    Column() {
+      Text('折线属性')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .margin({ bottom: 8 });
+      
+      Text(`数量: ${this.polylineCount}`)
+        .fontSize(12)
+        .fontColor('#666');
+      
+      Text(`颜色: ${this.currentColor}`)
+        .fontSize(12)
+        .fontColor('#666');
+      
+      Text(`宽度: ${this.currentWidth}px`)
+        .fontSize(12)
+        .fontColor('#666');
+      
+      Text(`透明度: ${(this.currentAlpha * 100).toFixed(0)}%`)
+        .fontSize(12)
+        .fontColor('#666');
+    }
+    .alignItems(HorizontalAlign.Start);
+  }
+  
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      onMapReady: this.onMapReady,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
+  build() {
+    Column() {
+      TestPageLayout({
+        title: 'Polyline',
+        description: '折线注解',
+        showActionBar: true,
+        actionButtons: this.actionButtonsBuilder,
+        controlPanel: (): void => this.controlPanelBuilder(),
+        mapContent: (): void => this.mapContentBuilder()
+      });
+    }
+    .width('100%')
+    .height('100%');
+  }
+}
+

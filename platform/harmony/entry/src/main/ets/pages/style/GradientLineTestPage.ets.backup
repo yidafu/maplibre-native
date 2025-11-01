@@ -1,0 +1,98 @@
+/**
+ * Gradient Line Test Page
+ * 渐变线条测试
+ * 参考 Android: GradientLineActivity
+ */
+import { TestPageLayout } from '../common/TestPageLayout';
+import { Expression, GeoJsonSource, LineLayer, MapLibreMap, MapView, GeoJson } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+
+@Entry
+@Component
+struct GradientLineTestPage {
+  private mapController: MapLibreMap | null = null;
+  
+  build() {
+    Column() {
+      TestPageLayout({
+        title: 'Gradient Line',
+        description: '渐变线条效果',
+        showActionBar: true,
+        mapContent: this.buildMapContent,
+        actionButtons: this.buildActionButtons
+      })
+    }
+    .width('100%')
+
+    .height('100%')
+  }
+
+  @Builder
+  buildMapContent() {
+    MapView({
+      styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
+      onMapReady: (map: MapLibreMap) => {
+        this.mapController = map;
+        map.jumpTo(0, 35, 105, 0, 5);
+        this.addGradientLine(map);
+      }
+    })
+  }
+
+  private addGradientLine(map: MapLibreMap): void {
+    try {
+      const geojson = new IFeatureCollection([
+        new IFeature({
+          geometry: new GeoJson.LineString([
+            [116.4, 39.9],
+            [118, 37],
+            [120, 35],
+            [121.5, 31.2]
+          ])
+        })
+      ]);
+      
+      const source = new GeoJsonSource('gradient-source');
+      source.setGeoJson(geojson);
+      map.addSource(source);
+      
+      const layer = new LineLayer('gradient-layer', 'gradient-source');
+      
+      // 使用渐变表达式
+      const gradientExpression = Expression.interpolate(
+        Expression.linear(),
+        Expression.lineProgress(),
+        Expression.literal(0), Expression.literal('#FF0000'),
+        Expression.literal(0.5), Expression.literal('#FFFF00'),
+        Expression.literal(1), Expression.literal('#00FF00')
+      );
+      
+      layer.setLineGradient(gradientExpression);
+      layer.setLineWidth(8);
+      map.addLayer(layer);
+      
+      showToast('渐变线条已添加');
+    } catch (error) {
+      showToast(`添加失败: ${error}`);
+    }
+  }
+  
+  @Builder
+  buildActionButtons() {
+    Button('改变宽度')
+      .onClick(() => {
+        if (this.mapController) {
+          const layer = this.mapController.getLayer('gradient-layer');
+          if (layer) {
+            const this.width = 4 + Math.random() * 10;
+            (layer as LineLayer).setLineWidth(width);
+            showToast(`宽度: ${width.toFixed(1)}`);
+          }
+        }
+      })
+  }
+}
+

@@ -4,8 +4,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource, GeoJson, IFeature } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -20,9 +20,8 @@ struct ZoomFunctionSymbolLayerTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, this.currentZoom);
     
@@ -32,28 +31,19 @@ struct ZoomFunctionSymbolLayerTestPage {
   private addSymbolLayer = (): void => {
     if (!this.mapController) return;
     
-    const geojson = {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [116.4074, 39.9042]
-        },
-        properties: {
-          title: '缩放测试'
-        }
-      }]
-    };
+    const props: Record<string, Object> = { 'title': '缩放测试' };
+    const geojson = GeoJson.featureCollection([
+      GeoJson.pointFeature([116.4074, 39.9042], props)
+    ]);
     
-    const source = new GeoJsonSource('zoom-source', JSON.stringify(geojson));
+    const source = new GeoJsonSource('zoom-source');
+    source.setGeoJson(geojson);
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new SymbolLayer('zoom-layer', 'zoom-source');
-    layer.setProperties({
-      'text-field': ['get', 'title'],
-      'text-size': 14
-    });
+    // TODO: setProperties() not available - layer.setProperties({
+    //   'text-size': 14
+    // });
     this.mapController.getStyle()?.addLayer(layer);
     
     showToast('缩放函数图层已添加');
@@ -69,11 +59,13 @@ struct ZoomFunctionSymbolLayerTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

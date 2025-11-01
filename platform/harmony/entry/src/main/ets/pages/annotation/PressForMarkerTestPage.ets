@@ -6,14 +6,14 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, formatLatLng } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, formatLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
 struct PressForMarkerTestPage {
   private mapController: MapLibreMap | null = null;
-  private markers: Marker[] = [];
+  private markers: Marker[] = [];;
   @State private markerCount: number = 0;
   @State private lastClickType: string = '';
   
@@ -42,7 +42,7 @@ struct PressForMarkerTestPage {
   /**
    * 设置点击监听器
    */
-  private setupClickListeners(map: MapLibreMap): void => {
+  private setupClickListeners(map: MapLibreMap): void {
     // TODO: 实现地图点击监听器
     // 单击添加标注
     // map.addOnMapClickListener({
@@ -66,7 +66,7 @@ struct PressForMarkerTestPage {
   /**
    * 添加标注
    */
-  private addMarker(position: LatLng, clickType: string): void => {
+  private addMarker(position: LatLng, clickType: string): void {
     if (!this.mapController) return;
     
     this.lastClickType = clickType;
@@ -75,17 +75,16 @@ struct PressForMarkerTestPage {
     // TODO: 实现坐标转换
     // const screenPoint = this.mapController.projection.toScreenLocation(position);
     
-    const markerOptions = new MarkerOptions();
-    markerOptions.position = position;
-    markerOptions.title = formatLatLng(position.latitude, position.longitude, 5);
-    markerOptions.snippet = `通过${clickType}添加`;
+    const markerOptions = new MarkerOptions()
+      .position(position)
+      .title(formatLatLng(position.latitude, position.longitude, 5))
+      .snippet(`通过${clickType}添加`);
     
-    const marker = this.mapController.addMarker(markerOptions);
-    if (marker) {
+    this.mapController.addMarker(markerOptions).then((marker: Marker) => {
       this.markers.push(marker);
       this.markerCount = this.markers.length;
       showToast(`已添加第 ${this.markerCount} 个标注`);
-    }
+    });
   };
   
   /**
@@ -180,24 +179,31 @@ struct PressForMarkerTestPage {
     .alignItems(HorizontalAlign.Start);
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
-      title: 'Press For Marker',
-      description: '点击添加标注',
-      showActionBar: true,
-      actionButtons: this.actionButtonsBuilder,
-      controlPanel: this.controlPanelBuilder,
-      mapContent: () => {
-        NativeMapView({
-          onMapReady: this.onMapReady
-        })
-          .width('100%')
-          .height('100%');
-      }
-    });
+        title: 'Press For Marker',
+        description: '点击添加标注',
+        showActionBar: true,
+        actionButtons: this.actionButtonsBuilder,
+        controlPanel: (): void => this.controlPanelBuilder(),
+        mapContent: (): void => this.mapContentBuilder()
+      });
     }
-    .width(\'100%\')
-    .height(\'100%\');
+    .width('100%')
+    .height('100%');
   }
 }

@@ -3,7 +3,9 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
 
-import { BackgroundLayer, CircleLayer, FillExtrusionLayer, FillLayer, GeoJsonSource, HeatmapLayer, LatLng, LatLngBounds, LineLayer, MapLibreMap, NativeMapView, Point, Polygon, RasterLayer, RasterSource, SymbolLayer, maplibre, MapLibreMapOptions } from 'maplibre_harmony';
+import { BackgroundLayer, CircleLayer, FillExtrusionLayer, FillLayer, GeoJson, GeoJsonSource, HeatmapLayer, LatLng, LatLngBounds, LineLayer, MapLibreMap, MapView, Point, Polygon, RasterLayer, RasterSource, SymbolLayer, maplibre, MapLibreMapOptions , NativeMapView,
+  IFeature} from 'maplibre_harmony';
+import type { JsonObject, LayerPropertyOptions } from '../../types/EntryTypes';
 // 从 ETS 层导入 Layer 和 Source 封装类
 
 const TAG = 'LayerTestPage';
@@ -41,7 +43,7 @@ interface RandomLocation {
 // GeoJSON类型定义
 interface GeoJSONGeometry {
   type: string;
-  coordinates: number[] | number[][] | number[][][] | number[][][][];
+  coordinates: number[] | number[][] | number[][][] | number[][][][]
 }
 
 interface GeoJSONFeature {
@@ -58,9 +60,14 @@ interface GeoJSONFeatureCollection {
 @Entry
 @Component
 struct LayerTestPage {
+  addLayer(layer: FillLayer) {
+    throw new Error('Method not implemented.');
+  }
+
+  mapView: MapLibreMap | undefined;
   @State message: string = 'Layer 图层测试';
-  private nativeMapView: maplibre.NativeMapView | null = null;
-  private mapLibreMap: MapLibreMap | null = null;
+  private nativeMapView: NativeMapView | undefined = undefined;
+  private mapLibreMap: MapLibreMap | undefined = undefined;
   @State currentLayer: string = '无';
   @State mapReady: boolean = false;
   @State isInitializing: boolean = false;
@@ -68,15 +75,15 @@ struct LayerTestPage {
   @Builder
   buildMapContent() {
     Stack() {
-      NativeMapView({
+      MapView({
         styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 39.9042,
-        initialLongitude: 116.4074,
+        initialLatitude: 39.9,
+        initialLongitude: 116.4,
         initialZoom: 10,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (mapView?: maplibre.NativeMapView) => {
-          this.initializeMap(mapView);
+        onMapReady: (map: MapLibreMap) => {
+          this.initializeMap(map);
         }
       })
         .width('100%')
@@ -101,8 +108,8 @@ struct LayerTestPage {
       }
     }
     .width('100%')
-
     .height('100%')
+  }
 
   @Builder
   buildControlPanel() {
@@ -196,8 +203,8 @@ struct LayerTestPage {
       TestPageLayout({
         showActionBar: true,
         title: this.message,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')
@@ -251,14 +258,14 @@ struct LayerTestPage {
   /**
    * 初始化地图
    */
-  private initializeMap(mapView?: maplibre.NativeMapView) {
+  private initializeMap(map?: MapLibreMap) {
     if (this.isInitializing) {
       hilog.warn(DOMAIN, TAG, 'Map is already initializing');
       return;
     }
     
-    if (!mapView) {
-      hilog.error(DOMAIN, TAG, 'onMapReady: mapView is null');
+    if (!this.mapLibreMap) {
+      hilog.error(DOMAIN, TAG, 'onMapReady: this.mapView is null');
       this.message = '❌ 地图初始化失败';
       return;
     }
@@ -266,10 +273,9 @@ struct LayerTestPage {
     this.isInitializing = true;
     
     try {
-      this.nativeMapView = mapView;
-      const options = new MapLibreMapOptions();
-      this.mapLibreMap = new MapLibreMap(mapView, options);
-      
+      this.mapLibreMap = map;
+      this.nativeMapView = map?.getNativeMapView();
+
       this.mapReady = true;
       this.message = '✅ 地图已就绪 - 可以开始测试 Layer';
       
@@ -289,10 +295,10 @@ struct LayerTestPage {
    * @returns 所有坐标点的数组，用于计算边界
    */
   private ensureDataSource(): LatLng[] {
-    if (!this.mapLibreMap) return [];
+    if (!this.mapLibreMap) return []
     
     const style = this.mapLibreMap.getStyle();
-    if (!style) return [];
+    if (!style) return []
 
     try {
       // 移除旧的数据源（如果存在）
@@ -311,57 +317,36 @@ struct LayerTestPage {
       const offset = 1.5; // 经纬度偏移范围（适合 zoom=5）
       
       // 添加通用测试数据源
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: [
-          // 点要素
-          {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [centerLng, centerLat] },
-            properties: { name: "中心点", type: "center", value: 100 }
-          },
-          {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [centerLng + offset * 0.5, centerLat + offset * 0.3] },
-            properties: { name: "点2", type: "point", value: 80 }
-          },
-          // 线要素
-          {
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [centerLng - offset, centerLat],
-                [centerLng - offset * 0.5, centerLat + offset * 0.5],
-                [centerLng, centerLat + offset]
-              ]
-            },
-            properties: { name: "路径1" }
-          },
-          // 面要素
-          {
-            type: "Feature",
-            geometry: {
-              type: "Polygon",
-              coordinates: [[
-                [centerLng - offset, centerLat - offset],
-                [centerLng + offset, centerLat - offset],
-                [centerLng + offset, centerLat + offset],
-                [centerLng - offset, centerLat + offset],
-                [centerLng - offset, centerLat - offset]
-              ]]
-            },
-            properties: { name: "区域1", height: 50 }
-          }
-        ]
-      };
+      const props1: Record<string, Object> = { 'name': "中心点", 'type': "center", 'value': 100 };
+      const props2: Record<string, Object> = { 'name': "点2", 'type': "point", 'value': 80 };
+      const props3: Record<string, Object> = { 'name': "路径1" };
+      const props4: Record<string, Object> = { 'name': "区域1", 'height': 50 };
+      const geojsonData = GeoJson.featureCollection([
+        // 点要素
+        GeoJson.pointFeature([centerLng, centerLat], props1),
+        GeoJson.pointFeature([centerLng + offset * 0.5, centerLat + offset * 0.3], props2),
+        // 线要素
+        GeoJson.lineStringFeature([
+            [centerLng - offset, centerLat],
+            [centerLng - offset * 0.5, centerLat + offset * 0.5],
+            [centerLng, centerLat + offset]
+          ], props3),
+        // 面要素
+        GeoJson.polygonFeature([[
+            [centerLng - offset, centerLat - offset],
+            [centerLng + offset, centerLat - offset],
+            [centerLng + offset, centerLat + offset],
+            [centerLng - offset, centerLat + offset],
+            [centerLng - offset, centerLat - offset]
+          ]], props4)
+      ]);
 
       const source: GeoJsonSource = new GeoJsonSource('test-data');
-      source.setGeoJson(JSON.stringify(geojsonData));
+      source.setGeoJson(geojsonData);
       style.addSource(source);
 
       // 提取所有坐标点用于计算边界
-      const allPoints: LatLng[] = [];
+      const allPoints: LatLng[] = [];;
       allPoints.push(LatLng.create(centerLat, centerLng));
       allPoints.push(LatLng.create(centerLat + offset * 0.3, centerLng + offset * 0.5));
       allPoints.push(LatLng.create(centerLat, centerLng - offset));
@@ -376,16 +361,16 @@ struct LayerTestPage {
       return allPoints;
     } catch (error) {
       hilog.error(DOMAIN, TAG, `Failed to add test data: ${error}`);
-      return [];
+      return []
     }
   }
 
   /**
    * 测试 FillLayer
    */
-  private testFillLayer() {
+  private testFillLayer: () => void = () : void => {
     if (!this.mapLibreMap) return;
-    const style = this.mapLibreMap.getStyle();
+    const style = this
     if (!style) return;
 
     const allPoints = this.ensureDataSource();
@@ -397,7 +382,7 @@ struct LayerTestPage {
         .setFillOpacity(0.6)
         .setFillOutlineColor('#000000');
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到图层边界
       this.flyToBounds(allPoints);
@@ -531,34 +516,25 @@ struct LayerTestPage {
       const offset = 1.0; // 热力图点分布范围（适合 zoom=5）
 
       // 创建密集点数据用于热力图
-      const features: Array<GeoJSONFeature> = [];
-      const allPoints: LatLng[] = [];
+      const features: Array<IFeature> = [];
+      const allPoints: LatLng[] = [];;
       
       for (let i = 0; i < 200; i++) {
         const lng: number = centerLng + (Math.random() - 0.5) * offset * 2;
         const lat: number = centerLat + (Math.random() - 0.5) * offset * 2;
         
-        features.push({
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [lng, lat]
-          },
-          properties: { intensity: Math.random() * 100 }
-        });
+        const props: Record<string, Object> = { 'intensity': Math.random() * 100 };
+        features.push(GeoJson.pointFeature([lng, lat], props));
         
         if (i % 20 === 0) {
           allPoints.push(LatLng.create(lat, lng));
         }
       }
 
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: features
-      };
+      const geojsonData = GeoJson.featureCollection(features);
 
       const source: GeoJsonSource = new GeoJsonSource('heatmap-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
+      source.setGeoJson(geojsonData);
       style.addSource(source);
 
       const layer: HeatmapLayer = new HeatmapLayer('heatmap-test-layer', 'heatmap-source')
@@ -604,42 +580,27 @@ struct LayerTestPage {
       const centerLat = center.latitude;
       const offset = 0.5; // 建筑物间距（适合 zoom=5）
 
-      const geojsonData: GeoJSONFeatureCollection = {
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: {
-              type: "Polygon",
-              coordinates: [[
-                [centerLng - offset, centerLat - offset],
-                [centerLng, centerLat - offset],
-                [centerLng, centerLat],
-                [centerLng - offset, centerLat],
-                [centerLng - offset, centerLat - offset]
-              ]]
-            },
-            properties: { height: 80, base_height: 0 }
-          },
-          {
-            type: "Feature",
-            geometry: {
-              type: "Polygon",
-              coordinates: [[
-                [centerLng + offset * 0.5, centerLat],
-                [centerLng + offset * 2, centerLat],
-                [centerLng + offset * 2, centerLat + offset * 1.5],
-                [centerLng + offset * 0.5, centerLat + offset * 1.5],
-                [centerLng + offset * 0.5, centerLat]
-              ]]
-            },
-            properties: { height: 120, base_height: 0 }
-          }
-        ]
-      };
+      const props1: Record<string, Object> = { 'height': 80, 'base_height': 0 };
+      const props2: Record<string, Object> = { 'height': 120, 'base_height': 0 };
+      const geojsonData = GeoJson.featureCollection([
+        GeoJson.polygonFeature([[
+            [centerLng - offset, centerLat - offset],
+            [centerLng, centerLat - offset],
+            [centerLng, centerLat],
+            [centerLng - offset, centerLat],
+            [centerLng - offset, centerLat - offset]
+          ]], props1),
+        GeoJson.polygonFeature([[
+            [centerLng + offset * 0.5, centerLat],
+            [centerLng + offset * 2, centerLat],
+            [centerLng + offset * 2, centerLat + offset * 1.5],
+            [centerLng + offset * 0.5, centerLat + offset * 1.5],
+            [centerLng + offset * 0.5, centerLat]
+          ]], props2)
+      ]);
 
       const source: GeoJsonSource = new GeoJsonSource('extrusion-source');
-      source.setGeoJson(JSON.stringify(geojsonData));
+      source.setGeoJson(geojsonData);
       style.addSource(source);
 
       const layer = new FillExtrusionLayer('extrusion-test-layer', 'extrusion-source')
@@ -655,7 +616,7 @@ struct LayerTestPage {
         LatLng.create(centerLat - offset, centerLng - offset),
         LatLng.create(centerLat, centerLng),
         LatLng.create(centerLat + offset * 1.5, centerLng + offset * 2)
-      ];
+      ]
 
       // 调整视角以查看 3D 效果
       if (this.mapLibreMap) {
@@ -769,7 +730,7 @@ struct LayerTestPage {
         'fill-test-layer', 'line-test-layer', 'circle-test-layer',
         'symbol-test-layer', 'heatmap-test-layer', 'extrusion-test-layer',
         'raster-test-layer', 'background-test-layer'
-      ];
+      ]
 
       layerIds.forEach(layerId => {
         try {
@@ -782,7 +743,7 @@ struct LayerTestPage {
       // 移除所有测试数据源
       const sourceIds = [
         'test-data', 'heatmap-source', 'extrusion-source', 'raster-test-source'
-      ];
+      ]
 
       sourceIds.forEach(sourceId => {
         try {

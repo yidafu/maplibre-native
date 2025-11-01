@@ -6,15 +6,15 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
 struct UrlTransformTestPage {
   private mapController: MapLibreMap | null = null;
   @State private transformEnabled: boolean = false;
-  @State private requestLog: string[] = [];
+  @State private requestLog:  string[] = [];
   
   aboutToDisappear() {
     if (this.mapController) {
@@ -23,9 +23,8 @@ struct UrlTransformTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
   };
@@ -45,11 +44,13 @@ struct UrlTransformTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
@@ -83,7 +84,7 @@ struct UrlTransformTestPage {
       .backgroundColor('#F9F9F9')
       .border({ width: 1, color: '#DDD' })
       .borderRadius(4)
-      .maxHeight(200)
+      .height(200)
       
       Text('TODO: 实现ResourceTransform API')
         .fontSize(12)

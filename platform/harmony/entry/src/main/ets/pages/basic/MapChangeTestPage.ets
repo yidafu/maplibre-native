@@ -6,14 +6,14 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
 struct MapChangeTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private eventLog: string[] = [];
+  @State private eventLog:  string[] = [];
   
   aboutToDisappear() {
     if (this.mapController) {
@@ -126,22 +126,29 @@ struct MapChangeTestPage {
     .width(300);
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
-      title: 'Map Change',
-      description: '地图事件监听',
-      showActionBar: true,
-      actionButtons: this.actionButtonsBuilder,
-      controlPanel: this.controlPanelBuilder,
-      mapContent: () => {
-        NativeMapView({
-          onMapReady: this.onMapReady
-        })
-          .width('100%')
-          .height('100%');
-      }
-    });
+        title: 'Map Change',
+        description: '地图事件监听',
+        showActionBar: true,
+        actionButtons: this.actionButtonsBuilder,
+        controlPanel: (): void => this.controlPanelBuilder(),
+        mapContent: (): void => this.mapContentBuilder()
+      });
     }
     .width('100%')
     .height('100%');

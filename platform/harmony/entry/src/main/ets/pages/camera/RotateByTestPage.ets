@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -42,6 +42,15 @@ struct RotateByTestPage {
       });
   }
   
+  @Builder
+  mapContentBuilder() {
+    MapView({
+      onMapReady: this.onMapReady
+    })
+      .width('100%')
+      .height('100%');
+  }
+  
   build() {
     Column() {
       TestPageLayout({
@@ -49,13 +58,7 @@ struct RotateByTestPage {
         description: '旋转控制',
         showActionBar: true,
         actionButtons: this.actionButtonsBuilder,
-        mapContent: () => {
-          NativeMapView({
-            onMapReady: this.onMapReady
-          })
-            .width('100%')
-            .height('100%');
-        }
+        mapContent: (): void => this.mapContentBuilder()
       });
     }
     .width('100%')

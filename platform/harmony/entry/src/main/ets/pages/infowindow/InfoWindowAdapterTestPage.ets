@@ -1,11 +1,11 @@
-import { InfoWindowAdapter, LatLng, MapLibreMap, Marker, MarkerOptions, NativeMapView } from 'maplibre_harmony';
+import { InfoWindowAdapter, LatLng, MapLibreMap, Marker, MarkerOptions, MapView } from 'maplibre_harmony';
 /**
  * Info Window Adapter Activity
  * 自定义信息窗口适配器测试
  * 参考 Android: InfoWindowAdapterActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -29,8 +29,11 @@ struct InfoWindowAdapterTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: async (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -39,16 +42,19 @@ struct InfoWindowAdapterTestPage {
         this.setupCustomAdapter(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private async addMarkersWithInfoWindow(map: MapLibreMap): Promise<void> {
-    const cities = [
+    interface CityInfo {
+      name: string;
+      latLng: LatLng;
+    }
+    
+    const cities: CityInfo[] = [
       { name: '北京', latLng: TEST_LOCATIONS.beijing },
       { name: '上海', latLng: TEST_LOCATIONS.shanghai },
       { name: '广州', latLng: TEST_LOCATIONS.guangzhou }
-    ];
+    ]
     
     const options: MarkerOptions[] = cities.map((city, index) => 
       new MarkerOptions()
@@ -61,21 +67,23 @@ struct InfoWindowAdapterTestPage {
   }
 
   private setupCustomAdapter(map: MapLibreMap): void {
-    const customAdapter: InfoWindowAdapter = {
-      getInfoWindowView: (marker: Marker): ESObject => {
+    class CustomAdapter implements InfoWindowAdapter {
+      getInfoWindow(marker: Marker): ESObject {
         // 返回自定义视图数据
-        return {
-          title: `🏙️ ${marker.getTitle()}`,
-          snippet: marker.getSnippet(),
-          backgroundColor: '#FF6200EE',
-          titleColor: '#FFFFFF',
-          snippetColor: '#E0E0E0'
+        const viewData: Record<string, Object> = {
+          'title': `🏙️ ${marker.getTitle()}`,
+          'subtitle': `📍 ${marker.getSnippet()}`,
+          'icon': '🗺️',
+          'backgroundColor': '#FF6200EE',
+          'titleColor': '#FFFFFF',
+          'snippetColor': '#E0E0E0'
         };
+        return viewData as ESObject;
       }
-    };
+    }
     
     if (this.useCustomAdapter) {
-      map.setInfoWindowAdapter(customAdapter);
+      map.setInfoWindowAdapter(new CustomAdapter());
     }
   }
 

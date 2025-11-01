@@ -1,11 +1,12 @@
-import { FillLayer, GeoJsonSource, MapLibreMap, NativeMapView, Polygon } from 'maplibre_harmony';
 /**
  * Fill Layer Test Page
  * 填充图层测试
  * 参考 Android Fill Layer 相关测试
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { FillLayer, GeoJson, GeoJsonSource, MapLibreMap, MapView } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -29,39 +30,33 @@ struct FillLayerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
-      styleUrl: DEFAULT_STYLE_URLS.streets,
+    MapView({
+      styleUrl: DEFAULT_STYLE_URLS.bright,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 10);
         this.addFillLayer(map);
-      }
+      },
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addFillLayer(map: MapLibreMap): void {
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[
-              [116.3, 39.8],
-              [116.5, 39.8],
-              [116.5, 40.0],
-              [116.3, 40.0],
-              [116.3, 39.8]
-            ]]
-          }
-        }]
-      };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.polygonFeature([[
+            [116.3, 39.8],
+            [116.5, 39.8],
+            [116.5, 40.0],
+            [116.3, 40.0],
+            [116.3, 39.8]
+          ]])
+      ]);
       
       const source = new GeoJsonSource('fill-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       map.addSource(source);
       
       const layer = new FillLayer('fill-layer', 'fill-source');

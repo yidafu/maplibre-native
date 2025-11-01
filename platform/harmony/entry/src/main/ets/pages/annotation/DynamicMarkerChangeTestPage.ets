@@ -4,8 +4,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, Marker, MarkerOptions, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, Marker, MarkerOptions, LatLng } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -23,11 +23,10 @@ struct DynamicMarkerChangeTestPage {
     }
   }
   
-  private onMapReady = async (mapView: NativeMapView): Promise<void> => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+  private onMapReady = async (map: MapLibreMap): Promise<void> => {
+    this.mapController = map;
+    map.setStyleUrl(DEFAULT_STYLE_URLS.bright);
+    map.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
     await this.addMarker();
   };
@@ -65,8 +64,8 @@ struct DynamicMarkerChangeTestPage {
   private changeTitle = (): void => {
     if (!this.marker) return;
     
-    const titles = ['Marker A', 'Marker B', 'Marker C', 'Marker D'];
-    this.markerTitle = titles[Math.floor(Math.random() * titles.length)];
+    const titles = ['Marker A', 'Marker B', 'Marker C', 'Marker D']
+    this.markerTitle = titles[Math.floor(Math.random() * titles.length)]
     this.marker.setTitle(this.markerTitle);
     this.changeCount++;
     this.marker.setSnippet(`变更次数: ${this.changeCount}`);
@@ -76,11 +75,13 @@ struct DynamicMarkerChangeTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
+      styleUrl: DEFAULT_STYLE_URLS.bright,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: this.onMapReady
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

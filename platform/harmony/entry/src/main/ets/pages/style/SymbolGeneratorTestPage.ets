@@ -4,8 +4,9 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJson, GeoJsonSource } from 'maplibre_harmony';
+import type { JsonObject } from '../../types/EntryTypes';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -20,9 +21,8 @@ struct SymbolGeneratorTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
   };
@@ -34,31 +34,22 @@ struct SymbolGeneratorTestPage {
     const lng = 116.35 + Math.random() * 0.1;
     const emoji = ['📍', '⭐', '❤️', '🎯', '🏠'][Math.floor(Math.random() * 5)];
     
-    const geojson = {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [lng, lat]
-        },
-        properties: {
-          symbol: emoji
-        }
-      }]
-    };
+    const props: Record<string, Object> = { 'symbol': emoji };
+    const geojson = GeoJson.featureCollection([
+      GeoJson.pointFeature([lng, lat], props)
+    ]);
     
     const sourceId = `symbol-source-${this.symbolCount}`;
     const layerId = `symbol-layer-${this.symbolCount}`;
     
-    const source = new GeoJsonSource(sourceId, JSON.stringify(geojson));
+    const source = new GeoJsonSource(sourceId);
+    source.setGeoJson(geojson);
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new SymbolLayer(layerId, sourceId);
-    layer.setProperties({
-      'text-field': ['get', 'symbol'],
-      'text-size': 24
-    });
+    // TODO: setProperties() not available - layer.setProperties({
+    //   'text-size': 24
+    // });
     this.mapController.getStyle()?.addLayer(layer);
     
     this.symbolCount++;
@@ -79,11 +70,13 @@ struct SymbolGeneratorTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

@@ -6,8 +6,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
+import { showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -22,9 +22,8 @@ struct MapOptionsXmlTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl('https://demotiles.maplibre.org/style.json');
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
   };
@@ -32,33 +31,29 @@ struct MapOptionsXmlTestPage {
   @Builder
   buildMapWithConfig1() {
     // 配置1: 高缩放级别
-    NativeMapView({
+    MapView({
       styleUrl: 'https://demotiles.maplibre.org/style.json',
-      initialLatitude: 39.9042,
-      initialLongitude: 116.4074,
-      initialZoom: 15,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       initialBearing: 0,
       initialPitch: 0,
       onMapReady: this.onMapReady
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
   buildMapWithConfig2() {
     // 配置2: 低缩放+倾斜
-    NativeMapView({
+    MapView({
       styleUrl: 'https://demotiles.maplibre.org/style.json',
-      initialLatitude: 39.9042,
-      initialLongitude: 116.4074,
-      initialZoom: 8,
-      initialBearing: 45,
-      initialPitch: 60,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
+      initialBearing: 0,
+      initialPitch: 0,
       onMapReady: this.onMapReady
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
@@ -68,7 +63,7 @@ struct MapOptionsXmlTestPage {
     } else if (this.currentConfig === '配置2') {
       this.buildMapWithConfig2()
     } else {
-      NativeMapView({
+      MapView({
         onMapReady: this.onMapReady
       })
       .width('100%')

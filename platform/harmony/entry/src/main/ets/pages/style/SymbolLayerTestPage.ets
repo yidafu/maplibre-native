@@ -1,11 +1,12 @@
-import { GeoJsonSource, MapLibreMap, NativeMapView, Point, SymbolLayer } from 'maplibre_harmony';
 /**
  * Symbol Layer Test Page
  * 符号图层测试
  * 参考 Android: SymbolLayerActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
+import { GeoJson, GeoJsonSource, MapLibreMap, MapView, SymbolLayer } from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JsonObject } from '../../types/EntryTypes';
 
 @Entry
 @Component
@@ -29,15 +30,16 @@ struct SymbolLayerTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -65,24 +67,15 @@ struct SymbolLayerTestPage {
     if (!this.mapController) return;
     
     try {
-      const geojson = {
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [116.4, 39.9] },
-            properties: { title: '北京', icon: 'marker' }
-          },
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [121.5, 31.2] },
-            properties: { title: '上海', icon: 'marker' }
-          }
-        ]
-      };
+        const props1: Record<string, Object> = { 'title': '北京', 'icon': 'marker' };
+      const props2: Record<string, Object> = { 'title': '上海', 'icon': 'marker' };
+      const geojson = GeoJson.featureCollection([
+        GeoJson.pointFeature([116.4, 39.9], props1),
+        GeoJson.pointFeature([121.5, 31.2], props2)
+      ]);
       
       const source = new GeoJsonSource('symbol-source');
-      source.setGeoJson(JSON.stringify(geojson));
+      source.setGeoJson(geojson);
       this.mapController.addSource(source);
       
       const layer = new SymbolLayer('symbol-layer', 'symbol-source');

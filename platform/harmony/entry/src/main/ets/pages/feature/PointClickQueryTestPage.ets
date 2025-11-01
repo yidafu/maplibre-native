@@ -1,11 +1,11 @@
-import { MapLibreMap, NativeMapView, OnMapClickListener, ScreenPoint } from 'maplibre_harmony';
+import { MapLibreMap, MapView, OnMapClickListener, ScreenPoint } from 'maplibre_harmony';
 /**
  * ScreenPoint Click Query Test Page
  * 点击查询要素
  * 补充 Feature 测试
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -30,16 +30,17 @@ struct PointClickQueryTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 14);
         this.setupClickListener(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -58,16 +59,20 @@ struct PointClickQueryTestPage {
   }
   
   private setupClickListener(map: MapLibreMap): void {
-    const clickListener: OnMapClickListener = {
-      onMapClick: (x: number, y: number): boolean => {
-        this.queryPoint(x, y);
+    class MapClickListener implements OnMapClickListener {
+      page: PointClickQueryTestPage;
+      
+      constructor(page: PointClickQueryTestPage) {
+        this.page = page;
+      }
+      
+      onMapClick(x: number, y: number): boolean {
+        this.page.queryPoint(x, y);
         return true;
       }
-    };
+    }
     
-    map.addOnMapClickListener(clickListener);
-      .width('100%')
-      .height('100%')
+    map.addOnMapClickListener(new MapClickListener(this));
   }
 
   private queryPoint(x: number, y: number): void {
@@ -78,7 +83,7 @@ struct PointClickQueryTestPage {
       this.queryCount++;
       
       if (features.length > 0) {
-        const feature = features[0];
+        const feature = features[0]
         const layerId = (feature as ESObject)['layer'] as string || '未知';
         const type = feature.type || '未知';
         this.queryResult = `查询点: (${x.toFixed(0)}, ${y.toFixed(0)})\n要素数: ${features.length}\n图层: ${layerId}\n类型: ${type}`;
@@ -88,7 +93,5 @@ struct PointClickQueryTestPage {
     } catch (error) {
       this.queryResult = `查询失败: ${error}`;
     }
-      .width('100%')
-      .height('100%')
+  }
 }
-

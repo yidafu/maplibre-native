@@ -10,8 +10,8 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { NativeMapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import common from '@ohos.app.ability.common';
 
 @Entry
@@ -20,7 +20,7 @@ struct ChangeResourcesCachePathTestPage {
   private mapController: MapLibreMap | null = null;
   @State private currentPath: string = '';
   @State private cacheSize: number = 0;
-  @State private pathInfo: string[] = [];
+  @State private pathInfo:  string[] = [];
   
   aboutToAppear() {
     this.initPathInfo();
@@ -46,7 +46,7 @@ struct ChangeResourcesCachePathTestPage {
         `文件目录: ${context.filesDir}`,
         `临时目录: ${context.tempDir}`,
         `数据库目录: ${context.databaseDir}`
-      ];
+      ]
       
       showToast('路径信息已加载');
     } catch (error) {
@@ -54,9 +54,8 @@ struct ChangeResourcesCachePathTestPage {
     }
   };
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
   };
@@ -80,11 +79,13 @@ struct ChangeResourcesCachePathTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder

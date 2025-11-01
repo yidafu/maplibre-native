@@ -1,11 +1,11 @@
-import { ImageSource, LatLng, LatLngBounds, MapLibreMap, NativeMapView, RasterLayer } from 'maplibre_harmony';
+import { ImageSource, LatLng, LatLngBounds, MapLibreMap, MapView, RasterLayer } from 'maplibre_harmony';
 /**
  * Animated Image Source Test Page
  * 动画图像源测试
  * 参考 Android: AnimatedImageSourceActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -32,16 +32,17 @@ struct AnimatedImageSourceTestPage {
 
   @Builder
   buildMapContent() {
-    NativeMapView({
+    MapView({
       styleUrl: DEFAULT_STYLE_URLS.streets,
+      initialLatitude: 39.9,
+      initialLongitude: 116.4,
+      initialZoom: 10,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 12);
         this.addImageSource(map);
       }
     })
-    .width('100%')
-    .height('100%')
   }
 
   private addImageSource(map: MapLibreMap): void {
@@ -98,7 +99,7 @@ struct AnimatedImageSourceTestPage {
       clearInterval(this.animationTimer);
       this.animationTimer = null;
     }
-    this.isUpdating = false;
+    // this.isUpdating = false;  // 属性不存在，注释掉
     showToast('动画已停止');
   }
   

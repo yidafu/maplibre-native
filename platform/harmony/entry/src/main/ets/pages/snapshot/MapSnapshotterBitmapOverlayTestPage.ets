@@ -16,9 +16,12 @@ import {
   SnapshotOptions,
   MapSnapshot,
   CameraPosition,
-  LatLng
+  LatLng,
+  MapView,
+  SnapshotReadyCallback,
+  SnapshotErrorHandler
 } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -35,9 +38,8 @@ struct MapSnapshotterBitmapOverlayTestPage {
     }
   }
   
-  private onMapReady = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController = new MapLibreMap(mapView, options);
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
   };
@@ -54,7 +56,7 @@ struct MapSnapshotterBitmapOverlayTestPage {
       const latLng = this.mapController?.getLatLng() || LatLng.create(39.9042, 116.4074);
       const zoom = this.mapController?.getZoom() || 12;
       
-      const cameraPosition = new CameraPosition(latLng, zoom, 0, 0);
+      const cameraPosition = CameraPosition.create(latLng, zoom, 0, 0);
       
       const options: SnapshotOptions = {
         size: { width: 800, height: 600 },
@@ -65,25 +67,40 @@ struct MapSnapshotterBitmapOverlayTestPage {
       };
       
       const snapshotter = new MapSnapshotter(options);
+    
+    class ReadyCallback implements SnapshotReadyCallback {
+      page: MapSnapshotterBitmapOverlayTestPage;
+      snapshotter: MapSnapshotter;
       
-      snapshotter.start(
-        {
-          onSnapshotReady: (snapshot: MapSnapshot) => {
-            const pixelMap = snapshot.getImage();
-            this.snapshotImage = pixelMap;
-            this.isGenerating = false;
-            showToast('快照已生成（含覆盖物功能待实现）');
-            snapshotter.cancel();
-          }
-        },
-        {
-          onError: (error: string) => {
-            console.error('[MapSnapshotterBitmapOverlayTestPage] Snapshot failed:', error);
-            this.isGenerating = false;
-            showToast(`快照失败: ${error}`);
-          }
-        }
-      );
+      constructor(page: MapSnapshotterBitmapOverlayTestPage, snapshotter: MapSnapshotter) {
+        this.page = page;
+        this.snapshotter = snapshotter;
+      }
+      
+      onSnapshotReady(snapshot: MapSnapshot): void {
+        const pixelMap = snapshot.getImage();
+        this.page.snapshotImage = pixelMap;
+        this.page.isGenerating = false;
+        showToast('快照已生成（含覆盖物功能待实现）');
+        this.snapshotter.cancel();
+      }
+    }
+    
+    class ErrorCallback implements SnapshotErrorHandler {
+      page: MapSnapshotterBitmapOverlayTestPage;
+      
+      constructor(page: MapSnapshotterBitmapOverlayTestPage) {
+        this.page = page;
+      }
+      
+      onError(error: string): void {
+        console.error('[MapSnapshotterBitmapOverlayTestPage] Snapshot failed:', error);
+        this.page.isGenerating = false;
+        showToast(`快照失败: ${error}`);
+      }
+    }
+    
+    snapshotter.start(new ReadyCallback(this, snapshotter) , new ErrorCallback(this) );
     } catch (error) {
       this.isGenerating = false;
       showToast(`生成失败: ${error}`);
@@ -92,11 +109,13 @@ struct MapSnapshotterBitmapOverlayTestPage {
   
   @Builder
   buildMapContent() {
-    NativeMapView({
-      onMapReady: this.onMapReady
+    MapView({
+      onMapReady: this.onMapReady,
+            styleUrl: DEFAULT_STYLE_URLS.bright,
+            initialLatitude: 39.9,
+            initialLongitude: 116.4,
+            initialZoom: 10
     })
-    .width('100%')
-    .height('100%')
   }
   
   @Builder
