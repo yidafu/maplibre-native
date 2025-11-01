@@ -45,4 +45,14 @@ export class VectorSource {
   getUrl(): string {
     return this.nativeInstance.getUrl();
   }
+
+  setMinZoom(minZoom: number): VectorSource {
+    // TODO: 实现 setMinZoom
+    return this;
+  }
+
+  setMaxZoom(maxZoom: number): VectorSource {
+    // TODO: 实现 setMaxZoom
+    return this;
+  }
 }

@@ -6,6 +6,11 @@
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 
+interface LatLngLike {
+  latitude: number;
+  longitude: number;
+}
+
 /**
  * PolygonOptions - 多边形选项接口
  */
@@ -52,9 +57,21 @@ export class Polygon {
       
       // 转换 LatLng 对象为原生格式
       const nativeOptions: ESObject = {
-        points: options.points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude }),
-        holes: options.holes ? options.holes.map(hole => 
-          hole.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude })
+        points: options.points.map((p: LatLng): Object => {
+          if (p.getNative) {
+            return p.getNative();
+          }
+          const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+          return coord as Object;
+        }),
+        holes: options.holes ? options.holes.map((hole: LatLng[]): Object[] => 
+          hole.map((p: LatLng): Object => {
+            if (p.getNative) {
+              return p.getNative();
+            }
+            const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+            return coord as Object;
+          })
         ) : [],
         fillColor: options.fillColor || '#000000',
         strokeColor: options.strokeColor || '#000000',
@@ -96,11 +113,17 @@ export class Polygon {
 
   getPoints(): LatLng[] {
     const nativePoints: Object[] = this.nativeInstance.getPoints();
-    return nativePoints.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng));
+    return nativePoints.map((p: Object): LatLng => LatLng.fromNative(p as maplibre.LatLng));
   }
 
   setPoints(points: LatLng[]): Polygon {
-    const nativePoints = points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude });
+    const nativePoints: Object[] = points.map((p: LatLng): Object => {
+      if (p.getNative) {
+        return p.getNative();
+      }
+      const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+      return coord as Object;
+    });
     this.nativeInstance.setPoints(nativePoints);
     return this;
   }
@@ -120,21 +143,33 @@ export class Polygon {
 
   getHoles(): LatLng[][] {
     const nativeHoles: Object[][] = this.nativeInstance.getHoles();
-    return nativeHoles.map((hole: Object[]) => 
-      hole.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng))
+    return nativeHoles.map((hole: Object[]): LatLng[] => 
+      hole.map((p: Object): LatLng => LatLng.fromNative(p as maplibre.LatLng))
     );
   }
 
   setHoles(holes: LatLng[][]): Polygon {
-    const nativeHoles = holes.map(hole => 
-      hole.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude })
+    const nativeHoles: Object[][] = holes.map((hole: LatLng[]): Object[] => 
+      hole.map((p: LatLng): Object => {
+        if (p.getNative) {
+          return p.getNative();
+        }
+        const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+        return coord as Object;
+      })
     );
     this.nativeInstance.setHoles(nativeHoles);
     return this;
   }
 
   addHole(hole: LatLng[]): void {
-    const nativeHole = hole.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude });
+    const nativeHole: Object[] = hole.map((p: LatLng): Object => {
+      if (p.getNative) {
+        return p.getNative();
+      }
+      const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+      return coord as Object;
+    });
     this.nativeInstance.addHole(nativeHole);
   }
 

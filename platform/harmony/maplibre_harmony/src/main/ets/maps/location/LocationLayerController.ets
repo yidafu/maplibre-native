@@ -4,7 +4,7 @@ import { LocationComponentConstants } from './LocationComponentConstants';
 import { RenderMode } from './modes/RenderMode';
 import { OnRenderModeChangedListener } from './listeners/OnRenderModeChangedListener';
 import { LatLng } from '../geometry/LatLng';
-import { Point as GeometryPoint, Feature } from '../geojson';
+import { GeoJson, IFeature, IPoint } from '../geojson';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -66,39 +66,41 @@ export class LocationLayerController {
 
     try {
       // 创建数据源
-      const sourceFeature: Feature = new maplibre.Feature({
-        geometry: new maplibre.Point([0, 0])
-      });
+      const sourceFeature: IFeature = {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [0, 0] },
+        properties: {}
+      };
       
-      const geoJsonSource = new maplibre.GeoJsonSource(
+      const geoJsonSource: GeoJsonSource = new maplibre.GeoJsonSource(
         LocationComponentConstants.LOCATION_SOURCE
       );
-      geoJsonSource.setGeoJson(JSON.stringify(sourceFeature.toJSON()));
+      geoJsonSource.setGeoJson(JSON.stringify(sourceFeature));
       this.style.addSource(geoJsonSource);
 
       // 添加精度圈图层
-      const accuracyLayer = new maplibre.CircleLayer(
+      const accuracyLayer: CircleLayer = new maplibre.CircleLayer(
         LocationComponentConstants.ACCURACY_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(accuracyLayer);
 
       // 添加背景图标图层
-      const backgroundLayer = new maplibre.SymbolLayer(
+      const backgroundLayer: SymbolLayer = new maplibre.SymbolLayer(
         LocationComponentConstants.BACKGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(backgroundLayer);
 
       // 添加前景图标图层
-      const foregroundLayer = new maplibre.SymbolLayer(
+      const foregroundLayer: SymbolLayer = new maplibre.SymbolLayer(
         LocationComponentConstants.FOREGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(foregroundLayer);
 
       // 添加方向图标图层
-      const bearingLayer = new maplibre.SymbolLayer(
+      const bearingLayer: SymbolLayer = new maplibre.SymbolLayer(
         LocationComponentConstants.BEARING_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
@@ -152,9 +154,11 @@ export class LocationLayerController {
 
     try {
       // 更新数据源位置
-      const sourceFeature: Feature = new maplibre.Feature({
-        geometry: new maplibre.Point([location.longitude, location.latitude])
-      });
+      const sourceFeature: IFeature = {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
+        properties: {}
+      };
       
       const source = this.style.getSource(LocationComponentConstants.LOCATION_SOURCE) as GeoJsonSource;
       if (source) {

@@ -360,7 +360,7 @@ export class IconFactory {
     try {
       // 策略 1: 尝试使用 C++ 层程序化生成（最优性能）
       try {
-        const nativeIcon = maplibre.IconFactory.createDefaultMarker(
+        const nativeIcon: maplibre.Icon = maplibre.IconFactory.createDefaultMarker(
           IconFactory.DEFAULT_MARKER_ICON_ID,
           48  // 48x48 像素
         );

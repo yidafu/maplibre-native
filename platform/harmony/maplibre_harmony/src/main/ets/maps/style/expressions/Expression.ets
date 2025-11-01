@@ -1233,6 +1233,66 @@ export class Expression<T = Object> {
     return new Expression<string>('downcase', inputExpr);
   }
 
+  /**
+   * 检查输入字符串是否能够正常渲染
+   * 
+   * 返回 true 如果输入字符串预期能够清晰渲染。
+   * 返回 false 如果输入字符串包含无法正常渲染的部分（例如需要复杂文本整形的 Indic 脚本，
+   * 或者从右到左的脚本，如果未使用 mapbox-gl-rtl-text 插件）。
+   * 
+   * 此方法对于国际化应用非常重要，可以帮助检测是否支持特定语言的文本渲染：
+   * - 阿拉伯语、希伯来语等从右到左的脚本
+   * - 印地语、泰米尔语、泰语等需要复杂文本整形的脚本
+   * - 其他需要特殊渲染支持的语言
+   * 
+   * @param input 要检查的字符串表达式
+   * @returns 布尔值表达式，表示是否支持渲染
+   * 
+   * @example
+   * ```typescript
+   * // 检查要素属性中的文本是否支持渲染
+   * textField(
+   *   Expression.caseExpression(
+   *     Expression.isSupportedScript(Expression.get('name')),
+   *     Expression.get('name'),
+   *     Expression.literal('N/A')
+   *   )
+   * )
+   * 
+   * // 检查特定语言文本
+   * Expression.isSupportedScript('ಗೌರವಾರ್ಥವಾಗಿ')  // Kannada script
+   * Expression.isSupportedScript('مرحبا')           // Arabic script  
+   * Expression.isSupportedScript('שלום')            // Hebrew script
+   * Expression.isSupportedScript('สวัสดี')          // Thai script
+   * ```
+   * 
+   * @see https://maplibre.org/maplibre-style-spec/expressions/#is-supported-script
+   */
+  public static isSupportedScript(input: Expression<string>): Expression<boolean>;
+
+  /**
+   * 检查字符串字面量是否能够正常渲染
+   * 
+   * @param text 要检查的字符串字面量
+   * @returns 布尔值表达式，表示是否支持渲染
+   * 
+   * @example
+   * ```typescript
+   * Expression.isSupportedScript('Hello')  // 返回 true（拉丁文本）
+   * Expression.isSupportedScript('你好')    // 返回 true（CJK文本）
+   * Expression.isSupportedScript('مرحبا')  // 可能返回 false（阿拉伯语，需要RTL支持）
+   * ```
+   */
+  public static isSupportedScript(text: string): Expression<boolean>;
+
+  /**
+   * 检查输入字符串是否能够正常渲染的实现
+   */
+  public static isSupportedScript(input: Expression<string> | string): Expression<boolean> {
+    const inputExpr = typeof input === 'string' ? Expression.literal(input) : input;
+    return new Expression<boolean>('is-supported-script', inputExpr);
+  }
+
   // ==================== 类型转换操作符 ====================
 
   /**
@@ -1337,6 +1397,14 @@ export class Expression<T = Object> {
   // ==================== 插值和阶梯表达式 ====================
 
   /**
+   * 线性插值器
+   * 用于 interpolate 表达式，在输入停靠点之间线性插值
+   */
+  public static linear(): Expression<Object> {
+    return new Expression<Object>('linear');
+  }
+
+  /**
    * 插值表达式
    * 
    * 通过在输入和输出对之间进行连续、平滑的结果
@@ -1430,6 +1498,55 @@ export class Expression<T = Object> {
     const numberExpr = typeof number === 'number' ? Expression.literal(number) : number;
     const args: Expression[] = [numberExpr, ...options];
     return new Expression<string>('number-format', ...args);
+  }
+
+  /**
+   * 获取 Collator 实际使用的 IETF 语言标签
+   * 
+   * 返回提供的 Collator 实际使用的 IETF 语言标签。
+   * 可用于确定默认系统语言环境，或检查请求的语言环境是否成功加载。
+   * 
+   * 当创建 Collator 时，可以指定期望的 locale，但系统可能会回退到其他 locale。
+   * 此方法可以帮助确认实际使用的 locale，这对于调试国际化问题非常有用。
+   * 
+   * @param collator Collator 表达式
+   * @returns 字符串表达式，包含实际使用的 IETF 语言标签（如 "zh-CN", "en-US" 等）
+   * 
+   * @example
+   * ```typescript
+   * // 创建一个 Collator 并获取实际使用的 locale
+   * const collatorExpr = Expression.collator(
+   *   Expression.literal(true),  // case-sensitive
+   *   Expression.literal(true),  // diacritic-sensitive
+   *   Expression.literal('zh-CN') // 期望的 locale
+   * );
+   * const localeExpr = Expression.resolvedLocale(collatorExpr);
+   * 
+   * // 根据实际 locale 应用不同的样式
+   * fillColor(
+   *   Expression.caseExpression(
+   *     Expression.eq(
+   *       Expression.literal('zh-CN'),
+   *       Expression.resolvedLocale(collatorExpr)
+   *     ),
+   *     Expression.literal('#FF0000'), // 中文环境使用红色
+   *     Expression.literal('#0000FF')  // 其他环境使用蓝色
+   *   )
+   * )
+   * 
+   * // 检查系统默认 locale
+   * const defaultCollator = Expression.collator(
+   *   Expression.literal(false),
+   *   Expression.literal(false),
+   *   Expression.literal(null) // 使用系统默认
+   * );
+   * const systemLocale = Expression.resolvedLocale(defaultCollator);
+   * ```
+   * 
+   * @see https://maplibre.org/maplibre-style-spec/expressions/#resolved-locale
+   */
+  public static resolvedLocale(collator: Expression): Expression<string> {
+    return new Expression<string>('resolved-locale', collator);
   }
 
   /**

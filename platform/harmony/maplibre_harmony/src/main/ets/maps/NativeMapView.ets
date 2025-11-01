@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView as NativeMapViewNAPI } from 'libmaplibre.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import common from '@ohos.app.ability.common';
 import { LatLng } from './geometry/LatLng';
@@ -57,20 +57,26 @@ import { AnnotationViewOverlay } from './annotations/AnnotationViewOverlay';
 import { AnnotationViewData } from './annotations/AnnotationViewManager';
 import { MapLibreMap } from './MapLibreMap';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
-
-// 使用封装的 Marker 类型
 import { Marker } from './annotations/Marker';
+
+// 类型别名：区分 NAPI 的 NativeMapView 和 ETS 组件
+type NativeMapView = NativeMapViewNAPI;
+
+// MapView 组件接口（用于类型声明，避免循环引用）
+interface MapViewComponent {
+  setupInfoWindowCallbacks(): void;
+}
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
 
 
-type NullableNativeMapView = maplibre.NativeMapView | null
+type NullableNativeMapView = NativeMapView | null
 
 /**
  * 全局映射：NAPI NativeMapView -> ETS NativeMapViewController
  * 用于 MapLibreMap 找到对应的 controller 并注册自己
  */
-const globalControllerMap: Map<maplibre.NativeMapView, NativeMapViewController> = new Map();
+const globalControllerMap: Map<NativeMapView, NativeMapViewController> = new Map();
 
 /**
  * 注册 MapLibreMap 实例到对应的 NativeMapViewController
@@ -78,12 +84,12 @@ const globalControllerMap: Map<maplibre.NativeMapView, NativeMapViewController> 
  * 
  * @param nativeMapView NAPI NativeMapView 实例
  * @param mapLibreMap MapLibreMap 实例
- * @param nativeMapViewComponent 可选的 NativeMapView 组件引用，用于设置 InfoWindow 回调
+ * @param nativeMapViewComponent 可选的 MapView 组件引用（ETS 组件），用于设置 InfoWindow 回调
  */
 export function registerMapLibreMap(
-  nativeMapView: maplibre.NativeMapView, 
+  nativeMapView: NativeMapView, 
   mapLibreMap: MapLibreMap,
-  nativeMapViewComponent?: NativeMapView
+  nativeMapViewComponent?: MapViewComponent
 ): void {
   const controller = globalControllerMap.get(nativeMapView);
   if (controller) {
@@ -145,7 +151,7 @@ class NativeMapViewController extends XComponentController {
   public initialPitch: number = 0;
   
   // 回调函数
-  public onMapReadyCallback?: (mapView?: maplibre.NativeMapView) => void;
+  public onMapReadyCallback?: (mapView?: NativeMapView) => void;
   
   // MapLibreMap 实例引用（用于 InfoWindow 管理）
   private mapLibreMapInstance: MapLibreMap | null = null;
@@ -220,7 +226,7 @@ class NativeMapViewController extends XComponentController {
       
       // 创建 MapView 实例并传递缓存路径
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Creating NativeMapView instance with cachePath...`);
-      this.mapView = new maplibre.NativeMapView(cachePath);
+      this.mapView = new NativeMapViewNAPI(cachePath);
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] NativeMapView instance created successfully`);
       
       // 注册到全局映射
@@ -283,6 +289,12 @@ class NativeMapViewController extends XComponentController {
       // 🔧 不再调用 setXComponentSurfaceRect
       // Native Window 会自动使用正确的尺寸
       // C++ 层通过 pixelRatio 计算物理像素用于渲染
+      
+      // 确保 mapView 已初始化
+      if (!this.mapView) {
+        hilog.error(DOMAIN, 'NativeMapView', 'mapView is null after initialization');
+        return;
+      }
       
       // 设置手势检测器的地图控制器引用
       this.gestureDetector.setMapController(this.mapView);
@@ -708,7 +720,7 @@ class NativeMapViewController extends XComponentController {
     }
     
     try {
-      const padding = this.mapView.getContentPadding();
+      const padding: number[] = this.mapView.getContentPadding();
       return padding as number[];
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `getContentPadding error: ${error.message}`);
@@ -804,7 +816,7 @@ class NativeMapViewController extends XComponentController {
   updateCompassBearing(): void {
     if (this.mapView && this.isInitialized && this.compassBearingUpdateCallback) {
       try {
-        const bearing = this.mapView.getBearing();
+        const bearing: number = this.mapView.getBearing();
         this.compassBearingUpdateCallback(bearing);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to update compass bearing: ${error}`);
@@ -877,7 +889,7 @@ class NativeMapViewController extends XComponentController {
   getPitch(): number {
     if (this.mapView && this.isInitialized) {
       try {
-        const pitch = this.mapView.getPitch();
+        const pitch: number = this.mapView.getPitch();
         return pitch !== undefined ? pitch : 0;
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to get pitch: ${error}`);
@@ -1615,7 +1627,7 @@ class NativeMapViewController extends XComponentController {
  * NativeMapView - 地图视图组件
  */
 @Component
-export struct NativeMapView {
+export struct MapView {
   private controller: NativeMapViewController = new NativeMapViewController();
   @State private isVisible: boolean = true;
   @State private isDestroyed: boolean = false;
@@ -1661,7 +1673,7 @@ export struct NativeMapView {
         this.controller.initialPitch = this.initialPitch;
         
         // 包装 onMapReady 回调以设置 InfoWindowManager 回调
-        this.controller.onMapReadyCallback = (mapView?: maplibre.NativeMapView) => {
+        this.controller.onMapReadyCallback = (mapView?: NativeMapView) => {
           // 创建 MapLibreMap 实例
           if (mapView && !this.controller.getMapLibreMapInstance()) {
             const options = new MapLibreMapOptions();
@@ -1738,7 +1750,7 @@ export struct NativeMapView {
     try {
       // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
       hilog.debug(DOMAIN, 'NativeMapView', 'Cancelling all animations and gestures...');
-      const mapView = this.controller.getMapView();
+      const mapView: NativeMapView = this.controller.getMapView();
       if (mapView) {
         try {
           mapView.cancelTransitions();
@@ -2135,9 +2147,9 @@ export struct NativeMapView {
         onAnnotationDrag: (marker: Marker, screenX: number, screenY: number) => {
           try {
             // 将屏幕坐标转换为地理坐标
-            const mapView = this.controller.getMapView();
+            const mapView: NativeMapView = this.controller.getMapView();
             if (mapView) {
-              const nativeLatLng = mapView.latLngForPixel(screenX, screenY);
+              const nativeLatLng: maplibre.LatLng = mapView.latLngForPixel(screenX, screenY);
               const mapLibreMap = this.controller.getMapLibreMapInstance();
               if (mapLibreMap && nativeLatLng) {
                 const latLng = LatLng.fromNative(nativeLatLng);
@@ -2255,7 +2267,7 @@ export struct NativeMapView {
    * @returns 当前俯仰角度（度）
    */
   getPitch(): number {
-    const mapView = this.controller.getMapView();
+    const mapView: NativeMapView = this.controller.getMapView();
     if (!mapView) {
       hilog.warn(DOMAIN, 'NativeMapView', 'getPitch: Native map view not initialized');
       return 0;
@@ -2276,7 +2288,7 @@ export struct NativeMapView {
    * @param duration 可选的动画时长（毫秒），默认为 0（不使用动画）
    */
   setPitch(pitch: number, duration: number = 0): void {
-    const mapView = this.controller.getMapView();
+    const mapView: NativeMapView = this.controller.getMapView();
     if (!mapView) {
       hilog.warn(DOMAIN, 'NativeMapView', 'setPitch: Native map view not initialized');
       return;
@@ -2319,7 +2331,7 @@ export struct NativeMapView {
    * 取消所有正在进行的相机过渡动画
    */
   cancelTransitions(): void {
-    const mapView = this.controller.getMapView();
+    const mapView: NativeMapView = this.controller.getMapView();
     if (!mapView) {
       hilog.warn(DOMAIN, 'NativeMapView', 'cancelTransitions: Native map view not initialized');
       return;

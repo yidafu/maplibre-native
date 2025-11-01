@@ -60,4 +60,21 @@ export class HeatmapLayer {
     this.nativeInstance.setFilter(filter);
     return this;
   }
+
+  // ========== Heatmap 样式属性方法 ==========
+
+  setHeatmapRadius(value: ESObject): HeatmapLayer {
+    // TODO: 实现 setHeatmapRadius
+    return this;
+  }
+
+  setHeatmapOpacity(value: ESObject): HeatmapLayer {
+    // TODO: 实现 setHeatmapOpacity
+    return this;
+  }
+
+  setHeatmapIntensity(value: ESObject): HeatmapLayer {
+    // TODO: 实现 setHeatmapIntensity
+    return this;
+  }
 }

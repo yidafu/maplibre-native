@@ -1,14 +1,16 @@
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView } from 'libmaplibre.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
-import { Point } from './geometry/Point';
-// Layer 和 Source 现在通过 maplibre.XXXLayer / maplibre.XXXSource 访问
-// import { Layer } from './style/layers/Layer';
-// import { Source } from './style/sources/Source';
+import { Point, PixelCoordinate, IPixelCoordinate } from './geometry/Point';
+import { Rect } from './geometry/Rect';
+import { ProjectedMeters, IProjectedMeters } from './geometry/ProjectedMeters';
+// Layer 和 Source 类型导入，用于类型安全的图层和数据源操作
+import type { Layer } from './style/layers/Layer';
+import type { Source } from './style/sources/Source';
 import { Image } from './style/images/Image';
-import { Feature } from './geojson';
+import { GeoJson, IFeature } from './geojson';
 import { TransitionOptions } from './style/layers/TransitionOptions';
 import { Light } from './style/light/Light';
 import { Polyline } from './annotations/Polyline';
@@ -51,7 +53,7 @@ type PendingOperation = () => void;
  * MapLibreMap - 主要的地图API类
  */
 export class MapLibreMap {
-  private nativeMapView: maplibre.NativeMapView;
+  private nativeMapView: NativeMapView;
   private options: MapLibreMapOptions;
   private destroyed: boolean = false;
   private markerManager: MarkerManager;
@@ -93,7 +95,7 @@ export class MapLibreMap {
   private animationTimerId: number | null = null;
   private animationCancelled: boolean = false;
 
-  constructor(nativeMapView: maplibre.NativeMapView, options: MapLibreMapOptions) {
+  constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
     this.options = options;
     this.markerManager = new MarkerManager(this);
@@ -538,7 +540,7 @@ export class MapLibreMap {
     if (!this.nativeMapView) return null;
     
     try {
-      const nativeStyle = this.nativeMapView.getStyle();
+      const nativeStyle: maplibre.Style = this.nativeMapView.getStyle();
       if (nativeStyle) {
         return Style.fromNative(nativeStyle);
       }
@@ -620,21 +622,60 @@ export class MapLibreMap {
   }
 
   /**
-   * 平滑过渡到指定相机位置（easeTo）
+   * 平滑过渡到指定相机位置（easeTo）- 参数形式
+   * 
+   * @param latitude 纬度
+   * @param longitude 经度
+   * @param bearing 方位角
+   * @param zoom 缩放级别
+   * @param duration 动画持续时间（毫秒）
+   */
+  public easeTo(latitude: number, longitude: number, bearing: number, zoom: number, duration: number): void;
+  
+  /**
+   * 平滑过渡到指定相机位置（easeTo）- 对象形式
    * 
    * @param options 相机选项
    * @param duration 动画持续时间（毫秒）
    * @param callback 可选的动画回调
    */
-  public easeTo(options: maplibre.CameraOptions, duration: number, callback?: CameraAnimationCallback): void {
+  public easeTo(options: maplibre.CameraOptions, duration: number, callback?: CameraAnimationCallback): void;
+  
+  /**
+   * easeTo 实现
+   */
+  public easeTo(
+    latitudeOrOptions: number | maplibre.CameraOptions,
+    longitudeOrDuration: number,
+    bearingOrCallback?: number | CameraAnimationCallback,
+    zoom?: number,
+    duration?: number
+  ): void {
     if (this.destroyed) return;
     
-    // 如果有回调，设置动画监听
-    if (callback) {
-      this.setupAnimationCallback(callback, duration);
+    // 判断调用形式
+    if (typeof latitudeOrOptions === 'number' && typeof zoom === 'number' && typeof duration === 'number') {
+      // 参数形式: easeTo(latitude, longitude, bearing, zoom, duration)
+      const centerObj: LatLng = new LatLng(latitudeOrOptions, longitudeOrDuration);
+      const options: maplibre.CameraOptions = {
+        center: centerObj.getNative(),
+        bearing: bearingOrCallback as number,
+        zoom: zoom
+      };
+      this.nativeMapView.easeTo(options, duration);
+    } else if (typeof latitudeOrOptions === 'object') {
+      // 对象形式: easeTo(options, duration, callback?)
+      const options: maplibre.CameraOptions = latitudeOrOptions;
+      const durationMs = longitudeOrDuration;
+      const callback = bearingOrCallback as CameraAnimationCallback | undefined;
+      
+      // 如果有回调，设置动画监听
+      if (callback) {
+        this.setupAnimationCallback(callback, durationMs);
+      }
+      
+      this.nativeMapView.easeTo(options, durationMs);
     }
-    
-    this.nativeMapView.easeTo(options, duration);
   }
 
   /**
@@ -687,10 +728,7 @@ export class MapLibreMap {
     
     // 构建相机选项
     const options: maplibre.CameraOptions = {
-      center: position.target ? {
-        latitude: position.target.latitude,
-        longitude: position.target.longitude
-      } : undefined,
+      center: position.target ? position.target.getNative() : undefined,
       zoom: position.zoom,
       bearing: position.bearing,
       pitch: position.tilt
@@ -780,7 +818,7 @@ export class MapLibreMap {
   // 位置和相机
   public getLatLng(): LatLng {
     if (this.destroyed) return LatLng.create(0, 0);
-    const nativeLatLng = this.nativeMapView.getLatLng();
+    const nativeLatLng: maplibre.LatLng = this.nativeMapView.getLatLng();
     return LatLng.fromNative(nativeLatLng);
   }
 
@@ -910,7 +948,7 @@ export class MapLibreMap {
   }
 
   // 坐标边界
-  public setVisibleCoordinateBounds(coordinates: LatLng[], padding: maplibre.Rect, direction: number, duration: number): void {
+  public setVisibleCoordinateBounds(coordinates: LatLng[], padding: Rect, direction: number, duration: number): void {
     if (this.destroyed) return;
     this.nativeMapView.setVisibleCoordinateBounds(coordinates, padding, direction, duration);
   }
@@ -972,8 +1010,8 @@ export class MapLibreMap {
     }
     
     // 将封装的 Marker 转换为 NAPI Marker 对象数组
-    const nativeMarkers = markers.map(m => m.getNative());
-    const ids = this.nativeMapView.addMarkers(nativeMarkers);
+    const nativeMarkers: maplibre.Marker[] = markers.map((m: Marker): maplibre.Marker => m.getNative());
+    const ids: number[] = this.nativeMapView.addMarkers(nativeMarkers);
     
     // [MarkerDebug] 记录 NAPI 返回结果
     console.info(`[MarkerDebug] MapLibreMap: NAPI returned ${ids.length} IDs: [${ids.join(', ')}]`);
@@ -1061,14 +1099,16 @@ export class MapLibreMap {
   }
 
   // 坐标转换
-  public projectedMetersForLatLng(latitude: number, longitude: number): maplibre.ProjectedMeters {
-    if (this.destroyed) return { northing: 0, easting: 0 };
-    return this.nativeMapView.projectedMetersForLatLng(latitude, longitude);
+  public projectedMetersForLatLng(latitude: number, longitude: number): ProjectedMeters {
+    if (this.destroyed) return new ProjectedMeters(0, 0);
+    const result: IProjectedMeters = this.nativeMapView.projectedMetersForLatLng(latitude, longitude);
+    return ProjectedMeters.fromObject(result);
   }
 
   public pixelForLatLng(latitude: number, longitude: number): Point {
-    if (this.destroyed) return { x: 0, y: 0 };
-    return this.nativeMapView.pixelForLatLng(latitude, longitude);
+    if (this.destroyed) return new PixelCoordinate(0, 0);
+    const result: IPixelCoordinate = this.nativeMapView.pixelForLatLng(latitude, longitude);
+    return PixelCoordinate.fromObject(result);
   }
 
   public pixelsForLatLngs(input: number[], output: number[]): void {
@@ -1078,13 +1118,13 @@ export class MapLibreMap {
 
   public latLngForProjectedMeters(northing: number, easting: number): LatLng {
     if (this.destroyed) return LatLng.create(0, 0);
-    const nativeLatLng = this.nativeMapView.latLngForProjectedMeters(northing, easting);
+    const nativeLatLng: maplibre.LatLng = this.nativeMapView.latLngForProjectedMeters(northing, easting);
     return LatLng.fromNative(nativeLatLng);
   }
 
   public latLngForPixel(x: number, y: number): LatLng {
     if (this.destroyed) return LatLng.create(0, 0);
-    const nativeLatLng = this.nativeMapView.latLngForPixel(x, y);
+    const nativeLatLng: maplibre.LatLng = this.nativeMapView.latLngForPixel(x, y);
     return LatLng.fromNative(nativeLatLng);
   }
 
@@ -1095,24 +1135,26 @@ export class MapLibreMap {
 
   // 过渡
   public getTransitionOptions(): TransitionOptions {
-    if (this.destroyed) return { duration: 0, delay: 0 };
-    return this.nativeMapView.getTransitionOptions();
+    if (this.destroyed) return new TransitionOptions(0, 0);
+    const result: TransitionOptions = this.nativeMapView.getTransitionOptions();
+    return result;
   }
 
   public setTransitionOptions(options: TransitionOptions): void {
     if (this.destroyed) return;
-    this.nativeMapView.setTransitionOptions(options);
+    // 转换为对象字面量传递给 NAPI
+    this.nativeMapView.setTransitionOptions(options.toObject());
   }
 
   // 查询
-  public queryPointAnnotations(rect: maplibre.Rect): number[] {
+  public queryPointAnnotations(rect: Rect): number[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.queryPointAnnotations(rect);
+    return this.nativeMapView.queryPointAnnotations(rect.toObject());
   }
 
-  public queryShapeAnnotations(rect: maplibre.Rect): number[] {
+  public queryShapeAnnotations(rect: Rect): number[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.queryShapeAnnotations(rect);
+    return this.nativeMapView.queryShapeAnnotations(rect.toObject());
   }
 
   // 光照
@@ -1122,28 +1164,29 @@ export class MapLibreMap {
     return result as Light;
   }
 
-  // 图层（使用 any 类型因为 Layer 类型未导出）
-  public getLayers(): object[] {
+  // 图层方法 - 使用强类型 Layer
+  public getLayers(): Layer[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.getLayers();
+    return this.nativeMapView.getLayers() as Layer[];
   }
 
-  public getLayer(layerId: string): object | null {
+  public getLayer(layerId: string): Layer | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getLayer(layerId);
+    const result: Object | null = this.nativeMapView.getLayer(layerId);
+    return result ? (result as Layer) : null;
   }
 
-  public addLayer(layer: object): void {
+  public addLayer(layer: Layer): void {
     if (this.destroyed) return;
     this.nativeMapView.addLayer(layer);
   }
 
-  public addLayerAbove(layer: object, aboveLayerId: string): void {
+  public addLayerAbove(layer: Layer, aboveLayerId: string): void {
     if (this.destroyed) return;
     this.nativeMapView.addLayerAbove(layer, aboveLayerId);
   }
 
-  public addLayerAt(layer: object, index: number): void {
+  public addLayerAt(layer: Layer, index: number): void {
     if (this.destroyed) return;
     this.nativeMapView.addLayerAt(layer, index);
   }
@@ -1153,28 +1196,29 @@ export class MapLibreMap {
     return this.nativeMapView.removeLayerAt(index);
   }
 
-  public removeLayer(layer: object): boolean {
+  public removeLayer(layer: Layer | string): boolean {
     if (this.destroyed) return false;
     return this.nativeMapView.removeLayer(layer);
   }
 
-  // 数据源（使用 object 类型因为 Source 类型未导出）
-  public getSources(): object[] {
+  // 数据源方法 - 使用强类型 Source
+  public getSources(): Source[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.getSources();
+    return this.nativeMapView.getSources() as Source[];
   }
 
-  public getSource(sourceId: string): object | null {
+  public getSource(sourceId: string): Source | null {
     if (this.destroyed) return null;
-    return this.nativeMapView.getSource(sourceId);
+    const result: Object | null = this.nativeMapView.getSource(sourceId);
+    return result ? (result as Source) : null;
   }
 
-  public addSource(source: object): void {
+  public addSource(source: Source): void {
     if (this.destroyed) return;
     this.nativeMapView.addSource(source);
   }
 
-  public removeSource(source: object): boolean {
+  public removeSource(source: Source | string): boolean {
     if (this.destroyed) return false;
     return this.nativeMapView.removeSource(source);
   }
@@ -1290,7 +1334,7 @@ export class MapLibreMap {
   }
 
   // 获取原生地图视图
-  public getNativeMapView(): maplibre.NativeMapView {
+  public getNativeMapView(): NativeMapView {
     return this.nativeMapView;
   }
   
@@ -2152,7 +2196,7 @@ export class MapLibreMap {
     y: number,
     layerIds?: string[],
     filter?: Object
-  ): Feature[] {
+  ): IFeature[] {
     if (this.destroyed) {
       console.warn('MapLibreMap', 'queryRenderedFeaturesForPoint: Map is destroyed');
       return [];
@@ -2175,7 +2219,7 @@ export class MapLibreMap {
    * @param bottom 下边界（屏幕像素）
    * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
    * @param filter 可选的过滤器表达式
-   * @returns Feature 数组
+   * @returns IFeature 数组
    * 
    * @example
    * ```typescript
@@ -2203,7 +2247,7 @@ export class MapLibreMap {
     bottom: number,
     layerIds?: string[],
     filter?: Object
-  ): Feature[] {
+  ): IFeature[] {
     if (this.destroyed) {
       console.warn('MapLibreMap', 'queryRenderedFeaturesForBox: Map is destroyed');
       return [];
@@ -2225,6 +2269,71 @@ export class MapLibreMap {
    */
   public getInfoWindowManager(): InfoWindowManager {
     return this.infoWindowManager;
+  }
+  
+  // ========== 兼容性方法 (从 NativeMapView 迁移) ==========
+  
+  /**
+   * 设置调试模式激活状态
+   * TODO: 这是从 Android SDK 迁移的方法，当前实现为空
+   * @param active 是否激活调试模式
+   */
+  public setDebugActive(active: boolean): void {
+    // TODO: 实现调试模式切换
+    console.warn('MapLibreMap', 'setDebugActive() is not implemented yet');
+    // 临时使用 setDebug 方法
+    this.setDebug(active);
+  }
+  
+  /**
+   * 获取设备像素比
+   * TODO: 这是从 NativeMapView 迁移的方法，当前返回固定值
+   * @returns 设备像素比
+   */
+  public getPixelRatio(): number {
+    // TODO: 从 native 层获取真实的设备像素比
+    console.warn('MapLibreMap', 'getPixelRatio() is not implemented yet, returning default value 1.0');
+    return 1.0;
+  }
+  
+  /**
+   * 设置内容边距（padding）
+   * TODO: 这是从 NativeMapView 迁移的方法
+   * @param top 上边距
+   * @param left 左边距
+   * @param bottom 下边距
+   * @param right 右边距
+   */
+  public setContentPadding(top: number, left: number, bottom: number, right: number): void {
+    // TODO: 实现内容边距设置
+    console.warn('MapLibreMap', 'setContentPadding() is not implemented yet');
+    // 临时使用 setPadding 方法
+    this.setPadding(left, top, right, bottom);
+  }
+  
+  /**
+   * 获取内容边距
+   * TODO: 这是从 NativeMapView 迁移的方法
+   * @returns 边距数组 [top, left, bottom, right]
+   */
+  public getContentPadding(): number[] {
+    // TODO: 返回正确的内容边距格式
+    console.warn('MapLibreMap', 'getContentPadding() is not implemented yet');
+    const padding = this.getPadding(); // [left, top, right, bottom]
+    // 转换为 [top, left, bottom, right]
+    return [padding[1], padding[0], padding[3], padding[2]];
+  }
+  
+  /**
+   * 获取与密度相关的矩形
+   * TODO: 这是从 NativeMapView 迁移的方法，当前实现为空
+   * @param rect 矩形参数
+   * @returns 调整后的矩形
+   */
+  public getDensityDependantRectangle(rect: Rect): Rect {
+    // TODO: 实现密度相关的矩形转换
+    console.warn('MapLibreMap', 'getDensityDependantRectangle() is not implemented yet');
+    return rect;
   }
 }
 

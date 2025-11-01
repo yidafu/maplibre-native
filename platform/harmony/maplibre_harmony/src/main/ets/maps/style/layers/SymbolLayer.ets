@@ -92,4 +92,21 @@ export class SymbolLayer {
     this.nativeInstance.setIconOpacity(value);
     return this;
   }
+
+  // ========== Symbol 文本属性方法 ==========
+
+  setTextField(value: ESObject): SymbolLayer {
+    // TODO: 实现 setTextField
+    return this;
+  }
+
+  setTextSize(value: ESObject): SymbolLayer {
+    // TODO: 实现 setTextSize
+    return this;
+  }
+
+  setTextColor(value: ESObject): SymbolLayer {
+    // TODO: 实现 setTextColor
+    return this;
+  }
 }

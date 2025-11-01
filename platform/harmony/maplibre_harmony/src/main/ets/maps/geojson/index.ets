@@ -1,29 +1,51 @@
 /**
- * GeoJSON Types - GeoJSON 类型导出
- * 
- * 直接导出 NAPI 类型，不进行封装
+ * GeoJSON Types - GeoJSON 类型和类导出
+ *
+ * 提供符合 GeoJSON 规范 (RFC 7946) 的类型定义和实现
  */
-import type maplibre from 'libmaplibre.so';
+// ==================== GeoJson 对象（向后兼容）====================
+import {
+  point,
+  lineString,
+  polygon,
+  multiPoint,
+  multiLineString,
+  multiPolygon,
+  geometryCollection,
+  feature,
+  featureCollection,
+  pointFeature,
+  lineStringFeature,
+  polygonFeature
+} from './factory';
 
-// 直接从 NAPI 层导出所有 GeoJSON 类型
-export { 
-  Point,
-  LineString,
-  Polygon,
-  MultiPoint,
-  MultiLineString,
-  MultiPolygon,
-  GeometryCollection,
-  Feature,
-  FeatureCollection
-} from 'libmaplibre.so';
+/**
+ * GeoJson 命名空间类
+ * 
+ * 提供 GeoJSON 工厂函数的访问方式
+ * 
+ * @example
+ * ```typescript
+ * const pt = GeoJson.point([116.4, 39.9]);
+ * const line = GeoJson.lineString([[116.4, 39.9], [121.5, 31.2]]);
+ * const ft = GeoJson.feature(pt, { name: 'Beijing' });
+ * ```
+ */
+export class GeoJson {
+  // 小写工厂函数
+  static point = point;
+  static lineString = lineString;
+  static polygon = polygon;
+  static multiPoint = multiPoint;
+  static multiLineString = multiLineString;
+  static multiPolygon = multiPolygon;
+  static geometryCollection = geometryCollection;
+  static feature = feature;
+  static featureCollection = featureCollection;
+  static pointFeature = pointFeature;
+  static lineStringFeature = lineStringFeature;
+  static polygonFeature = polygonFeature;
+}
 
-// Geometry 联合类型
-export type Geometry = 
-  | maplibre.Point 
-  | maplibre.LineString 
-  | maplibre.Polygon 
-  | maplibre.MultiPoint 
-  | maplibre.MultiLineString 
-  | maplibre.MultiPolygon 
-  | maplibre.GeometryCollection;
+// 导出了 IPoint IPolygon 接口避免类型冲突
+export * from './types';

@@ -60,4 +60,26 @@ export class FillExtrusionLayer {
     this.nativeInstance.setFilter(filter);
     return this;
   }
+
+  // ========== FillExtrusion 样式属性方法 ==========
+
+  setFillExtrusionColor(value: ESObject): FillExtrusionLayer {
+    // TODO: 实现 setFillExtrusionColor
+    return this;
+  }
+
+  setFillExtrusionOpacity(value: ESObject): FillExtrusionLayer {
+    // TODO: 实现 setFillExtrusionOpacity
+    return this;
+  }
+
+  setFillExtrusionHeight(value: ESObject): FillExtrusionLayer {
+    // TODO: 实现 setFillExtrusionHeight
+    return this;
+  }
+
+  setFillExtrusionBase(value: ESObject): FillExtrusionLayer {
+    // TODO: 实现 setFillExtrusionBase
+    return this;
+  }
 }

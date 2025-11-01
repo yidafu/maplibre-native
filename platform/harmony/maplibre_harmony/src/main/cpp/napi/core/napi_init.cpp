@@ -10,16 +10,6 @@
 #include "bitmap/bitmap_napi.hpp"
 // Geometry types
 #include "geometry/lat_lng_harmony.hpp"
-// GeoJSON NAPI 类
-#include "geojson/point_napi.hpp"
-#include "geojson/line_string_napi.hpp"
-#include "geojson/polygon_napi.hpp"
-#include "geojson/multi_point_napi.hpp"
-#include "geojson/multi_line_string_napi.hpp"
-#include "geojson/multi_polygon_napi.hpp"
-#include "geojson/geometry_collection_napi.hpp"
-#include "geojson/feature_napi.hpp"
-#include "geojson/feature_collection_napi.hpp"
 // Offline API
 #include "offline/offline_manager_napi.hpp"
 #include "offline/offline_region_napi.hpp"
@@ -51,17 +41,6 @@ EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
     // 初始化 Geometry 类
     mbgl::harmony::LatLngNapi::Init(env, exports);
-    
-    // 初始化 GeoJSON NAPI 类
-    maplibre::harmony::geojson::PointNAPI::Init(env, exports);
-    maplibre::harmony::geojson::LineStringNAPI::Init(env, exports);
-    maplibre::harmony::geojson::PolygonNAPI::Init(env, exports);
-    maplibre::harmony::geojson::MultiPointNAPI::Init(env, exports);
-    maplibre::harmony::geojson::MultiLineStringNAPI::Init(env, exports);
-    maplibre::harmony::geojson::MultiPolygonNAPI::Init(env, exports);
-    maplibre::harmony::geojson::GeometryCollectionNAPI::Init(env, exports);
-    maplibre::harmony::geojson::FeatureNAPI::Init(env, exports);
-    maplibre::harmony::geojson::FeatureCollectionNAPI::Init(env, exports);
     
     // 初始化离线地图 API
     maplibre::harmony::OfflineManagerNAPI::Init(env, exports);

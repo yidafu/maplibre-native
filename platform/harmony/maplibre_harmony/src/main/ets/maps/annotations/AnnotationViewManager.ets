@@ -1,9 +1,9 @@
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView } from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { Marker } from './Marker';
 
-type NativeMapView = maplibre.NativeMapView;
+
 
 /**
  * AnnotationViewData - Annotation 视图数据
@@ -225,8 +225,8 @@ export class AnnotationViewManager {
     
     try {
       // 调用 NAPI 方法转换坐标
-      const pixelCoord = this.nativeMapView.pixelForLatLng(latLng.latitude, latLng.longitude);
-      return new ScreenCoord(pixelCoord.x, pixelCoord.y);
+      const pixelCoord: Object = this.nativeMapView.pixelForLatLng(latLng.latitude, latLng.longitude);
+      return new ScreenCoord((pixelCoord as ScreenCoord).x, (pixelCoord as ScreenCoord).y);
     } catch (e) {
       console.error('[AnnotationViewManager] Failed to calculate screen position:', e);
       return new ScreenCoord(0, 0);

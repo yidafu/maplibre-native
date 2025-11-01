@@ -1,6 +1,6 @@
 #include "offline_region_definition_napi.hpp"
 #include "geometry/lat_lng_bounds_harmony.hpp"
-#include "geojson/geometry_napi.hpp"
+#include "geojson/geojson_converter.hpp"
 #include "utils/logger.h"
 
 #include <variant>
@@ -157,7 +157,7 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
     napi_value geometryValue;
     napi_get_named_property(env, obj, "geometry", &geometryValue);
     
-    mbgl::Geometry<double> geometry = maplibre::harmony::geojson::GeometryNAPI::convert(env, geometryValue);
+    mbgl::Geometry<double> geometry = maplibre::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
     
     // 获取 minZoom
     napi_value minZoomValue;
@@ -208,7 +208,7 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
     napi_set_named_property(env, obj, "styleURL", styleURLValue);
     
     // 设置 geometry
-    napi_value geometryValue = maplibre::harmony::geojson::GeometryNAPI::New(env, def.geometry);
+    napi_value geometryValue = maplibre::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
     napi_set_named_property(env, obj, "geometry", geometryValue);
     
     // 设置 minZoom

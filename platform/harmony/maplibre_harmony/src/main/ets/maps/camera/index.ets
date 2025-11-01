@@ -2,7 +2,7 @@
  * Camera - 相机系统导出
  */
 
-export { CameraPosition, EdgeInsets, createCameraPosition, cameraPositionEquals } from './CameraPosition';
+export { CameraPosition, EdgeInsets, ICameraPosition, IEdgeInsets, CameraOptions } from './CameraPosition';
 export { 
   CameraMoveReason, 
   getCameraMoveReasonText 

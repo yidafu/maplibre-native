@@ -60,4 +60,31 @@ export class CircleLayer {
     this.nativeInstance.setFilter(filter);
     return this;
   }
+
+  // ========== Circle 样式属性方法 ==========
+
+  setCircleRadius(value: ESObject): CircleLayer {
+    // TODO: 实现 setCircleRadius
+    return this;
+  }
+
+  setCircleColor(value: ESObject): CircleLayer {
+    // TODO: 实现 setCircleColor
+    return this;
+  }
+
+  setCircleOpacity(value: ESObject): CircleLayer {
+    // TODO: 实现 setCircleOpacity
+    return this;
+  }
+
+  setCircleStrokeWidth(value: ESObject): CircleLayer {
+    // TODO: 实现 setCircleStrokeWidth
+    return this;
+  }
+
+  setCircleStrokeColor(value: ESObject): CircleLayer {
+    // TODO: 实现 setCircleStrokeColor
+    return this;
+  }
 }

@@ -4,7 +4,7 @@ import { LocationComponentOptions } from './LocationComponentOptions';
 import { CameraMode } from './modes/CameraMode';
 import { OnCameraTrackingChangedListener } from './listeners/OnCameraTrackingChangedListener';
 import { LatLng } from '../geometry/LatLng';
-import { CameraPosition } from '../camera/CameraPosition';
+import { CameraPosition, CameraOptions } from '../camera/CameraPosition';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -105,7 +105,7 @@ export class LocationCameraController {
         case CameraMode.TRACKING:
         case CameraMode.TRACKING_GPS_NORTH:
           // 只跟踪位置，不改变方向
-          cameraBearing = (currentCamera as maplibre.CameraPosition)?.bearing ?? 0;
+          cameraBearing = (currentCamera as CameraPosition)?.bearing ?? 0;
           break;
         
         case CameraMode.TRACKING_COMPASS:
@@ -120,11 +120,11 @@ export class LocationCameraController {
       }
 
       // 创建相机选项
-      const cameraOptions: maplibre.CameraOptions = {
+      const cameraOptions: CameraOptions = {
         center: location,
-        zoom: (currentCamera as maplibre.CameraPosition)?.zoom ?? 15,
+        zoom: (currentCamera as CameraPosition)?.zoom ?? 15,
         bearing: cameraBearing,
-        pitch: (currentCamera as maplibre.CameraPosition)?.tilt ?? 0
+        pitch: (currentCamera as CameraPosition)?.tilt ?? 0
       };
 
       // 动画时长

@@ -4,7 +4,7 @@
 #include "geometry/lat_lng_harmony.hpp"
 #include "geometry/point_harmony.hpp"
 #include "geometry/projected_meters_harmony.hpp"
-#include "geojson/feature_napi.hpp"
+#include "geojson/geojson_converter.hpp"
 #include "style/filter_conversion.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include <mbgl/map/map.hpp>
@@ -14,6 +14,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
+using maplibre::harmony::geojson::GeoJsonConverter;
 
 namespace mbgl {
 namespace harmony {
@@ -586,7 +587,7 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
         Logger::info("NativeMapView", "queryRenderedFeaturesForPoint: Found %zu features", features.size());
         
         // 7. 转换结果为 NAPI 数组
-        napi_value result = maplibre::harmony::geojson::FeatureNAPI::NewArray(env, features);
+        napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
         
         return result;
         
@@ -714,7 +715,7 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
         Logger::info("NativeMapView", "queryRenderedFeaturesForBox: Found %zu features", features.size());
         
         // 7. 转换结果为 NAPI 数组
-        napi_value result = maplibre::harmony::geojson::FeatureNAPI::NewArray(env, features);
+        napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
         
         return result;
         

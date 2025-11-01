@@ -45,6 +45,11 @@ export class RasterDemSource {
   getUrl(): string {
     return this.nativeInstance.getUrl();
   }
+
+  setTileSize(tileSize: number): RasterDemSource {
+    // TODO: 实现 setTileSize
+    return this;
+  }
 }
 
 // DemEncoding 类型定义

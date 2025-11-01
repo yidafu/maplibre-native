@@ -6,6 +6,11 @@
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 
+interface LatLngLike {
+  latitude: number;
+  longitude: number;
+}
+
 /**
  * PolylineOptions - 折线选项接口
  */
@@ -52,7 +57,13 @@ export class Polyline {
       
       // 转换 LatLng 对象为原生格式
       const nativeOptions: ESObject = {
-        points: options.points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude }),
+        points: options.points.map((p: LatLng): Object => {
+          if (p.getNative) {
+            return p.getNative();
+          }
+          const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+          return coord as Object;
+        }),
         color: options.color || '#000000',
         width: options.width !== undefined ? options.width : 10,
         alpha: options.alpha !== undefined ? options.alpha : 1.0,
@@ -94,11 +105,17 @@ export class Polyline {
 
   getPoints(): LatLng[] {
     const nativePoints: Object[] = this.nativeInstance.getPoints();
-    return nativePoints.map((p: Object) => LatLng.fromNative(p as maplibre.LatLng));
+    return nativePoints.map((p: Object): LatLng => LatLng.fromNative(p as maplibre.LatLng));
   }
 
   setPoints(points: LatLng[]): Polyline {
-    const nativePoints = points.map(p => p.getNative ? p.getNative() : { latitude: p.latitude, longitude: p.longitude });
+    const nativePoints: Object[] = points.map((p: LatLng): Object => {
+      if (p.getNative) {
+        return p.getNative();
+      }
+      const coord: LatLngLike = { latitude: p.latitude, longitude: p.longitude };
+      return coord as Object;
+    });
     this.nativeInstance.setPoints(nativePoints);
     return this;
   }

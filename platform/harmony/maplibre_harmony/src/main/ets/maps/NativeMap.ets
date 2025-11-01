@@ -1,11 +1,12 @@
-import { Feature, Polygon, Geometry } from './geojson';
+import { GeoJson, Geometry, IFeature } from './geojson';
 import maplibre from 'libmaplibre.so';
-import { CameraPosition } from './camera/CameraPosition';
+import { CameraPosition, EdgeInsets } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
 import { LatLngBounds } from './geometry/LatLngBounds';
 import { Point } from './geometry/Point';
 import { Rect } from './geometry/Rect';
 import { ProjectedMeters } from './geometry/ProjectedMeters';
+import { TransitionOptions } from './style/layers/TransitionOptions';
 import { OnFpsChangedListener } from './listeners/OnFpsChangedListener';
 import type { SnapshotReadyCallback } from './snapshot';
 import { Expression } from './style/expressions/Expression';
@@ -15,29 +16,12 @@ import type { Image } from './style/images/Image';
 
 // 类型由封装类提供
 import { Marker } from './annotations/Marker';
+import { Polygon } from './annotations/Polygon';
 type Layer = maplibre.FillLayer | maplibre.LineLayer | maplibre.CircleLayer | maplibre.SymbolLayer | 
   maplibre.RasterLayer | maplibre.BackgroundLayer | maplibre.HeatmapLayer | maplibre.HillshadeLayer | 
   maplibre.FillExtrusionLayer;
 type Source = maplibre.GeoJsonSource | maplibre.VectorSource | maplibre.RasterSource | 
   maplibre.RasterDemSource | maplibre.ImageSource;
-
-/**
- * EdgeInsets 边缘插入定义
- */
-export interface EdgeInsets {
-  top: number;
-  left: number;
-  bottom: number;
-  right: number;
-}
-
-/**
- * TransitionOptions 过渡选项定义
- */
-export interface TransitionOptions {
-  duration?: number;
-  delay?: number;
-}
 
 /**
  * NativeMap接口定义
@@ -156,8 +140,8 @@ export interface NativeMap {
   getImage(name: string): ImageBitmap | null;
   
   // 特性查询
-  queryRenderedFeatures(coordinates: Point, layerIds?: string[], filter?: Expression): Feature[];
-  queryRenderedFeatures(coordinates: Rect, layerIds?: string[], filter?: Expression): Feature[];
+  queryRenderedFeatures(coordinates: Point, layerIds?: string[], filter?: Expression): IFeature[];
+  queryRenderedFeatures(coordinates: Rect, layerIds?: string[], filter?: Expression): IFeature[];
   
   // 缓存和预加载
   setPrefetchTiles(enable: boolean): void;

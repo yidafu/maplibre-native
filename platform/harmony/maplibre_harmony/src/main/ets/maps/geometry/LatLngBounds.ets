@@ -9,11 +9,30 @@ export class LatLngBounds {
   public south: number;
   public west: number;
 
-  constructor(north: number, east: number, south: number, west: number) {
-    this.north = north;
-    this.east = east;
-    this.south = south;
-    this.west = west;
+  /**
+   * 构造函数 - 支持两种模式：
+   * 1. 传入4个数字参数: new LatLngBounds(north, east, south, west)
+   * 2. 传入2个 LatLng 对象: new LatLngBounds(southwest, northeast)
+   */
+  constructor(northOrSouthwest: number | LatLng, eastOrNortheast: number | LatLng, south?: number, west?: number) {
+    if (typeof northOrSouthwest === 'number' && typeof eastOrNortheast === 'number' && 
+        typeof south === 'number' && typeof west === 'number') {
+      // 模式1: 4个数字参数
+      this.north = northOrSouthwest;
+      this.east = eastOrNortheast;
+      this.south = south;
+      this.west = west;
+    } else if (northOrSouthwest instanceof LatLng && eastOrNortheast instanceof LatLng) {
+      // 模式2: 2个 LatLng 对象 (southwest, northeast)
+      const southwest = northOrSouthwest;
+      const northeast = eastOrNortheast;
+      this.south = southwest.latitude;
+      this.west = southwest.longitude;
+      this.north = northeast.latitude;
+      this.east = northeast.longitude;
+    } else {
+      throw new Error('Invalid LatLngBounds constructor arguments');
+    }
   }
 
   /**
@@ -154,4 +173,23 @@ export class LatLngBounds {
   public toString(): string {
     return `LatLngBounds(${this.north}, ${this.east}, ${this.south}, ${this.west})`;
   }
+
+  /**
+   * 获取西南角坐标（别名方法，与 Android API 兼容）
+   * TODO: 与 getSouthwest() 保持一致
+   * @deprecated 使用 getSouthwest() 代替
+   */
+  getSouthWest(): LatLng {
+    return this.getSouthwest();
+  }
+
+  /**
+   * 获取东北角坐标（别名方法，与 Android API 兼容）
+   * TODO: 与 getNortheast() 保持一致
+   * @deprecated 使用 getNortheast() 代替
+   */
+  getNorthEast(): LatLng {
+    return this.getNortheast();
+  }
+
 }

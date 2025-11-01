@@ -21,5 +21,12 @@ export { PropertyFactory } from './PropertyFactory';
 export { TransitionOptions } from './TransitionOptions';
 
 // Layer 接口类型
-export type { LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMetadata } from './Layer';
+export type { Layer, LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMetadata } from './Layer';
+
+// CustomLayer 类
+export { CustomLayer, ExampleCustomLayer } from './CustomLayer';
+export type { CustomLayerOptions } from './CustomLayer';
+
+// 属性值类型
+export type { ColorValue, NumberValue, BooleanValue, StringValue } from './PropertyTypes';
 

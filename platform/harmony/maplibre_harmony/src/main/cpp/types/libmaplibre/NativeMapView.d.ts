@@ -19,6 +19,9 @@ export class LatLng {
 
 /**
  * 相机选项
+ * 注意：简单数据类型（EdgeInsets、CameraPosition、PixelCoordinate、ProjectedMeters、
+ * TransitionOptions、Rect）已移至 ETS 层实现，这里不再定义。
+ * C++ 层使用对象字面量传递，通过 duck typing 兼容。
  */
 export interface CameraOptions {
     /** 中心点坐标 */
@@ -29,68 +32,8 @@ export interface CameraOptions {
     bearing?: number;
     /** 俯仰角（度） */
     pitch?: number;
-    /** 边距 */
-    padding?: EdgeInsets;
-}
-
-/**
- * 边距设置
- */
-export interface EdgeInsets {
-    top: number;
-    left: number;
-    bottom: number;
-    right: number;
-}
-
-/**
- * 相机位置
- */
-export interface CameraPosition {
-    /** 目标位置 */
-    target: LatLng;
-    /** 缩放级别 */
-    zoom: number;
-    /** 方位角（度） */
-    bearing: number;
-    /** 倾斜角（度） */
-    tilt: number;
-}
-
-/**
- * 像素坐标
- */
-export interface PixelCoordinate {
-    x: number;
-    y: number;
-}
-
-/**
- * 投影米坐标
- */
-export interface ProjectedMeters {
-    northing: number;
-    easting: number;
-}
-
-/**
- * 转换选项
- */
-export interface TransitionOptions {
-    /** 持续时间（毫秒） */
-    duration?: number;
-    /** 延迟（毫秒） */
-    delay?: number;
-}
-
-/**
- * 矩形区域
- */
-export interface Rect {
-    left: number;
-    top: number;
-    right: number;
-    bottom: number;
+    /** 边距（对象字面量，包含 top、left、bottom、right） */
+    padding?: { top: number; left: number; bottom: number; right: number };
 }
 
 // ==================== NativeMapView Class ====================
@@ -646,17 +589,17 @@ export class NativeMapView {
      * 将经纬度转换为投影米坐标
      * @param latitude 纬度
      * @param longitude 经度
-     * @returns 投影米坐标对象
+     * @returns 投影米坐标对象（对象字面量）
      */
-    projectedMetersForLatLng(latitude: number, longitude: number): ProjectedMeters;
+    projectedMetersForLatLng(latitude: number, longitude: number): { northing: number; easting: number; };
     
     /**
      * 将经纬度转换为像素坐标
      * @param latitude 纬度
      * @param longitude 经度
-     * @returns 像素坐标
+     * @returns 像素坐标（对象字面量）
      */
-    pixelForLatLng(latitude: number, longitude: number): PixelCoordinate;
+    pixelForLatLng(latitude: number, longitude: number): { x: number; y: number; };
     
     /**
      * 批量将经纬度转换为像素坐标
@@ -692,31 +635,31 @@ export class NativeMapView {
     
     /**
      * 获取转换选项
-     * @returns 转换选项对象
+     * @returns 转换选项对象（对象字面量）
      */
-    getTransitionOptions(): TransitionOptions;
+    getTransitionOptions(): { duration?: number; delay?: number; };
     
     /**
      * 设置转换选项
-     * @param options 转换选项对象
+     * @param options 转换选项对象（对象字面量）
      */
-    setTransitionOptions(options: TransitionOptions): void;
+    setTransitionOptions(options: { duration?: number; delay?: number; }): void;
 
     // ========== Query ==========
     
     /**
      * 查询矩形区域内的点注记
-     * @param rect 矩形区域
+     * @param rect 矩形区域（对象字面量）
      * @returns 注记 ID 数组
      */
-    queryPointAnnotations(rect: Rect): number[];
+    queryPointAnnotations(rect: { left: number; top: number; right: number; bottom: number; }): number[];
     
     /**
      * 查询矩形区域内的形状注记
-     * @param rect 矩形区域
+     * @param rect 矩形区域（对象字面量）
      * @returns 注记 ID 数组
      */
-    queryShapeAnnotations(rect: Rect): number[];
+    queryShapeAnnotations(rect: { left: number; top: number; right: number; bottom: number; }): number[];
     
     /**
      * 查询指定点的渲染要素

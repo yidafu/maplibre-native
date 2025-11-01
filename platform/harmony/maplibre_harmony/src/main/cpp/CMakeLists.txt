@@ -172,29 +172,11 @@ add_library(maplibre
     style/layer_source_factory_harmony.hpp
     style/layer_source_factory_harmony.cpp
     
-    # GeoJSON NAPI 转换层
+    # GeoJSON 转换层
     geojson/util.hpp
     geojson/util.cpp
-    geojson/geometry_napi.hpp
-    geojson/geometry_napi.cpp
-    geojson/point_napi.hpp
-    geojson/point_napi.cpp
-    geojson/line_string_napi.hpp
-    geojson/line_string_napi.cpp
-    geojson/polygon_napi.hpp
-    geojson/polygon_napi.cpp
-    geojson/multi_point_napi.hpp
-    geojson/multi_point_napi.cpp
-    geojson/multi_line_string_napi.hpp
-    geojson/multi_line_string_napi.cpp
-    geojson/multi_polygon_napi.hpp
-    geojson/multi_polygon_napi.cpp
-    geojson/geometry_collection_napi.hpp
-    geojson/geometry_collection_napi.cpp
-    geojson/feature_napi.hpp
-    geojson/feature_napi.cpp
-    geojson/feature_collection_napi.hpp
-    geojson/feature_collection_napi.cpp
+    geojson/geojson_converter.hpp
+    geojson/geojson_converter.cpp
     
     # Offline API - 离线地图功能
     offline/offline_manager_napi.hpp

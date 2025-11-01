@@ -60,4 +60,31 @@ export class LineLayer {
     this.nativeInstance.setFilter(filter);
     return this;
   }
+
+  // ========== Line 样式属性方法 ==========
+
+  setLineColor(value: ESObject): LineLayer {
+    // TODO: 实现 setLineColor
+    return this;
+  }
+
+  setLineWidth(value: ESObject): LineLayer {
+    // TODO: 实现 setLineWidth
+    return this;
+  }
+
+  setLineGradient(value: ESObject): LineLayer {
+    // TODO: 实现 setLineGradient
+    return this;
+  }
+
+  setSourceLayer(sourceLayer: string): LineLayer {
+    // TODO: 实现 setSourceLayer
+    return this;
+  }
+
+  setLineOpacity(value: ESObject): LineLayer {
+    // TODO: 实现 setLineOpacity
+    return this;
+  }
 }

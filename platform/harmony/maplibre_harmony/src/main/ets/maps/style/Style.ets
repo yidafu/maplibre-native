@@ -211,6 +211,17 @@ export class Style {
   setTransition(transitionJson: string): void {
     this.nativeInstance.setTransition(transitionJson);
   }
+
+  /**
+   * 获取指定 ID 的数据源并转换为特定类型
+   * TODO: 实现类型安全的数据源获取
+   * @param sourceId - 数据源 ID
+   * @returns 数据源对象或 null
+   */
+  getSourceAs<T>(sourceId: string): T | null {
+    const source = this.getSource(sourceId);
+    return source as T | null;
+  }
 }
 
 /**

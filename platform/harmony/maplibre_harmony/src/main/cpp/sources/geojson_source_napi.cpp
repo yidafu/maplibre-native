@@ -2,9 +2,7 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
-#include "geojson/geometry_napi.hpp"
-#include "geojson/feature_napi.hpp"
-#include "geojson/feature_collection_napi.hpp"
+#include "geojson/geojson_converter.hpp"
 #include "geojson/util.hpp"
 #include <mbgl/style/conversion/json.hpp>
 #include <mbgl/style/conversion/geojson.hpp>
@@ -343,29 +341,23 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
             
             if (type == "FeatureCollection") {
                 // FeatureCollection 对象
-                auto features = FeatureCollectionNAPI::convert(env, args[0]);
-                mbgl::FeatureCollection collection;
-                collection.reserve(features.size());
-                
-                for (auto& feature : features) {
-                    mbgl::Feature f;
-                    f.geometry = std::move(feature.geometry);
-                    f.properties = std::move(feature.properties);
-                    f.id = feature.id;
-                    collection.push_back(std::move(f));
-                }
-                
-                source->setGeoJSON(mbgl::GeoJSON{std::move(collection)});
+                auto collection = GeoJsonConverter::JsObjectToFeatureCollection(env, args[0]);
+                source->setGeoJSON(mbgl::GeoJSON(std::move(collection)));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (FeatureCollection): %s", sourceNapi->id.c_str());
             } else if (type == "Feature") {
                 // Feature 对象
-                auto feature = FeatureNAPI::convert(env, args[0]);
-                source->setGeoJSON(mbgl::GeoJSON{std::move(feature)});
+                auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
+                // 转换为 GeoJSONFeature
+                mbgl::GeoJSONFeature geoJsonFeature;
+                geoJsonFeature.geometry = feature.geometry;
+                geoJsonFeature.properties = feature.properties;
+                geoJsonFeature.id = feature.id;
+                source->setGeoJSON(mbgl::GeoJSON(std::move(geoJsonFeature)));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Feature): %s", sourceNapi->id.c_str());
             } else {
                 // Geometry 对象
-                auto geometry = GeometryNAPI::convert(env, args[0]);
-                source->setGeoJSON(mbgl::GeoJSON{std::move(geometry)});
+                auto geometry = GeoJsonConverter::JsObjectToGeometry(env, args[0]);
+                source->setGeoJSON(mbgl::GeoJSON(std::move(geometry)));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Geometry): %s, type: %s", 
                            sourceNapi->id.c_str(), type.c_str());
             }
@@ -485,7 +477,7 @@ napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_in
         // 这里需要从 rendererFrontend 获取 features
         
         // 将结果转换为 NAPI 数组
-        return FeatureNAPI::NewArray(env, features);
+        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "QuerySourceFeatures failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -529,7 +521,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
             clusterId = static_cast<uint64_t>(value);
         } else if (IsObject(env, args[0])) {
             // Feature 对象，从 properties 中提取 cluster_id
-            auto feature = FeatureNAPI::convert(env, args[0]);
+            auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
             if (feature.properties.count("cluster_id")) {
                 auto& idValue = feature.properties["cluster_id"];
                 if (idValue.is<double>()) {
@@ -549,7 +541,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
                     clusterId);
         
         std::vector<mbgl::Feature> features;
-        return FeatureNAPI::NewArray(env, features);
+        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "GetClusterChildren failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -589,7 +581,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
             napi_get_value_double(env, args[0], &value);
             clusterId = static_cast<uint64_t>(value);
         } else if (IsObject(env, args[0])) {
-            auto feature = FeatureNAPI::convert(env, args[0]);
+            auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
             if (feature.properties.count("cluster_id")) {
                 auto& idValue = feature.properties["cluster_id"];
                 if (idValue.is<double>()) {
@@ -618,7 +610,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
                     clusterId, limit, offset);
         
         std::vector<mbgl::Feature> features;
-        return FeatureNAPI::NewArray(env, features);
+        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "GetClusterLeaves failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -654,7 +646,7 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
             napi_get_value_double(env, args[0], &value);
             clusterId = static_cast<uint64_t>(value);
         } else if (IsObject(env, args[0])) {
-            auto feature = FeatureNAPI::convert(env, args[0]);
+            auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
             if (feature.properties.count("cluster_id")) {
                 auto& idValue = feature.properties["cluster_id"];
                 if (idValue.is<double>()) {

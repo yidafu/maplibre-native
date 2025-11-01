@@ -60,4 +60,11 @@ export class RasterLayer {
     this.nativeInstance.setFilter(filter);
     return this;
   }
+
+  // ========== Raster 样式属性方法 ==========
+
+  setRasterOpacity(value: ESObject): RasterLayer {
+    // TODO: 实现 setRasterOpacity
+    return this;
+  }
 }

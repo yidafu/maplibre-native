@@ -8,7 +8,7 @@
  * - 聚类功能
  */
 import maplibre from 'libmaplibre.so';
-import { Feature, FeatureCollection, Geometry } from '../../geojson';
+import { GeoJson, Geometry, IFeature, IFeatureCollection } from '../../geojson';
 import { GeoJsonOptions } from './GeoJsonOptions';
 import type { Expression } from '../../style/expressions/Expression';
 
@@ -24,7 +24,7 @@ class InternalMarker {
  * GeoJSON 数据类型
  * 支持字符串、GeoJSON 对象和原生 NAPI 对象
  */
-export type GeoJsonData = string | Feature | FeatureCollection | Geometry | Object;
+export type GeoJsonData = string | IFeature | IFeatureCollection | Geometry | Object;
 
 /**
  * GeoJsonSource 类
@@ -81,7 +81,7 @@ export class GeoJsonSource {
    * @param options 可选配置
    * @returns GeoJsonSource 实例
    */
-  static fromFeature(id: string, feature: Feature, options?: GeoJsonOptions): GeoJsonSource {
+  static fromFeature(id: string, feature: IFeature, options?: GeoJsonOptions): GeoJsonSource {
     const source = new GeoJsonSource(id, options);
     source.setGeoJson(feature);
     return source;
@@ -94,7 +94,7 @@ export class GeoJsonSource {
    * @param options 可选配置
    * @returns GeoJsonSource 实例
    */
-  static fromFeatureCollection(id: string, featureCollection: FeatureCollection, options?: GeoJsonOptions): GeoJsonSource {
+  static fromFeatureCollection(id: string, featureCollection: IFeatureCollection, options?: GeoJsonOptions): GeoJsonSource {
     const source = new GeoJsonSource(id, options);
     source.setGeoJson(featureCollection);
     return source;
@@ -256,7 +256,7 @@ export class GeoJsonSource {
    * 查询数据源中的要素
    * 
    * @param filter 可选的过滤表达式
-   * @returns Feature 数组
+   * @returns IFeature 数组
    * 
    * @example
    * ```typescript
@@ -269,9 +269,9 @@ export class GeoJsonSource {
    * );
    * ```
    */
-  querySourceFeatures(filter?: Expression): Feature[] {
+  querySourceFeatures(filter?: Expression): IFeature[] {
     // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
-    return this.nativeInstance.querySourceFeatures(filter) as Object as Feature[];
+    return this.nativeInstance.querySourceFeatures(filter) as Object as IFeature[];
   }
 
   // ==================== 聚类功能 ====================
@@ -291,9 +291,9 @@ export class GeoJsonSource {
    * const children = source.getClusterChildren(clusterId);
    * ```
    */
-  getClusterChildren(clusterId: number): Feature[] {
+  getClusterChildren(clusterId: number): IFeature[] {
     // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
-    return this.nativeInstance.getClusterChildren(clusterId) as Object as Feature[];
+    return this.nativeInstance.getClusterChildren(clusterId) as Object as IFeature[];
   }
 
   /**
@@ -317,9 +317,9 @@ export class GeoJsonSource {
    * const page2 = source.getClusterLeaves(clusterId, 20, 20);
    * ```
    */
-  getClusterLeaves(clusterId: number, limit: number = 10, offset: number = 0): Feature[] {
+  getClusterLeaves(clusterId: number, limit: number = 10, offset: number = 0): IFeature[] {
     // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
-    return this.nativeInstance.getClusterLeaves(clusterId, limit, offset) as Object as Feature[];
+    return this.nativeInstance.getClusterLeaves(clusterId, limit, offset) as Object as IFeature[];
   }
 
   /**

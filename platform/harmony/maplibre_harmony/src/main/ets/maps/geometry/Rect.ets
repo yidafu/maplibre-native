@@ -1,117 +1,158 @@
 /**
  * Rect - 矩形
- * 使用 NAPI 模块中的 Rect 接口，添加工具函数
+ * ETS 类实现
  */
-import maplibre from 'libmaplibre.so';
-import { Point } from './Point';
+import { Point, PixelCoordinate } from './Point';
 import { Size } from '../types/NativeTypes';
 
-export type Rect = maplibre.Rect;
-
 /**
- * 创建矩形
+ * IRect - 矩形接口
+ * 用于对象字面量
  */
-export function createRect(left: number, top: number, right: number, bottom: number): Rect {
-  return { left, top, right, bottom };
+export interface IRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
 /**
- * 从两个点创建矩形
+ * Rect - 矩形类
+ * 表示一个矩形区域
  */
-export function createRectFromPoints(topLeft: Point, bottomRight: Point): Rect {
-  return { 
-    left: topLeft.x, 
-    top: topLeft.y, 
-    right: bottomRight.x, 
-    bottom: bottomRight.y 
-  };
-}
+export class Rect implements IRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 
-/**
- * 从位置和尺寸创建矩形
- */
-export function createRectFromXYWH(x: number, y: number, width: number, height: number): Rect {
-  return { left: x, top: y, right: x + width, bottom: y + height };
-}
-
-/**
- * 获取宽度
- */
-export function getRectWidth(rect: Rect): number {
-  return rect.right - rect.left;
-}
-
-/**
- * 获取高度
- */
-export function getRectHeight(rect: Rect): number {
-  return rect.bottom - rect.top;
-}
-
-/**
- * 获取中心点
- */
-export function getRectCenter(rect: Rect): Point {
-  return { 
-    x: (rect.left + rect.right) / 2, 
-    y: (rect.top + rect.bottom) / 2 
-  };
-}
-
-/**
- * 检查点是否在矩形内
- */
-export function rectContainsPoint(rect: Rect, point: Point): boolean {
-  return point.x >= rect.left && point.x <= rect.right &&
-         point.y >= rect.top && point.y <= rect.bottom;
-}
-
-/**
- * 检查矩形是否与另一个矩形相交
- */
-export function rectsIntersect(a: Rect, b: Rect): boolean {
-  return !(a.right <= b.left || a.left >= b.right ||
-           a.bottom <= b.top || a.top >= b.bottom);
-}
-
-/**
- * 计算两个矩形的交集
- */
-export function rectIntersection(a: Rect, b: Rect): Rect | null {
-  const left = Math.max(a.left, b.left);
-  const top = Math.max(a.top, b.top);
-  const right = Math.min(a.right, b.right);
-  const bottom = Math.min(a.bottom, b.bottom);
-
-  if (left >= right || top >= bottom) {
-    return null; // 没有交集
+  constructor(left: number = 0, top: number = 0, right: number = 0, bottom: number = 0) {
+    this.left = left;
+    this.top = top;
+    this.right = right;
+    this.bottom = bottom;
   }
 
-  return { left, top, right, bottom };
+  /**
+   * 从对象字面量创建 Rect 实例
+   */
+  static fromObject(obj: IRect): Rect {
+    return new Rect(obj.left, obj.top, obj.right, obj.bottom);
+  }
+
+  /**
+   * 转换为对象字面量
+   */
+  toObject(): IRect {
+    return {
+      left: this.left,
+      top: this.top,
+      right: this.right,
+      bottom: this.bottom
+    };
+  }
+
+  /**
+   * 创建矩形（静态工厂方法）
+   */
+  static create(left: number, top: number, right: number, bottom: number): Rect {
+    return new Rect(left, top, right, bottom);
+  }
+
+  /**
+   * 从两个点创建矩形
+   */
+  static fromPoints(topLeft: Point, bottomRight: Point): Rect {
+    return new Rect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+  }
+
+  /**
+   * 从位置和尺寸创建矩形
+   */
+  static fromXYWH(x: number, y: number, width: number, height: number): Rect {
+    return new Rect(x, y, x + width, y + height);
+  }
+
+  /**
+   * 获取宽度
+   */
+  getWidth(): number {
+    return this.right - this.left;
+  }
+
+  /**
+   * 获取高度
+   */
+  getHeight(): number {
+    return this.bottom - this.top;
+  }
+
+  /**
+   * 获取中心点
+   */
+  getCenter(): Point {
+    return new PixelCoordinate(
+      (this.left + this.right) / 2,
+      (this.top + this.bottom) / 2
+    );
+  }
+
+  /**
+   * 检查点是否在矩形内
+   */
+  containsPoint(point: Point): boolean {
+    return point.x >= this.left && point.x <= this.right &&
+           point.y >= this.top && point.y <= this.bottom;
+  }
+
+  /**
+   * 检查矩形是否与另一个矩形相交
+   */
+  intersects(other: Rect): boolean {
+    return !(this.right <= other.left || this.left >= other.right ||
+             this.bottom <= other.top || this.top >= other.bottom);
+  }
+
+  /**
+   * 计算与另一个矩形的交集
+   */
+  intersection(other: Rect): Rect | null {
+    const left = Math.max(this.left, other.left);
+    const top = Math.max(this.top, other.top);
+    const right = Math.min(this.right, other.right);
+    const bottom = Math.min(this.bottom, other.bottom);
+
+    if (left >= right || top >= bottom) {
+      return null; // 没有交集
+    }
+
+    return new Rect(left, top, right, bottom);
+  }
+
+  /**
+   * 计算与另一个矩形的并集
+   */
+  union(other: Rect): Rect {
+    return new Rect(
+      Math.min(this.left, other.left),
+      Math.min(this.top, other.top),
+      Math.max(this.right, other.right),
+      Math.max(this.bottom, other.bottom)
+    );
+  }
+
+  /**
+   * 检查矩形是否为空
+   */
+  isEmpty(): boolean {
+    return this.left >= this.right || this.top >= this.bottom;
+  }
+
+  /**
+   * 计算矩形面积
+   */
+  getArea(): number {
+    return this.isEmpty() ? 0 : this.getWidth() * this.getHeight();
+  }
 }
 
-/**
- * 计算两个矩形的并集
- */
-export function rectUnion(a: Rect, b: Rect): Rect {
-  return {
-    left: Math.min(a.left, b.left),
-    top: Math.min(a.top, b.top),
-    right: Math.max(a.right, b.right),
-    bottom: Math.max(a.bottom, b.bottom)
-  };
-}
-
-/**
- * 检查矩形是否为空
- */
-export function isRectEmpty(rect: Rect): boolean {
-  return rect.left >= rect.right || rect.top >= rect.bottom;
-}
-
-/**
- * 计算矩形面积
- */
-export function getRectArea(rect: Rect): number {
-  return isRectEmpty(rect) ? 0 : getRectWidth(rect) * getRectHeight(rect);
-}

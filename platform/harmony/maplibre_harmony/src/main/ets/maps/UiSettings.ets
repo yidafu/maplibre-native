@@ -137,6 +137,20 @@ export class UiSettings {
   // ScaleBar 更新回调
   public onScaleBarConfigChanged?: () => void;
 
+  // ==================== Attribution 配置 ====================
+  
+  // Attribution 启用状态
+  private attributionEnabled: boolean = true;
+  
+  // Attribution 边距
+  private attributionMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  
+  // Attribution 位置
+  private attributionPosition: CompassPosition = CompassPosition.BottomRight;
+  
+  // Attribution 更新回调
+  public onAttributionConfigChanged?: () => void;
+
   // ==================== 手势配置 ====================
 
   /**
@@ -797,6 +811,78 @@ export class UiSettings {
   private notifyScaleBarConfigChanged(): void {
     if (this.onScaleBarConfigChanged) {
       this.onScaleBarConfigChanged();
+    }
+  }
+
+  // ==================== Attribution 配置方法 ====================
+
+  /**
+   * 设置 Attribution 启用状态
+   * TODO: 这是从 Android SDK 迁移的方法
+   * @param enabled 是否启用 Attribution
+   */
+  setAttributionEnabled(enabled: boolean): void {
+    if (this.attributionEnabled !== enabled) {
+      this.attributionEnabled = enabled;
+      this.notifyAttributionConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 Attribution 启用状态
+   * TODO: 这是从 Android SDK 迁移的方法
+   */
+  isAttributionEnabled(): boolean {
+    return this.attributionEnabled;
+  }
+
+  /**
+   * 设置 Attribution 位置
+   * TODO: 这是从 Android SDK 迁移的方法
+   * @param position 位置枚举
+   */
+  setAttributionPosition(position: CompassPosition): void {
+    if (this.attributionPosition !== position) {
+      this.attributionPosition = position;
+      this.notifyAttributionConfigChanged();
+    }
+  }
+
+  /**
+   * 获取 Attribution 位置
+   */
+  getAttributionPosition(): CompassPosition {
+    return this.attributionPosition;
+  }
+
+  /**
+   * 设置 Attribution 边距
+   * @param left 左边距
+   * @param top 上边距
+   * @param right 右边距
+   * @param bottom 下边距
+   */
+  setAttributionMargins(left: number, top: number, right: number, bottom: number): void {
+    this.attributionMargins.left = left;
+    this.attributionMargins.top = top;
+    this.attributionMargins.right = right;
+    this.attributionMargins.bottom = bottom;
+    this.notifyAttributionConfigChanged();
+  }
+
+  /**
+   * 获取 Attribution 边距
+   */
+  getAttributionMargins(): CompassMargins {
+    return this.attributionMargins;
+  }
+
+  /**
+   * 通知 Attribution 配置变更
+   */
+  private notifyAttributionConfigChanged(): void {
+    if (this.onAttributionConfigChanged) {
+      this.onAttributionConfigChanged();
     }
   }
 }

@@ -1,4 +1,4 @@
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView } from 'libmaplibre.so';
 import { MarkerOptions } from './MarkerOptions';
 import { MarkerDragState } from './MarkerDragState';
 import { LatLng } from '../geometry/LatLng';
@@ -20,7 +20,7 @@ import { Icon } from './Icon';
 import { Marker } from './Marker';
 
 // 使用 NAPI NativeMapView 类型
-type NativeMapView = maplibre.NativeMapView;
+
 
 /**
  * MarkerManager - Marker 管理器

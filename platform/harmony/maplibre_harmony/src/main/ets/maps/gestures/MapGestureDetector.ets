@@ -20,11 +20,11 @@ import { UiSettings, FocalPoint } from '../UiSettings';
 import { VelocityTracker } from './VelocityTracker';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import display from '@ohos.display';
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView } from 'libmaplibre.so';
 import type { MapLibreMap } from '../MapLibreMap';
 
 // 类型定义
-type NativeMapViewType = maplibre.NativeMapView;
+type NativeMapViewType = NativeMapView;
 
 const TAG = 'MapGestureDetector';
 const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
@@ -565,8 +565,8 @@ export class MapGestureDetector {
 
     // 使用增量式缩放（类似 Android 的 transform.zoomBy）
     if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
-      const currentZoom = this.mapController.getZoom();
-      const newZoom = currentZoom + zoomBy;
+      const currentZoom: number = this.mapController.getZoom();
+      const newZoom: number = currentZoom + zoomBy;
       
       // 🔑 DPI 修复：将逻辑像素转换为物理像素
       const pixelRatio = this.getPixelRatio();
@@ -695,8 +695,8 @@ export class MapGestureDetector {
         
         // 执行缩放动画
         if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
-          const currentZoom = this.mapController.getZoom();
-          const finalZoom = currentZoom + zoomDelta;
+          const currentZoom: number = this.mapController.getZoom();
+          const finalZoom: number = currentZoom + zoomDelta;
           
           // 🔑 DPI 修复：将逻辑像素转换为物理像素
           const pixelRatio = this.getPixelRatio();
@@ -840,11 +840,11 @@ export class MapGestureDetector {
 
     // 🔑 Android 风格：每帧从地图获取当前 bearing，加上增量
     if (this.mapController && this.mapController.getBearing && this.mapController.setBearingXY) {
-      const currentBearing = this.mapController.getBearing();
+      const currentBearing: number = this.mapController.getBearing();
       
       // 🔑 应用旋转速率系数，控制旋转速度
       const adjustedRotationDelta = rotationDelta * ROTATION_RATE * this.uiSettings.getRotationRate();
-      let newBearing = currentBearing + adjustedRotationDelta;
+      let newBearing: number = currentBearing + adjustedRotationDelta;
       
       // 🔑 关键修复：归一化 bearing 到 [-180, 180]，避免跨越边界突变
       newBearing = this.normalizeBearing(newBearing);
@@ -916,8 +916,8 @@ export class MapGestureDetector {
         
         // 执行旋转动画
         if (this.mapController && this.mapController.getBearing && this.mapController.setBearingXY) {
-          const currentBearing = this.mapController.getBearing();
-          let newBearing = currentBearing + deltaBearing;
+          const currentBearing: number = this.mapController.getBearing();
+          let newBearing: number = currentBearing + deltaBearing;
           
           // 归一化 bearing
           newBearing = this.normalizeBearing(newBearing);

@@ -1,6 +1,6 @@
 import { IconFactory } from './IconFactory';
 import { Icon } from './Icon';
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView } from 'libmaplibre.so';
 
 /**
  * 图标引用计数数据
@@ -73,7 +73,7 @@ export class IconManager {
   private reuseIdentifierMap: Map<string, Icon> = new Map();
   
   // Native 地图视图引用
-  private nativeMapView: maplibre.NativeMapView | null = null;
+  private nativeMapView: NativeMapView | null = null;
   
   // 最大图标尺寸（用于手势检测）
   private highestIconWidth: number = 0;
@@ -88,7 +88,7 @@ export class IconManager {
    * @param nativeMapView Native 地图视图实例（用于与 C++ 层交互）
    * @param iconFactory 可选的 IconFactory 实例（如果不提供，使用全局单例）
    */
-  constructor(nativeMapView: maplibre.NativeMapView, iconFactory?: IconFactory) {
+  constructor(nativeMapView: NativeMapView, iconFactory?: IconFactory) {
     this.nativeMapView = nativeMapView;
     this.iconFactory = iconFactory || IconFactory.getInstance();
   }

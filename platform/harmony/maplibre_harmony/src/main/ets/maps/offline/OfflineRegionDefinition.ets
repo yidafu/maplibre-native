@@ -15,6 +15,16 @@ export type {
 } from 'libmaplibre.so';
 
 /**
+ * LatLngBoundsLike - 边界对象接口
+ */
+interface LatLngBoundsLike {
+  north: number;
+  east: number;
+  south: number;
+  west: number;
+}
+
+/**
  * 创建瓦片金字塔区域定义的工厂函数
  */
 export function createTilePyramidRegionDefinition(
@@ -25,15 +35,17 @@ export function createTilePyramidRegionDefinition(
   pixelRatio: number = 1.0,
   includeIdeographs: boolean = true
 ): maplibre.OfflineTilePyramidRegionDefinition {
+  const boundsObj: LatLngBoundsLike = {
+    north: bounds.north,
+    east: bounds.east,
+    south: bounds.south,
+    west: bounds.west
+  };
+  
   return {
     type: 'tilePyramid',
     styleURL,
-    bounds: {
-      north: bounds.north,
-      east: bounds.east,
-      south: bounds.south,
-      west: bounds.west
-    },
+    bounds: boundsObj,
     minZoom,
     maxZoom,
     pixelRatio,

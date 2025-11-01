@@ -13,25 +13,25 @@ export class FeatureCollection {
    * 从 Feature 数组创建 FeatureCollection
    * @param features Feature 数组
    */
-  constructor(features: Feature[]);
+  constructor(features: IFeature[]);
   
   /**
    * 获取 Feature 数组
    * @returns Feature[] - NAPI Feature 类实例数组
    */
-  getFeatures(): Feature[];
+  getFeatures(): IFeature[];
   
   /**
    * 设置 Feature 数组
    * @param features Feature 数组
    */
-  setFeatures(features: Feature[]): this;
+  setFeatures(features: IFeature[]): this;
   
   /**
    * 添加 Feature
    * @param feature Feature 实例
    */
-  addFeature(feature: Feature): this;
+  addFeature(feature: IFeature): this;
   
   /**
    * 获取 Feature 数量

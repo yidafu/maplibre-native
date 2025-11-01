@@ -4,13 +4,14 @@
  * 提供地图坐标和屏幕坐标之间的转换功能
  * 对应 Android 的 Projection 类和 iOS 的 MLNMapView coordinate conversion 方法
  */
-import maplibre from 'libmaplibre.so';
+import maplibre, { NativeMapView } from 'libmaplibre.so';
 import { LatLng, createLatLng } from '../geometry/LatLng';
-import { Point, createPoint } from '../geometry/Point';
+import { Point, PixelCoordinate, IPixelCoordinate } from '../geometry/Point';
+import { ProjectedMeters, IProjectedMeters } from '../geometry/ProjectedMeters';
 import { VisibleRegion } from './VisibleRegion';
 import { LatLngBounds } from '../geometry/LatLngBounds';
 
-type NativeMapView = maplibre.NativeMapView;
+
 
 /**
  * Projection 类
@@ -63,7 +64,8 @@ export class Projection {
    * @returns 屏幕坐标（像素）
    */
   public latLngToScreenLocation(latLng: LatLng): Point {
-    return this.nativeMapView.pixelForLatLng(latLng.latitude, latLng.longitude);
+    const result: IPixelCoordinate = this.nativeMapView.pixelForLatLng(latLng.latitude, latLng.longitude);
+    return PixelCoordinate.fromObject(result);
   }
   
   /**
@@ -118,10 +120,10 @@ export class Projection {
   public getVisibleRegion(): VisibleRegion {
     // 获取屏幕四个角的坐标
     // 注意：屏幕坐标系原点在左上角
-    const nearLeft = this.screenLocationToLatLng(createPoint(0, this.viewHeight));
-    const nearRight = this.screenLocationToLatLng(createPoint(this.viewWidth, this.viewHeight));
-    const farLeft = this.screenLocationToLatLng(createPoint(0, 0));
-    const farRight = this.screenLocationToLatLng(createPoint(this.viewWidth, 0));
+    const nearLeft = this.screenLocationToLatLng(PixelCoordinate.create(0, this.viewHeight));
+    const nearRight = this.screenLocationToLatLng(PixelCoordinate.create(this.viewWidth, this.viewHeight));
+    const farLeft = this.screenLocationToLatLng(PixelCoordinate.create(0, 0));
+    const farRight = this.screenLocationToLatLng(PixelCoordinate.create(this.viewWidth, 0));
     
     // 计算包含所有角点的边界
     // 找出最北、最东、最南、最西的点
@@ -152,7 +154,7 @@ export class Projection {
    */
   public getMetersPerPixelAtLatitude(latitude: number): number {
     // 使用 NativeMapView 的方法，它会使用当前的 zoom level
-    const zoom = this.nativeMapView.getZoom();
+    const zoom: number = this.nativeMapView.getZoom();
     return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, zoom);
   }
   
@@ -173,8 +175,9 @@ export class Projection {
    * @param latLng 地理坐标
    * @returns 投影米坐标
    */
-  public toProjectedMeters(latLng: LatLng): maplibre.ProjectedMeters {
-    return this.nativeMapView.projectedMetersForLatLng(latLng.latitude, latLng.longitude);
+  public toProjectedMeters(latLng: LatLng): ProjectedMeters {
+    const result: IProjectedMeters = this.nativeMapView.projectedMetersForLatLng(latLng.latitude, latLng.longitude);
+    return ProjectedMeters.fromObject(result);
   }
   
   /**
@@ -183,7 +186,7 @@ export class Projection {
    * @param projectedMeters 投影米坐标
    * @returns 地理坐标
    */
-  public fromProjectedMeters(projectedMeters: maplibre.ProjectedMeters): LatLng {
+  public fromProjectedMeters(projectedMeters: ProjectedMeters): LatLng {
     return LatLng.fromNative(this.nativeMapView.latLngForProjectedMeters(projectedMeters.northing, projectedMeters.easting));
   }
   
@@ -233,7 +236,7 @@ export class Projection {
   public getContentPadding(): number[] {
     // 从 Native 层获取最新的边距值
     try {
-      const padding = this.nativeMapView.getContentPadding();
+      const padding: number[] = this.nativeMapView.getContentPadding();
       if (padding && padding.length === 4) {
         this.contentPadding = padding;
       }

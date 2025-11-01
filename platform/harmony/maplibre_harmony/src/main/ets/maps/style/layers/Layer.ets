@@ -5,7 +5,8 @@
  */
 
 // Layer 类型由 NAPI 提供，通过 maplibre.XXXLayer 访问
-// 不定义 Layer 类型别名，避免 any 类型错误
+// 定义 Layer 类型别名用于类型标注
+export type Layer = Object;
 
 /**
  * LayerFilter - 图层过滤器类型

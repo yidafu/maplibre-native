@@ -72,4 +72,9 @@ export class FillLayer {
     this.nativeInstance.setFillOpacity(value);
     return this;
   }
+
+  setFillOutlineColor(value: ESObject): FillLayer {
+    // TODO: 实现 setFillOutlineColor
+    return this;
+  }
 }

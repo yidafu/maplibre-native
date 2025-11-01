@@ -1,11 +1,26 @@
 /**
  * Source - 数据源类型定义
  * 
- * 数据源由 NAPI 层提供，此文件仅提供辅助类型定义
+ * 数据源由 NAPI 层提供，此文件提供辅助类型定义和联合类型
  */
 
-// Source 类型由 NAPI 提供，通过 maplibre.XXXSource 访问
-// 不定义 Source 类型别名，避免 any 类型错误
+import type { GeoJsonSource } from './GeoJsonSource';
+import type { VectorSource } from './VectorSource';
+import type { RasterSource } from './RasterSource';
+import type { RasterDemSource } from './RasterDemSource';
+import type { ImageSource } from './ImageSource';
+
+/**
+ * Source - 所有数据源类型的联合类型
+ * 
+ * 这个联合类型包含了所有可能的数据源类型，用于类型安全的数据源操作
+ */
+export type Source = 
+  | GeoJsonSource 
+  | VectorSource 
+  | RasterSource 
+  | RasterDemSource 
+  | ImageSource;
 
 /**
  * SourceData - 数据源数据类型
