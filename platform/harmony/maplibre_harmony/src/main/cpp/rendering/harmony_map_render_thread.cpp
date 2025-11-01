@@ -25,14 +25,16 @@ HarmonyMapRenderThread::HarmonyMapRenderThread(
     MapObserver& observer,
     MapOptions&& mapOptions,
     ResourceOptions&& resourceOptions,
-    ClientOptions&& clientOptions)
+    ClientOptions&& clientOptions,
+    const std::optional<std::string>& localIdeographFontFamily)
     : instanceId_(++globalInstanceCounter_),
       backend_(std::move(backend)),
       pixelRatio_(pixelRatio),
       mapObserver_(&observer),
       mapOptions_(std::move(mapOptions)),
       resourceOptions_(std::move(resourceOptions)),
-      clientOptions_(std::move(clientOptions)) {
+      clientOptions_(std::move(clientOptions)),
+      localIdeographFontFamily_(localIdeographFontFamily) {
 }
 
 HarmonyMapRenderThread::~HarmonyMapRenderThread() {
@@ -147,7 +149,7 @@ bool HarmonyMapRenderThread::initialize() {
     }
     
     gfx::RendererBackend& backendImpl = glBackend->getImpl();
-    renderer_ = std::make_unique<Renderer>(backendImpl, pixelRatio_);
+    renderer_ = std::make_unique<Renderer>(backendImpl, pixelRatio_, localIdeographFontFamily_);
     if (!renderer_) {
         Logger::error("MapRenderThread", "Failed to create Renderer");
         return false;

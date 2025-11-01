@@ -21,6 +21,7 @@ import { VelocityTracker } from './VelocityTracker';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import display from '@ohos.display';
 import maplibre from 'libmaplibre.so';
+import type { MapLibreMap } from '../MapLibreMap';
 
 // 类型定义
 type NativeMapViewType = maplibre.NativeMapView;
@@ -101,6 +102,9 @@ export class MapGestureDetector {
 
   // 地图控制器引用 (NativeMapView 实例)
   private mapController: NativeMapViewType | null = null;
+  
+  // MapLibreMap 实例引用（用于触发高层监听器）
+  private mapLibreMapInstance: MapLibreMap | null = null;
 
   // 速度跟踪器
   private panVelocityTracker: VelocityTracker = new VelocityTracker();
@@ -126,6 +130,14 @@ export class MapGestureDetector {
    */
   setMapController(controller: NativeMapViewType): void {
     this.mapController = controller;
+  }
+  
+  /**
+   * 设置 MapLibreMap 实例
+   * 用于连接手势检测器和 MapLibreMap 的监听器系统
+   */
+  setMapLibreMapInstance(mapLibreMap: MapLibreMap): void {
+    this.mapLibreMapInstance = mapLibreMap;
   }
 
   // ==================== 监听器管理 ====================
@@ -1361,25 +1373,43 @@ export class MapGestureDetector {
   }
 
   private notifyMapClick(x: number, y: number): void {
-    for (const listener of this.clickListeners) {
-      try {
-        if (listener.onMapClick(x, y)) {
-          break;  // 如果监听器消费了事件，停止传播
+    // 1. 首先调用 MapLibreMap 的监听器（参考 Android 优先级）
+    let consumed = false;
+    if (this.mapLibreMapInstance) {
+      consumed = this.mapLibreMapInstance._notifyMapClick(x, y);
+    }
+    
+    // 2. 如果事件未被消费，调用本地监听器
+    if (!consumed) {
+      for (const listener of this.clickListeners) {
+        try {
+          if (listener.onMapClick(x, y)) {
+            break;  // 如果监听器消费了事件，停止传播
+          }
+        } catch (error) {
+          hilog.error(DOMAIN, TAG, `Error in onMapClick listener: ${error}`);
         }
-      } catch (error) {
-        hilog.error(DOMAIN, TAG, `Error in onMapClick listener: ${error}`);
       }
     }
   }
 
   private notifyMapLongClick(x: number, y: number): void {
-    for (const listener of this.longClickListeners) {
-      try {
-        if (listener.onMapLongClick(x, y)) {
-          break;  // 如果监听器消费了事件，停止传播
+    // 1. 首先调用 MapLibreMap 的监听器（参考 Android 优先级）
+    let consumed = false;
+    if (this.mapLibreMapInstance) {
+      consumed = this.mapLibreMapInstance._notifyMapLongClick(x, y);
+    }
+    
+    // 2. 如果事件未被消费，调用本地监听器
+    if (!consumed) {
+      for (const listener of this.longClickListeners) {
+        try {
+          if (listener.onMapLongClick(x, y)) {
+            break;  // 如果监听器消费了事件，停止传播
+          }
+        } catch (error) {
+          hilog.error(DOMAIN, TAG, `Error in onMapLongClick listener: ${error}`);
         }
-      } catch (error) {
-        hilog.error(DOMAIN, TAG, `Error in onMapLongClick listener: ${error}`);
       }
     }
   }

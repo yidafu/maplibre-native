@@ -73,7 +73,7 @@ target_sources(
         # logger.cpp is in libmaplibre.so (utils/logger.cpp)
         # HTTP file source is implemented in libmaplibre.so (network/http_file_source_harmony.cpp)
         # ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/storage/http_file_source.cpp
-        ${PROJECT_SOURCE_DIR}/platform/default/src/mbgl/text/local_glyph_rasterizer.cpp
+        ${PROJECT_SOURCE_DIR}/platform/harmony/src/text/local_glyph_rasterizer.cpp
         # HarmonyOS i18n implementation
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/i18n/collator.cpp
         ${PROJECT_SOURCE_DIR}/platform/harmony/src/i18n/number_format.cpp

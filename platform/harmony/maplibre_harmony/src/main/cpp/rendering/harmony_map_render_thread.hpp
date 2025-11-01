@@ -52,6 +52,7 @@ public:
      * @param mapOptions Map 配置（移动）
      * @param resourceOptions 资源配置（移动）
      * @param clientOptions 客户端配置（移动）
+     * @param localIdeographFontFamily 本地表意文字字体族（可选）
      */
     HarmonyMapRenderThread(
         std::unique_ptr<gfx::Backend> backend,
@@ -59,7 +60,8 @@ public:
         MapObserver& observer,
         MapOptions&& mapOptions,
         ResourceOptions&& resourceOptions,
-        ClientOptions&& clientOptions
+        ClientOptions&& clientOptions,
+        const std::optional<std::string>& localIdeographFontFamily = std::nullopt
     );
     
     /**
@@ -231,6 +233,7 @@ private:
     MapOptions mapOptions_;
     ResourceOptions resourceOptions_;
     ClientOptions clientOptions_;
+    std::optional<std::string> localIdeographFontFamily_;
     
     // 渲染状态
     std::atomic<bool> paused_{false};

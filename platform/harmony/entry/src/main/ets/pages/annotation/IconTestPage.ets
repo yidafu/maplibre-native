@@ -377,8 +377,8 @@ struct IconTestPage {
       TestPageLayout({
         showActionBar: true,
         title: this.message,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        mapContent: this.buildMapContent,
+        controlPanel: this.buildControlPanel
       })
     }
     .width('100%')

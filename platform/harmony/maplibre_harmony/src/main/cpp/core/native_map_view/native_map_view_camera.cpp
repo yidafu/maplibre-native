@@ -254,6 +254,23 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
                 }
             }
         }
+    } else {
+        // 如果没有提供 padding 参数，使用存储的 contentPadding_
+        // contentPadding_ 存储顺序: [0]=left, [1]=top, [2]=right, [3]=bottom
+        // EdgeInsets 构造函数顺序: (top, left, bottom, right)
+        if (instance->contentPadding_[0] != 0 || instance->contentPadding_[1] != 0 ||
+            instance->contentPadding_[2] != 0 || instance->contentPadding_[3] != 0) {
+            cameraOptions.padding = EdgeInsets{
+                instance->contentPadding_[1] * instance->pixelRatio, // top = contentPadding_[1]
+                instance->contentPadding_[0] * instance->pixelRatio, // left = contentPadding_[0]
+                instance->contentPadding_[3] * instance->pixelRatio, // bottom = contentPadding_[3]
+                instance->contentPadding_[2] * instance->pixelRatio  // right = contentPadding_[2]
+            };
+            
+            Logger::info("NativeMapView", "jumpTo: using stored contentPadding_: left=%.1f, top=%.1f, right=%.1f, bottom=%.1f",
+                        instance->contentPadding_[0], instance->contentPadding_[1],
+                        instance->contentPadding_[2], instance->contentPadding_[3]);
+        }
     }
     
     // 执行相机跳转

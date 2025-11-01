@@ -28,6 +28,7 @@ export class Projection {
   private nativeMapView: NativeMapView;
   private viewWidth: number = 0;
   private viewHeight: number = 0;
+  private contentPadding: number[] = [0, 0, 0, 0]; // [left, top, right, bottom]
   
   /**
    * 构造函数
@@ -198,6 +199,50 @@ export class Projection {
    */
   public getViewHeight(): number {
     return this.viewHeight;
+  }
+  
+  // ========== 内容边距 (Content Padding) ==========
+  
+  /**
+   * 设置内容边距
+   * 影响地图中心点的计算，使地图逻辑中心偏移
+   * 
+   * 参考 Android: Projection.setContentPadding()
+   * 
+   * @param left 左边距（像素）
+   * @param top 上边距（像素）
+   * @param right 右边距（像素）
+   * @param bottom 下边距（像素）
+   */
+  public setContentPadding(left: number, top: number, right: number, bottom: number): void {
+    // 存储边距值
+    this.contentPadding = [left, top, right, bottom];
+    
+    // 调用 Native 方法设置边距
+    // Native 层期望数组格式: [left, top, right, bottom]
+    this.nativeMapView.setContentPadding(this.contentPadding);
+  }
+  
+  /**
+   * 获取当前内容边距
+   * 
+   * 参考 Android: Projection.getContentPadding()
+   * 
+   * @returns [left, top, right, bottom] 边距数组
+   */
+  public getContentPadding(): number[] {
+    // 从 Native 层获取最新的边距值
+    try {
+      const padding = this.nativeMapView.getContentPadding();
+      if (padding && padding.length === 4) {
+        this.contentPadding = padding;
+      }
+    } catch (error) {
+      console.error('[Projection] Failed to get content padding from native:', error);
+    }
+    
+    // 返回副本，防止外部修改
+    return [...this.contentPadding];
   }
 }
 

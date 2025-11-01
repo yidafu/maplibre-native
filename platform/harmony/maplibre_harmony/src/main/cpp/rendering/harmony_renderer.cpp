@@ -51,7 +51,8 @@ HarmonyRenderer::~HarmonyRenderer() {
     cleanup();
 }
 
-void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, const std::string& cachePath) {
+void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, const std::string& cachePath,
+                                 const std::optional<std::string>& localIdeographFontFamily) {
     if (initialized) {
         Log::Warning(Event::OpenGL, "HarmonyRenderer already initialized");
         return;
@@ -95,7 +96,8 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
         *this,  // HarmonyRenderer acts as MapObserver
         std::move(mapOptions),
         std::move(resourceOptions),
-        std::move(clientOptions)
+        std::move(clientOptions),
+        localIdeographFontFamily  // Local glyph font family
     );
     
     // Start the thread

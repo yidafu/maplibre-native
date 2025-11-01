@@ -540,7 +540,8 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
 
     // 3) 重新创建渲染器并初始化
     instance->harmonyRenderer = std::make_unique<HarmonyRenderer>();
-    instance->harmonyRenderer->initialize(instance->width, instance->height, instance->pixelRatio, instance->cachePath_);
+    instance->harmonyRenderer->initialize(instance->width, instance->height, instance->pixelRatio, instance->cachePath_,
+                                         instance->localIdeographFontFamily_);
 
     // 4) 重新设置窗口与尺寸
     if (instance->nativeWindow) {
@@ -656,7 +657,7 @@ void NativeMapView::initializeRenderer() {
     }
     
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
-    harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
+    harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
     
     // 2. 如果有窗口，设置窗口
     if (nativeWindow && harmonyRenderer) {
@@ -698,7 +699,7 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     harmonyRenderer.reset();
     map = nullptr;
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
-    harmonyRenderer->initialize(width, height, pixelRatio, cachePath_);
+    harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
     if (nativeWindow) {
         harmonyRenderer->setNativeWindow(nativeWindow);
         if (width > 0 && height > 0) {
@@ -825,14 +826,15 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
         return args.Undefined();
     }
     
-    // 解析数组 [top, left, bottom, right]
+    // 解析数组 [left, top, right, bottom]
     uint32_t length = 0;
     napi_status status = napi_get_array_length(env, paddingArray, &length);
     if (status != napi_ok || length != 4) {
-        napi_throw_error(env, nullptr, "Padding array must have exactly 4 elements [top, left, bottom, right]");
+        napi_throw_error(env, nullptr, "Padding array must have exactly 4 elements [left, top, right, bottom]");
         return args.Undefined();
     }
     
+    std::array<double, 4> newPadding;
     for (uint32_t i = 0; i < 4; i++) {
         napi_value element;
         if (napi_get_element(env, paddingArray, i, &element) != napi_ok) {
@@ -846,7 +848,63 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
             return args.Undefined();
         }
         
-        instance->contentPadding_[i] = value;
+        newPadding[i] = value;
+    }
+    
+    // 存储新的 padding 值 [left, top, right, bottom]
+    instance->contentPadding_ = newPadding;
+    
+    Logger::info("NativeMapView", "setContentPadding: [%.1f, %.1f, %.1f, %.1f]",
+                 newPadding[0], newPadding[1], newPadding[2], newPadding[3]);
+    
+    // Android 风格：padding 存储后在下一次相机操作时生效
+    // 但为了即时反馈，我们立即触发一次相机更新
+    if (instance->map) {
+        // 构建 EdgeInsets (构造函数顺序: top, left, bottom, right)
+        // contentPadding_ 存储顺序: [0]=left, [1]=top, [2]=right, [3]=bottom
+        mbgl::EdgeInsets paddingInsets{
+            newPadding[1] * instance->pixelRatio, // top = newPadding[1]
+            newPadding[0] * instance->pixelRatio, // left = newPadding[0]
+            newPadding[3] * instance->pixelRatio, // bottom = newPadding[3]
+            newPadding[2] * instance->pixelRatio   // right = newPadding[2]
+        };
+        
+        Logger::info("NativeMapView", "setContentPadding: Logical padding=[%.1f, %.1f, %.1f, %.1f]",
+                     newPadding[0], newPadding[1], newPadding[2], newPadding[3]);
+        Logger::info("NativeMapView", "setContentPadding: Physical padding (×%.2f): top=%.1f, left=%.1f, bottom=%.1f, right=%.1f",
+                     instance->pixelRatio,
+                     paddingInsets.top(), paddingInsets.left(),
+                     paddingInsets.bottom(), paddingInsets.right());
+        
+        // 获取当前相机状态（在设置padding之前）
+        auto currentCamera = instance->map->getCameraOptions();
+        Logger::info("NativeMapView", "setContentPadding: Current camera - lat=%.6f, lng=%.6f, zoom=%.2f",
+                     currentCamera.center ? currentCamera.center->latitude() : 0,
+                     currentCamera.center ? currentCamera.center->longitude() : 0,
+                     currentCamera.zoom ? *currentCamera.zoom : 0);
+        
+        // 构建新的相机选项
+        // 关键：保持相机中心（经纬度）不变，但应用新的 padding
+        // MapLibre 内部会调整视图，使得该经纬度保持在"逻辑视口"的中心
+        CameraOptions newCamera;
+        newCamera.center = currentCamera.center;
+        newCamera.zoom = currentCamera.zoom;
+        newCamera.bearing = currentCamera.bearing;
+        newCamera.pitch = currentCamera.pitch;
+        newCamera.padding = paddingInsets;
+        
+        // 在渲染线程应用
+        // 使用 jumpTo 立即生效（不使用动画）
+        instance->invokeOnMapThread([newCamera](mbgl::Map* m) {
+            Logger::info("NativeMapView", "setContentPadding: Executing jumpTo on render thread");
+            m->jumpTo(newCamera);
+            m->triggerRepaint();
+            Logger::info("NativeMapView", "setContentPadding: jumpTo completed, repaint triggered");
+        });
+        
+        Logger::info("NativeMapView", "setContentPadding: Camera update scheduled");
+    } else {
+        Logger::warn("NativeMapView", "setContentPadding: Map not initialized, padding will be applied on next camera operation");
     }
     
     return args.Undefined();
@@ -866,7 +924,7 @@ napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info inf
         return args.Undefined();
     }
     
-    // 创建返回数组 [top, left, bottom, right]
+    // 创建返回数组 [left, top, right, bottom]
     napi_value result;
     napi_create_array_with_length(env, 4, &result);
     

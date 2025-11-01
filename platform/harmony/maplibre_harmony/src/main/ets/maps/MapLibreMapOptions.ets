@@ -62,6 +62,10 @@ export class MapLibreMapOptions {
   // 图层细节级别配置
   public tileLodMinRadius: number = 0;
   public tileLodScale: number = 1.0;
+  
+  // Local glyph 配置
+  public localIdeographFontFamily: string | null = 'sans-serif';
+  public localIdeographEnabled: boolean = true;
   public tileLodPitchThreshold: number = 0;
   public tileLodZoomShift: number = 0;
   

@@ -753,6 +753,9 @@ class NativeMapViewController extends XComponentController {
    */
   setMapLibreMapInstance(mapLibreMap: MapLibreMap): void {
     this.mapLibreMapInstance = mapLibreMap;
+    
+    // 连接手势检测器到 MapLibreMap（参考 Android MapGestureDetector 连接）
+    this.gestureDetector.setMapLibreMapInstance(mapLibreMap);
   }
   
   /**
@@ -1617,7 +1620,7 @@ export struct NativeMapView {
   @State private isVisible: boolean = true;
   @State private isDestroyed: boolean = false;
   // 组件属性
-  @Prop styleUrl: string = "https://demotiles.maplibre.org/style.json";
+  @Prop styleUrl: string;
   @Prop initialLatitude: number = 30.2741;
   @Prop initialLongitude: number = 120.1551;
   @Prop initialZoom: number = 6;
@@ -2019,25 +2022,26 @@ export struct NativeMapView {
               })
           )
         )
-        .gesture(
-          // 点击手势 - 单独处理以避免冲突
-          TapGesture({ count: 1 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onSingleTap(event);
-            })
-        )
-        .gesture(
-          // 双击手势
+        // 双击手势 - 使用 priorityGesture 确保优先级最高
+        .priorityGesture(
           TapGesture({ count: 2 })
             .onAction((event: GestureEvent) => {
               this.controller.getGestureDetector().onDoubleTap(event);
-            })
+            }),
+          GestureMask.Normal
         )
+        // 长按手势 - 独立绑定
         .gesture(
-          // 长按手势
           LongPressGesture({ repeat: false, duration: 500 })
             .onAction((event: GestureEvent) => {
               this.controller.getGestureDetector().onLongPress(event);
+            })
+        )
+        // 单击手势 - 独立绑定，系统会自动处理与长按的冲突
+        .gesture(
+          TapGesture({ count: 1 })
+            .onAction((event: GestureEvent) => {
+              this.controller.getGestureDetector().onSingleTap(event);
             })
         )
         .gesture(

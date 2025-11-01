@@ -31,7 +31,8 @@ public:
     ~HarmonyRenderer();
     
     // 初始化渲染器
-    void initialize(int width, int height, float pixelRatio = 1.0f, const std::string& cachePath = "");
+    void initialize(int width, int height, float pixelRatio = 1.0f, const std::string& cachePath = "", 
+                   const std::optional<std::string>& localIdeographFontFamily = std::nullopt);
     
     // 设置OHNativeWindow
     void setNativeWindow(OHNativeWindow* window);

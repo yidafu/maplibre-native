@@ -308,6 +308,9 @@ private:
     // 应用缓存目录路径
     std::string cachePath_;
     
+    // Local glyph 字体族配置
+    std::optional<std::string> localIdeographFontFamily_ = std::string("sans-serif");
+    
     // 内容边距 [top, left, bottom, right]
     std::array<double, 4> contentPadding_ = {0.0, 0.0, 0.0, 0.0};
     

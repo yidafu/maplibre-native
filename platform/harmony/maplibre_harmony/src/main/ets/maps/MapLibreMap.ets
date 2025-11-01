@@ -488,6 +488,34 @@ export class MapLibreMap {
     return this.nativeMapView.getStyleUrl();
   }
 
+  /**
+   * 设置本地表意文字字体族
+   * 
+   * 用于本地渲染 CJK 字符，避免从网络加载大量字形数据。
+   * 注意：此设置在初始化时生效，运行时更改需要重新加载样式。
+   * 
+   * @param fontFamily 字体族名称，如 "sans-serif"，null 表示禁用本地渲染
+   */
+  public setLocalIdeographFontFamily(fontFamily: string | null): void {
+    if (this.destroyed) return;
+    
+    // 更新内部状态
+    this.options.localIdeographFontFamily = fontFamily;
+    
+    // 注意：运行时更改需要重新创建 Renderer
+    // 当前实现：建议在初始化时通过 MapLibreMapOptions 配置
+    console.warn('setLocalIdeographFontFamily: 配置已更新，但需要重新加载样式才能生效');
+  }
+
+  /**
+   * 获取当前配置的本地表意文字字体族
+   * 
+   * @returns 当前配置的字体族名称，null 表示已禁用
+   */
+  public getLocalIdeographFontFamily(): string | null {
+    return this.options.localIdeographFontFamily;
+  }
+
   public setStyleJson(json: string): void {
     if (this.destroyed) return;
     this.nativeMapView.setStyleJson(json);
@@ -537,6 +565,43 @@ export class MapLibreMap {
   public cancelTransitions(): void {
     if (this.destroyed) return;
     this.nativeMapView.cancelTransitions();
+  }
+  
+  /**
+   * 设置地图内边距
+   * 影响地图中心点的计算，使地图逻辑中心偏移
+   * 
+   * 参考 Android: MapLibreMap.setPadding()
+   * 
+   * @param left 左边距（像素）
+   * @param top 上边距（像素）
+   * @param right 右边距（像素）
+   * @param bottom 下边距（像素）
+   * 
+   * @example
+   * ```typescript
+   * // 设置上边距 200px
+   * map.setPadding(0, 200, 0, 0);
+   * 
+   * // 设置全边距各 100px
+   * map.setPadding(100, 100, 100, 100);
+   * ```
+   */
+  public setPadding(left: number, top: number, right: number, bottom: number): void {
+    if (this.destroyed) return;
+    this.projection.setContentPadding(left, top, right, bottom);
+  }
+  
+  /**
+   * 获取当前地图内边距
+   * 
+   * 参考 Android: MapLibreMap.getPadding()
+   * 
+   * @returns [left, top, right, bottom] 边距数组
+   */
+  public getPadding(): number[] {
+    if (this.destroyed) return [0, 0, 0, 0];
+    return this.projection.getContentPadding();
   }
 
   public setGestureInProgress(inProgress: boolean): void {
