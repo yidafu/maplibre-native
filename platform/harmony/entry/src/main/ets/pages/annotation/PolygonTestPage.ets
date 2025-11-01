@@ -292,7 +292,7 @@ struct PolygonTestPage {
         title: 'Polygon',
         description: '多边形注解',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

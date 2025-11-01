@@ -21,8 +21,8 @@ struct AnimatedImageSourceTestPage {
         title: 'Animated Image Source',
         description: '动画图像源',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

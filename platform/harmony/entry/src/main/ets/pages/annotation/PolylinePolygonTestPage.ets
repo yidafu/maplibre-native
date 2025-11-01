@@ -136,8 +136,8 @@ struct PolylinePolygonTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '折线/多边形注解测试',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

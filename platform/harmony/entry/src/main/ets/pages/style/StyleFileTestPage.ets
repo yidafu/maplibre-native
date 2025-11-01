@@ -255,7 +255,7 @@ struct StyleFileTestPage {
         title: 'Style File',
         description: '样式文件加载',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

@@ -238,8 +238,8 @@ struct ManualLocationUpdatesTestPage {
         title: 'Manual Location Updates',
         description: '手动定位更新',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

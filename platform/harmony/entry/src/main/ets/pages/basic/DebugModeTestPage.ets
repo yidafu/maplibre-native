@@ -12,21 +12,21 @@ import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct DebugModeTestPage {
-  private mapController: MapLibreMap | null = null;
+  private mapView: MapLibreMap | null = null;
   @State private isDebugEnabled: boolean = false;
   @State private showTileBoundaries: boolean = false;
   @State private showCollisionBoxes: boolean = false;
   
   aboutToDisappear() {
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
+    if (this.mapView) {
+      this.mapView.destroy();
+      this.mapView = null;
     }
   }
   
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[DebugModeTestPage] onMapReady');
-    this.mapController = map;
+    this.mapView = map;
     map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     
     // 设置初始相机位置
@@ -38,9 +38,9 @@ struct DebugModeTestPage {
    */
   private toggleDebugMode = (): void => {
     this.isDebugEnabled = !this.isDebugEnabled;
-    if (this.mapController) {
+    if (this.mapView) {
       // TODO: 实现 setDebugActive 方法
-      // this.mapController.setDebugActive(this.isDebugEnabled);
+      // this.mapView.setDebugActive(this.isDebugEnabled);
       console.warn('TODO: Implement setDebugActive');
       showToast(`调试模式: ${this.isDebugEnabled ? '开启' : '关闭'}`);
     }
@@ -51,7 +51,7 @@ struct DebugModeTestPage {
    */
   private toggleTileBoundaries = (): void => {
     this.showTileBoundaries = !this.showTileBoundaries;
-    if (this.mapController) {
+    if (this.mapView) {
       // TODO: 实现 setShowTileBoundaries 方法
       console.warn('TODO: Implement setShowTileBoundaries');
       showToast(`瓦片边界: ${this.showTileBoundaries ? '显示' : '隐藏'}`);
@@ -63,7 +63,7 @@ struct DebugModeTestPage {
    */
   private toggleCollisionBoxes = (): void => {
     this.showCollisionBoxes = !this.showCollisionBoxes;
-    if (this.mapController) {
+    if (this.mapView) {
       // TODO: 实现 setShowCollisionBoxes 方法
       console.warn('TODO: Implement setShowCollisionBoxes');
       showToast(`碰撞检测框: ${this.showCollisionBoxes ? '显示' : '隐藏'}`);
@@ -72,6 +72,8 @@ struct DebugModeTestPage {
   
   @Builder
   actionButtonsBuilder() {
+    Row() {
+
     Button('调试模式')
       .fontSize(14)
       .backgroundColor(this.isDebugEnabled ? '#4CAF50' : '#9E9E9E')
@@ -86,6 +88,7 @@ struct DebugModeTestPage {
       .fontSize(14)
       .backgroundColor(this.showCollisionBoxes ? '#4CAF50' : '#9E9E9E')
       .onClick(this.toggleCollisionBoxes);
+    }
   }
   
   @Builder
@@ -107,8 +110,8 @@ struct DebugModeTestPage {
         title: 'Debug Mode',
         description: '调试模式和性能信息',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
-        mapContent: (): void => this.mapContentBuilder()
+        actionButtons: (): void => this.actionButtonsBuilder(),
+        mapContent: ():void => this.mapContentBuilder()
       });
     }
     .width('100%')

@@ -105,8 +105,8 @@ struct LightTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '光照系统测试',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

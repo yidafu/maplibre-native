@@ -19,8 +19,8 @@ struct DynamicInfoWindowAdapterTestPage {
       title: 'Dynamic InfoWindow',
       description: '动态更新信息窗口内容',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      actionButtons: this.buildActionButtons
+      mapContent: (): void => this.buildMapContent(),
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')

@@ -57,7 +57,7 @@ struct RotateByTestPage {
         title: 'Rotate By',
         description: '旋转控制',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

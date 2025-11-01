@@ -389,7 +389,7 @@ struct CameraAnimatorTestPage {
         title: 'Camera Animator',
         description: '相机动画控制器',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

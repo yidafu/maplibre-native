@@ -38,9 +38,9 @@ struct RemoveMarkerTestPage {
       title: 'Remove Markers',
       description: '点击标记移除',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      controlPanel: this.buildControlPanel,
-      actionButtons: this.buildActionButtons
+      mapContent: (): void => this.buildMapContent(),
+      controlPanel: (): void => this.buildControlPanel(),
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')

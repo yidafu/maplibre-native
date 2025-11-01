@@ -95,8 +95,8 @@ struct CustomHttpRequestTestPage {
         title: 'Custom HTTP Request',
         description: '自定义HTTP请求',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

@@ -57,7 +57,7 @@ struct ManualZoomTestPage {
         title: 'Manual Zoom',
         description: '手动缩放',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

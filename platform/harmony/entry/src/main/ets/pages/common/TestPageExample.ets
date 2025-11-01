@@ -158,8 +158,8 @@ struct TestPageExample {
       TestPageLayout({
         showActionBar: true,
         title: this.currentTitle,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

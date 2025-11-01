@@ -102,7 +102,7 @@ struct MapPaddingTestPage {
       title: 'Map Padding',
       description: '地图内边距',
       showActionBar: true,
-      actionButtons: this.actionButtonsBuilder,
+      actionButtons: (): void => this.actionButtonsBuilder(),
       controlPanel: (): void => this.controlPanelBuilder(),
       mapContent: (): void => this.mapContentBuilder()
 

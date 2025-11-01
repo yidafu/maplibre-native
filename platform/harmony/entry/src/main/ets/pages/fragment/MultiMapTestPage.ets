@@ -61,7 +61,7 @@ struct MultiMapTestPage {
         title: 'Multi Map',
         description: '多地图实例',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

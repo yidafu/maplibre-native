@@ -24,6 +24,9 @@ export struct TestPageLayout {
   // 控制面板内容构建器（可选）
   @BuilderParam controlPanel?: () => void;
   
+  // 控制面板显示状态
+  @State isControlPanelVisible: boolean = true;
+  
   @Builder
   defaultActionButtons() {
     // 默认无操作按钮
@@ -63,6 +66,21 @@ export struct TestPageLayout {
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
         .margin({ left: 8 })
+        
+        // 控制面板切换按钮（仅在有控制面板时显示）
+        if (this.controlPanel) {
+          Button({ type: ButtonType.Normal }) {
+            Text(this.isControlPanelVisible ? '▼' : '▲')
+              .fontSize(20)
+              .fontColor(Color.White)
+          }
+          .backgroundColor(Color.Transparent)
+          .width(40)
+          .height(40)
+          .onClick(() => {
+            this.isControlPanelVisible = !this.isControlPanelVisible;
+          })
+        }
       }
       .width('100%')
       .height(60)
@@ -79,7 +97,7 @@ export struct TestPageLayout {
         .height('100%')
         
         // 控制面板（浮动在地图上）
-        if (this.controlPanel) {
+        if (this.controlPanel && this.isControlPanelVisible) {
           Column() {
             this.controlPanel();
           }

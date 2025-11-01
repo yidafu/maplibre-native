@@ -77,8 +77,8 @@ struct NoStyleTestPage {
         title: 'No Style',
         description: '无样式地图',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

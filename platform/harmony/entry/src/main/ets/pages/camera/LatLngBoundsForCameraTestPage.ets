@@ -57,7 +57,7 @@ struct LatLngBoundsForCameraTestPage {
         title: 'Bounds For Camera',
         description: '相机边界适配',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

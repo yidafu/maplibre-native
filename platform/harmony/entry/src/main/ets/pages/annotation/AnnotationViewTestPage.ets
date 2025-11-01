@@ -1315,8 +1315,8 @@ struct AnnotationViewTestPage {
       TestPageLayout({
         showActionBar: true,
         title: 'AnnotationView 测试',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

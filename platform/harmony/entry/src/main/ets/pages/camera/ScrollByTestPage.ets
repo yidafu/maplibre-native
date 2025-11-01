@@ -57,7 +57,7 @@ struct ScrollByTestPage {
         title: 'Scroll By',
         description: '滚动偏移',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

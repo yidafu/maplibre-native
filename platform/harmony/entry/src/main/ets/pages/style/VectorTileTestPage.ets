@@ -277,7 +277,7 @@ struct VectorTileTestPage {
         title: 'Vector Tile',
         description: '矢量瓦片源',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

@@ -176,8 +176,8 @@ struct MapSnapshotterLocalStyleTestPage {
         title: 'Snapshotter Local Style',
         description: '本地样式快照',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

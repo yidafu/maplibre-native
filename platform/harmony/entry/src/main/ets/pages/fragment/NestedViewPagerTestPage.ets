@@ -118,8 +118,8 @@ struct NestedViewPagerTestPage {
         title: 'Nested ViewPager',
         description: '嵌套ViewPager',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

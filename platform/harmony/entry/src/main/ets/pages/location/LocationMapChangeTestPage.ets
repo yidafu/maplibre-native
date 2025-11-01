@@ -177,8 +177,8 @@ struct LocationMapChangeTestPage {
         title: 'Location Map Change',
         description: '定位地图变化测试',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

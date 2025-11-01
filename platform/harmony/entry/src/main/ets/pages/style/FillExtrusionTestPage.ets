@@ -19,8 +19,8 @@ struct FillExtrusionTestPage {
         title: 'Fill Extrusion',
         description: '3D 建筑拉伸效果',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

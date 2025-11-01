@@ -61,7 +61,7 @@ struct CameraUpdateTestPage {
         title: 'Camera Update',
         description: '相机更新方法',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

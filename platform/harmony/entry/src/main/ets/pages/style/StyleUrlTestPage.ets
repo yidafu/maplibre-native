@@ -176,8 +176,8 @@ struct StyleUrlTestPage {
       TestPageLayout({
         showActionBar: true,
         title: this.message,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

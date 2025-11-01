@@ -579,8 +579,8 @@ struct EventListenersTestPage {
     Column() {
       TestPageLayout({
         title: '事件监听器测试',
-        mapContent: this.MapAreaBuilder,
-        controlPanel: this.ControlButtonsBuilder
+        mapContent: (): void => this.MapAreaBuilder(),
+        controlPanel: (): void => this.ControlButtonsBuilder()
       })
     }
     .width('100%')

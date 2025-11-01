@@ -57,7 +57,7 @@ struct LatLngBoundsTestPage {
         title: 'LatLng Bounds',
         description: 'LatLng 边界',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

@@ -89,7 +89,7 @@ struct OverlayMapTestPage {
         title: 'Overlay Map',
         description: '叠加层地图',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
       

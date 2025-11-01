@@ -61,7 +61,7 @@ struct DownloadRegionTestPage {
         title: 'Download Region',
         description: '下载区域',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

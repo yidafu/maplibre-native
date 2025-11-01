@@ -19,8 +19,8 @@ struct LineLayerTestPage {
         title: 'Line Layer',
         description: '线条图层样式',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

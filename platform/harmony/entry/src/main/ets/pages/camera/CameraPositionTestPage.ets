@@ -61,7 +61,7 @@ struct CameraPositionTestPage {
         title: 'Camera Position',
         description: '相机位置控制',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

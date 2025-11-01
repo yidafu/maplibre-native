@@ -36,9 +36,9 @@ struct MarkerClickTestPage {
       title: 'Marker Click',
       description: '标记点击事件',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      controlPanel: this.buildControlPanel,
-      actionButtons: this.buildActionButtons
+      mapContent: (): void => this.buildMapContent(),
+      controlPanel: (): void => this.buildControlPanel(),
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')

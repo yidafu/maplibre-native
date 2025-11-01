@@ -263,9 +263,9 @@ struct GeoJsonClusteringTestPage {
         title: 'GeoJSON Clustering',
         description: 'GeoJSON 聚类',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
-        controlPanel: this.controlPanelBuilder,
-        mapContent: this.mapContentBuilder
+        actionButtons: (): void => this.actionButtonsBuilder(),
+        controlPanel: (): void => this.controlPanelBuilder(),
+        mapContent: (): void => this.mapContentBuilder()
       });
     }
     .width('100%')

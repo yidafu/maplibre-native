@@ -18,8 +18,8 @@ struct HillshadeLayerTestPage {
         title: 'Hillshade Layer',
         description: '山体阴影效果',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

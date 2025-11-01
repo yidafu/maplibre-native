@@ -88,8 +88,8 @@ struct TextureViewResizeTestPage {
         title: 'TextureView Resize',
         description: 'XComponent调整大小',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

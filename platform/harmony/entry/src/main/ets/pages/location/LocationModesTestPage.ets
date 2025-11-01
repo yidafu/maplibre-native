@@ -332,8 +332,8 @@ struct LocationModesTestPage {
         title: 'Location Modes',
         description: '定位模式测试',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

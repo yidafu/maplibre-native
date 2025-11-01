@@ -19,8 +19,8 @@ struct FillLayerTestPage {
         title: 'Fill Layer',
         description: '填充图层样式',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

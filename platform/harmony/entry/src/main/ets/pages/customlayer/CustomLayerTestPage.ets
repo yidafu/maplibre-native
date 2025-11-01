@@ -249,7 +249,7 @@ struct CustomLayerTestPage {
         title: 'Custom Layer',
         description: '自定义渲染图层',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

@@ -203,8 +203,8 @@ struct LocationFragmentTestPage {
         title: 'Location Fragment',
         description: '定位Fragment测试',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

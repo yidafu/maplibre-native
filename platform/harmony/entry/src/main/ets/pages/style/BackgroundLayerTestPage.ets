@@ -18,8 +18,8 @@ struct BackgroundLayerTestPage {
         title: 'Background Layer',
         description: '背景图层颜色',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

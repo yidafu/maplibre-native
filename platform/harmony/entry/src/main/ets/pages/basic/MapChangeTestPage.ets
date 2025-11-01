@@ -145,7 +145,7 @@ struct MapChangeTestPage {
         title: 'Map Change',
         description: '地图事件监听',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

@@ -167,8 +167,8 @@ struct PhysicalUnitCircleTestPage {
         title: 'Physical Unit Circle',
         description: '物理单位圆',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

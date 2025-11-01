@@ -19,8 +19,8 @@ struct GradientLineTestPage {
         title: 'Gradient Line',
         description: '渐变线条效果',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

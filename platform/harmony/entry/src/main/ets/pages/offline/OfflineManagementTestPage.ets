@@ -329,7 +329,7 @@ struct OfflineManagementTestPage {
         title: 'Offline Management',
         description: '离线地图管理',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

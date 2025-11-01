@@ -62,8 +62,8 @@ struct StretchableImageTestPage {
         title: 'Stretchable Image',
         description: '可拉伸图片',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

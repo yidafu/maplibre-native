@@ -61,7 +61,7 @@ struct CacheManagementTestPage {
         title: 'Cache Management',
         description: '缓存管理',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

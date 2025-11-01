@@ -57,7 +57,7 @@ struct GestureTestPage {
         title: 'Gesture',
         description: '手势系统',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

@@ -57,7 +57,7 @@ struct GestureDetectorTestPage {
         title: 'Gesture Detector',
         description: '手势检测',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

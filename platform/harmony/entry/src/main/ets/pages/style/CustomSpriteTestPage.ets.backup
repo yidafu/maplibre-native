@@ -18,8 +18,8 @@ struct CustomSpriteTestPage {
         title: 'Custom Sprite',
         description: '自定义图标精灵',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

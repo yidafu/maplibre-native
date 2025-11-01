@@ -231,8 +231,8 @@ struct MapSnapshotterReuseTestPage {
         title: 'Snapshotter Reuse',
         description: '快照器重用',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

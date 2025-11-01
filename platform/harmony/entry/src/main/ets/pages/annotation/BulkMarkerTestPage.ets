@@ -141,7 +141,7 @@ struct BulkMarkerTestPage {
         title: 'Bulk Marker',
         description: '批量标注 (1000+)',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

@@ -217,8 +217,8 @@ struct CustomizedLocationPulsingCircleTestPage {
         title: 'Customized Pulsing Circle',
         description: '自定义脉冲圆',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

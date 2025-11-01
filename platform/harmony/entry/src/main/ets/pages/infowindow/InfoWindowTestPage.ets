@@ -19,8 +19,8 @@ struct InfoWindowTestPage {
         title: 'Standard InfoWindow',
         description: '标准信息窗口测试',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

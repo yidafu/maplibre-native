@@ -57,7 +57,7 @@ struct MaxMinZoomTestPage {
         title: 'Max Min Zoom',
         description: '缩放限制',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

@@ -18,8 +18,8 @@ struct HeatmapLayerTestPage {
         title: 'Heatmap Layer',
         description: '热力图可视化',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

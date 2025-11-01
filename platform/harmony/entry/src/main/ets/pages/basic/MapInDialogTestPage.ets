@@ -102,7 +102,7 @@ struct MapInDialogTestPage {
         title: 'Map In Dialog',
         description: '对话框中的地图',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
       

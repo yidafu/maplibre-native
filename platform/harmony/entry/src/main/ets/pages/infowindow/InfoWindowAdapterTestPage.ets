@@ -19,8 +19,8 @@ struct InfoWindowAdapterTestPage {
         title: 'Custom InfoWindow Adapter',
         description: '自定义信息窗口样式',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -179,8 +179,8 @@ struct MapSnapshotterBitmapOverlayTestPage {
         title: 'Snapshotter Bitmap Overlay',
         description: '快照Bitmap覆盖',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

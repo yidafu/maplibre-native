@@ -61,7 +61,7 @@ struct ObserverTestPage {
         title: 'Observer',
         description: '事件观察者',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

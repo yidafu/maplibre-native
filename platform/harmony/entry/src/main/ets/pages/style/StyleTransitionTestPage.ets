@@ -134,8 +134,8 @@ struct StyleTransitionTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '样式过渡选项测试',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

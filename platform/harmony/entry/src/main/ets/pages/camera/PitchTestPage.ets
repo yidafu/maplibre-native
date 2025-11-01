@@ -57,7 +57,7 @@ struct PitchTestPage {
         title: 'Pitch',
         description: '倾斜控制',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

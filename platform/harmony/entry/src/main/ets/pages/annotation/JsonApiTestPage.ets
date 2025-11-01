@@ -322,8 +322,8 @@ struct JsonApiTestPage {
         title: 'JSON API',
         description: '从网络 API 获取 GeoJSON 数据',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

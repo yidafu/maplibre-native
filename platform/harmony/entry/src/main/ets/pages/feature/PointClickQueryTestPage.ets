@@ -20,8 +20,8 @@ struct PointClickQueryTestPage {
       title: 'Point Click Query',
       description: '点击查询要素信息',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      controlPanel: this.buildControlPanel
+      mapContent: (): void => this.buildMapContent(),
+      controlPanel: (): void => this.buildControlPanel()
     })
       .width('100%')
       .height('100%')

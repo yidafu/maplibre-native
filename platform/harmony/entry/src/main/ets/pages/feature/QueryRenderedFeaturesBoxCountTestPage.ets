@@ -20,9 +20,9 @@ struct QueryRenderedFeaturesBoxCountTestPage {
       title: 'Query Box Count',
       description: '框选查询要素数量',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      controlPanel: this.buildControlPanel,
-      actionButtons: this.buildActionButtons
+      mapContent: (): void => this.buildMapContent(),
+      controlPanel: (): void => this.buildControlPanel(),
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')

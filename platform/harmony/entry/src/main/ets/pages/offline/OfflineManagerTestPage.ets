@@ -61,7 +61,7 @@ struct OfflineManagerTestPage {
         title: 'Offline Manager',
         description: '离线管理器',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

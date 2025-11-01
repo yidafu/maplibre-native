@@ -202,8 +202,8 @@ struct UpdateMetadataTestPage {
         title: 'Update Metadata',
         description: '更新元数据',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

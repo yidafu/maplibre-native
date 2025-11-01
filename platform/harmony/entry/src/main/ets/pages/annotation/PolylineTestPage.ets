@@ -343,7 +343,7 @@ struct PolylineTestPage {
         title: 'Polyline',
         description: '折线注解',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

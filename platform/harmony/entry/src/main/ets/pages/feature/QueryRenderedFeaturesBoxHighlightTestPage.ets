@@ -19,8 +19,8 @@ struct QueryRenderedFeaturesBoxHighlightTestPage {
       title: 'Box Highlight Features',
       description: '框选高亮显示要素',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      actionButtons: this.buildActionButtons
+      mapContent: (): void => this.buildMapContent(),
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')

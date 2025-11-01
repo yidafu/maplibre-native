@@ -166,8 +166,8 @@ struct ChangeResourcesCachePathTestPage {
         title: 'Change Resources Cache Path',
         description: '修改资源缓存路径',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

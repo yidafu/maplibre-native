@@ -24,9 +24,9 @@ struct RealTimeGeoJsonTestPage {
         title: 'Real Time GeoJSON',
         description: '实时数据流更新',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -284,8 +284,8 @@ struct LocationComponentActivationTestPage {
         title: 'Location Component Activation',
         description: '定位组件激活',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

@@ -144,7 +144,7 @@ struct LocalGlyphTestPage {
         title: 'Local Glyph',
         description: '本地字体',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });

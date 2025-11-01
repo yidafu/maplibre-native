@@ -20,8 +20,8 @@ struct RuntimeStyleTestPage {
       title: 'Runtime Style',
       description: '运行时修改样式',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      actionButtons: this.buildActionButtons
+      mapContent: (): void => this.buildMapContent(),
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')

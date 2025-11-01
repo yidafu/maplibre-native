@@ -209,8 +209,8 @@ struct MapOptionsRuntimeTestPage {
         title: 'Map Options Runtime',
         description: '运行时地图选项',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

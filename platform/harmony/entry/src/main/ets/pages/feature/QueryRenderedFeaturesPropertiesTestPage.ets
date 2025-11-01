@@ -19,8 +19,8 @@ struct QueryRenderedFeaturesPropertiesTestPage {
       title: 'Query Feature Properties',
       description: '查询要素属性',
       showActionBar: true,
-      mapContent: this.buildMapContent,
-      controlPanel: this.buildControlPanel
+      mapContent: (): void => this.buildMapContent(),
+      controlPanel: (): void => this.buildControlPanel()
     })
       .width('100%')
       .height('100%')

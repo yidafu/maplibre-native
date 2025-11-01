@@ -183,8 +183,8 @@ struct OSMRasterMapPage {
       TestPageLayout({
         showActionBar: true,
         title: 'OSM 栅格瓦片地图',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

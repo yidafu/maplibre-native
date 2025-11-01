@@ -146,8 +146,8 @@ struct AnimatedSymbolLayerTestPage {
         title: 'Animated Symbol Layer',
         description: '动画符号图层',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

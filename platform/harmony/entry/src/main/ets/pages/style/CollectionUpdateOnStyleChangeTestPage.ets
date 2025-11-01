@@ -106,8 +106,8 @@ struct CollectionUpdateOnStyleChangeTestPage {
         title: 'Collection Update on Style Change',
         description: '样式切换集合更新',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

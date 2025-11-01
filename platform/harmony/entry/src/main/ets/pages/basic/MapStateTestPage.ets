@@ -135,8 +135,8 @@ struct MapStateTestPage {
       TestPageLayout({
         showActionBar: true,
         title: '地图状态测试',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

@@ -18,8 +18,8 @@ struct CircleLayerTestPage {
         title: 'Circle Layer',
         description: '圆形图层样式测试',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

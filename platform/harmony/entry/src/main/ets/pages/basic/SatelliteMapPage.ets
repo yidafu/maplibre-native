@@ -280,8 +280,8 @@ struct SatelliteMapPage {
       TestPageLayout({
         showActionBar: true,
         title: '卫星影像地图',
-        mapContent: this.buildMapContent,
-        controlPanel: this.buildControlPanel
+        mapContent: (): void => this.buildMapContent(),
+        controlPanel: (): void => this.buildControlPanel()
       })
     }
     .width('100%')

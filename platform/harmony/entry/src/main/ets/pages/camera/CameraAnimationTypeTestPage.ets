@@ -61,7 +61,7 @@ struct CameraAnimationTypeTestPage {
         title: 'Animation Type',
         description: '动画类型',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

@@ -18,8 +18,8 @@ struct SymbolLayerTestPage {
         title: 'Symbol Layer',
         description: '符号图层功能测试',
         showActionBar: true,
-        mapContent: this.buildMapContent,
-        actionButtons: this.buildActionButtons
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

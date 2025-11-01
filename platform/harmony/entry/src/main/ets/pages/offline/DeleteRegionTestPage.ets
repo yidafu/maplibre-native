@@ -61,7 +61,7 @@ struct DeleteRegionTestPage {
         title: 'Delete Region',
         description: '删除区域',
         showActionBar: true,
-        actionButtons: this.actionButtonsBuilder,
+        actionButtons: (): void => this.actionButtonsBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }
