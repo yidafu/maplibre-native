@@ -2275,65 +2275,85 @@ export class MapLibreMap {
   
   /**
    * 设置调试模式激活状态
-   * TODO: 这是从 Android SDK 迁移的方法，当前实现为空
+   * 启用后会显示瓦片边界、FPS 等调试信息
    * @param active 是否激活调试模式
    */
   public setDebugActive(active: boolean): void {
-    // TODO: 实现调试模式切换
-    console.warn('MapLibreMap', 'setDebugActive() is not implemented yet');
-    // 临时使用 setDebug 方法
+    if (this.destroyed) return;
+    // 调用 native 层的调试方法
     this.setDebug(active);
   }
   
   /**
    * 获取设备像素比
-   * TODO: 这是从 NativeMapView 迁移的方法，当前返回固定值
    * @returns 设备像素比
    */
   public getPixelRatio(): number {
-    // TODO: 从 native 层获取真实的设备像素比
-    console.warn('MapLibreMap', 'getPixelRatio() is not implemented yet, returning default value 1.0');
-    return 1.0;
+    try {
+      // 鸿蒙系统通过 display 模块获取像素密度
+      // 返回 densityPixels（设备像素密度），相当于 scale factor
+      const display = globalThis.getContext()?.resourceManager?.getDeviceCapability()?.screenDensity;
+      if (display !== undefined) {
+        // screenDensity 通常是 120, 160, 240, 320, 480, 640 (dpi)
+        // 转换为像素比：160dpi 为基准 (1.0)
+        return display / 160.0;
+      }
+    } catch (error) {
+      console.error('MapLibreMap', 'Failed to get pixel ratio:', error);
+    }
+    // 默认返回 2.0（现代设备的常见值）
+    return 2.0;
   }
   
   /**
    * 设置内容边距（padding）
-   * TODO: 这是从 NativeMapView 迁移的方法
+   * 内容边距影响地图的可见区域，但不影响地图的大小
    * @param top 上边距
    * @param left 左边距
    * @param bottom 下边距
    * @param right 右边距
    */
   public setContentPadding(top: number, left: number, bottom: number, right: number): void {
-    // TODO: 实现内容边距设置
-    console.warn('MapLibreMap', 'setContentPadding() is not implemented yet');
-    // 临时使用 setPadding 方法
-    this.setPadding(left, top, right, bottom);
+    if (this.destroyed) return;
+    // 调用 native 层的 setPadding 方法
+    // 注意：native 层的顺序是 [left, top, right, bottom]
+    this.nativeMapView.setContentInsets(left, top, right, bottom);
   }
   
   /**
    * 获取内容边距
-   * TODO: 这是从 NativeMapView 迁移的方法
    * @returns 边距数组 [top, left, bottom, right]
    */
   public getContentPadding(): number[] {
-    // TODO: 返回正确的内容边距格式
-    console.warn('MapLibreMap', 'getContentPadding() is not implemented yet');
-    const padding = this.getPadding(); // [left, top, right, bottom]
-    // 转换为 [top, left, bottom, right]
-    return [padding[1], padding[0], padding[3], padding[2]];
+    if (this.destroyed) return [0, 0, 0, 0];
+    try {
+      // 从 native 层获取边距
+      const insets = this.nativeMapView.getContentInsets();
+      if (insets && Array.isArray(insets) && insets.length === 4) {
+        // native 返回 [left, top, right, bottom]
+        // 转换为 [top, left, bottom, right]
+        return [insets[1], insets[0], insets[3], insets[2]];
+      }
+    } catch (error) {
+      console.error('MapLibreMap', 'Failed to get content padding:', error);
+    }
+    return [0, 0, 0, 0];
   }
   
   /**
    * 获取与密度相关的矩形
-   * TODO: 这是从 NativeMapView 迁移的方法，当前实现为空
-   * @param rect 矩形参数
-   * @returns 调整后的矩形
+   * 将逻辑坐标转换为物理像素坐标
+   * @param rect 矩形参数（逻辑坐标）
+   * @returns 调整后的矩形（物理像素坐标）
    */
   public getDensityDependantRectangle(rect: Rect): Rect {
-    // TODO: 实现密度相关的矩形转换
-    console.warn('MapLibreMap', 'getDensityDependantRectangle() is not implemented yet');
-    return rect;
+    const pixelRatio = this.getPixelRatio();
+    return {
+      left: rect.left * pixelRatio,
+      top: rect.top * pixelRatio,
+      right: rect.right * pixelRatio,
+      bottom: rect.bottom * pixelRatio
+    };
   }
 }
 

@@ -64,27 +64,27 @@ export class CircleLayer {
   // ========== Circle 样式属性方法 ==========
 
   setCircleRadius(value: ESObject): CircleLayer {
-    // TODO: 实现 setCircleRadius
+    this.nativeInstance.setCircleRadius(value);
     return this;
   }
 
   setCircleColor(value: ESObject): CircleLayer {
-    // TODO: 实现 setCircleColor
+    this.nativeInstance.setCircleColor(value);
     return this;
   }
 
   setCircleOpacity(value: ESObject): CircleLayer {
-    // TODO: 实现 setCircleOpacity
+    this.nativeInstance.setCircleOpacity(value);
     return this;
   }
 
   setCircleStrokeWidth(value: ESObject): CircleLayer {
-    // TODO: 实现 setCircleStrokeWidth
+    this.nativeInstance.setCircleStrokeWidth(value);
     return this;
   }
 
   setCircleStrokeColor(value: ESObject): CircleLayer {
-    // TODO: 实现 setCircleStrokeColor
+    this.nativeInstance.setCircleStrokeColor(value);
     return this;
   }
 }

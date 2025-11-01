@@ -1,5 +1,5 @@
 import { CompassVisibility } from './widgets/CompassVisibility';
-import { CompassPosition } from './widgets/CompassPosition';
+import { OrnamentPosition } from './types/NativeTypes';
 import { ScaleBarUnit } from './widgets/ScaleBarView';
 
 /**
@@ -98,7 +98,7 @@ export class UiSettings {
   private compassMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
   
   // 指南针位置
-  private compassPosition: CompassPosition = CompassPosition.TopRight;
+  private compassPosition: OrnamentPosition = OrnamentPosition.TopRight;
   
   // 指南针更新回调（由 MapLibreMap 注入）
   public onCompassConfigChanged?: () => void;
@@ -112,7 +112,7 @@ export class UiSettings {
   private logoMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
   
   // Logo 位置
-  private logoPosition: CompassPosition = CompassPosition.BottomLeft;
+  private logoPosition: OrnamentPosition = OrnamentPosition.BottomLeft;
   
   // Logo 更新回调
   public onLogoConfigChanged?: () => void;
@@ -132,7 +132,7 @@ export class UiSettings {
   private scaleBarMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
   
   // ScaleBar 位置
-  private scaleBarPosition: CompassPosition = CompassPosition.TopLeft;
+  private scaleBarPosition: OrnamentPosition = OrnamentPosition.TopLeft;
   
   // ScaleBar 更新回调
   public onScaleBarConfigChanged?: () => void;
@@ -146,7 +146,7 @@ export class UiSettings {
   private attributionMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
   
   // Attribution 位置
-  private attributionPosition: CompassPosition = CompassPosition.BottomRight;
+  private attributionPosition: OrnamentPosition = OrnamentPosition.BottomRight;
   
   // Attribution 更新回调
   public onAttributionConfigChanged?: () => void;
@@ -617,7 +617,7 @@ export class UiSettings {
    * 设置指南针位置
    * @param position 位置枚举
    */
-  setCompassPosition(position: CompassPosition): void {
+  setCompassPosition(position: OrnamentPosition): void {
     if (this.compassPosition !== position) {
       this.compassPosition = position;
       this.notifyCompassConfigChanged();
@@ -627,7 +627,7 @@ export class UiSettings {
   /**
    * 获取指南针位置
    */
-  getCompassPosition(): CompassPosition {
+  getCompassPosition(): OrnamentPosition {
     return this.compassPosition;
   }
 
@@ -664,7 +664,7 @@ export class UiSettings {
    * 设置 Logo 位置
    * @param position 位置枚举
    */
-  setLogoPosition(position: CompassPosition): void {
+  setLogoPosition(position: OrnamentPosition): void {
     if (this.logoPosition !== position) {
       this.logoPosition = position;
       this.notifyLogoConfigChanged();
@@ -674,7 +674,7 @@ export class UiSettings {
   /**
    * 获取 Logo 位置
    */
-  getLogoPosition(): CompassPosition {
+  getLogoPosition(): OrnamentPosition {
     return this.logoPosition;
   }
 
@@ -769,7 +769,7 @@ export class UiSettings {
    * 设置 ScaleBar 位置
    * @param position 位置枚举
    */
-  setScaleBarPosition(position: CompassPosition): void {
+  setScaleBarPosition(position: OrnamentPosition): void {
     if (this.scaleBarPosition !== position) {
       this.scaleBarPosition = position;
       this.notifyScaleBarConfigChanged();
@@ -779,7 +779,7 @@ export class UiSettings {
   /**
    * 获取 ScaleBar 位置
    */
-  getScaleBarPosition(): CompassPosition {
+  getScaleBarPosition(): OrnamentPosition {
     return this.scaleBarPosition;
   }
 
@@ -841,7 +841,7 @@ export class UiSettings {
    * TODO: 这是从 Android SDK 迁移的方法
    * @param position 位置枚举
    */
-  setAttributionPosition(position: CompassPosition): void {
+  setAttributionPosition(position: OrnamentPosition): void {
     if (this.attributionPosition !== position) {
       this.attributionPosition = position;
       this.notifyAttributionConfigChanged();
@@ -851,7 +851,7 @@ export class UiSettings {
   /**
    * 获取 Attribution 位置
    */
-  getAttributionPosition(): CompassPosition {
+  getAttributionPosition(): OrnamentPosition {
     return this.attributionPosition;
   }
 

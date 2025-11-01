@@ -74,7 +74,7 @@ export class FillLayer {
   }
 
   setFillOutlineColor(value: ESObject): FillLayer {
-    // TODO: 实现 setFillOutlineColor
+    this.nativeInstance.setFillOutlineColor(value);
     return this;
   }
 }

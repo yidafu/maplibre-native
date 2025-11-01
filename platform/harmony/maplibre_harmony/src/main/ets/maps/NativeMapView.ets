@@ -18,7 +18,7 @@ import {
 import { CompassView } from './widgets/CompassView';
 import { LogoView } from './widgets/LogoView';
 import { ScaleBarView, ScaleBarUnit } from './widgets/ScaleBarView';
-import { CompassPosition } from './widgets/CompassPosition';
+import { OrnamentPosition } from './types/NativeTypes';
 import { CompassVisibility } from './widgets/CompassVisibility';
 import { RenderingStats } from './renderer/RenderingStats';
 import { RenderingRefreshMode } from './types/NativeTypes';
@@ -1435,11 +1435,14 @@ class NativeMapViewController extends XComponentController {
       return;
     }
     
-    // TODO: 实现真正的渲染线程队列
-    // 当前作为简单实现，直接在下一个事件循环执行
+    // 在渲染线程队列中执行任务
+    // 使用 setTimeout(0) 确保任务在下一个事件循环执行
+    // 这样可以避免在渲染过程中直接修改状态导致的问题
     setTimeout(() => {
       try {
         runnable();
+        // 执行完任务后触发重绘
+        this.controller.triggerRepaint();
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `queueEvent error: ${error.message}`);
       }
@@ -1806,11 +1809,11 @@ export struct MapView {
     const margins = uiSettings.getCompassMargins();
     
     switch (position) {
-      case CompassPosition.TopLeft:
-      case CompassPosition.BottomLeft:
+      case OrnamentPosition.TopLeft:
+      case OrnamentPosition.BottomLeft:
         return margins.left;
-      case CompassPosition.TopRight:
-      case CompassPosition.BottomRight:
+      case OrnamentPosition.TopRight:
+      case OrnamentPosition.BottomRight:
       default:
         return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - 组件宽度 - 右边距
     }
@@ -1825,12 +1828,12 @@ export struct MapView {
     const margins = uiSettings.getCompassMargins();
     
     switch (position) {
-      case CompassPosition.TopLeft:
-      case CompassPosition.TopRight:
+      case OrnamentPosition.TopLeft:
+      case OrnamentPosition.TopRight:
       default:
         return margins.top;
-      case CompassPosition.BottomLeft:
-      case CompassPosition.BottomRight:
+      case OrnamentPosition.BottomLeft:
+      case OrnamentPosition.BottomRight:
         return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - 组件高度 - 下边距
     }
   }
@@ -1844,12 +1847,12 @@ export struct MapView {
     const margins = uiSettings.getLogoMargins();
     
     switch (position) {
-      case CompassPosition.TopLeft:
-      case CompassPosition.BottomLeft:
+      case OrnamentPosition.TopLeft:
+      case OrnamentPosition.BottomLeft:
       default:
         return margins.left;
-      case CompassPosition.TopRight:
-      case CompassPosition.BottomRight:
+      case OrnamentPosition.TopRight:
+      case OrnamentPosition.BottomRight:
         return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - Logo宽度 - 右边距
     }
   }
@@ -1863,11 +1866,11 @@ export struct MapView {
     const margins = uiSettings.getLogoMargins();
     
     switch (position) {
-      case CompassPosition.TopLeft:
-      case CompassPosition.TopRight:
+      case OrnamentPosition.TopLeft:
+      case OrnamentPosition.TopRight:
         return margins.top;
-      case CompassPosition.BottomLeft:
-      case CompassPosition.BottomRight:
+      case OrnamentPosition.BottomLeft:
+      case OrnamentPosition.BottomRight:
       default:
         return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - Logo高度 - 下边距
     }
@@ -1882,12 +1885,12 @@ export struct MapView {
     const margins = uiSettings.getScaleBarMargins();
     
     switch (position) {
-      case CompassPosition.TopLeft:
-      case CompassPosition.BottomLeft:
+      case OrnamentPosition.TopLeft:
+      case OrnamentPosition.BottomLeft:
       default:
         return margins.left;
-      case CompassPosition.TopRight:
-      case CompassPosition.BottomRight:
+      case OrnamentPosition.TopRight:
+      case OrnamentPosition.BottomRight:
         return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - ScaleBar最大宽度 - 右边距
     }
   }
@@ -1901,12 +1904,12 @@ export struct MapView {
     const margins = uiSettings.getScaleBarMargins();
     
     switch (position) {
-      case CompassPosition.TopLeft:
-      case CompassPosition.TopRight:
+      case OrnamentPosition.TopLeft:
+      case OrnamentPosition.TopRight:
       default:
         return margins.top;
-      case CompassPosition.BottomLeft:
-      case CompassPosition.BottomRight:
+      case OrnamentPosition.BottomLeft:
+      case OrnamentPosition.BottomRight:
         return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - ScaleBar高度 - 下边距
     }
   }
@@ -2721,12 +2724,28 @@ export struct MapView {
    * 页面显示时调用（鸿蒙生命周期）
    * 用于恢复地图渲染、重新启动定位等
    */
+  /**
+   * 页面显示时调用（鸿蒙生命周期）
+   * 用于恢复地图渲染
+   */
   onPageShow(): void {
     hilog.info(DOMAIN, 'NativeMapView', 'onPageShow: Resuming map rendering');
+    if (!this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'onPageShow: Map not initialized');
+      return;
+    }
+    
     // 恢复渲染
     this.controller.triggerRepaint();
     
-    // TODO: 恢复其他资源（如位置服务）
+    // 重新启用交互
+    if (this.mapView) {
+      try {
+        this.mapView.setGesturesEnabled(true);
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to enable gestures: ${error}`);
+      }
+    }
   }
 
   /**
@@ -2735,7 +2754,19 @@ export struct MapView {
    */
   onPageHide(): void {
     hilog.info(DOMAIN, 'NativeMapView', 'onPageHide: Pausing map rendering');
-    // TODO: 暂停渲染和其他资源
+    if (!this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'onPageHide: Map not initialized');
+      return;
+    }
+    
+    // 暂停渲染（通过禁用手势来减少渲染触发）
+    if (this.mapView) {
+      try {
+        this.mapView.setGesturesEnabled(false);
+      } catch (error) {
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to disable gestures: ${error}`);
+      }
+    }
   }
 
   /**

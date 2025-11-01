@@ -13,6 +13,7 @@ export interface DefaultStyleUrls {
   dark: string;
   light: string;
   streets: string;
+  satellite: string;
 }
 
 /**
@@ -44,6 +45,11 @@ export const DEFAULT_STYLE_URLS: DefaultStyleUrls = {
   /**
    * 街道样式
    */
-  streets: 'https://demotiles.maplibre.org/style.json'
+  streets: 'https://demotiles.maplibre.org/style.json',
+  
+  /**
+   * 卫星样式
+   */
+  satellite: 'https://api.maptiler.com/maps/hybrid/style.json?key=get_your_own_OpIi9ZULNHzrESv6T2vL'
 };
 

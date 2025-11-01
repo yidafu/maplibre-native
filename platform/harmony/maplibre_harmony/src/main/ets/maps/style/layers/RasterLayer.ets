@@ -64,7 +64,7 @@ export class RasterLayer {
   // ========== Raster 样式属性方法 ==========
 
   setRasterOpacity(value: ESObject): RasterLayer {
-    // TODO: 实现 setRasterOpacity
+    this.nativeInstance.setRasterOpacity(value);
     return this;
   }
 }

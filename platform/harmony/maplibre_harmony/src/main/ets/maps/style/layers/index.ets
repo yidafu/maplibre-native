@@ -24,8 +24,8 @@ export { TransitionOptions } from './TransitionOptions';
 export type { Layer, LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMetadata } from './Layer';
 
 // CustomLayer 类
-export { CustomLayer, ExampleCustomLayer } from './CustomLayer';
-export type { CustomLayerOptions } from './CustomLayer';
+export { CustomLayer, createCustomLayerWithColor } from './CustomLayer';
+export type { RGBAColor } from './CustomLayer';
 
 // 属性值类型
 export type { ColorValue, NumberValue, BooleanValue, StringValue } from './PropertyTypes';

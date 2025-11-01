@@ -90,6 +90,8 @@ add_library(maplibre
     style/conversion/property_expression.hpp
     style/conversion/property_value.hpp
     style/layers/layer_property_utils.hpp
+    style/layers/custom_layer_harmony.hpp
+    style/layers/custom_layer_harmony.cpp
     
     # NAPI bindings
     napi/core/napi_init.cpp
@@ -120,6 +122,8 @@ add_library(maplibre
     napi/bindings/style/style_napi_layers.cpp
     napi/bindings/style/style_napi_sources.cpp
     napi/bindings/style/style_napi_images.cpp
+    napi/bindings/style/custom_layer_napi.hpp
+    napi/bindings/style/custom_layer_napi.cpp
     
     # Network module
     network/http_file_source_harmony.cpp

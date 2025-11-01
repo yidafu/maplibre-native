@@ -64,12 +64,12 @@ export class HillshadeLayer {
   // ========== Hillshade 样式属性方法 ==========
 
   setHillshadeExaggeration(value: ESObject): HillshadeLayer {
-    // TODO: 实现 setHillshadeExaggeration
+    this.nativeInstance.setHillshadeExaggeration(value);
     return this;
   }
 
   setHillshadeIlluminationDirection(value: ESObject): HillshadeLayer {
-    // TODO: 实现 setHillshadeIlluminationDirection
+    this.nativeInstance.setHillshadeIlluminationDirection(value);
     return this;
   }
 }

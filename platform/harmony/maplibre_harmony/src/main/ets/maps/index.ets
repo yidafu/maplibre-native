@@ -154,8 +154,6 @@ export { CompassView } from './widgets/CompassView';
 
 export { LogoView } from './widgets/LogoView';
 
-export { CompassPosition } from './widgets/CompassPosition';
-
 export { CompassVisibility } from './widgets/CompassVisibility';
 
 export { ScaleBarView, ScaleBarUnit } from './widgets/ScaleBarView';
@@ -266,11 +264,9 @@ export type {
 
 // ========== 地图快照 ==========
 export {
-  MapSnapshotter, MapSnapshot, SnapshotOptions, SnapshotOptionsBuilder, Size
-} from './snapshot';
-
-export type {
-  SnapshotReadyCallback, SnapshotErrorHandler
+  MapSnapshotter, MapSnapshot, SnapshotOptions, SnapshotOptionsBuilder, Size,
+  SnapshotReadyCallback,
+  SnapshotErrorHandler
 } from './snapshot';
 
 // ========== 位置组件 ==========

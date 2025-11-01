@@ -69,6 +69,10 @@ export class MapGestureDetector {
   // 缩放结束时间戳（用于判断 Pan Fling 是否应该被禁用）
   private lastScaleEndTimestamp: number = 0;
   private readonly SCALE_END_GRACE_PERIOD = 100; // 缩放结束后 100ms 内禁用 Pan Fling
+  
+  // 旋转结束时间戳（用于判断 Pan Fling 是否应该被禁用）
+  private lastRotateEndTimestamp: number = 0;
+  private readonly ROTATE_END_GRACE_PERIOD = 100; // 旋转结束后 100ms 内禁用 Pan Fling
 
   // 缩放相关状态
   private currentScale: number = 1.0;
@@ -350,6 +354,12 @@ export class MapGestureDetector {
       return;
     }
 
+    // 🔑 关键修复：如果正在缩放或旋转，忽略平移更新（避免多手势冲突导致地图漂移）
+    if (this.isScaling || this.isRotating) {
+      hilog.debug(DOMAIN, TAG, `Pan update ignored - ${this.isScaling ? 'scaling' : 'rotation'} in progress`);
+      return;
+    }
+
     // ✅ HarmonyOS 关键修复：使用 fingerList[0] 的实际坐标
     // event.offsetX/offsetY 是相对偏移，值太小
     // fingerList[0].localX/localY 是手指在组件中的实际坐标（逻辑像素）
@@ -415,11 +425,24 @@ export class MapGestureDetector {
 
     hilog.debug(DOMAIN, TAG, 'Pan gesture ended');
 
-    // 🔧 关键修复：如果正在缩放或刚刚完成缩放，禁用 Pan 的 Fling 动画
-    // 避免缩放时的手指移动被误认为是平移手势，触发不必要的 Fling
+    // 🔧 关键修复：如果正在缩放/旋转或刚刚完成缩放/旋转，禁用 Pan 的 Fling 动画
+    // 避免缩放/旋转时的手指移动被误认为是平移手势，触发不必要的 Fling
     const timeSinceScaleEnd = Date.now() - this.lastScaleEndTimestamp;
-    if (this.isScaling || timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD) {
-      hilog.info(DOMAIN, TAG, `Pan Fling ignored - scaling ${this.isScaling ? 'in progress' : `ended ${timeSinceScaleEnd}ms ago`}`);
+    const timeSinceRotateEnd = Date.now() - this.lastRotateEndTimestamp;
+    if (this.isScaling || this.isRotating || 
+        timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD || 
+        timeSinceRotateEnd < this.ROTATE_END_GRACE_PERIOD) {
+      let reason = '';
+      if (this.isScaling) {
+        reason = 'scaling in progress';
+      } else if (this.isRotating) {
+        reason = 'rotation in progress';
+      } else if (timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD) {
+        reason = `scaling ended ${timeSinceScaleEnd}ms ago`;
+      } else {
+        reason = `rotation ended ${timeSinceRotateEnd}ms ago`;
+      }
+      hilog.info(DOMAIN, TAG, `Pan Fling ignored - ${reason}`);
       this.isMoving = false;
       
       // 设置手势完成
@@ -494,6 +517,13 @@ export class MapGestureDetector {
     this.isScaling = true;
     this.lastScale = 1.0;
     this.currentScale = 1.0;
+    
+    // 🔑 关键修复：如果旋转手势已经开始，立即终止它（避免旋转和缩放冲突）
+    if (this.isRotating) {
+      hilog.info(DOMAIN, TAG, '🔧 Terminating existing rotation gesture before scaling');
+      this.isRotating = false;
+      this.notifyRotateEnd();
+    }
     
     // 🔑 参考 Android: 缩放时禁用旋转手势，避免手势冲突
     this.shouldIgnoreRotation = true;
@@ -739,9 +769,9 @@ export class MapGestureDetector {
       return;
     }
     
-    // 🔑 参考 Android: 如果正在缩放，忽略旋转手势（避免手势冲突）
-    if (this.shouldIgnoreRotation) {
-      hilog.info(DOMAIN, TAG, '🚫 Rotation gesture ignored - scaling in progress');
+    // 🔑 关键修复：如果正在缩放或应该忽略旋转，立即返回（避免手势冲突）
+    if (this.shouldIgnoreRotation || this.isScaling) {
+      hilog.info(DOMAIN, TAG, '🚫 Rotation gesture ignored - scaling in progress or disabled');
       return;
     }
 
@@ -800,8 +830,9 @@ export class MapGestureDetector {
       return;
     }
     
-    // 🔑 如果正在缩放，忽略旋转更新
-    if (this.shouldIgnoreRotation) {
+    // 🔑 关键修复：如果正在缩放或被标记为应忽略，立即返回（避免旋转和缩放冲突）
+    if (this.shouldIgnoreRotation || this.isScaling) {
+      hilog.debug(DOMAIN, TAG, 'Rotate update ignored - scaling in progress');
       return;
     }
 
@@ -938,6 +969,9 @@ export class MapGestureDetector {
     }
 
     this.isRotating = false;
+    
+    // 🔧 记录旋转结束时间戳，用于禁用紧随其后的 Pan Fling
+    this.lastRotateEndTimestamp = Date.now();
 
     // 设置手势完成
     if (this.mapController) {

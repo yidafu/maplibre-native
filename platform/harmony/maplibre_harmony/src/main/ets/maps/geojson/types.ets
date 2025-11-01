@@ -7,9 +7,11 @@
 // ==================== 基础类型 ====================
 
 /**
- * 位置坐标 [longitude, latitude] 或 [longitude, latitude, altitude]
+ * 位置坐标类型 - 从 libmaplibre.so 导入
+ * [longitude, latitude] 或 [longitude, latitude, altitude]
  */
-export type Position = [number, number] | [number, number, number];
+import type { Position, Position2D, Position3D } from 'libmaplibre.so';
+export type { Position, Position2D, Position3D };
 
 // ==================== Geometry 接口 ====================
 
@@ -98,6 +100,7 @@ export interface IFeature {
   id?: string | number;
   geometry: Geometry;
   properties: Record<string, Object>;
+  layer?: string;  // 图层ID（可选）
 }
 
 /**

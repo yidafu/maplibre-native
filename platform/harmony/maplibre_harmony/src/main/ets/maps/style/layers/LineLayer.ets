@@ -64,27 +64,32 @@ export class LineLayer {
   // ========== Line 样式属性方法 ==========
 
   setLineColor(value: ESObject): LineLayer {
-    // TODO: 实现 setLineColor
+    this.nativeInstance.setLineColor(value);
     return this;
   }
 
   setLineWidth(value: ESObject): LineLayer {
-    // TODO: 实现 setLineWidth
+    this.nativeInstance.setLineWidth(value);
     return this;
   }
 
   setLineGradient(value: ESObject): LineLayer {
-    // TODO: 实现 setLineGradient
+    this.nativeInstance.setLineGradient(value);
     return this;
   }
 
   setSourceLayer(sourceLayer: string): LineLayer {
-    // TODO: 实现 setSourceLayer
+    this.nativeInstance.setSourceLayer(sourceLayer);
     return this;
   }
 
   setLineOpacity(value: ESObject): LineLayer {
-    // TODO: 实现 setLineOpacity
+    this.nativeInstance.setLineOpacity(value);
+    return this;
+  }
+
+  setLineDasharray(value: number[]): LineLayer {
+    this.nativeInstance.setLineDasharray(value);
     return this;
   }
 }

@@ -4,9 +4,27 @@
  * 图层由 NAPI 层提供，此文件仅提供辅助类型定义
  */
 
-// Layer 类型由 NAPI 提供，通过 maplibre.XXXLayer 访问
-// 定义 Layer 类型别名用于类型标注
-export type Layer = Object;
+import { FillLayer } from './FillLayer';
+import { LineLayer } from './LineLayer';
+import { SymbolLayer } from './SymbolLayer';
+import { CircleLayer } from './CircleLayer';
+import { HeatmapLayer } from './HeatmapLayer';
+import { FillExtrusionLayer } from './FillExtrusionLayer';
+import { RasterLayer } from './RasterLayer';
+import { HillshadeLayer } from './HillshadeLayer';
+import { BackgroundLayer } from './BackgroundLayer';
+
+// Layer 类型是所有具体图层类型的联合类型
+export type Layer = 
+  | FillLayer 
+  | LineLayer 
+  | SymbolLayer 
+  | CircleLayer 
+  | HeatmapLayer 
+  | FillExtrusionLayer 
+  | RasterLayer 
+  | HillshadeLayer 
+  | BackgroundLayer;
 
 /**
  * LayerFilter - 图层过滤器类型

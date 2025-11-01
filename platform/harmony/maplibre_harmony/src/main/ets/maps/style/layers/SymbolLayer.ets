@@ -96,17 +96,17 @@ export class SymbolLayer {
   // ========== Symbol 文本属性方法 ==========
 
   setTextField(value: ESObject): SymbolLayer {
-    // TODO: 实现 setTextField
+    this.nativeInstance.setTextField(value);
     return this;
   }
 
   setTextSize(value: ESObject): SymbolLayer {
-    // TODO: 实现 setTextSize
+    this.nativeInstance.setTextSize(value);
     return this;
   }
 
   setTextColor(value: ESObject): SymbolLayer {
-    // TODO: 实现 setTextColor
+    this.nativeInstance.setTextColor(value);
     return this;
   }
 }
