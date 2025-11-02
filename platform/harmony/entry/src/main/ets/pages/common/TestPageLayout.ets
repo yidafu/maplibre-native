@@ -96,11 +96,16 @@ export struct TestPageLayout {
         .width('100%')
         .height('100%')
         
-        // 控制面板（浮动在地图上）
+        // 控制面板（浮动在地图上，支持滚动）
         if (this.controlPanel && this.isControlPanelVisible) {
-          Column() {
-            this.controlPanel();
+          Scroll() {
+            Column() {
+              this.controlPanel();
+            }
+            .width('100%')
           }
+          .width('100%')
+          .height('70%') // 限制高度，避免遮挡整个地图
           .backgroundColor(Color.White)
           .borderRadius(8)
           .shadow({
@@ -111,6 +116,7 @@ export struct TestPageLayout {
           })
           .padding(12)
           .margin(16)
+          .scrollBar(BarState.Auto) // 有内容溢出时自动显示滚动条
         }
       }
       .layoutWeight(1)
