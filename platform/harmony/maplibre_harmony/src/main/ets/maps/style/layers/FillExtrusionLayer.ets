@@ -2,6 +2,21 @@
  * FillExtrusionLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { ColorValue, NumberValue, StringValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
+import { Expression } from '../expressions/index';
+
+
+/**
+ * 转换属性值 - 将 Expression 对象转为数组
+ * @param value 属性值（常量、Expression 对象或字面量数组）
+ * @returns 转换后的值（常量或数组）
+ */
+function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
+  if (value instanceof Expression) {
+    return value.toArray();
+  }
+  return value as T | ExpressionLiteral;
+}
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -63,23 +78,38 @@ export class FillExtrusionLayer {
 
   // ========== FillExtrusion 样式属性方法 ==========
 
-  setFillExtrusionColor(value: ESObject): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionColor(value);
+  setFillExtrusionColor(color: ColorValue): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionColor(color);
     return this;
   }
 
-  setFillExtrusionOpacity(value: ESObject): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionOpacity(value);
+  setFillExtrusionOpacity(opacity: NumberValue): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionOpacity(opacity);
     return this;
   }
 
-  setFillExtrusionHeight(value: ESObject): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionHeight(value);
+  setFillExtrusionHeight(height: NumberValue): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionHeight(height);
     return this;
   }
 
-  setFillExtrusionBase(value: ESObject): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionBase(value);
+  setFillExtrusionBase(base: NumberValue): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionBase(base);
+    return this;
+  }
+
+  setFillExtrusionPattern(pattern: PropertyValue<string>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionPattern(pattern);
+    return this;
+  }
+
+  setFillExtrusionTranslate(translate: PropertyValue<number[]>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionTranslate(translate);
+    return this;
+  }
+
+  setFillExtrusionTranslateAnchor(anchor: StringValue): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionTranslateAnchor(anchor);
     return this;
   }
 }

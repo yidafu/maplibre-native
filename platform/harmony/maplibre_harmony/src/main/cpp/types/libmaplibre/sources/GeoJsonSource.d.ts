@@ -87,7 +87,7 @@ export interface Feature {
 
 export interface FeatureCollection {
     type: 'FeatureCollection';
-    features: IFeature[];
+    features: Feature[];
 }
 
 export type GeoJsonData = string | Geometry | Feature | FeatureCollection | Object;
@@ -151,14 +151,14 @@ export class GeoJsonSource {
      * @param filter 可选过滤器
      * @returns Feature 数组
      */
-    querySourceFeatures(filter?: any): IFeature[];
+    querySourceFeatures(filter?: any): Feature[];
     
     /**
      * 获取聚类的子项
      * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
      * @returns 子 Feature 数组
      */
-    getClusterChildren(clusterId: number | Feature): IFeature[];
+    getClusterChildren(clusterId: number | Feature): Feature[];
     
     /**
      * 获取聚类的叶子节点
@@ -167,7 +167,7 @@ export class GeoJsonSource {
      * @param offset 偏移量，默认 0
      * @returns 叶子 Feature 数组
      */
-    getClusterLeaves(clusterId: number | Feature, limit?: number, offset?: number): IFeature[];
+    getClusterLeaves(clusterId: number | Feature, limit?: number, offset?: number): Feature[];
     
     /**
      * 获取聚类展开的缩放级别

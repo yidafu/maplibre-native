@@ -20,8 +20,7 @@ import { OnLocationStaleListener } from './listeners/OnLocationStaleListener';
 import { LocationComponentConstants } from './LocationComponentConstants';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
-
-type Style = maplibre.Style;
+import { Style } from '../style/Style';
 
 /**
  * LocationComponent - 用户定位组件

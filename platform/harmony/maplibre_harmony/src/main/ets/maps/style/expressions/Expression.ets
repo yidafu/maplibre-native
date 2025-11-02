@@ -17,7 +17,8 @@
  * @see <a href="https://maplibre.org/maplibre-style-spec/expressions/">MapLibre Expression Specification</a>
  */
 
-import { ValueExpression, ExpressionValue } from './ExpressionTypes';
+import { ValueExpression } from './ExpressionTypes';
+import type { ExpressionValue, ExpressionLiteral } from 'libmaplibre.so';
 
 /**
  * Expression - MapLibre 表达式类
@@ -60,32 +61,32 @@ export class Expression<T = Object> {
 
   /**
    * 将表达式序列化为 JSON 数组格式
-   * @returns JSON 数组表示
+   * @returns Expression 字面量（JSON 数组）
    */
-  serialize(): Object {
+  serialize(): ExpressionLiteral {
     return this.toArray();
   }
 
   /**
    * 将表达式转换为 JSON 数组格式
-   * @returns JSON 数组表示
+   * @returns Expression 字面量：[operator, ...arguments]
    */
-  public toArray(): (Object | null)[] {
+  public toArray(): ExpressionLiteral {
     if (this.operator === null) {
       throw new Error('Invalid expression: operator is null');
     }
     
-    const array: (Object | null)[] = [this.operator];
+    const array: ExpressionValue[] = [this.operator];
     if (this.arguments !== null && this.arguments.length > 0) {
       for (const arg of this.arguments) {
         if (arg.isValue()) {
-          array.push((arg as ExpressionLiteral).toValue());
+          array.push((arg as any).toValue());
         } else {
-          array.push(arg.toArray() as Object);
+          array.push(arg.toArray());
         }
       }
     }
-    return array;
+    return array as ExpressionLiteral;
   }
 
   /**

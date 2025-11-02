@@ -64,6 +64,14 @@ private:
     static napi_value SetMaxZoom(napi_env env, napi_callback_info info);
     static napi_value GetMaxZoom(napi_env env, napi_callback_info info);
     
+    // Visibility control
+    static napi_value SetVisibility(napi_env env, napi_callback_info info);
+    static napi_value GetVisibility(napi_env env, napi_callback_info info);
+    
+    // Filter
+    static napi_value SetFilter(napi_env env, napi_callback_info info);
+    static napi_value GetFilter(napi_env env, napi_callback_info info);
+    
     // Layout properties
     static napi_value SetIconImage(napi_env env, napi_callback_info info);
     static napi_value GetIconImage(napi_env env, napi_callback_info info);
@@ -121,6 +129,8 @@ private:
     static napi_value GetTextRadialOffset(napi_env env, napi_callback_info info);
     static napi_value SetTextVariableAnchor(napi_env env, napi_callback_info info);
     static napi_value GetTextVariableAnchor(napi_env env, napi_callback_info info);
+    static napi_value SetTextVariableAnchorOffset(napi_env env, napi_callback_info info);
+    static napi_value GetTextVariableAnchorOffset(napi_env env, napi_callback_info info);
     static napi_value SetTextRotate(napi_env env, napi_callback_info info);
     static napi_value GetTextRotate(napi_env env, napi_callback_info info);
     static napi_value SetTextPadding(napi_env env, napi_callback_info info);

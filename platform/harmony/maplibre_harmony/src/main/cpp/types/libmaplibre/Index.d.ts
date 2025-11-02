@@ -67,37 +67,29 @@ export { Style, StyleBuilder } from './Style';
  */
 export * from './geojson';
 
+// ========== 属性值类型 ==========
+
+/**
+ * Expression 类型定义
+ * 包含：ExpressionLiteral、ExpressionValue 以及所有具体的表达式类型
+ * （ComparisonExpression、LogicalExpression、MathExpression 等）
+ */
+export * from './ExpressionTypes';
+
+/**
+ * Layer 属性值类型
+ * 包含：PropertyValue、ColorValue、NumberValue、StringValue、BooleanValue
+ */
+export * from './LayerPropertyTypes';
+
 // ========== 数据源 (Sources) - NAPI 类 ==========
 
 /**
- * GeoJsonSource - GeoJSON 数据源（NAPI 对象）
- * 支持点、线、面等矢量要素，支持聚类
+ * 所有数据源类型和联合类型
+ * 包含：GeoJsonSource、VectorSource、RasterSource、RasterDemSource、ImageSource
+ * 以及联合类型 Source 和对应的 Options 接口
  */
-export { GeoJsonSource, GeoJsonOptions } from './sources/GeoJsonSource';
-
-/**
- * VectorSource - 矢量瓦片数据源（NAPI 对象）
- * 用于加载 Mapbox Vector Tiles (MVT) 格式的数据
- */
-export { VectorSource, VectorSourceOptions } from './sources/VectorSource';
-
-/**
- * RasterSource - 栅格瓦片数据源（NAPI 对象）
- * 用于加载栅格瓦片图像
- */
-export { RasterSource, RasterSourceOptions } from './sources/RasterSource';
-
-/**
- * RasterDemSource - 栅格 DEM 数据源（NAPI 对象）
- * 用于加载数字高程模型数据
- */
-export { RasterDemSource } from './sources/RasterDemSource';
-
-/**
- * ImageSource - 图像数据源（NAPI 对象）
- * 用于在指定的地理坐标范围内显示单张图像
- */
-export { ImageSource } from './sources/ImageSource';
+export * from './sources';
 
 /**
  * Image - 样式图像类（NAPI 对象）
@@ -108,28 +100,12 @@ export { Image, ImageOptions } from './images/Image';
 // ========== 图层 (Layers) ==========
 
 /**
- * FillLayer - 填充图层
- * 用于渲染多边形填充
+ * 所有图层类型和联合类型
+ * 包含：FillLayer、LineLayer、CircleLayer、SymbolLayer、BackgroundLayer、
+ *       RasterLayer、HeatmapLayer、HillshadeLayer、FillExtrusionLayer
+ * 以及联合类型 Layer
  */
-export { FillLayer } from './layers/FillLayer';
-
-/**
- * LineLayer - 线图层
- * 用于渲染线要素
- */
-export { LineLayer } from './layers/LineLayer';
-
-/**
- * CircleLayer - 圆形图层
- * 用于渲染圆形点要素
- */
-export { CircleLayer } from './layers/CircleLayer';
-
-/**
- * SymbolLayer - 符号图层
- * 用于渲染图标和文本标注
- */
-export { SymbolLayer } from './layers/SymbolLayer';
+export * from './layers';
 
 // ========== 离线地图 (Offline) ==========
 
@@ -139,33 +115,3 @@ export { SymbolLayer } from './layers/SymbolLayer';
  * 离线地图下载、管理和使用功能
  */
 export * from './offline';
-
-/**
- * RasterLayer - 栅格图层
- * 用于渲染栅格瓦片数据
- */
-export { RasterLayer } from './layers/RasterLayer';
-
-/**
- * BackgroundLayer - 背景图层
- * 用于渲染地图背景
- */
-export { BackgroundLayer } from './layers/BackgroundLayer';
-
-/**
- * HeatmapLayer - 热力图层
- * 用于渲染密度热力图
- */
-export { HeatmapLayer } from './layers/HeatmapLayer';
-
-/**
- * HillshadeLayer - 山体阴影图层
- * 用于渲染地形阴影效果
- */
-export { HillshadeLayer } from './layers/HillshadeLayer';
-
-/**
- * FillExtrusionLayer - 3D 填充拉伸图层
- * 用于渲染 3D 建筑物等拉伸效果
- */
-export { FillExtrusionLayer } from './layers/FillExtrusionLayer';

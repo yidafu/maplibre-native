@@ -1,40 +1,38 @@
 /**
- * SymbolLayer Type Definitions
- * 符号图层类型定义
+ * MapLibre Native for HarmonyOS - SymbolLayer Type Definitions
+ * 符号图层 API (NAPI 类)
  */
 
 import type { PropertyValue, ColorValue, NumberValue, StringValue, BooleanValue } from '../LayerPropertyTypes';
 
-declare namespace maplibre {
+/**
+ * SymbolLayer - 符号图层
+ * 用于渲染图标和文本标注
+ */
+export class SymbolLayer {
     /**
-     * SymbolLayer - 符号图层
-     * 
-     * 用于显示图标和文本标签
+     * 创建 SymbolLayer
+     * @param layerId 图层ID
+     * @param sourceId 数据源ID
      */
-    export class SymbolLayer {
-        /**
-         * 创建 SymbolLayer
-         * @param layerId 图层ID
-         * @param sourceId 数据源ID
-         */
-        constructor(layerId: string, sourceId: string);
-        
-        // ==================== 基本方法 ====================
-        
-        /**
-         * 获取图层ID
-         */
-        getId(): string;
-        
-        /**
-         * 获取图层类型
-         */
-        getType(): string;
-        
-        /**
-         * 获取数据源ID
-         */
-        getSourceId(): string;
+    constructor(layerId: string, sourceId: string);
+    
+    // ==================== 基本方法 ====================
+    
+    /**
+     * 获取图层ID
+     */
+    getId(): string;
+    
+    /**
+     * 获取图层类型
+     */
+    getType(): string;
+    
+    /**
+     * 获取数据源ID
+     */
+    getSourceId(): string;
         
         /**
          * 设置源图层
@@ -601,7 +599,4 @@ declare namespace maplibre {
          */
         setFilter(filter: Object[]): SymbolLayer;
         getFilter(): Object[] | null;
-    }
 }
-
-export = maplibre;

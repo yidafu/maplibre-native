@@ -2,6 +2,21 @@
  * SymbolLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { ColorValue, NumberValue, StringValue, BooleanValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
+import { Expression } from '../expressions/index';
+
+
+/**
+ * 转换属性值 - 将 Expression 对象转为数组
+ * @param value 属性值（常量、Expression 对象或字面量数组）
+ * @returns 转换后的值（常量或数组）
+ */
+function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
+  if (value instanceof Expression) {
+    return value.toArray();
+  }
+  return value as T | ExpressionLiteral;
+}
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -63,50 +78,196 @@ export class SymbolLayer {
 
   // ========== Symbol 图标属性方法 ==========
 
-  setIconImage(value: ESObject): SymbolLayer {
-    this.nativeInstance.setIconImage(value);
+  setIconImage(iconImage: StringValue): SymbolLayer {
+    this.nativeInstance.setIconImage(convertValue(iconImage));
     return this;
   }
 
-  setIconSize(value: ESObject): SymbolLayer {
-    this.nativeInstance.setIconSize(value);
+  setIconSize(size: NumberValue): SymbolLayer {
+    this.nativeInstance.setIconSize(convertValue(size));
     return this;
   }
 
-  setIconRotate(value: ESObject): SymbolLayer {
-    this.nativeInstance.setIconRotate(value);
+  setIconRotate(rotate: NumberValue): SymbolLayer {
+    this.nativeInstance.setIconRotate(convertValue(rotate));
     return this;
   }
 
-  setIconAnchor(value: ESObject): SymbolLayer {
-    this.nativeInstance.setIconAnchor(value);
+  setIconOffset(offset: PropertyValue<number[]>): SymbolLayer {
+    this.nativeInstance.setIconOffset(convertValue(offset));
     return this;
   }
 
-  setIconAllowOverlap(value: ESObject): SymbolLayer {
-    this.nativeInstance.setIconAllowOverlap(value);
+  setIconAnchor(anchor: StringValue): SymbolLayer {
+    this.nativeInstance.setIconAnchor(convertValue(anchor));
     return this;
   }
 
-  setIconOpacity(value: ESObject): SymbolLayer {
-    this.nativeInstance.setIconOpacity(value);
+  setIconAllowOverlap(allow: BooleanValue): SymbolLayer {
+    this.nativeInstance.setIconAllowOverlap(convertValue(allow));
+    return this;
+  }
+
+  setIconOpacity(opacity: NumberValue): SymbolLayer {
+    this.nativeInstance.setIconOpacity(convertValue(opacity));
+    return this;
+  }
+
+  setIconColor(color: ColorValue): SymbolLayer {
+    this.nativeInstance.setIconColor(convertValue(color));
+    return this;
+  }
+
+  setIconHaloColor(color: ColorValue): SymbolLayer {
+    this.nativeInstance.setIconHaloColor(convertValue(color));
+    return this;
+  }
+
+  setIconHaloWidth(width: NumberValue): SymbolLayer {
+    this.nativeInstance.setIconHaloWidth(convertValue(width));
     return this;
   }
 
   // ========== Symbol 文本属性方法 ==========
 
-  setTextField(value: ESObject): SymbolLayer {
-    this.nativeInstance.setTextField(value);
+  setTextField(text: StringValue): SymbolLayer {
+    this.nativeInstance.setTextField(convertValue(text));
     return this;
   }
 
-  setTextSize(value: ESObject): SymbolLayer {
-    this.nativeInstance.setTextSize(value);
+  setTextFont(font: PropertyValue<string[]>): SymbolLayer {
+    this.nativeInstance.setTextFont(convertValue(font));
     return this;
   }
 
-  setTextColor(value: ESObject): SymbolLayer {
-    this.nativeInstance.setTextColor(value);
+  setTextSize(size: NumberValue): SymbolLayer {
+    this.nativeInstance.setTextSize(convertValue(size));
     return this;
+  }
+
+  setTextMaxWidth(maxWidth: NumberValue): SymbolLayer {
+    this.nativeInstance.setTextMaxWidth(convertValue(maxWidth));
+    return this;
+  }
+
+  setTextOffset(offset: PropertyValue<number[]>): SymbolLayer {
+    this.nativeInstance.setTextOffset(convertValue(offset));
+    return this;
+  }
+
+  setTextAnchor(anchor: StringValue): SymbolLayer {
+    this.nativeInstance.setTextAnchor(convertValue(anchor));
+    return this;
+  }
+
+  setTextAllowOverlap(allow: BooleanValue): SymbolLayer {
+    this.nativeInstance.setTextAllowOverlap(convertValue(allow));
+    return this;
+  }
+
+  setTextOpacity(opacity: NumberValue): SymbolLayer {
+    this.nativeInstance.setTextOpacity(convertValue(opacity));
+    return this;
+  }
+
+  setTextColor(color: ColorValue): SymbolLayer {
+    this.nativeInstance.setTextColor(convertValue(color));
+    return this;
+  }
+
+  setTextHaloColor(color: ColorValue): SymbolLayer {
+    this.nativeInstance.setTextHaloColor(convertValue(color));
+    return this;
+  }
+
+  setTextHaloWidth(width: NumberValue): SymbolLayer {
+    this.nativeInstance.setTextHaloWidth(convertValue(width));
+    return this;
+  }
+
+  // ========== Getter 方法 ==========
+
+  getIconImage(): string {
+    return this.nativeInstance.getIconImage();
+  }
+
+  getIconSize(): number {
+    return this.nativeInstance.getIconSize();
+  }
+
+  getIconRotate(): number {
+    return this.nativeInstance.getIconRotate();
+  }
+
+  getIconOffset(): number[] {
+    return this.nativeInstance.getIconOffset();
+  }
+
+  getIconAnchor(): string {
+    return this.nativeInstance.getIconAnchor();
+  }
+
+  getIconAllowOverlap(): boolean {
+    return this.nativeInstance.getIconAllowOverlap();
+  }
+
+  getIconOpacity(): number {
+    return this.nativeInstance.getIconOpacity();
+  }
+
+  getIconColor(): string {
+    return this.nativeInstance.getIconColor();
+  }
+
+  getIconHaloColor(): string {
+    return this.nativeInstance.getIconHaloColor();
+  }
+
+  getIconHaloWidth(): number {
+    return this.nativeInstance.getIconHaloWidth();
+  }
+
+  getTextField(): string {
+    return this.nativeInstance.getTextField();
+  }
+
+  getTextFont(): string[] {
+    return this.nativeInstance.getTextFont();
+  }
+
+  getTextSize(): number {
+    return this.nativeInstance.getTextSize();
+  }
+
+  getTextMaxWidth(): number {
+    return this.nativeInstance.getTextMaxWidth();
+  }
+
+  getTextOffset(): number[] {
+    return this.nativeInstance.getTextOffset();
+  }
+
+  getTextAnchor(): string {
+    return this.nativeInstance.getTextAnchor();
+  }
+
+  getTextAllowOverlap(): boolean {
+    return this.nativeInstance.getTextAllowOverlap();
+  }
+
+  getTextOpacity(): number {
+    return this.nativeInstance.getTextOpacity();
+  }
+
+  getTextColor(): string {
+    return this.nativeInstance.getTextColor();
+  }
+
+  getTextHaloColor(): string {
+    return this.nativeInstance.getTextHaloColor();
+  }
+
+  getTextHaloWidth(): number {
+    return this.nativeInstance.getTextHaloWidth();
   }
 }

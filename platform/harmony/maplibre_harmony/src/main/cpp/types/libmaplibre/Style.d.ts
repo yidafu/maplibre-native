@@ -5,6 +5,11 @@
  * 重构为面向对象接口，与 Android/iOS 架构保持一致
  */
 
+import image from '@ohos.multimedia.image';
+import type { Layer } from './layers';
+import type { Source } from './sources';
+import type { Image } from './images/Image';
+
 /**
  * Style - 地图样式管理类
  * 
@@ -36,7 +41,7 @@ export class Style {
      * 添加数据源
      * @param source 数据源对象（GeoJsonSource、VectorSource、RasterSource 等 NAPI 对象）
      */
-    addSource(source: Object): void;
+    addSource(source: Source): void;
 
     /**
      * 移除数据源
@@ -50,13 +55,13 @@ export class Style {
      * @param sourceId 数据源 ID
      * @returns 数据源对象，如果不存在则返回 null
      */
-    getSource(sourceId: string): Object | null;
+    getSource(sourceId: string): Source | null;
 
     /**
      * 获取所有数据源
      * @returns 数据源列表
      */
-    getSources(): Object[];
+    getSources(): Source[];
 
     // ========== 图层管理 ==========
 
@@ -64,28 +69,28 @@ export class Style {
      * 添加图层（添加到顶部）
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      */
-    addLayer(layer: Object): void;
+    addLayer(layer: Layer): void;
 
     /**
      * 在指定图层下方添加图层
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      * @param belowLayerId 参考图层 ID（新图层将添加到此图层下方）
      */
-    addLayerBelow(layer: Object, belowLayerId: string): void;
+    addLayerBelow(layer: Layer, belowLayerId: string): void;
 
     /**
      * 在指定图层上方添加图层
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      * @param aboveLayerId 参考图层 ID（新图层将添加到此图层上方）
      */
-    addLayerAbove(layer: Object, aboveLayerId: string): void;
+    addLayerAbove(layer: Layer, aboveLayerId: string): void;
 
     /**
      * 在指定索引位置添加图层
      * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
      * @param index 索引位置
      */
-    addLayerAt(layer: Object, index: number): void;
+    addLayerAt(layer: Layer, index: number): void;
 
     /**
      * 移除指定图层
@@ -106,13 +111,13 @@ export class Style {
      * @param layerId 图层 ID
      * @returns 图层对象，如果不存在则返回 null
      */
-    getLayer(layerId: string): Object | null;
+    getLayer(layerId: string): Layer | null;
 
     /**
      * 获取所有图层
      * @returns 图层列表
      */
-    getLayers(): Object[];
+    getLayers(): Layer[];
 
     // ========== 图像管理 ==========
 
@@ -214,22 +219,29 @@ export class StyleBuilder {
      * @param source 数据源对象
      * @returns this 支持链式调用
      */
-    withSource(source: Object): this;
+    withSource(source: Source): this;
 
     /**
      * 添加图层（样式加载完成后添加）
      * @param layer 图层对象
      * @returns this 支持链式调用
      */
-    withLayer(layer: Object): this;
+    withLayer(layer: Layer): this;
 
     /**
      * 添加图像（样式加载完成后添加）
-     * @param name 图像名称
-     * @param image 图像对象
+     * @param image 图像对象（包含名称、数据等完整信息）
      * @returns this 支持链式调用
      */
-    withImage(name: string, image: Object): this;
+    withImage(image: Image): this;
+    
+    /**
+     * 添加图像（从 PixelMap 创建）
+     * @param name 图像名称
+     * @param pixelMap HarmonyOS PixelMap 对象
+     * @returns this 支持链式调用
+     */
+    withImage(name: string, pixelMap: image.PixelMap): this;
 
     /**
      * 设置过渡选项

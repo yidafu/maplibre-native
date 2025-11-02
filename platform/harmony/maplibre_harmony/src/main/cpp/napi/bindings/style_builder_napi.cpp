@@ -2,6 +2,8 @@
 #include "napi/core/napi_utils.h"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
+#include <multimedia/image_framework/image_pixel_map_napi.h>
+#include <multimedia/image_framework/image_pixel_map_mdk.h>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -229,79 +231,127 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "withImage requires imageId and image data arguments");
+    if (argc < 1) {
+        napi_throw_error(env, nullptr, "withImage requires at least 1 argument");
         return nullptr;
     }
     
     try {
-        // 解析图像 ID
-        std::string imageId = GetStringFromValue(env, args[0]);
-        
-        // 解析图像数据（ArrayBuffer 或 Image 对象）
-        napi_valuetype type;
-        napi_typeof(env, args[1], &type);
-        
         ImageData imageData;
-        imageData.id = imageId;
         imageData.pixelRatio = 1.0f;  // 默认值
         
-        if (type == napi_object) {
-            // 检查是否是 ArrayBuffer
-            bool isArrayBuffer;
-            napi_is_arraybuffer(env, args[1], &isArrayBuffer);
+        // 检查第一个参数类型，判断是哪个重载
+        napi_valuetype firstArgType;
+        napi_typeof(env, args[0], &firstArgType);
+        
+        if (argc == 2 && firstArgType == napi_string) {
+            // 形式 2: withImage(name: string, pixelMap: PixelMap)
+            imageData.id = GetStringFromValue(env, args[0]);
             
-            if (isArrayBuffer) {
-                // 处理 ArrayBuffer
-                void* bufferData;
-                size_t bufferLength;
-                napi_get_arraybuffer_info(env, args[1], &bufferData, &bufferLength);
-                
-                imageData.data.resize(bufferLength);
-                std::memcpy(imageData.data.data(), bufferData, bufferLength);
-                
-                // 需要额外的宽度和高度参数
-                Logger::warn("StyleBuilderNAPI", "withImage: ArrayBuffer requires width and height parameters");
-                
-            } else {
-                // 可能是 Image 对象，尝试提取属性
-                napi_value widthValue, heightValue, dataValue, pixelRatioValue;
-                
-                if (napi_get_named_property(env, args[1], "width", &widthValue) == napi_ok) {
-                    int32_t width;
-                    napi_get_value_int32(env, widthValue, &width);
-                    imageData.width = static_cast<uint32_t>(width);
-                }
-                
-                if (napi_get_named_property(env, args[1], "height", &heightValue) == napi_ok) {
-                    int32_t height;
-                    napi_get_value_int32(env, heightValue, &height);
-                    imageData.height = static_cast<uint32_t>(height);
-                }
-                
-                if (napi_get_named_property(env, args[1], "pixelRatio", &pixelRatioValue) == napi_ok) {
-                    double pixelRatio;
-                    napi_get_value_double(env, pixelRatioValue, &pixelRatio);
-                    imageData.pixelRatio = static_cast<float>(pixelRatio);
-                }
-                
-                if (napi_get_named_property(env, args[1], "data", &dataValue) == napi_ok) {
-                    bool isDataArrayBuffer;
-                    napi_is_arraybuffer(env, dataValue, &isDataArrayBuffer);
-                    if (isDataArrayBuffer) {
-                        void* bufferData;
-                        size_t bufferLength;
-                        napi_get_arraybuffer_info(env, dataValue, &bufferData, &bufferLength);
-                        
-                        imageData.data.resize(bufferLength);
-                        std::memcpy(imageData.data.data(), bufferData, bufferLength);
-                    }
-                }
+            // 获取 PixelMap 对象
+            napi_value pixelMapValue = args[1];
+            
+            // 获取原生 PixelMap 句柄
+            NativePixelMap* nativePixelMap = OH_PixelMap_InitNativePixelMap(env, pixelMapValue);
+            if (!nativePixelMap) {
+                Logger::error("StyleBuilderNAPI", "Failed to get native PixelMap");
+                napi_throw_error(env, nullptr, "Failed to get native PixelMap");
+                return nullptr;
             }
+            
+            // 获取图像信息
+            OhosPixelMapInfos imageInfo;
+            int32_t result = OH_PixelMap_GetImageInfo(nativePixelMap, &imageInfo);
+            if (result != 0) {
+                Logger::error("StyleBuilderNAPI", "Failed to get PixelMap image info, error: %d", result);
+                napi_throw_error(env, nullptr, "Failed to get PixelMap image info");
+                return nullptr;
+            }
+            
+            imageData.width = static_cast<uint32_t>(imageInfo.width);
+            imageData.height = static_cast<uint32_t>(imageInfo.height);
+            
+            Logger::info("StyleBuilderNAPI", "Converting PixelMap to image data: %dx%d", imageData.width, imageData.height);
+            
+            // 访问像素数据
+            void* pixelDataPtr = nullptr;
+            result = OH_PixelMap_AccessPixels(nativePixelMap, &pixelDataPtr);
+            if (result != 0 || !pixelDataPtr) {
+                Logger::error("StyleBuilderNAPI", "Failed to access PixelMap pixels, error: %d", result);
+                napi_throw_error(env, nullptr, "Failed to access PixelMap pixels");
+                return nullptr;
+            }
+            
+            // 复制像素数据
+            size_t dataSize = imageData.width * imageData.height * 4; // RGBA
+            imageData.data.resize(dataSize);
+            std::memcpy(imageData.data.data(), pixelDataPtr, dataSize);
+            
+            // 释放像素数据访问
+            OH_PixelMap_UnAccessPixels(nativePixelMap);
+            
+        } else if (argc == 1 && firstArgType == napi_object) {
+            // 形式 1: withImage(image: Image)
+            napi_value imageObj = args[0];
+            
+            // 从 Image 对象提取属性
+            napi_value nameValue, widthValue, heightValue, dataValue, pixelRatioValue;
+            
+            // 获取图像名称（必需）
+            if (napi_get_named_property(env, imageObj, "name", &nameValue) == napi_ok) {
+                imageData.id = GetStringFromValue(env, nameValue);
+            } else {
+                napi_throw_error(env, nullptr, "Image object must have 'name' property");
+                return nullptr;
+            }
+            
+            // 获取宽度（必需）
+            if (napi_get_named_property(env, imageObj, "width", &widthValue) == napi_ok) {
+                int32_t width;
+                napi_get_value_int32(env, widthValue, &width);
+                imageData.width = static_cast<uint32_t>(width);
+            }
+            
+            // 获取高度（必需）
+            if (napi_get_named_property(env, imageObj, "height", &heightValue) == napi_ok) {
+                int32_t height;
+                napi_get_value_int32(env, heightValue, &height);
+                imageData.height = static_cast<uint32_t>(height);
+            }
+            
+            // 获取像素比率（可选）
+            if (napi_get_named_property(env, imageObj, "pixelRatio", &pixelRatioValue) == napi_ok) {
+                double pixelRatio;
+                napi_get_value_double(env, pixelRatioValue, &pixelRatio);
+                imageData.pixelRatio = static_cast<float>(pixelRatio);
+            }
+            
+            // 获取图像数据（必需）
+            if (napi_get_named_property(env, imageObj, "data", &dataValue) == napi_ok) {
+                bool isDataArrayBuffer;
+                napi_is_arraybuffer(env, dataValue, &isDataArrayBuffer);
+                if (isDataArrayBuffer) {
+                    void* bufferData;
+                    size_t bufferLength;
+                    napi_get_arraybuffer_info(env, dataValue, &bufferData, &bufferLength);
+                    
+                    imageData.data.resize(bufferLength);
+                    std::memcpy(imageData.data.data(), bufferData, bufferLength);
+                } else {
+                    napi_throw_error(env, nullptr, "Image 'data' property must be ArrayBuffer");
+                    return nullptr;
+                }
+            } else {
+                napi_throw_error(env, nullptr, "Image object must have 'data' property");
+                return nullptr;
+            }
+        } else {
+            napi_throw_error(env, nullptr, "Invalid arguments for withImage");
+            return nullptr;
         }
         
         builder->preloadedImages.push_back(std::move(imageData));
-        Logger::info("StyleBuilderNAPI", "withImage: added image '%s' to preload list", imageId.c_str());
+        Logger::info("StyleBuilderNAPI", "withImage: added image '%s' to preload list", imageData.id.c_str());
         
     } catch (const std::exception& e) {
         Logger::error("StyleBuilderNAPI", "withImage failed: %s", e.what());

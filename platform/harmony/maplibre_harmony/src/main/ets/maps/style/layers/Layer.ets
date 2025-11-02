@@ -13,6 +13,29 @@ import { FillExtrusionLayer } from './FillExtrusionLayer';
 import { RasterLayer } from './RasterLayer';
 import { HillshadeLayer } from './HillshadeLayer';
 import { BackgroundLayer } from './BackgroundLayer';
+import type { FilterExpression } from './Expression';
+import type {
+  BackgroundLayout,
+  FillLayout,
+  LineLayout,
+  SymbolLayout,
+  CircleLayout,
+  HeatmapLayout,
+  FillExtrusionLayout,
+  RasterLayout,
+  HillshadeLayout
+} from './LayerLayout';
+import type {
+  BackgroundPaint,
+  FillPaint,
+  LinePaint,
+  SymbolPaint,
+  CirclePaint,
+  HeatmapPaint,
+  FillExtrusionPaint,
+  RasterPaint,
+  HillshadePaint
+} from './LayerPaint';
 
 // Layer 类型是所有具体图层类型的联合类型
 export type Layer = 
@@ -29,31 +52,61 @@ export type Layer =
 /**
  * LayerFilter - 图层过滤器类型
  * 
- * MapLibre表达式数组，用于过滤要素
+ * MapLibre 表达式数组，用于过滤要素
+ * 
+ * @see https://maplibre.org/maplibre-style-spec/layers/#filter
  * @example
  * ["==", ["get", "type"], "restaurant"]
  * ["all", [">=", ["get", "price"], 10], ["<", ["get", "price"], 100]]
+ * ["in", "class", ["literal", ["motorway", "trunk"]]]
  */
-export type LayerFilter = Object[] | null;
+export type LayerFilter = FilterExpression | null;
 
 /**
  * LayerLayout - 图层布局属性类型
  * 
  * 布局属性控制图层的几何位置和可见性
+ * 每种图层类型都有特定的布局属性集
+ * 
+ * @see https://maplibre.org/maplibre-style-spec/layers/#layout
  */
-export type LayerLayout = Record<string, Object>;
+export type LayerLayout = 
+  | BackgroundLayout 
+  | FillLayout 
+  | LineLayout 
+  | SymbolLayout 
+  | CircleLayout 
+  | HeatmapLayout 
+  | FillExtrusionLayout 
+  | RasterLayout 
+  | HillshadeLayout;
 
 /**
  * LayerPaint - 图层绘制属性类型
  * 
  * 绘制属性控制图层的视觉样式
+ * 每种图层类型都有特定的绘制属性集
+ * 
+ * @see https://maplibre.org/maplibre-style-spec/layers/#paint
  */
-export type LayerPaint = Record<string, Object>;
+export type LayerPaint = 
+  | BackgroundPaint 
+  | FillPaint 
+  | LinePaint 
+  | SymbolPaint 
+  | CirclePaint 
+  | HeatmapPaint 
+  | FillExtrusionPaint 
+  | RasterPaint 
+  | HillshadePaint;
 
 /**
  * LayerMetadata - 图层元数据类型
  * 
  * 用于存储图层的自定义元数据
+ * 这是用户自定义的任意数据，不受 MapLibre 规范限制
+ * 
+ * @see https://maplibre.org/maplibre-style-spec/layers/#metadata
  */
 export type LayerMetadata = Record<string, Object> | null;
 

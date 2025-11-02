@@ -4,6 +4,26 @@
  * 封装 NAPI Style 类，避免暴露内部类型
  */
 import maplibre from 'libmaplibre.so';
+import type { Layer } from './layers/Layer';
+import type { Source } from './sources/Source';
+
+// Source 包装类
+import { GeoJsonSource } from './sources/GeoJsonSource';
+import { VectorSource } from './sources/VectorSource';
+import { RasterSource } from './sources/RasterSource';
+import { RasterDemSource } from './sources/RasterDemSource';
+import { ImageSource } from './sources/ImageSource';
+
+// Layer 包装类
+import { FillLayer } from './layers/FillLayer';
+import { LineLayer } from './layers/LineLayer';
+import { CircleLayer } from './layers/CircleLayer';
+import { SymbolLayer } from './layers/SymbolLayer';
+import { RasterLayer } from './layers/RasterLayer';
+import { BackgroundLayer } from './layers/BackgroundLayer';
+import { HeatmapLayer } from './layers/HeatmapLayer';
+import { HillshadeLayer } from './layers/HillshadeLayer';
+import { FillExtrusionLayer } from './layers/FillExtrusionLayer';
 
 /**
  * 内部标记，防止外部直接构造 Style
@@ -46,6 +66,76 @@ export class Style {
     return this.nativeInstance;
   }
 
+  // ========== 类型转换辅助函数 ==========
+
+  /**
+   * 将 NAPI Source 对象包装为对应的 ETS Source 类
+   */
+  private static wrapSource(nativeSource: Object): Source | null {
+    if (!nativeSource) {
+      return null;
+    }
+
+    // 通过 instanceof 判断具体类型
+    if (nativeSource instanceof maplibre.GeoJsonSource) {
+      return GeoJsonSource.fromNative(nativeSource as maplibre.GeoJsonSource);
+    }
+    if (nativeSource instanceof maplibre.VectorSource) {
+      return VectorSource.fromNative(nativeSource as maplibre.VectorSource);
+    }
+    if (nativeSource instanceof maplibre.RasterSource) {
+      return RasterSource.fromNative(nativeSource as maplibre.RasterSource);
+    }
+    if (nativeSource instanceof maplibre.RasterDemSource) {
+      return RasterDemSource.fromNative(nativeSource as maplibre.RasterDemSource);
+    }
+    if (nativeSource instanceof maplibre.ImageSource) {
+      return ImageSource.fromNative(nativeSource as maplibre.ImageSource);
+    }
+
+    return null;
+  }
+
+  /**
+   * 将 NAPI Layer 对象包装为对应的 ETS Layer 类
+   */
+  private static wrapLayer(nativeLayer: Object): Layer | null {
+    if (!nativeLayer) {
+      return null;
+    }
+
+    // 通过 instanceof 判断具体类型
+    if (nativeLayer instanceof maplibre.FillLayer) {
+      return FillLayer.fromNative(nativeLayer as maplibre.FillLayer);
+    }
+    if (nativeLayer instanceof maplibre.LineLayer) {
+      return LineLayer.fromNative(nativeLayer as maplibre.LineLayer);
+    }
+    if (nativeLayer instanceof maplibre.CircleLayer) {
+      return CircleLayer.fromNative(nativeLayer as maplibre.CircleLayer);
+    }
+    if (nativeLayer instanceof maplibre.SymbolLayer) {
+      return SymbolLayer.fromNative(nativeLayer as maplibre.SymbolLayer);
+    }
+    if (nativeLayer instanceof maplibre.RasterLayer) {
+      return RasterLayer.fromNative(nativeLayer as maplibre.RasterLayer);
+    }
+    if (nativeLayer instanceof maplibre.BackgroundLayer) {
+      return BackgroundLayer.fromNative(nativeLayer as maplibre.BackgroundLayer);
+    }
+    if (nativeLayer instanceof maplibre.HeatmapLayer) {
+      return HeatmapLayer.fromNative(nativeLayer as maplibre.HeatmapLayer);
+    }
+    if (nativeLayer instanceof maplibre.HillshadeLayer) {
+      return HillshadeLayer.fromNative(nativeLayer as maplibre.HillshadeLayer);
+    }
+    if (nativeLayer instanceof maplibre.FillExtrusionLayer) {
+      return FillExtrusionLayer.fromNative(nativeLayer as maplibre.FillExtrusionLayer);
+    }
+
+    return null;
+  }
+
   // ========== 基本方法 ==========
 
   /**
@@ -73,9 +163,11 @@ export class Style {
 
   /**
    * 添加数据源
+   * 
+   * @param source ETS Source 包装对象
    */
-  addSource(source: Object): void {
-    this.nativeInstance.addSource(source);
+  addSource(source: Source): void {
+    this.nativeInstance.addSource(source.getNative());
   }
 
   /**
@@ -88,45 +180,61 @@ export class Style {
   /**
    * 获取指定数据源
    */
-  getSource(sourceId: string): Object | null {
-    return this.nativeInstance.getSource(sourceId);
+  getSource(sourceId: string): Source | null {
+    const nativeSource = this.nativeInstance.getSource(sourceId);
+    if (nativeSource == null) return null
+    return Style.wrapSource(nativeSource);
   }
 
   /**
    * 获取所有数据源
    */
-  getSources(): Object[] {
-    return this.nativeInstance.getSources();
+  getSources(): Source[] {
+    const nativeSources = this.nativeInstance.getSources();
+    return nativeSources
+      .map(nativeSource => Style.wrapSource(nativeSource))
+      .filter(source => source !== null) as Source[];
   }
 
   // ========== 图层管理 ==========
 
   /**
    * 添加图层（添加到顶部）
+   * 
+   * @param layer ETS Layer 包装对象
    */
-  addLayer(layer: Object): void {
-    this.nativeInstance.addLayer(layer);
+  addLayer(layer: Layer): void {
+    this.nativeInstance.addLayer(layer.getNative());
   }
 
   /**
    * 在指定图层下方添加图层
+   * 
+   * @param layer ETS Layer 包装对象
+   * @param belowLayerId 参考图层的 ID
    */
-  addLayerBelow(layer: Object, belowLayerId: string): void {
-    this.nativeInstance.addLayerBelow(layer, belowLayerId);
+  addLayerBelow(layer: Layer, belowLayerId: string): void {
+    this.nativeInstance.addLayerBelow(layer.getNative(), belowLayerId);
   }
 
   /**
    * 在指定图层上方添加图层
+   * 
+   * @param layer ETS Layer 包装对象
+   * @param aboveLayerId 参考图层的 ID
    */
-  addLayerAbove(layer: Object, aboveLayerId: string): void {
-    this.nativeInstance.addLayerAbove(layer, aboveLayerId);
+  addLayerAbove(layer: Layer, aboveLayerId: string): void {
+    this.nativeInstance.addLayerAbove(layer.getNative(), aboveLayerId);
   }
 
   /**
    * 在指定索引位置添加图层
+   * 
+   * @param layer ETS Layer 包装对象
+   * @param index 目标索引位置
    */
-  addLayerAt(layer: Object, index: number): void {
-    this.nativeInstance.addLayerAt(layer, index);
+  addLayerAt(layer: Layer, index: number): void {
+    this.nativeInstance.addLayerAt(layer.getNative(), index);
   }
 
   /**
@@ -146,15 +254,20 @@ export class Style {
   /**
    * 获取指定图层
    */
-  getLayer(layerId: string): Object | null {
-    return this.nativeInstance.getLayer(layerId);
+  getLayer(layerId: string): Layer | null {
+    const nativeLayer = this.nativeInstance.getLayer(layerId);
+    if (nativeLayer == null) return null
+    return Style.wrapLayer(nativeLayer);
   }
 
   /**
    * 获取所有图层
    */
-  getLayers(): Object[] {
-    return this.nativeInstance.getLayers();
+  getLayers(): Layer[] {
+    const nativeLayers = this.nativeInstance.getLayers();
+    return nativeLayers
+      .map(nativeLayer => Style.wrapLayer(nativeLayer))
+      .filter(layer => layer !== null) as Layer[];
   }
 
   // ========== 图像管理 ==========

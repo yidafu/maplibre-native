@@ -52,6 +52,14 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         
+        // Visibility control
+        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Filter
+        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
         // Layout properties - Icon (支持 Expression)
         { "setIconImage", nullptr, SetIconImage, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getIconImage", nullptr, GetIconImage, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -129,6 +137,8 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getTextRadialOffset", nullptr, GetTextRadialOffset, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setTextVariableAnchor", nullptr, SetTextVariableAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getTextVariableAnchor", nullptr, GetTextVariableAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setTextVariableAnchorOffset", nullptr, SetTextVariableAnchorOffset, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getTextVariableAnchorOffset", nullptr, GetTextVariableAnchorOffset, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setTextRotate", nullptr, SetTextRotate, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getTextRotate", nullptr, GetTextRotate, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setTextPadding", nullptr, SetTextPadding, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -2395,6 +2405,140 @@ napi_value SymbolLayerNAPI::GetTextTranslateAnchor(napi_env env, napi_callback_i
     
     return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::TranslateAnchorType>(
         env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextTranslateAnchor
+    );
+}
+
+// ============================================================================
+// Visibility
+// ============================================================================
+
+napi_value SymbolLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return thisVar;
+    }
+    
+    std::string visibility = args.GetString(0, "visibility");
+    if (visibility == "visible") {
+        layerObj->layer->setVisibility(mbgl::style::VisibilityType::Visible);
+    } else if (visibility == "none") {
+        layerObj->layer->setVisibility(mbgl::style::VisibilityType::None);
+    }
+    
+    return thisVar;
+}
+
+napi_value SymbolLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    auto visibility = layerObj->layer->getVisibility();
+    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    
+    napi_value result;
+    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+// ============================================================================
+// Filter
+// ============================================================================
+
+napi_value SymbolLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    auto filter = mbgl::harmony::napiArrayToFilter(env, argv[0]);
+    if (filter) {
+        layerObj->layer->setFilter(*filter);
+    }
+    
+    return thisVar;
+}
+
+napi_value SymbolLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    auto filter = layerObj->layer->getFilter();
+    return mbgl::harmony::filterToNapiArray(env, filter);
+}
+
+// ============================================================================
+// Text Variable Anchor Offset
+// ============================================================================
+
+napi_value SymbolLayerNAPI::SetTextVariableAnchorOffset(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    
+    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::VariableAnchorOffsetCollection>(
+        env, layerObj->layer.get(), argv[0], "text-variable-anchor-offset",
+        &mbgl::style::SymbolLayer::setTextVariableAnchorOffset
+    );
+    return thisVar;
+}
+
+napi_value SymbolLayerNAPI::GetTextVariableAnchorOffset(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    SymbolLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::VariableAnchorOffsetCollection>(
+        env, layerObj->layer.get(), &mbgl::style::SymbolLayer::getTextVariableAnchorOffset
     );
 }
 

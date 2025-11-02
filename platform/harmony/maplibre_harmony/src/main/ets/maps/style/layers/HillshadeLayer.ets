@@ -2,6 +2,21 @@
  * HillshadeLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { NumberValue , ExpressionLiteral } from 'libmaplibre.so';
+import { Expression } from '../expressions/index';
+
+
+/**
+ * 转换属性值 - 将 Expression 对象转为数组
+ * @param value 属性值（常量、Expression 对象或字面量数组）
+ * @returns 转换后的值（常量或数组）
+ */
+function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
+  if (value instanceof Expression) {
+    return value.toArray();
+  }
+  return value as T | ExpressionLiteral;
+}
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -63,13 +78,13 @@ export class HillshadeLayer {
 
   // ========== Hillshade 样式属性方法 ==========
 
-  setHillshadeExaggeration(value: ESObject): HillshadeLayer {
-    this.nativeInstance.setHillshadeExaggeration(value);
+  setHillshadeIlluminationDirection(direction: NumberValue): HillshadeLayer {
+    this.nativeInstance.setHillshadeIlluminationDirection(direction);
     return this;
   }
 
-  setHillshadeIlluminationDirection(value: ESObject): HillshadeLayer {
-    this.nativeInstance.setHillshadeIlluminationDirection(value);
+  setHillshadeExaggeration(exaggeration: NumberValue): HillshadeLayer {
+    this.nativeInstance.setHillshadeExaggeration(convertValue(exaggeration));
     return this;
   }
 }

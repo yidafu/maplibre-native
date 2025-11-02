@@ -1,55 +1,78 @@
 /**
  * PropertyTypes - 图层属性值类型定义
  * 
- * 这些类型定义与 NAPI 层的 LayerPropertyTypes.d.ts 保持一致
- * 支持常量值和 Expression 表达式
- * 
- * 注意：ExpressionNAPI 在 NAPI 层定义为接口，在 ArkTS 层使用 Object 来表示
+ * 重新导出 NAPI 层的类型定义，并扩展支持 ETS Expression 对象
+ * 支持三种形式：常量值、Expression 对象、Expression 字面量
  */
+
+import { Expression, ExpressionLiteral } from '../expressions/Expression';
+
+// 从 libmaplibre.so 导入基础表达式类型
+export type { 
+    ExpressionValue, 
+    ExpressionLiteral,
+    InterpolationType,
+    ComparisonExpression,
+    LogicalExpression,
+    LookupExpression,
+    MathExpression,
+    ConditionalExpression,
+    InterpolationExpression,
+    TypeExpression,
+    StringExpression,
+    ColorExpression,
+    FeatureDataExpression,
+    ContextExpression,
+    VariableExpression
+} from 'libmaplibre.so';
 
 /**
  * ColorValue - 颜色值类型
  * 
- * 支持：
- * - 十六进制颜色字符串: "#FF0000", "#F00", "#FF0000FF"
- * - RGB/RGBA字符串: "rgb(255, 0, 0)", "rgba(255, 0, 0, 1.0)"
- * - HSL/HSLA字符串: "hsl(0, 100%, 50%)", "hsla(0, 100%, 50%, 1.0)"
- * - 颜色名称: "red", "blue", "transparent"
- * - MapLibre表达式对象: ExpressionNAPI 实例
+ * 支持三种形式：
+ * 1. 颜色字符串常量: "#FF0000", "rgb(255,0,0)", "red"
+ * 2. Expression 对象: Expression 类实例
+ * 3. Expression 字面量: JSON 数组格式 ["get", "color"]
  */
-export type ColorValue = string | Object;
+export type ColorValue = string | Expression | ExpressionLiteral;
 
 /**
  * NumberValue - 数值类型
  * 
- * 支持：
- * - 数字常量: 5, 10.5, 0
- * - MapLibre表达式对象: ExpressionNAPI 实例
+ * 支持三种形式：
+ * 1. 数值常量: 5, 10.5, 0
+ * 2. Expression 对象: Expression 类实例
+ * 3. Expression 字面量: JSON 数组格式 ["get", "size"]
  */
-export type NumberValue = number | Object;
+export type NumberValue = number | Expression | ExpressionLiteral;
 
 /**
  * BooleanValue - 布尔值类型
  * 
- * 支持：
- * - 布尔常量: true, false
- * - MapLibre表达式对象: ExpressionNAPI 实例
+ * 支持三种形式：
+ * 1. 布尔常量: true, false
+ * 2. Expression 对象: Expression 类实例
+ * 3. Expression 字面量: JSON 数组格式 ["get", "visible"]
  */
-export type BooleanValue = boolean | Object;
+export type BooleanValue = boolean | Expression | ExpressionLiteral;
 
 /**
  * StringValue - 字符串值类型
  * 
- * 支持：
- * - 字符串常量: "solid", "round", "bevel"
- * - MapLibre表达式对象: ExpressionNAPI 实例
+ * 支持三种形式：
+ * 1. 字符串常量: "solid", "round", "bevel"
+ * 2. Expression 对象: Expression 类实例
+ * 3. Expression 字面量: JSON 数组格式 ["get", "lineJoin"]
  */
-export type StringValue = string | Object;
+export type StringValue = string | Expression | ExpressionLiteral;
 
 /**
  * PropertyValue - 通用属性值类型
  * 
- * 支持任何基础类型或表达式对象
+ * 支持三种形式：
+ * 1. T 类型的常量值
+ * 2. Expression 对象: Expression 类实例
+ * 3. Expression 字面量: JSON 数组格式
  */
-export type PropertyValue<T> = T | Object;
+export type PropertyValue<T> = T | Expression | ExpressionLiteral;
 

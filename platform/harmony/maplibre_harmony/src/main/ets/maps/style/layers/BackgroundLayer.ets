@@ -2,6 +2,21 @@
  * BackgroundLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { ColorValue, NumberValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
+import { Expression } from '../expressions/index';
+
+
+/**
+ * 转换属性值 - 将 Expression 对象转为数组
+ * @param value 属性值（常量、Expression 对象或字面量数组）
+ * @returns 转换后的值（常量或数组）
+ */
+function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
+  if (value instanceof Expression) {
+    return value.toArray();
+  }
+  return value as T | ExpressionLiteral;
+}
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -52,18 +67,28 @@ export class BackgroundLayer {
     return this;
   }
 
-  setBackgroundColor(color: ESObject): BackgroundLayer {
-    this.nativeInstance.setBackgroundColor(color);
+  setBackgroundColor(color: ColorValue): BackgroundLayer {
+    this.nativeInstance.setBackgroundColor(convertValue(color));
     return this;
   }
 
-  setBackgroundOpacity(opacity: ESObject): BackgroundLayer {
-    this.nativeInstance.setBackgroundOpacity(opacity);
+  setBackgroundOpacity(opacity: NumberValue): BackgroundLayer {
+    this.nativeInstance.setBackgroundOpacity(convertValue(opacity));
     return this;
   }
 
-  setBackgroundPattern(pattern: ESObject): BackgroundLayer {
-    this.nativeInstance.setBackgroundPattern(pattern);
+  setBackgroundPattern(pattern: PropertyValue<string>): BackgroundLayer {
+    this.nativeInstance.setBackgroundPattern(convertValue(pattern));
     return this;
+  }
+
+  // ========== Getter 方法 ==========
+
+  getBackgroundColor(): string | undefined {
+    return this.nativeInstance.getBackgroundColor();
+  }
+
+  getBackgroundOpacity(): number | undefined {
+    return this.nativeInstance.getBackgroundOpacity();
   }
 }

@@ -2,33 +2,38 @@
  * Layer 属性值类型定义
  * 
  * 所有 Layer 类型定义共享的属性值类型
- * 支持具体值或 Expression NAPI 对象
+ * 支持具体值或 Expression 字面量（JSON 数组格式）
  */
 
-import { ExpressionNAPI } from './Expression';
-
-/**
- * 属性值类型 - 支持具体值或 Expression
- */
-export type PropertyValue<T> = T | ExpressionNAPI;
+import type { ExpressionLiteral } from './ExpressionTypes';
 
 /**
- * 颜色值类型 - 支持颜色字符串或 Expression
+ * PropertyValue - 通用属性值类型
+ * 支持具体值或 Expression 字面量
  */
-export type ColorValue = string | ExpressionNAPI;
+export type PropertyValue<T> = T | ExpressionLiteral;
 
 /**
- * 数字值类型 - 支持数字或 Expression
+ * ColorValue - 颜色值类型
+ * 支持颜色字符串或 Expression 字面量
  */
-export type NumberValue = number | ExpressionNAPI;
+export type ColorValue = string | ExpressionLiteral;
 
 /**
- * 字符串值类型 - 支持字符串或 Expression
+ * NumberValue - 数值类型
+ * 支持数字或 Expression 字面量
  */
-export type StringValue = string | ExpressionNAPI;
+export type NumberValue = number | ExpressionLiteral;
 
 /**
- * 布尔值类型 - 支持布尔值或 Expression
+ * StringValue - 字符串值类型
+ * 支持字符串或 Expression 字面量
  */
-export type BooleanValue = boolean | ExpressionNAPI;
+export type StringValue = string | ExpressionLiteral;
+
+/**
+ * BooleanValue - 布尔值类型
+ * 支持布尔值或 Expression 字面量
+ */
+export type BooleanValue = boolean | ExpressionLiteral;
 

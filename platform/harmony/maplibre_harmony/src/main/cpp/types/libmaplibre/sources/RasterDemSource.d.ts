@@ -1,4 +1,24 @@
 /**
+ * RasterDemSourceOptions - 栅格 DEM 数据源选项
+ */
+export interface RasterDemSourceOptions {
+    /** 瓦片 URL */
+    url?: string;
+    /** 瓦片 URL 列表 */
+    tiles?: string[];
+    /** 最小缩放级别 */
+    minzoom?: number;
+    /** 最大缩放级别 */
+    maxzoom?: number;
+    /** 瓦片大小 */
+    tileSize?: number;
+    /** 瓦片坐标系统 */
+    scheme?: 'xyz' | 'tms';
+    /** DEM 编码方式 */
+    encoding?: 'mapbox' | 'terrarium';
+}
+
+/**
  * RasterDemSource - 栅格 DEM 数据源
  * 
  * 用于加载数字高程模型数据
@@ -9,7 +29,7 @@ export class RasterDemSource {
      * @param id 数据源 ID
      * @param options 可选配置
      */
-    constructor(id: string, options?: any);
+    constructor(id: string, options?: RasterDemSourceOptions);
     
     /**
      * 获取数据源 ID

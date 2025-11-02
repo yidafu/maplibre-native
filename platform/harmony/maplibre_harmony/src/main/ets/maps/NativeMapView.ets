@@ -1814,8 +1814,9 @@ export struct MapView {
         return margins.left;
       case OrnamentPosition.TopRight:
       case OrnamentPosition.BottomRight:
-      default:
         return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - 组件宽度 - 右边距
+      default:
+        return `calc(100% - 48vp - ${margins.right}vp)`; // 默认右侧（与 TopRight 一致）
     }
   }
   
@@ -1830,11 +1831,12 @@ export struct MapView {
     switch (position) {
       case OrnamentPosition.TopLeft:
       case OrnamentPosition.TopRight:
-      default:
         return margins.top;
       case OrnamentPosition.BottomLeft:
       case OrnamentPosition.BottomRight:
         return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - 组件高度 - 下边距
+      default:
+        return margins.top; // 默认顶部（与 TopRight 一致）
     }
   }
   
@@ -1849,11 +1851,12 @@ export struct MapView {
     switch (position) {
       case OrnamentPosition.TopLeft:
       case OrnamentPosition.BottomLeft:
-      default:
         return margins.left;
       case OrnamentPosition.TopRight:
       case OrnamentPosition.BottomRight:
         return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - Logo宽度 - 右边距
+      default:
+        return margins.left; // 默认左侧（与 BottomLeft 一致）
     }
   }
   
@@ -1871,8 +1874,9 @@ export struct MapView {
         return margins.top;
       case OrnamentPosition.BottomLeft:
       case OrnamentPosition.BottomRight:
-      default:
         return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - Logo高度 - 下边距
+      default:
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 默认底部（与 BottomLeft 一致）
     }
   }
   
@@ -1887,11 +1891,12 @@ export struct MapView {
     switch (position) {
       case OrnamentPosition.TopLeft:
       case OrnamentPosition.BottomLeft:
-      default:
         return margins.left;
       case OrnamentPosition.TopRight:
       case OrnamentPosition.BottomRight:
         return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - ScaleBar最大宽度 - 右边距
+      default:
+        return margins.left; // 默认左侧（与 TopLeft 一致）
     }
   }
   
@@ -1906,11 +1911,12 @@ export struct MapView {
     switch (position) {
       case OrnamentPosition.TopLeft:
       case OrnamentPosition.TopRight:
-      default:
         return margins.top;
       case OrnamentPosition.BottomLeft:
       case OrnamentPosition.BottomRight:
         return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - ScaleBar高度 - 下边距
+      default:
+        return margins.top; // 默认顶部（与 TopLeft 一致）
     }
   }
   

@@ -2,6 +2,9 @@
  * ExpressionTypes - Expression 系统的类型定义和接口
  */
 
+// 从 libmaplibre.so 重新导出核心表达式类型
+export type { ExpressionValue, ExpressionLiteral } from 'libmaplibre.so';
+
 /**
  * ValueExpression 接口
  * 用于可以直接转换为值的表达式
@@ -13,11 +16,6 @@ export interface ValueExpression<T = Object> {
    */
   toValue(): T | null;
 }
-
-/**
- * Expression 支持的值类型
- */
-export type ExpressionValue = number | string | boolean | null | Object | ExpressionValue[];
 
 /**
  * Collator 选项

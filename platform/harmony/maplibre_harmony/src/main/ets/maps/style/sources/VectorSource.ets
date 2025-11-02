@@ -2,6 +2,7 @@
  * VectorSource - 矢量数据源封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { VectorSourceOptions } from 'libmaplibre.so';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -11,18 +12,23 @@ class InternalMarker {
 export class VectorSource {
   private nativeInstance: maplibre.VectorSource;
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: ESObject | maplibre.VectorSource) {
+  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: VectorSourceOptions | maplibre.VectorSource) {
     if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
       this.nativeInstance = optionsOrNative as maplibre.VectorSource;
     } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.VectorSource(idOrMarker, optionsOrNative as ESObject);
+      this.nativeInstance = new maplibre.VectorSource(idOrMarker, optionsOrNative as VectorSourceOptions);
     } else {
       throw new Error('Invalid VectorSource constructor arguments');
     }
   }
 
-  static create(id: string, options?: ESObject): VectorSource {
+  static create(id: string, options?: VectorSourceOptions): VectorSource {
     return new VectorSource(id, options);
+  }
+  
+  setTiles(tiles: string[]): VectorSource {
+    this.nativeInstance.setTiles(tiles);
+    return this;
   }
 
   static fromNative(nativeInstance: maplibre.VectorSource): VectorSource {

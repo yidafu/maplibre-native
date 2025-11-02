@@ -2,6 +2,7 @@
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
+#include "style/filter_conversion.hpp"
 #include <mbgl/style/layers/hillshade_layer.hpp>
 #include <mbgl/style/property_value.hpp>
 #include <mbgl/style/types.hpp>
@@ -47,6 +48,10 @@ napi_value HillshadeLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setSourceLayer", nullptr, SetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -382,6 +387,92 @@ napi_value HillshadeLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info)
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
+}
+
+// ============================================================================
+// Source Layer
+// ============================================================================
+
+napi_value HillshadeLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    HillshadeLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        std::string sourceLayer = args.GetString(0, "sourceLayer");
+        layerObj->layer->setSourceLayer(sourceLayer);
+    }
+    
+    return thisVar;
+}
+
+napi_value HillshadeLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    HillshadeLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    napi_value result;
+    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+// ============================================================================
+// Filter
+// ============================================================================
+
+napi_value HillshadeLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    HillshadeLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer || argc < 1) {
+        return thisVar;
+    }
+    
+    auto filter = mbgl::harmony::napiArrayToFilter(env, argv[0]);
+    if (filter) {
+        layerObj->layer->setFilter(*filter);
+    }
+    
+    return thisVar;
+}
+
+napi_value HillshadeLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    HillshadeLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    auto filter = layerObj->layer->getFilter();
+    return mbgl::harmony::filterToNapiArray(env, filter);
 }
 
 } // namespace harmony

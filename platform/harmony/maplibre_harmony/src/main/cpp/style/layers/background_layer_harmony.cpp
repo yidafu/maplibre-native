@@ -44,6 +44,16 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
         // Layer base methods
         { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getType", nullptr, GetType, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Visibility control
+        { "setVisibility", nullptr, SetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getVisibility", nullptr, GetVisibility, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Zoom range control
+        { "setMinZoom", nullptr, SetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -245,6 +255,142 @@ napi_value BackgroundLayerNAPI::GetId(napi_env env, napi_callback_info info) {
 napi_value BackgroundLayerNAPI::GetType(napi_env env, napi_callback_info info) {
     napi_value result;
     napi_create_string_utf8(env, "background", NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+// ============================================================================
+// Visibility
+// ============================================================================
+
+napi_value BackgroundLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    BackgroundLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return thisVar;
+    }
+    
+    std::string visibility = args.GetString(0, "visibility");
+    if (visibility == "visible") {
+        layerObj->layer->setVisibility(mbgl::style::VisibilityType::Visible);
+    } else if (visibility == "none") {
+        layerObj->layer->setVisibility(mbgl::style::VisibilityType::None);
+    }
+    
+    return thisVar;
+}
+
+napi_value BackgroundLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    BackgroundLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    auto visibility = layerObj->layer->getVisibility();
+    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    
+    napi_value result;
+    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+// ============================================================================
+// Zoom Range
+// ============================================================================
+
+napi_value BackgroundLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    BackgroundLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
+        layerObj->layer->setMinZoom(minZoom);
+    }
+    
+    return thisVar;
+}
+
+napi_value BackgroundLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    BackgroundLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+    
+    float minZoom = layerObj->layer->getMinZoom();
+    napi_value result;
+    napi_create_double(env, minZoom, &result);
+    return result;
+}
+
+napi_value BackgroundLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    BackgroundLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        return thisVar;
+    }
+    
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
+        layerObj->layer->setMaxZoom(maxZoom);
+    }
+    
+    return thisVar;
+}
+
+napi_value BackgroundLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    BackgroundLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+    
+    float maxZoom = layerObj->layer->getMaxZoom();
+    napi_value result;
+    napi_create_double(env, maxZoom, &result);
     return result;
 }
 

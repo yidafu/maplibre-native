@@ -2,6 +2,7 @@
  * RasterDemSource - DEM 数据源封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { RasterDemSourceOptions } from 'libmaplibre.so';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -11,17 +12,17 @@ class InternalMarker {
 export class RasterDemSource {
   private nativeInstance: maplibre.RasterDemSource;
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: ESObject | maplibre.RasterDemSource) {
+  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: RasterDemSourceOptions | maplibre.RasterDemSource) {
     if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
       this.nativeInstance = optionsOrNative as maplibre.RasterDemSource;
     } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.RasterDemSource(idOrMarker, optionsOrNative as ESObject);
+      this.nativeInstance = new maplibre.RasterDemSource(idOrMarker, optionsOrNative as RasterDemSourceOptions);
     } else {
       throw new Error('Invalid RasterDemSource constructor arguments');
     }
   }
 
-  static create(id: string, options?: ESObject): RasterDemSource {
+  static create(id: string, options?: RasterDemSourceOptions): RasterDemSource {
     return new RasterDemSource(id, options);
   }
 

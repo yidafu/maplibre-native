@@ -137,9 +137,11 @@ export class MarkerLayerManager {
       
       // 设置初始数据（类型转换为 Object）
       this.source.setGeoJsonSync(emptyFeatureCollection as Object);
+      console.debug('[MarkerLayerManager] GeoJSON source created and data set');
       
-      // 添加 Source 到 Style
+      // 添加 Source 到 Style（传递 ETS 包装对象，Style 内部会调用 getNative()）
       style.addSource(this.source);
+      console.info('[MarkerLayerManager] Source added to style successfully');
       
       // 创建 SymbolLayer 使用数据驱动样式（使用 NAPI 类）
       this.layer = new SymbolLayer(
@@ -149,9 +151,11 @@ export class MarkerLayerManager {
       
       // 配置 Layer 属性（数据驱动）
       this.configureLayer(this.layer);
+      console.debug('[MarkerLayerManager] SymbolLayer configured');
       
-      // 添加 Layer 到 Style
+      // 添加 Layer 到 Style（传递 ETS 包装对象，Style 内部会调用 getNative()）
       style.addLayer(this.layer);
+      console.info('[MarkerLayerManager] Layer added to style successfully');
       
       this.initialized = true;
       console.info('[MarkerLayerManager] Initialized successfully');
@@ -168,20 +172,20 @@ export class MarkerLayerManager {
    * 配置 SymbolLayer 的数据驱动样式
    */
   private configureLayer(layer: SymbolLayer): void {
-    console.info('MarkerLayerManager: Configuring SymbolLayer with data-driven styling');
+    console.info('[MarkerLayerManager] Configuring SymbolLayer with data-driven styling');
     
     // ========== Icon 布局属性 ==========
     
-    // Icon 图像：使用 Expression 从 feature properties 获取
+    // Icon 图像：使用 Expression 从 feature properties 动态获取
     // 每个 Marker 可以有不同的图标
-    layer.setIconImage(IconFactory.DEFAULT_MARKER_ICON_ID);
+    layer.setIconImage(Expression.get("icon").toArray());
     
     // Icon 大小：默认 1.0
     layer.setIconSize(1.0);
     
     // Icon 旋转角度：使用 Expression 从 feature properties 获取
     // 支持每个 Marker 有不同的旋转角度
-    layer.setIconRotate(Expression.get("rotation").toArray() as Object);
+    layer.setIconRotate(Expression.get("rotation").toArray());
     
     // Icon 锚点：默认 bottom（底部中心）
     layer.setIconAnchor('bottom');
@@ -199,10 +203,10 @@ export class MarkerLayerManager {
         Expression.eq(Expression.get("visible"), Expression.literal(false)),
         Expression.literal(0),  // visible=false 时透明度为 0
         Expression.get("alpha")  // 否则使用 alpha 值
-      ).toArray() as Object
+      ).toArray()
     );
     
-    console.info('MarkerLayerManager: SymbolLayer configured with data-driven expressions successfully');
+    console.info('[MarkerLayerManager] SymbolLayer configured with data-driven expressions successfully');
   }
   
   /**
