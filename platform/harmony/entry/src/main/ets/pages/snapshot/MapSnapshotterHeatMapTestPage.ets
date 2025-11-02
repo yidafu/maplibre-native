@@ -74,7 +74,8 @@ struct MapSnapshotterHeatMapTestPage {
 
     try {
       const geojson = this.generateHeatmapData();
-      const source = new GeoJsonSource('heatmap-source', geojson);
+      const source = new GeoJsonSource('heatmap-source');
+      source.setGeoJson(geojson);
       this.mapController.getStyle()?.addSource(source);
 
       const heatmapLayer = new HeatmapLayer('heatmap-layer', 'heatmap-source');

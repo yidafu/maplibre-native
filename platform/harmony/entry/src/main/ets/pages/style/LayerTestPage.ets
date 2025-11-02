@@ -413,7 +413,7 @@ struct LayerTestPage {
         .setLineWidth(4)
         .setLineDasharray([2, 2]);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到图层边界
       this.flyToBounds(allPoints);
@@ -446,7 +446,7 @@ struct LayerTestPage {
         .setCircleStrokeWidth(2)
         .setCircleStrokeColor('#ffffff');
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到图层边界
       this.flyToBounds(allPoints);
@@ -477,7 +477,7 @@ struct LayerTestPage {
       layer.setTextSize(16);
       layer.setTextColor('#000000');
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到图层边界
       this.flyToBounds(allPoints);
@@ -542,7 +542,7 @@ struct LayerTestPage {
         .setHeatmapIntensity(1.5)
         .setHeatmapOpacity(0.8);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到图层边界
       this.flyToBounds(allPoints);
@@ -609,7 +609,7 @@ struct LayerTestPage {
         .setFillExtrusionColor('#0080ff')
         .setFillExtrusionOpacity(0.9);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // 提取边界点
       const allPoints: LatLng[] = [
@@ -660,7 +660,7 @@ struct LayerTestPage {
       const layer: RasterLayer = new RasterLayer('raster-test-layer', 'raster-test-source')
           .setRasterOpacity(0.5);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // 生成随机位置并 flyTo（栅格图层是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
@@ -690,12 +690,12 @@ struct LayerTestPage {
     this.currentLayer = 'BackgroundLayer';
 
     try {
-      const layer: object = new BackgroundLayer('background-test-layer')
+      const layer: BackgroundLayer = new BackgroundLayer('background-test-layer')
           .setBackgroundColor('#ffcccc')
         .setBackgroundOpacity(0.8);
       
       // 背景图层应该添加到最底层
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // 生成随机位置并 flyTo（背景图层是全局的，选择一个随机位置查看）
       const center = this.generateRandomLocation();

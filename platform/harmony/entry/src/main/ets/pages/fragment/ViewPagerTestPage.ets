@@ -28,16 +28,14 @@ struct ViewPagerTestPage {
     }
   }
   
-  private onMap1Ready = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController1 = new MapLibreMap(this.mapView, options);
+  private onMap1Ready = (map: MapLibreMap): void => {
+    this.mapController1 = map;
     this.mapController1.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController1.jumpTo(0, 39.9042, 116.4074, 0, 12);
   };
   
-  private onMap2Ready = (mapView: NativeMapView): void => {
-    const options = new MapLibreMapOptions();
-    this.mapController2 = new MapLibreMap(this.mapView, options);
+  private onMap2Ready = (map: MapLibreMap): void => {
+    this.mapController2 = map;
     this.mapController2.setStyleUrl(DEFAULT_STYLE_URLS.satellite);
     this.mapController2.jumpTo(0, 31.2304, 121.4737, 0, 12);
   };

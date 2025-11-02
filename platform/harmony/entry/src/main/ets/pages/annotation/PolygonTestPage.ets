@@ -133,8 +133,11 @@ struct PolygonTestPage {
       const props: Record<string, Object> = {};
       // 将finalCoordinates转换为正确的Position[][]类型
       const coords3d = finalCoordinates.map((ring: number[][]) => 
-        ring.map((coord: number[]) => [coord[0], coord[1], coord[2] || 0] as Position)
-      ) as Position[][];
+        ring.map((coord: number[]) => {
+          const pos: number[] = [coord[0], coord[1], coord[2] || 0];
+          return pos;
+        })
+      );
       const feature = GeoJson.polygonFeature(coords3d, props);
       
       const geojson = GeoJson.featureCollection([feature]);

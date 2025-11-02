@@ -6,6 +6,8 @@
 import maplibre from 'libmaplibre.so';
 import { OfflineRegionDefinition } from './OfflineRegionDefinition';
 import { OfflineRegionStatus } from './OfflineRegionStatus';
+import type { OfflineRegionObserver } from './OfflineRegionObserver';
+import type { OfflineRegionError } from './OfflineRegionError';
 
 /**
  * 下载状态枚举
@@ -15,28 +17,6 @@ export enum DownloadState {
   INACTIVE = 0,
   /** 活动状态（下载中） */
   ACTIVE = 1
-}
-
-/**
- * 离线区域错误信息
- */
-export interface OfflineRegionError {
-  /** 错误原因分类 */
-  reason: string;
-  /** 详细错误消息 */
-  message: string;
-}
-
-/**
- * 离线区域观察者接口
- */
-export interface OfflineRegionObserver {
-  /** 状态变化回调 */
-  onStatusChanged(status: OfflineRegionStatus): void;
-  /** 错误回调 */
-  onError(error: OfflineRegionError): void;
-  /** 瓦片数量超限回调 */
-  mapboxTileCountLimitExceeded(limit: number): void;
 }
 
 /**

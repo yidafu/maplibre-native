@@ -16,6 +16,7 @@ import {
   MapLibreMapOptions,
   OfflineManager
 } from 'maplibre_harmony';
+import type { OfflineRegionStatus } from 'libmaplibre.so';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import common from '@ohos.app.ability.common';
 
@@ -109,7 +110,7 @@ struct ChangeResourcesCachePathTestPage {
       // 遍历所有区域获取大小
       const promises = regions.map(region => {
         return new Promise<number>((resolve) => {
-          region.getStatus((result: string | Record<string, number>) => {
+          region.getStatus((result: string | OfflineRegionStatus) => {
             if (typeof result !== 'string') {
               resolve(result.completedResourceSize);
             } else {

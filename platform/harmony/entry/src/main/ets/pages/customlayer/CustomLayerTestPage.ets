@@ -85,7 +85,7 @@ struct CustomLayerTestPage {
         this.customLayer = new CustomLayer('custom-layer');
         
         // 添加图层
-        style.addLayer(this.customLayer);
+        style.addLayer(this.customLayer!);
         this.layerAdded = true;
         showToast('已添加CustomLayer (简化版)');
         console.info('[CustomLayerTestPage] Custom layer added');

@@ -240,7 +240,7 @@ struct OSMRasterMapPage {
       source.setTileSize(256);
       
       // 添加数据源
-      style.addSource(source);
+      style.addSource(source.getNative());
       
       hilog.info(DOMAIN, TAG, 'OSM Raster layer added successfully');
       hilog.info(DOMAIN, TAG, `  Source ID: ${source.getId()}`);

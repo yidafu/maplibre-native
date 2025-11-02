@@ -28,6 +28,7 @@ import {
   LineLayer,
   VectorSource
 } from 'maplibre_harmony';
+import type { PropertyValue } from 'libmaplibre.so';
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 import resourceManager from '@ohos.resourceManager';
@@ -384,7 +385,7 @@ struct RuntimeStyleTestPage {
           Expression.literal(20), Expression.literal('#000000')  // 黑色
         );
         
-        waterLayer.setFillColor(colorExpr);
+        waterLayer.setFillColor(colorExpr.toArray() as PropertyValue<string>);
         showToast('水体颜色随缩放变化');
         
         // 动画缩放以展示效果

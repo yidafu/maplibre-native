@@ -16,6 +16,7 @@ import {
   OfflineManager,
   OfflineRegion
 } from 'maplibre_harmony';
+import type { OfflineRegionStatus } from 'libmaplibre.so';
 import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import { promptAction } from '@kit.ArkUI';
 import common from '@ohos.app.ability.common';
@@ -87,7 +88,7 @@ struct OfflineManagerTestPage {
       let totalBytes = 0;
       for (const region of regions) {
       // 获取区域状态来获取大小信息
-      region.getStatus((result: string | Record<string, number>) => {
+      region.getStatus((result: string | OfflineRegionStatus) => {
         if (typeof result !== 'string') {
           totalBytes += result.completedResourceSize;
         }

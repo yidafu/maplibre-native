@@ -1,22 +1,23 @@
-import { 
+import {
   CircleLayer,
   Expression,
   GeoJsonSource,
   MapLibreMap,
-  NativeMapView
-,  Interpolator,  PropertyFactory} from 'maplibre_harmony';
+  NativeMapView,
+  PropertyFactory
+} from 'maplibre_harmony';
 import { router } from '@kit.ArkUI';
 
 /**
  * ExpressionTestPage - Expression 系统测试页面
- * 
+ *
  * 测试各种 Expression 操作符的功能
  */
 
 @Entry
 @Component
 struct ExpressionTestPage {
-  @State testResults:  string[] = [];
+  @State testResults: string[] = [];
 
   aboutToAppear() {
     this.runTests();
@@ -27,7 +28,7 @@ struct ExpressionTestPage {
    */
   private runTests() {
     this.testResults = [];
-    
+
     this.testLiteralExpressions();
     this.testColorExpressions();
     this.testDataAccessExpressions();
@@ -49,11 +50,11 @@ struct ExpressionTestPage {
       const strLiteral = Expression.literal('hello');
       const boolLiteral = Expression.literal(true);
       const arrayLiteral = Expression.literal([1, 2, 3]);
-      
+
       return `Number: ${JSON.stringify(numLiteral.toArray())}, ` +
-             `String: ${JSON.stringify(strLiteral.toArray())}, ` +
-             `Boolean: ${JSON.stringify(boolLiteral.toArray())}, ` +
-             `Array: ${JSON.stringify(arrayLiteral.toArray())}`;
+        `String: ${JSON.stringify(strLiteral.toArray())}, ` +
+        `Boolean: ${JSON.stringify(boolLiteral.toArray())}, ` +
+        `Array: ${JSON.stringify(arrayLiteral.toArray())}`;
     });
   }
 
@@ -64,9 +65,9 @@ struct ExpressionTestPage {
     this.addTest('Color Expressions', () => {
       const rgbColor = Expression.rgb(255, 0, 0);
       const rgbaColor = Expression.rgba(0, 255, 0, 0.5);
-      
+
       return `RGB: ${JSON.stringify(rgbColor.toArray())}, ` +
-             `RGBA: ${JSON.stringify(rgbaColor.toArray())}`;
+        `RGBA: ${JSON.stringify(rgbaColor.toArray())}`;
     });
   }
 
@@ -79,11 +80,11 @@ struct ExpressionTestPage {
       const hasName = Expression.has('name');
       const getId = Expression.id();
       const getType = Expression.geometryType();
-      
+
       return `get: ${JSON.stringify(getName.toArray())}, ` +
-             `has: ${JSON.stringify(hasName.toArray())}, ` +
-             `id: ${JSON.stringify(getId.toArray())}, ` +
-             `type: ${JSON.stringify(getType.toArray())}`;
+        `has: ${JSON.stringify(hasName.toArray())}, ` +
+        `id: ${JSON.stringify(getId.toArray())}, ` +
+        `type: ${JSON.stringify(getType.toArray())}`;
     });
   }
 
@@ -95,10 +96,10 @@ struct ExpressionTestPage {
       const eq = Expression.eq(Expression.get('value'), 100);
       const gt = Expression.gt(Expression.get('value'), 50);
       const lt = Expression.lt(Expression.get('value'), 150);
-      
+
       return `eq: ${JSON.stringify(eq.toArray())}, ` +
-             `gt: ${JSON.stringify(gt.toArray())}, ` +
-             `lt: ${JSON.stringify(lt.toArray())}`;
+        `gt: ${JSON.stringify(gt.toArray())}, ` +
+        `lt: ${JSON.stringify(lt.toArray())}`;
     });
   }
 
@@ -116,10 +117,10 @@ struct ExpressionTestPage {
         Expression.eq(Expression.get('type'), 'B')
       );
       const not = Expression.not(Expression.has('disabled'));
-      
+
       return `and: ${JSON.stringify(and.toArray())}, ` +
-             `or: ${JSON.stringify(or.toArray())}, ` +
-             `not: ${JSON.stringify(not.toArray())}`;
+        `or: ${JSON.stringify(or.toArray())}, ` +
+        `not: ${JSON.stringify(not.toArray())}`;
     });
   }
 
@@ -131,10 +132,10 @@ struct ExpressionTestPage {
       const add = Expression.add(Expression.literal(10), Expression.literal(20));
       const multiply = Expression.multiply(Expression.literal(5), Expression.literal(3));
       const sqrt = Expression.sqrt(Expression.literal(16));
-      
+
       return `add: ${JSON.stringify(add.toArray())}, ` +
-             `multiply: ${JSON.stringify(multiply.toArray())}, ` +
-             `sqrt: ${JSON.stringify(sqrt.toArray())}`;
+        `multiply: ${JSON.stringify(multiply.toArray())}, ` +
+        `sqrt: ${JSON.stringify(sqrt.toArray())}`;
     });
   }
 
@@ -149,10 +150,10 @@ struct ExpressionTestPage {
       );
       const upcase = Expression.upcase(Expression.literal('hello'));
       const downcase = Expression.downcase(Expression.literal('WORLD'));
-      
+
       return `concat: ${JSON.stringify(concat.toArray())}, ` +
-             `upcase: ${JSON.stringify(upcase.toArray())}, ` +
-             `downcase: ${JSON.stringify(downcase.toArray())}`;
+        `upcase: ${JSON.stringify(upcase.toArray())}, ` +
+        `downcase: ${JSON.stringify(downcase.toArray())}`;
     });
   }
 
@@ -163,13 +164,13 @@ struct ExpressionTestPage {
     this.addTest('Interpolation Expressions', () => {
       // 线性插值：根据缩放级别改变半径
       const interpolate = Expression.interpolate(
-        Interpolator.linear(),
+        Expression.linear(),
         Expression.zoom(),
         Expression.literal(5), Expression.literal(2),
         Expression.literal(10), Expression.literal(8),
         Expression.literal(15), Expression.literal(16)
       );
-      
+
       // 阶梯表达式：根据值选择颜色
       const step = Expression.step(
         Expression.get<number>('population'),
@@ -178,9 +179,9 @@ struct ExpressionTestPage {
         Expression.literal(50000), Expression.literal('#41b6c4'),
         Expression.literal(100000), Expression.literal('#253494')
       );
-      
+
       return `interpolate: ${JSON.stringify(interpolate.toArray()).substring(0, 100)}..., ` +
-             `step: ${JSON.stringify(step.toArray()).substring(0, 100)}...`;
+        `step: ${JSON.stringify(step.toArray()).substring(0, 100)}...`;
     });
   }
 
@@ -196,16 +197,16 @@ struct ExpressionTestPage {
         Expression.literal('water'), Expression.literal('#0000ff'),
         Expression.literal('#808080') // default
       );
-      
+
       // Case 表达式
       const caseExpr = Expression.switchCase(
         Expression.gt(Expression.get('value'), 100), Expression.literal('high'),
         Expression.gt(Expression.get('value'), 50), Expression.literal('medium'),
         Expression.literal('low')
       );
-      
+
       return `match: ${JSON.stringify(match.toArray()).substring(0, 80)}..., ` +
-             `case: ${JSON.stringify(caseExpr.toArray()).substring(0, 80)}...`;
+        `case: ${JSON.stringify(caseExpr.toArray()).substring(0, 80)}...`;
     });
   }
 
@@ -216,15 +217,15 @@ struct ExpressionTestPage {
     this.addTest('Layer Integration', () => {
       // 注意：CircleLayer 现在只是 NAPI 类型别名，需要通过 NAPI 创建
       // 这里只测试 Expression 和 PropertyFactory 的功能
-      
+
       // 创建半径 Expression（根据缩放级别插值）
       const radiusExpression = Expression.interpolate(
-        Interpolator.linear(),
+        Expression.linear(),
         Expression.zoom(),
         Expression.literal(5), Expression.literal(2),
         Expression.literal(10), Expression.literal(8)
       );
-      
+
       // 创建颜色 Expression（根据属性值）
       const colorExpression = Expression.match(
         Expression.get('type'),
@@ -232,12 +233,12 @@ struct ExpressionTestPage {
         Expression.literal('B'), Expression.literal('#00ff00'),
         Expression.literal('#0000ff')
       );
-      
+
       // 使用 PropertyFactory 创建属性
       const radiusProperty = PropertyFactory.circleRadius(
         Expression.multiply(Expression.get('size'), Expression.literal(10))
       );
-      
+
       const colorProperty = PropertyFactory.circleColor(
         Expression.rgb(
           Expression.get('red'),
@@ -245,10 +246,10 @@ struct ExpressionTestPage {
           Expression.get('blue')
         )
       );
-      
+
       return `Expression 属性创建成功. ` +
-             `radiusProperty: ${radiusProperty.toString()}, ` +
-             `colorProperty: ${colorProperty.toString()}`;
+        `radiusProperty: ${radiusProperty.toString()}, ` +
+        `colorProperty: ${colorProperty.toString()}`;
     });
   }
 
@@ -276,7 +277,7 @@ struct ExpressionTestPage {
             router.back();
           })
           .margin({ left: 5 })
-        
+
         Text('Expression 系统测试')
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
@@ -287,13 +288,13 @@ struct ExpressionTestPage {
       .width('100%')
       .height(56)
       .backgroundColor('#F5F5F5')
-      
+
       Button('重新运行测试')
         .onClick(() => {
           this.runTests();
         })
         .margin({ top: 10, bottom: 10 })
-      
+
       List() {
         ForEach(this.testResults, (result: string, index: number) => {
           ListItem() {

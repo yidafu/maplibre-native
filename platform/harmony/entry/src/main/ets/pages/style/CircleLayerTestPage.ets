@@ -22,6 +22,7 @@ import {
   SymbolLayer,
   Expression
 } from 'maplibre_harmony';
+import type { PropertyValue } from 'libmaplibre.so';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 import { http } from '@kit.NetworkKit';
 
@@ -317,7 +318,7 @@ struct CircleLayerTestPage {
             
             // 添加计数文本
             const countLayer = new SymbolLayer('count', 'bus-stop-cluster-source');
-            countLayer.setTextField(Expression.toString(Expression.get('point_count')));
+            countLayer.setTextField(Expression.get('point_count').toArray() as PropertyValue<string>);
             countLayer.setTextSize(12);
             countLayer.setTextColor('#FFFFFFFF');
             this.mapController!.addLayer(countLayer);

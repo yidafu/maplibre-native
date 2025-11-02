@@ -1,5 +1,5 @@
-import { LatLng, MapView, maplibre, Marker, Icon, MapLibreMap, NativeMapView } from 'maplibre_harmony';
-import router from '@ohos.router';
+import { LatLng, MapView, maplibre, Marker, Icon, MapLibreMap, NativeMapView, Rect,
+  ScreenCoordinate } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
@@ -15,19 +15,19 @@ type NullableNativeMapView = NativeMapView | null;
 @Component
 struct CoreAPITestPage {
   private mapView: NullableNativeMapView = null;
-  @State private testResults:  string[] = [];
+  @State private testResults: string[] = [];
   @State private currentPadding: number[] = [0, 0, 0, 0]
   @State private pixelRatio: number = 1.0;
   @State private showPaddingOverlay: boolean = true;
-  
+
   aboutToAppear() {
     hilog.info(DOMAIN, 'CoreAPITestPage', 'Page aboutToAppear');
   }
-  
+
   aboutToDisappear() {
     hilog.info(DOMAIN, 'CoreAPITestPage', 'Page aboutToDisappear');
   }
-  
+
   /**
    * 添加测试结果
    */
@@ -37,7 +37,7 @@ struct CoreAPITestPage {
       this.testResults.shift(); // 保持最多 20 条
     }
   }
-  
+
   /**
    * 测试内容边距 API
    */
@@ -46,18 +46,18 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       // 测试设置边距
       const newPadding = [100, 50, 80, 50]
       this.mapView.setContentPadding(newPadding);
       this.addTestResult(`✅ setContentPadding: [${newPadding.join(', ')}]`);
-      
+
       // 测试获取边距
       const padding: number[] = this.mapView.getContentPadding() as number[];
       this.currentPadding = padding;
       this.addTestResult(`✅ getContentPadding: [${this.currentPadding.join(', ')}]`);
-      
+
       // 验证值是否正确
       if (JSON.stringify(padding) === JSON.stringify(newPadding)) {
         this.addTestResult('✅ 边距设置验证成功');
@@ -68,7 +68,7 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 内容边距测试失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 测试像素比例 API
    */
@@ -77,19 +77,20 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       const ratio: number = this.mapView.getPixelRatio();
       this.pixelRatio = ratio;
       this.addTestResult(`✅ getPixelRatio: ${this.pixelRatio.toFixed(2)}x`);
-      
+
       // 测试矩形转换
-      const logicalRect: maplibre.Rect = { left: 100, top: 100, right: 300, bottom: 300 } as maplibre.Rect;
-      const physicalRect = this.mapView.getDensityDependantRectangle(logicalRect) as maplibre.Rect;
-      
+      const logicalRect: Rect =
+        new Rect(100, 100, 300, 300) // { left: 100, top: 100, right: 300, bottom: 300 } as Rect;
+      const physicalRect = this.mapView.getDensityDependantRectangle(logicalRect);
+
       this.addTestResult(`✅ 逻辑矩形: [${logicalRect.left}, ${logicalRect.top}, ${logicalRect.right}, ${logicalRect.bottom}]`);
       this.addTestResult(`✅ 物理矩形: [${physicalRect.left.toFixed(1)}, ${physicalRect.top.toFixed(1)}, ${physicalRect.right.toFixed(1)}, ${physicalRect.bottom.toFixed(1)}]`);
-      
+
       // 验证计算
       const expectedLeft = logicalRect.left / this.pixelRatio;
       if (Math.abs(physicalRect.left - expectedLeft) < 0.01) {
@@ -101,7 +102,7 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 像素比例测试失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 测试相机控制 API
    */
@@ -110,35 +111,39 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       // 测试 jumpTo
       this.mapView.jumpTo(0, 39.9042, 116.4074, 0, 12); // 北京
       this.addTestResult('✅ jumpTo: 跳转到北京');
-      
+
       setTimeout(() => {
-        if (!this.mapView) return;
-        
+        if (!this.mapView) {
+          return;
+        }
+
         // 测试 getLatLng
-        const center: LatLng = this.mapView.getLatLng();
+        const center = this.mapView.getLatLng();
         this.addTestResult(`✅ getLatLng: (${center.latitude.toFixed(4)}, ${center.longitude.toFixed(4)})`);
-        
+
         // 测试 getZoom
         const zoom: number = this.mapView.getZoom();
         this.addTestResult(`✅ getZoom: ${zoom.toFixed(2)}`);
-        
+
         // 测试 getBearing
         const bearing: number = this.mapView.getBearing();
         this.addTestResult(`✅ getBearing: ${bearing.toFixed(2)}°`);
-        
+
         // 测试 getPitch
         const pitch: number = this.mapView.getPitch();
         this.addTestResult(`✅ getPitch: ${pitch.toFixed(2)}°`);
       }, 500);
-      
+
       // 测试 easeTo
       setTimeout(() => {
-        if (!this.mapView) return;
+        if (!this.mapView) {
+          return;
+        }
         this.mapView.easeTo(/* CameraOptions */ {
           center: LatLng.create(31.2304, 121.4737), // 上海
           zoom: 14,
@@ -151,7 +156,7 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 相机控制测试失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 测试缩放和俯仰角限制
    */
@@ -160,7 +165,7 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       // 设置缩放限制
       this.mapView.setMinZoom(5);
@@ -168,7 +173,7 @@ struct CoreAPITestPage {
       const minZoom: number = this.mapView.getMinZoom();
       const maxZoom: number = this.mapView.getMaxZoom();
       this.addTestResult(`✅ 缩放范围: ${minZoom.toFixed(1)} - ${maxZoom.toFixed(1)}`);
-      
+
       // 设置俯仰角限制
       this.mapView.setMinPitch(0);
       this.mapView.setMaxPitch(60);
@@ -179,7 +184,7 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 限制测试失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 测试坐标转换 API
    */
@@ -188,26 +193,28 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       // 测试 latLng -> pixel
       const latLng = LatLng.create(39.9042, 116.4074);
-      const pixel: maplibre.ScreenCoordinate = this.mapView.pixelForLatLng(latLng.latitude, latLng.longitude) as maplibre.ScreenCoordinate;
+      const pixel =
+        this.mapView.pixelForLatLng(latLng.latitude, latLng.longitude);
       this.addTestResult(`✅ pixelForLatLng: (${pixel.x.toFixed(1)}, ${pixel.y.toFixed(1)})`);
-      
+
       // 测试 pixel -> latLng
-      const convertedLatLng: maplibre.LatLng = this.mapView.latLngForPixel(pixel.x, pixel.y) as maplibre.LatLng;
+      const convertedLatLng = this.mapView.latLngForPixel(pixel.x, pixel.y);
       this.addTestResult(`✅ latLngForPixel: (${convertedLatLng.latitude.toFixed(4)}, ${convertedLatLng.longitude.toFixed(4)})`);
-      
+
       // 测试投影米坐标
-      const projectedMeters: maplibre.ProjectedMeters = this.mapView.projectedMetersForLatLng(39.9042, 116.4074) as maplibre.ProjectedMeters;
+      const projectedMeters =
+        this.mapView.projectedMetersForLatLng(39.9042, 116.4074);
       this.addTestResult(`✅ projectedMeters: northing=${projectedMeters.northing.toFixed(2)}, easting=${projectedMeters.easting.toFixed(2)}`);
     } catch (error) {
       const err = error as Error;
       this.addTestResult(`❌ 坐标转换测试失败: ${err.message}`);
     }
   }
-  
+
   /**
    * 测试瓦片管理 API
    */
@@ -216,18 +223,18 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       // 测试预加载设置
       this.mapView.setPrefetchTiles(true);
       const prefetch = this.mapView.getPrefetchTiles() as boolean;
       this.addTestResult(`✅ 瓦片预加载: ${prefetch ? '启用' : '禁用'}`);
-      
+
       // 测试 LOD 设置
       this.mapView.setTileLodMinRadius(1.0);
       const lodMinRadius = this.mapView.getTileLodMinRadius() as number;
       this.addTestResult(`✅ LOD 最小半径: ${lodMinRadius.toFixed(2)}`);
-      
+
       this.mapView.setTileLodScale(1.0);
       const lodScale = this.mapView.getTileLodScale() as number;
       this.addTestResult(`✅ LOD 缩放因子: ${lodScale.toFixed(2)}`);
@@ -235,7 +242,7 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 瓦片管理测试失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 测试地图状态 API
    */
@@ -244,18 +251,18 @@ struct CoreAPITestPage {
       this.addTestResult('❌ Map not initialized');
       return;
     }
-    
+
     try {
       const isLoaded = this.mapView.isFullyLoaded() as boolean;
       this.addTestResult(`✅ 地图加载状态: ${isLoaded ? '已加载' : '加载中'}`);
-      
+
       const styleUrl = this.mapView.getStyleUrl() as string;
       this.addTestResult(`✅ 当前样式: ${styleUrl.substring(0, 50)}...`);
     } catch (error) {
       this.addTestResult(`❌ 地图状态测试失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 运行所有测试
    */
@@ -263,45 +270,47 @@ struct CoreAPITestPage {
     this.testResults = [];
     this.addTestResult('========== 开始测试 ==========');
     this.addTestResult('');
-    
+
     // 按顺序执行测试
     this.addTestResult('📋 1. 测试像素比例 API');
     this.testPixelRatio();
-    
+
     this.addTestResult('');
     this.addTestResult('📋 2. 测试内容边距 API');
     this.testContentPadding();
-    
+
     this.addTestResult('');
     this.addTestResult('📋 3. 测试地图状态 API');
     this.testMapState();
-    
+
     this.addTestResult('');
     this.addTestResult('📋 4. 测试缩放和俯仰角限制');
     this.testZoomPitchLimits();
-    
+
     this.addTestResult('');
     this.addTestResult('📋 5. 测试坐标转换 API');
     this.testCoordinateConversion();
-    
+
     this.addTestResult('');
     this.addTestResult('📋 6. 测试瓦片管理 API');
     this.testTileManagement();
-    
+
     this.addTestResult('');
     this.addTestResult('📋 7. 测试相机控制 API');
     this.testCameraControl();
-    
+
     this.addTestResult('');
     this.addTestResult('========== 测试完成 ==========');
   }
-  
+
   /**
    * 清除边距
    */
   private clearPadding(): void {
-    if (!this.mapView) return;
-    
+    if (!this.mapView) {
+      return;
+    }
+
     try {
       this.mapView.setContentPadding([0, 0, 0, 0]);
       this.currentPadding = [0, 0, 0, 0]
@@ -310,13 +319,15 @@ struct CoreAPITestPage {
       this.addTestResult(`❌ 清除边距失败: ${error.message}`);
     }
   }
-  
+
   /**
    * 应用示例边距（模拟有导航栏的场景）
    */
   private applyExamplePadding(): void {
-    if (!this.mapView) return;
-    
+    if (!this.mapView) {
+      return;
+    }
+
     try {
       // 顶部导航栏 80px，底部工具栏 120px
       const padding = [80, 0, 120, 0]
@@ -343,7 +354,7 @@ struct CoreAPITestPage {
           // TODO: MapLibreMap 类型的API与 NativeMapView 不同
           // this.mapView = map;
           hilog.info(DOMAIN, 'CoreAPITestPage', 'Map ready, running initial tests...');
-          
+
           // 获取设备像素比 - MapLibreMap 可能没有此方法
           // if (this.mapView) {
           //   try {
@@ -355,7 +366,7 @@ struct CoreAPITestPage {
           // }
         }
       })
-      
+
       // 边距可视化覆盖层
       if (this.showPaddingOverlay && this.currentPadding.some(p => p > 0)) {
         Column() {
@@ -365,7 +376,7 @@ struct CoreAPITestPage {
               .width('100%')
               .backgroundColor('rgba(255, 0, 0, 0.2)')
           }
-          
+
           Row() {
             // 左边距指示器
             if (this.currentPadding[1] > 0) {
@@ -374,9 +385,9 @@ struct CoreAPITestPage {
                 .height('100%')
                 .backgroundColor('rgba(0, 255, 0, 0.2)')
             }
-            
+
             Blank()
-            
+
             // 右边距指示器
             if (this.currentPadding[3] > 0) {
               Column()
@@ -386,7 +397,7 @@ struct CoreAPITestPage {
             }
           }
           .layoutWeight(1)
-          
+
           // 底部边距指示器
           if (this.currentPadding[2] > 0) {
             Row()
@@ -398,7 +409,7 @@ struct CoreAPITestPage {
         .height('100%')
         .hitTestBehavior(HitTestMode.Transparent)
       }
-      
+
       // 边距显示/隐藏控制按钮
       Button(this.showPaddingOverlay ? '隐藏边距' : '显示边距')
         .fontSize(12)
@@ -425,7 +436,7 @@ struct CoreAPITestPage {
         .onClick(() => {
           this.handleRunAllTests();
         })
-      
+
       Button('清除结果')
         .fontSize(14)
         .type(ButtonType.Normal)
@@ -438,6 +449,7 @@ struct CoreAPITestPage {
         })
     }
     .width('100%')
+
     // 测试按钮组
     Text('新增 API 测试')
       .fontSize(16)
@@ -450,7 +462,7 @@ struct CoreAPITestPage {
         .borderRadius(6)
         .width('48%')
         .onClick(() => this.handleTestPixelRatio())
-      
+
       Button('内容边距')
         .fontSize(13)
         .type(ButtonType.Normal)
@@ -460,6 +472,7 @@ struct CoreAPITestPage {
         .onClick(() => this.handleTestContentPadding())
     }
     .width('100%')
+
     Text('边距控制')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
@@ -471,7 +484,7 @@ struct CoreAPITestPage {
         .borderRadius(6)
         .width('48%')
         .onClick(() => this.handleApplyExamplePadding())
-      
+
       Button('清除边距')
         .fontSize(13)
         .type(ButtonType.Normal)
@@ -481,6 +494,7 @@ struct CoreAPITestPage {
         .onClick(() => this.handleClearPadding())
     }
     .width('100%')
+
     Text('相机控制测试')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
@@ -492,7 +506,7 @@ struct CoreAPITestPage {
         .borderRadius(6)
         .width('48%')
         .onClick(() => this.handleTestCameraControl())
-      
+
       Button('限制测试')
         .fontSize(13)
         .type(ButtonType.Normal)
@@ -502,6 +516,7 @@ struct CoreAPITestPage {
         .onClick(() => this.handleTestZoomPitchLimits())
     }
     .width('100%')
+
     Text('工具 API 测试')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
@@ -513,7 +528,7 @@ struct CoreAPITestPage {
         .borderRadius(6)
         .width('48%')
         .onClick(() => this.handleTestCoordinateConversion())
-      
+
       Button('瓦片管理')
         .fontSize(13)
         .type(ButtonType.Normal)
@@ -523,6 +538,7 @@ struct CoreAPITestPage {
         .onClick(() => this.handleTestTileManagement())
     }
     .width('100%')
+
     Text('地图状态')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
@@ -533,20 +549,20 @@ struct CoreAPITestPage {
       .borderRadius(6)
       .width('48%')
       .onClick(() => this.handleTestMapState())
-    
+
     Divider()
-    
+
     // 当前状态显示
     Column() {
       Text('当前状态')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
         .margin({ bottom: 5 })
-      
+
       Text(`像素比: ${this.pixelRatio.toFixed(2)}x`)
         .fontSize(12)
         .fontColor('#666')
-      
+
       Text(`边距: [${this.currentPadding.map(p => p.toFixed(0)).join(', ')}]`)
         .fontSize(12)
         .fontColor('#666')
@@ -555,7 +571,7 @@ struct CoreAPITestPage {
     .backgroundColor('#F0F0F0')
     .alignItems(HorizontalAlign.Start)
     .borderRadius(4)
-    
+
     // 测试结果日志
     Text('测试结果')
       .fontSize(16)
@@ -588,45 +604,36 @@ struct CoreAPITestPage {
     .width('100%')
     .height('100%')
   }
-  
+
   // ========== 包装方法（用于 @Builder 中的 this 上下文绑定） ==========
-  
+
   private handleRunAllTests = (): void => {
     this.runAllTests();
   }
-  
   private handleTestPixelRatio = (): void => {
     this.testPixelRatio();
   }
-  
   private handleTestContentPadding = (): void => {
     this.testContentPadding();
   }
-  
   private handleApplyExamplePadding = (): void => {
     this.applyExamplePadding();
   }
-  
   private handleClearPadding = (): void => {
     this.clearPadding();
   }
-  
   private handleTestCameraControl = (): void => {
     this.testCameraControl();
   }
-  
   private handleTestZoomPitchLimits = (): void => {
     this.testZoomPitchLimits();
   }
-  
   private handleTestCoordinateConversion = (): void => {
     this.testCoordinateConversion();
   }
-  
   private handleTestTileManagement = (): void => {
     this.testTileManagement();
   }
-  
   private handleTestMapState = (): void => {
     this.testMapState();
   }

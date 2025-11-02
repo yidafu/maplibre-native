@@ -5,7 +5,8 @@ import { util } from '@kit.ArkTS';
 import { resourceManager } from '@kit.LocalizationKit';
 import { TestPageLayout } from '../common/TestPageLayout';
 
-import { LatLng, MapLibreMap, MapView, maplibre, MapLibreMapOptions, OnStyleLoadedListener , NativeMapView} from 'maplibre_harmony';
+import { LatLng, MapLibreMap, MapView, maplibre, MapLibreMapOptions, OnStyleLoadedListener , NativeMapView,
+  Style} from 'maplibre_harmony';
 const TAG = 'StyleTestPage';
 
 /**
@@ -43,7 +44,7 @@ class LocalStyleLoadedListener implements OnStyleLoadedListener {
     this.displayName = displayName;
   }
   
-  onStyleLoaded(style: maplibre.Style | null): void {
+  onStyleLoaded(style: Style | null): void {
     hilog.info(DOMAIN, TAG, '🎨 maplibre.Style loaded callback - updating camera and triggering repaint');
     
     if (this.testPage.mapLibreMap && this.testPage.nativeMapView) {

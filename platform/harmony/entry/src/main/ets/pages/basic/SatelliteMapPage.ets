@@ -340,7 +340,7 @@ struct SatelliteMapPage {
       source.setTileSize(256);
       
       // 添加数据源
-      style.addSource(source);
+      style.addSource(source.getNative());
       
       hilog.info(DOMAIN, TAG, 'Satellite layer added successfully');
       hilog.info(DOMAIN, TAG, `  Source ID: ${source.getId()}`);

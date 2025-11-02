@@ -51,9 +51,9 @@ struct ManualLocationUpdatesTestPage {
     }
   }
   
-  private onMapReady = async (mapView: NativeMapView): Promise<void> => {
-    if (!mapView) return;
-    this.mapController = mapView as Object as MapLibreMap;
+  private onMapReady = async (map: MapLibreMap): Promise<void> => {
+    if (!map) return;
+    this.mapController = map;
     if (!this.mapController) return;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, this.currentLat, this.currentLng, 0, 12);

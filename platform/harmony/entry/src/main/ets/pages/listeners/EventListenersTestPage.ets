@@ -12,7 +12,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import {maplibre, NativeMapView} from 'maplibre_harmony';
+import { CameraOptions, LatLng, maplibre, NativeMapView} from 'maplibre_harmony';
 import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
@@ -418,8 +418,8 @@ struct EventListenersTestPage {
     
     try {
       // flyTo 到上海
-      const options: maplibre.CameraOptions = {
-        center: new maplibre.LatLng(31.2304, 121.4737),
+      const options: CameraOptions = {
+        center: new LatLng(31.2304, 121.4737),
         zoom: 13
       };
       this.map.flyTo(options, 3000);
@@ -443,8 +443,8 @@ struct EventListenersTestPage {
     
     try {
       // easeTo 到深圳
-      const options: maplibre.CameraOptions = {
-        center: new maplibre.LatLng(22.5431, 114.0579),
+      const options: CameraOptions = {
+        center: new LatLng(22.5431, 114.0579),
         zoom: 12
       };
       this.map.easeTo(options, 2000);

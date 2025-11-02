@@ -314,7 +314,7 @@ struct SourceTestPage {
         .setCircleColor('#ff0000')
         .setCircleOpacity(0.8);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到数据位置
       const allPoints = [LatLng.create(centerLat, centerLng)]
@@ -371,7 +371,7 @@ struct SourceTestPage {
           .setLineColor('#0000ff')
         .setLineWidth(4);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到数据位置
       const allPoints = [
@@ -435,7 +435,7 @@ struct SourceTestPage {
         .setFillOpacity(0.5)
         .setFillOutlineColor('#000000');
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到数据位置
       const allPoints = [
@@ -512,7 +512,7 @@ struct SourceTestPage {
         .setCircleColor('#ff6600')
         .setCircleOpacity(0.8);
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // FlyTo 到数据位置
       this.flyToBounds(allPoints);
@@ -555,7 +555,7 @@ struct SourceTestPage {
         .setFillOpacity(0.3)
         .setFillOutlineColor('#000000');
       
-      style.addLayer(layer as object);
+      style.addLayer(layer);
 
       // 生成随机位置并 flyTo（数据是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();

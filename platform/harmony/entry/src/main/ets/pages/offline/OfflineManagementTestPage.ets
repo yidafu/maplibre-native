@@ -24,6 +24,7 @@ import {
   OfflineRegionDownloadState,
   LatLngBounds
 } from 'maplibre_harmony';
+import type { OfflineTilePyramidRegionDefinition } from 'libmaplibre.so';
 import { showToast, DEFAULT_STYLE_URLS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import { promptAction } from '@kit.ArkUI';
 import common from '@ohos.app.ability.common';
@@ -41,13 +42,13 @@ interface RegionInfo {
 struct OfflineManagementTestPage {
   private mapController: MapLibreMap | null = null;
   private offlineManager: OfflineManager | null = null;
-  private currentDownloadRegion: OfflineRegion | null = null;
+  currentDownloadRegion: OfflineRegion | null = null;
   
-  @State private isDownloading: boolean = false;
-  @State private downloadProgress: number = 0;
-  @State private downloadedResources: number = 0;
-  @State private totalResources: number = 0;
-  @State private downloadedBytes: number = 0;
+  @State isDownloading: boolean = false;
+  @State downloadProgress: number = 0;
+  @State downloadedResources: number = 0;
+  @State totalResources: number = 0;
+  @State downloadedBytes: number = 0;
   @State private regionInfos: Array<RegionInfo> = [];
   @State private currentRegionName: string = '';
   
@@ -227,22 +228,14 @@ struct OfflineManagementTestPage {
       };
       
       // 创建离线区域定义
-      interface OfflineDefinition {
-        type: string;
-        styleURL: string;
-        bounds: BoundsObject;
-        minZoom: number;
-        maxZoom: number;
-        pixelRatio: number;
-      }
-      
-      const definition: OfflineDefinition = {
+      const definition: OfflineTilePyramidRegionDefinition = {
         type: 'tilePyramid',
         styleURL: DEFAULT_STYLE_URLS.bright,
         bounds: boundsObj,
         minZoom: minZoom,
         maxZoom: maxZoom,
-        pixelRatio: 2.0
+        pixelRatio: 2.0,
+        includeIdeographs: false
       };
       
       // 创建元数据
@@ -259,8 +252,8 @@ struct OfflineManagementTestPage {
       
       showToast(`开始下载: ${regionName}`);
       
-      // 设置下载观察者
-      const observer: OfflineRegionObserver = {
+      // 设置下载观察者（直接使用对象字面量避免 ArkTS 结构类型问题）
+      region.setObserver({
         onStatusChanged: (status: OfflineRegionStatus) => {
           this.downloadedResources = status.completedResourceCount;
           this.totalResources = status.requiredResourceCount;
@@ -277,7 +270,7 @@ struct OfflineManagementTestPage {
             bytes: this.downloadedBytes
           });
           
-          if (status.isComplete) {
+          if (status.complete) {
             this.onDownloadComplete();
           }
         },
@@ -297,9 +290,7 @@ struct OfflineManagementTestPage {
             this.currentDownloadRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
           }
         }
-      };
-      
-      region.setObserver(observer);
+      });
       
       // 开始下载
       region.setDownloadState(OfflineRegionDownloadState.ACTIVE);
@@ -315,7 +306,7 @@ struct OfflineManagementTestPage {
   /**
    * 下载完成回调
    */
-  private onDownloadComplete = (): void => {
+  onDownloadComplete = (): void => {
     console.info('[OfflineManagementTestPage] Download complete');
     this.isDownloading = false;
     this.downloadProgress = 100;

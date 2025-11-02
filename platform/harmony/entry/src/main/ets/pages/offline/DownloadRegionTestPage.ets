@@ -22,6 +22,7 @@ import {
   OfflineRegionError,
   OfflineRegionDownloadState
 } from 'maplibre_harmony';
+import type { OfflineTilePyramidRegionDefinition } from 'libmaplibre.so';
 import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import common from '@ohos.app.ability.common';
 import { util } from '@kit.ArkTS';
@@ -32,19 +33,19 @@ import maplibre from 'libmaplibre.so';
 struct DownloadRegionTestPage {
   private mapController: MapLibreMap | null = null;
   private offlineManager: OfflineManager | null = null;
-  private currentRegion: OfflineRegion | null = null;
+  currentRegion: OfflineRegion | null = null;
   
-  @State private regionName: string = '';
-  @State private isDownloading: boolean = false;
-  @State private downloadProgress: number = 0;
-  @State private completedResources: number = 0;
-  @State private totalResources: number = 0;
-  @State private completedBytes: number = 0;
+  @State regionName: string = '';
+  @State isDownloading: boolean = false;
+  @State downloadProgress: number = 0;
+  @State completedResources: number = 0;
+  @State totalResources: number = 0;
+  @State completedBytes: number = 0;
   @State private isComplete: boolean = false;
-  @State private downloadSpeed: string = '0 KB/s';
+  @State downloadSpeed: string = '0 KB/s';
   
-  private lastBytes: number = 0;
-  private lastTime: number = 0;
+  lastBytes: number = 0;
+  lastTime: number = Date.now();
   
   aboutToDisappear() {
     // 停止下载
@@ -144,22 +145,14 @@ struct DownloadRegionTestPage {
       };
       
       // 创建离线区域定义
-      interface OfflineDefinition {
-        type: string;
-        styleURL: string;
-        bounds: BoundsObject;
-        minZoom: number;
-        maxZoom: number;
-        pixelRatio: number;
-      }
-      
-      const definition: OfflineDefinition = {
+      const definition: OfflineTilePyramidRegionDefinition = {
         type: 'tilePyramid',
         styleURL: DEFAULT_STYLE_URLS.streets,
         bounds: boundsObj,
         minZoom: minZoom,
         maxZoom: maxZoom,
-        pixelRatio: 2.0
+        pixelRatio: 2.0,
+        includeIdeographs: false
       };
       
       // 创建元数据
@@ -177,8 +170,8 @@ struct DownloadRegionTestPage {
       
       showToast(`开始下载: ${name}`);
       
-      // 设置下载观察者
-      const observer: OfflineRegionObserver = {
+      // 设置下载观察者（直接使用对象字面量避免 ArkTS 结构类型问题）
+      region.setObserver({
         onStatusChanged: (status: OfflineRegionStatus) => {
           this.completedResources = status.completedResourceCount;
           this.totalResources = status.requiredResourceCount;
@@ -202,7 +195,7 @@ struct DownloadRegionTestPage {
             this.lastTime = now;
           }
           
-          if (status.isComplete) {
+          if (status.complete) {
             this.onDownloadComplete();
           }
         },
@@ -222,9 +215,7 @@ struct DownloadRegionTestPage {
             this.currentRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
           }
         }
-      };
-      
-      region.setObserver(observer);
+      });
       
       // 开始下载
       region.setDownloadState(OfflineRegionDownloadState.ACTIVE);
@@ -262,7 +253,7 @@ struct DownloadRegionTestPage {
   /**
    * 下载完成回调
    */
-  private onDownloadComplete = (): void => {
+  onDownloadComplete = (): void => {
     console.info('[DownloadRegionTestPage] Download complete');
     this.isDownloading = false;
     this.isComplete = true;

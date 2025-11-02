@@ -7,6 +7,8 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import { CircleLayer, Expression, GeoJson, GeoJsonSource, MapLibreMap, MapView, ScreenPoint } from 'maplibre_harmony';
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
+import { convertValue } from 'maplibre_harmony/src/main/ets/maps/style/layers/LayerUtils';
+import type { PropertyValue } from 'libmaplibre.so';
 
 @Entry
 @Component
@@ -68,7 +70,7 @@ struct DataDrivenStyleTestPage {
         Expression.literal(1000), Expression.literal(10),
         Expression.literal(2500), Expression.literal(25)
       );
-      layer.setCircleRadius(sizeExpression);
+      layer.setCircleRadius(convertValue<number>(sizeExpression));
       
       // 根据类型设置颜色
       const colorExpression = Expression.match(
@@ -77,7 +79,7 @@ struct DataDrivenStyleTestPage {
         Expression.literal('capital'), Expression.literal('#2196F3'),
         Expression.literal('major'), Expression.literal('#FF9800')
       );
-      layer.setCircleColor(colorExpression);
+      layer.setCircleColor(colorExpression.toArray() as PropertyValue<string>);
       
       layer.setCircleOpacity(0.8);
       map.addLayer(layer);
