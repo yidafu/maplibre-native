@@ -3,7 +3,7 @@
  * 线图层 API (NAPI 类)
  */
 
-import type { PropertyValue, ColorValue, NumberValue, StringValue } from '../LayerPropertyTypes';
+import type { ColorValue, NumberValue, PropertyValue, StringValue } from '../LayerPropertyTypes';
 
 /**
  * LineLayer - 线图层
@@ -21,31 +21,31 @@ export class LineLayer {
      * 设置线条颜色
      * @param color 颜色值或Expression
      */
-    setLineColor(color: ColorValue): this;
+    setLineColor(color: PropertyValue<string>): this;
 
     /**
      * 设置线条宽度
      * @param width 宽度或Expression
      */
-    setLineWidth(width: NumberValue): this;
+    setLineWidth(width: PropertyValue<number>): this;
 
     /**
      * 设置线条不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setLineOpacity(opacity: NumberValue): this;
+    setLineOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 设置线条图案
      * @param pattern 图案名称或Expression
      */
-    setLinePattern(pattern: StringValue): this;
+    setLinePattern(pattern: PropertyValue<string>): this;
 
     /**
      * 设置线条间隙宽度
      * @param gapWidth 间隙宽度或Expression
      */
-    setLineGapWidth(gapWidth: NumberValue): this;
+    setLineGapWidth(gapWidth: PropertyValue<number>): this;
 
     /**
      * 设置虚线样式
@@ -57,25 +57,25 @@ export class LineLayer {
      * 设置线条模糊
      * @param blur 模糊量或Expression
      */
-    setLineBlur(blur: NumberValue): this;
+    setLineBlur(blur: PropertyValue<number>): this;
 
     /**
      * 设置线条偏移
      * @param offset 偏移量或Expression
      */
-    setLineOffset(offset: NumberValue): this;
+    setLineOffset(offset: PropertyValue<number>): this;
 
     /**
      * 设置线条端点样式
      * @param cap 端点样式或Expression
      */
-    setLineCap(cap: StringValue): this;
+    setLineCap(cap: PropertyValue<string>): this;
 
     /**
      * 设置线条连接样式
      * @param join 连接样式或Expression
      */
-    setLineJoin(join: StringValue): this;
+    setLineJoin(join: PropertyValue<string>): this;
 
     /**
      * 获取线条颜色
@@ -145,21 +145,21 @@ export class LineLayer {
      * 设置线条平移锚点
      * @param anchor 'map' | 'viewport' 或Expression
      */
-    setLineTranslateAnchor(anchor: StringValue): this;
+    setLineTranslateAnchor(anchor: PropertyValue<string>): this;
     getLineTranslateAnchor(): string | undefined;
     
     /**
      * 设置斜接限制
      * @param limit 斜接限制值或Expression
      */
-    setLineMiterLimit(limit: NumberValue): this;
+    setLineMiterLimit(limit: PropertyValue<number>): this;
     getLineMiterLimit(): number | undefined;
     
     /**
      * 设置圆角限制
      * @param limit 圆角限制值或Expression
      */
-    setLineRoundLimit(limit: NumberValue): this;
+    setLineRoundLimit(limit: PropertyValue<number>): this;
     getLineRoundLimit(): number | undefined;
     
     /**
@@ -173,6 +173,6 @@ export class LineLayer {
      * 设置线条排序键
      * @param sortKey 排序键或Expression
      */
-    setLineSortKey(sortKey: NumberValue): this;
+    setLineSortKey(sortKey: PropertyValue<number>): this;
     getLineSortKey(): number | undefined;
 }

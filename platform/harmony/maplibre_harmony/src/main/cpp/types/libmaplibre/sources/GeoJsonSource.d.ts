@@ -1,3 +1,5 @@
+import type { ExpressionLiteral } from '../ExpressionTypes';
+
 /**
  * 聚类属性配置
  * 
@@ -9,7 +11,7 @@
  * - mapExpression: 从单个点提取值的 Expression
  * 
  * @example
- * ```
+ * ```typescript
  * {
  *   // 计算最大值
  *   "max": [["max", ["accumulated"], ["get", "sum"]], ["get", "mag"]],
@@ -22,7 +24,7 @@
  * }
  * ```
  */
-export type ClusterProperties = Record<string, [any[] | string, any[]]>;
+export type ClusterProperties = Record<string, [ExpressionLiteral | string, ExpressionLiteral]>;
 
 /**
  * GeoJSON 数据源选项
@@ -72,12 +74,29 @@ export interface GeoJsonOptions {
     generateId?: boolean;
 }
 
-// GeoJSON 类型定义
+/**
+ * GeoJSON 坐标位置类型（兼容所有几何体）
+ */
+export type Position = number[];  // [lng, lat] 或 [lng, lat, altitude]
+
+/**
+ * GeoJSON 坐标类型（联合类型，涵盖所有几何体）
+ */
+export type Coordinates = Position | Position[] | Position[][] | Position[][][];
+
+/**
+ * GeoJSON 几何体接口（简化版，用于数据传递）
+ * 注意：完整的几何体类型请使用 geojson 模块中的 NAPI 类
+ */
 export interface Geometry {
-    type: string;
-    coordinates: any;
+    type: 'Point' | 'LineString' | 'Polygon' | 'MultiPoint' | 'MultiLineString' | 'MultiPolygon' | 'GeometryCollection';
+    coordinates: Coordinates;
 }
 
+/**
+ * GeoJSON Feature 接口（简化版，用于数据传递）
+ * 注意：完整的 Feature 类型请使用 geojson 模块中的 NAPI 类
+ */
 export interface Feature {
     type: 'Feature';
     id?: string | number;
@@ -85,12 +104,18 @@ export interface Feature {
     properties: Record<string, any>;
 }
 
+/**
+ * GeoJSON FeatureCollection 接口
+ */
 export interface FeatureCollection {
     type: 'FeatureCollection';
     features: Feature[];
 }
 
-export type GeoJsonData = string | Geometry | Feature | FeatureCollection | Object;
+/**
+ * GeoJSON 数据类型（支持多种格式）
+ */
+export type GeoJsonData = string | Geometry | Feature | FeatureCollection | object;
 
 /**
  * GeoJsonSource - GeoJSON 数据源
@@ -120,7 +145,7 @@ export class GeoJsonSource {
      * @param data GeoJSON 数据
      * @returns this（支持链式调用）
      */
-    setGeoJson(data: GeoJsonData): GeoJsonSource;
+    setGeoJson(data: GeoJsonData): this;
     
     /**
      * 设置 GeoJSON 数据（同步）
@@ -132,14 +157,14 @@ export class GeoJsonSource {
      * @param data GeoJSON 数据
      * @returns this（支持链式调用）
      */
-    setGeoJsonSync(data: GeoJsonData): GeoJsonSource;
+    setGeoJsonSync(data: GeoJsonData): this;
     
     /**
      * 从 URL 加载 GeoJSON 数据
      * @param url GeoJSON 数据 URL
      * @returns this（支持链式调用）
      */
-    setUrl(url: string): GeoJsonSource;
+    setUrl(url: string): this;
     
     /**
      * 获取数据 URL
@@ -148,10 +173,10 @@ export class GeoJsonSource {
     
     /**
      * 查询数据源要素
-     * @param filter 可选过滤器
+     * @param filter 可选过滤表达式（Expression 数组格式）
      * @returns Feature 数组
      */
-    querySourceFeatures(filter?: any): Feature[];
+    querySourceFeatures(filter?: object): Feature[];
     
     /**
      * 获取聚类的子项

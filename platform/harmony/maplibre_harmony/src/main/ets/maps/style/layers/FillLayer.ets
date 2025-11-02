@@ -2,21 +2,9 @@
  * FillLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ColorValue, NumberValue, StringValue, BooleanValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type {ColorValue, NumberValue, StringValue, BooleanValue, ExpressionLiteral } from 'libmaplibre.so';
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -78,18 +66,18 @@ export class FillLayer {
 
   // ========== Fill 绘制属性方法 ==========
 
-  setFillColor(color: ColorValue): FillLayer {
+  setFillColor(color: PropertyValue<string>): FillLayer {
     this.nativeInstance.setFillColor(convertValue(color));
     return this;
   }
 
-  setFillOpacity(opacity: NumberValue): FillLayer {
+  setFillOpacity(opacity: PropertyValue<number>): FillLayer {
     this.nativeInstance.setFillOpacity(convertValue(opacity));
     return this;
   }
 
-  setFillOutlineColor(color: ColorValue): FillLayer {
-    this.nativeInstance.setFillOutlineColor(color);
+  setFillOutlineColor(color: PropertyValue<string>): FillLayer {
+    this.nativeInstance.setFillOutlineColor(convertValue(color));
     return this;
   }
 
@@ -98,7 +86,7 @@ export class FillLayer {
     return this;
   }
 
-  setFillAntialias(antialias: BooleanValue): FillLayer {
+  setFillAntialias(antialias: PropertyValue<boolean>): FillLayer {
     this.nativeInstance.setFillAntialias(convertValue(antialias));
     return this;
   }
@@ -108,12 +96,12 @@ export class FillLayer {
     return this;
   }
 
-  setFillTranslateAnchor(anchor: StringValue): FillLayer {
-    this.nativeInstance.setFillTranslateAnchor(anchor);
+  setFillTranslateAnchor(anchor: PropertyValue<string>): FillLayer {
+    this.nativeInstance.setFillTranslateAnchor(convertValue(anchor));
     return this;
   }
 
-  setFillSortKey(sortKey: NumberValue): FillLayer {
+  setFillSortKey(sortKey: PropertyValue<number>): FillLayer {
     this.nativeInstance.setFillSortKey(convertValue(sortKey));
     return this;
   }

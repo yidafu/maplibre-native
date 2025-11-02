@@ -17,8 +17,7 @@
  * @see <a href="https://maplibre.org/maplibre-style-spec/expressions/">MapLibre Expression Specification</a>
  */
 
-import { ValueExpression } from './ExpressionTypes';
-import type { ExpressionValue, ExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionValue, ExpressionLiteral as NativeExpressionLiteral, PropertyValue as NativePropertyValue } from 'libmaplibre.so';
 
 /**
  * Expression - MapLibre 表达式类
@@ -63,15 +62,15 @@ export class Expression<T = Object> {
    * 将表达式序列化为 JSON 数组格式
    * @returns Expression 字面量（JSON 数组）
    */
-  serialize(): ExpressionLiteral {
-    return this.toArray();
+  serialize(): NativeExpressionLiteral {
+    return this.toArray() as NativeExpressionLiteral;
   }
 
   /**
    * 将表达式转换为 JSON 数组格式
    * @returns Expression 字面量：[operator, ...arguments]
    */
-  public toArray(): ExpressionLiteral {
+  public toArray(): ExpressionValue[] {
     if (this.operator === null) {
       throw new Error('Invalid expression: operator is null');
     }
@@ -79,18 +78,22 @@ export class Expression<T = Object> {
     const array: ExpressionValue[] = [this.operator];
     if (this.arguments !== null && this.arguments.length > 0) {
       for (const arg of this.arguments) {
-        if (arg.isValue()) {
-          array.push((arg as any).toValue());
+        if (arg instanceof  ExpressionLiteral || arg instanceof ExpressionLiteralArray || arg instanceof  ExpressionMap) {
+          let val = arg.toValue() as ExpressionValue
+          if (val !== null) {
+            array.push(val);
+          }
         } else {
-          array.push(arg.toArray());
+          array.push(arg.toArray() as ExpressionValue);
         }
       }
     }
-    return array as ExpressionLiteral;
+    return array;
   }
 
   /**
    * 检查当前表达式是否为值表达式
+   * 使用类型守护，在条件分支中自动缩窄类型为 ValueExpression
    */
   isValue(): boolean {
     return false;
@@ -174,14 +177,14 @@ export class Expression<T = Object> {
   /**
    * 创建数组字面量表达式
    */
-  public static literal(value: (Object | null)[]): ExpressionLiteralArray;
+  public static literal(value: ExpressionValue[]): ExpressionLiteralArray;
 
   /**
    * 创建字面量表达式的实现
    */
-  public static literal(value: ExpressionValue): ExpressionLiteral {
+  public static literal(value: ExpressionValue): ExpressionLiteral | ExpressionLiteralArray {
     if (Array.isArray(value)) {
-      return new ExpressionLiteralArray(value as (Object | null)[]);
+      return new ExpressionLiteralArray(value as ExpressionValue[]);
     }
     return new ExpressionLiteral(value);
   }
@@ -1294,6 +1297,67 @@ export class Expression<T = Object> {
     return new Expression<boolean>('is-supported-script', inputExpr);
   }
 
+  /**
+   * 创建 Collator 表达式（Expression 参数）
+   * 
+   * @param caseSensitive 是否区分大小写
+   * @param diacriticSensitive 是否区分变音符号
+   * @param locale 区域设置（BCP 47 语言标签）
+   */
+  public static collator(
+    caseSensitive: Expression<boolean>,
+    diacriticSensitive: Expression<boolean>,
+    locale: Expression<string>
+  ): Expression<Object>;
+
+  /**
+   * 创建 Collator 表达式（使用选项对象）
+   * 
+   * @param options Collator 选项
+   */
+  public static collator(options: Record<string, boolean | string>): Expression<Object>;
+
+  /**
+   * 创建 Collator 表达式的实现
+   */
+  public static collator(
+    caseSensitiveOrOptions: Expression<boolean> | Record<string, boolean | string>,
+    diacriticSensitive?: Expression<boolean>,
+    locale?: Expression<string>
+  ): Expression<Object> {
+    const optionsMap = new Map<string, Expression>();
+    
+    // 判断是否使用选项对象
+    if (diacriticSensitive === undefined && locale === undefined) {
+      // 使用选项对象
+      const options = caseSensitiveOrOptions as Record<string, boolean | string>;
+      
+      if (options['caseSensitive'] !== undefined) {
+        const val = options['caseSensitive'];
+        optionsMap.set('case-sensitive', Expression.literal(val as boolean));
+      }
+      if (options['diacriticSensitive'] !== undefined) {
+        const val = options['diacriticSensitive'];
+        optionsMap.set('diacritic-sensitive', Expression.literal(val as boolean));
+      }
+      if (options['locale'] !== undefined) {
+        const val = options['locale'];
+        optionsMap.set('locale', Expression.literal(val as string));
+      }
+    } else {
+      // 使用三个 Expression 参数
+      optionsMap.set('case-sensitive', caseSensitiveOrOptions as Expression<boolean>);
+      if (diacriticSensitive) {
+        optionsMap.set('diacritic-sensitive', diacriticSensitive);
+      }
+      if (locale) {
+        optionsMap.set('locale', locale);
+      }
+    }
+    
+    return new Expression<Object>('collator', new ExpressionMap(optionsMap));
+  }
+
   // ==================== 类型转换操作符 ====================
 
   /**
@@ -1301,7 +1365,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 字符串类型的表达式
    */
-  public static toString<T = Object>(value: Expression<T>): Expression<string> {
+  public static toString<T = Object>(value: ExpressionLiteral): Expression<string> {
     return new Expression<string>('to-string', value);
   }
 
@@ -1310,7 +1374,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 数字类型的表达式
    */
-  public static toNumber<T = Object>(value: Expression<T>): Expression<number> {
+  public static toNumber<T = Object>(value: ExpressionLiteral): Expression<number> {
     return new Expression<number>('to-number', value);
   }
 
@@ -1319,7 +1383,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 布尔类型的表达式
    */
-  public static toBoolean<T = Object>(value: Expression<T>): Expression<boolean> {
+  public static toBoolean<T = Object>(value: ExpressionLiteral): Expression<boolean> {
     return new Expression<boolean>('to-boolean', value);
   }
 
@@ -1328,7 +1392,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 颜色字符串类型的表达式
    */
-  public static toColor<T = Object>(value: Expression<T>): Expression<string> {
+  public static toColor<T = Object>(value: ExpressionLiteral): Expression<string> {
     return new Expression<string>('to-color', value);
   }
 
@@ -1337,7 +1401,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 类型名称的字符串表达式
    */
-  public static typeof<T = Object>(value: Expression<T>): Expression<string> {
+  public static typeof<T = Object>(value: ExpressionLiteral<T>): Expression<string> {
     return new Expression<string>('typeof', value);
   }
 
@@ -1346,7 +1410,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 数组类型的表达式
    */
-  public static array<T = Object>(value: Expression<T>): Expression<Object[]> {
+  public static array<T = Object>(value: ExpressionLiteral): Expression<Object[]> {
     return new Expression<Object[]>('array', value);
   }
 
@@ -1355,7 +1419,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 字符串类型的表达式
    */
-  public static string<T = Object>(value: Expression<T>): Expression<string> {
+  public static string<T = Object>(value: ExpressionLiteral): Expression<string> {
     return new Expression<string>('string', value);
   }
 
@@ -1364,7 +1428,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 数字类型的表达式
    */
-  public static number<T = Object>(value: Expression<T>): Expression<number> {
+  public static number<T = Object>(value: ExpressionLiteral): Expression<number> {
     return new Expression<number>('number', value);
   }
 
@@ -1373,7 +1437,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 布尔类型的表达式
    */
-  public static boolean<T = Object>(value: Expression<T>): Expression<boolean> {
+  public static boolean<T = Object>(value: ExpressionLiteral): Expression<boolean> {
     return new Expression<boolean>('boolean', value);
   }
 
@@ -1382,7 +1446,7 @@ export class Expression<T = Object> {
    * @param value 任意类型的表达式
    * @returns 对象类型的表达式
    */
-  public static object<T = Object>(value: Expression<T>): Expression<Object> {
+  public static object<T = Object>(value: ExpressionLiteral): Expression<Object> {
     return new Expression<Object>('object', value);
   }
 
@@ -1403,6 +1467,73 @@ export class Expression<T = Object> {
    */
   public static linear(): Expression<Object> {
     return new Expression<Object>('linear');
+  }
+
+  /**
+   * 指数插值器（Expression 参数）
+   * 
+   * 指数插值使用指定的底数进行指数变化
+   * 
+   * @param base 指数底数（Expression）
+   */
+  public static exponential(base: Expression<number>): Expression<Object>;
+
+  /**
+   * 指数插值器（数字参数）
+   * 
+   * @param base 指数底数（数字）
+   */
+  public static exponential(base: number): Expression<Object>;
+
+  /**
+   * 指数插值器的实现
+   */
+  public static exponential(base: Expression<number> | number): Expression<Object> {
+    const baseExpr = typeof base === 'number' ? Expression.literal(base) : base;
+    return new Expression<Object>('exponential', baseExpr);
+  }
+
+  /**
+   * 三次贝塞尔曲线插值器（Expression 参数）
+   * 
+   * 使用四个控制点定义的三次贝塞尔曲线进行插值
+   * 
+   * @param x1 第一个控制点 x 坐标
+   * @param y1 第一个控制点 y 坐标
+   * @param x2 第二个控制点 x 坐标
+   * @param y2 第二个控制点 y 坐标
+   */
+  public static cubicBezier(
+    x1: Expression<number>,
+    y1: Expression<number>,
+    x2: Expression<number>,
+    y2: Expression<number>
+  ): Expression<Object>;
+
+  /**
+   * 三次贝塞尔曲线插值器（数字参数）
+   * 
+   * @param x1 第一个控制点 x 坐标
+   * @param y1 第一个控制点 y 坐标
+   * @param x2 第二个控制点 x 坐标
+   * @param y2 第二个控制点 y 坐标
+   */
+  public static cubicBezier(x1: number, y1: number, x2: number, y2: number): Expression<Object>;
+
+  /**
+   * 三次贝塞尔曲线插值器的实现
+   */
+  public static cubicBezier(
+    x1: Expression<number> | number,
+    y1: Expression<number> | number,
+    x2: Expression<number> | number,
+    y2: Expression<number> | number
+  ): Expression<Object> {
+    const x1Expr = typeof x1 === 'number' ? Expression.literal(x1) : x1;
+    const y1Expr = typeof y1 === 'number' ? Expression.literal(y1) : y1;
+    const x2Expr = typeof x2 === 'number' ? Expression.literal(x2) : x2;
+    const y2Expr = typeof y2 === 'number' ? Expression.literal(y2) : y2;
+    return new Expression<Object>('cubic-bezier', x1Expr, y1Expr, x2Expr, y2Expr);
   }
 
   /**
@@ -1463,6 +1594,20 @@ export class Expression<T = Object> {
       args.push(stop);
     }
     return new Expression<Object>('step', ...args);
+  }
+
+  /**
+   * 创建停靠点（便捷方法）
+   * 用于 interpolate 和 step 表达式
+   * 
+   * @param input 输入值
+   * @param output 输出值
+   * @returns 包含两个 Expression 的数组
+   */
+  public static stop(input: number | Expression<number>, output: number | string | boolean | null | Expression): Expression[] {
+    const inputExpr = typeof input === 'number' ? Expression.literal(input) : input;
+    const outputExpr = output instanceof Expression ? output : Expression.literal(output as number);
+    return [inputExpr, outputExpr];
   }
 
   // ==================== 格式化表达式 ====================
@@ -1593,8 +1738,8 @@ export class Expression<T = Object> {
       map.set('type', Expression.literal(typeValue));
     } else if (typeof typeValue === 'number') {
       map.set('type', Expression.literal(typeValue));
-    } else {
-      map.set('type', Expression.literal([typeValue]));
+    } else if (typeof typeValue === 'boolean') {
+      map.set('type', Expression.literal(typeValue));
     }
     map.set('json', Expression.literal(JSON.stringify(polygon)));
     return new Expression<boolean>('within', new ExpressionMap(map));
@@ -1668,8 +1813,8 @@ export class Expression<T = Object> {
 
     // 对象（用于 format, collator 等）
     if (typeof json === 'object') {
-      // 将对象包装为数组
-      return Expression.literal([json as Object]);
+      // 对象类型暂不处理，返回 null
+      return null;
     }
 
     return null;
@@ -1696,7 +1841,7 @@ export class Expression<T = Object> {
  * ExpressionLiteral - 字面量表达式
  * @template T 字面量值的类型
  */
-export class ExpressionLiteral<T = ExpressionValue> extends Expression<T> implements ValueExpression<T> {
+export class ExpressionLiteral<T = ExpressionValue> extends Expression<T> {
   private literal: T;
 
   constructor(literal: T) {
@@ -1706,6 +1851,7 @@ export class ExpressionLiteral<T = ExpressionValue> extends Expression<T> implem
 
   /**
    * 覆盖父类方法，标识这是一个值表达式
+   * 使用类型守护，在条件分支中自动缩窄类型为 ValueExpression
    */
   isValue(): boolean {
     return true;
@@ -1718,7 +1864,7 @@ export class ExpressionLiteral<T = ExpressionValue> extends Expression<T> implem
     return this.literal;
   }
 
-  public toArray(): (Object | null)[] {
+  public override toArray(): ExpressionValue[] {
     if (typeof this.literal === 'string') {
       // 字符串字面量直接返回值，不需要 ["literal", "value"] 格式
       const unwrapped = this.unwrapStringLiteral(this.literal);
@@ -1729,9 +1875,9 @@ export class ExpressionLiteral<T = ExpressionValue> extends Expression<T> implem
     }
     if (typeof this.literal === 'number' || typeof this.literal === 'boolean' || this.literal === null) {
       // 数字、布尔值和 null 可以直接作为字面量
-      return [this.literal as (Object | null)];
+      return [this.literal as ExpressionValue];
     }
-    return ['literal', this.literal as Object];
+    return ['literal', this.literal as ExpressionValue];
   }
 
   public equals(other: Expression | null): boolean {
@@ -1760,19 +1906,19 @@ export class ExpressionLiteral<T = ExpressionValue> extends Expression<T> implem
 /**
  * ExpressionLiteralArray - 数组字面量表达式
  */
-export class ExpressionLiteralArray extends ExpressionLiteral<(Object | null)[]> {
-  private array: (Object | null)[];
+export class ExpressionLiteralArray extends ExpressionLiteral<ExpressionValue[]> {
+  private array: ExpressionValue[];
 
-  constructor(array: (Object | null)[]) {
+  constructor(array: ExpressionValue[]) {
     super(array);
     this.array = array;
   }
 
-  public toArray(): (Object | null)[] {
-    return ['literal', this.array as Object];
+  public override toArray(): ExpressionValue[] {
+    return ['literal', this.array];
   }
 
-  public toValue(): (Object | null)[] | null {
+  public override toValue(): ExpressionValue[] | null {
     return this.array;
   }
 }
@@ -1781,7 +1927,7 @@ export class ExpressionLiteralArray extends ExpressionLiteral<(Object | null)[]>
  * ExpressionMap - Map 表达式（用于 within 和 distance 等操作符）
  * @template T 返回值的类型
  */
-export class ExpressionMap<T extends Object> extends Expression<T> implements ValueExpression<T> {
+export class ExpressionMap<T extends Object> extends Expression<T> {
   private map: Map<string, Expression>;
 
   constructor(map: Map<string, Expression>) {
@@ -1790,24 +1936,28 @@ export class ExpressionMap<T extends Object> extends Expression<T> implements Va
   }
 
   public toValue(): T | null {
-    const unwrappedMap: Record<string, Object | null> = {};
+    const unwrappedMap: Record<string, ExpressionValue> = {};
     this.map.forEach((value: Expression, key: string) => {
-      if (value.isValue()) {
+      if (value instanceof ExpressionMap) {
         // 使用虚方法判断，然后安全转换
-        unwrappedMap[key] = (value as ExpressionLiteral).toValue();
+        const val = value.toValue() as ExpressionValue;
+        if (val !== null) {
+          unwrappedMap[key] = val;
+        }
       } else {
-        unwrappedMap[key] = value.toArray() as Object;
+        unwrappedMap[key] = value.toArray() as ExpressionValue;
       }
     });
     // 使用 Object 作为中间类型来避免 unknown
     return unwrappedMap as Object as T;
   }
 
-  public toArray(): (Object | null)[] {
-    return [this.toValue()];
+  public override toArray(): ExpressionValue[] {
+    const val = this.toValue();
+    return val !== null ? [val as ExpressionValue] : [];
   }
 
-  isValue(): boolean {
+  override isValue(): boolean {
     return true;
   }
 }
@@ -1818,4 +1968,6 @@ export class ExpressionMap<T extends Object> extends Expression<T> implements Va
  * @deprecated Use Expression instead. ExpressionBuilder has been merged into Expression.
  * This type alias is provided for backward compatibility only.
  */
-export type ExpressionBuilder<T = Object> = Expression;
+export type ExpressionBuilder<T = Object> = Expression<T>;
+
+export type PropertyValue<T> = Expression<T> | NativePropertyValue<T>

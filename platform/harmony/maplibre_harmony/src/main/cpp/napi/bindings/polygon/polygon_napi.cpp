@@ -133,7 +133,7 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_element(env, pointsValue, i, &pointValue);
                     
                     mbgl::LatLng latLng;
-                    if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+                    if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                         polygon->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
                     }
                 }
@@ -165,7 +165,7 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
                             napi_get_element(env, holeValue, j, &pointValue);
                             
                             mbgl::LatLng latLng;
-                            if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+                            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                                 hole.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
                             }
                         }
@@ -485,7 +485,7 @@ napi_value PolygonNAPI::SetPoints(napi_env env, napi_callback_info info) {
             napi_get_element(env, pointsValue, i, &pointValue);
             
             mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                 polygon->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
             }
         }
@@ -531,7 +531,7 @@ napi_value PolygonNAPI::SetHoles(napi_env env, napi_callback_info info) {
                     napi_get_element(env, holeValue, j, &pointValue);
                     
                     mbgl::LatLng latLng;
-                    if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+                    if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                         hole.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
                     }
                 }
@@ -702,7 +702,7 @@ napi_value PolygonNAPI::AddPoint(napi_env env, napi_callback_info info) {
     napi_value pointValue = args.GetObject(0, "point");
     if (!args.HasError()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
             polygon->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
         }
     }
@@ -733,7 +733,7 @@ napi_value PolygonNAPI::InsertPoint(napi_env env, napi_callback_info info) {
     
     if (!args.HasError() && index >= 0 && static_cast<size_t>(index) <= polygon->points.size()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
             polygon->points.insert(polygon->points.begin() + index, 
                                   mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
         }
@@ -815,7 +815,7 @@ napi_value PolygonNAPI::AddHole(napi_env env, napi_callback_info info) {
             napi_get_element(env, holeValue, i, &pointValue);
             
             mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                 hole.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
             }
         }

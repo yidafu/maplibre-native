@@ -131,7 +131,7 @@ napi_value PolylineNAPI::New(napi_env env, napi_callback_info info) {
                     napi_get_element(env, pointsValue, i, &pointValue);
                     
                     mbgl::LatLng latLng;
-                    if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+                    if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                         polyline->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
                     }
                 }
@@ -422,7 +422,7 @@ napi_value PolylineNAPI::SetPoints(napi_env env, napi_callback_info info) {
             napi_get_element(env, pointsValue, i, &pointValue);
             
             mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
                 polyline->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
             }
         }
@@ -618,7 +618,7 @@ napi_value PolylineNAPI::AddPoint(napi_env env, napi_callback_info info) {
     napi_value pointValue = args.GetObject(0, "point");
     if (!args.HasError()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
             polyline->points.push_back(mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
         }
     }
@@ -649,7 +649,7 @@ napi_value PolylineNAPI::InsertPoint(napi_env env, napi_callback_info info) {
     
     if (!args.HasError() && index >= 0 && static_cast<size_t>(index) <= polyline->points.size()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, pointValue, latLng)) {
+        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, pointValue, latLng)) {
             polyline->points.insert(polyline->points.begin() + index, 
                                    mbgl::Point<double>(latLng.longitude(), latLng.latitude()));
         }

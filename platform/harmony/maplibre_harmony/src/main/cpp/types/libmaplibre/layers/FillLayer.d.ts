@@ -3,7 +3,7 @@
  * 填充图层 API (NAPI 类)
  */
 
-import type { PropertyValue, ColorValue, NumberValue, BooleanValue } from '../LayerPropertyTypes';
+import type { BooleanValue, ColorValue, NumberValue, PropertyValue } from '../LayerPropertyTypes';
 
 /**
  * FillLayer - 填充图层
@@ -21,19 +21,19 @@ export class FillLayer {
      * 设置填充颜色
      * @param color 颜色值或Expression
      */
-    setFillColor(color: ColorValue): this;
+    setFillColor(color: PropertyValue<string>): this;
 
     /**
      * 设置填充不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setFillOpacity(opacity: NumberValue): this;
+    setFillOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 设置填充轮廓颜色
      * @param color 颜色值或Expression
      */
-    setFillOutlineColor(color: ColorValue): this;
+    setFillOutlineColor(color: PropertyValue<string>): this;
 
     /**
      * 设置填充图案
@@ -45,7 +45,7 @@ export class FillLayer {
      * 设置填充抗锯齿
      * @param antialias 是否启用抗锯齿或Expression
      */
-    setFillAntialias(antialias: BooleanValue): this;
+    setFillAntialias(antialias: PropertyValue<boolean>): this;
 
     /**
      * 设置填充平移
@@ -121,6 +121,6 @@ export class FillLayer {
      * 设置填充排序键
      * @param sortKey 排序键或Expression
      */
-    setFillSortKey(sortKey: NumberValue): this;
+    setFillSortKey(sortKey: PropertyValue<number>): this;
     getFillSortKey(): number | undefined;
 }

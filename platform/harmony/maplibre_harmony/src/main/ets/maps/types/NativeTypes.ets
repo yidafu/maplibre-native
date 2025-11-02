@@ -15,10 +15,7 @@ export { maplibre };
 /**
  * 坐标点字面量接口
  */
-export interface LatLngLiteral {
-  latitude: number;
-  longitude: number;
-}
+export type LatLngLiteral  = maplibre.LatLng
 
 /**
  * 矩形字面量接口
@@ -140,4 +137,10 @@ export enum CameraMoveReason {
   /** 开发者调用的动画 */
   DEVELOPER_ANIMATION = 3
 }
+
+/**
+ * 经纬度接口（ILatLng 是 LatLngLiteral 的别名）
+ * 用于 LatLng 类实现和对象字面量
+ */
+export type ILatLng = maplibre.LatLng;
 

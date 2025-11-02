@@ -3,7 +3,7 @@
  * 栅格图层 API (NAPI 类)
  */
 
-import type { NumberValue } from '../LayerPropertyTypes';
+import type { ExpressionType, NumberValue, StringValue } from '../LayerPropertyTypes';
 
 /**
  * RasterLayer - 栅格图层
@@ -21,37 +21,37 @@ export class RasterLayer {
      * 设置栅格不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setRasterOpacity(opacity: NumberValue): this;
+    setRasterOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 设置栅格色相旋转
      * @param hueRotate 色相旋转角度或Expression
      */
-    setRasterHueRotate(hueRotate: NumberValue): this;
+    setRasterHueRotate(hueRotate: PropertyValue<number>): this;
 
     /**
      * 设置栅格最小亮度
      * @param brightnessMin 最小亮度或Expression（0.0 - 1.0）
      */
-    setRasterBrightnessMin(brightnessMin: NumberValue): this;
+    setRasterBrightnessMin(brightnessMin: PropertyValue<number>): this;
 
     /**
      * 设置栅格最大亮度
      * @param brightnessMax 最大亮度或Expression（0.0 - 1.0）
      */
-    setRasterBrightnessMax(brightnessMax: NumberValue): this;
+    setRasterBrightnessMax(brightnessMax: PropertyValue<number>): this;
 
     /**
      * 设置栅格饱和度
      * @param saturation 饱和度或Expression（-1.0 - 1.0）
      */
-    setRasterSaturation(saturation: NumberValue): this;
+    setRasterSaturation(saturation: PropertyValue<number>): this;
 
     /**
      * 设置栅格对比度
      * @param contrast 对比度或Expression（-1.0 - 1.0）
      */
-    setRasterContrast(contrast: NumberValue): this;
+    setRasterContrast(contrast: PropertyValue<number>): this;
 
     /**
      * 获取图层 ID
@@ -99,15 +99,15 @@ export class RasterLayer {
     
     /**
      * 设置栅格淡入淡出持续时间（毫秒）
-     * @param duration 持续时间
+     * @param duration 持续时间或Expression
      */
-    setRasterFadeDuration(duration: number): this;
+    setRasterFadeDuration(duration: PropertyValue<number>): this;
     getRasterFadeDuration(): number | undefined;
     
     /**
      * 设置栅格重采样方式
-     * @param resampling 'linear' | 'nearest'
+     * @param resampling 'linear' | 'nearest' 或Expression
      */
-    setRasterResampling(resampling: string): this;
+    setRasterResampling(resampling: PropertyValue<string>): this;
     getRasterResampling(): string | undefined;
 }

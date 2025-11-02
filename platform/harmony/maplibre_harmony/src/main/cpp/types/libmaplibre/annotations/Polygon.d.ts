@@ -1,3 +1,29 @@
+import type { LatLng } from '../NativeMapView';
+
+/**
+ * 多边形选项接口
+ */
+export interface PolygonOptions {
+    /** 多边形的点坐标数组 */
+    points: LatLng[];
+    /** 孔洞数组（可选） */
+    holes?: LatLng[][];
+    /** 填充颜色（可选） */
+    fillColor?: string;
+    /** 描边颜色（可选） */
+    strokeColor?: string;
+    /** 描边宽度（可选） */
+    strokeWidth?: number;
+    /** 填充透明度（可选，0-1） */
+    fillAlpha?: number;
+    /** 描边透明度（可选，0-1） */
+    strokeAlpha?: number;
+    /** 是否可见（可选） */
+    visible?: boolean;
+    /** Z 轴顺序（可选） */
+    zIndex?: number;
+}
+
 /**
  * Polygon - 多边形标注类（NAPI 对象）
  * 
@@ -8,60 +34,64 @@ export class Polygon {
      * 构造函数
      * @param options 多边形选项
      */
-    constructor(options: any);
+    constructor(options: PolygonOptions);
     
     /**
      * 获取多边形的点坐标
+     * @returns 点坐标数组
      */
-    getPoints(): any[];
+    getPoints(): LatLng[];
     
     /**
      * 设置多边形的点坐标
      * @param points 点坐标数组
      */
-    setPoints(points: any[]): void;
+    setPoints(points: LatLng[]): void;
     
     /**
      * 添加一个点
      * @param point 点坐标
      */
-    addPoint(point: any): void;
+    addPoint(point: LatLng): void;
     
     /**
      * 在指定位置插入一个点
      * @param index 插入位置
      * @param point 点坐标
      */
-    insertPoint(index: number, point: any): void;
+    insertPoint(index: number, point: LatLng): void;
     
     /**
      * 移除指定索引的点
      * @param index 点索引
+     * @returns 被移除的点坐标，如果索引无效则返回 null
      */
-    removePoint(index: number): any;
+    removePoint(index: number): LatLng | null;
     
     /**
      * 获取孔洞列表
+     * @returns 孔洞数组，每个孔洞是一个点坐标数组
      */
-    getHoles(): any[][];
+    getHoles(): LatLng[][];
     
     /**
      * 设置孔洞列表
      * @param holes 孔洞数组
      */
-    setHoles(holes: any[][]): void;
+    setHoles(holes: LatLng[][]): void;
     
     /**
      * 添加一个孔洞
      * @param hole 孔洞点坐标数组
      */
-    addHole(hole: any[]): void;
+    addHole(hole: LatLng[]): void;
     
     /**
      * 移除指定索引的孔洞
      * @param index 孔洞索引
+     * @returns 被移除的孔洞点坐标数组，如果索引无效则返回 null
      */
-    removeHole(index: number): any[];
+    removeHole(index: number): LatLng[] | null;
     
     /**
      * 获取填充颜色
@@ -146,15 +176,13 @@ export class Polygon {
     getId(): number;
     
     /**
-     * 设置 ID
+     * 设置 ID（内部使用）
+     * @internal
      * @param id ID 数值
      */
     setId(id: number): void;
     
-    /**
-     * 设置关联的地图对象（内部使用）
-     * @param map 地图对象
-     */
-    setMapLibreMap(map: any): void;
+    // 注意：setMapLibreMap 是内部实现细节，不在公开 API 中暴露
+    // ETS 层的 Polygon 封装类会处理 MapLibreMap 的关联
 }
 

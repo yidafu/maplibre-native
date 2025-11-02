@@ -3,7 +3,7 @@
  * 热力图层 API (NAPI 类)
  */
 
-import type { NumberValue } from '../LayerPropertyTypes';
+import type { ExpressionType, NumberValue } from '../LayerPropertyTypes';
 
 /**
  * HeatmapLayer - 热力图层
@@ -23,19 +23,25 @@ export class HeatmapLayer {
      * 设置热力图半径
      * @param radius 半径或Expression
      */
-    setHeatmapRadius(radius: NumberValue): this;
+    setHeatmapRadius(radius: PropertyValue<number>): this;
+
+    /**
+     * 设置热力图权重
+     * @param weight 权重值或Expression（用于计算每个点对热力图的贡献）
+     */
+    setHeatmapWeight(weight: PropertyValue<number>): this;
 
     /**
      * 设置热力图强度
      * @param intensity 强度值或Expression
      */
-    setHeatmapIntensity(intensity: NumberValue): this;
+    setHeatmapIntensity(intensity: PropertyValue<number>): this;
 
     /**
      * 设置热力图不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setHeatmapOpacity(opacity: NumberValue): this;
+    setHeatmapOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 获取图层 ID
@@ -84,8 +90,29 @@ export class HeatmapLayer {
     /**
      * 设置热力图颜色渐变（仅支持 Expression）
      * 必须使用 heatmap-density 表达式
-     * @param color 颜色表达式数组
+     * 
+     * @param color 颜色表达式（通常使用 interpolate 表达式）
+     * 
+     * @example
+     * ```typescript
+     * layer.setHeatmapColor([
+     *   "interpolate",
+     *   ["linear"],
+     *   ["heatmap-density"],
+     *   0, "rgba(0, 0, 255, 0)",
+     *   0.1, "royalblue",
+     *   0.3, "cyan",
+     *   0.5, "lime",
+     *   0.7, "yellow",
+     *   1, "red"
+     * ]);
+     * ```
      */
-    setHeatmapColor(color: any[]): this;
-    getHeatmapColor(): any[] | undefined;
+    setHeatmapColor(color: ExpressionLiteral): this;
+    
+    /**
+     * 获取热力图颜色渐变表达式
+     * @returns 颜色表达式，如果未设置则返回 undefined
+     */
+    getHeatmapColor(): ExpressionLiteral | undefined;
 }

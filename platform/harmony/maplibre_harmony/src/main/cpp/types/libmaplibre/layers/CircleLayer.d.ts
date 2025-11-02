@@ -3,7 +3,7 @@
  * 圆形图层 API (NAPI 类)
  */
 
-import type { PropertyValue, ColorValue, NumberValue, StringValue } from '../LayerPropertyTypes';
+import type { ColorValue, NumberValue, PropertyValue, StringValue } from '../LayerPropertyTypes';
 
 /**
  * CircleLayer - 圆形图层
@@ -21,43 +21,43 @@ export class CircleLayer {
      * 设置圆形半径
      * @param radius 半径或Expression
      */
-    setCircleRadius(radius: NumberValue): this;
+    setCircleRadius(radius: PropertyValue<number>): this;
 
     /**
      * 设置圆形颜色
      * @param color 颜色值或Expression
      */
-    setCircleColor(color: ColorValue): this;
+    setCircleColor(color: PropertyValue<string>): this;
 
     /**
      * 设置圆形不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setCircleOpacity(opacity: NumberValue): this;
+    setCircleOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 设置圆形模糊
      * @param blur 模糊量或Expression（0.0 - 1.0）
      */
-    setCircleBlur(blur: NumberValue): this;
+    setCircleBlur(blur: PropertyValue<number>): this;
 
     /**
      * 设置圆形边框宽度
      * @param width 边框宽度或Expression
      */
-    setCircleStrokeWidth(width: NumberValue): this;
+    setCircleStrokeWidth(width: PropertyValue<number>): this;
 
     /**
      * 设置圆形边框颜色
      * @param color 颜色值或Expression
      */
-    setCircleStrokeColor(color: ColorValue): this;
+    setCircleStrokeColor(color: PropertyValue<string>): this;
 
     /**
      * 设置圆形边框不透明度
      * @param opacity 不透明度或Expression
      */
-    setCircleStrokeOpacity(opacity: NumberValue): this;
+    setCircleStrokeOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 获取圆形半径
@@ -127,27 +127,27 @@ export class CircleLayer {
      * 设置圆形平移锚点
      * @param anchor 'map' | 'viewport' 或Expression
      */
-    setCircleTranslateAnchor(anchor: StringValue): this;
+    setCircleTranslateAnchor(anchor: PropertyValue<string>): this;
     getCircleTranslateAnchor(): string | undefined;
     
     /**
      * 设置圆形缩放行为
      * @param scale 'map' | 'viewport' 或Expression
      */
-    setCirclePitchScale(scale: StringValue): this;
+    setCirclePitchScale(scale: PropertyValue<string>): this;
     getCirclePitchScale(): string | undefined;
     
     /**
      * 设置圆形倾斜对齐
      * @param alignment 'map' | 'viewport' 或Expression
      */
-    setCirclePitchAlignment(alignment: StringValue): this;
+    setCirclePitchAlignment(alignment: PropertyValue<string>): this;
     getCirclePitchAlignment(): string | undefined;
     
     /**
      * 设置圆形排序键
      * @param sortKey 排序键或Expression
      */
-    setCircleSortKey(sortKey: NumberValue): this;
+    setCircleSortKey(sortKey: PropertyValue<number>): this;
     getCircleSortKey(): number | undefined;
 }

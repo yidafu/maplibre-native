@@ -7,11 +7,10 @@ import { LatLng } from '../geometry/LatLng';
 import { GeoJson, IFeature, IPoint } from '../geojson';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
-
-type Style = maplibre.Style;
-type GeoJsonSource = maplibre.GeoJsonSource;
-type CircleLayer = maplibre.CircleLayer;
-type SymbolLayer = maplibre.SymbolLayer;
+import { Style } from '../style';
+import { GeoJsonSource } from '../style/sources/GeoJsonSource';
+import { CircleLayer } from '../style/layers/CircleLayer';
+import { SymbolLayer } from '../style/layers/SymbolLayer';
 
 /**
  * 位置图层控制器
@@ -72,35 +71,35 @@ export class LocationLayerController {
         properties: {}
       };
       
-      const geoJsonSource: GeoJsonSource = new maplibre.GeoJsonSource(
+      const geoJsonSource = new GeoJsonSource(
         LocationComponentConstants.LOCATION_SOURCE
       );
       geoJsonSource.setGeoJson(JSON.stringify(sourceFeature));
       this.style.addSource(geoJsonSource);
 
       // 添加精度圈图层
-      const accuracyLayer: CircleLayer = new maplibre.CircleLayer(
+      const accuracyLayer = new CircleLayer(
         LocationComponentConstants.ACCURACY_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(accuracyLayer);
 
       // 添加背景图标图层
-      const backgroundLayer: SymbolLayer = new maplibre.SymbolLayer(
+      const backgroundLayer = new SymbolLayer(
         LocationComponentConstants.BACKGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(backgroundLayer);
 
       // 添加前景图标图层
-      const foregroundLayer: SymbolLayer = new maplibre.SymbolLayer(
+      const foregroundLayer = new SymbolLayer(
         LocationComponentConstants.FOREGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(foregroundLayer);
 
       // 添加方向图标图层
-      const bearingLayer: SymbolLayer = new maplibre.SymbolLayer(
+      const bearingLayer = new SymbolLayer(
         LocationComponentConstants.BEARING_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
@@ -160,8 +159,8 @@ export class LocationLayerController {
         properties: {}
       };
       
-      const source = this.style.getSource(LocationComponentConstants.LOCATION_SOURCE) as GeoJsonSource;
-      if (source) {
+      const source = this.style.getSource(LocationComponentConstants.LOCATION_SOURCE);
+      if (source && source instanceof GeoJsonSource) {
         source.setGeoJson(JSON.stringify(sourceFeature));
       }
 
@@ -187,8 +186,8 @@ export class LocationLayerController {
     }
 
     try {
-      const layer: maplibre.CircleLayer | null = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER) as maplibre.CircleLayer | null;
-      if (layer) {
+      const layer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
+      if (layer && layer instanceof CircleLayer) {
         // 根据精度值设置圆圈半径（需要考虑地图缩放级别）
         // 这里简化处理，实际应该根据纬度和缩放级别计算
         const radiusInPixels = Math.max(accuracy / 2, 10);
@@ -208,8 +207,8 @@ export class LocationLayerController {
     }
 
     try {
-      const layer: maplibre.SymbolLayer | null = this.style.getLayer(LocationComponentConstants.BEARING_LAYER) as maplibre.SymbolLayer | null;
-      if (layer && this.renderMode !== RenderMode.NORMAL) {
+      const layer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
+      if (layer && layer instanceof SymbolLayer && this.renderMode !== RenderMode.NORMAL) {
         // layer.setProperties({ 'icon-rotate': bearing });
       }
     } catch (err) {
@@ -251,9 +250,9 @@ export class LocationLayerController {
 
     try {
       // 根据渲染模式显示/隐藏不同的图层
-      const foregroundLayer: maplibre.SymbolLayer | null = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER) as maplibre.SymbolLayer | null;
-      const backgroundLayer: maplibre.SymbolLayer | null = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER) as maplibre.SymbolLayer | null;
-      const bearingLayer: maplibre.SymbolLayer | null = this.style.getLayer(LocationComponentConstants.BEARING_LAYER) as maplibre.SymbolLayer | null;
+      const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
+      const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
+      const bearingLayer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
 
       if (this.renderMode === RenderMode.NORMAL) {
         // 普通模式：只显示前景和背景
@@ -289,8 +288,8 @@ export class LocationLayerController {
     }
 
     try {
-      const layer: maplibre.CircleLayer | null = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER) as maplibre.CircleLayer | null;
-      if (layer) {
+      const layer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
+      if (layer && layer instanceof CircleLayer) {
         // layer.setProperties({
         //   'circle-color': this.options.accuracyColor,
         //   'circle-opacity': this.options.accuracyAlpha

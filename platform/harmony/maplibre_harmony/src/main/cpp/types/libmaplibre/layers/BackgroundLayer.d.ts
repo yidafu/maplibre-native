@@ -3,7 +3,7 @@
  * 背景图层 API (NAPI 类)
  */
 
-import type { ColorValue, NumberValue, StringValue } from '../LayerPropertyTypes';
+import type { ColorValue, ExpressionType, NumberValue, StringValue } from '../LayerPropertyTypes';
 
 /**
  * BackgroundLayer - 背景图层
@@ -20,19 +20,19 @@ export class BackgroundLayer {
      * 设置背景颜色
      * @param color 颜色值或Expression
      */
-    setBackgroundColor(color: ColorValue): this;
+    setBackgroundColor(color: PropertyValue<string>): this;
 
     /**
      * 设置背景不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setBackgroundOpacity(opacity: NumberValue): this;
+    setBackgroundOpacity(opacity: PropertyValue<number>): this;
 
     /**
      * 设置背景图案
      * @param pattern 图案名称或Expression
      */
-    setBackgroundPattern(pattern: StringValue): this;
+    setBackgroundPattern(pattern: PropertyValue<string>): this;
 
     /**
      * 获取背景颜色

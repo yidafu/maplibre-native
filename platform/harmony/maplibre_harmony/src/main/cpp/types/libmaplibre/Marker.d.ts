@@ -236,15 +236,13 @@ export class Marker {
   
   /**
    * 设置 annotation ID（内部使用）
+   * @internal
    * @returns this（支持链式调用）
    */
   setId(id: number): Marker;
   
-  /**
-   * 设置关联的 MapLibreMap（内部使用）
-   * @returns this（支持链式调用）
-   */
-  setMapLibreMap(map: any): Marker;
+  // 注意：setMapLibreMap 是内部实现细节，不在公开 API 中暴露
+  // ETS 层的 Marker 封装类会处理 MapLibreMap 的关联
   
   // Animation methods
   

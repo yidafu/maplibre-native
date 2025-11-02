@@ -36,6 +36,7 @@ import type {
   RasterPaint,
   HillshadePaint
 } from './LayerPaint';
+import { CustomLayer } from '..';
 
 // Layer 类型是所有具体图层类型的联合类型
 export type Layer = 
@@ -47,7 +48,8 @@ export type Layer =
   | FillExtrusionLayer 
   | RasterLayer 
   | HillshadeLayer 
-  | BackgroundLayer;
+  | BackgroundLayer
+  | CustomLayer;
 
 /**
  * LayerFilter - 图层过滤器类型

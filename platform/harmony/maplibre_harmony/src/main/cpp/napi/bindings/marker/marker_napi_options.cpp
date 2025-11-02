@@ -331,7 +331,7 @@ napi_value MarkerNAPI::AnimateToPosition(napi_env env, napi_callback_info info) 
     napi_value targetPosValue = args.GetObject(0, "targetPosition");
     if (!args.HasError()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, targetPosValue, latLng)) {
+        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, targetPosValue, latLng)) {
             marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
             Logger::info("MarkerNAPI", "[Animation] animateToPosition: target=(%f, %f)", latLng.latitude(), latLng.longitude());
         } else {

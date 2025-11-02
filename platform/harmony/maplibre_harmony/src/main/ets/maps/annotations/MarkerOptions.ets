@@ -338,7 +338,7 @@ export class MarkerOptions {
     // 构建 options 对象
     // 注意：ESObject 用于与 NAPI 层交互的动态对象，这是 HarmonyOS 官方推荐的方式
     const options: ESObject = {
-      position: this._position.getNative()  // 传递 NAPI LatLng
+      position: this._position.toObject()  // 传递对象字面量
     };
     
     // 添加可选属性

@@ -2,21 +2,8 @@
  * SymbolLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ColorValue, NumberValue, StringValue, BooleanValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -78,17 +65,17 @@ export class SymbolLayer {
 
   // ========== Symbol 图标属性方法 ==========
 
-  setIconImage(iconImage: StringValue): SymbolLayer {
+  setIconImage(iconImage: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setIconImage(convertValue(iconImage));
     return this;
   }
 
-  setIconSize(size: NumberValue): SymbolLayer {
+  setIconSize(size: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setIconSize(convertValue(size));
     return this;
   }
 
-  setIconRotate(rotate: NumberValue): SymbolLayer {
+  setIconRotate(rotate: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setIconRotate(convertValue(rotate));
     return this;
   }
@@ -98,39 +85,39 @@ export class SymbolLayer {
     return this;
   }
 
-  setIconAnchor(anchor: StringValue): SymbolLayer {
+  setIconAnchor(anchor: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setIconAnchor(convertValue(anchor));
     return this;
   }
 
-  setIconAllowOverlap(allow: BooleanValue): SymbolLayer {
+  setIconAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer {
     this.nativeInstance.setIconAllowOverlap(convertValue(allow));
     return this;
   }
 
-  setIconOpacity(opacity: NumberValue): SymbolLayer {
+  setIconOpacity(opacity: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setIconOpacity(convertValue(opacity));
     return this;
   }
 
-  setIconColor(color: ColorValue): SymbolLayer {
+  setIconColor(color: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setIconColor(convertValue(color));
     return this;
   }
 
-  setIconHaloColor(color: ColorValue): SymbolLayer {
+  setIconHaloColor(color: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setIconHaloColor(convertValue(color));
     return this;
   }
 
-  setIconHaloWidth(width: NumberValue): SymbolLayer {
+  setIconHaloWidth(width: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setIconHaloWidth(convertValue(width));
     return this;
   }
 
   // ========== Symbol 文本属性方法 ==========
 
-  setTextField(text: StringValue): SymbolLayer {
+  setTextField(text: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setTextField(convertValue(text));
     return this;
   }
@@ -140,12 +127,12 @@ export class SymbolLayer {
     return this;
   }
 
-  setTextSize(size: NumberValue): SymbolLayer {
+  setTextSize(size: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setTextSize(convertValue(size));
     return this;
   }
 
-  setTextMaxWidth(maxWidth: NumberValue): SymbolLayer {
+  setTextMaxWidth(maxWidth: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setTextMaxWidth(convertValue(maxWidth));
     return this;
   }
@@ -155,32 +142,32 @@ export class SymbolLayer {
     return this;
   }
 
-  setTextAnchor(anchor: StringValue): SymbolLayer {
+  setTextAnchor(anchor: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setTextAnchor(convertValue(anchor));
     return this;
   }
 
-  setTextAllowOverlap(allow: BooleanValue): SymbolLayer {
-    this.nativeInstance.setTextAllowOverlap(convertValue(allow));
+  setTextAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer {
+    this.nativeInstance.setTextAllowOverlap(convertValue<boolean>(allow));
     return this;
   }
 
-  setTextOpacity(opacity: NumberValue): SymbolLayer {
+  setTextOpacity(opacity: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setTextOpacity(convertValue(opacity));
     return this;
   }
 
-  setTextColor(color: ColorValue): SymbolLayer {
+  setTextColor(color: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setTextColor(convertValue(color));
     return this;
   }
 
-  setTextHaloColor(color: ColorValue): SymbolLayer {
+  setTextHaloColor(color: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setTextHaloColor(convertValue(color));
     return this;
   }
 
-  setTextHaloWidth(width: NumberValue): SymbolLayer {
+  setTextHaloWidth(width: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setTextHaloWidth(convertValue(width));
     return this;
   }

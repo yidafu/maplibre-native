@@ -2,20 +2,9 @@
  * CircleLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ColorValue, NumberValue, StringValue, PropertyValue, ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type {ColorValue, NumberValue, StringValue, ExpressionLiteral } from 'libmaplibre.so';
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -77,37 +66,37 @@ export class CircleLayer {
 
   // ========== Circle 样式属性方法 ==========
 
-  setCircleRadius(radius: NumberValue): CircleLayer {
+  setCircleRadius(radius: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleRadius(convertValue(radius));
     return this;
   }
 
-  setCircleColor(color: ColorValue): CircleLayer {
+  setCircleColor(color: PropertyValue<string>): CircleLayer {
     this.nativeInstance.setCircleColor(convertValue(color));
     return this;
   }
 
-  setCircleOpacity(opacity: NumberValue): CircleLayer {
+  setCircleOpacity(opacity: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleOpacity(convertValue(opacity));
     return this;
   }
 
-  setCircleBlur(blur: NumberValue): CircleLayer {
+  setCircleBlur(blur: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleBlur(convertValue(blur));
     return this;
   }
 
-  setCircleStrokeWidth(width: NumberValue): CircleLayer {
+  setCircleStrokeWidth(width: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleStrokeWidth(convertValue(width));
     return this;
   }
 
-  setCircleStrokeColor(color: ColorValue): CircleLayer {
+  setCircleStrokeColor(color: PropertyValue<string>): CircleLayer {
     this.nativeInstance.setCircleStrokeColor(convertValue(color));
     return this;
   }
 
-  setCircleStrokeOpacity(opacity: NumberValue): CircleLayer {
+  setCircleStrokeOpacity(opacity: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleStrokeOpacity(convertValue(opacity));
     return this;
   }
@@ -117,22 +106,22 @@ export class CircleLayer {
     return this;
   }
 
-  setCircleTranslateAnchor(anchor: StringValue): CircleLayer {
+  setCircleTranslateAnchor(anchor: PropertyValue<string>): CircleLayer {
     this.nativeInstance.setCircleTranslateAnchor(convertValue(anchor));
     return this;
   }
 
-  setCirclePitchScale(scale: StringValue): CircleLayer {
+  setCirclePitchScale(scale: PropertyValue<string>): CircleLayer {
     this.nativeInstance.setCirclePitchScale(convertValue(scale));
     return this;
   }
 
-  setCirclePitchAlignment(alignment: StringValue): CircleLayer {
+  setCirclePitchAlignment(alignment: PropertyValue<string>): CircleLayer {
     this.nativeInstance.setCirclePitchAlignment(convertValue(alignment));
     return this;
   }
 
-  setCircleSortKey(sortKey: NumberValue): CircleLayer {
+  setCircleSortKey(sortKey: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleSortKey(convertValue(sortKey));
     return this;
   }

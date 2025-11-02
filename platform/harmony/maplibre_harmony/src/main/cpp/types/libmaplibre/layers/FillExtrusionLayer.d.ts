@@ -3,7 +3,8 @@
  * 3D填充拉伸图层 API (NAPI 类)
  */
 
-import type { ColorValue, NumberValue } from '../LayerPropertyTypes';
+import type { ColorValue, PropertyValue, NumberValue } from '../LayerPropertyTypes';
+import type { ExpressionLiteral } from '../ExpressionTypes';
 
 /**
  * FillExtrusionLayer - 3D 填充拉伸图层
@@ -23,25 +24,55 @@ export class FillExtrusionLayer {
      * 设置拉伸高度
      * @param height 高度或Expression
      */
-    setFillExtrusionHeight(height: NumberValue): this;
+    setFillExtrusionHeight(height: PropertyValue<number>): this;
 
     /**
      * 设置拉伸基准高度
      * @param base 基准高度或Expression
      */
-    setFillExtrusionBase(base: NumberValue): this;
+    setFillExtrusionBase(base: PropertyValue<number>): this;
 
     /**
      * 设置拉伸颜色
      * @param color 颜色值或Expression
      */
-    setFillExtrusionColor(color: ColorValue): this;
+    setFillExtrusionColor(color: PropertyValue<string>): this;
 
     /**
      * 设置拉伸不透明度
      * @param opacity 不透明度或Expression（0.0 - 1.0）
      */
-    setFillExtrusionOpacity(opacity: NumberValue): this;
+    setFillExtrusionOpacity(opacity: PropertyValue<number>): this;
+
+    /**
+     * 设置拉伸图案
+     * @param pattern 图案名称或 Expression
+     * 
+     * @example
+     * ```typescript
+     * // 使用图案名称
+     * layer.setFillExtrusionPattern('building-pattern');
+     * 
+     * // 使用 Expression
+     * layer.setFillExtrusionPattern(['get', 'pattern_name']);
+     * ```
+     */
+    setFillExtrusionPattern(pattern: PropertyValue<string>): this;
+
+    /**
+     * 设置拉伸平移（用于偏移 3D 建筑物的位置）
+     * @param translate 平移量 [x, y]（像素）或 Expression
+     * 
+     * @example
+     * ```typescript
+     * // 固定平移
+     * layer.setFillExtrusionTranslate([10, 20]);
+     * 
+     * // 使用 Expression（数据驱动）
+     * layer.setFillExtrusionTranslate(['literal', [5, 10]]);
+     * ```
+     */
+    setFillExtrusionTranslate(translate: PropertyValue<[number, number]>): this;
 
     /**
      * 获取图层 ID

@@ -1,21 +1,21 @@
 /**
  * ExpressionTypes - Expression 系统的类型定义和接口
+ * 
+ * 直接从 libmaplibre.so 重新导出类型
  */
 
 // 从 libmaplibre.so 重新导出核心表达式类型
-export type { ExpressionValue, ExpressionLiteral } from 'libmaplibre.so';
+export type { 
+  ExpressionValue, 
+  ExpressionLiteral, 
+  PropertyValue 
+} from 'libmaplibre.so';
 
 /**
- * ValueExpression 接口
- * 用于可以直接转换为值的表达式
- * @template T 表达式返回值的类型
+ * ExpressionType - Expression 类型（向后兼容别名）
+ * @deprecated 请使用 PropertyValue<T> 替代
  */
-export interface ValueExpression<T = Object> {
-  /**
-   * 将表达式转换为原始值
-   */
-  toValue(): T | null;
-}
+export type ExpressionType<T> = import('libmaplibre.so').PropertyValue<T>;
 
 /**
  * Collator 选项
@@ -44,4 +44,3 @@ export interface NumberFormatOptions {
   minFractionDigits?: number;
   maxFractionDigits?: number;
 }
-

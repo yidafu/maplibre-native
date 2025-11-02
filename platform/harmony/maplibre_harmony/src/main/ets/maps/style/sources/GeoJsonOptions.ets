@@ -1,8 +1,9 @@
 /**
  * 聚类属性类型
  * 格式：{ "propertyName": [operatorExpression, mapExpression] }
+ * 注意：由于 ArkTS 限制，使用 ESObject 类型
  */
-export type ClusterProperties = Record<string, [Object[] | string, Object[]]>;
+export type ClusterProperties = ESObject;
 
 /**
  * GeoJsonOptions - GeoJSON数据源选项配置

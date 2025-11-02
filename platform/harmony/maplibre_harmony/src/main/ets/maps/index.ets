@@ -97,6 +97,8 @@ export {
 // ========== 几何类型 ==========
 export { LatLng } from './geometry/LatLng';
 
+export type { ILatLng } from './types/NativeTypes';
+
 export { LatLngBounds } from './geometry/LatLngBounds';
 
 export { Point, PixelCoordinate, IPixelCoordinate } from './geometry/Point';
@@ -242,21 +244,15 @@ export {
   ExpressionBuilder, // deprecated: use Expression instead
   ExpressionLiteral,
   ExpressionLiteralArray,
-  ExpressionMap,
-  CollatorExpression
+  ExpressionMap
 } from './style/expressions';
+export { ExpressionValue } from './style/expressions';
 
-export {
-  Interpolator
-} from './style/expressions/Interpolator';
 
-export {
-  Stop
-} from './style/expressions/Stop';
-
-export type {
-  ValueExpression, ExpressionValue
-} from './style/expressions';
+// 注意：Interpolator、Stop、CollatorExpression 已整合到 Expression 类中
+// 请使用 Expression.linear()、Expression.exponential()、Expression.cubicBezier()
+// 请使用 Expression.stop()
+// 请使用 Expression.collator()
 
 // ========== 数据源 ==========
 export {

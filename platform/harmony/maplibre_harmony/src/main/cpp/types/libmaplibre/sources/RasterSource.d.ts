@@ -48,12 +48,12 @@ export class RasterSource {
      * @param url 瓦片 URL
      * @returns this（支持链式调用）
      */
-    setUrl(url: string): RasterSource;
+    setUrl(url: string): this;
     
     /**
      * 设置瓦片大小
      * @param tileSize 瓦片大小（像素）
      * @returns this（支持链式调用）
      */
-    setTileSize(tileSize: number): RasterSource;
+    setTileSize(tileSize: number): this;
 }

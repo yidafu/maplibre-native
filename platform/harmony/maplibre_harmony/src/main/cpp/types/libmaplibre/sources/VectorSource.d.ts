@@ -48,12 +48,12 @@ export class VectorSource {
      * @param url 瓦片 URL
      * @returns this（支持链式调用）
      */
-    setUrl(url: string): VectorSource;
+    setUrl(url: string): this;
     
     /**
      * 设置瓦片 URL 列表
      * @param tiles 瓦片 URL 数组
      * @returns this（支持链式调用）
      */
-    setTiles(tiles: string[]): VectorSource;
+    setTiles(tiles: string[]): this;
 }

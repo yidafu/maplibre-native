@@ -2,21 +2,9 @@
  * BackgroundLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ColorValue, NumberValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type {ColorValue, NumberValue, ExpressionLiteral } from 'libmaplibre.so';
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -67,12 +55,12 @@ export class BackgroundLayer {
     return this;
   }
 
-  setBackgroundColor(color: ColorValue): BackgroundLayer {
+  setBackgroundColor(color: PropertyValue<string>): BackgroundLayer {
     this.nativeInstance.setBackgroundColor(convertValue(color));
     return this;
   }
 
-  setBackgroundOpacity(opacity: NumberValue): BackgroundLayer {
+  setBackgroundOpacity(opacity: PropertyValue<number>): BackgroundLayer {
     this.nativeInstance.setBackgroundOpacity(convertValue(opacity));
     return this;
   }

@@ -2,21 +2,9 @@
  * FillExtrusionLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ColorValue, NumberValue, StringValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type {ColorValue, NumberValue, StringValue, ExpressionLiteral } from 'libmaplibre.so';
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -78,38 +66,38 @@ export class FillExtrusionLayer {
 
   // ========== FillExtrusion 样式属性方法 ==========
 
-  setFillExtrusionColor(color: ColorValue): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionColor(color);
+  setFillExtrusionColor(color: PropertyValue<string>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionColor(convertValue(color));
     return this;
   }
 
-  setFillExtrusionOpacity(opacity: NumberValue): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionOpacity(opacity);
+  setFillExtrusionOpacity(opacity: PropertyValue<number>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionOpacity(convertValue(opacity));
     return this;
   }
 
-  setFillExtrusionHeight(height: NumberValue): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionHeight(height);
+  setFillExtrusionHeight(height: PropertyValue<number>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionHeight(convertValue(height));
     return this;
   }
 
-  setFillExtrusionBase(base: NumberValue): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionBase(base);
+  setFillExtrusionBase(base: PropertyValue<number>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionBase(convertValue(base));
     return this;
   }
 
   setFillExtrusionPattern(pattern: PropertyValue<string>): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionPattern(pattern);
+    this.nativeInstance.setFillExtrusionPattern(convertValue(pattern));
     return this;
   }
 
-  setFillExtrusionTranslate(translate: PropertyValue<number[]>): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionTranslate(translate);
+  setFillExtrusionTranslate(translate: PropertyValue<[number, number]>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionTranslate(convertValue(translate) as import('libmaplibre.so').PropertyValue<[number, number]>);
     return this;
   }
 
-  setFillExtrusionTranslateAnchor(anchor: StringValue): FillExtrusionLayer {
-    this.nativeInstance.setFillExtrusionTranslateAnchor(anchor);
+  setFillExtrusionTranslateAnchor(anchor: PropertyValue<string>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionTranslateAnchor(convertValue(anchor) as string);
     return this;
   }
 }

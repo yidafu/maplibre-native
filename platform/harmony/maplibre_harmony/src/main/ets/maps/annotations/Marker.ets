@@ -70,11 +70,12 @@ export class Marker {
   // ========== Marker API 方法 ==========
 
   getPosition(): LatLng {
-    return LatLng.fromNative(this.nativeInstance.getPosition());
+    const pos = this.nativeInstance.getPosition();
+    return new LatLng(pos.latitude, pos.longitude);
   }
 
   setPosition(position: LatLng): Marker {
-    this.nativeInstance.setPosition(position.getNative());
+    this.nativeInstance.setPosition(position.toObject());
     return this;
   }
 

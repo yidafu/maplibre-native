@@ -8,7 +8,7 @@ export { Style, StyleBuilder } from './Style';
 // 数据源
 export * from './sources/index';
 
-// 图层
+// 图层（会导出 PropertyValue）
 export * from './layers/index';
 
 // 图片
@@ -18,6 +18,13 @@ export { Image } from './images/Image';
 export { Light } from './light/Light';
 export type { LightOptions } from './light/Light';
 
-// Expression 表达式系统
-export * from './expressions/index';
-
+// Expression 表达式系统（不导出 PropertyValue 以避免冲突）
+export { 
+  Expression, 
+  ExpressionBuilder, 
+  ExpressionLiteral, 
+  ExpressionLiteralArray, 
+  ExpressionMap,
+  ExpressionValue
+} from './expressions/index';
+export { FormatEntry, FormatOption, NumberFormatOption } from './expressions/index';

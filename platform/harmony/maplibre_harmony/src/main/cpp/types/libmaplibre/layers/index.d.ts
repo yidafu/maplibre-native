@@ -5,6 +5,7 @@
 
 import { BackgroundLayer } from './BackgroundLayer';
 import { CircleLayer } from './CircleLayer';
+import { CustomLayer } from './CustomLayer';
 import { FillExtrusionLayer } from './FillExtrusionLayer';
 import { FillLayer } from './FillLayer';
 import { HeatmapLayer } from './HeatmapLayer';
@@ -22,6 +23,7 @@ export { RasterLayer } from './RasterLayer';
 export { HeatmapLayer } from './HeatmapLayer';
 export { HillshadeLayer } from './HillshadeLayer';
 export { FillExtrusionLayer } from './FillExtrusionLayer';
+export { CustomLayer } from './CustomLayer';
 
 /**
  * Layer - 所有图层类型的联合类型
@@ -36,5 +38,6 @@ export type Layer =
     | RasterLayer 
     | HeatmapLayer 
     | HillshadeLayer 
-    | FillExtrusionLayer;
+    | FillExtrusionLayer
+    | CustomLayer;
 

@@ -5,7 +5,6 @@
  * 重构为面向对象接口，与 Android/iOS 架构保持一致
  */
 
-import image from '@ohos.multimedia.image';
 import type { Layer } from './layers';
 import type { Source } from './sources';
 import type { Image } from './images/Image';
@@ -53,13 +52,13 @@ export class Style {
     /**
      * 获取指定数据源
      * @param sourceId 数据源 ID
-     * @returns 数据源对象，如果不存在则返回 null
+     * @returns 数据源对象（GeoJsonSource、VectorSource 等），如果不存在则返回 null
      */
     getSource(sourceId: string): Source | null;
 
     /**
      * 获取所有数据源
-     * @returns 数据源列表
+     * @returns 数据源数组（包含所有已添加的数据源）
      */
     getSources(): Source[];
 
@@ -109,53 +108,53 @@ export class Style {
     /**
      * 获取指定图层
      * @param layerId 图层 ID
-     * @returns 图层对象，如果不存在则返回 null
+     * @returns 图层对象（FillLayer、LineLayer 等），如果不存在则返回 null
      */
     getLayer(layerId: string): Layer | null;
 
     /**
      * 获取所有图层
-     * @returns 图层列表
+     * @returns 图层数组（包含所有已添加的图层）
      */
     getLayers(): Layer[];
 
     // ========== 图像管理 ==========
 
     /**
-     * 添加图像
+     * 添加图像到样式
      * @param name 图像名称
-     * @param imageData 图像数据
-     * @param width 图像宽度
-     * @param height 图像高度
-     * @param sdf 是否为 SDF (Signed Distance Field) 图像
+     * @param imageData 图像数据（ArrayBuffer 或 Uint8Array，RGBA 格式）
+     * @param width 图像宽度（像素）
+     * @param height 图像高度（像素）
+     * @param sdf 是否为 SDF (Signed Distance Field) 图像，默认 false
      */
     addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void;
 
     /**
-     * 移除图像
+     * 从样式中移除图像
      * @param name 图像名称
-     * @returns 是否成功
+     * @returns 是否成功移除
      */
     removeImage(name: string): boolean;
 
     /**
-     * 获取图像
+     * 获取图像对象
      * @param name 图像名称
-     * @returns 图像数据，如果不存在则返回 null
+     * @returns 图像对象，如果不存在则返回 null
      */
-    getImage(name: string): Object | null;
+    getImage(name: string): Image | null;
 
     // ========== 光照管理 ==========
 
     /**
      * 获取光照设置
-     * @returns 光照对象，如果不存在则返回 null
+     * @returns 光照配置对象（包含 anchor、position、color 等属性），如果不存在则返回 null
      */
-    getLight(): Object | null;
+    getLight(): object | null;
 
     /**
      * 设置光照
-     * @param lightJson 光照 JSON 配置
+     * @param lightJson 光照 JSON 配置字符串
      */
     setLight(lightJson: string): void;
 
@@ -163,13 +162,13 @@ export class Style {
 
     /**
      * 获取过渡效果设置
-     * @returns 过渡效果对象，如果不存在则返回 null
+     * @returns 过渡选项对象（包含 duration、delay 等属性），如果不存在则返回 null
      */
-    getTransition(): Object | null;
+    getTransition(): { duration?: number; delay?: number } | null;
 
     /**
      * 设置过渡效果
-     * @param transitionJson 过渡效果 JSON 配置
+     * @param transitionJson 过渡效果 JSON 配置字符串
      */
     setTransition(transitionJson: string): void;
 }
@@ -216,14 +215,14 @@ export class StyleBuilder {
 
     /**
      * 添加数据源（样式加载完成后添加）
-     * @param source 数据源对象
+     * @param source 数据源对象（GeoJsonSource、VectorSource、RasterSource 等）
      * @returns this 支持链式调用
      */
     withSource(source: Source): this;
 
     /**
      * 添加图层（样式加载完成后添加）
-     * @param layer 图层对象
+     * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等）
      * @returns this 支持链式调用
      */
     withLayer(layer: Layer): this;
@@ -234,20 +233,12 @@ export class StyleBuilder {
      * @returns this 支持链式调用
      */
     withImage(image: Image): this;
-    
-    /**
-     * 添加图像（从 PixelMap 创建）
-     * @param name 图像名称
-     * @param pixelMap HarmonyOS PixelMap 对象
-     * @returns this 支持链式调用
-     */
-    withImage(name: string, pixelMap: image.PixelMap): this;
 
     /**
      * 设置过渡选项
-     * @param options 过渡选项
+     * @param options 过渡选项对象（包含 duration、delay 等属性）
      * @returns this 支持链式调用
      */
-    withTransitionOptions(options: Object): this;
+    withTransitionOptions(options: { duration?: number; delay?: number }): this;
 }
 

@@ -1,4 +1,3 @@
-import { PropertyValue } from './PropertyValue';
 import { PaintPropertyValue } from './PaintPropertyValue';
 import { LayoutPropertyValue } from './LayoutPropertyValue';
 import { Expression } from '../expressions/Expression';
@@ -52,7 +51,7 @@ import { Expression } from '../expressions/Expression';
  * ```
  * 
  * @see {@link Expression} - Expression 类文档
- * @see {@link https://maplibre.org/maplibre-style-spec/} - MapLibre Style Specification
+ * @see {@link (https://maplibre.org/maplibre-style-spec/)} - MapLibre Style Specification
  */
 export class PropertyFactory {
   

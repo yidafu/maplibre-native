@@ -2,21 +2,8 @@
  * LineLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ColorValue, NumberValue, StringValue, PropertyValue , ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -83,17 +70,17 @@ export class LineLayer {
 
   // ========== Line 样式属性方法 ==========
 
-  setLineColor(color: ColorValue): LineLayer {
+  setLineColor(color: PropertyValue<string>): LineLayer {
     this.nativeInstance.setLineColor(convertValue(color));
     return this;
   }
 
-  setLineWidth(width: NumberValue): LineLayer {
+  setLineWidth(width: PropertyValue<number>): LineLayer {
     this.nativeInstance.setLineWidth(convertValue(width));
     return this;
   }
 
-  setLineOpacity(opacity: NumberValue): LineLayer {
+  setLineOpacity(opacity: PropertyValue<number>): LineLayer {
     this.nativeInstance.setLineOpacity(convertValue(opacity));
     return this;
   }
@@ -103,32 +90,32 @@ export class LineLayer {
     return this;
   }
 
-  setLineGapWidth(gapWidth: NumberValue): LineLayer {
-    this.nativeInstance.setLineGapWidth(gapWidth);
+  setLineGapWidth(gapWidth: PropertyValue<number>): LineLayer {
+    this.nativeInstance.setLineGapWidth(convertValue(gapWidth));
     return this;
   }
 
   setLineDasharray(dasharray: PropertyValue<number[]>): LineLayer {
-    this.nativeInstance.setLineDasharray(dasharray);
+    this.nativeInstance.setLineDasharray(convertValue(dasharray));
     return this;
   }
 
-  setLineBlur(blur: NumberValue): LineLayer {
+  setLineBlur(blur: PropertyValue<number>): LineLayer {
     this.nativeInstance.setLineBlur(convertValue(blur));
     return this;
   }
 
-  setLineOffset(offset: NumberValue): LineLayer {
+  setLineOffset(offset: PropertyValue<number>): LineLayer {
     this.nativeInstance.setLineOffset(convertValue(offset));
     return this;
   }
 
-  setLineCap(cap: StringValue): LineLayer {
+  setLineCap(cap: PropertyValue<string>): LineLayer {
     this.nativeInstance.setLineCap(convertValue(cap));
     return this;
   }
 
-  setLineJoin(join: StringValue): LineLayer {
+  setLineJoin(join: PropertyValue<string>): LineLayer {
     this.nativeInstance.setLineJoin(convertValue(join));
     return this;
   }
@@ -138,18 +125,18 @@ export class LineLayer {
     return this;
   }
 
-  setLineTranslateAnchor(anchor: StringValue): LineLayer {
-    this.nativeInstance.setLineTranslateAnchor(anchor);
+  setLineTranslateAnchor(anchor: PropertyValue<string>): LineLayer {
+    this.nativeInstance.setLineTranslateAnchor(convertValue(anchor));
     return this;
   }
 
-  setLineMiterLimit(limit: NumberValue): LineLayer {
-    this.nativeInstance.setLineMiterLimit(limit);
+  setLineMiterLimit(limit: PropertyValue<number>): LineLayer {
+    this.nativeInstance.setLineMiterLimit(convertValue(limit));
     return this;
   }
 
-  setLineRoundLimit(limit: NumberValue): LineLayer {
-    this.nativeInstance.setLineRoundLimit(limit);
+  setLineRoundLimit(limit: PropertyValue<number>): LineLayer {
+    this.nativeInstance.setLineRoundLimit(convertValue(limit));
     return this;
   }
 
@@ -158,7 +145,7 @@ export class LineLayer {
     return this;
   }
 
-  setLineSortKey(sortKey: NumberValue): LineLayer {
+  setLineSortKey(sortKey: PropertyValue<number>): LineLayer {
     this.nativeInstance.setLineSortKey(convertValue(sortKey));
     return this;
   }

@@ -155,7 +155,7 @@ napi_value MarkerNAPI::New(napi_env env, napi_callback_info info) {
         napi_value posValue;
         if (napi_get_named_property(env, optionsObj, "position", &posValue) == napi_ok) {
             mbgl::LatLng latLng;
-            if (mbgl::harmony::LatLngNapi::ParseLatLng(env, posValue, latLng)) {
+            if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
                 // LatLng解析成功，转换为Point (注意: Point是(x, y) = (lon, lat))
                 marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
             } else {
@@ -387,7 +387,7 @@ napi_value MarkerNAPI::SetPosition(napi_env env, napi_callback_info info) {
     napi_value posValue = args.GetObject(0, "position");
     if (!args.HasError()) {
         mbgl::LatLng latLng;
-        if (mbgl::harmony::LatLngNapi::ParseLatLng(env, posValue, latLng)) {
+        if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
             marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
         } else {
             Logger::error("MarkerNAPI", "SetPosition: Failed to parse LatLng");

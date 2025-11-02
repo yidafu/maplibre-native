@@ -3,7 +3,7 @@
  * 符号图层 API (NAPI 类)
  */
 
-import type { PropertyValue, ColorValue, NumberValue, StringValue, BooleanValue } from '../LayerPropertyTypes';
+import type { BooleanValue, ColorValue, NumberValue, PropertyValue, StringValue } from '../LayerPropertyTypes';
 
 /**
  * SymbolLayer - 符号图层
@@ -77,7 +77,7 @@ export class SymbolLayer {
          * @param iconImage 图片名称或Expression
          * @returns this（支持链式调用）
          */
-        setIconImage(iconImage: StringValue): SymbolLayer;
+        setIconImage(iconImage: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取图标图片
@@ -89,7 +89,7 @@ export class SymbolLayer {
          * @param size 大小比例或Expression
          * @returns this（支持链式调用）
          */
-        setIconSize(size: NumberValue): SymbolLayer;
+        setIconSize(size: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取图标大小
@@ -101,7 +101,7 @@ export class SymbolLayer {
          * @param rotate 旋转角度（度）或Expression
          * @returns this（支持链式调用）
          */
-        setIconRotate(rotate: NumberValue): SymbolLayer;
+        setIconRotate(rotate: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取图标旋转角度
@@ -125,7 +125,7 @@ export class SymbolLayer {
          * @param anchor 锚点位置或Expression
          * @returns this（支持链式调用）
          */
-        setIconAnchor(anchor: StringValue): SymbolLayer;
+        setIconAnchor(anchor: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取图标锚点
@@ -137,7 +137,7 @@ export class SymbolLayer {
          * @param allow 是否允许或Expression
          * @returns this（支持链式调用）
          */
-        setIconAllowOverlap(allow: BooleanValue): SymbolLayer;
+        setIconAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer;
         
         /**
          * 获取图标是否允许重叠
@@ -151,7 +151,7 @@ export class SymbolLayer {
          * @param text 文本内容或Expression
          * @returns this（支持链式调用）
          */
-        setTextField(text: StringValue): SymbolLayer;
+        setTextField(text: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取文本内容
@@ -175,7 +175,7 @@ export class SymbolLayer {
          * @param size 字体大小或Expression
          * @returns this（支持链式调用）
          */
-        setTextSize(size: NumberValue): SymbolLayer;
+        setTextSize(size: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取文本大小
@@ -187,7 +187,7 @@ export class SymbolLayer {
          * @param maxWidth 最大宽度或Expression
          * @returns this（支持链式调用）
          */
-        setTextMaxWidth(maxWidth: NumberValue): SymbolLayer;
+        setTextMaxWidth(maxWidth: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取文本最大宽度
@@ -211,7 +211,7 @@ export class SymbolLayer {
          * @param anchor 锚点位置或Expression
          * @returns this（支持链式调用）
          */
-        setTextAnchor(anchor: StringValue): SymbolLayer;
+        setTextAnchor(anchor: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取文本锚点
@@ -223,7 +223,7 @@ export class SymbolLayer {
          * @param allow 是否允许或Expression
          * @returns this（支持链式调用）
          */
-        setTextAllowOverlap(allow: BooleanValue): SymbolLayer;
+        setTextAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer;
         
         /**
          * 获取文本是否允许重叠
@@ -237,7 +237,7 @@ export class SymbolLayer {
          * @param opacity 不透明度 (0-1) 或 Expression
          * @returns this（支持链式调用）
          */
-        setIconOpacity(opacity: NumberValue): SymbolLayer;
+        setIconOpacity(opacity: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取图标不透明度
@@ -249,7 +249,7 @@ export class SymbolLayer {
          * @param color 颜色值或Expression
          * @returns this（支持链式调用）
          */
-        setIconColor(color: ColorValue): SymbolLayer;
+        setIconColor(color: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取图标颜色
@@ -261,7 +261,7 @@ export class SymbolLayer {
          * @param color 颜色值或Expression
          * @returns this（支持链式调用）
          */
-        setIconHaloColor(color: ColorValue): SymbolLayer;
+        setIconHaloColor(color: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取图标光晕颜色
@@ -273,7 +273,7 @@ export class SymbolLayer {
          * @param width 宽度或Expression
          * @returns this（支持链式调用）
          */
-        setIconHaloWidth(width: NumberValue): SymbolLayer;
+        setIconHaloWidth(width: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取图标光晕宽度
@@ -287,7 +287,7 @@ export class SymbolLayer {
          * @param opacity 不透明度 (0-1) 或Expression
          * @returns this（支持链式调用）
          */
-        setTextOpacity(opacity: NumberValue): SymbolLayer;
+        setTextOpacity(opacity: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取文本不透明度
@@ -299,7 +299,7 @@ export class SymbolLayer {
          * @param color 颜色值或Expression
          * @returns this（支持链式调用）
          */
-        setTextColor(color: ColorValue): SymbolLayer;
+        setTextColor(color: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取文本颜色
@@ -311,7 +311,7 @@ export class SymbolLayer {
          * @param color 颜色值或Expression
          * @returns this（支持链式调用）
          */
-        setTextHaloColor(color: ColorValue): SymbolLayer;
+        setTextHaloColor(color: PropertyValue<string>): SymbolLayer;
         
         /**
          * 获取文本光晕颜色
@@ -323,7 +323,7 @@ export class SymbolLayer {
          * @param width 宽度或Expression
          * @returns this（支持链式调用）
          */
-        setTextHaloWidth(width: NumberValue): SymbolLayer;
+        setTextHaloWidth(width: PropertyValue<number>): SymbolLayer;
         
         /**
          * 获取文本光晕宽度

@@ -3,20 +3,8 @@
  */
 import maplibre from 'libmaplibre.so';
 import type { NumberValue, StringValue , ExpressionLiteral } from 'libmaplibre.so';
-import { Expression } from '../expressions/index';
-
-
-/**
- * 转换属性值 - 将 Expression 对象转为数组
- * @param value 属性值（常量、Expression 对象或字面量数组）
- * @returns 转换后的值（常量或数组）
- */
-function convertValue<T>(value: T | Expression | ExpressionLiteral): T | ExpressionLiteral {
-  if (value instanceof Expression) {
-    return value.toArray();
-  }
-  return value as T | ExpressionLiteral;
-}
+import type { PropertyValue } from '../expressions/index';
+import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -78,42 +66,42 @@ export class RasterLayer {
 
   // ========== Raster 样式属性方法 ==========
 
-  setRasterOpacity(opacity: NumberValue): RasterLayer {
+  setRasterOpacity(opacity: PropertyValue<number>): RasterLayer {
     this.nativeInstance.setRasterOpacity(convertValue(opacity));
     return this;
   }
 
-  setRasterHueRotate(hueRotate: NumberValue): RasterLayer {
+  setRasterHueRotate(hueRotate: PropertyValue<number>): RasterLayer {
     this.nativeInstance.setRasterHueRotate(convertValue(hueRotate));
     return this;
   }
 
-  setRasterBrightnessMin(brightnessMin: NumberValue): RasterLayer {
-    this.nativeInstance.setRasterBrightnessMin(brightnessMin);
+  setRasterBrightnessMin(brightnessMin: PropertyValue<number>): RasterLayer {
+    this.nativeInstance.setRasterBrightnessMin(convertValue(brightnessMin));
     return this;
   }
 
-  setRasterBrightnessMax(brightnessMax: NumberValue): RasterLayer {
-    this.nativeInstance.setRasterBrightnessMax(brightnessMax);
+  setRasterBrightnessMax(brightnessMax: PropertyValue<number>): RasterLayer {
+    this.nativeInstance.setRasterBrightnessMax(convertValue(brightnessMax));
     return this;
   }
 
-  setRasterSaturation(saturation: NumberValue): RasterLayer {
+  setRasterSaturation(saturation: PropertyValue<number>): RasterLayer {
     this.nativeInstance.setRasterSaturation(convertValue(saturation));
     return this;
   }
 
-  setRasterContrast(contrast: NumberValue): RasterLayer {
+  setRasterContrast(contrast: PropertyValue<number>): RasterLayer {
     this.nativeInstance.setRasterContrast(convertValue(contrast));
     return this;
   }
 
-  setRasterResampling(resampling: StringValue): RasterLayer {
+  setRasterResampling(resampling: PropertyValue<string>): RasterLayer {
     this.nativeInstance.setRasterResampling(convertValue(resampling));
     return this;
   }
 
-  setRasterFadeDuration(duration: NumberValue): RasterLayer {
+  setRasterFadeDuration(duration: PropertyValue<number>): RasterLayer {
     this.nativeInstance.setRasterFadeDuration(convertValue(duration));
     return this;
   }

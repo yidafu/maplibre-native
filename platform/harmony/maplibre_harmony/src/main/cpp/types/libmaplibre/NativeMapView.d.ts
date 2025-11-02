@@ -5,23 +5,60 @@
 
 import type { Style } from './Style';
 import type { Icon } from './Icon';
+import type { Marker } from './Marker';
+import type { Polygon } from './annotations/Polygon';
+import type { Polyline } from './annotations/Polyline';
+import type { Layer } from './layers';
+import type { Source } from './sources';
+import type { Geometry, Feature } from './geojson';
 
 // ==================== Type Definitions ====================
 
 /**
- * 经纬度坐标
+ * 经纬度坐标接口
+ * 注意：LatLng 已改为 ETS 层实现，这里定义为接口以保持类型兼容
  */
-export class LatLng {
-    constructor(latitude: number, longitude: number);
-    readonly latitude: number;
-    readonly longitude: number;
+export interface LatLng {
+    latitude: number;
+    longitude: number;
 }
 
 /**
- * 相机选项
- * 注意：简单数据类型（EdgeInsets、CameraPosition、PixelCoordinate、ProjectedMeters、
- * TransitionOptions、Rect）已移至 ETS 层实现，这里不再定义。
- * C++ 层使用对象字面量传递，通过 duck typing 兼容。
+ * 经纬度边界接口
+ * 注意：LatLngBounds 在 ETS 层实现，这里定义接口以保持类型兼容
+ */
+export interface LatLngBounds {
+    north: number;
+    east: number;
+    south: number;
+    west: number;
+}
+
+/**
+ * 边距接口
+ * 注意：EdgeInsets 在 ETS 层实现，这里定义接口以保持类型兼容
+ */
+export interface EdgeInsets {
+    top: number;
+    left: number;
+    bottom: number;
+    right: number;
+}
+
+/**
+ * 相机位置接口
+ * 注意：CameraPosition 在 ETS 层实现，这里定义接口以保持类型兼容
+ */
+export interface CameraPosition {
+    target: LatLng;
+    zoom: number;
+    bearing: number;
+    tilt: number;
+}
+
+/**
+ * 相机选项接口
+ * 用于设置相机参数
  */
 export interface CameraOptions {
     /** 中心点坐标 */
@@ -32,8 +69,18 @@ export interface CameraOptions {
     bearing?: number;
     /** 俯仰角（度） */
     pitch?: number;
-    /** 边距（对象字面量，包含 top、left、bottom、right） */
-    padding?: { top: number; left: number; bottom: number; right: number };
+    /** 边距 */
+    padding?: EdgeInsets;
+}
+
+/**
+ * 矩形接口（用于查询等操作）
+ */
+export interface Rect {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
 }
 
 // ==================== NativeMapView Class ====================
@@ -168,7 +215,7 @@ export class NativeMapView {
      * 设置经纬度边界
      * @param bounds 边界对象
      */
-    setLatLngBounds(bounds: any): void;
+    setLatLngBounds(bounds: LatLngBounds): void;
 
     // ========== Camera Control ==========
     
@@ -242,9 +289,9 @@ export class NativeMapView {
      * @param right 右边距
      * @param bearing 可选的方位角
      * @param tilt 可选的倾斜角
-     * @returns 相机配置对象
+     * @returns 相机位置对象
      */
-    getCameraForLatLngBounds(bounds: any, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): any;
+    getCameraForLatLngBounds(bounds: LatLngBounds, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): CameraPosition;
     
     /**
      * 获取适应几何对象的相机配置
@@ -255,9 +302,9 @@ export class NativeMapView {
      * @param right 右边距
      * @param bearing 可选的方位角
      * @param tilt 可选的倾斜角
-     * @returns 相机配置对象
+     * @returns 相机位置对象
      */
-    getCameraForGeometry(geometry: any, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): any;
+    getCameraForGeometry(geometry: Geometry, top: number, left: number, bottom: number, right: number, bearing?: number, tilt?: number): CameraPosition;
     
     /**
      * 设置网络可达性状态
@@ -406,16 +453,16 @@ export class NativeMapView {
      * 设置可见坐标边界
      * @param coordinates 坐标数组
      * @param padding 边距对象
-     * @param direction 方向
+     * @param direction 方向（度）
      * @param duration 动画持续时间（毫秒）
      */
-    setVisibleCoordinateBounds(coordinates: any[], padding: any, direction: number, duration: number): void;
+    setVisibleCoordinateBounds(coordinates: LatLng[], padding: EdgeInsets, direction: number, duration: number): void;
     
     /**
      * 获取可见坐标边界
      * @returns 坐标数组
      */
-    getVisibleCoordinateBounds(): any[];
+    getVisibleCoordinateBounds(): LatLng[];
 
     // ========== Snapshot ==========
     
@@ -440,35 +487,35 @@ export class NativeMapView {
      * @param markers 标记数组
      * @returns 标记 ID 数组
      */
-    addMarkers(markers: any[]): number[];
+    addMarkers(markers: Marker[]): number[];
     
     /**
      * 添加折线
      * @param polylines 折线数组
      * @returns 折线 ID 数组
      */
-    addPolylines(polylines: any[]): number[];
+    addPolylines(polylines: Polyline[]): number[];
     
     /**
      * 添加多边形
      * @param polygons 多边形数组
      * @returns 多边形 ID 数组
      */
-    addPolygons(polygons: any[]): number[];
+    addPolygons(polygons: Polygon[]): number[];
     
     /**
      * 更新折线
      * @param polylineId 折线 ID
      * @param polyline 折线对象
      */
-    updatePolyline(polylineId: number, polyline: any): void;
+    updatePolyline(polylineId: number, polyline: Polyline): void;
     
     /**
      * 更新多边形
      * @param polygonId 多边形 ID
      * @param polygon 多边形对象
      */
-    updatePolygon(polygonId: number, polygon: any): void;
+    updatePolygon(polygonId: number, polygon: Polygon): void;
     
     /**
      * 移除注记
@@ -649,47 +696,47 @@ export class NativeMapView {
     
     /**
      * 查询矩形区域内的点注记
-     * @param rect 矩形区域（对象字面量）
+     * @param rect 矩形区域
      * @returns 注记 ID 数组
      */
-    queryPointAnnotations(rect: { left: number; top: number; right: number; bottom: number; }): number[];
+    queryPointAnnotations(rect: Rect): number[];
     
     /**
      * 查询矩形区域内的形状注记
-     * @param rect 矩形区域（对象字面量）
+     * @param rect 矩形区域
      * @returns 注记 ID 数组
      */
-    queryShapeAnnotations(rect: { left: number; top: number; right: number; bottom: number; }): number[];
+    queryShapeAnnotations(rect: Rect): number[];
     
     /**
      * 查询指定点的渲染要素
-     * @param x X 坐标
-     * @param y Y 坐标
-     * @param layerIds 可选的图层 ID 数组
-     * @param filter 可选的过滤器
-     * @returns 要素数组
+     * @param x X 坐标（像素）
+     * @param y Y 坐标（像素）
+     * @param layerIds 可选的图层 ID 数组，为空则查询所有图层
+     * @param filter 可选的过滤表达式
+     * @returns GeoJSON Feature 数组
      */
-    queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: any): any[];
+    queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: object): Feature[];
     
     /**
      * 查询矩形区域内的渲染要素
-     * @param left 左边界
-     * @param top 上边界
-     * @param right 右边界
-     * @param bottom 下边界
-     * @param layerIds 可选的图层 ID 数组
-     * @param filter 可选的过滤器
-     * @returns 要素数组
+     * @param left 左边界（像素）
+     * @param top 上边界（像素）
+     * @param right 右边界（像素）
+     * @param bottom 下边界（像素）
+     * @param layerIds 可选的图层 ID 数组，为空则查询所有图层
+     * @param filter 可选的过滤表达式
+     * @returns GeoJSON Feature 数组
      */
-    queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[], filter?: any): any[];
+    queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[], filter?: object): Feature[];
 
     // ========== Light ==========
     
     /**
      * 获取光照设置
-     * @returns 光照对象
+     * @returns 光照对象（包含位置、颜色、强度等属性）
      */
-    getLight(): any;
+    getLight(): object;
 
     // ========== Layers ==========
     
@@ -697,34 +744,34 @@ export class NativeMapView {
      * 获取所有图层
      * @returns 图层数组
      */
-    getLayers(): any[];
+    getLayers(): Layer[];
     
     /**
      * 获取指定图层
      * @param layerId 图层 ID
-     * @returns 图层对象
+     * @returns 图层对象，如果不存在则返回 null
      */
-    getLayer(layerId: string): any;
+    getLayer(layerId: string): Layer | null;
     
     /**
      * 添加图层
      * @param layer 图层对象
      */
-    addLayer(layer: any): void;
+    addLayer(layer: Layer): void;
     
     /**
      * 在指定图层上方添加图层
      * @param layer 图层对象
      * @param aboveLayerId 参考图层 ID
      */
-    addLayerAbove(layer: any, aboveLayerId: string): void;
+    addLayerAbove(layer: Layer, aboveLayerId: string): void;
     
     /**
      * 在指定索引位置添加图层
      * @param layer 图层对象
      * @param index 索引位置
      */
-    addLayerAt(layer: any, index: number): void;
+    addLayerAt(layer: Layer, index: number): void;
     
     /**
      * 移除指定索引位置的图层
@@ -738,7 +785,7 @@ export class NativeMapView {
      * @param layer 图层对象
      * @returns 是否成功移除
      */
-    removeLayer(layer: any): boolean;
+    removeLayer(layer: Layer): boolean;
 
     // ========== Sources ==========
     
@@ -746,44 +793,45 @@ export class NativeMapView {
      * 获取所有数据源
      * @returns 数据源数组
      */
-    getSources(): any[];
+    getSources(): Source[];
     
     /**
      * 获取指定数据源
      * @param sourceId 数据源 ID
-     * @returns 数据源对象
+     * @returns 数据源对象，如果不存在则返回 null
      */
-    getSource(sourceId: string): any;
+    getSource(sourceId: string): Source | null;
     
     /**
      * 添加数据源
      * @param source 数据源对象
      */
-    addSource(source: any): void;
+    addSource(source: Source): void;
     
     /**
      * 移除数据源
      * @param source 数据源对象
      * @returns 是否成功移除
      */
-    removeSource(source: any): boolean;
+    removeSource(source: Source): boolean;
 
     // ========== Images ==========
     
     /**
-     * 添加图像
+     * 添加图像（原始位图方式，不推荐）
+     * @deprecated 建议使用 Icon 对象方式
      * @param name 图像名称
-     * @param bitmap 位图数据
+     * @param bitmap 位图数据（内部格式，不建议直接使用）
      * @param pixelRatio 像素比
      * @param sdf 是否为 SDF 图像
      */
-    addImage(name: string, bitmap: any, pixelRatio: number, sdf: boolean): void;
+    addImage(name: string, bitmap: unknown, pixelRatio: number, sdf: boolean): void;
     
     /**
      * 批量添加图像
-     * @param images 图像数组
+     * @param images 图像数组（Image 对象数组）
      */
-    addImages(images: any[]): void;
+    addImages(images: Icon[]): void;
     
     /**
      * 移除图像
@@ -794,9 +842,9 @@ export class NativeMapView {
     /**
      * 获取图像
      * @param name 图像名称
-     * @returns 图像对象
+     * @returns 图像对象，如果不存在则返回 null
      */
-    getImage(name: string): any;
+    getImage(name: string): Icon | null;
 
     // ========== Tile Management ==========
     
@@ -1131,17 +1179,17 @@ export interface MapSnapshotterNAPI {
    */
   setStyleUrl(styleUrl: string): void;
   
-  /**
-   * 设置相机位置
-   * @param position 相机位置
-   */
-  setCameraPosition(position: any): void;
-  
-  /**
-   * 设置区域边界
-   * @param bounds 边界
-   */
-  setRegion(bounds: any): void;
+    /**
+     * 设置相机位置
+     * @param position 相机位置对象
+     */
+    setCameraPosition(position: CameraPosition): void;
+    
+    /**
+     * 设置区域边界
+     * @param bounds 边界对象
+     */
+    setRegion(bounds: LatLngBounds): void;
 }
 
 /**

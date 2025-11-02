@@ -40,8 +40,7 @@
 
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
-    // 初始化 Geometry 类
-    mbgl::harmony::LatLngNapi::Init(env, exports);
+    // 注意：LatLng 已改为 ETS 层实现，不再需要 NAPI 注册
     
     // 初始化离线地图 API
     maplibre::harmony::OfflineManagerNAPI::Init(env, exports);

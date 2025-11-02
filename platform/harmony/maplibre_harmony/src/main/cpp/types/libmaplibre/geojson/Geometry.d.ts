@@ -29,10 +29,19 @@ export type Position2D = [number, number];  // [lng, lat]
 export type Position3D = [number, number, number];  // [lng, lat, altitude]
 
 /**
+ * GeoJSON 坐标类型（联合类型，涵盖所有几何体类型）
+ * - Point: Position
+ * - LineString/MultiPoint: Position[]
+ * - Polygon/MultiLineString: Position[][]
+ * - MultiPolygon: Position[][][]
+ */
+export type Coordinates = Position | Position[] | Position[][] | Position[][][];
+
+/**
  * GeoJSON 对象基础接口
  */
 export interface GeoJSONObject {
   type: string;
-  coordinates?: any;
+  coordinates?: Coordinates;
 }
 

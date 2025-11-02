@@ -1,79 +1,62 @@
 /**
  * LatLng - 经纬度坐标封装类
  * 
- * 符合 ArkTS 规范的封装实现
+ * 纯 ETS 实现，不依赖 NAPI
  */
-import maplibre from 'libmaplibre.so';
+import type { ILatLng } from '../types/NativeTypes';
 
 /**
- * 内部创建标记（用于从 NAPI 实例创建封装类）
+ * LatLng 类
+ * 表示地理坐标（纬度和经度）
  */
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
-}
-
-/**
- * LatLng 封装类
- */
-export class LatLng {
-  private nativeInstance: maplibre.LatLng;
+export class LatLng implements ILatLng {
+  latitude: number;
+  longitude: number;
 
   /**
    * 构造函数
-   * 支持两种模式：
-   * 1. 从经纬度创建: new LatLng(lat, lng)
-   * 2. 从 NAPI 实例创建（内部使用）: new LatLng(marker, nativeInstance)
+   * @param latitude 纬度（-90 到 90）
+   * @param longitude 经度（-180 到 180）
    */
-  constructor(latOrMarker: number | InternalMarker, lngOrNative?: number | maplibre.LatLng) {
-    if (latOrMarker === InternalMarker.INSTANCE && lngOrNative instanceof Object) {
-      // 内部模式：从 NAPI 实例创建
-      this.nativeInstance = lngOrNative as maplibre.LatLng;
-    } else if (typeof latOrMarker === 'number' && typeof lngOrNative === 'number') {
-      // 正常模式：从经纬度创建
-      this.nativeInstance = new maplibre.LatLng(latOrMarker, lngOrNative);
-    } else {
-      throw new Error('Invalid LatLng constructor arguments');
-    }
+  constructor(latitude: number, longitude: number) {
+    this.latitude = latitude;
+    this.longitude = longitude;
   }
 
   /**
    * 从经纬度创建（静态工厂方法）
+   * @param latitude 纬度
+   * @param longitude 经度
+   * @returns LatLng 实例
    */
   static create(latitude: number, longitude: number): LatLng {
     return new LatLng(latitude, longitude);
   }
 
   /**
-   * 从 NAPI 实例创建（内部使用）
+   * 从 Native LatLng 创建（用于 NAPI 互操作）
+   * @param native Native LatLng 对象
+   * @returns LatLng 实例
    */
-  static fromNative(nativeInstance: maplibre.LatLng): LatLng {
-    return new LatLng(InternalMarker.INSTANCE, nativeInstance);
+  static fromNative(native: ILatLng): LatLng {
+    return new LatLng(native.latitude, native.longitude);
   }
 
-  /**
-   * 获取 NAPI 实例（内部使用）
-   */
-  getNative(): maplibre.LatLng {
-    return this.nativeInstance;
-  }
 
   /**
-   * 获取纬度
+   * 转换为对象字面量
+   * @returns 对象字面量 {latitude, longitude}
    */
-  get latitude(): number {
-    return this.nativeInstance.latitude;
-  }
-
-  /**
-   * 获取经度
-   */
-  get longitude(): number {
-    return this.nativeInstance.longitude;
+  toObject(): ILatLng {
+    return {
+      latitude: this.latitude,
+      longitude: this.longitude
+    };
   }
 
   /**
    * 检查坐标是否有效
+   * @returns 坐标是否在有效范围内
    */
   isValid(): boolean {
     return this.latitude >= -90 && this.latitude <= 90 && 
@@ -82,9 +65,12 @@ export class LatLng {
 
   /**
    * 计算到另一个坐标的距离（米）
+   * 使用 Haversine 公式
+   * @param other 另一个坐标
+   * @returns 距离（米）
    */
   distanceTo(other: LatLng): number {
-    const R = 6371000;
+    const R = 6371000; // 地球半径（米）
     const dLat = toRadians(other.latitude - this.latitude);
     const dLon = toRadians(other.longitude - this.longitude);
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -96,6 +82,8 @@ export class LatLng {
 
   /**
    * 比较是否相等
+   * @param other 另一个坐标
+   * @returns 是否相等
    */
   equals(other: LatLng): boolean {
     return Math.abs(this.latitude - other.latitude) < 1e-10 &&
@@ -104,6 +92,7 @@ export class LatLng {
 
   /**
    * 转换为字符串
+   * @returns 字符串表示
    */
   toString(): string {
     return `LatLng(${this.latitude}, ${this.longitude})`;
@@ -112,6 +101,8 @@ export class LatLng {
 
 /**
  * 角度转弧度
+ * @param degrees 角度
+ * @returns 弧度
  */
 function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
@@ -119,6 +110,9 @@ function toRadians(degrees: number): number {
 
 /**
  * 创建 LatLng 对象（工厂函数）
+ * @param latitude 纬度
+ * @param longitude 经度
+ * @returns LatLng 实例
  */
 export function createLatLng(latitude: number, longitude: number): LatLng {
   return LatLng.create(latitude, longitude);
@@ -126,6 +120,8 @@ export function createLatLng(latitude: number, longitude: number): LatLng {
 
 /**
  * 检查坐标是否有效
+ * @param latLng 坐标对象
+ * @returns 是否有效
  */
 export function isValidLatLng(latLng: LatLng): boolean {
   return latLng.isValid();
@@ -133,6 +129,9 @@ export function isValidLatLng(latLng: LatLng): boolean {
 
 /**
  * 计算两点之间的距离（米）
+ * @param from 起点
+ * @param to 终点
+ * @returns 距离（米）
  */
 export function distanceBetween(from: LatLng, to: LatLng): number {
   return from.distanceTo(to);
@@ -140,6 +139,9 @@ export function distanceBetween(from: LatLng, to: LatLng): number {
 
 /**
  * 比较两个坐标是否相等
+ * @param a 坐标 A
+ * @param b 坐标 B
+ * @returns 是否相等
  */
 export function latLngEquals(a: LatLng, b: LatLng): boolean {
   return a.equals(b);

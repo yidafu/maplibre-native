@@ -3,7 +3,7 @@
  * 山体阴影图层 API (NAPI 类)
  */
 
-import type { NumberValue } from '../LayerPropertyTypes';
+import type { ExpressionType, NumberValue } from '../LayerPropertyTypes';
 
 /**
  * HillshadeLayer - 山体阴影图层
@@ -23,13 +23,13 @@ export class HillshadeLayer {
      * 设置光照方向
      * @param direction 光照方向角度或Expression（0-359 度）
      */
-    setHillshadeIlluminationDirection(direction: NumberValue): this;
+    setHillshadeIlluminationDirection(direction: PropertyValue<number>): this;
 
     /**
      * 设置夸张程度
      * @param exaggeration 夸张系数或Expression（0.0 - 1.0）
      */
-    setHillshadeExaggeration(exaggeration: NumberValue): this;
+    setHillshadeExaggeration(exaggeration: PropertyValue<number>): this;
 
     /**
      * 获取图层 ID

@@ -540,7 +540,7 @@ export class MapLibreMap {
     if (!this.nativeMapView) return null;
     
     try {
-      const nativeStyle: maplibre.Style = this.nativeMapView.getStyle();
+      const nativeStyle = this.nativeMapView.getStyle();
       if (nativeStyle) {
         return Style.fromNative(nativeStyle);
       }
@@ -658,7 +658,7 @@ export class MapLibreMap {
       // 参数形式: easeTo(latitude, longitude, bearing, zoom, duration)
       const centerObj: LatLng = new LatLng(latitudeOrOptions, longitudeOrDuration);
       const options: maplibre.CameraOptions = {
-        center: centerObj.getNative(),
+        center: centerObj.toObject(),
         bearing: bearingOrCallback as number,
         zoom: zoom
       };
@@ -728,7 +728,7 @@ export class MapLibreMap {
     
     // 构建相机选项
     const options: maplibre.CameraOptions = {
-      center: position.target ? position.target.getNative() : undefined,
+      center: position.target ? position.target.toObject() : undefined,
       zoom: position.zoom,
       bearing: position.bearing,
       pitch: position.tilt
@@ -955,7 +955,8 @@ export class MapLibreMap {
 
   public getVisibleCoordinateBounds(): LatLng[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.getVisibleCoordinateBounds();
+    const nativeLatLngs = this.nativeMapView.getVisibleCoordinateBounds();
+    return nativeLatLngs.map(native => LatLng.fromNative(native));
   }
 
   // 快照
@@ -1136,8 +1137,8 @@ export class MapLibreMap {
   // 过渡
   public getTransitionOptions(): TransitionOptions {
     if (this.destroyed) return new TransitionOptions(0, 0);
-    const result: TransitionOptions = this.nativeMapView.getTransitionOptions();
-    return result;
+    const result = this.nativeMapView.getTransitionOptions();
+    return TransitionOptions.fromObject(result);
   }
 
   public setTransitionOptions(options: TransitionOptions): void {
@@ -1178,17 +1179,17 @@ export class MapLibreMap {
 
   public addLayer(layer: Layer): void {
     if (this.destroyed) return;
-    this.nativeMapView.addLayer(layer);
+    this.nativeMapView.addLayer(layer.getNative());
   }
 
   public addLayerAbove(layer: Layer, aboveLayerId: string): void {
     if (this.destroyed) return;
-    this.nativeMapView.addLayerAbove(layer, aboveLayerId);
+    this.nativeMapView.addLayerAbove(layer.getNative(), aboveLayerId);
   }
 
   public addLayerAt(layer: Layer, index: number): void {
     if (this.destroyed) return;
-    this.nativeMapView.addLayerAt(layer, index);
+    this.nativeMapView.addLayerAt(layer.getNative(), index);
   }
 
   public removeLayerAt(index: number): boolean {
@@ -1198,7 +1199,10 @@ export class MapLibreMap {
 
   public removeLayer(layer: Layer | string): boolean {
     if (this.destroyed) return false;
-    return this.nativeMapView.removeLayer(layer);
+    if (typeof layer !== 'string')  {
+      return this.nativeMapView.removeLayer(layer.getNative());
+    }
+    return false
   }
 
   // 数据源方法 - 使用强类型 Source
@@ -1215,12 +1219,14 @@ export class MapLibreMap {
 
   public addSource(source: Source): void {
     if (this.destroyed) return;
-    this.nativeMapView.addSource(source);
+    this.nativeMapView.addSource(source.getNative());
   }
 
   public removeSource(source: Source | string): boolean {
     if (this.destroyed) return false;
-    return this.nativeMapView.removeSource(source);
+    const sourceId = typeof source === "string" ? source : source.getId();
+    const nativeSource = this.nativeMapView.getSource(sourceId);
+    return this.nativeMapView.removeSource(nativeSource as ESObject);
   }
 
   // 图片
@@ -1231,7 +1237,8 @@ export class MapLibreMap {
 
   public addImages(images: Image[]): void {
     if (this.destroyed) return;
-    this.nativeMapView.addImages(images);
+    const nativeImages = images.map(img => img.getNative());
+    this.nativeMapView.addImages(nativeImages as ESObject);
   }
 
   public removeImage(name: string): void {
@@ -2203,7 +2210,8 @@ export class MapLibreMap {
     }
     
     try {
-      return this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
+      const features = this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
+      return features as ESObject as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForPoint failed: ${error.message}`);
       return [];
@@ -2254,7 +2262,8 @@ export class MapLibreMap {
     }
     
     try {
-      return this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter);
+      const features = this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter);
+      return features as ESObject as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
       return [];
@@ -2306,9 +2315,9 @@ export class MapLibreMap {
    */
   public setContentPadding(top: number, left: number, bottom: number, right: number): void {
     if (this.destroyed) return;
-    // 调用 native 层的 setPadding 方法
-    // 注意：native 层的顺序是 [left, top, right, bottom]
-    this.nativeMapView.setContentInsets(left, top, right, bottom);
+    // 调用 native 层的 setContentPadding 方法
+    // 注意：native 层的顺序是 [top, left, bottom, right]
+    this.nativeMapView.setContentPadding([top, left, bottom, right]);
   }
   
   /**
@@ -2319,11 +2328,10 @@ export class MapLibreMap {
     if (this.destroyed) return [0, 0, 0, 0];
     try {
       // 从 native 层获取边距
-      const insets: number[] = this.nativeMapView.getContentInsets() as number[];
-      if (insets && Array.isArray(insets) && insets.length === 4) {
-        // native 返回 [left, top, right, bottom]
-        // 转换为 [top, left, bottom, right]
-        return [insets[1], insets[0], insets[3], insets[2]];
+      const padding: number[] = this.nativeMapView.getContentPadding();
+      if (padding && Array.isArray(padding) && padding.length === 4) {
+        // native 返回 [top, left, bottom, right]
+        return padding;
       }
     } catch (error) {
       console.error('MapLibreMap', 'Failed to get content padding:', error);
@@ -2346,5 +2354,13 @@ export class MapLibreMap {
       rect.bottom * pixelRatio
     );
   }
+  /**
+   * 转换 Native LatLng 数组为 ETS LatLng 数组
+   * @private
+   */
+  private convertNativeLatLngArray(nativeArray: import('libmaplibre.so').LatLng[]): LatLng[] {
+    return nativeArray.map(native => LatLng.fromNative(native));
+  }
+
 }
 

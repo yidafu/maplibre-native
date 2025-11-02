@@ -8,8 +8,8 @@
 // ========== 核心组件 ==========
 
 /**
- * LatLng - 经纬度坐标类
- * NAPI 类，表示地理坐标
+ * LatLng - 经纬度坐标接口
+ * 注意：已改为 ETS 层实现，这里仅作为类型定义导出
  */
 export { LatLng } from './NativeMapView';
 

@@ -9,9 +9,15 @@ export {
   ExpressionLiteralArray, 
   ExpressionMap 
 } from './Expression';
-export { Interpolator } from './Interpolator';
-export { Stop } from './Stop';
+export { PropertyValue, ExpressionValue } from 'libmaplibre.so';
 export { FormatEntry, FormatOption, NumberFormatOption } from './FormatEntry';
-export { CollatorExpression } from './CollatorExpression';
-export * from './ExpressionTypes';
+
+// 向后兼容性别名
+// Interpolator、Stop、CollatorExpression 已整合到 Expression 类中
+// 请使用以下方法代替：
+// - Interpolator.linear() -> Expression.linear()
+// - Interpolator.exponential() -> Expression.exponential()
+// - Interpolator.cubicBezier() -> Expression.cubicBezier()
+// - Stop.stop() -> Expression.stop()
+// - CollatorExpression.collator() -> Expression.collator()
 

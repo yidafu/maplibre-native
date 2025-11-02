@@ -1,26 +1,23 @@
-import maplibre, { NativeMapView } from 'libmaplibre.so';
-import { MarkerOptions } from './MarkerOptions';
+import type { NativeMapView } from 'libmaplibre.so';
+import type { MarkerOptions } from './MarkerOptions';
 import { MarkerDragState } from './MarkerDragState';
-import { LatLng } from '../geometry/LatLng';
-import { MapLibreMap } from '../MapLibreMap';
-import { OnMarkerClickListener } from '../listeners/OnMarkerClickListener';
-import { OnMarkerDragListener } from '../listeners/OnMarkerDragListener';
-import { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListener';
-import { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseListener';
-import { OnMarkerSelectListener } from '../listeners/OnMarkerSelectListener';
-import { InfoWindowAdapter } from './InfoWindowAdapter';
+import type { LatLng } from '../geometry/LatLng';
+import type { MapLibreMap } from '../MapLibreMap';
+import type { OnMarkerClickListener } from '../listeners/OnMarkerClickListener';
+import type { OnMarkerDragListener } from '../listeners/OnMarkerDragListener';
+import type { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListener';
+import type { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseListener';
+import type { OnMarkerSelectListener } from '../listeners/OnMarkerSelectListener';
+import type { InfoWindowAdapter } from './InfoWindowAdapter';
 import { InfoWindowManager } from './InfoWindowManager';
-import { AnnotationViewAdapter } from './AnnotationViewAdapter';
+import type { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { AnnotationViewManager } from './AnnotationViewManager';
 import { IconManager } from './IconManager';
 import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
-import { InfoWindowStyle } from './InfoWindow';
-import { Icon } from './Icon';
-import { Marker } from './Marker';
-
-// 使用 NAPI NativeMapView 类型
-
+import type { InfoWindowStyle } from './InfoWindow';
+import type { Icon } from './Icon';
+import type { Marker } from './Marker';
 
 /**
  * MarkerManager - Marker 管理器

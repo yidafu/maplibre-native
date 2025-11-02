@@ -1753,7 +1753,7 @@ export struct MapView {
     try {
       // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
       hilog.debug(DOMAIN, 'NativeMapView', 'Cancelling all animations and gestures...');
-      const mapView: NativeMapView = this.controller.getMapView();
+      const mapView = this.controller.getMapView();
       if (mapView) {
         try {
           mapView.cancelTransitions();
@@ -2156,7 +2156,7 @@ export struct MapView {
         onAnnotationDrag: (marker: Marker, screenX: number, screenY: number) => {
           try {
             // 将屏幕坐标转换为地理坐标
-            const mapView: NativeMapView = this.controller.getMapView();
+            const mapView = this.controller.getMapView();
             if (mapView) {
               const nativeLatLng: maplibre.LatLng = mapView.latLngForPixel(screenX, screenY);
               const mapLibreMap = this.controller.getMapLibreMapInstance();
@@ -2276,7 +2276,7 @@ export struct MapView {
    * @returns 当前俯仰角度（度）
    */
   getPitch(): number {
-    const mapView: NativeMapView = this.controller.getMapView();
+    const mapView = this.controller.getMapView();
     if (!mapView) {
       hilog.warn(DOMAIN, 'NativeMapView', 'getPitch: Native map view not initialized');
       return 0;
@@ -2297,7 +2297,7 @@ export struct MapView {
    * @param duration 可选的动画时长（毫秒），默认为 0（不使用动画）
    */
   setPitch(pitch: number, duration: number = 0): void {
-    const mapView: NativeMapView = this.controller.getMapView();
+    const mapView = this.controller.getMapView();
     if (!mapView) {
       hilog.warn(DOMAIN, 'NativeMapView', 'setPitch: Native map view not initialized');
       return;
@@ -2340,7 +2340,7 @@ export struct MapView {
    * 取消所有正在进行的相机过渡动画
    */
   cancelTransitions(): void {
-    const mapView: NativeMapView = this.controller.getMapView();
+    const mapView = this.controller.getMapView();
     if (!mapView) {
       hilog.warn(DOMAIN, 'NativeMapView', 'cancelTransitions: Native map view not initialized');
       return;

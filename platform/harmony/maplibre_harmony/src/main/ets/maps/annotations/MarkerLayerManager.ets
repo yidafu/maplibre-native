@@ -178,14 +178,14 @@ export class MarkerLayerManager {
     
     // Icon 图像：使用 Expression 从 feature properties 动态获取
     // 每个 Marker 可以有不同的图标
-    layer.setIconImage(Expression.get("icon").toArray());
+    layer.setIconImage(Expression.get("icon").toArray() as import("libmaplibre.so").ExpressionLiteral);
     
     // Icon 大小：默认 1.0
     layer.setIconSize(1.0);
     
     // Icon 旋转角度：使用 Expression 从 feature properties 获取
     // 支持每个 Marker 有不同的旋转角度
-    layer.setIconRotate(Expression.get("rotation").toArray());
+    layer.setIconRotate(Expression.get("rotation").toArray() as import("libmaplibre.so").ExpressionLiteral);
     
     // Icon 锚点：默认 bottom（底部中心）
     layer.setIconAnchor('bottom');
@@ -203,7 +203,7 @@ export class MarkerLayerManager {
         Expression.eq(Expression.get("visible"), Expression.literal(false)),
         Expression.literal(0),  // visible=false 时透明度为 0
         Expression.get("alpha")  // 否则使用 alpha 值
-      ).toArray()
+      ).toArray() as import("libmaplibre.so").ExpressionLiteral
     );
     
     console.info('[MarkerLayerManager] SymbolLayer configured with data-driven expressions successfully');
