@@ -14,6 +14,7 @@ import {
   OnMapLongClickListener,
   OnDoubleTapListener,
   OnTiltListener,
+  OnShoveListener,
   OnQuickZoomListener
 } from './GestureListeners';
 import { UiSettings, FocalPoint } from '../UiSettings';
@@ -29,6 +30,11 @@ type NativeMapViewType = NativeMapView;
 const TAG = 'MapGestureDetector';
 const ZOOM_RATE = 0.65;  // Android MapLibreConstants.ZOOM_RATE - 缩放速率系数
 const ROTATION_RATE = 0.1;  // 旋转速率系数 - 调节旋转速度（越小越慢，速度降低50%）
+
+// Android 手势优先级判断常量（参考 MapGestureDetector.java）
+const MINIMUM_GESTURE_SPEED = 3.0;  // 最小手势速度（像素/毫秒）
+const MINIMUM_ANGLED_GESTURE_SPEED = 1.5;  // 旋转时的最小缩放速度（像素/毫秒）
+const ROTATION_ANGLE_THRESHOLD = 0.4;  // 旋转角度阈值（度）
 
 // Android 缩放惯性动画常量（参考 MapLibreConstants.java）
 const MAX_ABSOLUTE_SCALE_VELOCITY_CHANGE = 2.5;  // 最大缩放速度变化
@@ -51,6 +57,7 @@ export class MapGestureDetector {
   private longClickListeners: OnMapLongClickListener[] = [];
   private doubleTapListeners: OnDoubleTapListener[] = [];
   private tiltListeners: OnTiltListener[] = [];
+  private shoveListeners: OnShoveListener[] = [];  // Android 风格命名，等同于 Tilt
   private quickZoomListeners: OnQuickZoomListener[] = [];
 
   // UI 设置
@@ -73,6 +80,13 @@ export class MapGestureDetector {
   // 旋转结束时间戳（用于判断 Pan Fling 是否应该被禁用）
   private lastRotateEndTimestamp: number = 0;
   private readonly ROTATE_END_GRACE_PERIOD = 100; // 旋转结束后 100ms 内禁用 Pan Fling
+  
+  // 倾斜结束时间戳（用于判断 Pan Fling 是否应该被禁用）
+  private lastTiltEndTimestamp: number = 0;
+  private readonly TILT_END_GRACE_PERIOD = 100; // 倾斜结束后 100ms 内禁用 Pan Fling
+  
+  // 手势互斥控制 - Tilt 相关
+  private shouldIgnoreTilt: boolean = false;
 
   // 缩放相关状态
   private currentScale: number = 1.0;
@@ -80,6 +94,11 @@ export class MapGestureDetector {
   private initialZoom: number = 0;
   private previousPinchCenterX: number = 0;
   private previousPinchCenterY: number = 0;
+  
+  // 手势优先级判断相关（参考 Android）
+  private previousPinchSpan: number = 0;  // 上一帧的两指距离
+  private previousPinchTimestamp: number = 0;  // 上一帧的时间戳
+  private rotationDeltaAccumulated: number = 0;  // 累积的旋转增量（用于优先级判断）
 
   // 旋转相关状态
   private lastRotation: number = 0;
@@ -280,6 +299,26 @@ export class MapGestureDetector {
   }
 
   /**
+   * 添加 Shove 监听器（Android 风格，等同于 Tilt）
+   * 参考 Android MapLibreMap.addOnShoveListener
+   */
+  addOnShoveListener(listener: OnShoveListener): void {
+    if (!this.shoveListeners.includes(listener)) {
+      this.shoveListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除 Shove 监听器
+   */
+  removeOnShoveListener(listener: OnShoveListener): void {
+    const index = this.shoveListeners.indexOf(listener);
+    if (index > -1) {
+      this.shoveListeners.splice(index, 1);
+    }
+  }
+
+  /**
    * 添加 Quick Zoom 监听器
    */
   addOnQuickZoomListener(listener: OnQuickZoomListener): void {
@@ -425,22 +464,28 @@ export class MapGestureDetector {
 
     hilog.debug(DOMAIN, TAG, 'Pan gesture ended');
 
-    // 🔧 关键修复：如果正在缩放/旋转或刚刚完成缩放/旋转，禁用 Pan 的 Fling 动画
-    // 避免缩放/旋转时的手指移动被误认为是平移手势，触发不必要的 Fling
+    // 🔧 关键修复：如果正在缩放/旋转/倾斜或刚刚完成这些手势，禁用 Pan 的 Fling 动画
+    // 避免这些手势时的手指移动被误认为是平移手势，触发不必要的 Fling
     const timeSinceScaleEnd = Date.now() - this.lastScaleEndTimestamp;
     const timeSinceRotateEnd = Date.now() - this.lastRotateEndTimestamp;
-    if (this.isScaling || this.isRotating || 
+    const timeSinceTiltEnd = Date.now() - this.lastTiltEndTimestamp;
+    if (this.isScaling || this.isRotating || this.isTilting || 
         timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD || 
-        timeSinceRotateEnd < this.ROTATE_END_GRACE_PERIOD) {
+        timeSinceRotateEnd < this.ROTATE_END_GRACE_PERIOD ||
+        timeSinceTiltEnd < this.TILT_END_GRACE_PERIOD) {
       let reason = '';
       if (this.isScaling) {
         reason = 'scaling in progress';
       } else if (this.isRotating) {
         reason = 'rotation in progress';
+      } else if (this.isTilting) {
+        reason = 'tilt in progress';
       } else if (timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD) {
         reason = `scaling ended ${timeSinceScaleEnd}ms ago`;
-      } else {
+      } else if (timeSinceRotateEnd < this.ROTATE_END_GRACE_PERIOD) {
         reason = `rotation ended ${timeSinceRotateEnd}ms ago`;
+      } else {
+        reason = `tilt ended ${timeSinceTiltEnd}ms ago`;
       }
       hilog.info(DOMAIN, TAG, `Pan Fling ignored - ${reason}`);
       this.isMoving = false;
@@ -511,6 +556,52 @@ export class MapGestureDetector {
     if (!this.uiSettings.isZoomGesturesEnabled()) {
       return;
     }
+    
+    // 🔑 Android 风格的手势优先级判断
+    // 计算当前两指距离（span）
+    let currentSpan = 0;
+    if (event.fingerList && event.fingerList.length >= 2) {
+      const dx = event.fingerList[1].localX - event.fingerList[0].localX;
+      const dy = event.fingerList[1].localY - event.fingerList[0].localY;
+      currentSpan = Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // 如果有上一帧数据，计算速度
+    if (this.previousPinchSpan > 0 && this.previousPinchTimestamp > 0) {
+      const currTime = Date.now();
+      const prevTime = this.previousPinchTimestamp;
+      
+      if (currTime !== prevTime) {
+        const spanDelta = Math.abs(currentSpan - this.previousPinchSpan);
+        const timeDelta = currTime - prevTime;
+        const speed = spanDelta / timeDelta;  // 像素/毫秒
+        
+        hilog.debug(DOMAIN, TAG, `Pinch speed: ${speed.toFixed(2)} px/ms (threshold: ${MINIMUM_GESTURE_SPEED})`);
+        
+        // 检查最小手势速度
+        if (speed < MINIMUM_GESTURE_SPEED) {
+          hilog.info(DOMAIN, TAG, `Pinch gesture rejected - speed too slow: ${speed.toFixed(2)} < ${MINIMUM_GESTURE_SPEED}`);
+          return;
+        }
+        
+        // 如果旋转手势还没有开始，检查是否应该优先旋转
+        if (!this.isRotating) {
+          const rotationDelta = Math.abs(this.rotationDeltaAccumulated);
+          
+          if (rotationDelta > ROTATION_ANGLE_THRESHOLD && speed < MINIMUM_ANGLED_GESTURE_SPEED) {
+            // 旋转幅度较大且缩放速度不够快，优先旋转
+            hilog.info(DOMAIN, TAG, 
+              `Pinch gesture rejected - prefer rotation: rotationDelta=${rotationDelta.toFixed(2)}° > ${ROTATION_ANGLE_THRESHOLD}°, ` +
+              `speed=${speed.toFixed(2)} < ${MINIMUM_ANGLED_GESTURE_SPEED}`);
+            return;
+          }
+        }
+      }
+    }
+    
+    // 记录当前帧数据供下次判断
+    this.previousPinchSpan = currentSpan;
+    this.previousPinchTimestamp = Date.now();
 
     hilog.info(DOMAIN, TAG, '========== Pinch gesture started ==========');
 
@@ -525,9 +616,17 @@ export class MapGestureDetector {
       this.notifyRotateEnd();
     }
     
-    // 🔑 参考 Android: 缩放时禁用旋转手势，避免手势冲突
+    // 🔑 关键修复：如果倾斜手势已经开始，立即终止它（避免倾斜和缩放冲突）
+    if (this.isTilting) {
+      hilog.info(DOMAIN, TAG, '🔧 Terminating existing tilt gesture before scaling');
+      this.isTilting = false;
+      this.notifyTiltEnd();
+    }
+    
+    // 🔑 参考 Android: 缩放时禁用旋转和倾斜手势，避免手势冲突
     this.shouldIgnoreRotation = true;
-    hilog.info(DOMAIN, TAG, '🚫 Rotation gestures disabled during scaling');
+    this.shouldIgnoreTilt = true;
+    hilog.info(DOMAIN, TAG, '🚫 Rotation and tilt gestures disabled during scaling');
 
     // 初始化缩放相关状态
     if (this.mapController && this.mapController.getZoom) {
@@ -748,9 +847,10 @@ export class MapGestureDetector {
     // 🔧 记录缩放结束时间戳，用于禁用紧随其后的 Pan Fling
     this.lastScaleEndTimestamp = Date.now();
     
-    // 🔑 参考 Android: 缩放结束，重新启用旋转手势
+    // 🔑 参考 Android: 缩放结束，重新启用旋转和倾斜手势
     this.shouldIgnoreRotation = false;
-    hilog.info(DOMAIN, TAG, '✅ Rotation gestures re-enabled after scaling');
+    this.shouldIgnoreTilt = false;
+    hilog.info(DOMAIN, TAG, '✅ Rotation and tilt gestures re-enabled after scaling');
 
     // 设置手势完成
     if (this.mapController) {
@@ -776,10 +876,18 @@ export class MapGestureDetector {
     }
 
     hilog.info(DOMAIN, TAG, '========== Rotation gesture started ==========');
+    
+    // 🔑 关键修复：如果倾斜手势已经开始，立即终止它（避免倾斜和旋转冲突）
+    if (this.isTilting) {
+      hilog.info(DOMAIN, TAG, '🔧 Terminating existing tilt gesture before rotation');
+      this.isTilting = false;
+      this.notifyTiltEnd();
+    }
 
     this.isRotating = true;
     this.lastRotation = 0;  // 重置上一帧角度
     this.totalRotation = 0;
+    this.rotationDeltaAccumulated = 0;  // 重置累积的旋转增量（用于优先级判断）
 
     // 重置速度跟踪器
     this.rotateVelocityTracker.reset();
@@ -854,6 +962,11 @@ export class MapGestureDetector {
     }
     
     this.totalRotation += rotationDelta;
+    
+    // 🔑 累积旋转增量供 Pinch 优先级判断使用（参考 Android getDeltaSinceLast）
+    if (!this.isScaling) {
+      this.rotationDeltaAccumulated += rotationDelta;
+    }
 
     hilog.info(DOMAIN, TAG, `[Rotate Update] currentRotation=${currentRotation.toFixed(2)}°, ` +
                             `lastRotation=${this.lastRotation.toFixed(2)}°, ` +
@@ -1031,6 +1144,74 @@ export class MapGestureDetector {
   }
 
   /**
+   * 双指点击手势（缩小）
+   * 参考 iOS MLNMapView handleTwoFingerTapGesture
+   */
+  onTwoFingerTap(event: GestureEvent): void {
+    if (!this.uiSettings.isZoomGesturesEnabled()) {
+      return;
+    }
+
+    hilog.debug(DOMAIN, TAG, 'Two finger tap detected - zoom out');
+
+    // 检查是否已经在最小缩放级别
+    if (this.mapController && this.mapController.getZoom && this.mapController.getMinZoom) {
+      const currentZoom: number = this.mapController.getZoom() as number;
+      const minZoom: number = this.mapController.getMinZoom() as number;
+      
+      if (currentZoom <= minZoom) {
+        hilog.debug(DOMAIN, TAG, 'Already at minimum zoom, ignoring two finger tap');
+        return;
+      }
+    }
+
+    // 取消当前动画
+    if (this.mapController) {
+      this.mapController.cancelTransitions();
+    }
+
+    // 计算两指中心点作为焦点
+    let centerX = 0;
+    let centerY = 0;
+    
+    if (event.fingerList && event.fingerList.length >= 2) {
+      const finger0X = event.fingerList[0].localX;
+      const finger0Y = event.fingerList[0].localY;
+      const finger1X = event.fingerList[1].localX;
+      const finger1Y = event.fingerList[1].localY;
+      
+      centerX = (finger0X + finger1X) / 2;
+      centerY = (finger0Y + finger1Y) / 2;
+      
+      hilog.debug(DOMAIN, TAG, `Two finger center: (${centerX.toFixed(1)}, ${centerY.toFixed(1)})`);
+    }
+    
+    // 获取焦点（如果用户设置了自定义焦点，使用自定义焦点）
+    const focalPoint = this.getFocalPoint(centerX, centerY);
+    
+    // 🔑 DPI 修复：将逻辑像素转换为物理像素
+    const pixelRatio = this.getPixelRatio();
+    const scaledAnchorX = focalPoint.x * pixelRatio;
+    const scaledAnchorY = focalPoint.y * pixelRatio;
+
+    // 计算新的缩放级别：当前级别 - 1（参考 iOS）
+    if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
+      const currentZoom: number = this.mapController.getZoom() as number;
+      const newZoom: number = Math.round(currentZoom) - 1.0;
+      
+      hilog.info(DOMAIN, TAG, `Two finger tap zoom out: ${currentZoom.toFixed(2)} -> ${newZoom.toFixed(2)}, ` +
+                              `anchor=(${focalPoint.x.toFixed(1)}, ${focalPoint.y.toFixed(1)})`);
+      
+      // 执行带动画的缩放（300ms，参考 iOS MLNAnimationDuration）
+      const duration = 300;
+      this.mapController.setZoom(newZoom, scaledAnchorX, scaledAnchorY, duration);
+    }
+
+    // 通知监听器
+    this.notifyDoubleTap(centerX, centerY);  // 复用 DoubleTap 监听器
+  }
+
+  /**
    * 长按手势
    */
   onLongPress(event: GestureEvent): void {
@@ -1048,6 +1229,12 @@ export class MapGestureDetector {
    */
   onTwoFingerPanStart(event: GestureEvent): void {
     if (!this.uiSettings.isTiltGesturesEnabled()) {
+      return;
+    }
+    
+    // 🔑 参考 Android Shove 手势：如果正在缩放或旋转，或被标记为应忽略，拒绝启动倾斜
+    if (this.shouldIgnoreTilt || this.isScaling || this.isRotating) {
+      hilog.info(DOMAIN, TAG, '🚫 Tilt gesture ignored - scaling or rotation in progress or disabled');
       return;
     }
 
@@ -1117,6 +1304,9 @@ export class MapGestureDetector {
     hilog.debug(DOMAIN, TAG, 'Two finger pan (tilt) ended');
 
     this.isTilting = false;
+    
+    // 🔧 记录倾斜结束时间戳，用于禁用紧随其后的 Pan Fling
+    this.lastTiltEndTimestamp = Date.now();
 
     // 设置手势完成
     if (this.mapController) {
@@ -1222,6 +1412,53 @@ export class MapGestureDetector {
       return userFocalPoint;
     }
     return new FocalPoint(defaultX, defaultY);
+  }
+
+  /**
+   * 获取手势锚点（统一的锚点计算方法）
+   * 
+   * @param event 手势事件
+   * @param gestureType 手势类型 ('pinch' | 'rotate' | 'twoFinger')
+   * @returns 锚点坐标（逻辑像素）
+   */
+  private getGestureAnchor(event: GestureEvent, gestureType: string): FocalPoint {
+    let anchorX = 0;
+    let anchorY = 0;
+    
+    // 根据手势类型计算锚点
+    if (gestureType === 'pinch') {
+      // Pinch 手势：使用 event.pinchCenterX/Y
+      anchorX = event.pinchCenterX || 0;
+      anchorY = event.pinchCenterY || 0;
+    } else if (gestureType === 'rotate' || gestureType === 'twoFinger') {
+      // Rotate 和 TwoFinger 手势：从 fingerList 计算两指中心点
+      if (event.fingerList && event.fingerList.length >= 2) {
+        const finger0X = event.fingerList[0].localX;
+        const finger0Y = event.fingerList[0].localY;
+        const finger1X = event.fingerList[1].localX;
+        const finger1Y = event.fingerList[1].localY;
+        
+        anchorX = (finger0X + finger1X) / 2;
+        anchorY = (finger0Y + finger1Y) / 2;
+      }
+    }
+    
+    // 应用用户自定义焦点（如果有）
+    return this.getFocalPoint(anchorX, anchorY);
+  }
+
+  /**
+   * 将逻辑像素锚点转换为物理像素锚点
+   * 
+   * @param anchor 逻辑像素锚点
+   * @returns 物理像素锚点
+   */
+  private applyPixelRatioToAnchor(anchor: FocalPoint): FocalPoint {
+    const pixelRatio = this.getPixelRatio();
+    return new FocalPoint(
+      anchor.x * pixelRatio,
+      anchor.y * pixelRatio
+    );
   }
 
   /**
@@ -1461,6 +1698,7 @@ export class MapGestureDetector {
   }
 
   private notifyTiltBegin(): void {
+    // 通知 Tilt 监听器
     for (const listener of this.tiltListeners) {
       try {
         listener.onTiltBegin();
@@ -1468,9 +1706,18 @@ export class MapGestureDetector {
         hilog.error(DOMAIN, TAG, `Error in onTiltBegin listener: ${error}`);
       }
     }
+    // 同时通知 Shove 监听器（向后兼容 Android 命名）
+    for (const listener of this.shoveListeners) {
+      try {
+        listener.onShoveBegin();
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Error in onShoveBegin listener: ${error}`);
+      }
+    }
   }
 
   private notifyTilt(pitch: number): void {
+    // 通知 Tilt 监听器
     for (const listener of this.tiltListeners) {
       try {
         listener.onTilt(pitch);
@@ -1478,14 +1725,31 @@ export class MapGestureDetector {
         hilog.error(DOMAIN, TAG, `Error in onTilt listener: ${error}`);
       }
     }
+    // 同时通知 Shove 监听器（向后兼容 Android 命名）
+    for (const listener of this.shoveListeners) {
+      try {
+        listener.onShove(pitch);
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Error in onShove listener: ${error}`);
+      }
+    }
   }
 
   private notifyTiltEnd(): void {
+    // 通知 Tilt 监听器
     for (const listener of this.tiltListeners) {
       try {
         listener.onTiltEnd();
       } catch (error) {
         hilog.error(DOMAIN, TAG, `Error in onTiltEnd listener: ${error}`);
+      }
+    }
+    // 同时通知 Shove 监听器（向后兼容 Android 命名）
+    for (const listener of this.shoveListeners) {
+      try {
+        listener.onShoveEnd();
+      } catch (error) {
+        hilog.error(DOMAIN, TAG, `Error in onShoveEnd listener: ${error}`);
       }
     }
   }

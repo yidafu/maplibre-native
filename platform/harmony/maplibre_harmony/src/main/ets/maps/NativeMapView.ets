@@ -1442,7 +1442,7 @@ class NativeMapViewController extends XComponentController {
       try {
         runnable();
         // 执行完任务后触发重绘
-        this.controller.triggerRepaint();
+        this.triggerRepaint();
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `queueEvent error: ${error.message}`);
       }
@@ -2722,30 +2722,12 @@ export struct MapView {
   
   /**
    * 页面显示时调用（鸿蒙生命周期）
-   * 用于恢复地图渲染、重新启动定位等
-   */
-  /**
-   * 页面显示时调用（鸿蒙生命周期）
    * 用于恢复地图渲染
    */
   onPageShow(): void {
     hilog.info(DOMAIN, 'NativeMapView', 'onPageShow: Resuming map rendering');
-    if (!this.isInitialized) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'onPageShow: Map not initialized');
-      return;
-    }
-    
     // 恢复渲染
     this.controller.triggerRepaint();
-    
-    // 重新启用交互
-    if (this.mapView) {
-      try {
-        this.mapView.setGesturesEnabled(true);
-      } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to enable gestures: ${error}`);
-      }
-    }
   }
 
   /**
@@ -2754,19 +2736,8 @@ export struct MapView {
    */
   onPageHide(): void {
     hilog.info(DOMAIN, 'NativeMapView', 'onPageHide: Pausing map rendering');
-    if (!this.isInitialized) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'onPageHide: Map not initialized');
-      return;
-    }
-    
-    // 暂停渲染（通过禁用手势来减少渲染触发）
-    if (this.mapView) {
-      try {
-        this.mapView.setGesturesEnabled(false);
-      } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to disable gestures: ${error}`);
-      }
-    }
+    // 当前实现不暂停渲染，仅记录日志
+    // 未来可以添加更多资源管理逻辑
   }
 
   /**

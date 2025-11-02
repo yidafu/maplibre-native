@@ -15,7 +15,7 @@ napi_ref CustomLayerNAPI::constructor = nullptr;
 
 CustomLayerNAPI::CustomLayerNAPI(const std::string& layerId, 
                                  std::unique_ptr<mbgl::style::CustomLayer> layer,
-                                 std::shared_ptr<ExampleCustomLayerHost> host)
+                                 ExampleCustomLayerHost* host)
     : layerId(layerId)
     , layer(std::move(layer))
     , host(host) {
@@ -89,13 +89,17 @@ napi_value CustomLayerNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     // 创建 ExampleCustomLayerHost 实例
-    auto host = std::make_shared<ExampleCustomLayerHost>();
+    // 使用 unique_ptr，所有权将转移给 CustomLayer
+    auto hostPtr = std::make_unique<ExampleCustomLayerHost>();
     
-    // 创建 CustomLayer 实例
-    auto layer = std::make_unique<mbgl::style::CustomLayer>(layerId, std::move(host));
+    // 保存原始指针用于后续访问（在所有权转移之前）
+    ExampleCustomLayerHost* hostRawPtr = hostPtr.get();
+    
+    // 创建 CustomLayer 实例（获得 host 的所有权）
+    auto layer = std::make_unique<mbgl::style::CustomLayer>(layerId, std::move(hostPtr));
     
     // 创建 NAPI 包装对象
-    CustomLayerNAPI* layerObj = new CustomLayerNAPI(layerId, std::move(layer), host);
+    CustomLayerNAPI* layerObj = new CustomLayerNAPI(layerId, std::move(layer), hostRawPtr);
     
     napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {

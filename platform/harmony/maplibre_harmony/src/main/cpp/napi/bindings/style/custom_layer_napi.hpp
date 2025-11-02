@@ -75,14 +75,14 @@ public:
 private:
     explicit CustomLayerNAPI(const std::string& layerId, 
                             std::unique_ptr<mbgl::style::CustomLayer> layer,
-                            std::shared_ptr<ExampleCustomLayerHost> host);
+                            ExampleCustomLayerHost* host);
     ~CustomLayerNAPI();
     
     static napi_ref constructor;
     std::string layerId;
     std::unique_ptr<mbgl::style::CustomLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
-    std::shared_ptr<ExampleCustomLayerHost> host;  // 保持对 host 的引用以便调用方法
+    ExampleCustomLayerHost* host;  // 保持对 host 的引用以便调用方法（由 CustomLayer 管理生命周期）
 };
 
 } // namespace harmony

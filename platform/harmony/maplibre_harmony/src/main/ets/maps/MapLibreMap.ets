@@ -2289,20 +2289,11 @@ export class MapLibreMap {
    * @returns 设备像素比
    */
   public getPixelRatio(): number {
-    try {
-      // 鸿蒙系统通过 display 模块获取像素密度
-      // 返回 densityPixels（设备像素密度），相当于 scale factor
-      const display = globalThis.getContext()?.resourceManager?.getDeviceCapability()?.screenDensity;
-      if (display !== undefined) {
-        // screenDensity 通常是 120, 160, 240, 320, 480, 640 (dpi)
-        // 转换为像素比：160dpi 为基准 (1.0)
-        return display / 160.0;
-      }
-    } catch (error) {
-      console.error('MapLibreMap', 'Failed to get pixel ratio:', error);
+    if (this.destroyed) {
+      return 1.0;
     }
-    // 默认返回 2.0（现代设备的常见值）
-    return 2.0;
+    // 直接从 NativeMapView 获取像素比（已通过 NAPI 从底层获取）
+    return this.nativeMapView.getPixelRatio();
   }
   
   /**
@@ -2328,7 +2319,7 @@ export class MapLibreMap {
     if (this.destroyed) return [0, 0, 0, 0];
     try {
       // 从 native 层获取边距
-      const insets = this.nativeMapView.getContentInsets();
+      const insets: number[] = this.nativeMapView.getContentInsets() as number[];
       if (insets && Array.isArray(insets) && insets.length === 4) {
         // native 返回 [left, top, right, bottom]
         // 转换为 [top, left, bottom, right]
@@ -2348,12 +2339,12 @@ export class MapLibreMap {
    */
   public getDensityDependantRectangle(rect: Rect): Rect {
     const pixelRatio = this.getPixelRatio();
-    return {
-      left: rect.left * pixelRatio,
-      top: rect.top * pixelRatio,
-      right: rect.right * pixelRatio,
-      bottom: rect.bottom * pixelRatio
-    };
+    return new Rect(
+      rect.left * pixelRatio,
+      rect.top * pixelRatio,
+      rect.right * pixelRatio,
+      rect.bottom * pixelRatio
+    );
   }
 }
 

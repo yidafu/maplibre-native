@@ -190,7 +190,7 @@ export { AnnotationViewManager, AnnotationViewData } from './annotations/Annotat
 // ========== GeoJSON 类型（通过命名空间导出）==========
 export * from './geojson';
 
-// ========== 样式 ==========
+// ========== 样式 (Styling) ==========
 export { Style, StyleBuilder } from './style/Style';
 
 export { Light } from './style/light/Light';
@@ -200,6 +200,14 @@ export type { LightOptions } from './style/light/Light';
 export { DEFAULT_STYLE_URLS } from './constants/DefaultStyles';
 
 export type { DefaultStyleUrls } from './constants/DefaultStyles';
+
+// 自定义图层 (CustomLayer)
+export { 
+  CustomLayer, 
+  createCustomLayerWithColor 
+} from './style/layers';
+
+export type { RGBAColor } from './style/layers';
 
 // ========== 图层 ==========
 export {
@@ -212,8 +220,6 @@ export {
   HeatmapLayer,
   HillshadeLayer,
   FillExtrusionLayer,
-  CustomLayer,
-  ExampleCustomLayer,
   PropertyFactory
 } from './style/layers';
 
@@ -224,7 +230,6 @@ export type {
   LayerLayout,
   LayerPaint,
   LayerMetadata,
-  CustomLayerOptions,
   ColorValue,
   NumberValue,
   BooleanValue,

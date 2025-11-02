@@ -165,6 +165,31 @@ export interface OnTiltListener {
 }
 
 /**
+ * Shove 手势监听器（Android 命名）
+ * 当用户双指上下拖动改变地图俯仰角度时触发
+ * 等同于 OnTiltListener，提供 Android 风格的命名以保持兼容性
+ * 
+ * 参考 Android MapLibreMap.OnShoveListener
+ */
+export interface OnShoveListener {
+  /**
+   * Shove 手势开始
+   */
+  onShoveBegin(): void;
+
+  /**
+   * Shove 手势进行中
+   * @param pitch 当前俯仰角度（度，0-60）
+   */
+  onShove(pitch: number): void;
+
+  /**
+   * Shove 手势结束
+   */
+  onShoveEnd(): void;
+}
+
+/**
  * Quick Zoom 监听器
  * 当用户双击并拖动进行快速缩放时触发
  */
