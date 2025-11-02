@@ -122,13 +122,26 @@ struct UpdateMetadataTestPage {
       const metadataStr = JSON.stringify(metadataObj);
       const metadataBuffer = encoder.encodeInto(metadataStr);
       
-      // updateMetadata 可能需要额外参数，先使用注释
-      // await this.currentRegion.updateMetadata(metadataBuffer.buffer as ArrayBuffer);
+      // 使用 Promise 包装回调方式的更新操作
+      await new Promise<void>((resolve, reject) => {
+        this.currentRegion!.updateMetadata(metadataBuffer.buffer as ArrayBuffer, (result) => {
+          if (typeof result === 'string') {
+            // 错误情况
+            reject(new Error(result));
+          } else {
+            // 成功情况
+            resolve();
+          }
+        });
+      });
       
       this.lastUpdate = metadataObj['lastUpdate'] as string;
       showToast('元数据已更新');
+      console.info('[UpdateMetadataTestPage] Metadata updated successfully');
     } catch (error) {
-      showToast(`更新元数据失败: ${error}`);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[UpdateMetadataTestPage] Failed to update metadata:', errorMsg);
+      showToast(`更新元数据失败: ${errorMsg}`);
     }
   };
   

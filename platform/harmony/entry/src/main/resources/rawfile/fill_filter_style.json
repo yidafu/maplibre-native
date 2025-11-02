@@ -1,0 +1,46 @@
+{
+    "id": "basic",
+    "name": "Basic",
+    "zoom": 1,
+    "pitch": 0,
+    "center": [0, 0],
+    "glyphs": "maptiler://fonts/{fontstack}/{range}.pbf",
+    "layers": [
+        {
+            "id": "background",
+            "type": "background",
+            "paint": {
+                "background-color": "rgba(224, 224, 208, 1)"
+            }
+        },
+        {
+            "id": "water",
+            "type": "fill",
+            "paint": {
+                "fill-color": "hsl(205, 56%, 73%)"
+            },
+            "source": "openmaptiles",
+            "source-layer": "water"
+        },
+        {
+            "id": "building",
+            "type": "fill",
+            "paint": {
+                "fill-color": "rgb(222, 211, 190)",
+                "fill-opacity": 0.6,
+                "fill-outline-color": "rgba(195, 171, 143, 1)"
+            },
+            "source": "openmaptiles",
+            "source-layer": "building"
+        }
+    ],
+    "bearing": 0,
+    "sources": {
+        "openmaptiles": {
+            "url": "maptiler://sources/v3",
+            "type": "vector"
+        }
+    },
+    "version": 8
+}
+

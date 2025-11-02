@@ -11,7 +11,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CustomLayer, ExampleCustomLayer } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CustomLayer } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
@@ -23,10 +23,7 @@ struct CustomLayerTestPage {
   @State private currentColor: string = '红色';
   
   aboutToDisappear() {
-    if (this.customLayer) {
-      this.customLayer.destroy();
-      this.customLayer = null;
-    }
+    // CustomLayer 在移除时自动销毁，无需手动调用 destroy
     if (this.mapController) {
       this.mapController.destroy();
       this.mapController = null;
@@ -83,23 +80,14 @@ struct CustomLayerTestPage {
     } else {
       // 添加图层
       try {
-        // 创建自定义图层
-        // TODO: 需要实现ExampleCustomLayer.createContext()
-        const context = ExampleCustomLayer.createContext();
-        this.customLayer = new CustomLayer({
-          id: 'custom',
-          context: context,
-          initializeFunction: ExampleCustomLayer.InitializeFunction,
-          renderFunction: ExampleCustomLayer.RenderFunction,
-          contextLostFunction: ExampleCustomLayer.ContextLostFunction,
-          deinitializeFunction: ExampleCustomLayer.DeinitializeFunction
-        });
+        // 创建简化的自定义图层
+        // 注意：完整的 CustomLayer 实现需要 Native 层支持
+        this.customLayer = new CustomLayer('custom-layer');
         
-        // TODO: 当NAPI层实现后，addLayerBelow应该能正常工作
-        // 添加到building图层下方（如果存在）
-        style.addLayerBelow(this.customLayer, 'building');
+        // 添加图层
+        style.addLayer(this.customLayer);
         this.layerAdded = true;
-        showToast('已添加CustomLayer (TODO: 需要NAPI实现)');
+        showToast('已添加CustomLayer (简化版)');
         console.info('[CustomLayerTestPage] Custom layer added');
       } catch (error) {
         showToast(`添加失败: ${error}`);
@@ -120,8 +108,7 @@ struct CustomLayerTestPage {
     }
     
     try {
-      // TODO: 当NAPI层实现后，setColor应该能改变渲染颜色
-      ExampleCustomLayer.setColor(red, green, blue, 1.0);
+      // TODO: 当 CustomLayer API 完善后，可以实现颜色变更
       this.currentColor = colorName;
       
       // 触发重绘
@@ -129,7 +116,7 @@ struct CustomLayerTestPage {
         this.mapController.triggerRepaint();
       }
       
-      showToast(`颜色已设置为${colorName} (TODO: 需要NAPI实现)`);
+      showToast(`颜色设置为${colorName} (TODO: 需要API实现)`);
       console.info(`[CustomLayerTestPage] Color set to ${colorName}: (${red}, ${green}, ${blue})`);
     } catch (error) {
       showToast(`设置颜色失败: ${error}`);
