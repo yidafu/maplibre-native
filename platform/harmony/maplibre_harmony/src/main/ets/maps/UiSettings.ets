@@ -34,7 +34,7 @@ export class CompassMargins {
 
 /**
  * UI 设置类
- * 
+ *
  * 管理地图的手势启用/禁用配置和 UI 组件配置
  * 参考 Android UiSettings 和 iOS MLNMapView 属性
  */
@@ -47,107 +47,85 @@ export class UiSettings {
   private tiltGesturesEnabled: boolean = true;
   private doubleTapGesturesEnabled: boolean = true;
   private quickZoomGesturesEnabled: boolean = true;
-  
   // 滚动配置
   private horizontalScrollGesturesEnabled: boolean = true;
-  
   // 手势灵敏度配置
   private focalPoint: FocalPoint | null = null;
-
   // 惯性动画开关
   private flingVelocityAnimationEnabled: boolean = true;
   private scaleVelocityAnimationEnabled: boolean = true;
   private rotateVelocityAnimationEnabled: boolean = true;
-
   // 动画参数
-  private decelerationRate: number = 0.35;  // iOS 风格（0-1），越大动画越长
-  private flingAnimationBaseTime: number = 300;  // 基础动画时长（ms）
-  private flingThreshold: number = 100;  // 速度阈值（像素/秒）
+  private decelerationRate: number = 0.35; // iOS 风格（0-1），越大动画越长
+  private flingAnimationBaseTime: number = 300; // 基础动画时长（ms）
+  private flingThreshold: number = 100; // 速度阈值（像素/秒）
 
   // 速度阈值
-  private minFlingVelocity: number = 100;  // 平移最小速度（像素/秒）
-  private minScaleVelocity: number = 0.5;  // 缩放最小速度
-  private minRotateVelocity: number = 5;   // 旋转最小速度（度/秒）
+  private minFlingVelocity: number = 100; // 平移最小速度（像素/秒）
+  private minScaleVelocity: number = 0.5; // 缩放最小速度
+  private minRotateVelocity: number = 5; // 旋转最小速度（度/秒）
 
   // Tilt 相关配置
-  private minPitch: number = 0;           // 最小俯仰角（度）
-  private maxPitch: number = 60;          // 最大俯仰角（度）
-  private tiltSensitivity: number = 0.5;  // 倾斜灵敏度（slowdown factor）
+  private minPitch: number = 0; // 最小俯仰角（度）
+  private maxPitch: number = 60; // 最大俯仰角（度）
+  private tiltSensitivity: number = 0.5; // 倾斜灵敏度（slowdown factor）
 
   // Quick Zoom 相关配置
-  private quickZoomMaxChange: number = 4;  // Quick Zoom 最大缩放变化
+  private quickZoomMaxChange: number = 4; // Quick Zoom 最大缩放变化
 
   // Zoom 相关配置
-  private zoomRate: number = 1.0;  // 缩放速率倍率（参考 Android UiSettings）
+  private zoomRate: number = 1.0; // 缩放速率倍率（参考 Android UiSettings）
 
   // Rotation 相关配置
-  private rotationRate: number = 1.0;  // 旋转速率倍率（控制旋转灵敏度）
+  private rotationRate: number = 1.0; // 旋转速率倍率（控制旋转灵敏度）
 
   // ==================== 指南针配置 ====================
-  
+
   // 指南针启用状态
   private compassEnabled: boolean = true;
-  
   // 指南针可见性模式
   private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
-  
   // 正北时是否淡出
   private compassFadeWhenFacingNorth: boolean = true;
-  
   // 指南针边距
   private compassMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
-  
   // 指南针位置
   private compassPosition: OrnamentPosition = OrnamentPosition.TopRight;
-  
   // 指南针更新回调（由 MapLibreMap 注入）
   public onCompassConfigChanged?: () => void;
-
   // ==================== Logo 配置 ====================
-  
+
   // Logo 启用状态
   private logoEnabled: boolean = true;
-  
   // Logo 边距
   private logoMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
-  
   // Logo 位置
   private logoPosition: OrnamentPosition = OrnamentPosition.BottomLeft;
-  
   // Logo 更新回调
   public onLogoConfigChanged?: () => void;
-
   // ==================== ScaleBar 配置 ====================
-  
+
   // ScaleBar 启用状态
-  private scaleBarEnabled: boolean = true;  // 默认启用
-  
+  private scaleBarEnabled: boolean = true; // 默认启用
+
   // ScaleBar 单位系统
   private scaleBarUnit: ScaleBarUnit = ScaleBarUnit.Metric;
-  
   // ScaleBar 是否使用深色样式
   private scaleBarUseDarkStyles: boolean = false;
-  
   // ScaleBar 边距
   private scaleBarMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
-  
   // ScaleBar 位置
   private scaleBarPosition: OrnamentPosition = OrnamentPosition.TopLeft;
-  
   // ScaleBar 更新回调
   public onScaleBarConfigChanged?: () => void;
-
   // ==================== Attribution 配置 ====================
-  
+
   // Attribution 启用状态
   private attributionEnabled: boolean = true;
-  
   // Attribution 边距
   private attributionMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
-  
   // Attribution 位置
   private attributionPosition: OrnamentPosition = OrnamentPosition.BottomRight;
-  
   // Attribution 更新回调
   public onAttributionConfigChanged?: () => void;
 
@@ -354,7 +332,7 @@ export class UiSettings {
    * @param rate 减速率
    */
   setDecelerationRate(rate: number): void {
-    this.decelerationRate = Math.max(0, Math.min(1, rate));  // 限制在 0-1
+    this.decelerationRate = Math.max(0, Math.min(1, rate)); // 限制在 0-1
   }
 
   /**

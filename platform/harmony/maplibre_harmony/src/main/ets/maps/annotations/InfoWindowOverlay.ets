@@ -15,15 +15,15 @@ export interface InfoWindowState {
 
 /**
  * InfoWindowOverlay - InfoWindow 渲染层
- * 
+ *
  * 作为覆盖层在地图上方渲染所有的 InfoWindow
- * 
+ *
  * 使用方式：
  * ```typescript
  * Stack() {
  *   // 地图层
  *   XComponent(...)
- *   
+ *
  *   // InfoWindow 层
  *   InfoWindowOverlay({ manager: this.infoWindowManager })
  * }
@@ -32,18 +32,17 @@ export interface InfoWindowState {
 @Component
 export struct InfoWindowOverlay {
   @Link @Watch('onInfoWindowsChanged') visibleInfoWindows: InfoWindowState[];
-  
   // 事件回调
   onInfoWindowClick?: (marker: Marker) => void;
   onInfoWindowLongClick?: (marker: Marker) => void;
   onInfoWindowClose?: (marker: Marker) => void;
-  
+
   /**
    * InfoWindow 列表变化时的回调
    */
   onInfoWindowsChanged() {
   }
-  
+
   build() {
     Stack() {
       // 渲染所有可见的 InfoWindow
@@ -70,10 +69,10 @@ export struct InfoWindowOverlay {
               }
             }
           })
-          .position({
-            x: infoWindowState.position.x,
-            y: infoWindowState.position.y
-          })
+            .position({
+              x: infoWindowState.position.x,
+              y: infoWindowState.position.y
+            })
         },
         (infoWindowState: InfoWindowState) => infoWindowState.key
       )

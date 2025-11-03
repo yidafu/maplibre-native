@@ -1,23 +1,22 @@
 import { InfoWindowStyle } from './InfoWindow';
-import maplibre from 'libmaplibre.so';
 import { Icon } from './Icon';
 import { LatLng } from '../geometry/LatLng';
 import { Marker } from './Marker';
 
 /**
  * MarkerOptions - Marker 构建器类
- * 
+ *
  * 使用构建器模式创建 Marker，支持链式调用
  * 构建完成后通过 getMarker() 创建 NAPI Marker 实例
- * 
+ *
  * 参考:
  * - Android: org.maplibre.android.annotations.MarkerOptions
- * 
+ *
  * @example
- * ```typescript
+* ```typescript
  * const iconFactory = IconFactory.getInstance();
  * const customIcon = await iconFactory.fromResource($r('app.media.marker'));
- * 
+ *
  * // 注意：必须使用 new maplibre.LatLng() 创建位置
  * const marker = new MarkerOptions()
  *   .position(new maplibre.LatLng(39.9042, 116.4074))
@@ -42,15 +41,14 @@ export class MarkerOptions {
   private _alpha: number = 1.0;
   private _rotation: number = 0;
   private _zIndex: number = 0;
-  
   // InfoWindow 配置
   private _infoWindowStyle?: InfoWindowStyle;
   private _infoWindowOffsetX: number = 0;
   private _infoWindowOffsetY: number = 0;
-  
+
   /**
    * 设置 Marker 的位置
-   * 
+   *
    * @param position Marker 的地理位置
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -58,10 +56,10 @@ export class MarkerOptions {
     this._position = position;
     return this;
   }
-  
+
   /**
    * 设置 Marker 的标题
-   * 
+   *
    * @param title 标题文本
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -69,10 +67,10 @@ export class MarkerOptions {
     this._title = title;
     return this;
   }
-  
+
   /**
    * 设置 Marker 的描述信息
-   * 
+   *
    * @param snippet 描述文本
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -80,10 +78,10 @@ export class MarkerOptions {
     this._snippet = snippet;
     return this;
   }
-  
+
   /**
    * 设置 Marker 的图标
-   * 
+   *
    * @param icon Icon 对象
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -94,7 +92,7 @@ export class MarkerOptions {
 
   /**
    * 设置 Marker 的图标和复用标识符
-   * 
+   *
    * @param icon Icon 对象
    * @param reuseIdentifier 复用标识符
    * @returns MarkerOptions 实例（支持链式调用）
@@ -107,9 +105,9 @@ export class MarkerOptions {
 
   /**
    * 通过复用标识符设置图标
-   * 
+   *
    * 注意：需要确保 IconManager 中已存在该标识符的图标
-   * 
+   *
    * @param reuseIdentifier 复用标识符
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -117,10 +115,10 @@ export class MarkerOptions {
     this._reuseIdentifier = reuseIdentifier;
     return this;
   }
-  
+
   /**
    * 设置 Marker 是否可拖拽
-   * 
+   *
    * @param draggable true 表示可拖拽
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -128,10 +126,10 @@ export class MarkerOptions {
     this._draggable = draggable;
     return this;
   }
-  
+
   /**
    * 设置 Marker 是否可见
-   * 
+   *
    * @param visible true 表示可见
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -139,10 +137,10 @@ export class MarkerOptions {
     this._visible = visible;
     return this;
   }
-  
+
   /**
    * 设置 Marker 的透明度
-   * 
+   *
    * @param alpha 透明度（0.0 - 1.0）
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -150,10 +148,10 @@ export class MarkerOptions {
     this._alpha = Math.max(0, Math.min(1, alpha));
     return this;
   }
-  
+
   /**
    * 设置 Marker 的旋转角度
-   * 
+   *
    * @param rotation 旋转角度（度）
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -161,12 +159,12 @@ export class MarkerOptions {
     this._rotation = rotation;
     return this;
   }
-  
+
   /**
    * 设置 Marker 的 Z 轴顺序
-   * 
+   *
    * Z 值越大，Marker 显示越靠前
-   * 
+   *
    * @param zIndex Z 轴顺序
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -174,15 +172,15 @@ export class MarkerOptions {
     this._zIndex = zIndex;
     return this;
   }
-  
+
   /**
    * 设置 InfoWindow 的样式配置
-   * 
+   *
    * @param style InfoWindow 样式
    * @returns MarkerOptions 实例（支持链式调用）
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * new MarkerOptions()
    *   .position(latLng)
    *   .title('标题')
@@ -204,10 +202,10 @@ export class MarkerOptions {
     }
     return this;
   }
-  
+
   /**
    * 设置 InfoWindow 的 X 轴偏移量
-   * 
+   *
    * @param offsetX X 轴偏移量（像素）
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -215,10 +213,10 @@ export class MarkerOptions {
     this._infoWindowOffsetX = offsetX;
     return this;
   }
-  
+
   /**
    * 设置 InfoWindow 的 Y 轴偏移量
-   * 
+   *
    * @param offsetY Y 轴偏移量（像素）
    * @returns MarkerOptions 实例（支持链式调用）
    */
@@ -226,30 +224,30 @@ export class MarkerOptions {
     this._infoWindowOffsetY = offsetY;
     return this;
   }
-  
+
   // ========== Getter 方法 ==========
-  
+
   /**
    * 获取位置
    */
   public getPosition(): LatLng | null {
     return this._position;
   }
-  
+
   /**
    * 获取标题
    */
   public getTitle(): string | undefined {
     return this._title;
   }
-  
+
   /**
    * 获取描述
    */
   public getSnippet(): string | undefined {
     return this._snippet;
   }
-  
+
   /**
    * 获取图标
    */
@@ -263,66 +261,66 @@ export class MarkerOptions {
   public getReuseIdentifier(): string | undefined {
     return this._reuseIdentifier;
   }
-  
+
   /**
    * 是否可拖拽
    */
   public isDraggable(): boolean {
     return this._draggable;
   }
-  
+
   /**
    * 是否可见
    */
   public isVisible(): boolean {
     return this._visible;
   }
-  
+
   /**
    * 获取透明度
    */
   public getAlpha(): number {
     return this._alpha;
   }
-  
+
   /**
    * 获取旋转角度
    */
   public getRotation(): number {
     return this._rotation;
   }
-  
+
   /**
    * 获取 Z 轴顺序
    */
   public getZIndex(): number {
     return this._zIndex;
   }
-  
+
   /**
    * 获取 InfoWindow 样式配置
    */
   public getInfoWindowStyle(): InfoWindowStyle | undefined {
     return this._infoWindowStyle;
   }
-  
+
   /**
    * 获取 InfoWindow X 轴偏移量
    */
   public getInfoWindowOffsetX(): number {
     return this._infoWindowOffsetX;
   }
-  
+
   /**
    * 获取 InfoWindow Y 轴偏移量
    */
   public getInfoWindowOffsetY(): number {
     return this._infoWindowOffsetY;
   }
-  
+
   /**
    * 创建 Marker 实例
-   * 
+   *
    * @returns Marker 封装类实例
    * @throws Error 如果未设置位置
    */
@@ -330,13 +328,13 @@ export class MarkerOptions {
     if (this._position === null) {
       throw new Error('Marker position must be set');
     }
-    
+
     // 构建 options 对象
     // 注意：ESObject 用于与 NAPI 层交互的动态对象，这是 HarmonyOS 官方推荐的方式
     const options: ESObject = {
       position: this._position.toObject()  // 传递对象字面量
     };
-    
+
     // 添加可选属性
     if (this._icon !== undefined) {
       // 🔧 传递 Icon ID 字符串 (NAPI 层期望字符串，不是对象)
@@ -363,10 +361,10 @@ export class MarkerOptions {
     if (this._zIndex !== 0) {
       options.zIndex = this._zIndex;
     }
-    
+
     // [MarkerDebug] 记录 Marker 创建信息
     const iconStatus = this._icon ? `"${this._icon.getId()}"` : 'null (⚠️ 可能导致不可见)';
-    
+
     // 创建 Marker 封装类实例
     return Marker.createFromOptions(options);
   }

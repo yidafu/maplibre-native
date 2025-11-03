@@ -11,34 +11,34 @@ export type ClusterProperties = ESObject;
 export interface GeoJsonOptions {
   // 最大缩放级别
   maxzoom?: number;
-  
+
   // 简化容差（Douglas-Peucker算法）
   tolerance?: number;
-  
+
   // 瓦片缓冲区大小
   buffer?: number;
-  
+
   // 是否启用聚类
   cluster?: boolean;
-  
+
   // 聚类半径（像素）
   clusterRadius?: number;
-  
+
   // 聚类的最大缩放级别
   clusterMaxZoom?: number;
-  
+
   // 聚类最小点数
   clusterMinPoints?: number;
-  
+
   // 聚类属性
   clusterProperties?: ClusterProperties;
-  
+
   // 是否为每个要素生成ID
   generateId?: boolean;
-  
+
   // 是否启用线条距离度量
   lineMetrics?: boolean;
-  
+
   // 提升ID属性
   promoteId?: string;
 }

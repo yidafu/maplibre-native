@@ -1,21 +1,23 @@
 /**
  * RasterDemSource - DEM 数据源封装类
  */
-import maplibre from 'libmaplibre.so';
 import type { RasterDemSourceOptions } from 'libmaplibre.so';
+import maplibre from 'libmaplibre.so';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 export class RasterDemSource {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'RasterDemSource';
-  
   private nativeInstance: maplibre.RasterDemSource;
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: RasterDemSourceOptions | maplibre.RasterDemSource) {
+  constructor(idOrMarker: string | InternalMarker,
+    optionsOrNative?: RasterDemSourceOptions | maplibre.RasterDemSource) {
     if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
       this.nativeInstance = optionsOrNative as maplibre.RasterDemSource;
     } else if (typeof idOrMarker === 'string') {

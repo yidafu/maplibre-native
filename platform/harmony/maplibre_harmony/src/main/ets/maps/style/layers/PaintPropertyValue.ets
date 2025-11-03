@@ -3,7 +3,7 @@ import { Expression } from '../expressions/Expression';
 
 /**
  * PaintPropertyValue - Paint 属性值封装类
- * 
+ *
  * Paint属性影响图层的渲染外观（如颜色、透明度等）
  */
 export class PaintPropertyValue<T> extends PropertyValue<T> {

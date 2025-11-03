@@ -1,6 +1,6 @@
 /**
  * GeoJsonSource - GeoJSON 数据源封装类
- * 
+ *
  * 提供完整的 GeoJSON 数据源功能，包括：
  * - 多种数据格式支持（字符串、Feature、FeatureCollection、Geometry）
  * - 异步和同步数据更新
@@ -8,16 +8,17 @@
  * - 聚类功能
  */
 import maplibre from 'libmaplibre.so';
-import { GeoJson, Geometry, IFeature, IFeatureCollection } from '../../geojson';
+import { Geometry, IFeature, IFeatureCollection } from '../../geojson';
 import { GeoJsonOptions } from './GeoJsonOptions';
 import type { Expression } from '../../style/expressions/Expression';
-
 /**
  * 内部标记类，用于识别 fromNative 工厂方法
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
@@ -32,7 +33,6 @@ export type GeoJsonData = string | IFeature | IFeatureCollection | Geometry | Ob
 export class GeoJsonSource {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'GeoJsonSource';
-  
   private nativeInstance: maplibre.GeoJsonSource;
 
   /**
@@ -97,7 +97,8 @@ export class GeoJsonSource {
    * @param options 可选配置
    * @returns GeoJsonSource 实例
    */
-  static fromFeatureCollection(id: string, featureCollection: IFeatureCollection, options?: GeoJsonOptions): GeoJsonSource {
+  static fromFeatureCollection(id: string, featureCollection: IFeatureCollection,
+    options?: GeoJsonOptions): GeoJsonSource {
     const source = new GeoJsonSource(id, options);
     source.setGeoJson(featureCollection);
     return source;
@@ -160,27 +161,27 @@ export class GeoJsonSource {
 
   /**
    * 设置 GeoJSON 数据（异步）
-   * 
+   *
    * 支持多种数据格式：
    * - GeoJSON 字符串
    * - Feature 对象
    * - FeatureCollection 对象
    * - Geometry 对象（Point, LineString, Polygon 等）
-   * 
+   *
    * @param data GeoJSON 数据
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 从字符串加载
    * source.setGeoJson('{"type":"FeatureCollection","features":[...]}');
-   * 
+   *
    * // 从 Feature 对象加载
    * const feature = new Feature({
    *   geometry: new Point(116.4, 39.9),
    *   properties: { name: 'Beijing' }
    * });
    * source.setGeoJson(feature);
-   * 
+   *
    * // 从 FeatureCollection 加载
    * const collection = new FeatureCollection({ features: [feature1, feature2] });
    * source.setGeoJson(collection);
@@ -199,14 +200,14 @@ export class GeoJsonSource {
 
   /**
    * 设置 GeoJSON 数据（同步）
-   * 
+   *
    * 同步更新数据，数据会立即可见和可查询。
    * 支持与 setGeoJson 相同的数据格式。
-   * 
+   *
    * @param data GeoJSON 数据
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 同步更新，立即生效
    * source.setGeoJsonSync(featureCollection);
    * // 数据立即可查询
@@ -226,16 +227,16 @@ export class GeoJsonSource {
 
   /**
    * 从 URL 加载 GeoJSON 数据
-   * 
+   *
    * 支持的 URL 协议：
    * - http:// / https:// - 网络资源
    * - file:// - 本地文件
    * - resource:// - 应用资源
-   * 
+   *
    * @param url GeoJSON 数据 URL
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * source.setUrl('https://example.com/data.geojson');
    * source.setUrl('resource://rawfile/data.geojson');
    * ```
@@ -257,15 +258,15 @@ export class GeoJsonSource {
 
   /**
    * 查询数据源中的要素
-   * 
+   *
    * @param filter 可选的过滤表达式
    * @returns IFeature 数组
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 查询所有要素
    * const allFeatures = source.querySourceFeatures();
-   * 
+   *
    * // 使用过滤器查询
    * const filtered = source.querySourceFeatures(
    *   Expression.eq(Expression.get('type'), 'restaurant')
@@ -281,14 +282,14 @@ export class GeoJsonSource {
 
   /**
    * 获取聚类的直接子项
-   * 
+   *
    * 返回组成指定聚类的直接子要素（可能是点或子聚类）。
-   * 
+   *
    * @param clusterId 聚类 ID（从 cluster_id 属性获取）
    * @returns 子要素数组
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 从聚类 Feature 获取 cluster_id
    * const clusterId = clusterFeature.getProperties()['cluster_id'];
    * const children = source.getClusterChildren(clusterId);
@@ -301,20 +302,20 @@ export class GeoJsonSource {
 
   /**
    * 获取聚类的所有叶子节点
-   * 
+   *
    * 返回组成指定聚类的所有原始点要素（非聚类的叶子节点）。
    * 支持分页，可以获取大型聚类的部分数据。
-   * 
+   *
    * @param clusterId 聚类 ID
    * @param limit 限制返回的要素数量（默认 10）
    * @param offset 偏移量，用于分页（默认 0）
    * @returns 叶子要素数组
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 获取前 10 个叶子节点
    * const leaves = source.getClusterLeaves(clusterId);
-   * 
+   *
    * // 分页获取
    * const page1 = source.getClusterLeaves(clusterId, 20, 0);
    * const page2 = source.getClusterLeaves(clusterId, 20, 20);
@@ -327,15 +328,15 @@ export class GeoJsonSource {
 
   /**
    * 获取聚类展开的缩放级别
-   * 
+   *
    * 返回能够完全展开指定聚类的最小缩放级别。
    * 可用于实现"缩放到聚类"功能。
-   * 
+   *
    * @param clusterId 聚类 ID
    * @returns 目标缩放级别
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 点击聚类时缩放到展开级别
    * const clusterId = feature.getProperties()['cluster_id'];
    * const zoomLevel = source.getClusterExpansionZoom(clusterId);

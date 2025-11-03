@@ -16,15 +16,17 @@ export { Image } from './images/Image';
 
 // 光照
 export { Light } from './light/Light';
+
 export type { LightOptions } from './light/Light';
 
 // Expression 表达式系统（不导出 PropertyValue 以避免冲突）
-export { 
-  Expression, 
-  ExpressionBuilder, 
-  ExpressionLiteral, 
-  ExpressionLiteralArray, 
+export {
+  Expression,
+  ExpressionBuilder,
+  ExpressionLiteral,
+  ExpressionLiteralArray,
   ExpressionMap,
   ExpressionValue
 } from './expressions/index';
+
 export { FormatEntry, FormatOption, NumberFormatOption } from './expressions/index';

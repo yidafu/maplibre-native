@@ -1,14 +1,11 @@
 /**
  * CompassView - 指南针组件
- * 
+ *
  * 参考 Android CompassView 和 iOS MLNCompassButton 实现
  * 用于显示地图方位，点击后归正北
  */
 
 import { CompassVisibility } from './CompassVisibility';
-import { hilog } from '@kit.PerformanceAnalysisKit';
-import { DOMAIN } from '../../constants/HiLogConstants';
-
 // 常量定义（参考 Android CompassView）
 const TIME_WAIT_IDLE = 500; // 延迟淡出时间（ms）
 const TIME_FADE_ANIMATION = 500; // 淡出动画时长（ms）
@@ -18,41 +15,32 @@ const ROTATION_THRESHOLD = 1.0; // 正北判断阈值（度）
 export struct CompassView {
   // 原始 bearing 值（用于判断朝北）
   private bearing: number = 0;
-  
   // 当前旋转角度（用于视图旋转，取反的 bearing）
   @State private rotation: number = 0;
-  
   // 透明度
   @State private compassOpacity: number = 0;
-  
   // 是否启用
   @Prop compassEnabled: boolean = true;
-  
   // 可见性模式
   @Prop compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
-  
   // 是否在正北时淡出
   @Prop fadeWhenFacingNorth: boolean = true;
-  
   // 指南针图像资源
   @Prop compassImage: Resource = $r('app.media.compass_icon');
-  
   // 外部传入的 bearing（地图方向）
   @Prop @Watch('onBearingChanged') externalBearing: number = 0;
-  
   // 点击回调
   onCompassClick?: () => void;
-  
   // 淡出定时器
   private fadeTimer: number = -1;
-  
+
   /**
    * Bearing 变化监听器
    */
   onBearingChanged(): void {
     this.update(this.externalBearing);
   }
-  
+
   /**
    * 组件初始化
    */
@@ -67,14 +55,14 @@ export struct CompassView {
   update(bearing: number): void {
     // 保存原始 bearing 值（用于判断朝北，参考 Android/iOS）
     this.bearing = bearing;
-    
+
     // 取反作为旋转角度（参考 iOS 实现）
     this.rotation = -bearing;
-    
+
     if (!this.compassEnabled) {
       return;
     }
-    
+
     // 根据可见性模式和方位角决定显示/隐藏
     switch (this.compassVisibility) {
       case CompassVisibility.Adaptive:
@@ -89,17 +77,17 @@ export struct CompassView {
           this.show(true);
         }
         break;
-      
+
       case CompassVisibility.Visible:
         this.show(true);
         break;
-      
+
       case CompassVisibility.Hidden:
         this.hide(true);
         break;
     }
   }
-  
+
   /**
    * 判断是否面向正北
    * 参考 Android: Math.abs(rotation) >= 359.0 || Math.abs(rotation) <= 1.0
@@ -110,7 +98,7 @@ export struct CompassView {
     const absBearing = Math.abs(this.bearing);
     return absBearing <= ROTATION_THRESHOLD || absBearing >= (360 - ROTATION_THRESHOLD);
   }
-  
+
   /**
    * 显示指南针
    * @param animated 是否使用动画
@@ -119,7 +107,7 @@ export struct CompassView {
     // animation 属性会自动应用到 compassOpacity 的变化
     this.compassOpacity = 1.0;
   }
-  
+
   /**
    * 隐藏指南针
    * @param animated 是否使用动画
@@ -128,21 +116,21 @@ export struct CompassView {
     // animation 属性会自动应用到 compassOpacity 的变化
     this.compassOpacity = 0;
   }
-  
+
   /**
    * 计划淡出动画
    */
   private scheduleFadeOut(): void {
     // 取消之前的定时器
     this.cancelFadeOut();
-    
+
     // 延迟后淡出
     this.fadeTimer = setTimeout(() => {
       this.hide(true);
       this.fadeTimer = -1;
     }, TIME_WAIT_IDLE);
   }
-  
+
   /**
    * 取消淡出动画
    */
@@ -152,23 +140,23 @@ export struct CompassView {
       this.fadeTimer = -1;
     }
   }
-  
+
   /**
    * 处理点击事件
    */
   private handleClick(): void {
-    
+
     if (this.onCompassClick) {
       this.onCompassClick();
     }
   }
-  
+
   /**
    * 设置启用状态
    */
   setEnabled(enabled: boolean): void {
     this.compassEnabled = enabled;
-    
+
     if (enabled) {
       // 重新计算可见性（使用原始 bearing 值）
       this.update(this.bearing);
@@ -176,7 +164,7 @@ export struct CompassView {
       this.hide(false);
     }
   }
-  
+
   build() {
     if (this.compassEnabled) {
       Image(this.compassImage)

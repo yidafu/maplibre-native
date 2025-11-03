@@ -1,14 +1,12 @@
 /**
  * ExpressionTypes - Expression 系统的类型定义和接口
- * 
+ *
  * 直接从 libmaplibre.so 重新导出类型
  */
 
 // 从 libmaplibre.so 重新导出核心表达式类型
-export type { 
-  ExpressionValue, 
-  ExpressionLiteral, 
-  PropertyValue 
+export type {
+  ExpressionValue, ExpressionLiteral, PropertyValue
 } from 'libmaplibre.so';
 
 /**

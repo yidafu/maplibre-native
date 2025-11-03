@@ -10,7 +10,6 @@ import { DOMAIN } from '../../constants/HiLogConstants';
  */
 export class PermissionManager {
   private static readonly TAG: string = 'PermissionManager';
-  
   // 位置权限列表
   private static readonly LOCATION_PERMISSIONS: Permissions[] = [
     'ohos.permission.APPROXIMATELY_LOCATION' as Permissions,
@@ -48,7 +47,7 @@ export class PermissionManager {
   static async requestLocationPermission(context: Context): Promise<PermissionRequestResult> {
     try {
       const atManager = abilityAccessCtrl.createAtManager();
-      
+
       const requestResult = await atManager.requestPermissionsFromUser(
         context,
         PermissionManager.LOCATION_PERMISSIONS
@@ -101,9 +100,9 @@ export class PermissionManager {
       const atManager = abilityAccessCtrl.createAtManager();
       const bundleInfo = await bundleManager.getBundleInfoForSelf(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
       const tokenID = bundleInfo.appInfo.accessTokenId;
-      
+
       const grantStatus = await atManager.checkAccessToken(tokenID, permission);
-      
+
       // 如果状态是 PERMISSION_DENIED，可能是永久拒绝
       // 注意：鸿蒙系统中没有直接的"永久拒绝"概念，这里简化处理
       return grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_DENIED;
@@ -148,10 +147,13 @@ export class PermissionManager {
 export interface PermissionRequestResult {
   // 是否授予权限
   granted: boolean;
+
   // 被拒绝的权限列表
   deniedPermissions: Array<Permissions>;
+
   // 是否永久拒绝
   permanentlyDenied: boolean;
+
   // 错误信息（如果有）
   error?: BusinessError;
 }

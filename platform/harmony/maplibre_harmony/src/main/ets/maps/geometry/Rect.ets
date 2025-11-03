@@ -2,8 +2,7 @@
  * Rect - 矩形
  * ETS 类实现
  */
-import { Point, PixelCoordinate } from './Point';
-import { Size } from '../types/NativeTypes';
+import { PixelCoordinate, Point } from './Point';
 
 /**
  * IRect - 矩形接口
@@ -102,7 +101,7 @@ export class Rect implements IRect {
    */
   containsPoint(point: Point): boolean {
     return point.x >= this.left && point.x <= this.right &&
-           point.y >= this.top && point.y <= this.bottom;
+      point.y >= this.top && point.y <= this.bottom;
   }
 
   /**
@@ -110,7 +109,7 @@ export class Rect implements IRect {
    */
   intersects(other: Rect): boolean {
     return !(this.right <= other.left || this.left >= other.right ||
-             this.bottom <= other.top || this.top >= other.bottom);
+      this.bottom <= other.top || this.top >= other.bottom);
   }
 
   /**

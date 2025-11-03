@@ -1,17 +1,18 @@
 /**
  * Icon - 图标封装类
- * 
+ *
  * 符合 ArkTS 规范的封装实现
  */
 import maplibre from 'libmaplibre.so';
 import image from '@ohos.multimedia.image';
-
 /**
  * 内部创建标记
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**

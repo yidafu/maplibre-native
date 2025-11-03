@@ -3,11 +3,12 @@
  */
 
 export { CameraPosition, EdgeInsets, ICameraPosition, IEdgeInsets, CameraOptions } from './CameraPosition';
-export { 
-  CameraMoveReason, 
-  getCameraMoveReasonText 
+
+export {
+  CameraMoveReason, getCameraMoveReasonText
 } from './CameraMoveReason';
-export { 
+
+export {
   OnCameraIdleListener,
   OnCameraMoveStartedListener,
   OnCameraMoveListener,

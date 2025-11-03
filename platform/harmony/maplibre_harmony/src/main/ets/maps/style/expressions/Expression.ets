@@ -1,31 +1,35 @@
 /**
  * Expression - MapLibre 表达式系统核心类
- * 
+ *
  * 使用 C++ NAPI 绑定实现，提供高性能的表达式解析和求值功能。
- * 
+ *
  * 表达式定义了一个公式，用于使用以下运算符计算属性的值：
  * - 数学运算符：执行算术和其他数字值操作
  * - 逻辑运算符：操作布尔值和进行条件决策
  * - 字符串运算符：操作字符串
  * - 数据运算符：访问源要素的属性
  * - 相机运算符：访问定义当前地图视图的参数
- * 
+ *
  * 表达式表示为 JSON 数组。数组的第一个元素是命名表达式运算符的字符串，
  * 例如 "*" 或 "case"。后续元素（如果有）是表达式的参数。
  * 每个参数都是字面量值（字符串、数字、布尔值或 null）或另一个表达式数组。
- * 
+ *
  * @see <a href="https://maplibre.org/maplibre-style-spec/expressions/">MapLibre Expression Specification</a>
  */
 
-import type { ExpressionValue, ExpressionLiteral as NativeExpressionLiteral, PropertyValue as NativePropertyValue } from 'libmaplibre.so';
+import type {
+  ExpressionValue,
+  ExpressionLiteral as NativeExpressionLiteral,
+  PropertyValue as NativePropertyValue
+} from 'libmaplibre.so';
 
 /**
  * Expression - MapLibre 表达式类
- * 
+ *
  * 提供静态工厂方法构建表达式（如 Expression.literal(), Expression.get() 等）
- * 
+ *
  * 与 Android/iOS 平台保持一致的 API 设计
- * 
+ *
  * @template T 表达式返回值的类型（可选）
  */
 export class Expression<T = Object> {
@@ -37,13 +41,13 @@ export class Expression<T = Object> {
    * @param operator 操作符字符串
    * @param args 表达式参数
    */
-   constructor(operator: string, ...args: Expression[]) {
+  constructor(operator: string, ...args: Expression[]) {
     this.operator = operator;
     this.arguments = args.length > 0 ? args : null;
   }
 
   // ==================== 实例方法（getter） ====================
-  
+
   /**
    * 获取操作符
    */
@@ -74,11 +78,11 @@ export class Expression<T = Object> {
     if (this.operator === null) {
       throw new Error('Invalid expression: operator is null');
     }
-    
+
     const array: ExpressionValue[] = [this.operator];
     if (this.arguments !== null && this.arguments.length > 0) {
       for (const arg of this.arguments) {
-        if (arg instanceof  ExpressionLiteral || arg instanceof ExpressionLiteralArray || arg instanceof  ExpressionMap) {
+        if (arg instanceof ExpressionLiteral || arg instanceof ExpressionLiteralArray || arg instanceof ExpressionMap) {
           let val = arg.toValue() as ExpressionValue
           if (val !== null) {
             array.push(val);
@@ -193,7 +197,7 @@ export class Expression<T = Object> {
 
   /**
    * 从整数创建颜色表达式
-   * 
+   *
    * @param color ARGB 格式的颜色整数
    */
   public static color(color: number): Expression {
@@ -210,12 +214,12 @@ export class Expression<T = Object> {
    * 创建 RGB 颜色表达式
    */
   public static rgb(red: Expression<number>, green: Expression<number>, blue: Expression<number>): Expression<string>;
-  
+
   /**
    * 创建 RGB 颜色表达式（数字参数）
    */
   public static rgb(red: number, green: number, blue: number): Expression<string>;
-  
+
   /**
    * 创建 RGB 颜色表达式的实现
    */
@@ -239,12 +243,12 @@ export class Expression<T = Object> {
     blue: Expression<number>,
     alpha: Expression<number>
   ): Expression<string>;
-  
+
   /**
    * 创建 RGBA 颜色表达式（数字参数）
    */
   public static rgba(red: number, green: number, blue: number, alpha: number): Expression<string>;
-  
+
   /**
    * 创建 RGBA 颜色表达式的实现
    */
@@ -283,21 +287,21 @@ export class Expression<T = Object> {
 
   /**
    * 从当前要素的属性中获取指定键的值
-   * 
+   *
    * @param key 属性键（Expression）
    */
   public static get<T = Object>(key: Expression<string>): Expression<T>;
 
   /**
    * 从当前要素的属性中获取指定键的值
-   * 
+   *
    * @param key 属性键（字符串）
    */
   public static get<T = Object>(key: string): Expression<T>;
 
   /**
    * 从对象中获取指定键的值
-   * 
+   *
    * @param key 属性键（Expression）
    * @param object 对象表达式
    */
@@ -305,7 +309,7 @@ export class Expression<T = Object> {
 
   /**
    * 从对象中获取指定键的值
-   * 
+   *
    * @param key 属性键（字符串）
    * @param object 对象表达式
    */
@@ -327,21 +331,21 @@ export class Expression<T = Object> {
 
   /**
    * 检查当前要素是否具有指定的属性
-   * 
+   *
    * @param key 属性键（Expression）
    */
   public static has(key: Expression<string>): Expression<boolean>;
 
   /**
    * 检查当前要素是否具有指定的属性
-   * 
+   *
    * @param key 属性键（字符串）
    */
   public static has(key: string): Expression<boolean>;
 
   /**
    * 检查对象是否具有指定的属性
-   * 
+   *
    * @param key 属性键（Expression）
    * @param object 对象表达式
    */
@@ -349,7 +353,7 @@ export class Expression<T = Object> {
 
   /**
    * 检查对象是否具有指定的属性
-   * 
+   *
    * @param key 属性键（字符串）
    * @param object 对象表达式
    */
@@ -416,7 +420,7 @@ export class Expression<T = Object> {
 
   /**
    * 从数组中获取指定索引的元素
-   * 
+   *
    * @param index 索引（Expression）
    * @param array 数组表达式
    */
@@ -424,7 +428,7 @@ export class Expression<T = Object> {
 
   /**
    * 从数组中获取指定索引的元素
-   * 
+   *
    * @param index 索引（数字）
    * @param array 数组表达式
    */
@@ -443,7 +447,7 @@ export class Expression<T = Object> {
 
   /**
    * 检查值是否在数组或字符串中
-   * 
+   *
    * @param needle 要查找的值
    * @param haystack 数组或字符串
    */
@@ -479,7 +483,7 @@ export class Expression<T = Object> {
 
   /**
    * 查找值在数组或字符串中的索引
-   * 
+   *
    * @param keyword 要查找的值
    * @param input 数组或字符串
    */
@@ -487,12 +491,13 @@ export class Expression<T = Object> {
 
   /**
    * 从指定位置开始查找值在数组或字符串中的索引
-   * 
+   *
    * @param keyword 要查找的值
    * @param input 数组或字符串
    * @param fromIndex 开始位置
    */
-  public static indexOf(keyword: Expression<Object>, input: Expression<Object>, fromIndex: Expression<number>): Expression<number>;
+  public static indexOf(keyword: Expression<Object>, input: Expression<Object>,
+    fromIndex: Expression<number>): Expression<number>;
 
   /**
    * 查找值在数组或字符串中的索引的实现
@@ -510,15 +515,16 @@ export class Expression<T = Object> {
 
   /**
    * 数组或字符串切片
-   * 
+   *
    * @param input 数组或字符串
    * @param fromIndex 开始位置（Expression）
    */
-  public static slice<T = Object>(input: Expression<T[] | string>, fromIndex: Expression<number>): Expression<T[] | string>;
+  public static slice<T = Object>(input: Expression<T[] | string>,
+    fromIndex: Expression<number>): Expression<T[] | string>;
 
   /**
    * 数组或字符串切片
-   * 
+   *
    * @param input 数组或字符串
    * @param fromIndex 开始位置（数字）
    */
@@ -526,7 +532,7 @@ export class Expression<T = Object> {
 
   /**
    * 数组或字符串切片（指定范围）
-   * 
+   *
    * @param input 数组或字符串
    * @param fromIndex 开始位置（Expression）
    * @param toIndex 结束位置（Expression）
@@ -539,7 +545,7 @@ export class Expression<T = Object> {
 
   /**
    * 数组或字符串切片（指定范围）
-   * 
+   *
    * @param input 数组或字符串
    * @param fromIndex 开始位置（数字）
    * @param toIndex 结束位置（数字）
@@ -1239,21 +1245,21 @@ export class Expression<T = Object> {
 
   /**
    * 检查输入字符串是否能够正常渲染
-   * 
+   *
    * 返回 true 如果输入字符串预期能够清晰渲染。
    * 返回 false 如果输入字符串包含无法正常渲染的部分（例如需要复杂文本整形的 Indic 脚本，
    * 或者从右到左的脚本，如果未使用 mapbox-gl-rtl-text 插件）。
-   * 
+   *
    * 此方法对于国际化应用非常重要，可以帮助检测是否支持特定语言的文本渲染：
    * - 阿拉伯语、希伯来语等从右到左的脚本
    * - 印地语、泰米尔语、泰语等需要复杂文本整形的脚本
    * - 其他需要特殊渲染支持的语言
-   * 
+   *
    * @param input 要检查的字符串表达式
    * @returns 布尔值表达式，表示是否支持渲染
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 检查要素属性中的文本是否支持渲染
    * textField(
    *   Expression.caseExpression(
@@ -1262,26 +1268,26 @@ export class Expression<T = Object> {
    *     Expression.literal('N/A')
    *   )
    * )
-   * 
+   *
    * // 检查特定语言文本
    * Expression.isSupportedScript('ಗೌರವಾರ್ಥವಾಗಿ')  // Kannada script
    * Expression.isSupportedScript('مرحبا')           // Arabic script  
    * Expression.isSupportedScript('שלום')            // Hebrew script
    * Expression.isSupportedScript('สวัสดี')          // Thai script
    * ```
-   * 
+   *
    * @see https://maplibre.org/maplibre-style-spec/expressions/#is-supported-script
    */
   public static isSupportedScript(input: Expression<string>): Expression<boolean>;
 
   /**
    * 检查字符串字面量是否能够正常渲染
-   * 
+   *
    * @param text 要检查的字符串字面量
    * @returns 布尔值表达式，表示是否支持渲染
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * Expression.isSupportedScript('Hello')  // 返回 true（拉丁文本）
    * Expression.isSupportedScript('你好')    // 返回 true（CJK文本）
    * Expression.isSupportedScript('مرحبا')  // 可能返回 false（阿拉伯语，需要RTL支持）
@@ -1299,7 +1305,7 @@ export class Expression<T = Object> {
 
   /**
    * 创建 Collator 表达式（Expression 参数）
-   * 
+   *
    * @param caseSensitive 是否区分大小写
    * @param diacriticSensitive 是否区分变音符号
    * @param locale 区域设置（BCP 47 语言标签）
@@ -1312,7 +1318,7 @@ export class Expression<T = Object> {
 
   /**
    * 创建 Collator 表达式（使用选项对象）
-   * 
+   *
    * @param options Collator 选项
    */
   public static collator(options: Record<string, boolean | string>): Expression<Object>;
@@ -1326,12 +1332,12 @@ export class Expression<T = Object> {
     locale?: Expression<string>
   ): Expression<Object> {
     const optionsMap = new Map<string, Expression>();
-    
+
     // 判断是否使用选项对象
     if (diacriticSensitive === undefined && locale === undefined) {
       // 使用选项对象
       const options = caseSensitiveOrOptions as Record<string, boolean | string>;
-      
+
       if (options['caseSensitive'] !== undefined) {
         const val = options['caseSensitive'];
         optionsMap.set('case-sensitive', Expression.literal(val as boolean));
@@ -1354,7 +1360,7 @@ export class Expression<T = Object> {
         optionsMap.set('locale', locale);
       }
     }
-    
+
     return new Expression<Object>('collator', new ExpressionMap(optionsMap));
   }
 
@@ -1471,16 +1477,16 @@ export class Expression<T = Object> {
 
   /**
    * 指数插值器（Expression 参数）
-   * 
+   *
    * 指数插值使用指定的底数进行指数变化
-   * 
+   *
    * @param base 指数底数（Expression）
    */
   public static exponential(base: Expression<number>): Expression<Object>;
 
   /**
    * 指数插值器（数字参数）
-   * 
+   *
    * @param base 指数底数（数字）
    */
   public static exponential(base: number): Expression<Object>;
@@ -1495,9 +1501,9 @@ export class Expression<T = Object> {
 
   /**
    * 三次贝塞尔曲线插值器（Expression 参数）
-   * 
+   *
    * 使用四个控制点定义的三次贝塞尔曲线进行插值
-   * 
+   *
    * @param x1 第一个控制点 x 坐标
    * @param y1 第一个控制点 y 坐标
    * @param x2 第二个控制点 x 坐标
@@ -1512,7 +1518,7 @@ export class Expression<T = Object> {
 
   /**
    * 三次贝塞尔曲线插值器（数字参数）
-   * 
+   *
    * @param x1 第一个控制点 x 坐标
    * @param y1 第一个控制点 y 坐标
    * @param x2 第二个控制点 x 坐标
@@ -1538,14 +1544,15 @@ export class Expression<T = Object> {
 
   /**
    * 插值表达式
-   * 
+   *
    * 通过在输入和输出对之间进行连续、平滑的结果
-   * 
+   *
    * @param interpolator 插值器（linear、exponential 或 cubicBezier）
    * @param input 输入表达式（通常是 zoom()）
    * @param stops 停靠点（Expression 数组，格式为 [input1, output1, input2, output2, ...]）
    */
-  public static interpolate(interpolator: Expression<Object>, input: Expression<number>, ...stops: Expression[]): Expression<Object> {
+  public static interpolate(interpolator: Expression<Object>, input: Expression<number>,
+    ...stops: Expression[]): Expression<Object> {
     const args: Expression[] = [interpolator, input];
     for (const stop of stops) {
       args.push(stop);
@@ -1555,14 +1562,15 @@ export class Expression<T = Object> {
 
   /**
    * 阶梯表达式
-   * 
+   *
    * 根据输入值选择离散的输出值
-   * 
+   *
    * @param input 输入表达式
    * @param defaultOutput 默认输出值
    * @param stops 停靠点（Expression 数组，格式为 [input1, output1, input2, output2, ...]）
    */
-  public static step(input: Expression<number>, defaultOutput: Expression<Object>, ...stops: Expression[]): Expression<Object>;
+  public static step(input: Expression<number>, defaultOutput: Expression<Object>,
+    ...stops: Expression[]): Expression<Object>;
 
   /**
    * 阶梯表达式（数字输入）
@@ -1599,12 +1607,13 @@ export class Expression<T = Object> {
   /**
    * 创建停靠点（便捷方法）
    * 用于 interpolate 和 step 表达式
-   * 
+   *
    * @param input 输入值
    * @param output 输出值
    * @returns 包含两个 Expression 的数组
    */
-  public static stop(input: number | Expression<number>, output: number | string | boolean | null | Expression): Expression[] {
+  public static stop(input: number | Expression<number>,
+    output: number | string | boolean | null | Expression): Expression[] {
     const inputExpr = typeof input === 'number' ? Expression.literal(input) : input;
     const outputExpr = output instanceof Expression ? output : Expression.literal(output as number);
     return [inputExpr, outputExpr];
@@ -1614,7 +1623,7 @@ export class Expression<T = Object> {
 
   /**
    * 格式化文本表达式
-   * 
+   *
    * @param entries 格式化入口数组
    */
   public static format(...entries: Expression[]): Expression<string> {
@@ -1623,7 +1632,7 @@ export class Expression<T = Object> {
 
   /**
    * 数字格式化表达式
-   * 
+   *
    * @param number 要格式化的数字
    * @param options 格式化选项
    */
@@ -1648,18 +1657,18 @@ export class Expression<T = Object> {
 
   /**
    * 获取 Collator 实际使用的 IETF 语言标签
-   * 
+   *
    * 返回提供的 Collator 实际使用的 IETF 语言标签。
    * 可用于确定默认系统语言环境，或检查请求的语言环境是否成功加载。
-   * 
+   *
    * 当创建 Collator 时，可以指定期望的 locale，但系统可能会回退到其他 locale。
    * 此方法可以帮助确认实际使用的 locale，这对于调试国际化问题非常有用。
-   * 
+   *
    * @param collator Collator 表达式
    * @returns 字符串表达式，包含实际使用的 IETF 语言标签（如 "zh-CN", "en-US" 等）
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * // 创建一个 Collator 并获取实际使用的 locale
    * const collatorExpr = Expression.collator(
    *   Expression.literal(true),  // case-sensitive
@@ -1667,7 +1676,7 @@ export class Expression<T = Object> {
    *   Expression.literal('zh-CN') // 期望的 locale
    * );
    * const localeExpr = Expression.resolvedLocale(collatorExpr);
-   * 
+   *
    * // 根据实际 locale 应用不同的样式
    * fillColor(
    *   Expression.caseExpression(
@@ -1679,7 +1688,7 @@ export class Expression<T = Object> {
    *     Expression.literal('#0000FF')  // 其他环境使用蓝色
    *   )
    * )
-   * 
+   *
    * // 检查系统默认 locale
    * const defaultCollator = Expression.collator(
    *   Expression.literal(false),
@@ -1688,7 +1697,7 @@ export class Expression<T = Object> {
    * );
    * const systemLocale = Expression.resolvedLocale(defaultCollator);
    * ```
-   * 
+   *
    * @see https://maplibre.org/maplibre-style-spec/expressions/#resolved-locale
    */
   public static resolvedLocale(collator: Expression): Expression<string> {
@@ -1697,7 +1706,7 @@ export class Expression<T = Object> {
 
   /**
    * 图像表达式
-   * 
+   *
    * @param imageName 图像名称
    */
   public static image(imageName: Expression<string>): Expression<Object>;
@@ -1765,7 +1774,7 @@ export class Expression<T = Object> {
 
   /**
    * 从 JSON 数组转换为 Expression
-   * 
+   *
    * @param json JSON 数组或值
    * @return Expression 对象
    */
@@ -1790,7 +1799,7 @@ export class Expression<T = Object> {
       }
 
       const operator = json[0] as string;
-      
+
       // 特殊处理 literal 操作符
       if (operator === 'literal') {
         if (json.length === 2) {
@@ -1822,7 +1831,7 @@ export class Expression<T = Object> {
 
   /**
    * 从 JSON 字符串转换为 Expression
-   * 
+   *
    * @param jsonString JSON 字符串
    * @return Expression 对象
    */

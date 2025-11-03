@@ -7,25 +7,25 @@ import { Marker } from './Marker';
 
 /**
  * AnnotationViewOverlay - AnnotationView 渲染层
- * 
+ *
  * 作为覆盖层在地图上方渲染所有的 AnnotationView
- * 
+ *
  * 参考:
  * - iOS: MLNMapView 的 annotationContainerView
  * - Android: 自定义 ViewGroup 覆盖层
- * 
+ *
  * 特性：
  * - 支持自定义视图内容
  * - Z-index 排序（选中和拖拽的视图在最上层）
  * - 事件穿透（允许点击地图）
  * - 动画效果
- * 
+ *
  * 使用方式：
  * ```typescript
  * Stack() {
  *   // 地图层
  *   XComponent(...)
- *   
+ *
  *   // AnnotationView 层
  *   AnnotationViewOverlay({
  *     visibleAnnotationViews: $visibleAnnotationViews,
@@ -39,26 +39,23 @@ import { Marker } from './Marker';
 @Component
 export struct AnnotationViewOverlay {
   @Link visibleAnnotationViews: AnnotationViewData[];
-  
   // 地图状态（用于高级特性）
   @Prop mapBearing: number = 0;
   @Prop mapPitch: number = 0;
   @Prop screenWidth: number = 0;
   @Prop screenHeight: number = 0;
-  
   // 事件回调
   onAnnotationSelect?: (marker: Marker) => void;
   onAnnotationDeselect?: (marker: Marker) => void;
   onAnnotationDragStart?: (marker: Marker) => void;
   onAnnotationDrag?: (marker: Marker, screenX: number, screenY: number) => void;
   onAnnotationDragEnd?: (marker: Marker, screenX: number, screenY: number) => void;
-  
   // 自定义视图构建器工厂（由外部提供）
   customViewBuilderFactory?: (marker: Marker) => (() => void) | null;
-  
+
   /**
    * 构建单个 AnnotationView
-   * 
+   *
    * 为每个 AnnotationViewData 创建对应的 AnnotationView 组件
    */
   @Builder
@@ -104,12 +101,12 @@ export struct AnnotationViewOverlay {
       }
     })
   }
-  
+
   /**
    * 排序 AnnotationView（Z-index 优化）
-   * 
+   *
    * 选中的和拖拽的视图应该在最上层
-   * 
+   *
    * @param viewDataArray 视图数据数组
    * @returns 排序后的数组
    */
@@ -120,7 +117,7 @@ export struct AnnotationViewOverlay {
       return 0;
     });
   }
-  
+
   build() {
     Stack() {
       // 渲染所有可见的 AnnotationView
@@ -143,9 +140,9 @@ export struct AnnotationViewOverlay {
 
 /**
  * 辅助函数：包装 Builder 以支持动态参数
- * 
+ *
  * 用于将带参数的 Builder 包装成 AnnotationView 可以使用的形式
- * 
+ *
  * @param builder Builder 函数
  * @param params 参数对象
  * @returns 包装后的无参 Builder 函数

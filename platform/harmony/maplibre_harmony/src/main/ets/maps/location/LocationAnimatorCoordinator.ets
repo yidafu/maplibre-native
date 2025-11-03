@@ -1,5 +1,4 @@
-import { LatLng, createLatLng } from '../geometry/LatLng';
-import { hilog } from '@kit.PerformanceAnalysisKit';
+import { createLatLng, LatLng } from '../geometry/LatLng';
 
 /**
  * 位置动画协调器
@@ -7,27 +6,22 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
  */
 export class LocationAnimatorCoordinator {
   private static readonly TAG: string = 'LocationAnimatorCoordinator';
-
   // 当前动画值
   private currentLatitude: number = 0;
   private currentLongitude: number = 0;
   private currentBearing: number = 0;
   private currentAccuracy: number = 0;
-
   // 目标值
   private targetLatitude: number = 0;
   private targetLongitude: number = 0;
   private targetBearing: number = 0;
   private targetAccuracy: number = 0;
-
   // 动画参数
   private animationDuration: number = 750; // 毫秒
   private trackingAnimationDurationMultiplier: number = 1.1;
-  
   // 动画定时器
   private animationTimer?: number;
   private isAnimating: boolean = false;
-
   // 回调
   private onLocationUpdate?: (location: LatLng, bearing: number, accuracy: number) => void;
 
@@ -58,7 +52,7 @@ export class LocationAnimatorCoordinator {
       this.currentLongitude = location.longitude;
       this.currentBearing = bearing;
       this.currentAccuracy = accuracy;
-      
+
       this.notifyUpdate();
       return;
     }
@@ -69,7 +63,7 @@ export class LocationAnimatorCoordinator {
       this.currentLongitude = location.longitude;
       this.currentBearing = bearing;
       this.currentAccuracy = accuracy;
-      
+
       this.notifyUpdate();
       return;
     }
@@ -108,7 +102,7 @@ export class LocationAnimatorCoordinator {
       this.currentLatitude = this.lerp(startLat, this.targetLatitude, eased);
       this.currentLongitude = this.lerp(startLng, this.targetLongitude, eased);
       this.currentAccuracy = this.lerp(startAccuracy, this.targetAccuracy, eased);
-      
+
       // 角度插值需要特殊处理（处理跨越 0/360 边界的情况）
       this.currentBearing = this.lerpAngle(startBearing, this.targetBearing, eased);
 
@@ -150,7 +144,7 @@ export class LocationAnimatorCoordinator {
    */
   private lerpAngle(start: number, end: number, t: number): number {
     let diff = end - start;
-    
+
     // 处理跨越边界
     if (diff > 180) {
       diff -= 360;
@@ -159,7 +153,7 @@ export class LocationAnimatorCoordinator {
     }
 
     let result = start + diff * t;
-    
+
     // 归一化到 0-360
     if (result < 0) {
       result += 360;

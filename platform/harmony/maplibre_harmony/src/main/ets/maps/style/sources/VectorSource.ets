@@ -1,18 +1,19 @@
 /**
  * VectorSource - 矢量数据源封装类
  */
-import maplibre from 'libmaplibre.so';
 import type { VectorSourceOptions } from 'libmaplibre.so';
+import maplibre from 'libmaplibre.so';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 export class VectorSource {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'VectorSource';
-  
   private nativeInstance: maplibre.VectorSource;
 
   constructor(idOrMarker: string | InternalMarker, optionsOrNative?: VectorSourceOptions | maplibre.VectorSource) {
@@ -28,7 +29,7 @@ export class VectorSource {
   static create(id: string, options?: VectorSourceOptions): VectorSource {
     return new VectorSource(id, options);
   }
-  
+
   setTiles(tiles: string[]): VectorSource {
     this.nativeInstance.setTiles(tiles);
     return this;

@@ -1,6 +1,6 @@
 /**
  * 手势监听器接口定义
- * 
+ *
  * 参考 Android MapGestureDetector 和 iOS MLNMapView 的手势监听器设计
  */
 
@@ -168,7 +168,7 @@ export interface OnTiltListener {
  * Shove 手势监听器（Android 命名）
  * 当用户双指上下拖动改变地图俯仰角度时触发
  * 等同于 OnTiltListener，提供 Android 风格的命名以保持兼容性
- * 
+ *
  * 参考 Android MapLibreMap.OnShoveListener
  */
 export interface OnShoveListener {

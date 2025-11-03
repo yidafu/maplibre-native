@@ -1,6 +1,6 @@
 /**
  * LatLng - 经纬度坐标封装类
- * 
+ *
  * 纯 ETS 实现，不依赖 NAPI
  */
 import type { ILatLng } from '../types/NativeTypes';
@@ -59,8 +59,8 @@ export class LatLng implements ILatLng {
    * @returns 坐标是否在有效范围内
    */
   isValid(): boolean {
-    return this.latitude >= -90 && this.latitude <= 90 && 
-           this.longitude >= -180 && this.longitude <= 180;
+    return this.latitude >= -90 && this.latitude <= 90 &&
+      this.longitude >= -180 && this.longitude <= 180;
   }
 
   /**
@@ -74,8 +74,8 @@ export class LatLng implements ILatLng {
     const dLat = toRadians(other.latitude - this.latitude);
     const dLon = toRadians(other.longitude - this.longitude);
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRadians(this.latitude)) * Math.cos(toRadians(other.latitude)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.cos(toRadians(this.latitude)) * Math.cos(toRadians(other.latitude)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
@@ -87,7 +87,7 @@ export class LatLng implements ILatLng {
    */
   equals(other: LatLng): boolean {
     return Math.abs(this.latitude - other.latitude) < 1e-10 &&
-           Math.abs(this.longitude - other.longitude) < 1e-10;
+      Math.abs(this.longitude - other.longitude) < 1e-10;
   }
 
   /**

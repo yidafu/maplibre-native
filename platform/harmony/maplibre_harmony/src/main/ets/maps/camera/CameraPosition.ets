@@ -101,15 +101,15 @@ export class CameraPosition implements ICameraPosition {
 
   /**
    * 创建相机位置（静态工厂方法，类似 Android CameraPosition.Builder().build()）
-   * 
+   *
    * @param target 目标位置（经纬度）
    * @param zoom 缩放级别
    * @param bearing 方向角度（0-360度，默认0表示正北）
    * @param tilt 倾斜角度（0-60度，默认0表示垂直俯视）
    * @returns CameraPosition 对象
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * const position = CameraPosition.create(
    *   LatLng.create(39.9, 116.4),
    *   15,
@@ -129,10 +129,10 @@ export class CameraPosition implements ICameraPosition {
    */
   equals(other: CameraPosition): boolean {
     return Math.abs(this.target.latitude - other.target.latitude) < 1e-10 &&
-           Math.abs(this.target.longitude - other.target.longitude) < 1e-10 &&
-           Math.abs(this.zoom - other.zoom) < 1e-10 &&
-           Math.abs(this.bearing - other.bearing) < 1e-10 &&
-           Math.abs(this.tilt - other.tilt) < 1e-10;
+      Math.abs(this.target.longitude - other.target.longitude) < 1e-10 &&
+      Math.abs(this.zoom - other.zoom) < 1e-10 &&
+      Math.abs(this.bearing - other.bearing) < 1e-10 &&
+      Math.abs(this.tilt - other.tilt) < 1e-10;
   }
 }
 
@@ -143,12 +143,16 @@ export class CameraPosition implements ICameraPosition {
 export interface CameraOptions {
   /** 中心点坐标 */
   center?: LatLng;
+
   /** 缩放级别 */
   zoom?: number;
+
   /** 方位角（度） */
   bearing?: number;
+
   /** 俯仰角/倾斜角（度） */
   pitch?: number;
+
   /** 边距 */
   padding?: EdgeInsets;
 }

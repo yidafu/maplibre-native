@@ -1,6 +1,6 @@
 /**
  * Style - 样式管理类封装
- * 
+ *
  * 封装 NAPI Style 类，避免暴露内部类型
  */
 import maplibre from 'libmaplibre.so';
@@ -30,12 +30,14 @@ import { FillExtrusionLayer } from './layers/FillExtrusionLayer';
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
  * Style - 地图样式管理类
- * 
+ *
  * 通过 MapLibreMap.getStyle() 获取实例
  * 不应该直接构造此类
  */
@@ -80,7 +82,7 @@ export class Style {
     // 使用 _TYPE_ 属性判断类型（因为 instanceof 对 NAPI 返回的普通对象不工作）
     const sourceObj = nativeSource as Record<string, Object>;
     const napiType = sourceObj._TYPE_ as string;
-    
+
     // 根据 _TYPE_ 属性匹配对应的 Source 类
     if (napiType === GeoJsonSource._TYPE_) {
       return GeoJsonSource.fromNative(nativeSource as maplibre.GeoJsonSource);
@@ -175,7 +177,7 @@ export class Style {
 
   /**
    * 添加数据源
-   * 
+   *
    * @param source ETS Source 包装对象
    */
   addSource(source: Source): void {
@@ -194,7 +196,9 @@ export class Style {
    */
   getSource(sourceId: string): Source | null {
     const nativeSource = this.nativeInstance.getSource(sourceId);
-    if (nativeSource == null) return null
+    if (nativeSource == null) {
+      return null
+    }
     return Style.wrapSource(nativeSource);
   }
 
@@ -212,7 +216,7 @@ export class Style {
 
   /**
    * 添加图层（添加到顶部）
-   * 
+   *
    * @param layer ETS Layer 包装对象
    */
   addLayer(layer: Layer): void {
@@ -221,7 +225,7 @@ export class Style {
 
   /**
    * 在指定图层下方添加图层
-   * 
+   *
    * @param layer ETS Layer 包装对象
    * @param belowLayerId 参考图层的 ID
    */
@@ -231,7 +235,7 @@ export class Style {
 
   /**
    * 在指定图层上方添加图层
-   * 
+   *
    * @param layer ETS Layer 包装对象
    * @param aboveLayerId 参考图层的 ID
    */
@@ -241,7 +245,7 @@ export class Style {
 
   /**
    * 在指定索引位置添加图层
-   * 
+   *
    * @param layer ETS Layer 包装对象
    * @param index 目标索引位置
    */
@@ -268,7 +272,9 @@ export class Style {
    */
   getLayer(layerId: string): Layer | null {
     const nativeLayer = this.nativeInstance.getLayer(layerId);
-    if (nativeLayer == null) return null
+    if (nativeLayer == null) {
+      return null
+    }
     return Style.wrapLayer(nativeLayer);
   }
 

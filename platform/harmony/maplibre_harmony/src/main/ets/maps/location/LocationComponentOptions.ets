@@ -9,7 +9,6 @@ export class LocationComponentOptions {
   // 精度圈配置
   accuracyAlpha: number = LocationComponentConstants.ACCURACY_ALPHA_DEFAULT;
   accuracyColor: string = '#4264fb';
-
   // 图标资源配置
   foregroundDrawable?: ResourceStr;
   backgroundDrawable?: ResourceStr;
@@ -17,31 +16,25 @@ export class LocationComponentOptions {
   backgroundDrawableStale?: ResourceStr;
   gpsDrawable?: ResourceStr;
   bearingDrawable?: ResourceStr;
-
   // 图标颜色配置
   foregroundTintColor?: string;
   backgroundTintColor?: string;
   foregroundStaleTintColor?: string;
   backgroundStaleTintColor?: string;
   bearingTintColor?: string;
-
   // 过期状态配置
   enableStaleState: boolean = true;
   staleStateTimeout: number = LocationComponentConstants.STALE_STATE_DELAY_MS;
-
   // 缩放配置
   maxZoomIconScale: number = LocationComponentConstants.MAX_ZOOM_ICON_SCALE_DEFAULT;
   minZoomIconScale: number = LocationComponentConstants.MIN_ZOOM_ICON_SCALE_DEFAULT;
-
   // 图层位置配置
   layerAbove?: string;
   layerBelow?: string;
-
   // 动画配置
   trackingAnimationDurationMultiplier: number = 1.1;
   compassAnimationEnabled: boolean = true;
   accuracyAnimationEnabled: boolean = true;
-
   // 手势管理配置
   trackingGesturesManagement: boolean = false;
   trackingInitialMoveThreshold: number = 50; // vp
@@ -54,10 +47,8 @@ export class LocationComponentOptions {
   pulseSingleDuration: number = 2300;
   pulseMaxRadius: number = 35;
   pulseAlpha: number = 1.0;
-
   // 阴影配置
   elevation: number = 0;
-
   // 内边距配置（已废弃，使用 CameraPosition 的 padding）
   padding?: number[]; // [left, top, right, bottom]
 
@@ -82,12 +73,14 @@ export class LocationComponentOptions {
       this.minZoomIconScale = builder.minZoomIconScale ?? this.minZoomIconScale;
       this.layerAbove = builder.layerAbove;
       this.layerBelow = builder.layerBelow;
-      this.trackingAnimationDurationMultiplier = builder.trackingAnimationDurationMultiplier ?? this.trackingAnimationDurationMultiplier;
+      this.trackingAnimationDurationMultiplier =
+        builder.trackingAnimationDurationMultiplier ?? this.trackingAnimationDurationMultiplier;
       this.compassAnimationEnabled = builder.compassAnimationEnabled ?? this.compassAnimationEnabled;
       this.accuracyAnimationEnabled = builder.accuracyAnimationEnabled ?? this.accuracyAnimationEnabled;
       this.trackingGesturesManagement = builder.trackingGesturesManagement ?? this.trackingGesturesManagement;
       this.trackingInitialMoveThreshold = builder.trackingInitialMoveThreshold ?? this.trackingInitialMoveThreshold;
-      this.trackingMultiFingerMoveThreshold = builder.trackingMultiFingerMoveThreshold ?? this.trackingMultiFingerMoveThreshold;
+      this.trackingMultiFingerMoveThreshold =
+        builder.trackingMultiFingerMoveThreshold ?? this.trackingMultiFingerMoveThreshold;
       this.pulseEnabled = builder.pulseEnabled ?? this.pulseEnabled;
       this.pulseFadeEnabled = builder.pulseFadeEnabled ?? this.pulseFadeEnabled;
       this.pulseColor = builder.pulseColor;

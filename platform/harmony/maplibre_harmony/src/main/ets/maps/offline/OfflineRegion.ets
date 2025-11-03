@@ -1,14 +1,12 @@
 /**
  * OfflineRegion - 离线区域封装类
- * 
+ *
  * 封装 NAPI 层的 OfflineRegion 类，提供离线地图下载和管理功能
  */
 import maplibre from 'libmaplibre.so';
 import { OfflineRegionDefinition } from './OfflineRegionDefinition';
 import { OfflineRegionStatus } from './OfflineRegionStatus';
 import type { OfflineRegionObserver } from './OfflineRegionObserver';
-import type { OfflineRegionError } from './OfflineRegionError';
-
 /**
  * 下载状态枚举
  */
@@ -23,8 +21,11 @@ export enum DownloadState {
  * 回调类型定义
  */
 export type OfflineRegionStatusCallback = (result: OfflineRegionStatus | string) => void;
+
 export type OfflineRegionDeleteCallback = (error?: string) => void;
+
 export type OfflineRegionInvalidateCallback = (error?: string) => void;
+
 export type OfflineRegionUpdateMetadataCallback = (result: ArrayBuffer | string) => void;
 
 /**
@@ -85,7 +86,7 @@ export class OfflineRegion {
 
   /**
    * 设置下载状态
-   * 
+   *
    * @param state 下载状态（ACTIVE 开始下载，INACTIVE 暂停）
    */
   setDownloadState(state: DownloadState): void {
@@ -94,7 +95,7 @@ export class OfflineRegion {
 
   /**
    * 设置观察者
-   * 
+   *
    * @param observer 观察者对象
    */
   setObserver(observer: OfflineRegionObserver): void {
@@ -103,7 +104,7 @@ export class OfflineRegion {
 
   /**
    * 获取区域状态
-   * 
+   *
    * @param callback 回调函数
    */
   getStatus(callback: OfflineRegionStatusCallback): void {
@@ -112,7 +113,7 @@ export class OfflineRegion {
 
   /**
    * 删除此离线区域
-   * 
+   *
    * @param callback 回调函数
    */
   delete(callback: OfflineRegionDeleteCallback): void {
@@ -121,7 +122,7 @@ export class OfflineRegion {
 
   /**
    * 使区域失效（强制重新验证）
-   * 
+   *
    * @param callback 回调函数
    */
   invalidate(callback: OfflineRegionInvalidateCallback): void {
@@ -130,7 +131,7 @@ export class OfflineRegion {
 
   /**
    * 更新元数据
-   * 
+   *
    * @param metadata 新的元数据
    * @param callback 回调函数
    */

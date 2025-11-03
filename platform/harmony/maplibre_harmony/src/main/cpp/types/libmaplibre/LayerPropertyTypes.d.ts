@@ -1,6 +1,6 @@
 /**
  * Layer 属性值类型定义
- * 
+ *
  * 所有 Layer 类型定义共享的属性值类型
  * 支持具体值或 Expression 字面量（JSON 数组格式）
  */
@@ -10,16 +10,16 @@ import type { ExpressionLiteral } from './ExpressionTypes';
 /**
  * PropertyValue - 属性值类型
  * 支持具体值或 Expression 表达式
- * 
+ *
  * 在 NAPI 层面，Expression 对象会被序列化为 ExpressionLiteral
  * 所以这里简化为 T | ExpressionLiteral
  * 在 ETS 包装类中，Expression 对象会被自动转换为 ExpressionLiteral
- * 
+ *
  * @example
- * ```typescript
+* ```typescript
  * // 固定值
  * layer.setFillColor('#FF0000');
- * 
+ *
  * // Expression 表达式
  * layer.setFillColor(['get', 'color']);
  * ```

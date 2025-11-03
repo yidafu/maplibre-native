@@ -1,6 +1,6 @@
 /**
  * CameraAnimationCallback - 相机动画回调接口
- * 
+ *
  * 用于监听相机动画的完成和取消事件
  * 对应 Android 的 CancelableCallback 和 iOS 的 completion handler
  */
@@ -13,7 +13,7 @@ export interface CameraAnimationCallback {
    * 动画完成时调用
    */
   onFinish(): void;
-  
+
   /**
    * 动画取消时调用（可选）
    */
@@ -33,7 +33,7 @@ export interface AnimationOptions {
    * 动画持续时间（毫秒）
    */
   duration: number;
-  
+
   /**
    * 完成回调（可选）
    */
@@ -47,16 +47,16 @@ export interface AnimationOptions {
 export class CameraAnimationCallbackImpl implements CameraAnimationCallback {
   private finishFn: () => void;
   private cancelFn?: () => void;
-  
+
   constructor(onFinish: () => void, onCancel?: () => void) {
     this.finishFn = onFinish;
     this.cancelFn = onCancel;
   }
-  
+
   onFinish(): void {
     this.finishFn();
   }
-  
+
   onCancel(): void {
     if (this.cancelFn) {
       this.cancelFn();
@@ -68,7 +68,7 @@ export class CameraAnimationCallbackImpl implements CameraAnimationCallback {
  * 创建 CameraAnimationCallback 的工厂函数
  */
 export function createAnimationCallback(
-  onFinish: () => void, 
+  onFinish: () => void,
   onCancel?: () => void
 ): CameraAnimationCallback {
   return new CameraAnimationCallbackImpl(onFinish, onCancel);

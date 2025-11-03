@@ -1,11 +1,10 @@
 /**
  * Marker - 标注封装类
- * 
+ *
  * 符合 ArkTS 规范的封装实现
  */
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
-
 /**
  * 锚点接口
  */
@@ -19,19 +18,20 @@ export interface MarkerAnchor {
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
  * Marker 封装类
  */
 export class Marker {
-
   private nativeInstance: maplibre.Marker;
-  private _id: number = 0;  // 存储 Marker ID（由 MarkerManager 设置）
-  private _map: Object | null = null;  // 存储所属的 MapLibreMap
-  private _selected: boolean = false;  // 存储选中状态
-  private _dragState: number = 0;  // 存储拖拽状态
+  private _id: number = 0; // 存储 Marker ID（由 MarkerManager 设置）
+  private _map: Object | null = null; // 存储所属的 MapLibreMap
+  private _selected: boolean = false; // 存储选中状态
+  private _dragState: number = 0; // 存储拖拽状态
 
   /**
    * 构造函数

@@ -2,37 +2,42 @@
 
 ## 概述
 
-本次实现为 MapLibre HarmonyOS 平台添加了完整的 Marker 增强功能，包括拖拽、事件监听、InfoWindow、动画等核心特性。实现参考了 Android 和 iOS 平台的 API 设计。
+本次实现为 MapLibre HarmonyOS 平台添加了完整的 Marker 增强功能，包括拖拽、事件监听、InfoWindow、动画等核心特性。实现参考了
+Android 和 iOS 平台的 API 设计。
 
 ## 已实现功能
 
 ### ✅ 1. 基础架构
+
 - **Annotation 基类**: 所有标注的抽象基类，管理 ID、地图关联等
 - **AnnotationType 枚举**: 标注类型定义（MARKER, POLYLINE, POLYGON）
 - **事件监听器接口**:
-  - `OnMarkerClickListener`: Marker 点击事件
-  - `OnMarkerDragListener`: Marker 拖拽事件
-  - `OnInfoWindowClickListener`: InfoWindow 点击事件
+    - `OnMarkerClickListener`: Marker 点击事件
+    - `OnMarkerDragListener`: Marker 拖拽事件
+    - `OnInfoWindowClickListener`: InfoWindow 点击事件
 
 ### ✅ 2. Marker 核心功能
+
 - **扩展的 Marker 类**: 继承 Annotation 基类
-  - 基础属性：position, title, snippet, icon, anchor, visible, alpha, rotation, flat, draggable, zIndex
-  - 选中状态管理
-  - 拖拽状态管理
-  - InfoWindow 集成
-  
+    - 基础属性：position, title, snippet, icon, anchor, visible, alpha, rotation, flat, draggable, zIndex
+    - 选中状态管理
+    - 拖拽状态管理
+    - InfoWindow 集成
+
 - **MarkerOptions 构建器**: 使用构建器模式创建 Marker，支持链式调用
 - **MarkerDragState 枚举**: 定义拖拽状态（None, Starting, Dragging, Canceling, Ending）
 
 ### ✅ 3. InfoWindow 功能
+
 - **InfoWindow 类**: 显示 Marker 详细信息
-  - 显示/隐藏控制
-  - 内容更新
-  - 自定义视图支持
-  
+    - 显示/隐藏控制
+    - 内容更新
+    - 自定义视图支持
+
 - **InfoWindowAdapter 接口**: 自定义 InfoWindow 内容
 
 ### ✅ 4. MarkerManager
+
 - Marker 生命周期管理（添加、删除、清除）
 - 批量操作优化
 - 选中状态管理
@@ -40,23 +45,26 @@
 - 事件分发
 
 ### ✅ 5. MapLibreMap 集成
+
 - 添加了 20+ 个新的 API 方法
 - Marker 管理方法（addMarker, removeMarker, clearMarkers 等）
 - 选中管理方法（selectMarker, deselectMarker 等）
 - 事件监听器设置方法
 
 ### ✅ 6. 动画支持
+
 - 位置动画：`animateToPosition()`
 - 透明度动画：`animateAlpha()`
 - 旋转动画：`animateRotation()`
 - 使用 HarmonyOS 的 `animateTo()` API
 
 ### ✅ 7. 测试示例
+
 - **MarkerTestPage**: 完整的功能演示页面
-  - 单个/批量添加 Marker
-  - Marker 移除
-  - 事件监听演示
-  - 动画演示
+    - 单个/批量添加 Marker
+    - Marker 移除
+    - 事件监听演示
+    - 动画演示
 
 ## API 使用示例
 
@@ -249,43 +257,48 @@ MarkerManager 事件分发
 ## 待完善功能
 
 ### 🚧 拖拽功能集成
+
 - **状态**: 框架已完成，需要与地图视图的手势处理集成
 - **要点**:
-  - 在 `MapViewComponentController.ets` 或手势处理类中集成
-  - 检测长按识别拖拽开始
-  - 监听触摸移动事件
-  - 判断点击位置是否在 Marker 上
-  - 使用 `queryPointAnnotations()` 进行点击测试
+    - 在 `MapViewComponentController.ets` 或手势处理类中集成
+    - 检测长按识别拖拽开始
+    - 监听触摸移动事件
+    - 判断点击位置是否在 Marker 上
+    - 使用 `queryPointAnnotations()` 进行点击测试
 
 ### 🚧 InfoWindow UI 实现
+
 - **状态**: 接口已定义，需要实际 UI 实现
 - **建议实现方式**:
-  1. 使用 Popup 组件
-  2. 使用 CustomDialog
-  3. 在地图视图上叠加绝对定位的组件
-  
+    1. 使用 Popup 组件
+    2. 使用 CustomDialog
+    3. 在地图视图上叠加绝对定位的组件
+
 - **要点**:
-  - 根据 Marker 位置计算 InfoWindow 位置
-  - 处理屏幕边缘情况
-  - 实现默认样式的 InfoWindow
-  - 支持自定义 InfoWindow 视图
+    - 根据 Marker 位置计算 InfoWindow 位置
+    - 处理屏幕边缘情况
+    - 实现默认样式的 InfoWindow
+    - 支持自定义 InfoWindow 视图
 
 ### 🚧 Marker 图标管理
+
 - **状态**: 支持设置图标 ID，需要集成图标资源管理
 - **要点**:
-  - 集成 `IconFactory` 或类似机制
-  - 支持自定义图标
-  - 支持图标缓存
-  - 默认图标支持
+    - 集成 `IconFactory` 或类似机制
+    - 支持自定义图标
+    - 支持图标缓存
+    - 默认图标支持
 
 ## 性能优化
 
 ### 已实现的优化
+
 1. **批量操作**: `addMarkersBatch()` 一次性调用 NAPI，减少跨语言调用开销
 2. **增量更新**: 只在必要时调用 `updateMarker()`
 3. **内存管理**: Marker 移除时清理相关资源
 
 ### 可进一步优化
+
 1. **虚拟化**: 大量 Marker 时只渲染可见区域
 2. **聚合**: Marker 聚合/集群功能
 3. **异步处理**: 大批量操作时使用异步处理
@@ -294,8 +307,8 @@ MarkerManager 事件分发
 
 - **HarmonyOS API Level**: 9+
 - **参考平台**:
-  - Android MapLibre SDK
-  - iOS MapLibre SDK (MLNAnnotationView)
+    - Android MapLibre SDK
+    - iOS MapLibre SDK (MLNAnnotationView)
 
 ## 测试
 
@@ -340,6 +353,7 @@ MarkerManager 事件分发
 ## 更新日志
 
 ### 2025-10-22
+
 - ✅ 创建 Annotation 基类和 AnnotationType 枚举
 - ✅ 创建事件监听器接口
 - ✅ 创建 MarkerDragState 枚举

@@ -2,19 +2,19 @@
  * BackgroundLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type {ColorValue, NumberValue, ExpressionLiteral } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
 import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 export class BackgroundLayer {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'BackgroundLayer';
-  
   private nativeInstance: maplibre.BackgroundLayer;
 
   constructor(idOrMarker: string | InternalMarker, nativeOrNothing?: maplibre.BackgroundLayer) {

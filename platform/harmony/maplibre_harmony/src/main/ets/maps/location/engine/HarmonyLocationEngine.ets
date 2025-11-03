@@ -12,15 +12,13 @@ import { DOMAIN } from '../../../constants/HiLogConstants';
 export class HarmonyLocationEngine implements LocationEngine {
   private static readonly TAG: string = 'HarmonyLocationEngine';
   private static instance: HarmonyLocationEngine | null = null;
-  
   private callbacks: Map<LocationEngineCallback, boolean> = new Map();
   private isListening: boolean = false;
   private currentRequest?: LocationEngineRequest;
-  
   // 节流控制
   private lastLocationTime: number = 0;
   private minUpdateInterval: number = 100; // 最小更新间隔（毫秒）
-  
+
   // 错误重试
   private retryCount: number = 0;
   private maxRetries: number = 3;
@@ -45,10 +43,10 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   requestLocationUpdates(request: LocationEngineRequest, callback: LocationEngineCallback): void {
     try {
-      
+
       // 保存回调
       this.callbacks.set(callback, true);
-      
+
       // 如果已经在监听，直接返回
       if (this.isListening) {
         return;
@@ -84,10 +82,10 @@ export class HarmonyLocationEngine implements LocationEngine {
           return;
         }
         this.lastLocationTime = now;
-        
+
         // 重置重试计数
         this.retryCount = 0;
-        
+
         // 通知所有回调
         this.callbacks.forEach((_, callback) => {
           try {
@@ -103,13 +101,13 @@ export class HarmonyLocationEngine implements LocationEngine {
     } catch (err) {
       hilog.error(DOMAIN, HarmonyLocationEngine.TAG, `Failed to request location updates: ${err}`);
       const error = err instanceof Error ? err : new Error(String(err));
-      
+
       // 尝试重试
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
-        hilog.warn(DOMAIN, HarmonyLocationEngine.TAG, 
+        hilog.warn(DOMAIN, HarmonyLocationEngine.TAG,
           `Retrying location updates (${this.retryCount}/${this.maxRetries})`);
-        
+
         setTimeout(() => {
           this.requestLocationUpdates(request, callback);
         }, this.retryDelay);
@@ -124,7 +122,7 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   removeLocationUpdates(callback: LocationEngineCallback): void {
     try {
-      
+
       // 移除回调
       this.callbacks.delete(callback);
 

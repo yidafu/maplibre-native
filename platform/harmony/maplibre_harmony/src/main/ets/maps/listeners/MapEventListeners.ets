@@ -305,7 +305,8 @@ export interface OnTileActionListener {
    * @param overscaledZ 瓦片 overscaledZ 坐标
    * @param sourceID 数据源 ID
    */
-  onTileAction(op: TileOperation, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceID: string): void;
+  onTileAction(op: TileOperation, x: number, y: number, z: number, wrap: number, overscaledZ: number,
+    sourceID: string): void;
 }
 
 /**

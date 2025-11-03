@@ -3,7 +3,7 @@ import { Expression } from '../expressions/Expression';
 
 /**
  * LayoutPropertyValue - Layout 属性值封装类
- * 
+ *
  * Layout属性影响图层的布局和几何形状
  */
 export class LayoutPropertyValue<T> extends PropertyValue<T> {

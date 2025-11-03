@@ -1,14 +1,13 @@
 /**
  * MapLibre Layer Paint Properties
  * 图层绘制属性类型定义
- * 
+ *
  * 根据 MapLibre Style Spec 定义各图层类型的 Paint 属性
  * @see https://maplibre.org/maplibre-style-spec/layers/
  */
 
 import type { Expression } from './Expression';
 import type { ExpressionLiteral } from './PropertyTypes';
-
 /**
  * 支持 Expression 的属性值类型
  */
@@ -377,7 +376,7 @@ export interface HeatmapPaint {
    * 定义热力图的颜色渐变
    * 必须使用插值表达式，输入为 ["heatmap-density"]
    * @example
-   * [
+  * [
    *   "interpolate",
    *   ["linear"],
    *   ["heatmap-density"],
@@ -532,7 +531,7 @@ export interface HillshadePaint {
    * 山体阴影光照方向（度）
    * 0 表示正北，90 表示正东
    * @default 335
-   * 
+   *
    * 当 hillshade-method 为 multidirectional 时，可以指定多个光源方向
    */
   'hillshade-illumination-direction'?: DataDrivenProperty<number | number[]>;
@@ -541,7 +540,7 @@ export interface HillshadePaint {
    * 山体阴影光照高度（度）
    * 0 表示日落，90 表示正午
    * @default 45
-   * 
+   *
    * 当 hillshade-method 为 multidirectional 时，可以指定多个光源高度
    */
   'hillshade-illumination-altitude'?: DataDrivenProperty<number | number[]>;
@@ -561,7 +560,7 @@ export interface HillshadePaint {
   /**
    * 山体阴影阴影颜色
    * @default "#000000"
-   * 
+   *
    * 当 hillshade-method 为 multidirectional 时，可以指定多个颜色
    */
   'hillshade-shadow-color'?: DataDrivenProperty<string | string[]>;
@@ -569,7 +568,7 @@ export interface HillshadePaint {
   /**
    * 山体阴影高光颜色
    * @default "#FFFFFF"
-   * 
+   *
    * 当 hillshade-method 为 multidirectional 时，可以指定多个颜色
    */
   'hillshade-highlight-color'?: DataDrivenProperty<string | string[]>;

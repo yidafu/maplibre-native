@@ -1,6 +1,6 @@
 /**
  * NativeTypes - 原生类型和辅助类型导出
- * 
+ *
  * 1. 导出 NAPI 提供的 maplibre namespace
  * 2. 提供辅助类型定义（用于测试页面和应用开发）
  */
@@ -15,7 +15,7 @@ export { maplibre };
 /**
  * 坐标点字面量接口
  */
-export type LatLngLiteral  = maplibre.LatLng
+export type LatLngLiteral = maplibre.LatLng
 
 /**
  * 矩形字面量接口
@@ -80,10 +80,13 @@ export enum OrnamentPosition {
 export interface Margins {
   /** 左边距（vp） */
   left: number;
+
   /** 上边距（vp） */
   top: number;
+
   /** 右边距（vp） */
   right: number;
+
   /** 下边距（vp） */
   bottom: number;
 }

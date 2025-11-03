@@ -1,39 +1,39 @@
 /**
  * TileSet - 瓦片集配置类
- * 
+ *
  * 用于配置矢量瓦片和栅格瓦片数据源
  */
 export interface TileSetOptions {
   // 瓦片URL数组，支持{z}/{x}/{y}占位符
   tiles: string[];
-  
+
   // 最小缩放级别
   minzoom?: number;
-  
+
   // 最大缩放级别
   maxzoom?: number;
-  
+
   // 边界范围 [west, south, east, north]
   bounds?: number[];
-  
+
   // 瓦片方案："xyz" 或 "tms"
   scheme?: string;
-  
+
   // 归属信息
   attribution?: string;
-  
+
   // 瓦片大小（像素）
   tileSize?: number;
-  
+
   // TileJSON规范版本
   version?: string;
-  
+
   // 名称
   name?: string;
-  
+
   // 描述
   description?: string;
-  
+
   // 矢量图层信息
   vector_layers?: VectorLayer[];
 }

@@ -1,6 +1,6 @@
 /**
  * CameraListener - 相机监听器接口
- * 
+ *
  * 监听地图相机的各种状态变化
  */
 
@@ -71,17 +71,17 @@ export interface CameraChangeListener {
    * 相机开始移动
    */
   onCameraMoveStarted?(reason: CameraMoveReason): void;
-  
+
   /**
    * 相机正在移动
    */
   onCameraMove?(): void;
-  
+
   /**
    * 相机停止移动
    */
   onCameraIdle?(): void;
-  
+
   /**
    * 相机移动取消
    */

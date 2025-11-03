@@ -2,22 +2,26 @@
  * FillExtrusionLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type {ColorValue, NumberValue, StringValue, ExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionLiteral } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
+import { Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
+
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 export class FillExtrusionLayer {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'FillExtrusionLayer';
-  
   private nativeInstance: maplibre.FillExtrusionLayer;
 
-  constructor(idOrMarker: string | InternalMarker, sourceId: string = "", nativeOrNothing?: maplibre.FillExtrusionLayer) {
+  constructor(idOrMarker: string | InternalMarker, sourceId: string = "",
+    nativeOrNothing?: maplibre.FillExtrusionLayer) {
     if (idOrMarker === InternalMarker.INSTANCE && nativeOrNothing instanceof Object) {
       this.nativeInstance = nativeOrNothing;
     } else if (typeof idOrMarker === 'string') {
@@ -62,8 +66,13 @@ export class FillExtrusionLayer {
     return this;
   }
 
-  setFilter(filter: Object[]): FillExtrusionLayer {
-    this.nativeInstance.setFilter(filter);
+  /**
+   * 设置图层过滤器
+   * @param filter Expression 实例或表达式字面量数组
+   */
+  setFilter(filter: Expression<boolean> | ExpressionLiteral): FillExtrusionLayer {
+    const filterArray = filter instanceof Expression ? filter.toArray() : filter;
+    this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
   }
 

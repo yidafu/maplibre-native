@@ -51,9 +51,9 @@ export class PixelCoordinate implements IPixelCoordinate {
 
   /**
    * 从逻辑像素创建物理像素坐标
-   * 
+   *
    * 统一处理 DPI 转换
-   * 
+   *
    * @param x 逻辑像素 X 坐标
    * @param y 逻辑像素 Y 坐标
    * @param pixelRatio 像素比率（DPI）
@@ -65,7 +65,7 @@ export class PixelCoordinate implements IPixelCoordinate {
 
   /**
    * 转换为物理像素
-   * 
+   *
    * @param pixelRatio 像素比率（DPI）
    * @returns 新的物理像素坐标
    */
@@ -95,5 +95,6 @@ export class PixelCoordinate implements IPixelCoordinate {
 
 // Point 是 PixelCoordinate 的别名，用于 ArkTS 代码
 export type Point = PixelCoordinate;
-export type ScreenCoordinate = PixelCoordinate;  // 屏幕坐标别名
+
+export type ScreenCoordinate = PixelCoordinate; // 屏幕坐标别名
 

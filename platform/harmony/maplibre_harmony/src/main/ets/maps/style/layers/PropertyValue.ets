@@ -2,7 +2,7 @@ import { Expression } from '../expressions/Expression';
 
 /**
  * PropertyValue - 图层属性值封装类
- * 
+ *
  * 支持常量值和表达式两种类型的属性值
  */
 export class PropertyValue<T> {

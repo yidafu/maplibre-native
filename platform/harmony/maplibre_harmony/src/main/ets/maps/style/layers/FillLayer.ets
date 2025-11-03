@@ -2,19 +2,20 @@
  * FillLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type {ColorValue, NumberValue, StringValue, BooleanValue, ExpressionLiteral } from 'libmaplibre.so';
-import type { PropertyValue } from '../expressions/index';
+import type { ExpressionLiteral } from 'libmaplibre.so';
+import { PropertyValue, Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 export class FillLayer {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'FillLayer';
-  
   private nativeInstance: maplibre.FillLayer;
 
   constructor(idOrMarker: string | InternalMarker, sourceId: string = "", nativeOrNothing?: maplibre.FillLayer) {
@@ -62,8 +63,13 @@ export class FillLayer {
     return this;
   }
 
-  setFilter(filter: Object[]): FillLayer {
-    this.nativeInstance.setFilter(filter);
+  /**
+   * 设置图层过滤器
+   * @param filter Expression 实例或表达式字面量数组
+   */
+  setFilter(filter: Expression<boolean> | ExpressionLiteral): FillLayer {
+    const filterArray = filter instanceof Expression ? filter.toArray() : filter;
+    this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
   }
 

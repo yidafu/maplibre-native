@@ -14,7 +14,8 @@ export class MapRenderer {
   public maximumFps: number;
 
   constructor(options: MapRendererOptions = {}) {
-    this.renderingRefreshMode = options.renderingRefreshMode !== undefined ? options.renderingRefreshMode : 0; // WHEN_DIRTY
+    this.renderingRefreshMode =
+      options.renderingRefreshMode !== undefined ? options.renderingRefreshMode : 0; // WHEN_DIRTY
     this.maximumFps = options.maximumFps !== undefined ? options.maximumFps : 60;
   }
 

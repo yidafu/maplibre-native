@@ -1,17 +1,17 @@
 /**
  * Debug options for MapLibre map rendering.
- * 
+ *
  * These options enable various debugging visualizations to help diagnose
  * rendering issues, tile loading problems, and performance bottlenecks.
- * 
+ *
  * Debug options should be disabled in production builds as they impact
  * performance and are intended for development use only.
- * 
+ *
  * @example
- * ```typescript
+* ```typescript
  * // Enable tile boundaries and collision boxes
  * map.setDebugOptions(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes);
- * 
+ *
  * // Quick toggle with default debug options
  * map.setDebugActive(true);
  * ```
@@ -50,7 +50,7 @@ export enum MapDebugOptions {
    * Show overdraw visualization with translucent fills.
    * Overlapping drawing operations appear more prominent.
    * Helps diagnose rendering performance issues.
-   * 
+   *
    * Note: This option may have limited effect in release builds.
    */
   OverdrawVisualization = 1 << 5,
@@ -58,7 +58,7 @@ export enum MapDebugOptions {
   /**
    * Show stencil buffer instead of color buffer.
    * For advanced rendering diagnostics.
-   * 
+   *
    * Note: This option may have limited effect in release builds.
    */
   StencilClip = 1 << 6,
@@ -66,7 +66,7 @@ export enum MapDebugOptions {
   /**
    * Show depth buffer instead of color buffer.
    * For advanced rendering diagnostics.
-   * 
+   *
    * Note: This option may have limited effect in release builds.
    */
   DepthBuffer = 1 << 7

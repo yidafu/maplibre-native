@@ -5,27 +5,27 @@
  */
 // ==================== GeoJson 对象（向后兼容）====================
 import {
-  point,
-  lineString,
-  polygon,
-  multiPoint,
-  multiLineString,
-  multiPolygon,
-  geometryCollection,
   feature,
   featureCollection,
-  pointFeature,
+  geometryCollection,
+  lineString,
   lineStringFeature,
+  multiLineString,
+  multiPoint,
+  multiPolygon,
+  point,
+  pointFeature,
+  polygon,
   polygonFeature
 } from './factory';
 
 /**
  * GeoJson 命名空间类
- * 
+ *
  * 提供 GeoJSON 工厂函数的访问方式
- * 
+ *
  * @example
- * ```typescript
+* ```typescript
  * const pt = GeoJson.point([116.4, 39.9]);
  * const line = GeoJson.lineString([[116.4, 39.9], [121.5, 31.2]]);
  * const ft = GeoJson.feature(pt, { name: 'Beijing' });

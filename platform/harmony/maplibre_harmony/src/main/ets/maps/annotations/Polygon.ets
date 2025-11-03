@@ -1,35 +1,43 @@
 /**
  * Polygon - 多边形封装类
- * 
+ *
  * 符合 ArkTS 规范的封装实现
  */
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
-
 /**
  * PolygonOptions - 多边形选项接口
  */
 export interface PolygonOptions {
   /** 多边形 ID（可选） */
   id?: string;
+
   /** 多边形的点坐标数组 */
   points: LatLng[];
+
   /** 孔洞数组（可选） */
   holes?: LatLng[][];
+
   /** 填充颜色（可选，默认 #000000） */
   fillColor?: string;
+
   /** 描边颜色（可选，默认 #000000） */
   strokeColor?: string;
+
   /** 描边宽度（可选，默认 1） */
   strokeWidth?: number;
+
   /** 填充透明度（可选，默认 0.5，范围 0-1） */
   fillAlpha?: number;
+
   /** 描边透明度（可选，默认 1.0，范围 0-1） */
   strokeAlpha?: number;
+
   /** 是否可见（可选，默认 true） */
   visible?: boolean;
+
   /** Z 轴顺序（可选，默认 0） */
   zIndex?: number;
 }
@@ -39,7 +47,9 @@ export interface PolygonOptions {
  */
 class InternalPolygon {
   static readonly INSTANCE = new InternalPolygon();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
@@ -61,12 +71,12 @@ export class Polygon {
     } else if (typeof optionsOrPolygon === 'object') {
       // 正常模式：从选项对象创建
       const options = optionsOrPolygon as PolygonOptions;
-      
+
       // 转换 LatLng 对象为原生格式
       const nativeOptions: ESObject = {
         points: options.points.map((p: LatLng): ILatLng => p.toObject()),
-        holes: options.holes ? options.holes.map((hole: LatLng[]): ILatLng[] => 
-          hole.map((p: LatLng): ILatLng => p.toObject())
+        holes: options.holes ? options.holes.map((hole: LatLng[]): ILatLng[] =>
+        hole.map((p: LatLng): ILatLng => p.toObject())
         ) : [],
         fillColor: options.fillColor || '#000000',
         strokeColor: options.strokeColor || '#000000',
@@ -76,7 +86,7 @@ export class Polygon {
         visible: options.visible !== undefined ? options.visible : true,
         zIndex: options.zIndex || 0
       };
-      
+
       this.nativeInstance = new maplibre.Polygon(nativeOptions);
     } else {
       throw new Error('Invalid Polygon constructor arguments');
@@ -163,8 +173,8 @@ export class Polygon {
    */
   getHoles(): LatLng[][] {
     const nativeHoles: ILatLng[][] = this.nativeInstance.getHoles() as ILatLng[][];
-    return nativeHoles.map((hole: ILatLng[]): LatLng[] => 
-      hole.map((pt: ILatLng): LatLng => new LatLng(pt.latitude, pt.longitude))
+    return nativeHoles.map((hole: ILatLng[]): LatLng[] =>
+    hole.map((pt: ILatLng): LatLng => new LatLng(pt.latitude, pt.longitude))
     );
   }
 
@@ -174,8 +184,8 @@ export class Polygon {
    * @returns this（支持链式调用）
    */
   setHoles(holes: LatLng[][]): Polygon {
-    const nativeHoles: ILatLng[][] = holes.map((hole: LatLng[]): ILatLng[] => 
-      hole.map((p: LatLng): ILatLng => p.toObject())
+    const nativeHoles: ILatLng[][] = holes.map((hole: LatLng[]): ILatLng[] =>
+    hole.map((p: LatLng): ILatLng => p.toObject())
     );
     this.nativeInstance.setHoles(nativeHoles);
     return this;
@@ -197,7 +207,9 @@ export class Polygon {
    */
   removeHole(index: number): LatLng[] | null {
     const nativeHole = this.nativeInstance.removeHole(index);
-    if (!nativeHole) return null;
+    if (!nativeHole) {
+      return null;
+    }
     const holes = nativeHole as ILatLng[];
     return holes.map((pt: ILatLng): LatLng => new LatLng(pt.latitude, pt.longitude));
   }

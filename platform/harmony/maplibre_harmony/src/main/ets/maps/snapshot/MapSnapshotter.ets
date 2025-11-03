@@ -1,11 +1,15 @@
 /**
  * MapSnapshotter - 地图快照器
- * 
+ *
  * 用于在后台渲染地图并生成图像
  * 对应 Android 的 MapSnapshotter 和 iOS 的 MLNMapSnapshotter
  */
 
-import maplibre from 'libmaplibre.so';
+import maplibre, {
+  MapSnapshotterNAPI,
+  SnapshotOptionsNAPI,
+  SnapshotResultNAPI
+} from 'libmaplibre.so';
 import image from '@ohos.multimedia.image';
 import { SnapshotOptions } from './SnapshotOptions';
 import { MapSnapshot } from './MapSnapshot';
@@ -20,7 +24,7 @@ import { DOMAIN } from '../../constants/HiLogConstants';
 export interface SnapshotReadyCallback {
   /**
    * 快照完成时调用
-   * 
+   *
    * @param snapshot 快照对象
    */
   onSnapshotReady(snapshot: MapSnapshot): void;
@@ -32,7 +36,7 @@ export interface SnapshotReadyCallback {
 export interface SnapshotErrorHandler {
   /**
    * 发生错误时调用
-   * 
+   *
    * @param error 错误消息
    */
   onError(error: string): void;
@@ -40,7 +44,7 @@ export interface SnapshotErrorHandler {
 
 /**
  * MapSnapshotter 类
- * 
+ *
  * 使用示例：
  * ```typescript
  * // 1. 创建选项
@@ -56,10 +60,10 @@ export interface SnapshotErrorHandler {
  *   },
  *   showLogo: true
  * };
- * 
+ *
  * // 2. 创建快照器
  * const snapshotter = new MapSnapshotter(options);
- * 
+ *
  * // 3. 开始生成快照
  * snapshotter.start({
  *   onSnapshotReady: (snapshot) => {
@@ -74,21 +78,21 @@ export interface SnapshotErrorHandler {
  * ```
  */
 export class MapSnapshotter {
-  private nativeSnapshotter: maplibre.MapSnapshotterNAPI | null = null;
+  private nativeSnapshotter: MapSnapshotterNAPI | null = null;
   private options: SnapshotOptions;
   private cancelled: boolean = false;
-  
+
   /**
    * 构造函数
-   * 
+   *
    * @param options 快照选项
    */
   constructor(options: SnapshotOptions) {
     this.options = options;
-    
+
     try {
       // 准备 NAPI 选项对象
-      const napiOptions: maplibre.SnapshotOptionsNAPI = {
+      const napiOptions: SnapshotOptionsNAPI = {
         width: options.size.width,
         height: options.size.height,
         pixelRatio: options.pixelRatio || 1.0,
@@ -97,30 +101,29 @@ export class MapSnapshotter {
         showLogo: options.showLogo !== false,
         localFontFamily: options.localFontFamily || ''
       };
-      
+
       // 创建 native snapshotter
-      // 注意：这需要在 NAPI 模块中实现 createMapSnapshotter
       this.nativeSnapshotter = maplibre.createMapSnapshotter(napiOptions);
-      
+
       // 设置相机位置（如果提供）
       if (options.cameraPosition) {
         this.setCameraPosition(options.cameraPosition);
       }
-      
+
       // 设置区域（如果提供）
       if (options.region) {
         this.setRegion(options.region);
       }
-      
+
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to create snapshotter: ${error}`);
       throw new Error(`Failed to create snapshotter: ${error}`);
     }
   }
-  
+
   /**
    * 开始生成快照
-   * 
+   *
    * @param callback 完成回调
    * @param errorHandler 错误处理回调（可选）
    */
@@ -136,15 +139,15 @@ export class MapSnapshotter {
       }
       return;
     }
-    
+
     if (this.cancelled) {
       hilog.warn(DOMAIN, 'MapSnapshotter', 'Snapshotter was cancelled');
       return;
     }
-    
+
     try {
       // 调用 native start 方法
-      this.nativeSnapshotter.start((error: string | null, result: maplibre.SnapshotResultNAPI) => {
+      this.nativeSnapshotter.start((error: string | null, result: SnapshotResultNAPI | null) => {
         if (error) {
           hilog.error(DOMAIN, 'MapSnapshotter', `Snapshot error: ${error}`);
           if (errorHandler) {
@@ -152,7 +155,7 @@ export class MapSnapshotter {
           }
           return;
         }
-        
+
         if (!result) {
           const errorMsg = 'No result returned from native snapshotter';
           hilog.error(DOMAIN, 'MapSnapshotter', errorMsg);
@@ -161,7 +164,7 @@ export class MapSnapshotter {
           }
           return;
         }
-        
+
         // 从 native 结果创建 PixelMap
         this.createPixelMapFromNativeResult(result)
           .then(pixelMap => {
@@ -172,7 +175,7 @@ export class MapSnapshotter {
               result.attributions || [],
               this.options.showLogo !== false
             );
-            
+
             callback.onSnapshotReady(snapshot);
           })
           .catch((err: Error) => {
@@ -182,7 +185,7 @@ export class MapSnapshotter {
             }
           });
       });
-      
+
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Start failed: ${error}`);
       if (errorHandler) {
@@ -190,7 +193,7 @@ export class MapSnapshotter {
       }
     }
   }
-  
+
   /**
    * 取消快照生成
    */
@@ -198,16 +201,16 @@ export class MapSnapshotter {
     if (!this.nativeSnapshotter) {
       return;
     }
-    
+
     this.cancelled = true;
-    
+
     try {
       this.nativeSnapshotter.cancel();
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Cancel failed: ${error}`);
     }
   }
-  
+
   /**
    * 设置样式 URL
    */
@@ -215,7 +218,7 @@ export class MapSnapshotter {
     if (!this.nativeSnapshotter) {
       return;
     }
-    
+
     try {
       this.nativeSnapshotter.setStyleUrl(styleUrl);
       this.options.styleUrl = styleUrl;
@@ -224,14 +227,14 @@ export class MapSnapshotter {
       throw new Error(`Failed to set style URL: ${error}`);
     }
   }
-  
+
   /**
    * 获取样式 URL
    */
   public getStyleUrl(): string {
     return this.options.styleUrl;
   }
-  
+
   /**
    * 设置相机位置
    */
@@ -239,7 +242,7 @@ export class MapSnapshotter {
     if (!this.nativeSnapshotter) {
       return;
     }
-    
+
     try {
       this.nativeSnapshotter.setCameraPosition(cameraPosition);
       this.options.cameraPosition = cameraPosition;
@@ -248,14 +251,14 @@ export class MapSnapshotter {
       throw new Error(`Failed to set camera position: ${error}`);
     }
   }
-  
+
   /**
    * 获取相机位置
    */
   public getCameraPosition(): CameraPosition | undefined {
     return this.options.cameraPosition;
   }
-  
+
   /**
    * 设置区域
    */
@@ -263,7 +266,7 @@ export class MapSnapshotter {
     if (!this.nativeSnapshotter) {
       return;
     }
-    
+
     try {
       this.nativeSnapshotter.setRegion(region);
       this.options.region = region;
@@ -272,21 +275,21 @@ export class MapSnapshotter {
       throw new Error(`Failed to set region: ${error}`);
     }
   }
-  
+
   /**
    * 获取区域
    */
   public getRegion(): LatLngBounds | undefined {
     return this.options.region;
   }
-  
+
   /**
    * 从 native 结果创建 PixelMap
-   * 
+   *
    * @param result Native 返回的结果对象
    * @returns Promise<PixelMap>
    */
-  private async createPixelMapFromNativeResult(result: maplibre.SnapshotResultNAPI): Promise<image.PixelMap> {
+  private async createPixelMapFromNativeResult(result: SnapshotResultNAPI): Promise<image.PixelMap> {
     return new Promise((resolve, reject) => {
       try {
         const imageInfo: image.ImageInfo = {
@@ -298,7 +301,7 @@ export class MapSnapshotter {
           mimeType: 'image/png',
           isHdr: false
         };
-        
+
         // 从 ArrayBuffer 创建 PixelMap
         image.createPixelMap(result.data, imageInfo, (err, pixelMap) => {
           if (err) {

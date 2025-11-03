@@ -8,10 +8,8 @@ import { DOMAIN } from '../../constants/HiLogConstants';
 export class PerformanceMonitor {
   private static readonly TAG: string = 'LocationPerformance';
   private static enabled: boolean = false;
-  
   // 性能指标
   private static metrics: Map<string, PerformanceMetric> = new Map();
-  
   // 帧率计算
   private static frameCount: number = 0;
   private static lastFpsTime: number = 0;
@@ -35,8 +33,10 @@ export class PerformanceMonitor {
    * 开始计时
    */
   static startTiming(label: string): void {
-    if (!PerformanceMonitor.enabled) return;
-    
+    if (!PerformanceMonitor.enabled) {
+      return;
+    }
+
     const metric: PerformanceMetric = {
       label: label,
       startTime: Date.now(),
@@ -46,7 +46,7 @@ export class PerformanceMonitor {
       maxTime: 0,
       avgTime: 0
     };
-    
+
     PerformanceMonitor.metrics.set(label, metric);
   }
 
@@ -54,20 +54,24 @@ export class PerformanceMonitor {
    * 结束计时
    */
   static endTiming(label: string): void {
-    if (!PerformanceMonitor.enabled) return;
-    
+    if (!PerformanceMonitor.enabled) {
+      return;
+    }
+
     const metric = PerformanceMonitor.metrics.get(label);
-    if (!metric || !metric.startTime) return;
-    
+    if (!metric || !metric.startTime) {
+      return;
+    }
+
     const duration = Date.now() - metric.startTime;
     metric.count++;
     metric.totalTime += duration;
     metric.minTime = Math.min(metric.minTime, duration);
     metric.maxTime = Math.max(metric.maxTime, duration);
     metric.avgTime = metric.totalTime / metric.count;
-    
+
     if (duration > 16) { // 超过一帧时间（60fps）
-      hilog.warn(DOMAIN, PerformanceMonitor.TAG, 
+      hilog.warn(DOMAIN, PerformanceMonitor.TAG,
         `Slow operation: ${label} took ${duration.toFixed(2)}ms`);
     }
   }
@@ -76,16 +80,18 @@ export class PerformanceMonitor {
    * 记录帧
    */
   static recordFrame(): void {
-    if (!PerformanceMonitor.enabled) return;
-    
+    if (!PerformanceMonitor.enabled) {
+      return;
+    }
+
     PerformanceMonitor.frameCount++;
-    
+
     const now = Date.now();
     if (now - PerformanceMonitor.lastFpsTime >= 1000) {
       PerformanceMonitor.currentFps = PerformanceMonitor.frameCount;
       PerformanceMonitor.frameCount = 0;
       PerformanceMonitor.lastFpsTime = now;
-      
+
       if (PerformanceMonitor.currentFps < 50) { // 低于 50 FPS 警告
         hilog.warn(DOMAIN, PerformanceMonitor.TAG, `Low FPS detected: ${PerformanceMonitor.currentFps}`);
       }
@@ -103,8 +109,10 @@ export class PerformanceMonitor {
    * 记录内存使用
    */
   static recordMemoryUsage(label: string): void {
-    if (!PerformanceMonitor.enabled) return;
-    
+    if (!PerformanceMonitor.enabled) {
+      return;
+    }
+
     // 注意：鸿蒙可能没有直接的内存 API，这里简化处理
   }
 
@@ -112,13 +120,15 @@ export class PerformanceMonitor {
    * 打印性能报告
    */
   static printReport(): void {
-    if (!PerformanceMonitor.enabled || PerformanceMonitor.metrics.size === 0) return;
-    
+    if (!PerformanceMonitor.enabled || PerformanceMonitor.metrics.size === 0) {
+      return;
+    }
+
     PerformanceMonitor.metrics.forEach((metric, label) => {
       if (metric.count > 0) {
       }
     });
-    
+
   }
 
   /**

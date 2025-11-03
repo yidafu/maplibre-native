@@ -25,20 +25,16 @@ export interface CompassListener {
  */
 export class CompassEngine {
   private static readonly TAG: string = 'CompassEngine';
-  
   private listeners: Set<CompassListener> = new Set();
   private isListening: boolean = false;
   private lastHeading: number = 0;
   private updateInterval: number = 500; // 更新间隔（毫秒）
   private lastUpdateTime: number = 0;
-
   // 平滑滤波参数
   private static readonly SMOOTHING_FACTOR: number = 0.1;
-  
   // 低通滤波历史值
   private headingHistory: number[] = [];
   private static readonly HISTORY_SIZE: number = 5;
-  
   // 变化阈值（度）
   private changeThreshold: number = 0.5;
 
@@ -47,7 +43,7 @@ export class CompassEngine {
    */
   addCompassListener(listener: CompassListener): void {
     this.listeners.add(listener);
-    
+
     if (!this.isListening) {
       this.startListening();
     }
@@ -58,7 +54,7 @@ export class CompassEngine {
    */
   removeCompassListener(listener: CompassListener): void {
     this.listeners.delete(listener);
-    
+
     if (this.listeners.size === 0 && this.isListening) {
       this.stopListening();
     }
@@ -80,7 +76,7 @@ export class CompassEngine {
       // 订阅方向传感器
       sensor.on(sensor.SensorId.ORIENTATION, (data: sensor.OrientationResponse) => {
         const now = Date.now();
-        
+
         // 限制更新频率
         if (now - this.lastUpdateTime < this.updateInterval) {
           return;
@@ -90,17 +86,17 @@ export class CompassEngine {
         // 获取方位角（azimuth）
         // data.alpha 是绕 Z 轴的旋转角度，范围 0-360
         let heading = data.alpha;
-        
+
         // 应用平滑滤波
         heading = this.smoothHeading(heading);
-        
+
         // 通知所有监听器（使用可配置的变化阈值）
         const headingDiff = Math.abs(heading - this.lastHeading);
         const normalizedDiff = headingDiff > 180 ? 360 - headingDiff : headingDiff;
-        
+
         if (normalizedDiff > this.changeThreshold) {
           this.lastHeading = heading;
-          
+
           this.listeners.forEach(listener => {
             try {
               listener.onCompassChanged(heading);
@@ -152,10 +148,10 @@ export class CompassEngine {
     // 计算移动平均（考虑角度跨越 0/360 边界）
     let sum = 0;
     let count = this.headingHistory.length;
-    
+
     for (let i = 0; i < count; i++) {
       let angle = this.headingHistory[i];
-      
+
       // 调整角度使其相对于第一个值连续
       if (i > 0) {
         let diff = angle - this.headingHistory[0];
@@ -165,12 +161,12 @@ export class CompassEngine {
           angle += 360;
         }
       }
-      
+
       sum += angle;
     }
 
     let average = sum / count;
-    
+
     // 归一化到 0-360 范围
     while (average < 0) {
       average += 360;

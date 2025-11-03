@@ -1,6 +1,6 @@
 /**
  * Polyline - 折线封装类
- * 
+ *
  * 符合 ArkTS 规范的封装实现
  */
 import maplibre from 'libmaplibre.so';
@@ -14,22 +14,31 @@ import type { ILatLng } from '../types/NativeTypes';
 export interface PolylineOptions {
   /** 折线 ID（可选） */
   id?: string;
+
   /** 折线的点坐标数组 */
   points: LatLng[];
+
   /** 线条颜色（可选，默认 #000000） */
   color?: string;
+
   /** 线条宽度（可选，默认 10） */
   width?: number;
+
   /** 线条透明度（可选，默认 1.0，范围 0-1） */
   alpha?: number;
+
   /** 是否可见（可选，默认 true） */
   visible?: boolean;
+
   /** Z 轴顺序（可选，默认 0） */
   zIndex?: number;
+
   /** 线条样式/虚线模式（可选，如 [5, 5] 表示 5px 实线 5px 空白） */
   pattern?: number[] | null;
+
   /** 连接类型（可选，默认 'round'） */
   jointType?: string;
+
   /** 端点类型（可选，默认 'round'） */
   capType?: string;
 }
@@ -39,7 +48,9 @@ export interface PolylineOptions {
  */
 class InternalPolyline {
   static readonly INSTANCE = new InternalPolyline();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
@@ -61,7 +72,7 @@ export class Polyline {
     } else if (typeof optionsOrPolyline === 'object') {
       // 正常模式：从选项对象创建
       const options = optionsOrPolyline as PolylineOptions;
-      
+
       // 转换 LatLng 对象为原生格式
       const nativeOptions: ESObject = {
         points: options.points.map((p: LatLng): ILatLng => p.toObject()),
@@ -74,7 +85,7 @@ export class Polyline {
         jointType: options.jointType || 'round',
         capType: options.capType || 'round'
       };
-      
+
       this.nativeInstance = new maplibre.Polyline(nativeOptions);
     } else {
       throw new Error('Invalid Polyline constructor arguments');

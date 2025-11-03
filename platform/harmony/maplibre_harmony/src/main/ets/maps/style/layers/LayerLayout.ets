@@ -1,14 +1,13 @@
 /**
  * MapLibre Layer Layout Properties
  * 图层布局属性类型定义
- * 
+ *
  * 根据 MapLibre Style Spec 定义各图层类型的 Layout 属性
  * @see https://maplibre.org/maplibre-style-spec/layers/
  */
 
 import type { Expression } from './Expression';
 import type { ExpressionLiteral } from './PropertyTypes';
-
 /**
  * 可见性类型
  */
@@ -23,7 +22,7 @@ export type DataDrivenProperty<T> = T | Expression | ExpressionLiteral;
 
 /**
  * BackgroundLayout - 背景图层布局属性
- * 
+ *
  * 背景图层只有 visibility 属性
  */
 export interface BackgroundLayout {
@@ -118,16 +117,16 @@ export type SymbolPlacement = 'point' | 'line' | 'line-center';
 /**
  * 文本或图标锚点位置
  */
-export type Anchor = 
-  | 'center' 
-  | 'left' 
-  | 'right' 
-  | 'top' 
-  | 'bottom' 
-  | 'top-left' 
-  | 'top-right' 
-  | 'bottom-left' 
-  | 'bottom-right';
+export type Anchor =
+  | 'center'
+    | 'left'
+    | 'right'
+    | 'top'
+    | 'bottom'
+    | 'top-left'
+    | 'top-right'
+    | 'bottom-left'
+    | 'bottom-right';
 
 /**
  * 文本对齐方式

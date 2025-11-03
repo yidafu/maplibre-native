@@ -15,8 +15,8 @@ export class LatLngBounds {
    * 2. 传入2个 LatLng 对象: new LatLngBounds(southwest, northeast)
    */
   constructor(northOrSouthwest: number | LatLng, eastOrNortheast: number | LatLng, south?: number, west?: number) {
-    if (typeof northOrSouthwest === 'number' && typeof eastOrNortheast === 'number' && 
-        typeof south === 'number' && typeof west === 'number') {
+    if (typeof northOrSouthwest === 'number' && typeof eastOrNortheast === 'number' &&
+      typeof south === 'number' && typeof west === 'number') {
       // 模式1: 4个数字参数
       this.north = northOrSouthwest;
       this.east = eastOrNortheast;
@@ -37,13 +37,13 @@ export class LatLngBounds {
 
   /**
    * 从两个点创建边界
-   * 
+   *
    * @param northeast 东北角点（纬度更大、经度更大的点）
    * @param southwest 西南角点（纬度更小、经度更小的点）
    * @returns LatLngBounds 边界对象
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * const southwest = createLatLng(30.23, 120.12);
    * const northeast = createLatLng(30.31, 120.20);
    * const bounds = LatLngBounds.fromLatLngs(northeast, southwest);
@@ -57,7 +57,7 @@ export class LatLngBounds {
     if (northeast.longitude < southwest.longitude) {
       throw new Error(`Invalid bounds: northeast longitude (${northeast.longitude}) must be >= southwest longitude (${southwest.longitude})`);
     }
-    
+
     return new LatLngBounds(northeast.latitude, northeast.longitude, southwest.latitude, southwest.longitude);
   }
 
@@ -113,7 +113,7 @@ export class LatLngBounds {
    */
   public contains(latLng: LatLng): boolean {
     return latLng.latitude >= this.south && latLng.latitude <= this.north &&
-           latLng.longitude >= this.west && latLng.longitude <= this.east;
+      latLng.longitude >= this.west && latLng.longitude <= this.east;
   }
 
   /**
@@ -121,7 +121,7 @@ export class LatLngBounds {
    */
   public containsBounds(other: LatLngBounds): boolean {
     return this.north >= other.north && this.south <= other.south &&
-           this.east >= other.east && this.west <= other.west;
+      this.east >= other.east && this.west <= other.west;
   }
 
   /**
@@ -129,7 +129,7 @@ export class LatLngBounds {
    */
   public intersects(other: LatLngBounds): boolean {
     return !(this.south > other.north || this.north < other.south ||
-             this.west > other.east || this.east < other.west);
+      this.west > other.east || this.east < other.west);
   }
 
   /**
@@ -161,10 +161,10 @@ export class LatLngBounds {
    */
   public isValid(): boolean {
     return this.north >= this.south && this.east >= this.west &&
-           this.north >= -90 && this.north <= 90 &&
-           this.south >= -90 && this.south <= 90 &&
-           this.east >= -180 && this.east <= 180 &&
-           this.west >= -180 && this.west <= 180;
+      this.north >= -90 && this.north <= 90 &&
+      this.south >= -90 && this.south <= 90 &&
+      this.east >= -180 && this.east <= 180 &&
+      this.west >= -180 && this.west <= 180;
   }
 
   /**
@@ -191,5 +191,4 @@ export class LatLngBounds {
   getNorthEast(): LatLng {
     return this.getNortheast();
   }
-
 }

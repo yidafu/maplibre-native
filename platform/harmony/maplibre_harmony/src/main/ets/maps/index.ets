@@ -3,7 +3,7 @@
  *
  * 提供所有公共 API 的统一导出
  */
-import maplibre from 'libmaplibre.so'
+import maplibre from 'libmaplibre.so';
 
 // ========== 核心组件 ==========
 export { MapView } from './NativeMapView';
@@ -216,9 +216,8 @@ export { DEFAULT_STYLE_URLS } from './constants/DefaultStyles';
 export type { DefaultStyleUrls } from './constants/DefaultStyles';
 
 // 自定义图层 (CustomLayer)
-export { 
-  CustomLayer, 
-  createCustomLayerWithColor 
+export {
+  CustomLayer, createCustomLayerWithColor
 } from './style/layers';
 
 export type { RGBAColor } from './style/layers';
@@ -258,6 +257,7 @@ export {
   ExpressionLiteralArray,
   ExpressionMap
 } from './style/expressions';
+
 export { ExpressionValue } from './style/expressions';
 
 
@@ -277,7 +277,11 @@ export type {
 
 // ========== 地图快照 ==========
 export {
-  MapSnapshotter, MapSnapshot, SnapshotOptions, SnapshotOptionsBuilder, Size,
+  MapSnapshotter,
+  MapSnapshot,
+  SnapshotOptions,
+  SnapshotOptionsBuilder,
+  Size,
   SnapshotReadyCallback,
   SnapshotErrorHandler
 } from './snapshot';

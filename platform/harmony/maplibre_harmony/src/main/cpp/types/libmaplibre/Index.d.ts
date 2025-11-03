@@ -1,7 +1,7 @@
 /**
  * MapLibre Native for HarmonyOS - Type Definitions
  * 主入口文件
- * 
+ *
  * 此文件重新导出所有类型定义，提供统一的访问入口
  */
 
@@ -53,7 +53,7 @@ export { IconFactory } from './IconFactory';
 /**
  * Style - 样式管理类 (NAPI 对象)
  * 提供面向对象的样式管理接口
- * 
+ *
  * StyleBuilder - 样式构建器
  * 使用 Builder 模式构建地图样式
  */

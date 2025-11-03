@@ -1,10 +1,9 @@
-import maplibre from 'libmaplibre.so';
 import { LocationComponentOptions } from './LocationComponentOptions';
 import { LocationComponentConstants } from './LocationComponentConstants';
 import { RenderMode } from './modes/RenderMode';
 import { OnRenderModeChangedListener } from './listeners/OnRenderModeChangedListener';
 import { LatLng } from '../geometry/LatLng';
-import { GeoJson, IFeature, IPoint } from '../geojson';
+import { IFeature } from '../geojson';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { Style } from '../style';
@@ -18,18 +17,15 @@ import { SymbolLayer } from '../style/layers/SymbolLayer';
  */
 export class LocationLayerController {
   private static readonly TAG: string = 'LocationLayerController';
-
   private style?: Style;
   private options: LocationComponentOptions;
   private renderMode: number = RenderMode.NORMAL;
   private renderModeChangedListener?: OnRenderModeChangedListener;
-  
   // 位置数据
   private currentLocation?: LatLng;
   private bearing: number = 0;
   private accuracy: number = 0;
   private isStale: boolean = false;
-  
   // 图层是否已添加
   private layersAdded: boolean = false;
   private isHidden: boolean = true;
@@ -44,10 +40,10 @@ export class LocationLayerController {
    */
   initializeComponents(style: Style): void {
     this.style = style;
-    
+
     // 添加图层
     this.addLayers();
-    
+
     // 初始化时隐藏
     if (this.isHidden) {
       this.hide();
@@ -69,7 +65,7 @@ export class LocationLayerController {
         geometry: { type: 'Point', coordinates: [0, 0] },
         properties: {}
       };
-      
+
       const geoJsonSource = new GeoJsonSource(
         LocationComponentConstants.LOCATION_SOURCE
       );
@@ -105,11 +101,11 @@ export class LocationLayerController {
       this.style.addLayer(bearingLayer);
 
       this.layersAdded = true;
-      
+
       // 应用初始样式
       this.styleAccuracy();
       this.updateIconStyles();
-      
+
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to add layers: ${err}`);
     }
@@ -129,7 +125,7 @@ export class LocationLayerController {
       this.style.removeLayer(LocationComponentConstants.BACKGROUND_LAYER);
       this.style.removeLayer(LocationComponentConstants.ACCURACY_LAYER);
       this.style.removeSource(LocationComponentConstants.LOCATION_SOURCE);
-      
+
       this.layersAdded = false;
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to remove layers: ${err}`);
@@ -143,7 +139,7 @@ export class LocationLayerController {
     this.currentLocation = location;
     this.bearing = bearing;
     this.accuracy = accuracy;
-    
+
     if (!this.style || !this.layersAdded) {
       return;
     }
@@ -155,7 +151,7 @@ export class LocationLayerController {
         geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
         properties: {}
       };
-      
+
       const source = this.style.getSource(LocationComponentConstants.LOCATION_SOURCE);
       if (source && source instanceof GeoJsonSource) {
         source.setGeoJson(JSON.stringify(sourceFeature));
@@ -163,10 +159,10 @@ export class LocationLayerController {
 
       // 更新精度圈
       this.updateAccuracyRadius(accuracy);
-      
+
       // 更新方向
       this.updateBearing(bearing);
-      
+
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to update location: ${err}`);
     }
@@ -301,7 +297,7 @@ export class LocationLayerController {
     }
 
     this.isStale = isStale;
-    
+
     // 更新图标为过期状态的图标
     this.updateIconStyles();
   }
@@ -315,7 +311,7 @@ export class LocationLayerController {
     }
 
     this.isHidden = false;
-    
+
     if (!this.style || !this.layersAdded) {
       return;
     }
@@ -348,7 +344,7 @@ export class LocationLayerController {
     }
 
     this.isHidden = true;
-    
+
     if (!this.style || !this.layersAdded) {
       return;
     }

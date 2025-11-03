@@ -28,12 +28,14 @@ export interface ImageSize {
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
  * Image - 图片包装类
- * 
+ *
  * 这是一个封装类，包装了 NAPI Image 对象，提供类型安全的接口。
  * 遵循封装原则，不直接暴露 NAPI 对象给最终用户。
  */
@@ -49,19 +51,19 @@ export class Image {
     if (!options.name || options.name.trim() === '') {
       throw new Error('Image name is required');
     }
-    
+
     if (!options.width || options.width <= 0) {
       throw new Error('Image width must be greater than 0');
     }
-    
+
     if (!options.height || options.height <= 0) {
       throw new Error('Image height must be greater than 0');
     }
-    
+
     if (!options.data) {
       throw new Error('Image data is required');
     }
-    
+
     // 验证数据大小 (RGBA = 4 bytes per pixel)
     const expectedSize = options.width * options.height * 4;
     if (options.data.byteLength !== expectedSize) {
@@ -69,22 +71,22 @@ export class Image {
         `Image data size mismatch: expected ${expectedSize} bytes, got ${options.data.byteLength} bytes`
       );
     }
-    
+
     // 验证 stretchX（如果提供）
     if (options.stretchX && options.stretchX.length % 2 !== 0) {
       throw new Error('stretchX must contain pairs of values [start, end, ...]');
     }
-    
+
     // 验证 stretchY（如果提供）
     if (options.stretchY && options.stretchY.length % 2 !== 0) {
       throw new Error('stretchY must contain pairs of values [start, end, ...]');
     }
-    
+
     // 验证 content（如果提供）
     if (options.content && options.content.length !== 4) {
       throw new Error('content must contain exactly 4 values [left, top, right, bottom]');
     }
-    
+
     // 创建 native Image 实例
     try {
       this.nativeInstance = new maplibre.Image({
@@ -181,9 +183,9 @@ export class Image {
    * 获取图片尺寸
    */
   getSize(): ImageSize {
-    return { 
-      width: this.getWidth(), 
-      height: this.getHeight() 
+    return {
+      width: this.getWidth(),
+      height: this.getHeight()
     };
   }
 
@@ -194,12 +196,12 @@ export class Image {
     if (!other) {
       return false;
     }
-    
+
     return this.getName() === other.getName() &&
-           this.getWidth() === other.getWidth() &&
-           this.getHeight() === other.getHeight() &&
-           this.getPixelRatio() === other.getPixelRatio() &&
-           this.isSdf() === other.isSdf();
+      this.getWidth() === other.getWidth() &&
+      this.getHeight() === other.getHeight() &&
+      this.getPixelRatio() === other.getPixelRatio() &&
+      this.isSdf() === other.isSdf();
   }
 
   /**
@@ -210,9 +212,9 @@ export class Image {
     const stretchXStr = this.getStretchX() ? ', stretchable-x' : '';
     const stretchYStr = this.getStretchY() ? ', stretchable-y' : '';
     const contentStr = this.getContent() ? ', has-content' : '';
-    
+
     return `Image(name=${this.getName()}, ` +
-           `size=${this.getWidth()}x${this.getHeight()}, ` +
-           `pixelRatio=${this.getPixelRatio()}${sdfStr}${stretchXStr}${stretchYStr}${contentStr})`;
+      `size=${this.getWidth()}x${this.getHeight()}, ` +
+      `pixelRatio=${this.getPixelRatio()}${sdfStr}${stretchXStr}${stretchYStr}${contentStr})`;
   }
 }

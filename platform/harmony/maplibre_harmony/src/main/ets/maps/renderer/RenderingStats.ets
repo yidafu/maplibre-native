@@ -8,13 +8,11 @@ export class RenderingStats {
    * true 表示所有内容都已渲染完成，false 表示部分渲染
    */
   public fully: boolean;
-  
   /**
    * 帧编码时间（毫秒）
    * CPU 编码瓦片和符号所用的时间
    */
   public frameEncodingTime: number;
-  
   /**
    * 帧渲染时间（毫秒）
    * GPU 渲染一帧所用的时间
@@ -51,7 +49,8 @@ export class RenderingStats {
    * 转换为字符串表示
    */
   toString(): string {
-    return `RenderingStats{fully=${this.fully}, encoding=${this.frameEncodingTime.toFixed(2)}ms, rendering=${this.frameRenderingTime.toFixed(2)}ms, fps=${this.getEstimatedFps().toFixed(1)}}`;
+    return `RenderingStats{fully=${this.fully}, encoding=${this.frameEncodingTime.toFixed(2)}ms, rendering=${this.frameRenderingTime.toFixed(2)}ms, fps=${this.getEstimatedFps()
+      .toFixed(1)}}`;
   }
 }
 

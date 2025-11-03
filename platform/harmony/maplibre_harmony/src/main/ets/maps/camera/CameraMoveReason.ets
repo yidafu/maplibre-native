@@ -1,6 +1,6 @@
 /**
  * CameraMoveReason - 相机移动原因枚举
- * 
+ *
  * 用于区分相机移动的触发原因
  */
 
@@ -12,22 +12,22 @@ export enum CameraMoveReason {
    * 未知原因
    */
   UNKNOWN = 0,
-  
+
   /**
    * 手势操作（平移、缩放、旋转等）
    */
   GESTURE = 1,
-  
+
   /**
    * API 调用（jumpTo、setCenter等）
    */
   API_ANIMATION = 2,
-  
+
   /**
    * 动画（easeTo、flyTo）
    */
   DEVELOPER_ANIMATION = 3,
-  
+
   /**
    * 取消动画
    */

@@ -8,13 +8,11 @@ export class RenderMode {
    * Basic tracking is enabled, bearing ignored.
    */
   static readonly NORMAL: number = 0x00000012;
-
   /**
    * 跟踪用户位置，方向由指南针提供
    * Tracking the user location with bearing considered from a CompassEngine.
    */
   static readonly COMPASS: number = 0x00000004;
-
   /**
    * 跟踪用户位置，方向由 GPS 提供
    * Tracking the user location with bearing considered from Location.
@@ -26,8 +24,8 @@ export class RenderMode {
    */
   static isValid(mode: number): boolean {
     return mode === RenderMode.NORMAL ||
-           mode === RenderMode.COMPASS ||
-           mode === RenderMode.GPS;
+      mode === RenderMode.COMPASS ||
+      mode === RenderMode.GPS;
   }
 
   /**

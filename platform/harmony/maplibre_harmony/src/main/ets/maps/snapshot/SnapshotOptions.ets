@@ -1,6 +1,6 @@
 /**
  * SnapshotOptions - 快照选项
- * 
+ *
  * 配置 MapSnapshotter 的参数
  */
 
@@ -16,40 +16,40 @@ export interface SnapshotOptions {
    * 输出图像尺寸
    */
   size: Size;
-  
+
   /**
    * 像素比（用于生成高分辨率图像）
    * 默认：1.0
    */
   pixelRatio?: number;
-  
+
   /**
    * 样式 URL
    */
   styleUrl: string;
-  
+
   /**
    * 样式 JSON（可选，与 styleUrl 二选一）
    */
   styleJson?: string;
-  
+
   /**
    * 相机位置（可选）
    */
   cameraPosition?: CameraPosition;
-  
+
   /**
    * 地理边界（可选）
    * 如果提供，将调整相机以适应此边界
    */
   region?: LatLngBounds;
-  
+
   /**
    * 是否显示 MapLibre logo
    * 默认：true
    */
   showLogo?: boolean;
-  
+
   /**
    * 本地字体族（可选）
    */
@@ -61,10 +61,10 @@ export interface SnapshotOptions {
  */
 export class SnapshotOptionsBuilder {
   private options: SnapshotOptions;
-  
+
   /**
    * 构造函数
-   * 
+   *
    * @param width 宽度
    * @param height 高度
    */
@@ -76,7 +76,7 @@ export class SnapshotOptionsBuilder {
       showLogo: true
     };
   }
-  
+
   /**
    * 设置像素比
    */
@@ -84,7 +84,7 @@ export class SnapshotOptionsBuilder {
     this.options.pixelRatio = pixelRatio;
     return this;
   }
-  
+
   /**
    * 设置样式 URL
    */
@@ -92,7 +92,7 @@ export class SnapshotOptionsBuilder {
     this.options.styleUrl = styleUrl;
     return this;
   }
-  
+
   /**
    * 设置样式 JSON
    */
@@ -100,7 +100,7 @@ export class SnapshotOptionsBuilder {
     this.options.styleJson = styleJson;
     return this;
   }
-  
+
   /**
    * 设置相机位置
    */
@@ -108,7 +108,7 @@ export class SnapshotOptionsBuilder {
     this.options.cameraPosition = cameraPosition;
     return this;
   }
-  
+
   /**
    * 设置地理边界
    */
@@ -116,7 +116,7 @@ export class SnapshotOptionsBuilder {
     this.options.region = region;
     return this;
   }
-  
+
   /**
    * 设置是否显示 logo
    */
@@ -124,7 +124,7 @@ export class SnapshotOptionsBuilder {
     this.options.showLogo = showLogo;
     return this;
   }
-  
+
   /**
    * 设置本地字体族
    */
@@ -132,7 +132,7 @@ export class SnapshotOptionsBuilder {
     this.options.localFontFamily = localFontFamily;
     return this;
   }
-  
+
   /**
    * 构建选项对象
    */

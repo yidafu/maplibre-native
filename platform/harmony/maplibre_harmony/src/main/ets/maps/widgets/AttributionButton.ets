@@ -1,6 +1,6 @@
 /**
  * AttributionButton - 版权归属按钮组件
- * 
+ *
  * 对应 Android 的 AttributionDialogManager 和 iOS 的 MLNAttributionButton
  * 显示地图数据来源和版权信息
  */
@@ -8,7 +8,6 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import promptAction from '@ohos.promptAction';
-
 /**
  * 归属信息项
  */
@@ -17,7 +16,7 @@ export interface AttributionInfo {
    * 标题
    */
   title: string;
-  
+
   /**
    * URL 链接（可选）
    */
@@ -26,7 +25,7 @@ export interface AttributionInfo {
 
 /**
  * AttributionButton 组件
- * 
+ *
  * 使用示例：
  * ```typescript
  * AttributionButton({
@@ -48,17 +47,14 @@ export struct AttributionButton {
    * 是否启用
    */
   @Prop isEnabled: boolean = true;
-  
   /**
    * 图标颜色
    */
   @Prop tintColor: string = '#000000';
-  
   /**
    * 图标大小（vp）
    */
   @Prop iconSize: number = 24;
-  
   /**
    * 归属信息列表
    */
@@ -66,18 +62,16 @@ export struct AttributionButton {
     { title: '© MapLibre', url: 'https://maplibre.org' },
     { title: '© OpenStreetMap contributors', url: 'https://www.openstreetmap.org/copyright' }
   ];
-  
   /**
    * 点击归属信息的回调
    */
   onAttributionClick?: (attribution: AttributionInfo) => void;
-  
   /**
    * 自定义点击处理
    * 如果提供，将覆盖默认行为
    */
   onButtonClick?: () => void;
-  
+
   build() {
     // 使用 Stack 确保图标是圆形背景
     Stack() {
@@ -88,7 +82,7 @@ export struct AttributionButton {
           .height(this.iconSize + 8)
           .fill(Color.White)
           .opacity(0.8)
-        
+
         // "i" 图标
         Text('i')
           .fontSize(this.iconSize - 6)
@@ -112,7 +106,7 @@ export struct AttributionButton {
       }
     })
   }
-  
+
   /**
    * 显示归属信息对话框
    */
@@ -125,10 +119,10 @@ export struct AttributionButton {
         });
         return;
       }
-      
+
       // 构建选项列表 (最多显示6个)
       const options = this.attributions.slice(0, 6).map(attr => attr.title);
-      
+
       // 显示操作菜单
       const buttons: promptAction.Button[] = options.map((title) => {
         const button: promptAction.Button = {
@@ -137,14 +131,14 @@ export struct AttributionButton {
         };
         return button;
       });
-      
+
       promptAction.showActionMenu({
         title: 'Map Attribution',
         buttons: buttons as [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?]
       }).then((result) => {
         if (result.index !== undefined && result.index >= 0) {
           const selectedAttribution = this.attributions[result.index];
-          
+
           if (this.onAttributionClick) {
             // 调用外部回调
             this.onAttributionClick(selectedAttribution);
@@ -161,7 +155,7 @@ export struct AttributionButton {
       }).catch((err: Error) => {
         hilog.error(DOMAIN, 'AttributionButton', `Failed to show action menu: ${err.message}`);
       });
-      
+
     } catch (error) {
       hilog.error(DOMAIN, 'AttributionButton', `Error showing attribution dialog: ${error}`);
     }

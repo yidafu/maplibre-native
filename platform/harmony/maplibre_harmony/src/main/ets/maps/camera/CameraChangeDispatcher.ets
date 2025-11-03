@@ -1,12 +1,16 @@
 /**
  * CameraChangeDispatcher - 相机变化事件调度器
- * 
+ *
  * 管理相机事件监听器并分发事件
  * 参考 Android 的 CameraChangeDispatcher 设计
  */
 
-import { OnCameraIdleListener, OnCameraMoveStartedListener, 
-         OnCameraMoveListener, OnCameraMoveCanceledListener } from './CameraListener';
+import {
+  OnCameraIdleListener,
+  OnCameraMoveCanceledListener,
+  OnCameraMoveListener,
+  OnCameraMoveStartedListener
+} from './CameraListener';
 import { CameraMoveReason } from './CameraMoveReason';
 
 export class CameraChangeDispatcher {
@@ -14,12 +18,11 @@ export class CameraChangeDispatcher {
   private moveStartedListeners: OnCameraMoveStartedListener[] = [];
   private moveListeners: OnCameraMoveListener[] = [];
   private canceledListeners: OnCameraMoveCanceledListener[] = [];
-  
   // 状态追踪
   private isIdle: boolean = true;
-  
+
   // ========== 添加监听器 ==========
-  
+
   /**
    * 添加相机空闲监听器
    */
@@ -28,7 +31,7 @@ export class CameraChangeDispatcher {
       this.idleListeners.push(listener);
     }
   }
-  
+
   /**
    * 移除相机空闲监听器
    */
@@ -38,7 +41,7 @@ export class CameraChangeDispatcher {
       this.idleListeners.splice(index, 1);
     }
   }
-  
+
   /**
    * 添加相机开始移动监听器
    */
@@ -47,7 +50,7 @@ export class CameraChangeDispatcher {
       this.moveStartedListeners.push(listener);
     }
   }
-  
+
   /**
    * 移除相机开始移动监听器
    */
@@ -57,7 +60,7 @@ export class CameraChangeDispatcher {
       this.moveStartedListeners.splice(index, 1);
     }
   }
-  
+
   /**
    * 添加相机移动中监听器
    */
@@ -66,7 +69,7 @@ export class CameraChangeDispatcher {
       this.moveListeners.push(listener);
     }
   }
-  
+
   /**
    * 移除相机移动中监听器
    */
@@ -76,7 +79,7 @@ export class CameraChangeDispatcher {
       this.moveListeners.splice(index, 1);
     }
   }
-  
+
   /**
    * 添加相机移动取消监听器
    */
@@ -85,7 +88,7 @@ export class CameraChangeDispatcher {
       this.canceledListeners.push(listener);
     }
   }
-  
+
   /**
    * 移除相机移动取消监听器
    */
@@ -95,9 +98,9 @@ export class CameraChangeDispatcher {
       this.canceledListeners.splice(index, 1);
     }
   }
-  
+
   // ========== 事件通知方法（由 NAPI 回调或内部调用）==========
-  
+
   /**
    * 通知相机开始移动
    * @param reason 移动原因
@@ -107,9 +110,9 @@ export class CameraChangeDispatcher {
     if (!this.isIdle) {
       return;
     }
-    
+
     this.isIdle = false;
-    
+
     // 通知所有监听器
     for (const listener of this.moveStartedListeners) {
       try {
@@ -119,7 +122,7 @@ export class CameraChangeDispatcher {
       }
     }
   }
-  
+
   /**
    * 通知相机正在移动
    */
@@ -128,7 +131,7 @@ export class CameraChangeDispatcher {
     if (this.isIdle) {
       return;
     }
-    
+
     // 通知所有监听器
     for (const listener of this.moveListeners) {
       try {
@@ -138,7 +141,7 @@ export class CameraChangeDispatcher {
       }
     }
   }
-  
+
   /**
    * 通知相机停止移动（空闲）
    */
@@ -147,9 +150,9 @@ export class CameraChangeDispatcher {
     if (this.isIdle) {
       return;
     }
-    
+
     this.isIdle = true;
-    
+
     // 通知所有监听器
     for (const listener of this.idleListeners) {
       try {
@@ -159,7 +162,7 @@ export class CameraChangeDispatcher {
       }
     }
   }
-  
+
   /**
    * 通知相机移动取消
    */
@@ -168,7 +171,7 @@ export class CameraChangeDispatcher {
     if (this.isIdle) {
       return;
     }
-    
+
     // 通知所有监听器
     for (const listener of this.canceledListeners) {
       try {
@@ -178,7 +181,7 @@ export class CameraChangeDispatcher {
       }
     }
   }
-  
+
   /**
    * 清除所有监听器
    */
@@ -189,7 +192,7 @@ export class CameraChangeDispatcher {
     this.canceledListeners = [];
     this.isIdle = true;
   }
-  
+
   /**
    * 获取当前状态
    */

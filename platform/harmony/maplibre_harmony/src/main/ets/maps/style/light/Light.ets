@@ -85,10 +85,10 @@ export class Light {
    */
   public equals(other: Light): boolean {
     return this.anchor === other.anchor &&
-           this.position.length === other.position.length &&
-           this.position.every((val, index) => val === other.position[index]) &&
-           this.color === other.color &&
-           this.intensity === other.intensity;
+      this.position.length === other.position.length &&
+    this.position.every((val, index) => val === other.position[index]) &&
+      this.color === other.color &&
+      this.intensity === other.intensity;
   }
 
   /**

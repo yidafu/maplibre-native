@@ -1,6 +1,6 @@
 /**
  * GeoJSON 类型定义
- * 
+ *
  * 符合 GeoJSON 规范 (RFC 7946) 的类型定义
  */
 
@@ -11,6 +11,7 @@
  * [longitude, latitude] 或 [longitude, latitude, altitude]
  */
 import type { Position, Position2D, Position3D } from 'libmaplibre.so';
+
 export type { Position, Position2D, Position3D };
 
 // ==================== Geometry 接口 ====================
@@ -81,14 +82,14 @@ export interface IGeometryCollection extends IGeometry {
 /**
  * Geometry 联合类型
  */
-export type Geometry = 
+export type Geometry =
   | IPoint
-  | ILineString
-  | IPolygon
-  | IMultiPoint
-  | IMultiLineString
-  | IMultiPolygon
-  | IGeometryCollection;
+    | ILineString
+    | IPolygon
+    | IMultiPoint
+    | IMultiLineString
+    | IMultiPolygon
+    | IGeometryCollection;
 
 // ==================== Feature 接口 ====================
 
@@ -100,7 +101,7 @@ export interface IFeature {
   id?: string | number;
   geometry: Geometry;
   properties: Record<string, Object>;
-  layer?: string;  // 图层ID（可选）
+  layer?: string; // 图层ID（可选）
 }
 
 /**

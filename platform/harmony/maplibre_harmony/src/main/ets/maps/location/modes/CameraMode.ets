@@ -8,37 +8,31 @@ export class CameraMode {
    * No camera tracking.
    */
   static readonly NONE: number = 0x00000008;
-
   /**
    * 相机不跟踪位置，但跟踪指南针方向
    * Camera does not track location, but does track compass bearing.
    */
   static readonly NONE_COMPASS: number = 0x00000010;
-
   /**
    * 相机不跟踪位置，但跟踪 GPS 方向
    * Camera does not track location, but does track GPS bearing.
    */
   static readonly NONE_GPS: number = 0x00000016;
-
   /**
    * 相机跟踪用户位置
    * Camera tracks the user location.
    */
   static readonly TRACKING: number = 0x00000018;
-
   /**
    * 相机跟踪用户位置和指南针方向
    * Camera tracks the user location, with bearing provided by a compass.
    */
   static readonly TRACKING_COMPASS: number = 0x00000020;
-
   /**
    * 相机跟踪用户位置和 GPS 方向
    * Camera tracks the user location, with bearing provided by GPS.
    */
   static readonly TRACKING_GPS: number = 0x00000022;
-
   /**
    * 相机跟踪用户位置，方向始终为北（0度）
    * Camera tracks the user location, with bearing always set to north (0).
@@ -50,12 +44,12 @@ export class CameraMode {
    */
   static isValid(mode: number): boolean {
     return mode === CameraMode.NONE ||
-           mode === CameraMode.NONE_COMPASS ||
-           mode === CameraMode.NONE_GPS ||
-           mode === CameraMode.TRACKING ||
-           mode === CameraMode.TRACKING_COMPASS ||
-           mode === CameraMode.TRACKING_GPS ||
-           mode === CameraMode.TRACKING_GPS_NORTH;
+      mode === CameraMode.NONE_COMPASS ||
+      mode === CameraMode.NONE_GPS ||
+      mode === CameraMode.TRACKING ||
+      mode === CameraMode.TRACKING_COMPASS ||
+      mode === CameraMode.TRACKING_GPS ||
+      mode === CameraMode.TRACKING_GPS_NORTH;
   }
 
   /**
@@ -63,9 +57,9 @@ export class CameraMode {
    */
   static isTracking(mode: number): boolean {
     return mode === CameraMode.TRACKING ||
-           mode === CameraMode.TRACKING_COMPASS ||
-           mode === CameraMode.TRACKING_GPS ||
-           mode === CameraMode.TRACKING_GPS_NORTH;
+      mode === CameraMode.TRACKING_COMPASS ||
+      mode === CameraMode.TRACKING_GPS ||
+      mode === CameraMode.TRACKING_GPS_NORTH;
   }
 
   /**

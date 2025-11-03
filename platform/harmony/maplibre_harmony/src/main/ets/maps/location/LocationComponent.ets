@@ -1,4 +1,3 @@
-import maplibre from 'libmaplibre.so';
 import geoLocationManager from '@ohos.geoLocationManager';
 import { MapLibreMap } from '../MapLibreMap';
 import { LocationComponentOptions } from './LocationComponentOptions';
@@ -12,7 +11,7 @@ import { LocationEngineRequest } from './engine/LocationEngineRequest';
 import { HarmonyLocationEngine } from './engine/HarmonyLocationEngine';
 import { RenderMode } from './modes/RenderMode';
 import { CameraMode } from './modes/CameraMode';
-import { LatLng, createLatLng } from '../geometry/LatLng';
+import { createLatLng, LatLng } from '../geometry/LatLng';
 import { OnLocationClickListener } from './listeners/OnLocationClickListener';
 import { OnCameraTrackingChangedListener } from './listeners/OnCameraTrackingChangedListener';
 import { OnRenderModeChangedListener } from './listeners/OnRenderModeChangedListener';
@@ -24,9 +23,9 @@ import { Style } from '../style/Style';
 
 /**
  * LocationComponent - 用户定位组件
- * 
+ *
  * 提供用户位置的可视化、相机跟踪和交互功能
- * 
+ *
  * 使用方法：
  * 1. 从 MapLibreMap 获取组件：map.getLocationComponent()
  * 2. 激活组件：component.activateLocationComponent(options)
@@ -35,32 +34,26 @@ import { Style } from '../style/Style';
  */
 export class LocationComponent implements OnRenderModeChangedListener, OnCameraTrackingChangedListener, LocationEngineCallback, CompassListener {
   private static readonly TAG: string = 'LocationComponent';
-
   // 核心依赖
   private maplibreMap: MapLibreMap;
   private style: Style | null = null;
   private options: LocationComponentOptions;
-
   // 子控制器
   private locationLayerController?: LocationLayerController;
   private locationCameraController?: LocationCameraController;
   private locationAnimatorCoordinator?: LocationAnimatorCoordinator;
   private compassEngine?: CompassEngine;
-
   // 位置引擎
   private locationEngine?: LocationEngine;
   private locationEngineRequest: LocationEngineRequest;
   private useDefaultLocationEngine: boolean = true;
-
   // 状态管理
   private isComponentInitialized: boolean = false;
   private isComponentStarted: boolean = false;
   private isEnabled: boolean = false;
   private lastLocation?: geoLocationManager.Location;
-
   // 过期状态管理
   private staleStateTimer?: number;
-
   // 监听器列表
   private locationClickListeners: Set<OnLocationClickListener> = new Set();
   private cameraTrackingChangedListeners: Set<OnCameraTrackingChangedListener> = new Set();
@@ -70,7 +63,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
   constructor(maplibreMap: MapLibreMap) {
     this.maplibreMap = maplibreMap;
     this.options = new LocationComponentOptions();
-    
+
     // 创建默认的位置请求
     this.locationEngineRequest = LocationEngineRequest.builder()
       .setInterval(LocationComponentConstants.DEFAULT_INTERVAL_MILLIS)
@@ -108,7 +101,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
     } catch (err) {
       const errorMsg = `Failed to initialize LocationComponent: ${err}`;
       hilog.error(DOMAIN, LocationComponent.TAG, errorMsg);
-      
+
       // 清理已初始化的资源
       this.cleanup();
       throw new Error(errorMsg);
@@ -238,10 +231,10 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
 
   // 实现 LocationEngineCallback
   onSuccess(location: geoLocationManager.Location): void {
-    
+
     this.updateLocation(location, true);
   }
-  
+
   onFailure(error: Error): void {
     hilog.error(DOMAIN, LocationComponent.TAG, `Location error: ${error.message}`);
   }
@@ -257,7 +250,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
         this.lastLocation.accuracy ?? 0,
         this.options.compassAnimationEnabled
       );
-      
+
       // 更新相机
       this.locationCameraController?.updateLocation(latLng, heading);
     }
@@ -441,11 +434,11 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
   onCameraTrackingChanged(mode: number): void {
     this.notifyCameraTrackingChanged(mode);
   }
-  
+
   onCameraTrackingDismissed(): void {
     this.notifyCameraTrackingDismissed();
   }
-  
+
   private notifyCameraTrackingChanged(mode: number): void {
     this.cameraTrackingChangedListeners.forEach(listener => {
       listener.onCameraTrackingChanged(mode);
@@ -470,7 +463,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
   onRenderModeChanged(mode: number): void {
     this.notifyRenderModeChanged(mode);
   }
-  
+
   private notifyRenderModeChanged(mode: number): void {
     this.renderModeChangedListeners.forEach(listener => {
       listener.onRenderModeChanged(mode);
@@ -522,7 +515,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
     }
 
     this.isComponentStarted = true;
-    
+
     if (this.isEnabled) {
       this.enable();
     }
@@ -544,7 +537,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
    * 组件生命周期：onDestroy
    */
   onDestroy(): void {
-    
+
     try {
       this.disable();
       this.cleanup();
@@ -562,30 +555,30 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
       // 清理动画
       this.locationAnimatorCoordinator?.dispose();
       this.locationAnimatorCoordinator = undefined;
-      
+
       // 清理指南针
       this.compassEngine?.stopAllListeners();
       this.compassEngine = undefined;
-      
+
       // 清理图层
       this.locationLayerController?.removeLayers();
       this.locationLayerController = undefined;
-      
+
       // 清理相机控制器
       this.locationCameraController = undefined;
-      
+
       // 清理监听器
       this.locationClickListeners.clear();
       this.cameraTrackingChangedListeners.clear();
       this.renderModeChangedListeners.clear();
       this.locationStaleListeners.clear();
-      
+
       // 清理定时器
       this.clearStaleStateTimer();
-      
+
       this.isComponentInitialized = false;
       this.isEnabled = false;
-      
+
     } catch (err) {
       hilog.error(DOMAIN, LocationComponent.TAG, `Error during cleanup: ${err}`);
     }

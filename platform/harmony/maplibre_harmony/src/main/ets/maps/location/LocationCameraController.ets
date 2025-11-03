@@ -1,10 +1,9 @@
-import maplibre from 'libmaplibre.so';
 import { MapLibreMap } from '../MapLibreMap';
 import { LocationComponentOptions } from './LocationComponentOptions';
 import { CameraMode } from './modes/CameraMode';
 import { OnCameraTrackingChangedListener } from './listeners/OnCameraTrackingChangedListener';
 import { LatLng } from '../geometry/LatLng';
-import { CameraPosition, CameraOptions } from '../camera/CameraPosition';
+import { CameraOptions, CameraPosition } from '../camera/CameraPosition';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -16,16 +15,13 @@ type ESObject = object;
  */
 export class LocationCameraController {
   private static readonly TAG: string = 'LocationCameraController';
-
   private maplibreMap: MapLibreMap;
   private options: LocationComponentOptions;
   private cameraMode: number = CameraMode.NONE;
   private cameraTrackingChangedListener?: OnCameraTrackingChangedListener;
-  
   // 当前跟踪的位置和方向
   private lastLocation?: LatLng;
   private lastBearing: number = 0;
-  
   // 手势打断跟踪的检测
   private isTransitioning: boolean = false;
   private userInteracting: boolean = false;
@@ -38,7 +34,7 @@ export class LocationCameraController {
     this.maplibreMap = maplibreMap;
     this.options = options;
     this.cameraTrackingChangedListener = cameraTrackingChangedListener;
-    
+
     // 监听相机移动事件，检测用户手势
     this.setupGestureDetection();
   }
@@ -104,13 +100,13 @@ export class LocationCameraController {
           // 只跟踪位置，不改变方向
           cameraBearing = (currentCamera as CameraPosition)?.bearing ?? 0;
           break;
-        
+
         case CameraMode.TRACKING_COMPASS:
         case CameraMode.TRACKING_GPS:
           // 跟踪位置和方向
           cameraBearing = bearing;
           break;
-        
+
         default:
           this.isTransitioning = false;
           return;
@@ -125,7 +121,7 @@ export class LocationCameraController {
       };
 
       // 动画时长
-      const duration = immediate ? 0 : 
+      const duration = immediate ? 0 :
         (this.options.trackingAnimationDurationMultiplier * 750);
 
       // 移动相机
@@ -152,15 +148,15 @@ export class LocationCameraController {
    */
   onUserInteractionStart(): void {
     this.userInteracting = true;
-    
+
     // 如果在跟踪模式，取消跟踪
     if (CameraMode.isTracking(this.cameraMode)) {
-      
+
       // 通知监听器
       if (this.cameraTrackingChangedListener && this.cameraTrackingChangedListener.onCameraTrackingDismissed) {
         this.cameraTrackingChangedListener.onCameraTrackingDismissed();
       }
-      
+
       // 切换到非跟踪模式
       this.setCameraMode(CameraMode.NONE);
     }

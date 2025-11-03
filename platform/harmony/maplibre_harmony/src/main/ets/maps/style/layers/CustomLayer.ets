@@ -1,8 +1,8 @@
 /**
  * CustomLayer - 自定义渲染图层封装类
- * 
+ *
  * 对应Android平台: org.maplibre.android.style.layers.CustomLayer
- * 
+ *
  * 自定义图层允许开发者使用OpenGL ES直接在地图上渲染内容
  */
 import maplibre from 'libmaplibre.so';
@@ -11,24 +11,26 @@ import maplibre from 'libmaplibre.so';
  * RGBA颜色接口
  */
 export interface RGBAColor {
-  r: number;  // 红色分量 (0.0 - 1.0)
-  g: number;  // 绿色分量 (0.0 - 1.0)
-  b: number;  // 蓝色分量 (0.0 - 1.0)
-  a: number;  // 透明度 (0.0 - 1.0)
+  r: number; // 红色分量 (0.0 - 1.0)
+  g: number; // 绿色分量 (0.0 - 1.0)
+  b: number; // 蓝色分量 (0.0 - 1.0)
+  a: number; // 透明度 (0.0 - 1.0)
 }
 
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 /**
  * CustomLayer - 自定义渲染图层
- * 
+ *
  * 允许开发者通过OpenGL ES在地图上进行自定义渲染
- * 
+ *
  * @example
- * ```typescript
+* ```typescript
  * const customLayer = new CustomLayer('custom-layer');
  * customLayer.setColor(1.0, 0.0, 0.0, 0.5);  // 红色半透明
  * map.getStyle().addLayer(customLayer);
@@ -117,7 +119,7 @@ export class CustomLayer {
 
 /**
  * 辅助函数：创建 CustomLayer 并设置颜色
- * 
+ *
  * @param id 图层ID
  * @param color 颜色对象
  * @returns CustomLayer 实例

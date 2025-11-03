@@ -74,10 +74,13 @@ export class NativeMapOptions {
     this.zoomEnabled = options.zoomEnabled !== undefined ? options.zoomEnabled : true;
     this.rotateEnabled = options.rotateEnabled !== undefined ? options.rotateEnabled : true;
     this.tiltEnabled = options.tiltEnabled !== undefined ? options.tiltEnabled : true;
-    this.doubleTapToZoomInEnabled = options.doubleTapToZoomInEnabled !== undefined ? options.doubleTapToZoomInEnabled : true;
+    this.doubleTapToZoomInEnabled =
+      options.doubleTapToZoomInEnabled !== undefined ? options.doubleTapToZoomInEnabled : true;
     this.quickZoomEnabled = options.quickZoomEnabled !== undefined ? options.quickZoomEnabled : true;
-    this.twoFingerTouchRotationEnabled = options.twoFingerTouchRotationEnabled !== undefined ? options.twoFingerTouchRotationEnabled : true;
-    this.twoFingerTouchPitchEnabled = options.twoFingerTouchPitchEnabled !== undefined ? options.twoFingerTouchPitchEnabled : true;
+    this.twoFingerTouchRotationEnabled =
+      options.twoFingerTouchRotationEnabled !== undefined ? options.twoFingerTouchRotationEnabled : true;
+    this.twoFingerTouchPitchEnabled =
+      options.twoFingerTouchPitchEnabled !== undefined ? options.twoFingerTouchPitchEnabled : true;
     this.prefetchTiles = options.prefetchTiles !== undefined ? options.prefetchTiles : true;
     this.prefetchZoomDelta = options.prefetchZoomDelta || 4;
     this.tileCacheEnabled = options.tileCacheEnabled !== undefined ? options.tileCacheEnabled : true;
