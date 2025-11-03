@@ -13,6 +13,7 @@ import type { PropertyValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct DataDrivenStyleTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -35,7 +36,7 @@ struct DataDrivenStyleTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -92,9 +93,18 @@ struct DataDrivenStyleTestPage {
 
   @Builder
   buildActionButtons() {
-    Button('更新数据')
-      .onClick(() => {
-        showToast('更新数据功能待实现');
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      Button('更新数据')
+            .onClick(() => {
+              showToast('更新数据功能待实现');
+            })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
 }

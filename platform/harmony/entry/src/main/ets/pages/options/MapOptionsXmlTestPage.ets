@@ -24,7 +24,6 @@ struct MapOptionsXmlTestPage {
   
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
-    this.mapController.setStyleUrl('https://demotiles.maplibre.org/style.json');
     this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
   };
   
@@ -35,7 +34,7 @@ struct MapOptionsXmlTestPage {
       styleUrl: 'https://demotiles.maplibre.org/style.json',
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       initialBearing: 0,
       initialPitch: 0,
       onMapReady: this.onMapReady
@@ -49,7 +48,7 @@ struct MapOptionsXmlTestPage {
       styleUrl: 'https://demotiles.maplibre.org/style.json',
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       initialBearing: 0,
       initialPitch: 0,
       onMapReady: this.onMapReady

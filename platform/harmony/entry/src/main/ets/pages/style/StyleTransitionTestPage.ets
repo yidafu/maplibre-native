@@ -15,6 +15,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct StyleTransitionTestPage {
+  private scroller: Scroller = new Scroller();
   @State statusMessage: string = '等待操作...';
   @State mapReady: boolean = false;
   @State transitionInfo: string = '';
@@ -39,7 +40,7 @@ struct StyleTransitionTestPage {
       styleUrl: this.styleUrls[0],
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       initialBearing: 0,
       initialPitch: 0,
       onMapReady: (map: MapLibreMap) => {
@@ -53,30 +54,32 @@ struct StyleTransitionTestPage {
    * 控制区域构建器
    */
   @Builder
-  buildControlPanel() {
-    // 状态信息
-    Text(this.statusMessage)
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      // 状态信息
+          Text(this.statusMessage)
       .fontSize(14)
       .width('100%')
       .backgroundColor('#F8F8F8')
       .borderRadius(4)
     
-    // 过渡配置信息
-    if (this.transitionInfo) {
+          // 过渡配置信息
+          if (this.transitionInfo) {
       Text(this.transitionInfo)
         .fontSize(12)
         .width('100%')
         .backgroundColor('#F3E5F5')
         .borderRadius(4)
         .fontColor('#6A1B9A')
-    }
+          }
     
-    // 过渡速度配置
-    Text('过渡速度配置')
+          // 过渡速度配置
+          Text('过渡速度配置')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
       .width('100%')
-    Row() {
+          Row() {
       Button('快速 (100ms)')
         .width('48%')
         .onClick(() => {
@@ -91,9 +94,9 @@ struct StyleTransitionTestPage {
           this.setSlowTransition();
         })
         .enabled(this.mapReady)
-    }
-    .width('100%')
-    Row() {
+          }
+          .width('100%')
+          Row() {
       Button('默认 (300ms)')
         .width('48%')
         .onClick(() => {
@@ -108,25 +111,32 @@ struct StyleTransitionTestPage {
           this.showCurrentTransition();
         })
         .enabled(this.mapReady)
-    }
-    .width('100%')
-    Divider()
+          }
+          .width('100%')
+          Divider()
     
-    // 样式切换测试
-    Text('样式切换测试')
+          // 样式切换测试
+          Text('样式切换测试')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
       .width('100%')
-    Text('切换样式可查看过渡效果')
+          Text('切换样式可查看过渡效果')
       .fontSize(13)
       .width('100%')
     
-    Button('切换地图样式')
+          Button('切换地图样式')
       .width('100%')
       .onClick(() => {
         this.switchStyle();
       })
       .enabled(this.mapReady)
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
 
   build() {
@@ -135,7 +145,7 @@ struct StyleTransitionTestPage {
         showActionBar: true,
         title: '样式过渡选项测试',
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

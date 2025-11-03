@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct CustomSpriteTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -34,7 +35,7 @@ struct CustomSpriteTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -44,15 +45,24 @@ struct CustomSpriteTestPage {
 
   @Builder
   buildActionButtons() {
-    Button('添加自定义图标')
-      .onClick(() => {
-        this.addCustomIcon();
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      Button('添加自定义图标')
+            .onClick(() => {
+              this.addCustomIcon();
+            })
     
-    Button('使用自定义图标')
-      .onClick(() => {
-        this.useCustomIcon();
-      })
+          Button('使用自定义图标')
+            .onClick(() => {
+              this.useCustomIcon();
+            })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
   
   private addCustomIcon(): void {

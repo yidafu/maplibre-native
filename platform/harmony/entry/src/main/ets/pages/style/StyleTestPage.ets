@@ -171,7 +171,7 @@ struct StyleTestPage {
         styleUrl: this.styleUrls[0].url,
         initialLatitude: 39.9,
         initialLongitude: 116.4,
-        initialZoom: 10,
+        initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
         onMapReady: (map: MapLibreMap) => {
@@ -204,160 +204,171 @@ struct StyleTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-    // 当前状态显示
-    Column({ space: 5 }) {
-      Text(`当前样式: ${this.currentStyleName}`)
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .width('100%')
-      Text(`URL: ${this.currentStyleUrl || '加载中...'}`)
-        .fontSize(12)
-        .fontColor('#666666')
-        .width('100%')
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-      
-      Text(`样式信息: ${this.styleInfo}`)
-        .fontSize(12)
-        .fontColor('#666666')
-        .width('100%')
-    }
-    .width('100%')
-    .padding(12)
-    .backgroundColor('#F8F8F8')
-    .borderRadius(8)
-    .alignItems(HorizontalAlign.Start)
-
-    // 地图样式切换区域
-    Text('🎨 样式切换')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    ForEach(this.styleUrls, (item: StyleUrlItem) => {
-      Column({ space: 5 }) {
-        Button(item.name)
-          .onClick(() => this.switchStyle(item.url, item.name))
-          .width('100%')
+  buildActionButtons() {
+    Column({ space: 8 }) {
+      // 当前状态显示
+      Column({ space: 4 }) {
+        Text(`当前样式: ${this.currentStyleName}`)
           .fontSize(14)
-        
-        Text(item.description)
-          .fontSize(11)
-          .fontColor('#999999')
+          .fontWeight(FontWeight.Medium)
           .width('100%')
-          .margin({ top: -5 })
+        
+        Text(`URL: ${this.currentStyleUrl || '加载中...'}`)
+          .fontSize(12)
+          .fontColor('#666666')
+          .width('100%')
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        
+        Text(`样式信息: ${this.styleInfo}`)
+          .fontSize(12)
+          .fontColor('#666666')
+          .width('100%')
       }
       .width('100%')
-    }, (item: StyleUrlItem) => item.url)
+      .padding(8)
+      .backgroundColor('#F8F8F8')
+      .borderRadius(4)
+      .alignItems(HorizontalAlign.Start)
 
-    Divider().strokeWidth(2)
-
-    Text('📁 本地样式测试')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    Button('1. 简单背景样式 ✅')
-      .onClick(() => this.loadLocalStyle('styles-simple.json', '简单背景样式'))
-      .width('100%')
-      .backgroundColor('#4CAF50')
-
-    Button('2. MapLibre Demo 样式')
-      .onClick(() => this.loadLocalStyle('styles-demo.json', 'MapLibre Demo (本地)'))
-      .width('100%')
-      .backgroundColor('#2196F3')
-
-    Button('3. 杭州矢量地图 ⚠️ 内网')
-      .onClick(() => this.loadLocalStyle('styles.json', '杭州矢量地图'))
-      .width('100%')
-      .backgroundColor('#FF9800')
-
-    Divider().strokeWidth(2)
-
-    Text('📊 样式信息')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    Row() {
-      Button('获取样式名称')
-        .onClick(() => this.handleGetStyleName())
-        .width('48%')
-        .fontSize(12)
-        .backgroundColor('#9C27B0')
-
-      Button('获取样式URL')
-        .onClick(() => this.handleGetStyleUrl())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(12)
-        .backgroundColor('#9C27B0')
-    }
-    .width('100%')
-    Row() {
-      Button('获取样式JSON')
-        .onClick(() => this.handleGetStyleJson())
-        .width('48%')
-        .fontSize(12)
-        .backgroundColor('#9C27B0')
-
-      Button('列出所有图层ID')
-        .onClick(() => this.handleListAllLayers())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(11)
-        .backgroundColor('#9C27B0')
-    }
-    .width('100%')
-    Button('列出所有数据源ID')
-      .onClick(() => this.handleListAllSources())
-      .width('48%')
-      .fontSize(11)
-      .backgroundColor('#9C27B0')
-
-    Divider().strokeWidth(2)
-
-    Text('⚙️ 样式控制')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    Row() {
-      Button('隐藏所有图层')
-        .onClick(() => this.handleHideAllLayers())
-        .width('48%')
-        .fontSize(12)
-        .backgroundColor('#FF9800')
-
-      Button('显示所有图层')
-        .onClick(() => this.handleShowAllLayers())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(12)
-        .backgroundColor('#FF9800')
-    }
-    .width('100%')
-    Button('重新加载当前样式')
-      .onClick(() => this.handleReloadStyle())
-      .width('48%')
-      .fontSize(12)
-      .backgroundColor('#FF5722')
-    
-    Divider().strokeWidth(2)
-
-    Text('🔧 渲染调试')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    Row() {
-      Button('强制重绘 (Debug)')
-        .onClick(() => this.handleForceRepaint())
-        .width('48%')
-        .fontSize(12)
-        .backgroundColor('#607D8B')
+      // 地图样式切换区域
+      Text('🎨 样式切换')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 4 })
       
-      Button('重置相机位置')
-        .onClick(() => this.handleResetCamera())
-        .width('48%')
-        .margin({ left: 8 })
+      ForEach(this.styleUrls, (item: StyleUrlItem) => {
+        Column({ space: 4 }) {
+          Button(item.name)
+            .onClick(() => this.switchStyle(item.url, item.name))
+            .width('100%')
+            .fontSize(14)
+          
+          Text(item.description)
+            .fontSize(11)
+            .fontColor('#999999')
+            .width('100%')
+        }
+        .width('100%')
+      }, (item: StyleUrlItem) => item.url)
+
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Text('📁 本地样式测试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Button('1. 简单背景样式 ✅')
+        .onClick(() => this.loadLocalStyle('styles-simple.json', '简单背景样式'))
+        .width('100%')
+        .fontSize(14)
+        .backgroundColor('#4CAF50')
+
+      Button('2. MapLibre Demo 样式')
+        .onClick(() => this.loadLocalStyle('styles-demo.json', 'MapLibre Demo (本地)'))
+        .width('100%')
+        .fontSize(14)
+        .backgroundColor('#2196F3')
+
+      Button('3. 杭州矢量地图 ⚠️ 内网')
+        .onClick(() => this.loadLocalStyle('styles.json', '杭州矢量地图'))
+        .width('100%')
+        .fontSize(14)
+        .backgroundColor('#FF9800')
+
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Text('📊 样式信息')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Row({ space: 8 }) {
+        Button('获取样式名称')
+          .onClick(() => this.handleGetStyleName())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#9C27B0')
+
+        Button('获取样式URL')
+          .onClick(() => this.handleGetStyleUrl())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#9C27B0')
+      }
+      .width('100%')
+      
+      Row({ space: 8 }) {
+        Button('获取样式JSON')
+          .onClick(() => this.handleGetStyleJson())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#9C27B0')
+
+        Button('列出所有图层ID')
+          .onClick(() => this.handleListAllLayers())
+          .layoutWeight(1)
+          .fontSize(11)
+          .backgroundColor('#9C27B0')
+      }
+      .width('100%')
+      
+      Button('列出所有数据源ID')
+        .onClick(() => this.handleListAllSources())
+        .width('100%')
         .fontSize(12)
-        .backgroundColor('#607D8B')
+        .backgroundColor('#9C27B0')
+
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Text('⚙️ 样式控制')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Row({ space: 8 }) {
+        Button('隐藏所有图层')
+          .onClick(() => this.handleHideAllLayers())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#FF9800')
+
+        Button('显示所有图层')
+          .onClick(() => this.handleShowAllLayers())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#FF9800')
+      }
+      .width('100%')
+      
+      Button('重新加载当前样式')
+        .onClick(() => this.handleReloadStyle())
+        .width('100%')
+        .fontSize(12)
+        .backgroundColor('#FF5722')
+      
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Text('🔧 渲染调试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Row({ space: 8 }) {
+        Button('强制重绘 (Debug)')
+          .onClick(() => this.handleForceRepaint())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#607D8B')
+        
+        Button('重置相机位置')
+          .onClick(() => this.handleResetCamera())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#607D8B')
+      }
+      .width('100%')
     }
     .width('100%')
   }
@@ -368,7 +379,7 @@ struct StyleTestPage {
         showActionBar: true,
         title: this.message,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -15,6 +15,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct GeoJsonClusteringTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private pointCount: number = 0;
   @State private clusterRadius: number = 50;
@@ -160,92 +161,104 @@ struct GeoJsonClusteringTestPage {
   };
   
   @Builder
-  actionButtonsBuilder() {
-    Button('10个点')
-      .fontSize(14)
-      .onClick(() => this.generateRandomPoints(10));
-    
-    Button('50个点')
-      .fontSize(14)
-      .onClick(() => this.generateRandomPoints(50));
-    
-    Button('100个点')
-      .fontSize(14)
-      .onClick(() => this.generateRandomPoints(100));
-    
-    Button('更新配置')
-      .fontSize(14)
-      .backgroundColor('#4CAF50')
-      .onClick(this.updateClusterConfig);
-  }
-  
-  @Builder
-  controlPanelBuilder() {
-    Column() {
-      Text('聚类配置')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 12 });
-      
-      Text(`点数量: ${this.pointCount}`)
-        .fontSize(14)
-        .margin({ bottom: 8 });
-      
-      // 聚类半径
-      Row() {
-        Text('聚类半径:')
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text('生成测试数据')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+          .margin({ top: 8, bottom: 4 })
+        
+        Row({ space: 8 }) {
+          Button('10个点')
+            .fontSize(14)
+            .layoutWeight(1)
+            .onClick(() => this.generateRandomPoints(10))
+          
+          Button('50个点')
+            .fontSize(14)
+            .layoutWeight(1)
+            .onClick(() => this.generateRandomPoints(50))
+        }
+        
+        Row({ space: 8 }) {
+          Button('100个点')
+            .fontSize(14)
+            .layoutWeight(1)
+            .onClick(() => this.generateRandomPoints(100))
+          
+          Button('更新配置')
+            .fontSize(14)
+            .layoutWeight(1)
+            .backgroundColor('#4CAF50')
+            .onClick(this.updateClusterConfig)
+        }
+        
+        Text('聚类配置')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+          .margin({ top: 8, bottom: 4 })
+        
+        Text(`点数量: ${this.pointCount}`)
           .fontSize(14)
-          .width(80);
-        Slider({
-          value: this.clusterRadius,
-          min: 10,
-          max: 100,
-          step: 10
-        })
-          .layoutWeight(1)
-          .onChange((value: number) => {
-            this.clusterRadius = value;
-          });
-        Text(`${this.clusterRadius}`)
-          .fontSize(14)
-          .width(50);
+          .width('100%')
+        
+        Row() {
+          Text('聚类半径:')
+            .fontSize(14)
+            .width(80)
+          Slider({
+            value: this.clusterRadius,
+            min: 10,
+            max: 100,
+            step: 10
+          })
+            .layoutWeight(1)
+            .onChange((value: number) => {
+              this.clusterRadius = value;
+            })
+          Text(`${this.clusterRadius}`)
+            .fontSize(14)
+            .width(50)
+        }
+        .width('100%')
+        
+        Row() {
+          Text('最大级别:')
+            .fontSize(14)
+            .width(80)
+          Slider({
+            value: this.clusterMaxZoom,
+            min: 8,
+            max: 18,
+            step: 1
+          })
+            .layoutWeight(1)
+            .onChange((value: number) => {
+              this.clusterMaxZoom = value;
+            })
+          Text(`${this.clusterMaxZoom}`)
+            .fontSize(14)
+            .width(50)
+        }
+        .width('100%')
+        
+        Text('说明: 点击聚类可以放大查看详情')
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
       }
       .width('100%')
-      .margin({ bottom: 8 });
-      
-      // 最大聚类缩放级别
-      Row() {
-        Text('最大级别:')
-          .fontSize(14)
-          .width(80);
-        Slider({
-          value: this.clusterMaxZoom,
-          min: 8,
-          max: 18,
-          step: 1
-        })
-          .layoutWeight(1)
-          .onChange((value: number) => {
-            this.clusterMaxZoom = value;
-          });
-        Text(`${this.clusterMaxZoom}`)
-          .fontSize(14)
-          .width(50);
-      }
-      .width('100%')
-      .margin({ bottom: 8 });
-      
-      Text('说明: 点击聚类可以放大查看详情')
-        .fontSize(12)
-        .fontColor('#666666')
-        .margin({ top: 8 });
+      .padding(8)
     }
-    .alignItems(HorizontalAlign.Start)
-    .width(280);
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   @Builder
-  mapContentBuilder() {
+  buildMapContent() {
     MapView({
       onMapReady: this.onMapReady,
       styleUrl: DEFAULT_STYLE_URLS.bright,
@@ -254,7 +267,7 @@ struct GeoJsonClusteringTestPage {
       initialZoom: 10
     })
       .width('100%')
-      .height('100%');
+      .height('100%')
   }
   
   build() {
@@ -263,12 +276,11 @@ struct GeoJsonClusteringTestPage {
         title: 'GeoJSON Clustering',
         description: 'GeoJSON 聚类',
         showActionBar: true,
-        actionButtons: (): void => this.actionButtonsBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
-        mapContent: (): void => this.mapContentBuilder()
-      });
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

@@ -11,8 +11,9 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct FillExtrusionTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
-  
+
   build() {
     Column() {
       TestPageLayout({
@@ -34,7 +35,7 @@ struct FillExtrusionTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 45, 16);
@@ -49,47 +50,55 @@ struct FillExtrusionTestPage {
       const props2: Record<string, Object> = { 'height': 150 };
       const geojson = GeoJson.featureCollection([
         GeoJson.polygonFeature([[
-            [116.39, 39.89],
-            [116.40, 39.89],
-            [116.40, 39.90],
-            [116.39, 39.90],
-            [116.39, 39.89]
-          ]], props1),
+          [116.39, 39.89],
+          [116.40, 39.89],
+          [116.40, 39.90],
+          [116.39, 39.90],
+          [116.39, 39.89]
+        ]], props1),
         GeoJson.polygonFeature([[
-            [116.40, 39.90],
-            [116.41, 39.90],
-            [116.41, 39.91],
-            [116.40, 39.91],
-            [116.40, 39.90]
-          ]], props2)
+          [116.40, 39.90],
+          [116.41, 39.90],
+          [116.41, 39.91],
+          [116.40, 39.91],
+          [116.40, 39.90]
+        ]], props2)
       ]);
-      
+
       const source = new GeoJsonSource('extrusion-source');
       source.setGeoJson(geojson);
       map.addSource(source);
-      
+
       const layer = new FillExtrusionLayer('extrusion-layer', 'extrusion-source');
       layer.setFillExtrusionColor('#2196F3');
       layer.setFillExtrusionOpacity(0.8);
       layer.setFillExtrusionHeight(['get', 'height']);
       layer.setFillExtrusionBase(0);
       map.addLayer(layer);
-      
+
       showToast('3D 拉伸图层已添加');
     } catch (error) {
       showToast(`添加失败: ${error}`);
     }
   }
-  
+
   @Builder
   buildActionButtons() {
-    Button('调整俯仰角')
-      .onClick(() => {
-        if (this.mapController) {
-          const pitch = this.mapController.getPitch();
-          this.mapController.setPitch(pitch < 45 ? 60 : 30, 500);
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('调整俯仰角')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              const pitch = this.mapController.getPitch();
+              this.mapController.setPitch(pitch < 45 ? 60 : 30, 500);
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 }
-

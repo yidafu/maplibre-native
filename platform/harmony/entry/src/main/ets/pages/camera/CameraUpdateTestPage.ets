@@ -25,8 +25,6 @@ struct CameraUpdateTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[CameraUpdateTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    map.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
     this.statusMessage = '地图已就绪';
     showToast('CameraUpdate 方法功能已激活');
@@ -47,7 +45,7 @@ struct CameraUpdateTestPage {
   
   @Builder
   controlPanelBuilder() {
-    Column({ space: 12 }) {
+    Column({ space: 8 }) {
       Text('CameraUpdate 方法')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -61,8 +59,20 @@ struct CameraUpdateTestPage {
         .backgroundColor('#F5F5F5')
         .borderRadius(4)
       
-      Divider().margin({ top: 8, bottom: 8 })
-      
+      Text('💡 CameraUpdateFactory 各种方法测试')
+        .fontSize(11)
+        .fontColor('#666')
+        .width('100%')
+        .margin({ top: 4 })
+        .lineHeight(16)
+    }
+    .width('100%')
+    .padding(8)
+  }
+  
+  @Builder
+  actionButtonsBuilder() {
+    Column({ space: 8 }) {
       Button('测试功能')
         .width('100%')
         .backgroundColor('#2196F3')
@@ -70,16 +80,9 @@ struct CameraUpdateTestPage {
           showToast('功能测试');
           this.statusMessage = '测试执行中...';
         })
-      
-      Text('💡 CameraUpdateFactory 各种方法测试')
-        .fontSize(11)
-        .fontColor('#666')
-        .width('100%')
-        .margin({ top: 8 })
-        .lineHeight(16)
     }
     .width('100%')
-    .padding(16)
+    .padding(8)
   }
   
   build() {
@@ -87,9 +90,10 @@ struct CameraUpdateTestPage {
       TestPageLayout({
         title: 'Camera Update',
         description: 'CameraUpdate 方法',
-        showActionBar: false,
+        showActionBar: true,
         mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder()
+        controlPanel: (): void => this.controlPanelBuilder(),
+        actionButtons: (): void => this.actionButtonsBuilder()
       });
     }
     .width('100%')

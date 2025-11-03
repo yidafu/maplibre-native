@@ -70,7 +70,7 @@ struct SourceTestPage {
         styleUrl: 'https://demotiles.maplibre.org/style.json',
         initialLatitude: 39.9,
         initialLongitude: 116.4,
-        initialZoom: 10,
+        initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
         onMapReady: (map: MapLibreMap) => {
@@ -103,85 +103,103 @@ struct SourceTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-    // 当前数据源显示
-    Text(`当前数据源: ${this.currentSource}`)
-      .fontSize(14)
+  buildActionButtons() {
+    Column({ space: 8 }) {
+      // 当前数据源显示
+      Text(`当前数据源: ${this.currentSource}`)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+        .padding(8)
+        .backgroundColor('#F8F8F8')
+        .borderRadius(4)
+      
+      Text('GeoJsonSource 测试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 4 })
+      
+      Row({ space: 8 }) {
+        Button('点数据 (Point)')
+          .onClick(() => this.handleTestGeoJsonPoint())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#2196F3')
+
+        Button('线数据 (LineString)')
+          .onClick(() => this.handleTestGeoJsonLine())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#2196F3')
+      }
       .width('100%')
-      .backgroundColor('#F8F8F8')
-      .borderRadius(4)
-    
-    Text('GeoJsonSource 测试')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
+      
+      Row({ space: 8 }) {
+        Button('面数据 (Polygon)')
+          .onClick(() => this.handleTestGeoJsonPolygon())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#2196F3')
+
+        Button('多点聚类')
+          .onClick(() => this.handleTestGeoJsonCluster())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#2196F3')
+      }
       .width('100%')
-    Row() {
-      Button('点数据 (Point)')
-        .onClick(() => this.handleTestGeoJsonPoint())
-        .width('48%')
+      
+      Button('从 URL 加载')
+        .onClick(() => this.handleTestGeoJsonFromUrl())
+        .width('100%')
+        .fontSize(13)
         .backgroundColor('#2196F3')
 
-      Button('线数据 (LineString)')
-        .onClick(() => this.handleTestGeoJsonLine())
-        .width('48%')
-        .margin({ left: 8 })
-        .backgroundColor('#2196F3')
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Text('VectorSource 测试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Button('矢量瓦片数据源')
+        .onClick(() => this.handleTestVectorSource())
+        .width('100%')
+        .fontSize(13)
+        .backgroundColor('#4CAF50')
+
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Text('RasterSource 测试')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Row({ space: 8 }) {
+        Button('OSM 栅格瓦片')
+          .onClick(() => this.handleTestRasterSource())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#FF9800')
+
+        Button('卫星影像')
+          .onClick(() => this.handleTestRasterSourceSatellite())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#FF9800')
+      }
+      .width('100%')
+      
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Button('清除所有数据源')
+        .onClick(() => this.handleClearAllSources())
+        .width('100%')
+        .fontSize(14)
+        .backgroundColor(Color.Red)
     }
     .width('100%')
-    Row() {
-      Button('面数据 (Polygon)')
-        .onClick(() => this.handleTestGeoJsonPolygon())
-        .width('48%')
-        .backgroundColor('#2196F3')
-
-      Button('多点聚类')
-        .onClick(() => this.handleTestGeoJsonCluster())
-        .width('48%')
-        .margin({ left: 8 })
-        .backgroundColor('#2196F3')
-    }
-    .width('100%')
-    Button('从 URL 加载')
-      .onClick(() => this.handleTestGeoJsonFromUrl())
-      .width('48%')
-      .backgroundColor('#2196F3')
-
-    Divider().strokeWidth(2)
-
-    Text('VectorSource 测试')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    Button('矢量瓦片数据源')
-      .onClick(() => this.handleTestVectorSource())
-      .width('48%')
-      .backgroundColor('#4CAF50')
-
-    Divider().strokeWidth(2)
-
-    Text('RasterSource 测试')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
-      .width('100%')
-    Row() {
-      Button('OSM 栅格瓦片')
-        .onClick(() => this.handleTestRasterSource())
-        .width('48%')
-        .backgroundColor('#FF9800')
-
-      Button('卫星影像')
-        .onClick(() => this.handleTestRasterSourceSatellite())
-        .width('48%')
-        .margin({ left: 8 })
-        .backgroundColor('#FF9800')
-    }
-    .width('100%')
-    Divider().strokeWidth(2)
-
-    Button('清除所有数据源')
-      .onClick(() => this.handleClearAllSources())
-      .width('48%')
-      .backgroundColor(Color.Red)
   }
 
   build() {
@@ -190,7 +208,7 @@ struct SourceTestPage {
         showActionBar: true,
         title: this.message,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

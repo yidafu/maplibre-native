@@ -13,6 +13,7 @@ import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct AnimatedSymbolLayerTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private markerPosition: LatLng = LatLng.create(39.9042, 116.4074);
   @State private isAnimating: boolean = false;
@@ -111,33 +112,38 @@ struct AnimatedSymbolLayerTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Button(this.isAnimating ? '停止动画' : '开始动画')
-        .width('100%')
-        .backgroundColor(this.isAnimating ? '#FF6B6B' : '#4CAF50')
-        .onClick(() => {
-          if (this.isAnimating) {
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button(this.isAnimating ? '停止动画' : '开始动画')
+          .width('100%')
+          .backgroundColor(this.isAnimating ? '#FF6B6B' : '#4CAF50')
+          .onClick(() => {
+            if (this.isAnimating) {
+              this.stopAnimation();
+            } else {
+              this.startAnimation();
+            }
+          })
+        
+        Button('重置位置')
+          .width('100%')
+          .onClick(() => {
             this.stopAnimation();
-          } else {
-            this.startAnimation();
-          }
-        })
-      
-      Button('重置位置')
-        .width('100%')
-        .onClick(() => {
-          this.stopAnimation();
-          this.markerPosition = LatLng.create(39.9042, 116.4074);
-          this.updateMarkerPosition();
-        })
-      
-      Text(`位置: ${this.markerPosition.latitude.toFixed(4)}, ${this.markerPosition.longitude.toFixed(4)}`)
-        .fontSize(12)
-        .fontColor('#666')
+            this.markerPosition = LatLng.create(39.9042, 116.4074);
+            this.updateMarkerPosition();
+          })
+        
+        Text(`位置: ${this.markerPosition.latitude.toFixed(4)}, ${this.markerPosition.longitude.toFixed(4)}`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+      }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   build() {
@@ -147,7 +153,7 @@ struct AnimatedSymbolLayerTestPage {
         description: '动画符号图层',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

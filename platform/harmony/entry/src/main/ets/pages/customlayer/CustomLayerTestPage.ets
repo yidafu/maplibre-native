@@ -33,8 +33,6 @@ struct CustomLayerTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[CustomLayerTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
     // 设置初始位置（对应Android测试：39.91448, -243.60947）
     map.jumpTo(0, 39.91448, -243.60947, 0, 10);
     

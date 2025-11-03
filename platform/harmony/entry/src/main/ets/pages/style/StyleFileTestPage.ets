@@ -20,6 +20,7 @@ import { resourceManager } from '@kit.LocalizationKit';
 @Entry
 @Component
 struct StyleFileTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private currentStyle: string = '远程样式';
   @State private isLoading: boolean = false;
@@ -136,105 +137,124 @@ struct StyleFileTestPage {
   
   @Builder
   actionButtonsBuilder() {
-    Button('远程样式')
-      .fontSize(13)
-      .enabled(!this.isLoading)
-      .onClick(() => this.loadStyle('远程样式'));
-    
-    Button('OSM Bright')
-      .fontSize(13)
-      .enabled(!this.isLoading)
-      .onClick(() => this.loadStyle('OSM Bright'));
-    
-    Button('OSM Liberty')
-      .fontSize(13)
-      .enabled(!this.isLoading)
-      .onClick(() => this.loadStyle('OSM Liberty'));
-    
-    Button('Positron')
-      .fontSize(13)
-      .enabled(!this.isLoading)
-      .onClick(() => this.loadStyle('Positron'));
-    
-    Button('本地样式')
-      .fontSize(13)
-      .enabled(!this.isLoading)
-      .onClick(this.loadLocalStyle);
-    
-    Button('重新加载')
-      .fontSize(13)
-      .backgroundColor('#FF9800')
-      .enabled(!this.isLoading)
-      .onClick(this.reloadCurrentStyle);
-  }
-  
-  @Builder
-  controlPanelBuilder() {
-    Column() {
-      Text('样式加载')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 8 });
-      
-      Text(`当前样式: ${this.currentStyle}`)
-        .fontSize(12)
-        .fontColor('#666');
-      
-      Text(`状态: ${this.isLoading ? '加载中...' : '就绪'}`)
-        .fontSize(12)
-        .fontColor(this.isLoading ? '#FF9800' : '#4CAF50');
-      
-      if (this.styleLoadError) {
-        Divider().margin({ top: 8, bottom: 8 });
+    Column({ space: 8 }) {
+      // 样式加载信息显示
+      Column({ space: 4 }) {
+        Text('样式加载')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
         
-        Text('错误信息')
+        Text(`当前样式: ${this.currentStyle}`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text(`状态: ${this.isLoading ? '加载中...' : '就绪'}`)
+          .fontSize(12)
+          .fontColor(this.isLoading ? '#FF9800' : '#4CAF50')
+          .width('100%')
+        
+        if (this.styleLoadError) {
+          Divider().margin({ top: 4, bottom: 4 })
+          
+          Text('错误信息')
+            .fontSize(12)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#F44336')
+            .width('100%')
+          
+          Text(this.styleLoadError)
+            .fontSize(11)
+            .fontColor('#F44336')
+            .maxLines(3)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .width('100%')
+        }
+        
+        Divider().margin({ top: 4, bottom: 4 })
+        
+        Text('可用样式')
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        ForEach(Object.keys(this.styles), (styleName: string) => {
+          Text(`• ${styleName}`)
+            .fontSize(11)
+            .fontColor(styleName === this.currentStyle ? '#2196F3' : '#666')
+            .fontWeight(styleName === this.currentStyle ? FontWeight.Bold : FontWeight.Normal)
+            .width('100%')
+        }, (styleName: string) => styleName)
+        
+        Divider().margin({ top: 4, bottom: 4 })
+        
+        Text('功能说明')
           .fontSize(12)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#F44336')
-          .margin({ bottom: 4 });
+          .width('100%')
         
-        Text(this.styleLoadError)
-          .fontSize(11)
-          .fontColor('#F44336')
-          .maxLines(3)
-          .textOverflow({ overflow: TextOverflow.Ellipsis });
+        Text('• 加载远程样式文件')
+          .fontSize(10)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text('• 加载本地样式文件（待实现）')
+          .fontSize(10)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text('• 样式快速切换')
+          .fontSize(10)
+          .fontColor('#666')
+          .width('100%')
       }
+      .width('100%')
+      .padding(8)
+      .backgroundColor('#F8F8F8')
+      .borderRadius(4)
+      .alignItems(HorizontalAlign.Start)
       
-      Divider().margin({ top: 8, bottom: 8 });
-      
-      Text('可用样式')
+      Button('远程样式')
         .fontSize(14)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 4 });
+        .width('100%')
+        .enabled(!this.isLoading)
+        .onClick(() => this.loadStyle('远程样式'))
       
-      ForEach(Object.keys(this.styles), (styleName: string) => {
-        Text(`• ${styleName}`)
-          .fontSize(11)
-          .fontColor(styleName === this.currentStyle ? '#2196F3' : '#666')
-          .fontWeight(styleName === this.currentStyle ? FontWeight.Bold : FontWeight.Normal);
-      }, (styleName: string) => styleName);
+      Button('OSM Bright')
+        .fontSize(14)
+        .width('100%')
+        .enabled(!this.isLoading)
+        .onClick(() => this.loadStyle('OSM Bright'))
       
-      Divider().margin({ top: 8, bottom: 8 });
+      Button('OSM Liberty')
+        .fontSize(14)
+        .width('100%')
+        .enabled(!this.isLoading)
+        .onClick(() => this.loadStyle('OSM Liberty'))
       
-      Text('功能说明')
-        .fontSize(12)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 4 });
+      Button('Positron')
+        .fontSize(14)
+        .width('100%')
+        .enabled(!this.isLoading)
+        .onClick(() => this.loadStyle('Positron'))
       
-      Text('• 加载远程样式文件')
-        .fontSize(10)
-        .fontColor('#666');
+      Button('本地样式')
+        .fontSize(14)
+        .width('100%')
+        .enabled(!this.isLoading)
+        .onClick(this.loadLocalStyle)
       
-      Text('• 加载本地样式文件（待实现）')
-        .fontSize(10)
-        .fontColor('#666');
-      
-      Text('• 样式快速切换')
-        .fontSize(10)
-        .fontColor('#666');
+      Button('重新加载')
+        .fontSize(14)
+        .width('100%')
+        .backgroundColor('#FF9800')
+        .enabled(!this.isLoading)
+        .onClick(this.reloadCurrentStyle)
     }
-    .alignItems(HorizontalAlign.Start);
+    .width('100%')
   }
+  
   
   @Builder
   mapContentBuilder() {
@@ -256,7 +276,6 @@ struct StyleFileTestPage {
         description: '样式文件加载',
         showActionBar: true,
         actionButtons: (): void => this.actionButtonsBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

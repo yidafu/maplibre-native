@@ -10,6 +10,7 @@ import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct GridSourceTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private gridSize: number = 10;
   
@@ -90,34 +91,40 @@ struct GridSourceTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('网格数据源')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Row() {
-        Text('网格大小:')
-          .fontSize(14)
-          .width(80)
-        Slider({
-          value: this.gridSize,
-          min: 5,
-          max: 30,
-          step: 5
-        })
-        .layoutWeight(1)
-        .onChange((value: number) => {
-          this.gridSize = value;
-          this.updateGrid();
-        })
-        Text(`${this.gridSize}`)
-          .fontSize(14)
-          .width(60)
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text('网格数据源')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        Row() {
+          Text('网格大小:')
+            .fontSize(14)
+            .width(80)
+          Slider({
+            value: this.gridSize,
+            min: 5,
+            max: 30,
+            step: 5
+          })
+          .layoutWeight(1)
+          .onChange((value: number) => {
+            this.gridSize = value;
+            this.updateGrid();
+          })
+          Text(`${this.gridSize}`)
+            .fontSize(14)
+            .width(60)
+        }
+        .width('100%')
       }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 
   build() {
@@ -127,7 +134,7 @@ struct GridSourceTestPage {
         description: '网格数据源',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

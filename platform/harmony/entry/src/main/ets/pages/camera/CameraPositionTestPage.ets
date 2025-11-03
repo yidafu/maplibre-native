@@ -39,7 +39,6 @@ struct CameraPositionTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[CameraPositionTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     map.jumpTo(0, this.latitude, this.longitude, 0, this.zoom);
     
     this.updateCameraInfo();
@@ -184,7 +183,7 @@ struct CameraPositionTestPage {
   
   @Builder
   controlPanelBuilder() {
-    Column({ space: 12 }) {
+    Column({ space: 8 }) {
       Text('相机位置控制')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -252,14 +251,21 @@ struct CameraPositionTestPage {
       .backgroundColor('#F5F5F5')
       .borderRadius(4)
       
-      Divider().margin({ top: 4, bottom: 4 })
-      
-      // 控制按钮
-      Text('操作')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
+      // 说明文字
+      Text('💡 监听相机移动事件\n包括移动开始、移动中、移动结束、移动取消等')
+        .fontSize(11)
+        .fontColor('#666')
         .width('100%')
-      
+        .margin({ top: 4 })
+        .lineHeight(16)
+    }
+    .width('100%')
+    .padding(8)
+  }
+  
+  @Builder
+  actionButtonsBuilder() {
+    Column({ space: 8 }) {
       Button(this.listenersEnabled ? '禁用监听' : '启用监听')
         .width('100%')
         .backgroundColor(this.listenersEnabled ? '#FF6B6B' : '#4CAF50')
@@ -287,17 +293,9 @@ struct CameraPositionTestPage {
         .width('100%')
         .backgroundColor('#607D8B')
         .onClick(() => this.showCameraDialog())
-      
-      // 说明文字
-      Text('💡 监听相机移动事件\n包括移动开始、移动中、移动结束、移动取消等')
-        .fontSize(11)
-        .fontColor('#666')
-        .width('100%')
-        .margin({ top: 8 })
-        .lineHeight(16)
     }
     .width('100%')
-    .padding(16)
+    .padding(8)
   }
   
   build() {
@@ -305,9 +303,10 @@ struct CameraPositionTestPage {
       TestPageLayout({
         title: 'Camera Position',
         description: '相机位置控制',
-        showActionBar: false,
+        showActionBar: true,
         mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder()
+        controlPanel: (): void => this.controlPanelBuilder(),
+        actionButtons: (): void => this.actionButtonsBuilder()
       });
     }
     .width('100%')

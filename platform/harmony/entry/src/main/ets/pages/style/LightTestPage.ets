@@ -13,6 +13,7 @@ import { DOMAIN } from '../../constants/HiLogConstants';
 @Entry
 @Component
 struct LightTestPage {
+  private scroller: Scroller = new Scroller();
   @State statusMessage: string = '等待操作...';
   @State mapReady: boolean = false;
   @State lightInfo: string = '';
@@ -28,7 +29,7 @@ struct LightTestPage {
       styleUrl: 'https://demotiles.maplibre.org/style.json',
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       initialBearing: 0,
       initialPitch: 0, // 设置倾斜角以更好地观察光照效果
       onMapReady: (map: MapLibreMap) => {
@@ -41,17 +42,19 @@ struct LightTestPage {
    * 控制区域构建器
    */
   @Builder
-  buildControlPanel() {
-    // 状态信息
-    Text(this.statusMessage)
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      // 状态信息
+          Text(this.statusMessage)
       .fontSize(14)
       .width('100%')
       .padding(12)
       .backgroundColor('#F8F8F8')
       .borderRadius(4)
     
-    // 光照信息显示
-    if (this.lightInfo) {
+          // 光照信息显示
+          if (this.lightInfo) {
       Text(this.lightInfo)
         .fontSize(12)
         .width('100%')
@@ -60,37 +63,37 @@ struct LightTestPage {
         .borderRadius(4)
         .fontColor('#E65100')
         .maxLines(15)
-    }
+          }
     
-    // 光照测试
-    Text('光照系统测试')
+          // 光照测试
+          Text('光照系统测试')
       .fontSize(16)
       .fontWeight(FontWeight.Bold)
       .width('100%')
     
-    Button('获取光照信息')
+          Button('获取光照信息')
       .width('100%')
       .onClick(() => {
         this.getLightInfo();
       })
       .enabled(this.mapReady)
     
-    Button('刷新光照配置')
+          Button('刷新光照配置')
       .width('100%')
       .onClick(() => {
         this.refreshLight();
       })
       .enabled(this.mapReady)
     
-    Divider()
+          Divider()
     
-    // 功能说明
-    Text('功能说明')
+          // 功能说明
+          Text('功能说明')
       .fontSize(14)
       .fontWeight(FontWeight.Bold)
       .width('100%')
     
-    Text('光照系统控制3D建筑和地形的光照效果：\n\n' +
+          Text('光照系统控制3D建筑和地形的光照效果：\n\n' +
       '• Anchor: 光照参照系（视口/地图）\n' +
       '• Position: 光照位置（方位角、极角、距离）\n' +
       '• Color: 光照颜色\n' +
@@ -98,6 +101,13 @@ struct LightTestPage {
       .fontSize(12)
       .width('100%')
       .fontColor('#666666')
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
 
   build() {
@@ -106,7 +116,7 @@ struct LightTestPage {
         showActionBar: true,
         title: '光照系统测试',
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

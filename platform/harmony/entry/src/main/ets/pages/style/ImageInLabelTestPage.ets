@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct ImageInLabelTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   aboutToDisappear() {
@@ -63,23 +64,30 @@ struct ImageInLabelTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('标签中嵌入图片')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Text('说明: 使用Emoji实现图文混排')
-        .fontSize(12)
-        .fontColor('#666')
-      
-      Text('TODO: 实现自定义图片嵌入')
-        .fontSize(12)
-        .fontColor('#FF9800')
-        .fontWeight(FontWeight.Bold)
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text('标签中嵌入图片')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        Text('说明: 使用Emoji实现图文混排')
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text('TODO: 实现自定义图片嵌入')
+          .fontSize(12)
+          .fontColor('#FF9800')
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+      }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   build() {
@@ -89,7 +97,7 @@ struct ImageInLabelTestPage {
         description: '标签中嵌入图片',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

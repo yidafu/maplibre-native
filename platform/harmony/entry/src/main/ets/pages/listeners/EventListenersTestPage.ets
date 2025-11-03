@@ -68,7 +68,7 @@ struct EventListenersTestPage {
       styleUrl: 'https://demotiles.maplibre.org/style.json',
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       initialBearing: 0,
       initialPitch: 0,
       onMapReady: (map: MapLibreMap) => {
@@ -490,7 +490,7 @@ struct EventListenersTestPage {
     this.logEvent('测试', '🎬 重置视图 (返回北京)');
     
     try {
-      this.map.jumpTo(0, 39.9042, 116.4074, 0, 12);
+      this.map.jumpTo(0, 39.9042, 116.4074, 0, 5);
       this.statusMessage = '视图已重置';
     } catch (error) {
       this.logEvent('测试', `❌ 重置视图失败: ${error.message}`);

@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct SymbolLayerTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -34,7 +35,7 @@ struct SymbolLayerTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -44,23 +45,33 @@ struct SymbolLayerTestPage {
 
   @Builder
   buildActionButtons() {
-    Button('添加符号图层')
-      .onClick(() => {
-        this.addSymbolLayer();
-      })
-    
-    Button('移除符号图层')
-      .onClick(() => {
-        if (this.mapController) {
-          try {
-            this.mapController.removeLayer('symbol-layer');
-            this.mapController.removeSource('symbol-source');
-            showToast('符号图层已移除');
-          } catch (error) {
-            showToast(`移除失败: ${error}`);
-          }
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('添加符号图层')
+          .width('100%')
+          .onClick(() => {
+            this.addSymbolLayer();
+          })
+        
+        Button('移除符号图层')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              try {
+                this.mapController.removeLayer('symbol-layer');
+                this.mapController.removeSource('symbol-source');
+                showToast('符号图层已移除');
+              } catch (error) {
+                showToast(`移除失败: ${error}`);
+              }
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   private addSymbolLayer(): void {

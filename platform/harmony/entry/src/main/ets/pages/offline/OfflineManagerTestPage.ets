@@ -45,8 +45,6 @@ struct OfflineManagerTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[OfflineManagerTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
     // 设置初始位置
     map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 10);
     

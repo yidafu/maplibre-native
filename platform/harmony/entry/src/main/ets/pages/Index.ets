@@ -1,7 +1,7 @@
 /**
  * MapLibre Native for HarmonyOS
  * 测试页面导航首页
- * 
+ *
  * 基于 Android 和 iOS 测试应用的结构重新实现
  * 包含 18 个主要分类，涵盖所有 MapLibre 功能
  */
@@ -18,7 +18,7 @@ class TestPageItem {
   description: string = '';
   route: string = '';
   icon: string = '';
-  
+
   constructor(title: string, description: string, route: string, icon: string) {
     this.title = title;
     this.description = description;
@@ -33,8 +33,9 @@ class TestPageItem {
 class TestPageGroup {
   groupName: string = '';
   groupIcon: string = '';
-  pages: TestPageItem[] = [];;
-  
+  pages: TestPageItem[] = [];
+  ;
+
   constructor(groupName: string, groupIcon: string, pages: TestPageItem[]) {
     this.groupName = groupName;
     this.groupIcon = groupIcon;
@@ -46,15 +47,16 @@ class TestPageGroup {
 @Component
 struct Index {
   // 按功能模块分组的测试页面
-  @State private testPageGroups: TestPageGroup[] = [];;
+  @State private testPageGroups: TestPageGroup[] = [];
+  ;
   // 当前选中的分组索引
   @State private selectedGroupIndex: number = 0;
-  
+
   aboutToAppear() {
     // 初始化测试页面数据，采用 Android 的 18 个分类结构
     this.testPageGroups = this.initializeTestPages();
   }
-  
+
   /**
    * 初始化所有测试页面，按照 Android TestApp 的分类结构
    * 参考: platform/android/MapLibreAndroidTestApp
@@ -63,61 +65,59 @@ struct Index {
     return [
       // ==================== 1. _Basic ====================
       this.createBasicGroup(),
-      
+
       // ==================== 2. Annotation ====================
       this.createAnnotationGroup(),
-      
+
       // ==================== 3. Camera ====================
       this.createCameraGroup(),
-      
-      // ==================== 4. Custom Layer ====================
-      this.createCustomLayerGroup(),
-      
-      // ==================== 5. Fragment ====================
-      this.createFragmentGroup(),
-      
-      // ==================== 6. Info Window ====================
-      this.createInfoWindowGroup(),
-      
-      // ==================== 7. Location ====================
-      this.createLocationGroup(),
-      
-      // ==================== 8. Offline ====================
-      this.createOfflineGroup(),
-      
+
       // ==================== 9. Styling ====================
       this.createStylingGroup(),
-      
+
+      // ==================== 6. Info Window ====================
+      this.createInfoWindowGroup(),
+
+      // ==================== 5. Fragment ====================
+      this.createFragmentGroup(),
+
       // ==================== 10. Features ====================
       this.createFeaturesGroup(),
-      
+
+      // ==================== 7. Location ====================
+      this.createLocationGroup(),
+
+      // ==================== 8. Offline ====================
+      this.createOfflineGroup(),
+
+
       // ==================== 11. Storage ====================
       this.createStorageGroup(),
-      
+
       // ==================== 12. Events ====================
       this.createEventsGroup(),
-      
+
       // ==================== 13. Image Generator ====================
       this.createImageGeneratorGroup(),
-      
+
       // ==================== 14. Texture View ====================
       this.createTextureViewGroup(),
-      
+
       // ==================== 15. Turf ====================
       this.createTurfGroup(),
-      
+
       // ==================== 16. Map Options ====================
       this.createMapOptionsGroup(),
-      
+
       // ==================== 17. Integration ====================
       this.createIntegrationGroup(),
-      
+
       // ==================== 18. Performance ====================
       this.createPerformanceGroup(),
-      
+
     ]
   }
-  
+
   /**
    * 1. _Basic - 基础地图功能
    */
@@ -137,7 +137,7 @@ struct Index {
       new TestPageItem('Core API', '核心API测试', 'pages/basic/CoreAPITestPage', '⚙️'),
     ]);
   }
-  
+
   /**
    * 2. Annotation - 标注功能
    */
@@ -157,7 +157,7 @@ struct Index {
       new TestPageItem('Press for Marker', '长按添加标记', 'pages/annotation/PressForMarkerTestPage', '👆'),
     ]);
   }
-  
+
   /**
    * 3. Camera - 相机控制
    */
@@ -178,7 +178,7 @@ struct Index {
       new TestPageItem('Gesture', '手势系统', 'pages/camera/GestureTestPage', '👋'),
     ]);
   }
-  
+
   /**
    * 4. Custom Layer - 自定义图层
    */
@@ -187,7 +187,7 @@ struct Index {
       new TestPageItem('Custom Layer', '自定义渲染图层', 'pages/customlayer/CustomLayerTestPage', '🎨'),
     ]);
   }
-  
+
   /**
    * 5. Fragment - 片段和多实例
    */
@@ -200,7 +200,7 @@ struct Index {
       new TestPageItem('Nested ViewPager', '嵌套ViewPager', 'pages/fragment/NestedViewPagerTestPage', '📑'),
     ]);
   }
-  
+
   /**
    * 6. Info Window - 信息窗口
    */
@@ -208,10 +208,11 @@ struct Index {
     return new TestPageGroup('Info Window', '💬', [
       new TestPageItem('Info Window', '标准信息窗口', 'pages/infowindow/InfoWindowTestPage', '💬'),
       new TestPageItem('Info Window Adapter', '自定义信息窗口', 'pages/infowindow/InfoWindowAdapterTestPage', '🎨'),
-      new TestPageItem('Dynamic Info Window', '动态自定义信息窗口', 'pages/infowindow/DynamicInfoWindowAdapterTestPage', '🔄'),
+      new TestPageItem('Dynamic Info Window', '动态自定义信息窗口', 'pages/infowindow/DynamicInfoWindowAdapterTestPage',
+        '🔄'),
     ]);
   }
-  
+
   /**
    * 7. Location - 定位功能
    */
@@ -219,15 +220,16 @@ struct Index {
     return new TestPageGroup('Location', '📍', [
       new TestPageItem('Location Map Change', '简单定位', 'pages/location/LocationMapChangeTestPage', '📍'),
       new TestPageItem('Location Modes', '定位模式', 'pages/location/LocationModesTestPage', '🎯'),
-      new TestPageItem('Location Activation', '定位组件激活', 'pages/location/LocationComponentActivationTestPage', '⚙️'),
+      new TestPageItem('Location Activation', '定位组件激活', 'pages/location/LocationComponentActivationTestPage',
+        '⚙️'),
       new TestPageItem('Basic Pulsing Circle', '基础脉冲圆', 'pages/location/BasicLocationPulsingCircleTestPage', '⭕'),
-      new TestPageItem('Customized Pulsing Circle', '自定义脉冲圆', 'pages/location/CustomizedLocationPulsingCircleTestPage', '🎨'),
+      new TestPageItem('Customized Pulsing Circle', '自定义脉冲圆',
+        'pages/location/CustomizedLocationPulsingCircleTestPage', '🎨'),
       new TestPageItem('Location Fragment', '定位片段', 'pages/location/LocationFragmentTestPage', '🧩'),
       new TestPageItem('Manual Location', '手动位置更新', 'pages/location/ManualLocationUpdatesTestPage', '✋'),
     ]);
   }
-  
-  
+
   /**
    * 8. Offline - 离线地图
    */
@@ -242,7 +244,7 @@ struct Index {
       new TestPageItem('Change Cache Path', '修改缓存路径', 'pages/offline/ChangeResourcesCachePathTestPage', '📁'),
     ]);
   }
-  
+
   /**
    * 9. Styling - 样式系统
    */
@@ -277,16 +279,18 @@ struct Index {
       new TestPageItem('Gradient Line', '渐变线', 'pages/style/GradientLineTestPage', '🌈'),
       new TestPageItem('Custom Sprite', '自定义精灵', 'pages/style/CustomSpriteTestPage', '🖼️'),
       new TestPageItem('Grid Source', '网格数据源', 'pages/style/GridSourceTestPage', '🔲'),
-      new TestPageItem('Collection Update', '样式变化时集合更新', 'pages/style/CollectionUpdateOnStyleChangeTestPage', '🔄'),
+      new TestPageItem('Collection Update', '样式变化时集合更新', 'pages/style/CollectionUpdateOnStyleChangeTestPage',
+        '🔄'),
       new TestPageItem('Stretchable Image', '可拉伸图片', 'pages/style/StretchableImageTestPage', '↔️'),
       new TestPageItem('Image In Label', '标签中的图片', 'pages/style/ImageInLabelTestPage', '🖼️'),
       new TestPageItem('Source', '数据源管理', 'pages/style/SourceTestPage', '📊'),
       new TestPageItem('Layer', '图层管理', 'pages/style/LayerTestPage', '🔨'),
       new TestPageItem('Light', '光照系统', 'pages/style/LightTestPage', '💡'),
       new TestPageItem('Expression', 'Expression 测试', 'pages/style/ExpressionTestPage', '🧮'),
+      new TestPageItem('Custom Layer', '自定义渲染图层', 'pages/customlayer/CustomLayerTestPage', '🎨'),
     ]);
   }
-  
+
   /**
    * 10. Features - 要素查询
    */
@@ -300,7 +304,7 @@ struct Index {
       new TestPageItem('Source Features', '数据源要素', 'pages/feature/QuerySourceFeaturesTestPage', '📊'),
     ]);
   }
-  
+
   /**
    * 11. Storage - 存储管理
    */
@@ -311,7 +315,7 @@ struct Index {
       new TestPageItem('Custom HTTP Request', '自定义HTTP请求', 'pages/storage/CustomHttpRequestTestPage', '🌐'),
     ]);
   }
-  
+
   /**
    * 12. Events - 事件监听
    */
@@ -321,7 +325,7 @@ struct Index {
       new TestPageItem('Event Listeners', '事件监听器', 'pages/listeners/EventListenersTestPage', '👂'),
     ]);
   }
-  
+
   /**
    * 13. Image Generator - 图片生成
    */
@@ -335,7 +339,7 @@ struct Index {
       new TestPageItem('Local Style Snapshot', '本地样式快照', 'pages/snapshot/MapSnapshotterLocalStyleTestPage', '📄'),
     ]);
   }
-  
+
   /**
    * 14. Texture View - 纹理视图
    */
@@ -344,10 +348,11 @@ struct Index {
       new TestPageItem('TextureView Debug', '纹理视图调试', 'pages/textureview/TextureViewDebugModeTestPage', '🐛'),
       new TestPageItem('TextureView Resize', '纹理视图调整大小', 'pages/textureview/TextureViewResizeTestPage', '📐'),
       new TestPageItem('TextureView Animation', '纹理视图动画', 'pages/textureview/TextureViewAnimationTestPage', '🎭'),
-      new TestPageItem('TextureView Transparent', '纹理视图透明背景', 'pages/textureview/TextureViewTransparentBackgroundTestPage', '⚪'),
+      new TestPageItem('TextureView Transparent', '纹理视图透明背景',
+        'pages/textureview/TextureViewTransparentBackgroundTestPage', '⚪'),
     ]);
   }
-  
+
   /**
    * 15. Turf - 地理计算
    */
@@ -355,10 +360,11 @@ struct Index {
     return new TestPageGroup('Turf', '🌍', [
       new TestPageItem('Physical Unit Circle', '物理单位圆', 'pages/turf/PhysicalUnitCircleTestPage', '⭕'),
       new TestPageItem('Within Expression', 'Within表达式', 'pages/turf/WithinExpressionTestPage', '📍'),
-      new TestPageItem('Snapshotter Within', '快照器Within表达式', 'pages/turf/MapSnapshotterWithinExpressionTestPage', '📸'),
+      new TestPageItem('Snapshotter Within', '快照器Within表达式', 'pages/turf/MapSnapshotterWithinExpressionTestPage',
+        '📸'),
     ]);
   }
-  
+
   /**
    * 16. Map Options - 地图选项
    */
@@ -368,7 +374,7 @@ struct Index {
       new TestPageItem('Map Options XML', 'XML配置地图选项', 'pages/options/MapOptionsXmlTestPage', '📄'),
     ]);
   }
-  
+
   /**
    * 17. Integration - 集成测试
    */
@@ -380,7 +386,7 @@ struct Index {
       new TestPageItem('Fragment BackStack', '片段回退栈', 'pages/fragment/FragmentBackStackTestPage', '⬅️'),
     ]);
   }
-  
+
   /**
    * 18. Performance - 性能测试
    */
@@ -410,13 +416,13 @@ struct Index {
       Row() {
         // 左侧 Tab 栏
         this.buildLeftTabBar()
-        
+
         // 分隔线
         Column()
           .width(1)
           .height('100%')
           .backgroundColor('#E0E0E0')
-        
+
         // 右侧内容区
         this.buildRightContent()
       }
@@ -454,7 +460,7 @@ struct Index {
             Text(group.groupIcon)
               .fontSize(20)
               .margin({ bottom: 4 })
-            
+
             // 分类名称
             Text(group.groupName)
               .fontSize(11)
@@ -465,7 +471,12 @@ struct Index {
               .lineHeight(15)
           }
           .width('100%')
-          .padding({ top: 10, bottom: 10, left: 4, right: 4 })
+          .padding({
+            top: 10,
+            bottom: 10,
+            left: 4,
+            right: 4
+          })
           .backgroundColor(this.selectedGroupIndex === index ? '#E3F2FD' : '#FAFAFA')
           .borderRadius(10)
           .border({
@@ -484,7 +495,12 @@ struct Index {
         })
       }
       .width('100%')
-      .padding({ left: 10, right: 10, top: 10, bottom: 10 })
+      .padding({
+        left: 10,
+        right: 10,
+        top: 10,
+        bottom: 10
+      })
     }
     .scrollable(ScrollDirection.Vertical)
     .scrollBar(BarState.Auto)
@@ -500,21 +516,21 @@ struct Index {
       if (this.testPageGroups.length > 0 && this.selectedGroupIndex < this.testPageGroups.length) {
         // 当前选中分组
         // const currentGroup = this.testPageGroups[this.selectedGroupIndex]
-        
+
         // 分组标题栏
         Column() {
           Row() {
             Text(this.testPageGroups[this.selectedGroupIndex].groupIcon)
               .fontSize(28)
               .margin({ right: 12 })
-            
+
             Text(this.testPageGroups[this.selectedGroupIndex].groupName)
               .fontSize(22)
               .fontWeight(FontWeight.Bold)
               .fontColor('#2196F3')
           }
           .width('100%')
-          
+
           // 标题下划线
           Column()
             .width('100%')
@@ -523,9 +539,14 @@ struct Index {
             .margin({ top: 10 })
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 15, bottom: 10 })
+        .padding({
+          left: 20,
+          right: 20,
+          top: 15,
+          bottom: 10
+        })
         .backgroundColor('#FAFAFA')
-        
+
         // 测试页面列表
         List({ space: 12 }) {
           ForEach(this.testPageGroups[this.selectedGroupIndex].pages, (item: TestPageItem) => {
@@ -536,7 +557,12 @@ struct Index {
         }
         .width('100%')
         .layoutWeight(1)
-        .padding({ left: 20, right: 20, top: 15, bottom: 10 })
+        .padding({
+          left: 20,
+          right: 20,
+          top: 15,
+          bottom: 10
+        })
       }
     }
     .layoutWeight(1)
@@ -597,7 +623,7 @@ struct Index {
    */
   private navigateToPage(route: string): void {
     hilog.info(DOMAIN, 'Index', `Attempting to navigate to: ${route}`);
-    
+
     // 直接使用 pushUrl，不使用命名路由
     router.pushUrl({
       url: route

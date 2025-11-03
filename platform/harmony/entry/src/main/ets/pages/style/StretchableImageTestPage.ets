@@ -10,6 +10,7 @@ import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct StretchableImageTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   aboutToDisappear() {
@@ -37,8 +38,10 @@ struct StretchableImageTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      Column({ space: 12 }) {
       Text('可拉伸图片')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -51,9 +54,16 @@ struct StretchableImageTestPage {
         .fontSize(12)
         .fontColor('#FF9800')
         .fontWeight(FontWeight.Bold)
+          }
+          .width('100%')
+          .padding(16)
+      }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
   
   build() {
@@ -63,7 +73,7 @@ struct StretchableImageTestPage {
         description: '可拉伸图片',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

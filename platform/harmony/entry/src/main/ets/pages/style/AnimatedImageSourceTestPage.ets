@@ -10,6 +10,7 @@ import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct AnimatedImageSourceTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   private imageIndex: number = 0;
   private animationTimer: number | null = null;
@@ -36,10 +37,10 @@ struct AnimatedImageSourceTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
-        map.jumpTo(0, 39.9, 116.4, 0, 12);
+        map.jumpTo(0, 39.9, 116.4, 0, 6);
         this.addImageSource(map);
       }
     })
@@ -75,14 +76,23 @@ struct AnimatedImageSourceTestPage {
   
   @Builder
   buildActionButtons() {
-    Button(this.isAnimating ? '停止动画' : '开始动画')
-      .onClick(() => {
-        if (this.isAnimating) {
-          this.stopAnimation();
-        } else {
-          this.startAnimation();
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button(this.isAnimating ? '停止动画' : '开始动画')
+          .width('100%')
+          .onClick(() => {
+            if (this.isAnimating) {
+              this.stopAnimation();
+            } else {
+              this.startAnimation();
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   private startAnimation(): void {

@@ -62,8 +62,6 @@ struct DownloadRegionTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[DownloadRegionTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
     // 设置初始位置（北京）
     map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 12);
     

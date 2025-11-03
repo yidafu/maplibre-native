@@ -121,15 +121,19 @@ export struct TestPageLayout {
       }
       .layoutWeight(1)
       
-      // 操作按钮区（可选）
+      // 操作按钮区（可选，支持滚动）
       if (this.showActionBar) {
-        Row() {
-          this.actionButtons();
+        Scroll() {
+          Column() {
+            this.actionButtons();
+          }
+          .width('100%')
+          .padding(12)
         }
         .width('100%')
-        .padding(12)
+        .layoutWeight(0.4)
         .backgroundColor('#F5F5F5')
-        .justifyContent(FlexAlign.SpaceEvenly)
+        .scrollBar(BarState.Auto)
       }
     }
     .width('100%')

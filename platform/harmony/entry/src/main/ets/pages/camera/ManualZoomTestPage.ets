@@ -129,7 +129,7 @@ struct ManualZoomTestPage {
   
   @Builder
   controlPanelBuilder() {
-    Column({ space: 12 }) {
+    Column({ space: 8 }) {
       Text('手动缩放控制')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -165,8 +165,21 @@ struct ManualZoomTestPage {
       .backgroundColor('#F5F5F5')
       .borderRadius(4)
       
-      Divider().margin({ top: 4, bottom: 4 })
-      
+      // 说明文字
+      Text('💡 手动控制地图缩放\n所有手势已禁用，仅通过按钮控制')
+        .fontSize(11)
+        .fontColor('#666')
+        .width('100%')
+        .margin({ top: 4 })
+        .lineHeight(16)
+    }
+    .width('100%')
+    .padding(8)
+  }
+  
+  @Builder
+  actionButtonsBuilder() {
+    Column({ space: 8 }) {
       // 基础缩放控制
       Text('基础缩放')
         .fontSize(14)
@@ -266,17 +279,9 @@ struct ManualZoomTestPage {
           this.updateZoomLevel();
           showToast('缩放级别已刷新');
         })
-      
-      // 说明文字
-      Text('💡 手动控制地图缩放\n所有手势已禁用，仅通过按钮控制')
-        .fontSize(11)
-        .fontColor('#666')
-        .width('100%')
-        .margin({ top: 8 })
-        .lineHeight(16)
     }
     .width('100%')
-    .padding(16)
+    .padding(8)
   }
   
   build() {
@@ -284,9 +289,10 @@ struct ManualZoomTestPage {
       TestPageLayout({
         title: 'Manual Zoom',
         description: '手动缩放',
-        showActionBar: false,
+        showActionBar: true,
         mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder()
+        controlPanel: (): void => this.controlPanelBuilder(),
+        actionButtons: (): void => this.actionButtonsBuilder()
       });
     }
     .width('100%')

@@ -10,6 +10,7 @@ import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct BuildingFillExtrusionTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private extrusionHeight: number = 50;
   
@@ -38,38 +39,45 @@ struct BuildingFillExtrusionTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('3D建筑拉伸')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Row() {
-        Text('高度:')
-          .fontSize(14)
-          .width(60)
-        Slider({
-          value: this.extrusionHeight,
-          min: 10,
-          max: 200,
-          step: 10
-        })
-        .layoutWeight(1)
-        .onChange((value: number) => {
-          this.extrusionHeight = value;
-        })
-        Text(`${this.extrusionHeight}m`)
-          .fontSize(14)
-          .width(60)
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text('3D建筑拉伸')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        Row() {
+          Text('高度:')
+            .fontSize(14)
+            .width(60)
+          Slider({
+            value: this.extrusionHeight,
+            min: 10,
+            max: 200,
+            step: 10
+          })
+          .layoutWeight(1)
+          .onChange((value: number) => {
+            this.extrusionHeight = value;
+          })
+          Text(`${this.extrusionHeight}m`)
+            .fontSize(14)
+            .width(60)
+        }
+        .width('100%')
+        
+        Text('TODO: 实现FillExtrusionLayer')
+          .fontSize(12)
+          .fontColor('#FF9800')
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
       }
-      
-      Text('TODO: 实现FillExtrusionLayer')
-        .fontSize(12)
-        .fontColor('#FF9800')
-        .fontWeight(FontWeight.Bold)
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   build() {
@@ -79,7 +87,7 @@ struct BuildingFillExtrusionTestPage {
         description: '建筑物拉伸',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

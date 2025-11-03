@@ -10,6 +10,7 @@ import { showToast, DEFAULT_MAP_CONFIG, DEFAULT_STYLE_URLS } from '../common/Tes
 @Entry
 @Component
 struct NoStyleTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private hasStyle: boolean = false;
   
@@ -47,8 +48,10 @@ struct NoStyleTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      Column({ space: 12 }) {
       Text('无样式地图')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -66,9 +69,16 @@ struct NoStyleTestPage {
         .fontSize(12)
         .fontColor('#666')
         .margin({ top: 8 })
+          }
+          .width('100%')
+          .padding(16)
+      }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
   
   build() {
@@ -78,7 +88,7 @@ struct NoStyleTestPage {
         description: '无样式地图',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

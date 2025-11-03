@@ -10,6 +10,7 @@ import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct RasterSourceTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -33,7 +34,7 @@ struct RasterSourceTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 39.9, 116.4, 0, 10);
@@ -43,10 +44,19 @@ struct RasterSourceTestPage {
 
   @Builder
   buildActionButtons() {
-    Button('添加栅格图层')
-      .onClick(() => {
-        this.addRasterLayer();
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      Button('添加栅格图层')
+            .onClick(() => {
+              this.addRasterLayer();
+            })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
   
   private addRasterLayer(): void {

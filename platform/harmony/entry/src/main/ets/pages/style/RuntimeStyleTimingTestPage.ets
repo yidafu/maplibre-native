@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct RuntimeStyleTimingTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private addLayerTime: number = 0;
   @State private removeLayerTime: number = 0;
@@ -80,8 +81,10 @@ struct RuntimeStyleTimingTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+      Column({ space: 12 }) {
       Text('样式性能测试')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -106,9 +109,16 @@ struct RuntimeStyleTimingTestPage {
       Text(`删除耗时: ${this.removeLayerTime}ms`)
         .fontSize(12)
         .fontColor('#666')
+          }
+          .width('100%')
+          .padding(16)
+      }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
+  
   }
   
   build() {
@@ -118,7 +128,7 @@ struct RuntimeStyleTimingTestPage {
         description: '样式计时测试',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

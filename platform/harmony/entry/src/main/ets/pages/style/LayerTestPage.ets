@@ -79,7 +79,7 @@ struct LayerTestPage {
         styleUrl: 'https://demotiles.maplibre.org/style.json',
         initialLatitude: 39.9,
         initialLongitude: 116.4,
-        initialZoom: 10,
+        initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
         onMapReady: (map: MapLibreMap) => {
@@ -112,90 +112,99 @@ struct LayerTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-    // 当前图层显示
-    Text(`当前图层: ${this.currentLayer}`)
-      .fontSize(14)
+  buildActionButtons() {
+    Column({ space: 8 }) {
+      // 当前图层显示
+      Text(`当前图层: ${this.currentLayer}`)
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .width('100%')
+        .padding(8)
+        .backgroundColor('#F8F8F8')
+        .borderRadius(4)
+      
+      Text('基础图层类型')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 4 })
+      
+      Row({ space: 8 }) {
+        Button('FillLayer - 填充图层')
+          .onClick(() => this.handleTestFillLayer())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#E91E63')
+
+        Button('LineLayer - 线条图层')
+          .onClick(() => this.handleTestLineLayer())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#9C27B0')
+      }
       .width('100%')
-      .backgroundColor('#F8F8F8')
-      .borderRadius(4)
-    
-    Text('基础图层类型')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
+      
+      Row({ space: 8 }) {
+        Button('CircleLayer - 圆形图层')
+          .onClick(() => this.handleTestCircleLayer())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#3F51B5')
+
+        Button('SymbolLayer - 符号图层')
+          .onClick(() => this.handleTestSymbolLayer())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#2196F3')
+      }
       .width('100%')
-    Row() {
-      Button('FillLayer - 填充图层')
-        .onClick(() => this.handleTestFillLayer())
-        .width('48%')
-        .fontSize(13)
-        .backgroundColor('#E91E63')
+      
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
 
-      Button('LineLayer - 线条图层')
-        .onClick(() => this.handleTestLineLayer())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(13)
-        .backgroundColor('#9C27B0')
-    }
-    .width('100%')
-    Row() {
-      Button('CircleLayer - 圆形图层')
-        .onClick(() => this.handleTestCircleLayer())
-        .width('48%')
-        .fontSize(13)
-        .backgroundColor('#3F51B5')
+      Text('高级图层类型')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+      
+      Row({ space: 8 }) {
+        Button('HeatmapLayer - 热力图')
+          .onClick(() => this.handleTestHeatmapLayer())
+          .layoutWeight(1)
+          .fontSize(13)
+          .backgroundColor('#FF5722')
 
-      Button('SymbolLayer - 符号图层')
-        .onClick(() => this.handleTestSymbolLayer())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(13)
-        .backgroundColor('#2196F3')
-    }
-    .width('100%')
-    Divider().strokeWidth(2)
-
-    Text('高级图层类型')
-      .fontSize(16)
-      .fontWeight(FontWeight.Bold)
+        Button('FillExtrusionLayer - 3D 拉伸')
+          .onClick(() => this.handleTestFillExtrusionLayer())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#FF9800')
+      }
       .width('100%')
-    Row() {
-      Button('HeatmapLayer - 热力图')
-        .onClick(() => this.handleTestHeatmapLayer())
-        .width('48%')
-        .fontSize(13)
-        .backgroundColor('#FF5722')
+      
+      Row({ space: 8 }) {
+        Button('RasterLayer - 栅格图层')
+          .onClick(() => this.handleTestRasterLayer())
+          .layoutWeight(1)
+          .fontSize(12)
+          .backgroundColor('#FFC107')
 
-      Button('FillExtrusionLayer - 3D 拉伸')
-        .onClick(() => this.handleTestFillExtrusionLayer())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(12)
-        .backgroundColor('#FF9800')
+        Button('BackgroundLayer - 背景图层')
+          .onClick(() => this.handleTestBackgroundLayer())
+          .layoutWeight(1)
+          .fontSize(11)
+          .backgroundColor('#FFEB3B')
+      }
+      .width('100%')
+      
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
+
+      Button('清除所有图层')
+        .onClick(() => this.handleClearAllLayers())
+        .width('100%')
+        .fontSize(14)
+        .backgroundColor(Color.Red)
     }
     .width('100%')
-    Row() {
-      Button('RasterLayer - 栅格图层')
-        .onClick(() => this.handleTestRasterLayer())
-        .width('48%')
-        .fontSize(12)
-        .backgroundColor('#FFC107')
-
-      Button('BackgroundLayer - 背景图层')
-        .onClick(() => this.handleTestBackgroundLayer())
-        .width('48%')
-        .margin({ left: 8 })
-        .fontSize(11)
-        .backgroundColor('#FFEB3B')
-    }
-    .width('100%')
-    Divider().strokeWidth(2)
-
-    Button('清除所有图层')
-      .onClick(() => this.handleClearAllLayers())
-      .width('48%')
-      .backgroundColor(Color.Red)
   }
 
   build() {
@@ -204,7 +213,7 @@ struct LayerTestPage {
         showActionBar: true,
         title: this.message,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -10,8 +10,9 @@ import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct HillshadeLayerTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
-  
+
   build() {
     Column() {
       TestPageLayout({
@@ -33,7 +34,7 @@ struct HillshadeLayerTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 30, 105, 0, 8);
@@ -48,43 +49,52 @@ struct HillshadeLayerTestPage {
       source.setUrl('https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png');
       source.setTileSize(256);
       map.addSource(source);
-      
+
       const layer = new HillshadeLayer('hillshade-layer', 'hillshade-source');
       layer.setHillshadeExaggeration(0.5);
       layer.setHillshadeIlluminationDirection(45);
       map.addLayer(layer);
-      
+
       showToast('山体阴影已添加');
     } catch (error) {
       showToast(`添加失败: ${error}`);
     }
   }
-  
+
   @Builder
   buildActionButtons() {
-    Button('调整光照方向')
-      .onClick(() => {
-        if (this.mapController) {
-          const layer = this.mapController.getLayer('hillshade-layer');
-          if (layer) {
-            const direction = Math.random() * 360;
-            (layer as HillshadeLayer).setHillshadeIlluminationDirection(direction);
-            showToast(`光照方向: ${direction.toFixed(0)}°`);
-          }
-        }
-      })
-    
-    Button('调整夸张度')
-      .onClick(() => {
-        if (this.mapController) {
-          const layer = this.mapController.getLayer('hillshade-layer');
-          if (layer) {
-            const exaggeration = Math.random();
-            (layer as HillshadeLayer).setHillshadeExaggeration(exaggeration);
-            showToast(`夸张度: ${exaggeration.toFixed(2)}`);
-          }
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('调整光照方向')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              const layer = this.mapController.getLayer('hillshade-layer');
+              if (layer) {
+                const direction = Math.random() * 360;
+                (layer as HillshadeLayer).setHillshadeIlluminationDirection(direction);
+                showToast(`光照方向: ${direction.toFixed(0)}°`);
+              }
+            }
+          })
+
+        Button('调整夸张度')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              const layer = this.mapController.getLayer('hillshade-layer');
+              if (layer) {
+                const exaggeration = Math.random();
+                (layer as HillshadeLayer).setHillshadeExaggeration(exaggeration);
+                showToast(`夸张度: ${exaggeration.toFixed(2)}`);
+              }
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 }
-

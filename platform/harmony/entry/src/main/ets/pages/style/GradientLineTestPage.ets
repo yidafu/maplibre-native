@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct GradientLineTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -34,7 +35,7 @@ struct GradientLineTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 5);
@@ -81,17 +82,25 @@ struct GradientLineTestPage {
   
   @Builder
   buildActionButtons() {
-    Button('改变宽度')
-      .onClick(() => {
-        if (this.mapController) {
-          const layer = this.mapController.getLayer('gradient-layer');
-          if (layer) {
-            const lineWidth: number = 4 + Math.random() * 10;
-            (layer as LineLayer).setLineWidth(lineWidth);
-            showToast(`宽度: ${lineWidth.toFixed(1)}`);
-          }
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('改变宽度')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              const layer = this.mapController.getLayer('gradient-layer');
+              if (layer) {
+                const lineWidth: number = 4 + Math.random() * 10;
+                (layer as LineLayer).setLineWidth(lineWidth);
+                showToast(`宽度: ${lineWidth.toFixed(1)}`);
+              }
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 }
-

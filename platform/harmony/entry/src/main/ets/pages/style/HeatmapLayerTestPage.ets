@@ -10,6 +10,7 @@ import { DEFAULT_STYLE_URLS, showToast, randomLatLng , DEFAULT_MAP_CONFIG } from
 @Entry
 @Component
 struct HeatmapLayerTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -33,7 +34,7 @@ struct HeatmapLayerTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
@@ -74,17 +75,26 @@ struct HeatmapLayerTestPage {
   
   @Builder
   buildActionButtons() {
-    Button('调整强度')
-      .onClick(() => {
-        if (this.mapController) {
-          const layer = this.mapController.getLayer('heatmap-layer');
-          if (layer) {
-            const intensity = 0.5 + Math.random() * 0.5;
-            (layer as HeatmapLayer).setHeatmapIntensity(intensity);
-            showToast(`强度: ${intensity.toFixed(2)}`);
-          }
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('调整强度')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              const layer = this.mapController.getLayer('heatmap-layer');
+              if (layer) {
+                const intensity = 0.5 + Math.random() * 0.5;
+                (layer as HeatmapLayer).setHeatmapIntensity(intensity);
+                showToast(`强度: ${intensity.toFixed(2)}`);
+              }
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 }
 

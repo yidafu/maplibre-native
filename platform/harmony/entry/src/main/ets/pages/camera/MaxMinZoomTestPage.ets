@@ -25,8 +25,6 @@ struct MaxMinZoomTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[MaxMinZoomTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    map.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
     this.statusMessage = '地图已就绪';
     showToast('缩放级别限制功能已激活');
@@ -47,7 +45,7 @@ struct MaxMinZoomTestPage {
   
   @Builder
   controlPanelBuilder() {
-    Column({ space: 12 }) {
+    Column({ space: 8 }) {
       Text('缩放级别限制')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -61,8 +59,20 @@ struct MaxMinZoomTestPage {
         .backgroundColor('#F5F5F5')
         .borderRadius(4)
       
-      Divider().margin({ top: 8, bottom: 8 })
-      
+      Text('💡 设置最小和最大缩放级别')
+        .fontSize(11)
+        .fontColor('#666')
+        .width('100%')
+        .margin({ top: 4 })
+        .lineHeight(16)
+    }
+    .width('100%')
+    .padding(8)
+  }
+  
+  @Builder
+  actionButtonsBuilder() {
+    Column({ space: 8 }) {
       Button('测试功能')
         .width('100%')
         .backgroundColor('#2196F3')
@@ -70,16 +80,9 @@ struct MaxMinZoomTestPage {
           showToast('功能测试');
           this.statusMessage = '测试执行中...';
         })
-      
-      Text('💡 设置最小和最大缩放级别')
-        .fontSize(11)
-        .fontColor('#666')
-        .width('100%')
-        .margin({ top: 8 })
-        .lineHeight(16)
     }
     .width('100%')
-    .padding(16)
+    .padding(8)
   }
   
   build() {
@@ -87,9 +90,10 @@ struct MaxMinZoomTestPage {
       TestPageLayout({
         title: 'Max/Min Zoom',
         description: '缩放级别限制',
-        showActionBar: false,
+        showActionBar: true,
         mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder()
+        controlPanel: (): void => this.controlPanelBuilder(),
+        actionButtons: (): void => this.actionButtonsBuilder()
       });
     }
     .width('100%')

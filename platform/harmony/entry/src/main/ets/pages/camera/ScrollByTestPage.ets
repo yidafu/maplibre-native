@@ -25,8 +25,6 @@ struct ScrollByTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[ScrollByTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    map.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
     this.statusMessage = '地图已就绪';
     showToast('像素级滚动功能已激活');
@@ -47,7 +45,7 @@ struct ScrollByTestPage {
   
   @Builder
   controlPanelBuilder() {
-    Column({ space: 12 }) {
+    Column({ space: 8 }) {
       Text('像素级滚动')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -61,8 +59,20 @@ struct ScrollByTestPage {
         .backgroundColor('#F5F5F5')
         .borderRadius(4)
       
-      Divider().margin({ top: 8, bottom: 8 })
-      
+      Text('💡 按像素偏移地图（上下左右）')
+        .fontSize(11)
+        .fontColor('#666')
+        .width('100%')
+        .margin({ top: 4 })
+        .lineHeight(16)
+    }
+    .width('100%')
+    .padding(8)
+  }
+  
+  @Builder
+  actionButtonsBuilder() {
+    Column({ space: 8 }) {
       Button('测试功能')
         .width('100%')
         .backgroundColor('#2196F3')
@@ -70,16 +80,9 @@ struct ScrollByTestPage {
           showToast('功能测试');
           this.statusMessage = '测试执行中...';
         })
-      
-      Text('💡 按像素偏移地图（上下左右）')
-        .fontSize(11)
-        .fontColor('#666')
-        .width('100%')
-        .margin({ top: 8 })
-        .lineHeight(16)
     }
     .width('100%')
-    .padding(16)
+    .padding(8)
   }
   
   build() {
@@ -87,9 +90,10 @@ struct ScrollByTestPage {
       TestPageLayout({
         title: 'Scroll By',
         description: '像素级滚动',
-        showActionBar: false,
+        showActionBar: true,
         mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder()
+        controlPanel: (): void => this.controlPanelBuilder(),
+        actionButtons: (): void => this.actionButtonsBuilder()
       });
     }
     .width('100%')

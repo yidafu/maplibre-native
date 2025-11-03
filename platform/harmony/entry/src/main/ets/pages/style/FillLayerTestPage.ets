@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct FillLayerTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -71,16 +72,25 @@ struct FillLayerTestPage {
   
   @Builder
   buildActionButtons() {
-    Button('改变颜色')
-      .onClick(() => {
-        if (this.mapController) {
-          const layer = this.mapController.getLayer('fill-layer');
-          if (layer) {
-            (layer as FillLayer).setFillColor('#80FF9800');
-            showToast('颜色已更改');
-          }
-        }
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('改变颜色')
+          .width('100%')
+          .onClick(() => {
+            if (this.mapController) {
+              const layer = this.mapController.getLayer('fill-layer');
+              if (layer) {
+                (layer as FillLayer).setFillColor('#80FF9800');
+                showToast('颜色已更改');
+              }
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 }
 

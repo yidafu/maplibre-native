@@ -35,10 +35,10 @@ struct QuerySourceFeaturesTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
-        map.jumpTo(0, 39.9, 116.4, 0, 12);
+        map.jumpTo(0, 39.9, 116.4, 0, 6);
         this.addTestSource(map);
       }
     })

@@ -58,7 +58,6 @@ struct LocationFragmentTestPage {
     }
     this.mapController = map;
     if (this.mapController) {
-      this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
       this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
     }
 

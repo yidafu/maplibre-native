@@ -18,6 +18,7 @@ import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, DEFAULT_MAP_CONFIG } fro
 @Entry
 @Component
 struct CollectionUpdateOnStyleChangeTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   private markers: Marker[] = [];
   @State private currentStyle: string = 'Streets';
@@ -77,27 +78,33 @@ struct CollectionUpdateOnStyleChangeTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text(`标记数: ${this.markerCount}`)
-        .fontSize(14)
-
-      Button('Streets')
-        .width('100%')
-        .backgroundColor(this.currentStyle === 'Streets' ? '#2196F3' : '#9E9E9E')
-        .onClick(() => this.switchStyle('Streets', DEFAULT_STYLE_URLS.streets))
-
-      Button('Satellite')
-        .width('100%')
-        .backgroundColor(this.currentStyle === 'Satellite' ? '#2196F3' : '#9E9E9E')
-        .onClick(() => this.switchStyle('Satellite', DEFAULT_STYLE_URLS.satellite))
-
-      Text('说明: 样式切换后标记集合应保持')
-        .fontSize(12)
-        .fontColor('#666')
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text(`标记数: ${this.markerCount}`)
+          .fontSize(14)
+          .width('100%')
+        
+        Button('Streets')
+          .width('100%')
+          .backgroundColor(this.currentStyle === 'Streets' ? '#2196F3' : '#9E9E9E')
+          .onClick(() => this.switchStyle('Streets', DEFAULT_STYLE_URLS.streets))
+        
+        Button('Satellite')
+          .width('100%')
+          .backgroundColor(this.currentStyle === 'Satellite' ? '#2196F3' : '#9E9E9E')
+          .onClick(() => this.switchStyle('Satellite', DEFAULT_STYLE_URLS.satellite))
+        
+        Text('说明: 样式切换后标记集合应保持')
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+      }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
 
   build() {
@@ -107,7 +114,7 @@ struct CollectionUpdateOnStyleChangeTestPage {
         description: '样式切换集合更新',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

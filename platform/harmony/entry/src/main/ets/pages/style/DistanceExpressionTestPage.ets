@@ -10,6 +10,7 @@ import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct DistanceExpressionTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private centerPoint: LatLng = LatLng.create(39.9042, 116.4074);
   @State private distance: number = 5000; // 米
@@ -87,34 +88,40 @@ struct DistanceExpressionTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('距离表达式')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Row() {
-        Text('距离(米):')
-          .fontSize(14)
-          .width(80)
-        Slider({
-          value: this.distance,
-          min: 1000,
-          max: 20000,
-          step: 1000
-        })
-        .layoutWeight(1)
-        .onChange((value: number) => {
-          this.distance = value;
-          this.updateDistance();
-        })
-        Text(`${this.distance}`)
-          .fontSize(14)
-          .width(60)
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text('距离表达式')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        Row() {
+          Text('距离(米):')
+            .fontSize(14)
+            .width(80)
+          Slider({
+            value: this.distance,
+            min: 1000,
+            max: 20000,
+            step: 1000
+          })
+          .layoutWeight(1)
+          .onChange((value: number) => {
+            this.distance = value;
+            this.updateDistance();
+          })
+          Text(`${this.distance}`)
+            .fontSize(14)
+            .width(60)
+        }
+        .width('100%')
       }
+      .width('100%')
+      .padding(8)
     }
-    .width('100%')
-    .padding(16)
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   build() {
@@ -124,7 +131,7 @@ struct DistanceExpressionTestPage {
         description: '距离表达式',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -51,8 +51,6 @@ struct ObserverTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[ObserverTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    map.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
     this.logEvent('系统', '地图初始化完成');
     
@@ -160,8 +158,6 @@ struct ObserverTestPage {
     if (!this.mapController) return;
     
     this.logEvent('系统', '重新加载样式...');
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
     // 模拟一系列事件
     setTimeout(() => this.simulateShaderCompile(), 100);
     setTimeout(() => this.simulateGlyphLoad(), 200);

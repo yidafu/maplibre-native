@@ -67,8 +67,6 @@ struct OfflineManagementTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[OfflineManagementTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.bright);
-    
     // 设置初始位置（纽约 UNHQ）
     map.jumpTo(0, 40.749851, -73.967966, 0, 14);
     

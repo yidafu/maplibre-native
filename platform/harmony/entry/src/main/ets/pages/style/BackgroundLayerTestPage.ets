@@ -10,6 +10,7 @@ import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct BackgroundLayerTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   
   build() {
@@ -33,7 +34,7 @@ struct BackgroundLayerTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, 0, 0, 0, 2);
@@ -43,20 +44,31 @@ struct BackgroundLayerTestPage {
 
   @Builder
   buildActionButtons() {
-    Button('蓝色背景')
-      .onClick(() => {
-        this.changeBackgroundColor('#1E88E5');
-      })
-    
-    Button('绿色背景')
-      .onClick(() => {
-        this.changeBackgroundColor('#43A047');
-      })
-    
-    Button('深色背景')
-      .onClick(() => {
-        this.changeBackgroundColor('#212121');
-      })
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Button('蓝色背景')
+          .width('100%')
+          .onClick(() => {
+            this.changeBackgroundColor('#1E88E5');
+          })
+        
+        Button('绿色背景')
+          .width('100%')
+          .onClick(() => {
+            this.changeBackgroundColor('#43A047');
+          })
+        
+        Button('深色背景')
+          .width('100%')
+          .onClick(() => {
+            this.changeBackgroundColor('#212121');
+          })
+      }
+      .width('100%')
+      .padding(8)
+    }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   private changeBackgroundColor(color: string): void {

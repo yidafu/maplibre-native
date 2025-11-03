@@ -11,6 +11,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 @Entry
 @Component
 struct RealTimeGeoJsonTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   private updateTimer: number | null = null;
   @State private isUpdating: boolean = false;
@@ -25,12 +26,10 @@ struct RealTimeGeoJsonTestPage {
         description: '实时数据流更新',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel(),
         actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')
-
     .height('100%')
   }
 
@@ -40,26 +39,44 @@ struct RealTimeGeoJsonTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
-        map.jumpTo(0, 39.9, 116.4, 0, 12);
+        map.jumpTo(0, 39.9, 116.4, 0, 6);
         this.initRealtimeLayer(map);
       }
     })
   }
 
   @Builder
-  buildControlPanel() {
-    Column({ space: 8 }) {
-      Text(`更新${this.isUpdating ? '中' : '已停止'}`)
-        .fontSize(14)
-        .fontWeight(FontWeight.Bold)
-      
-      Text(`更新次数: ${this.updateCount}`)
-        .fontSize(12)
-        .fontColor('#666666')
+  buildActionButtons() {
+    Scroll(this.scroller) {
+      Column({ space: 8 }) {
+        Text(`更新${this.isUpdating ? '中' : '已停止'}`)
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        Text(`更新次数: ${this.updateCount}`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+        
+        Button(this.isUpdating ? '停止更新' : '开始更新')
+          .width('100%')
+          .onClick(() => {
+            if (this.isUpdating) {
+              this.stopRealTimeUpdate();
+            } else {
+              this.startRealTimeUpdate();
+            }
+          })
+      }
+      .width('100%')
+      .padding(8)
     }
+    .scrollBar(BarState.Auto)
+    .scrollable(ScrollDirection.Vertical)
   }
   
   private initRealtimeLayer(map: MapLibreMap): void {
@@ -82,18 +99,6 @@ struct RealTimeGeoJsonTestPage {
     } catch (error) {
       console.error(`初始化失败: ${error}`);
     }
-  }
-  
-  @Builder
-  buildActionButtons() {
-    Button(this.isUpdating ? '停止更新' : '开始更新')
-      .onClick(() => {
-        if (this.isUpdating) {
-          this.stopRealTimeUpdate();
-        } else {
-          this.startRealTimeUpdate();
-        }
-      })
   }
   
   private startRealTimeUpdate(): void {

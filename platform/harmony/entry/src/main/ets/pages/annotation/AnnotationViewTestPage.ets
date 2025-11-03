@@ -9,7 +9,8 @@ import {
   MapLibreMap,
   MapLibreMapOptions,
   AnnotationViewAdapter,
-  IconFactory
+  IconFactory,
+  CameraOptions
 } from 'maplibre_harmony';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -17,8 +18,8 @@ import { DOMAIN } from '../../constants/HiLogConstants';
 import common from '@ohos.app.ability.common';
 import promptAction from '@ohos.promptAction';
 import { DEFAULT_MAP_CONFIG } from '../common/TestUtils';
-import maplibre from 'libmaplibre.so';
 import { MapView } from 'maplibre_harmony';
+import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, randomLatLng  } from '../common/TestUtils';
 
 /**
  * AnnotationViewTestPage - AnnotationView 自定义视图测试页面
@@ -149,7 +150,7 @@ struct AnnotationViewTestPage {
   buildMapContent() {
     Stack() {
       MapView({
-        styleUrl: 'https://demotiles.maplibre.org/style.json',
+        styleUrl: DEFAULT_STYLE_URLS.bright,
         initialLatitude: 39.9,
         initialLongitude: 116.4,
         initialZoom: 5,
@@ -1059,7 +1060,7 @@ struct AnnotationViewTestPage {
       const centerLng = totalLng / this.markerLocations.length;
       
       // 使用 flyTo 方法飞到中心点（缩小 zoom 以显示更大范围）
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(centerLat, centerLng),
         zoom: 5
       };
@@ -1098,7 +1099,7 @@ struct AnnotationViewTestPage {
       const loc = this.markerLocations[index]
       
       // 飞到指定 Marker，zoom 10，动画时长 2000ms
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(loc.lat, loc.lng),
         zoom: 10
       };
@@ -1273,7 +1274,7 @@ struct AnnotationViewTestPage {
     
     try {
       // 使用 easeTo 方法重置视角（中国中心）
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(35.0, 105.0),
         zoom: 5,
         bearing: 0,

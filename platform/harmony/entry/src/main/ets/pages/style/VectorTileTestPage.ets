@@ -18,6 +18,7 @@ import { showToast, DEFAULT_MAP_CONFIG, DEFAULT_STYLE_URLS } from '../common/Tes
 @Entry
 @Component
 struct VectorTileTestPage {
+  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
   @State private layerAdded: boolean = false;
   @State private currentColor: string = '#FF0000';
@@ -196,67 +197,82 @@ struct VectorTileTestPage {
   
   @Builder
   actionButtonsBuilder() {
-    Button('添加图层')
-      .fontSize(14)
-      .enabled(!this.layerAdded)
-      .onClick(this.addVectorTileLayer);
-    
-    Button('移除图层')
-      .fontSize(14)
-      .backgroundColor('#F44336')
-      .enabled(this.layerAdded)
-      .onClick(this.removeVectorTileLayer);
-    
-    Button('切换颜色')
-      .fontSize(14)
-      .enabled(this.layerAdded)
-      .onClick(this.toggleColor);
-    
-    Button('切换宽度')
-      .fontSize(14)
-      .enabled(this.layerAdded)
-      .onClick(this.toggleWidth);
+    Column({ space: 8 }) {
+      // 矢量瓦片信息显示
+      Column({ space: 4 }) {
+        Text('矢量瓦片信息')
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .width('100%')
+        
+        Text(`数据源: OpenMapTiles`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text(`源图层: transportation`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text(`状态: ${this.layerAdded ? '已添加' : '未添加'}`)
+          .fontSize(12)
+          .fontColor(this.layerAdded ? '#4CAF50' : '#999')
+          .width('100%')
+        
+        if (this.layerAdded) {
+          Divider().margin({ top: 4, bottom: 4 })
+          
+          Text('图层样式')
+            .fontSize(14)
+            .fontWeight(FontWeight.Bold)
+            .width('100%')
+          
+          Text(`颜色: ${this.currentColor}`)
+            .fontSize(12)
+            .fontColor('#666')
+            .width('100%')
+          
+          Text(`宽度: ${this.currentWidth}px`)
+            .fontSize(12)
+            .fontColor('#666')
+            .width('100%')
+        }
+      }
+      .width('100%')
+      .padding(8)
+      .backgroundColor('#F8F8F8')
+      .borderRadius(4)
+      .alignItems(HorizontalAlign.Start)
+      
+      Button('添加图层')
+        .fontSize(14)
+        .width('100%')
+        .enabled(!this.layerAdded)
+        .onClick(this.addVectorTileLayer)
+      
+      Button('移除图层')
+        .fontSize(14)
+        .width('100%')
+        .backgroundColor('#F44336')
+        .enabled(this.layerAdded)
+        .onClick(this.removeVectorTileLayer)
+      
+      Button('切换颜色')
+        .fontSize(14)
+        .width('100%')
+        .enabled(this.layerAdded)
+        .onClick(this.toggleColor)
+      
+      Button('切换宽度')
+        .fontSize(14)
+        .width('100%')
+        .enabled(this.layerAdded)
+        .onClick(this.toggleWidth)
+    }
+    .width('100%')
   }
   
-  @Builder
-  controlPanelBuilder() {
-    Column() {
-      Text('矢量瓦片信息')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 8 });
-      
-      Text(`数据源: OpenMapTiles`)
-        .fontSize(12)
-        .fontColor('#666');
-      
-      Text(`源图层: transportation`)
-        .fontSize(12)
-        .fontColor('#666');
-      
-      Text(`状态: ${this.layerAdded ? '已添加' : '未添加'}`)
-        .fontSize(12)
-        .fontColor(this.layerAdded ? '#4CAF50' : '#999');
-      
-      if (this.layerAdded) {
-        Divider().margin({ top: 8, bottom: 8 });
-        
-        Text('图层样式')
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .margin({ bottom: 4 });
-        
-        Text(`颜色: ${this.currentColor}`)
-          .fontSize(12)
-          .fontColor('#666');
-        
-        Text(`宽度: ${this.currentWidth}px`)
-          .fontSize(12)
-          .fontColor('#666');
-      }
-    }
-    .alignItems(HorizontalAlign.Start);
-  }
   
   @Builder
   mapContentBuilder() {
@@ -278,7 +294,6 @@ struct VectorTileTestPage {
         description: '矢量瓦片源',
         showActionBar: true,
         actionButtons: (): void => this.actionButtonsBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
         mapContent: (): void => this.mapContentBuilder()
       });
     }

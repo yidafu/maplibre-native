@@ -50,7 +50,7 @@ struct RemoveMarkerTestPage {
   @Builder
   buildMapContent() {
     MapView({
-      styleUrl: DEFAULT_STYLE_URLS.streets,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
       initialZoom: 5,

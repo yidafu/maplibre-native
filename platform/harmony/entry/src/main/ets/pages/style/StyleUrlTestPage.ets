@@ -2,7 +2,7 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapLibreMap, MapLibreMapOptions, maplibre, MapView , NativeMapView} from 'maplibre_harmony';
+import { MapLibreMap, maplibre, MapView , NativeMapView} from 'maplibre_harmony';
 const TAG = 'StyleUrlTestPage';
 
 /**
@@ -90,7 +90,7 @@ struct StyleUrlTestPage {
         styleUrl: this.styleUrls[0].url,
         initialLatitude: 39.9,
         initialLongitude: 116.4,
-        initialZoom: 10,
+        initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
         onMapReady: (map: MapLibreMap) => {
@@ -123,52 +123,60 @@ struct StyleUrlTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-    // 样式信息显示
-    Column() {
-      Text(`当前样式: ${this.currentStyleName}`)
-              .fontSize(14)
-              .fontWeight(FontWeight.Bold)
-              .width('100%')
-            Text(`URL: ${this.currentStyleUrl}`)
-              .fontSize(12)
-              .maxLines(1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-              .width('100%')
-            
-            Text(`Style JSON 大小: ${this.styleJsonLength} 字符`)
-              .fontSize(12)
-              .width('100%')
-          }
+  buildActionButtons() {
+    Column({ space: 8 }) {
+      // 样式信息显示
+      Column({ space: 4 }) {
+        Text(`当前样式: ${this.currentStyleName}`)
+          .fontSize(14)
+          .fontWeight(FontWeight.Bold)
           .width('100%')
-          .backgroundColor('#F8F8F8')
-          .margin({ bottom: 8 })
-          Text('选择地图样式')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
+        
+        Text(`URL: ${this.currentStyleUrl}`)
+          .fontSize(12)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+        
+        Text(`Style JSON 大小: ${this.styleJsonLength} 字符`)
+          .fontSize(12)
+          .width('100%')
+      }
+      .width('100%')
+      .padding(8)
+      .backgroundColor('#F8F8F8')
+      .borderRadius(4)
+      
+      Text('选择地图样式')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 4 })
+
+      ForEach(this.styleUrls, (item: StyleUrlItem) => {
+        Column({ space: 4 }) {
+          Button(item.name)
+            .onClick(() => this.switchStyle(item))
             .width('100%')
+            .fontSize(14)
+          
+          Text(item.description)
+            .fontSize(12)
+            .fontColor('#666')
+            .width('100%')
+        }
+        .width('100%')
+      })
 
-          ForEach(this.styleUrls, (item: StyleUrlItem) => {
-            Column() {
-              Button(item.name)
-                .onClick(() => this.switchStyle(item))
-                .width('100%')
-              
-              Text(item.description)
-                .fontSize(12)
-                .fontColor('#666')
-                .width('100%')
-                .margin({ top: 4 })
-            }
-            .width('90%')
-          })
+      Divider().strokeWidth(2).margin({ top: 4, bottom: 4 })
 
-        Divider().strokeWidth(2).margin({ top: 8, bottom: 8 })
-
-        Button('获取当前样式信息')
-          .onClick(() => this.getStyleInfo())
-          .width('90%')
-          .backgroundColor('#FF9800')
+      Button('获取当前样式信息')
+        .onClick(() => this.getStyleInfo())
+        .width('100%')
+        .fontSize(14)
+        .backgroundColor('#FF9800')
+    }
+    .width('100%')
   }
 
   build() {
@@ -177,7 +185,7 @@ struct StyleUrlTestPage {
         showActionBar: true,
         title: this.message,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

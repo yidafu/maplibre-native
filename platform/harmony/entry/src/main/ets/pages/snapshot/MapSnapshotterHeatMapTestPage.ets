@@ -42,7 +42,6 @@ struct MapSnapshotterHeatMapTestPage {
   
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     this.mapController.jumpTo(0, 35, 105, 0, 4);
     
     setTimeout((): void => this.addHeatmapLayer(), 1000);
