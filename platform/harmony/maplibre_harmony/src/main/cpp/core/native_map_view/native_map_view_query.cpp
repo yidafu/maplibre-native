@@ -576,6 +576,119 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
     }
 }
 
+napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "querySourceFeatures: Invalid arguments");
+        return undefined;
+    }
+
+    // 获取 NativeMapView 实例
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView *instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void **>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "querySourceFeatures: Failed to unwrap instance");
+        return undefined;
+    }
+
+    // 检查是否正在销毁
+    if (instance->isDestroying.load()) {
+        Logger::warn("NativeMapView", "querySourceFeatures: Instance is being destroyed");
+        return undefined;
+    }
+
+    // 检查渲染器是否存在
+    if (!instance->harmonyRenderer) {
+        Logger::error("NativeMapView", "querySourceFeatures: HarmonyRenderer not initialized");
+        return undefined;
+    }
+
+    try {
+        // 1. 解析参数：sourceId
+        std::string sourceId = args.GetString(0, "sourceId");
+
+        if (args.HasError()) {
+            Logger::error("NativeMapView", "querySourceFeatures: Failed to parse sourceId");
+            return undefined;
+        }
+
+        // 2. 构造查询选项
+        mbgl::SourceQueryOptions options;
+
+        // 3. 解析可选的 sourceLayerIds 参数
+        if (args.Count() >= 2) {
+            napi_value sourceLayerIdsValue = args.GetValue(1);
+            napi_valuetype type;
+            napi_typeof(env, sourceLayerIdsValue, &type);
+
+            if (type == napi_object) {
+                bool isArray;
+                napi_is_array(env, sourceLayerIdsValue, &isArray);
+
+                if (isArray) {
+                    uint32_t length;
+                    napi_get_array_length(env, sourceLayerIdsValue, &length);
+
+                    std::vector<std::string> sourceLayerIds;
+                    for (uint32_t i = 0; i < length; i++) {
+                        napi_value element;
+                        napi_get_element(env, sourceLayerIdsValue, i, &element);
+
+                        size_t strLength;
+                        napi_get_value_string_utf8(env, element, nullptr, 0, &strLength);
+
+                        std::string layerId(strLength, '\0');
+                        napi_get_value_string_utf8(env, element, &layerId[0], strLength + 1, &strLength);
+
+                        sourceLayerIds.push_back(layerId);
+                    }
+
+                    options.sourceLayers = sourceLayerIds;
+                    Logger::info("NativeMapView", "querySourceFeatures: Using %zu source layer IDs", sourceLayerIds.size());
+                }
+            }
+        }
+
+        // 4. 解析可选的 filter 参数
+        if (args.Count() >= 3) {
+            napi_value filterValue = args.GetValue(2);
+            napi_valuetype type;
+            napi_typeof(env, filterValue, &type);
+
+            if (type == napi_object) {
+                // TODO: 解析 filter 表达式
+                // 目前先跳过 filter 功能
+                Logger::warn("NativeMapView", "querySourceFeatures: Filter parameter is not yet fully supported");
+            }
+        }
+
+        // 5. 调用 HarmonyRenderer 查询功能
+        if (!instance->harmonyRenderer) {
+            Logger::error("NativeMapView", "querySourceFeatures: HarmonyRenderer is null");
+            return undefined;
+        }
+
+        std::vector<mbgl::Feature> features = instance->harmonyRenderer->querySourceFeatures(sourceId, options);
+
+        Logger::info("NativeMapView", "querySourceFeatures: Found %zu features from source '%s'", 
+                    features.size(), sourceId.c_str());
+
+        // 6. 转换结果为 NAPI 数组
+        napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+
+        return result;
+
+    } catch (const std::exception &e) {
+        Logger::error("NativeMapView", "querySourceFeatures: Exception - %s", e.what());
+        return undefined;
+    }
+}
 
 } // namespace harmony
 } // namespace mbgl

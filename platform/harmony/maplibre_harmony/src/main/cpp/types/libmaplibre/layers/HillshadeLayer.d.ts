@@ -3,6 +3,7 @@
  * 山体阴影图层 API (NAPI 类)
  */
 
+import type { PropertyValue } from '../LayerPropertyTypes';
 import type { ExpressionLiteral } from '../ExpressionTypes';
 
 /**

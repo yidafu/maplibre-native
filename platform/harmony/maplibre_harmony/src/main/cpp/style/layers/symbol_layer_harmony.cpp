@@ -328,13 +328,13 @@ napi_value SymbolLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     SymbolLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string id = layerObj->layer->getID();
+    std::string id = layerObj->getLayer()->getID();
     napi_value result;
     napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -353,13 +353,13 @@ napi_value SymbolLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     SymbolLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string sourceId = layerObj->layer->getSourceID();
+    std::string sourceId = layerObj->getLayer()->getSourceID();
     napi_value result;
     napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -671,10 +671,13 @@ napi_value SymbolLayerNAPI::SetIconAllowOverlap(napi_env env, napi_callback_info
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
+    // 🔍 调试日志：检查传入的值
+    bool result = mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
         env, layerObj->getLayer(), argv[0], "icon-allow-overlap",
         &mbgl::style::SymbolLayer::setIconAllowOverlap
     );
+    Logger::info("SymbolLayerNAPI", "SetIconAllowOverlap called, result=%d", result);
+    
     return thisVar;
 }
 
@@ -711,7 +714,8 @@ napi_value SymbolLayerNAPI::SetTextField(napi_env env, napi_callback_info info) 
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Formatted>(
+    // text-field 支持数据驱动表达式（data-driven property）
+    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Formatted>(
         env, layerObj->getLayer(), argv[0], "text-field",
         &mbgl::style::SymbolLayer::setTextField
     );
@@ -927,10 +931,13 @@ napi_value SymbolLayerNAPI::SetTextAllowOverlap(napi_env env, napi_callback_info
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
+    // 🔍 调试日志：检查传入的值
+    bool result = mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
         env, layerObj->getLayer(), argv[0], "text-allow-overlap",
         &mbgl::style::SymbolLayer::setTextAllowOverlap
     );
+    Logger::info("SymbolLayerNAPI", "SetTextAllowOverlap called, result=%d", result);
+    
     return thisVar;
 }
 
@@ -2502,7 +2509,7 @@ napi_value SymbolLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     SymbolLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
     }
     
@@ -2513,9 +2520,9 @@ napi_value SymbolLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     
     std::string visibility = args.GetString(0, "visibility");
     if (visibility == "visible") {
-        layerObj->layer->setVisibility(mbgl::style::VisibilityType::Visible);
+        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
     } else if (visibility == "none") {
-        layerObj->layer->setVisibility(mbgl::style::VisibilityType::None);
+        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
     }
     
     return thisVar;
@@ -2528,13 +2535,13 @@ napi_value SymbolLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
     SymbolLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
-    auto visibility = layerObj->layer->getVisibility();
+    auto visibility = layerObj->getLayer()->getVisibility();
     const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
     
     napi_value result;

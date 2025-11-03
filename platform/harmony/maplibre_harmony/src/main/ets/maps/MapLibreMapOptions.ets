@@ -55,7 +55,19 @@ export class MapLibreMapOptions {
   public tileLodMinRadius: number = 0;
   public tileLodScale: number = 1.0;
   // Local glyph 配置
-  public localIdeographFontFamily: string | null = 'sans-serif';
+  // 鸿蒙系统字体（按优先级排序）：
+  // 1. HarmonyOS Sans 系列（官方字体，可变字体支持所有字重）
+  //    - HarmonyOS_Sans.ttf (默认，支持多语言)
+  //    - HarmonyOS_Sans_SC.ttf (简体中文优化)
+  //    - HarmonyOS_Sans_TC.ttf (繁体中文)
+  //    - HarmonyOS_Sans_Digit.ttf (数字专用)
+  //    - HarmonyOS_Sans_Condensed.ttf (紧凑版)
+  // 2. Noto Sans 系列（Google 开源字体备选）
+  //    - NotoSansCJK-Regular.ttc (CJK 统一字体)
+  //    - NotoSans-Regular.ttf (基础字体)
+  //    - NotoSans[wdth,wght].ttf (可变字体)
+  // 3. DroidSansFallback.ttf (最终备选)
+  public localIdeographFontFamily: string | null = 'HarmonyOS_Sans';
   public localIdeographEnabled: boolean = true;
   public tileLodPitchThreshold: number = 0;
   public tileLodZoomShift: number = 0;

@@ -48,6 +48,7 @@ static const char *sourceTypeToString(mbgl::style::SourceType type) {
 #include "style/layers/heatmap_layer_harmony.hpp"
 #include "style/layers/hillshade_layer_harmony.hpp"
 #include "style/layers/fill_extrusion_layer_harmony.hpp"
+#include "custom_layer_napi.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -277,6 +278,130 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 Logger::info("StyleNAPI", "AddLayer (RasterLayer): %s", layerId.c_str());
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddLayer (RasterLayer) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
+    // 7. CustomLayer
+    if (!layerAdded && (layerType == "CustomLayer" || layerType.empty())) {
+        mbgl::harmony::CustomLayerNAPI *customLayer = nullptr;
+        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&customLayer));
+        if (status == napi_ok && customLayer) {
+            try {
+                layerId = customLayer->getId();
+                auto layer = customLayer->releaseLayer();
+                if (!layer) {
+                    napi_throw_error(env, nullptr, "Layer already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addLayer(std::move(layer));
+                style->layers[layerId] = true;
+                layerAdded = true;
+
+                // 创建 WeakPtr
+                auto *styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto *customStyleLayer = dynamic_cast<mbgl::style::CustomLayer *>(styleLayer)) {
+                    customLayer->attachToStyle(customStyleLayer);
+                }
+
+                Logger::info("StyleNAPI", "AddLayer (CustomLayer): %s", layerId.c_str());
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddLayer (CustomLayer) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
+    // 8. FillExtrusionLayer
+    if (!layerAdded && (layerType == "FillExtrusionLayer" || layerType.empty())) {
+        mbgl::harmony::FillExtrusionLayerNAPI *fillExtrusionLayer = nullptr;
+        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillExtrusionLayer));
+        if (status == napi_ok && fillExtrusionLayer) {
+            try {
+                layerId = fillExtrusionLayer->getLayer()->getID();
+                auto layer = fillExtrusionLayer->releaseLayer();
+                if (!layer) {
+                    napi_throw_error(env, nullptr, "Layer already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addLayer(std::move(layer));
+                style->layers[layerId] = true;
+                layerAdded = true;
+
+                // 创建 WeakPtr
+                auto *styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto *fillExtrusionStyleLayer = dynamic_cast<mbgl::style::FillExtrusionLayer *>(styleLayer)) {
+                    fillExtrusionLayer->attachToStyle(fillExtrusionStyleLayer);
+                }
+
+                Logger::info("StyleNAPI", "AddLayer (FillExtrusionLayer): %s", layerId.c_str());
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddLayer (FillExtrusionLayer) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
+    // 9. HeatmapLayer
+    if (!layerAdded && (layerType == "HeatmapLayer" || layerType.empty())) {
+        mbgl::harmony::HeatmapLayerNAPI *heatmapLayer = nullptr;
+        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&heatmapLayer));
+        if (status == napi_ok && heatmapLayer) {
+            try {
+                layerId = heatmapLayer->getId();
+                auto layer = heatmapLayer->releaseLayer();
+                if (!layer) {
+                    napi_throw_error(env, nullptr, "Layer already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addLayer(std::move(layer));
+                style->layers[layerId] = true;
+                layerAdded = true;
+
+                // 创建 WeakPtr
+                auto *styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto *heatmapStyleLayer = dynamic_cast<mbgl::style::HeatmapLayer *>(styleLayer)) {
+                    heatmapLayer->attachToStyle(heatmapStyleLayer);
+                }
+
+                Logger::info("StyleNAPI", "AddLayer (HeatmapLayer): %s", layerId.c_str());
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddLayer (HeatmapLayer) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
+    // 10. HillshadeLayer
+    if (!layerAdded && (layerType == "HillshadeLayer" || layerType.empty())) {
+        mbgl::harmony::HillshadeLayerNAPI *hillshadeLayer = nullptr;
+        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&hillshadeLayer));
+        if (status == napi_ok && hillshadeLayer) {
+            try {
+                layerId = hillshadeLayer->getLayer()->getID();
+                auto layer = hillshadeLayer->releaseLayer();
+                if (!layer) {
+                    napi_throw_error(env, nullptr, "Layer already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addLayer(std::move(layer));
+                style->layers[layerId] = true;
+                layerAdded = true;
+
+                // 创建 WeakPtr
+                auto *styleLayer = style->map->getStyle().getLayer(layerId);
+                if (auto *hillshadeStyleLayer = dynamic_cast<mbgl::style::HillshadeLayer *>(styleLayer)) {
+                    hillshadeLayer->attachToStyle(hillshadeStyleLayer);
+                }
+
+                Logger::info("StyleNAPI", "AddLayer (HillshadeLayer): %s", layerId.c_str());
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddLayer (HillshadeLayer) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
                 return nullptr;
             }

@@ -91,8 +91,7 @@ export class MapGestureDetector {
   private currentScale: number = 1.0;
   private lastScale: number = 1.0;
   private initialZoom: number = 0;
-  private previousPinchCenterX: number = 0;
-  private previousPinchCenterY: number = 0;
+  private currentZoomLevel: number = 0; // 🔑 缓存当前zoom级别，避免频繁调用getZoom()导致并发问题
   // 手势优先级判断相关（参考 Android）
   private previousPinchSpan: number = 0; // 上一帧的两指距离
   private previousPinchTimestamp: number = 0; // 上一帧的时间戳
@@ -103,6 +102,11 @@ export class MapGestureDetector {
   private totalRotation: number = 0;
   private rotationAnchorX: number = 0; // 🔑 固定的旋转锚点X（手势开始时确定）
   private rotationAnchorY: number = 0; // 🔑 固定的旋转锚点Y（手势开始时确定）
+  
+  // 🔧 FIX: 固定的缩放锚点（在整个手势过程中保持不变）
+  // 参考 Android: zoomBy 使用固定的 focalPoint，避免因 anchor 变化导致地图漂移
+  private fixedScaleAnchorX: number = 0;  // 固定的缩放锚点 X（手势开始时确定）
+  private fixedScaleAnchorY: number = 0;  // 固定的缩放锚点 Y（手势开始时确定）
 
   // 平移相关状态
   private lastPanX: number = 0;
@@ -374,9 +378,12 @@ export class MapGestureDetector {
    * 平移手势开始
    */
   onPanStart(event: GestureEvent): void {
+    hilog.info(DOMAIN, TAG, `🟡 onPanStart: offset=(${event.offsetX.toFixed(1)}, ${event.offsetY.toFixed(1)})`);
+    
     // 检查是否是 Quick Zoom 手势（双击后立即拖动）
     const timeSinceDoubleTap = Date.now() - this.doubleTapTimestamp;
     if (timeSinceDoubleTap < this.QUICK_ZOOM_TIME_THRESHOLD && this.doubleTapTimestamp > 0) {
+      hilog.info(DOMAIN, TAG, `   🚀 Quick Zoom detected`);
       // 触发 Quick Zoom
       this.onQuickZoomStart(event, this.screenHeight || 800); // 使用默认屏幕高度
       return;
@@ -385,6 +392,8 @@ export class MapGestureDetector {
     // ✅ 使用实际手指坐标初始化（与 onPanUpdate 保持一致）
     const fingerX = event.fingerList && event.fingerList[0] ? event.fingerList[0].localX : event.offsetX;
     const fingerY = event.fingerList && event.fingerList[0] ? event.fingerList[0].localY : event.offsetY;
+    
+    hilog.debug(DOMAIN, TAG, `   finger=(${fingerX.toFixed(1)}, ${fingerY.toFixed(1)})`);
 
     // 🎯 在 Pan 手势开始时检查是否可以开始拖拽 Marker
     // 不需要长按，直接在触摸移动开始时检查
@@ -422,6 +431,8 @@ export class MapGestureDetector {
    * 平移手势更新
    */
   onPanUpdate(event: GestureEvent): void {
+    hilog.debug(DOMAIN, TAG, `🔄 onPanUpdate: offset=(${event.offsetX.toFixed(1)}, ${event.offsetY.toFixed(1)})`);
+    
     // 如果正在 Quick Zoom，转发到 Quick Zoom 处理
     if (this.isQuickZooming) {
       this.onQuickZoomUpdate(event);
@@ -451,8 +462,16 @@ export class MapGestureDetector {
       return;
     }
 
-    // 🔑 关键修复：如果正在缩放或旋转，忽略平移更新（避免多手势冲突导致地图漂移）
-    if (this.isScaling || this.isRotating) {
+    // 🔑 关键修复：如果正在缩放或旋转，或者刚刚结束，忽略平移更新（避免多手势冲突导致地图漂移）
+    const timeSinceScaleEnd = Date.now() - this.lastScaleEndTimestamp;
+    const timeSinceRotateEnd = Date.now() - this.lastRotateEndTimestamp;
+    const timeSinceTiltEnd = Date.now() - this.lastTiltEndTimestamp;
+    
+    if (this.isScaling || this.isRotating || this.isTilting ||
+        timeSinceScaleEnd < this.SCALE_END_GRACE_PERIOD ||
+        timeSinceRotateEnd < this.ROTATE_END_GRACE_PERIOD ||
+        timeSinceTiltEnd < this.TILT_END_GRACE_PERIOD) {
+      hilog.debug(DOMAIN, TAG, `   ⏸️ Pan update ignored: isScaling=${this.isScaling}, isRotating=${this.isRotating}, timeSinceScaleEnd=${timeSinceScaleEnd}ms`);
       return;
     }
 
@@ -501,6 +520,8 @@ export class MapGestureDetector {
    * 3. 使用 0.28 系数（Android 经验值）
    */
   onPanEnd(event: GestureEvent): void {
+    hilog.info(DOMAIN, TAG, `🔴 onPanEnd: offset=(${event.offsetX.toFixed(1)}, ${event.offsetY.toFixed(1)})`);
+    
     // 如果正在 Quick Zoom，转发到 Quick Zoom 处理
     if (this.isQuickZooming) {
       this.onQuickZoomEnd(event);
@@ -605,7 +626,10 @@ export class MapGestureDetector {
    * 缩放手势开始
    */
   onPinchStart(event: GestureEvent): void {
+    hilog.info(DOMAIN, TAG, `🔵 onPinchStart: scale=${event.scale.toFixed(3)}, center=(${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)})`);
+    
     if (!this.uiSettings.isZoomGesturesEnabled()) {
+      hilog.warn(DOMAIN, TAG, `   ⚠️ Zoom gestures disabled`);
       return;
     }
 
@@ -672,11 +696,13 @@ export class MapGestureDetector {
     // 初始化缩放相关状态
     if (this.mapController && this.mapController.getZoom) {
       this.initialZoom = this.mapController.getZoom();
+      this.currentZoomLevel = this.initialZoom; // 🔑 缓存初始zoom，避免在Update中频繁调用getZoom()
+      hilog.info(DOMAIN, TAG, `   initialZoom=${this.initialZoom.toFixed(2)}`);
     } else {
       this.initialZoom = 0;
+      this.currentZoomLevel = 0;
+      hilog.warn(DOMAIN, TAG, `   ⚠️ mapController or getZoom not available`);
     }
-    this.previousPinchCenterX = event.pinchCenterX;
-    this.previousPinchCenterY = event.pinchCenterY;
 
     // 重置速度跟踪器
     this.scaleVelocityTracker.reset();
@@ -687,8 +713,22 @@ export class MapGestureDetector {
       this.mapController.setGestureInProgress(true);
     }
 
+    // 🔧 FIX: 计算并固定缩放锚点（在整个手势过程中保持不变）
+    // 参考 Android: transform.zoomBy 使用固定的 focalPoint，避免 anchor 变化导致漂移
+    let anchorX = event.pinchCenterX;
+    let anchorY = event.pinchCenterY;
+    
+    if (event.fingerList && event.fingerList.length >= 2) {
+      anchorX = (event.fingerList[0].localX + event.fingerList[1].localX) / 2;
+      anchorY = (event.fingerList[0].localY + event.fingerList[1].localY) / 2;
+      hilog.info(DOMAIN, TAG, `   📍 Fixed anchor from fingerList: (${anchorX.toFixed(1)}, ${anchorY.toFixed(1)})`);
+    }
+    
+    this.fixedScaleAnchorX = anchorX;
+    this.fixedScaleAnchorY = anchorY;
+    
     // 获取焦点并通知监听器
-    const focalPoint = this.getFocalPoint(event.pinchCenterX, event.pinchCenterY);
+    const focalPoint = this.getFocalPoint(anchorX, anchorY);
 
     this.notifyScaleBegin(focalPoint.x, focalPoint.y);
   }
@@ -709,26 +749,46 @@ export class MapGestureDetector {
     // Android 风格的增量式缩放计算
     // 参考: MapGestureDetector.ScaleGestureListener.onScale()
     const zoomBy = (Math.log(scaleFactor) / Math.log(Math.PI / 2)) * ZOOM_RATE * this.uiSettings.getZoomRate();
+    
+    hilog.debug(DOMAIN, TAG, `🔄 onPinchUpdate: scale=${event.scale.toFixed(3)}, scaleFactor=${scaleFactor.toFixed(3)}, zoomBy=${zoomBy.toFixed(4)}, center=(${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)})`);
+
+    // 🔑 关键修复：如果zoom变化太小（< 0.001），跳过本帧，避免无效的setZoom调用导致地图漂移
+    // 当用户保持两指距离不变但整体移动时，固定的anchor会导致地图"吸附"
+    if (Math.abs(zoomBy) < 0.001) {
+      // 仍然更新 lastScale，避免下一帧计算错误
+      this.lastScale = this.currentScale;
+      // 仍然通知监听器（虽然zoom没变，但手势still在进行）
+      // 使用固定的缩放锚点（与 Android transform.zoomBy 保持一致）
+      const focalPoint = this.getFocalPoint(this.fixedScaleAnchorX, this.fixedScaleAnchorY);
+      this.notifyScale(scaleFactor, focalPoint.x, focalPoint.y);
+      return;
+    }
 
     // 记录速度样本（用于惯性动画）
     const now = Date.now();
     this.scaleVelocityTracker.addSample(this.currentScale, 0, now);
 
-    // 🔧 修复漂移问题：使用缩放开始时的固定初始焦点，整个缩放过程保持锚点不变
-    // 避免因手指移动导致的锚点偏移
-    const focalPoint = this.getFocalPoint(this.previousPinchCenterX, this.previousPinchCenterY);
+    // 🔧 修复漂移问题：使用固定的缩放锚点（参考 Android transform.zoomBy）
+    // Android 的 zoomBy 在整个手势过程中使用相同的 focalPoint，避免累积偏差
+    // 我们在 onPinchStart 时计算并固定锚点，整个手势过程中不再变化
+    const focalPoint = this.getFocalPoint(this.fixedScaleAnchorX, this.fixedScaleAnchorY);
 
+    // 🔑 使用缓存的zoom值（避免调用getZoom()导致的并发问题和性能损耗）
     // 使用增量式缩放（类似 Android 的 transform.zoomBy）
-    if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
-      const currentZoom: number = this.mapController.getZoom();
-      const newZoom: number = currentZoom + zoomBy;
+    if (this.mapController && this.mapController.setZoom) {
+      const newZoom: number = this.currentZoomLevel + zoomBy;
 
       // 🔑 DPI 修复：将逻辑像素转换为物理像素
       const pixelRatio = this.getPixelRatio();
       const scaledAnchorX = focalPoint.x * pixelRatio;
       const scaledAnchorY = focalPoint.y * pixelRatio;
 
+      hilog.debug(DOMAIN, TAG, `   setZoom: ${this.currentZoomLevel.toFixed(2)} -> ${newZoom.toFixed(2)}, anchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)}), pixelRatio=${pixelRatio.toFixed(2)}`);
+      
       this.mapController.setZoom(newZoom, scaledAnchorX, scaledAnchorY, 0);
+      
+      // 🔑 更新缓存的zoom级别
+      this.currentZoomLevel = newZoom;
     }
 
     // 通知监听器
@@ -805,13 +865,18 @@ export class MapGestureDetector {
    * 缩放手势结束
    */
   onPinchEnd(event: GestureEvent): void {
+    hilog.info(DOMAIN, TAG, `🔴 onPinchEnd: scale=${event.scale.toFixed(3)}, center=(${event.pinchCenterX.toFixed(1)}, ${event.pinchCenterY.toFixed(1)}), currentZoom=${this.currentZoomLevel.toFixed(2)}`);
+    
     if (!this.isScaling) {
+      hilog.warn(DOMAIN, TAG, `   ⚠️ onPinchEnd: Not in scaling state`);
       return;
     }
 
-    // 🔧 修复漂移问题：使用缩放开始时的初始焦点，而不是结束时的焦点
-    // 避免因手指在缩放过程中移动导致的锚点偏移
-    const focalPoint = this.getFocalPoint(this.previousPinchCenterX, this.previousPinchCenterY);
+    // 🔧 FIX: 使用固定的缩放锚点启动惯性动画（参考 Android transform.zoomBy）
+    // 整个手势过程（包括惯性动画）都使用同一个锚点，避免累积偏差
+    const focalPoint = this.getFocalPoint(this.fixedScaleAnchorX, this.fixedScaleAnchorY);
+    
+    hilog.debug(DOMAIN, TAG, `   📍 Using fixed anchor: (${this.fixedScaleAnchorX.toFixed(1)}, ${this.fixedScaleAnchorY.toFixed(1)})`);
 
     // 🔧 Android 风格的缩放惯性动画（完整重写）
     // 参考：MapGestureDetector.java onScaleEnd() 方法
@@ -823,6 +888,7 @@ export class MapGestureDetector {
 
       // ✅ Android 风格：检查速度阈值（使用常量而非 UiSettings）
       if (Math.abs(scaleVelocity) < MIN_SCALE_VELOCITY_THRESHOLD) {
+        hilog.info(DOMAIN, TAG, `   ⏸️ No fling animation: velocity=${scaleVelocity.toFixed(2)} < threshold=${MIN_SCALE_VELOCITY_THRESHOLD}`);
       } else {
         // ✅ 判断是放大还是缩小
         const isScalingOut = scaleVelocity < 0;
@@ -834,25 +900,45 @@ export class MapGestureDetector {
         // ✅ 使用 Android 算法计算动画时长（根据缩放量动态调整）
         const duration = this.calculateScaleAnimationDuration(zoomDelta);
 
-        // 执行缩放动画
-        if (this.mapController && this.mapController.getZoom && this.mapController.setZoom) {
-          const currentZoom: number = this.mapController.getZoom();
-          const finalZoom: number = currentZoom + zoomDelta;
+        hilog.info(DOMAIN, TAG, `   🚀 Fling animation: velocity=${velocityXY.toFixed(2)}, zoomDelta=${zoomDelta.toFixed(4)}, duration=${duration}ms, isScalingOut=${isScalingOut}`);
+
+        // 🔑 执行缩放动画（使用缓存的zoom值避免并发问题）
+        if (this.mapController && this.mapController.setZoom) {
+          const finalZoom: number = this.currentZoomLevel + zoomDelta;
 
           // 🔑 DPI 修复：将逻辑像素转换为物理像素
           const pixelRatio = this.getPixelRatio();
           const scaledAnchorX = focalPoint.x * pixelRatio;
           const scaledAnchorY = focalPoint.y * pixelRatio;
 
+          hilog.info(DOMAIN, TAG, `   setZoom with animation: ${this.currentZoomLevel.toFixed(2)} -> ${finalZoom.toFixed(2)}, anchor=(${scaledAnchorX.toFixed(1)}, ${scaledAnchorY.toFixed(1)})`);
+
           this.mapController.setZoom(finalZoom, scaledAnchorX, scaledAnchorY, duration);
+          // 注意：不更新 currentZoomLevel，因为动画结束后 isScaling 已经是 false
         }
       }
+    } else {
+      hilog.info(DOMAIN, TAG, `   ⏸️ No fling animation: ScaleVelocityAnimation disabled or not enough data`);
     }
 
     this.isScaling = false;
 
     // 🔧 记录缩放结束时间戳，用于禁用紧随其后的 Pan Fling
     this.lastScaleEndTimestamp = Date.now();
+
+    // 🔑 重置 Pan 手势状态，避免缩放期间积累的 Pan offset 在缩放结束后被应用
+    // 问题：Pinch 期间 Pan 也在进行，但被 isScaling 检查忽略，lastPanX/Y 没有更新
+    // 当 Pinch 结束后，下一个 Pan Update 会计算出巨大的 delta，导致地图突然跳动
+    if (event.fingerList && event.fingerList.length >= 1) {
+      this.lastPanX = event.fingerList[0].localX;
+      this.lastPanY = event.fingerList[0].localY;
+      hilog.debug(DOMAIN, TAG, `   🔧 Reset Pan state to avoid accumulated offset: (${this.lastPanX.toFixed(1)}, ${this.lastPanY.toFixed(1)})`);
+    }
+
+    // 🔑 重置手势优先级判断状态，确保下次 pinch 能正常开始
+    this.previousPinchSpan = 0;
+    this.previousPinchTimestamp = 0;
+    this.rotationDeltaAccumulated = 0;
 
     // 🔑 参考 Android: 缩放结束，重新启用旋转和倾斜手势
     this.shouldIgnoreRotation = false;
@@ -871,7 +957,10 @@ export class MapGestureDetector {
    * 旋转手势开始
    */
   onRotateStart(event: GestureEvent): void {
+    hilog.info(DOMAIN, TAG, `🟢 onRotateStart: angle=${event.angle.toFixed(2)}`);
+    
     if (!this.uiSettings.isRotateGesturesEnabled()) {
+      hilog.warn(DOMAIN, TAG, `   ⚠️ Rotate gestures disabled`);
       return;
     }
 
@@ -956,6 +1045,8 @@ export class MapGestureDetector {
       return;
     }
 
+    hilog.debug(DOMAIN, TAG, `🔄 onRotateUpdate: angle=${currentRotation.toFixed(2)}°, delta=${rotationDelta.toFixed(2)}°`);
+
     this.totalRotation += rotationDelta;
 
     // 🔑 累积旋转增量供 Pinch 优先级判断使用（参考 Android getDeltaSinceLast）
@@ -1002,7 +1093,10 @@ export class MapGestureDetector {
    * 旋转手势结束
    */
   onRotateEnd(event: GestureEvent): void {
+    hilog.info(DOMAIN, TAG, `🔴 onRotateEnd: angle=${event.angle.toFixed(2)}°`);
+    
     if (!this.isRotating) {
+      hilog.warn(DOMAIN, TAG, `   ⚠️ Not in rotating state`);
       return;
     }
 
@@ -1052,6 +1146,19 @@ export class MapGestureDetector {
 
     // 🔧 记录旋转结束时间戳，用于禁用紧随其后的 Pan Fling
     this.lastRotateEndTimestamp = Date.now();
+
+    // 🔑 重置 Pan 手势状态，避免旋转期间积累的 Pan offset 在旋转结束后被应用
+    // 与 onPinchEnd 中的修复逻辑一致
+    if (event.fingerList && event.fingerList.length >= 1) {
+      this.lastPanX = event.fingerList[0].localX;
+      this.lastPanY = event.fingerList[0].localY;
+      hilog.debug(DOMAIN, TAG, `   🔧 Reset Pan state to avoid accumulated offset: (${this.lastPanX.toFixed(1)}, ${this.lastPanY.toFixed(1)})`);
+    }
+
+    // 🔑 重置手势优先级判断状态，确保下次 pinch 能正常开始
+    this.previousPinchSpan = 0;
+    this.previousPinchTimestamp = 0;
+    this.rotationDeltaAccumulated = 0;
 
     // 设置手势完成
     if (this.mapController) {

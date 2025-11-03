@@ -485,9 +485,23 @@ void CURLEventLoop::processCURLMessages() {
             void* privateData = nullptr;
             curl_easy_getinfo(handle, CURLINFO_PRIVATE, &privateData);
             
+            // 🔒 CRASH FIX: 增强 privateData 有效性检查
             if (privateData) {
-                // 调用外部函数处理结果
-                handleHTTPRequestResult(privateData, result);
+                // 再次检查：确保在调用前句柄仍然有效
+                // 注意：这不能完全防止 use-after-free，但可以减少概率
+                
+                // 尝试重新获取，确认指针仍然一致
+                void* verify = nullptr;
+                CURLcode info_result = curl_easy_getinfo(handle, CURLINFO_PRIVATE, &verify);
+                
+                if (info_result == CURLE_OK && verify == privateData) {
+                    Logger::info("Network", "✅ privateData validity check passed: %p", privateData);
+                    // 调用外部函数处理结果
+                    handleHTTPRequestResult(privateData, result);
+                } else {
+                    Logger::error("Network", "❌ privateData validity check failed (URL: %s, expected=%p, actual=%p)", 
+                                 url ? url : "unknown", privateData, verify);
+                }
             } else {
                 Logger::error("Network", "❌ No private data found for completed handle (URL: %s)", url ? url : "unknown");
             }

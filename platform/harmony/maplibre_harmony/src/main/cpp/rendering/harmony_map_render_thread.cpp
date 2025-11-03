@@ -559,6 +559,18 @@ std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
     return renderer_->queryRenderedFeatures(box, options);
 }
 
+std::vector<Feature> HarmonyMapRenderThread::querySourceFeatures(
+    const std::string& sourceId,
+    const SourceQueryOptions& options) const {
+    
+    if (!renderer_) {
+        Logger::error("MapRenderThread", "querySourceFeatures: Renderer not initialized");
+        return {};
+    }
+    
+    return renderer_->querySourceFeatures(sourceId, options);
+}
+
 void HarmonyMapRenderThread::setOnFpsChangedCallback(std::function<void(double)> callback) {
     fpsCallback_ = std::move(callback);
     measureFps_ = (fpsCallback_ != nullptr);

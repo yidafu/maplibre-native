@@ -177,6 +177,12 @@ public:
                                                const RenderedQueryOptions& options = {}) const;
     
     /**
+     * 查询数据源特征
+     */
+    std::vector<Feature> querySourceFeatures(const std::string& sourceId,
+                                            const SourceQueryOptions& options = {}) const;
+    
+    /**
      * 设置 FPS 回调（参考 Android MapRenderer::setOnFpsChangedListener）
      */
     void setOnFpsChangedCallback(std::function<void(double)> callback);

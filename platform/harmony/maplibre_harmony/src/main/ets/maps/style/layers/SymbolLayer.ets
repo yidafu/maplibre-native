@@ -101,8 +101,13 @@ export class SymbolLayer {
     return this;
   }
 
-  setIconAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer {
-    this.nativeInstance.setIconAllowOverlap(convertValue(allow));
+  setIconAllowOverlap(allow: boolean): SymbolLayer {
+    this.nativeInstance.setIconAllowOverlap(allow);
+    return this;
+  }
+
+  setIconIgnorePlacement(ignore: boolean): SymbolLayer {
+    this.nativeInstance.setIconIgnorePlacement(ignore);
     return this;
   }
 
@@ -158,8 +163,23 @@ export class SymbolLayer {
     return this;
   }
 
-  setTextAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer {
-    this.nativeInstance.setTextAllowOverlap(convertValue<boolean>(allow));
+  setTextAllowOverlap(allow: boolean): SymbolLayer {
+    this.nativeInstance.setTextAllowOverlap(allow);
+    return this;
+  }
+
+  setTextIgnorePlacement(ignore: boolean): SymbolLayer {
+    this.nativeInstance.setTextIgnorePlacement(ignore);
+    return this;
+  }
+
+  setTextOptional(optional: boolean): SymbolLayer {
+    this.nativeInstance.setTextOptional(optional);
+    return this;
+  }
+
+  setIconOptional(optional: boolean): SymbolLayer {
+    this.nativeInstance.setIconOptional(optional);
     return this;
   }
 

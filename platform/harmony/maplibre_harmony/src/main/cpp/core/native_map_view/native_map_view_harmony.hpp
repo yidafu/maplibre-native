@@ -138,6 +138,7 @@ public:
     static napi_value setTransitionOptions(napi_env env, napi_callback_info info);
     static napi_value queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info);
     static napi_value queryRenderedFeaturesForBox(napi_env env, napi_callback_info info);
+    static napi_value querySourceFeatures(napi_env env, napi_callback_info info);
     
     // 性能配置 API（参考 Android MapRenderer）
     static napi_value setMaximumFps(napi_env env, napi_callback_info info);
@@ -323,8 +324,8 @@ private:
     std::string cachePath_;
     
     // Local glyph 字体族配置
-    std::optional<std::string> localIdeographFontFamily_ = std::string("sans-serif");
-    
+    std::optional<std::string> localIdeographFontFamily_ = std::string("HarmonyOS_Sans");
+
     // 内容边距 [top, left, bottom, right]
     std::array<double, 4> contentPadding_ = {0.0, 0.0, 0.0, 0.0};
     

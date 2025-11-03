@@ -542,13 +542,13 @@ napi_value LineLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
-    std::string id = layerObj->layer->getID();
+    std::string id = layerObj->getLayer()->getID();
     napi_value result;
     napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -567,13 +567,13 @@ napi_value LineLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
-    std::string sourceId = layerObj->layer->getSourceID();
+    std::string sourceId = layerObj->getLayer()->getSourceID();
     napi_value result;
     napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -587,7 +587,7 @@ napi_value LineLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
     }
     
@@ -598,9 +598,9 @@ napi_value LineLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
     
     std::string visibility = args.GetString(0, "visibility");
     if (visibility == "visible") {
-        layerObj->layer->setVisibility(mbgl::style::VisibilityType::Visible);
+        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
     } else if (visibility == "none") {
-        layerObj->layer->setVisibility(mbgl::style::VisibilityType::None);
+        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
     }
     
     return thisVar;
@@ -613,13 +613,13 @@ napi_value LineLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
-    auto visibility = layerObj->layer->getVisibility();
+    auto visibility = layerObj->getLayer()->getVisibility();
     const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
     
     napi_value result;

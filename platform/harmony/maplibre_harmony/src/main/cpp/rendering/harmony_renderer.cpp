@@ -350,6 +350,18 @@ std::vector<Feature> HarmonyRenderer::queryRenderedFeatures(
     return mapRenderThread_->queryRenderedFeatures(box, options);
 }
 
+std::vector<Feature> HarmonyRenderer::querySourceFeatures(
+    const std::string& sourceId,
+    const SourceQueryOptions& options) const {
+    
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "querySourceFeatures: MapRenderThread not initialized");
+        return {};
+    }
+    
+    return mapRenderThread_->querySourceFeatures(sourceId, options);
+}
+
 void HarmonyRenderer::setOnFpsChangedCallback(std::function<void(double)> callback) {
     if (!mapRenderThread_) {
         Logger::error("HarmonyRenderer", "setOnFpsChangedCallback: MapRenderThread not initialized");

@@ -2892,6 +2892,48 @@ export class MapLibreMap {
     }
   }
 
+  /**
+   * 查询数据源中的所有要素
+   * 
+   * 此方法查询指定数据源中的所有要素，不考虑这些要素是否已渲染。
+   * 这对于 GeoJSON 数据源特别有用，可以获取所有添加到数据源的要素。
+   * 
+   * @param sourceId 数据源 ID
+   * @param sourceLayerIds 可选的源图层 ID 数组（用于 vector tile 数据源）
+   * @param filter 可选的过滤器表达式
+   * @returns 查询到的要素数组
+   * 
+   * @example
+  * ```typescript
+   * // 查询 GeoJSON 数据源中的所有要素
+   * const features = map.querySourceFeatures('my-source');
+   *
+   * // 查询 vector tile 数据源中特定图层的要素
+   * const features = map.querySourceFeatures('composite', ['poi-label']);
+   *
+   * // 使用过滤器查询
+   * const features = map.querySourceFeatures(
+   *   'my-source',
+   *   undefined,
+   *   ['==', ['get', 'type'], 'restaurant']
+   * );
+   * ```
+   */
+  public querySourceFeatures(
+    sourceId: string,
+    sourceLayerIds?: string[],
+    filter?: Object
+  ): IFeature[] {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'querySourceFeatures: Map is destroyed');
+      return [];
+    }
+
+    // TODO: 实现 querySourceFeatures
+    console.warn('MapLibreMap', 'querySourceFeatures not yet implemented');
+    return [];
+  }
+
   // ========== InfoWindow 支持方法 ==========
 
   /**

@@ -37,6 +37,7 @@ class InternalMarker {
  * ```
  */
 export class CustomLayer {
+  static readonly _TYPE_ = 'CustomLayer';
   private nativeInstance: maplibre.CustomLayer;
 
   constructor(idOrMarker: string | InternalMarker, nativeOrNothing?: maplibre.CustomLayer) {

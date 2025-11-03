@@ -81,6 +81,10 @@ public:
     std::vector<Feature> queryRenderedFeatures(const ScreenBox& box,
                                                const RenderedQueryOptions& options = {}) const;
     
+    // 查询数据源特征
+    std::vector<Feature> querySourceFeatures(const std::string& sourceId,
+                                            const SourceQueryOptions& options = {}) const;
+    
     // FPS 测量（参考 Android MapRenderer）
     void setOnFpsChangedCallback(std::function<void(double)> callback);
     void enableFpsMeasurement(bool enable);

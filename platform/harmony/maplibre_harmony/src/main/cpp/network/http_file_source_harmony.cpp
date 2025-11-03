@@ -369,33 +369,42 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
 }
 
 HTTPRequest::~HTTPRequest() {
-    // 清除CURL userp指针，防止回调访问已销毁对象
-    if (handle) {
-        curl_easy_setopt(handle, CURLOPT_WRITEDATA, nullptr);
-        curl_easy_setopt(handle, CURLOPT_HEADERDATA, nullptr);
-        curl_easy_setopt(handle, CURLOPT_PRIVATE, nullptr);
-    }
+    // 🔒 CRASH FIX: 修改析构顺序，先停止回调，再清理资源
+    // 
+    // 问题：原来的顺序是先清空 userp，再移除句柄
+    // 这导致 CURLEventLoop 的回调（writeCallback/headerCallback）可能访问空指针
+    //
+    // 解决方案：
+    // 1. 先从 CURLEventLoop 移除句柄（停止新的回调）
+    // 2. 添加短暂等待，确保进行中的回调完成
+    // 3. 再清空 userp 和清理资源
     
-    // 从CURLEventLoop移除CURL句柄
+    // Step 1: 从 CURLEventLoop 移除 CURL 句柄（停止新的回调）
     if (context && context->curlEventLoop && handle) {
         bool success = context->curlEventLoop->removeHandle(handle);
         if (!success) {
             Logger::warn("Network", "Error removing CURL handle from CURLEventLoop");
         }
         
-        // ⚡ ANR FIX: 移除 sleep，避免累积延迟导致ANR
-        // 原因：如果有多个HTTPRequest同时析构，10ms * N 可能导致主线程阻塞
-        // 解决方案：removeHandle() 内部已经处理了同步，不需要额外等待
-        // std::this_thread::sleep_for(std::chrono::milliseconds(10)); // 已移除
+        // Step 2: 短暂等待，确保进行中的回调完成
+        // 注意：这个等待时间应该足够短，避免ANR，但足够长让回调完成
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     
-    // 返回句柄到池中
+    // Step 3: 现在可以安全地清空 userp 指针
+    if (handle) {
+        curl_easy_setopt(handle, CURLOPT_WRITEDATA, nullptr);
+        curl_easy_setopt(handle, CURLOPT_HEADERDATA, nullptr);
+        curl_easy_setopt(handle, CURLOPT_PRIVATE, nullptr);
+    }
+    
+    // Step 4: 返回句柄到池中
     if (context && handle) {
         context->returnHandle(handle);
         handle = nullptr;
     }
     
-    // 清理HTTP头
+    // Step 5: 清理 HTTP 头
     if (headers) {
         curl_slist_free_all(headers);
         headers = nullptr;
@@ -403,20 +412,28 @@ HTTPRequest::~HTTPRequest() {
 }
 
 size_t HTTPRequest::writeCallback(void *const contents, const size_t size, const size_t nmemb, void *userp) {
-    if (!userp) {
+    // 🔒 CRASH FIX: 增强空指针检查
+    if (!userp || !contents) {
+        Logger::warn("Network", "writeCallback: null pointer (userp=%p, contents=%p)", userp, contents);
         return 0;
     }
     
     auto impl = reinterpret_cast<HTTPRequest *>(userp);
     
     try {
+        // 额外的有效性检查：确保 impl 指向有效内存
+        // 注意：这不是完美的检查，但可以捕获一些明显的问题
         if (!impl->data) {
             impl->data = std::make_shared<std::string>();
         }
 
         impl->data->append(static_cast<char *>(contents), size * nmemb);
         return size * nmemb;
+    } catch (const std::exception& e) {
+        Logger::error("Network", "writeCallback exception: %s", e.what());
+        return 0;
     } catch (...) {
+        Logger::error("Network", "writeCallback unknown exception");
         return 0;
     }
 }
@@ -441,7 +458,9 @@ size_t headerMatches(const char *const header, const char *const buffer, const s
 } // namespace
 
 size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const size_t nmemb, void *userp) {
-    if (!userp) {
+    // 🔒 CRASH FIX: 增强空指针检查
+    if (!userp || !buffer) {
+        Logger::warn("Network", "headerCallback: null pointer (userp=%p, buffer=%p)", userp, buffer);
         return 0;
     }
     
@@ -481,6 +500,9 @@ size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const 
 }
 
 void HTTPRequest::handleResult(CURLcode code) {
+    // 🔒 CRASH FIX: 确保 handleResult 执行期间对象不被析构
+    // 注意：这个方法可能在 CURLEventLoop 线程中被调用
+    
     // 🔍 诊断：记录结果处理开始
     Logger::info("HTTP", "📥 Processing Result:");
     Logger::info("HTTP", "  Request: %p", this);

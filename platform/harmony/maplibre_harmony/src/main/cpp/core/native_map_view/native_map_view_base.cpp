@@ -368,6 +368,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"setTransitionOptions", nullptr, setTransitionOptions, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"queryRenderedFeaturesForPoint", nullptr, queryRenderedFeaturesForPoint, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"queryRenderedFeaturesForBox", nullptr, queryRenderedFeaturesForBox, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"querySourceFeatures", nullptr, querySourceFeatures, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setMaximumFps", nullptr, setMaximumFps, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setRenderingRefreshMode", nullptr, setRenderingRefreshMode, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getRenderingRefreshMode", nullptr, getRenderingRefreshMode, nullptr, nullptr, nullptr, napi_default, nullptr},
