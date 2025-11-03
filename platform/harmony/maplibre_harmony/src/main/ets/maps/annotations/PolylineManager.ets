@@ -141,7 +141,7 @@ export class PolylineManager {
       return;
     }
     
-    this.mapLibreMap.updatePolyline(id, polyline);
+    this.mapLibreMap.updatePolyline(polyline);
   }
   
   /**

@@ -880,8 +880,15 @@ export class MarkerManager {
     }
     
     // 显示 InfoWindow
-    if (showInfoWindow && (marker.getTitle() || marker.getSnippet())) {
+    const title = marker.getTitle();
+    const snippet = marker.getSnippet();
+    console.info(`[MarkerManager] selectMarker - title: "${title}", snippet: "${snippet}", showInfoWindow: ${showInfoWindow}`);
+    
+    if (showInfoWindow && (title || snippet)) {
+      console.info(`[MarkerManager] Showing InfoWindow for marker with title: "${title}"`);
       marker.showInfoWindow();
+    } else {
+      console.warn(`[MarkerManager] InfoWindow not shown - showInfoWindow: ${showInfoWindow}, hasTitle: ${!!title}, hasSnippet: ${!!snippet}`);
     }
   }
   

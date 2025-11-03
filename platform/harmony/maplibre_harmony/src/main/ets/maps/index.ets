@@ -181,7 +181,15 @@ export { Annotation } from './annotations/Annotation';
 
 export { Polyline } from './annotations/Polyline';
 
+export type { PolylineOptions } from './annotations/Polyline';
+
 export { Polygon } from './annotations/Polygon';
+
+export type { PolygonOptions } from './annotations/Polygon';
+
+export { PolylineManager } from './annotations/PolylineManager';
+
+export { PolygonManager } from './annotations/PolygonManager';
 
 export { InfoWindow, InfoWindowComponent } from './annotations/InfoWindow';
 

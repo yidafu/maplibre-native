@@ -505,17 +505,15 @@ export class NativeMapView {
     
     /**
      * 更新折线
-     * @param polylineId 折线 ID
-     * @param polyline 折线对象
+     * @param polyline 折线对象（必须已添加到地图）
      */
-    updatePolyline(polylineId: number, polyline: Polyline): void;
+    updatePolyline(polyline: Polyline): void;
     
     /**
      * 更新多边形
-     * @param polygonId 多边形 ID
-     * @param polygon 多边形对象
+     * @param polygon 多边形对象（必须已添加到地图）
      */
-    updatePolygon(polygonId: number, polygon: Polygon): void;
+    updatePolygon(polygon: Polygon): void;
     
     /**
      * 移除注记

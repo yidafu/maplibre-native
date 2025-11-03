@@ -269,8 +269,6 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    Logger::info("NativeMapView", "addPolylines: Processing %u polylines", length);
-    
     // 存储生成的 annotation IDs
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
@@ -300,14 +298,10 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
             
             // 设置 annotation ID 回 Polyline
             polyline->setAnnotationId(annotationId);
-            
-            Logger::info("NativeMapView", "addPolylines: polyline[%u] created with ID=%lu", i, annotationId);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "addPolylines: polyline[%u] failed to add - %s", i, e.what());
         }
     }
-    
-    Logger::info("NativeMapView", "addPolylines: Added %zu/%u polylines successfully", ids.size(), length);
     
     // 触发重绘
     if (!ids.empty()) {
@@ -376,8 +370,6 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    Logger::info("NativeMapView", "addPolygons: Processing %u polygons", length);
-    
     // 存储生成的 annotation IDs
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
@@ -407,14 +399,10 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
             
             // 设置 annotation ID 回 Polygon
             polygon->setAnnotationId(annotationId);
-            
-            Logger::info("NativeMapView", "addPolygons: polygon[%u] created with ID=%lu", i, annotationId);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "addPolygons: polygon[%u] failed to add - %s", i, e.what());
         }
     }
-    
-    Logger::info("NativeMapView", "addPolygons: Added %zu/%u polygons successfully", ids.size(), length);
     
     // 触发重绘
     if (!ids.empty()) {
@@ -483,8 +471,6 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
         return undefined;
     }
     
-    Logger::info("NativeMapView", "updatePolyline: Updating polyline with ID=%lu", annotationId);
-    
     try {
         // 更新 Polyline (使用 LineAnnotation)
         mbgl::LineAnnotation annotation = polyline->toAnnotation();
@@ -492,8 +478,6 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
             m->updateAnnotation(annotationId, annotation);
             m->triggerRepaint();
         });
-        
-        Logger::info("NativeMapView", "updatePolyline: Polyline updated successfully");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "updatePolyline: Failed - %s", e.what());
     }
@@ -545,17 +529,14 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    Logger::info("NativeMapView", "updatePolygon: Updating polygon with ID=%lu", annotationId);
-    
     try {
         // 更新 Polygon (使用 FillAnnotation)
         mbgl::FillAnnotation annotation = polygon->toAnnotation();
+        
         instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
             m->updateAnnotation(annotationId, annotation);
             m->triggerRepaint();
         });
-        
-        Logger::info("NativeMapView", "updatePolygon: Polygon updated successfully");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "updatePolygon: Failed - %s", e.what());
     }

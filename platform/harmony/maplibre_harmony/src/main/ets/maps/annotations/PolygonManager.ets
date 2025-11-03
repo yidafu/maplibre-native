@@ -141,7 +141,7 @@ export class PolygonManager {
       return;
     }
     
-    this.mapLibreMap.updatePolygon(id, polygon);
+    this.mapLibreMap.updatePolygon(polygon);
   }
   
   /**

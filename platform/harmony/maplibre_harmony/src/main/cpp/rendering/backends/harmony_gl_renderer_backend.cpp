@@ -82,9 +82,6 @@ public:
     }
 
     void swap() override {
-        // 🔍 诊断日志：确认 swap() 被调用
-        Logger::info("HarmonyGL", "🔄 HarmonyGLRenderableResource::swap() called");
-        
         // Ensure BackendScope exists to avoid crashes
         if (!gfx::BackendScope::exists()) {
             Logger::error("HarmonyGL", "❌ BackendScope does not exist during swap operation");

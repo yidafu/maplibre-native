@@ -41,8 +41,6 @@ void PolygonNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hi
 }
 
 napi_value PolygonNAPI::Init(napi_env env, napi_value exports) {
-    Logger::info("PolygonNAPI", "Initializing Polygon NAPI class");
-    
     napi_property_descriptor properties[] = {
         // Getter methods
         { "getPoints", nullptr, GetPoints, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -98,7 +96,6 @@ napi_value PolygonNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    Logger::info("PolygonNAPI", "Polygon NAPI class registered successfully");
     return exports;
 }
 
@@ -222,10 +219,6 @@ napi_value PolygonNAPI::New(napi_env env, napi_callback_info info) {
         polygon->zIndex = static_cast<int>(args.GetInt64Property(optionsObj, "zIndex", 0));
     }
     
-    Logger::info("PolygonNAPI", "Polygon created with %zu points, %zu holes, fillColor=rgba(%f,%f,%f,%f)",
-                 polygon->points.size(), polygon->holes.size(),
-                 polygon->fillColor.r, polygon->fillColor.g, polygon->fillColor.b, polygon->fillAlpha);
-    
     // Wrap native object to NAPI object
     napi_status status = napi_wrap(env, thisVar, polygon, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
@@ -262,6 +255,7 @@ mbgl::FillAnnotation PolygonNAPI::toAnnotation() const {
     annotation.opacity = fillAlpha;
     annotation.color = fillColor;
     annotation.outlineColor = strokeColor;
+    // 注意：FillAnnotation 不支持 outlineWidth，strokeWidth 属性暂时无法在核心层使用
     
     return annotation;
 }

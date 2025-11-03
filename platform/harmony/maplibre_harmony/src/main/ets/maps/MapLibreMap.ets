@@ -1015,22 +1015,60 @@ export class MapLibreMap {
 
   public addPolylines(polylines: Polyline[]): number[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.addPolylines(polylines);
+    // 提取原生对象
+    const nativePolylines = polylines.map(p => p.getNative());
+    return this.nativeMapView.addPolylines(nativePolylines);
   }
 
   public addPolygons(polygons: Polygon[]): number[] {
     if (this.destroyed) return [];
-    return this.nativeMapView.addPolygons(polygons);
+    // 提取原生对象
+    const nativePolygons = polygons.map(p => p.getNative());
+    return this.nativeMapView.addPolygons(nativePolygons);
   }
 
-  public updatePolyline(polylineId: number, polyline: Polyline): void {
+  public updatePolyline(polyline: Polyline): void {
     if (this.destroyed) return;
-    this.nativeMapView.updatePolyline(polylineId, polyline);
+    if (!polyline) {
+      console.error('MapLibreMap.updatePolyline: polyline is null or undefined');
+      return;
+    }
+    
+    try {
+      const nativePolyline = polyline.getNative();
+      if (!nativePolyline) {
+        console.error('MapLibreMap.updatePolyline: nativePolyline is null or undefined');
+        return;
+      }
+      
+      // 传递原生 NAPI 对象供 C++ unwrap（C++ 层会从对象获取 ID）
+      this.nativeMapView.updatePolyline(nativePolyline);
+    } catch (error) {
+      console.error(`MapLibreMap.updatePolyline: Exception - ${error}`);
+      // throw error;
+    }
   }
 
-  public updatePolygon(polygonId: number, polygon: Polygon): void {
+  public updatePolygon(polygon: Polygon): void {
     if (this.destroyed) return;
-    this.nativeMapView.updatePolygon(polygonId, polygon);
+    if (!polygon) {
+      console.error('MapLibreMap.updatePolygon: polygon is null or undefined');
+      return;
+    }
+    
+    try {
+      const nativePolygon = polygon.getNative();
+      if (!nativePolygon) {
+        console.error('MapLibreMap.updatePolygon: nativePolygon is null or undefined');
+        return;
+      }
+      
+      // 传递原生 NAPI 对象供 C++ unwrap（C++ 层会从对象获取 ID）
+      this.nativeMapView.updatePolygon(nativePolygon);
+    } catch (error) {
+      console.error(`MapLibreMap.updatePolygon: Exception - ${error}`);
+      // throw error;
+    }
   }
 
   public removeAnnotations(ids: number[]): void {
@@ -1454,7 +1492,6 @@ export class MapLibreMap {
     this.annotationViewManager.clear();
     
     // TODO: 清除 Polyline 和 Polygon（当实现后）
-    console.warn('MapLibreMap: Polyline and Polygon clearing not fully implemented');
   }
   
   /**

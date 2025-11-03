@@ -41,8 +41,6 @@ void PolylineNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_h
 }
 
 napi_value PolylineNAPI::Init(napi_env env, napi_value exports) {
-    Logger::info("PolylineNAPI", "Initializing Polyline NAPI class");
-    
     napi_property_descriptor properties[] = {
         // Getter methods
         { "getPoints", nullptr, GetPoints, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -96,7 +94,6 @@ napi_value PolylineNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    Logger::info("PolylineNAPI", "Polyline NAPI class registered successfully");
     return exports;
 }
 
@@ -189,11 +186,6 @@ napi_value PolylineNAPI::New(napi_env env, napi_callback_info info) {
         // Parse capType (optional)
         polyline->capType = args.GetStringProperty(optionsObj, "capType", "round");
     }
-    
-    Logger::info("PolylineNAPI", "Polyline created with %zu points, color=rgba(%f,%f,%f,%f), width=%f",
-                 polyline->points.size(), 
-                 polyline->color.r, polyline->color.g, polyline->color.b, polyline->alpha,
-                 polyline->width);
     
     // Wrap native object to NAPI object
     napi_status status = napi_wrap(env, thisVar, polyline, Destructor, nullptr, nullptr);
