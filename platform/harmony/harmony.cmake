@@ -192,6 +192,8 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/
             ace_ndk.z
             native_window
             vulkan
+            libimage_source.so
+            libpixelmap.so
             ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so
     )
 else()
@@ -209,6 +211,8 @@ else()
             ace_ndk.z
             native_window
             vulkan
+            libimage_source.so
+            libpixelmap.so
     )
 endif()
 

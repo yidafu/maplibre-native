@@ -1,38 +1,170 @@
 #include <mbgl/util/image.hpp>
 #include <mbgl/util/logging.hpp>
+#include <mbgl/util/premultiply.hpp>
 
+#include <multimedia/image_framework/image/image_source_native.h>
+#include <multimedia/image_framework/image/pixelmap_native.h>
+#include <multimedia/image_framework/image/image_common.h>
+
+#include <memory>
 #include <string>
+#include <cstring>
 
 namespace mbgl {
 
-// 这是一个平台特定的图像解码实现
-// HarmonyOS 将使用 mbgl-core 中已经实现的通用解码功能
-// 该函数声明在 include/mbgl/util/image.hpp 中，但实现在各平台目录
-// 
-// 注意：这个文件本身就是提供 decodeImage 的实现，不能调用自己
-// 我们需要依赖 mbgl-core 已经编译好的解码功能
-//
-// 对于 HarmonyOS，我们暂时返回空图像
-// 实际的图像解码会由 mbgl-core 的其他部分处理（例如使用 libpng、libjpeg）
+namespace {
+
+// RAII wrapper for OH_ImageSourceNative
+class ImageSourceGuard {
+public:
+    explicit ImageSourceGuard(OH_ImageSourceNative* src) : source(src) {}
+    ~ImageSourceGuard() {
+        if (source) {
+            OH_ImageSourceNative_Release(source);
+        }
+    }
+    ImageSourceGuard(const ImageSourceGuard&) = delete;
+    ImageSourceGuard& operator=(const ImageSourceGuard&) = delete;
+    OH_ImageSourceNative* get() const { return source; }
+private:
+    OH_ImageSourceNative* source;
+};
+
+// RAII wrapper for OH_PixelmapNative
+class PixelMapGuard {
+public:
+    explicit PixelMapGuard(OH_PixelmapNative* pm) : pixelmap(pm) {}
+    ~PixelMapGuard() {
+        if (pixelmap) {
+            OH_PixelmapNative_Release(pixelmap);
+        }
+    }
+    PixelMapGuard(const PixelMapGuard&) = delete;
+    PixelMapGuard& operator=(const PixelMapGuard&) = delete;
+    OH_PixelmapNative* get() const { return pixelmap; }
+private:
+    OH_PixelmapNative* pixelmap;
+};
+
+// RAII wrapper for OH_DecodingOptions
+class DecodingOptionsGuard {
+public:
+    explicit DecodingOptionsGuard(OH_DecodingOptions* opts) : options(opts) {}
+    ~DecodingOptionsGuard() {
+        if (options) {
+            OH_DecodingOptions_Release(options);
+        }
+    }
+    DecodingOptionsGuard(const DecodingOptionsGuard&) = delete;
+    DecodingOptionsGuard& operator=(const DecodingOptionsGuard&) = delete;
+    OH_DecodingOptions* get() const { return options; }
+private:
+    OH_DecodingOptions* options;
+};
+
+} // anonymous namespace
+
 PremultipliedImage decodeImage(const std::string& string) {
-    // HarmonyOS平台的图像解码
-    // 
-    // 注意：此实现仅在 mbgl-core 的图像解码功能不可用时使用
-    // 正常情况下，mbgl-core 会自动使用内置的 libpng 和 libjpeg 进行解码
-    //
-    // 如果遇到图像无法解码的情况，可能需要：
-    // 1. 确保项目链接了 libpng 和 libjpeg
-    // 2. 或者实现基于 HarmonyOS Image Kit 的解码
-    
     if (string.empty()) {
         Log::Warning(Event::General, "Attempting to decode empty image data");
         return PremultipliedImage({0, 0});
     }
     
-    // 返回空图像表示解码失败
-    // mbgl-core 应该会使用其他解码器（如果可用）
-    Log::Warning(Event::General, "HarmonyOS decodeImage stub called - image decoding should be handled by mbgl-core");
-    return PremultipliedImage({0, 0});
+    // 1. Create ImageSource from raw data
+    OH_ImageSourceNative* imageSource = nullptr;
+    Image_ErrorCode error = OH_ImageSourceNative_CreateFromData(
+        reinterpret_cast<uint8_t*>(const_cast<char*>(string.data())),
+        string.size(),
+        &imageSource
+    );
+    
+    if (error != IMAGE_SUCCESS || !imageSource) {
+        throw std::runtime_error("Failed to create ImageSource");
+    }
+    
+    ImageSourceGuard sourceGuard(imageSource);
+    
+    // 2. Create decoding options
+    OH_DecodingOptions* decodingOptions = nullptr;
+    error = OH_DecodingOptions_Create(&decodingOptions);
+    if (error != IMAGE_SUCCESS || !decodingOptions) {
+        throw std::runtime_error("Failed to create DecodingOptions");
+    }
+    
+    DecodingOptionsGuard optionsGuard(decodingOptions);
+    
+    // 3. Set pixel format to RGBA_8888
+    error = OH_DecodingOptions_SetPixelFormat(decodingOptions, PIXEL_FORMAT_RGBA_8888);
+    if (error != IMAGE_SUCCESS) {
+        throw std::runtime_error("Failed to set pixel format");
+    }
+    
+    // 4. Decode image to PixelMap
+    OH_PixelmapNative* pixelMap = nullptr;
+    error = OH_ImageSourceNative_CreatePixelmap(imageSource, decodingOptions, &pixelMap);
+    if (error != IMAGE_SUCCESS || !pixelMap) {
+        throw std::runtime_error("Failed to decode image to PixelMap");
+    }
+    
+    PixelMapGuard pixelMapGuard(pixelMap);
+    
+    // 5. Get image information
+    OH_Pixelmap_ImageInfo* imageInfo = nullptr;
+    error = OH_PixelmapImageInfo_Create(&imageInfo);
+    if (error != IMAGE_SUCCESS || !imageInfo) {
+        throw std::runtime_error("Failed to create PixelmapImageInfo");
+    }
+    
+    error = OH_PixelmapNative_GetImageInfo(pixelMap, imageInfo);
+    if (error != IMAGE_SUCCESS) {
+        OH_PixelmapImageInfo_Release(imageInfo);
+        throw std::runtime_error("Failed to get image info");
+    }
+    
+    uint32_t width = 0, height = 0;
+    int32_t alphaType = 0;
+    
+    OH_PixelmapImageInfo_GetWidth(imageInfo, &width);
+    OH_PixelmapImageInfo_GetHeight(imageInfo, &height);
+    OH_PixelmapImageInfo_GetAlphaType(imageInfo, &alphaType);
+    
+    OH_PixelmapImageInfo_Release(imageInfo);
+    
+    if (width == 0 || height == 0) {
+        throw std::runtime_error("Invalid image dimensions");
+    }
+    
+    // 6. Read pixel data
+    size_t bufferSize = width * height * 4; // RGBA = 4 bytes per pixel
+    auto pixels = std::make_unique<uint8_t[]>(bufferSize);
+    
+    size_t actualSize = bufferSize;
+    error = OH_PixelmapNative_ReadPixels(pixelMap, pixels.get(), &actualSize);
+    if (error != IMAGE_SUCCESS) {
+        throw std::runtime_error("Failed to read pixel data");
+    }
+    
+    // 7. Check if we need to premultiply alpha
+    // HarmonyOS may return unpremultiplied alpha, but MapLibre needs premultiplied
+    if (alphaType == PIXELMAP_ALPHA_TYPE_UNPREMULTIPLIED) {
+        Log::Info(Event::General, 
+                  "HarmonyOS decodeImage: Converting from unpremultiplied to premultiplied alpha");
+        
+        // Convert to premultiplied alpha
+        for (size_t i = 0; i < bufferSize; i += 4) {
+            uint8_t a = pixels[i + 3];
+            if (a < 255) {
+                pixels[i + 0] = (pixels[i + 0] * a) / 255; // R
+                pixels[i + 1] = (pixels[i + 1] * a) / 255; // G
+                pixels[i + 2] = (pixels[i + 2] * a) / 255; // B
+            }
+        }
+    }
+    
+    Log::Info(Event::General, 
+              "HarmonyOS decodeImage: Successfully decoded image using HarmonyOS Image API");
+    
+    return PremultipliedImage({width, height}, std::move(pixels));
 }
 
 } // namespace mbgl

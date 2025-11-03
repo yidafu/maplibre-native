@@ -2,6 +2,8 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
+#include <mbgl/util/tileset.hpp>
+#include <mbgl/util/range.hpp>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -84,10 +86,85 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // RasterSource 需要 urlOrTileset 和 tileSize 参数
-        // 使用空字符串和默认 tile size (512)
-        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = std::string("");
-        uint16_t tileSize = 512;
+        // 读取 options 参数
+        std::string url = "";
+        std::vector<std::string> tiles;
+        uint16_t tileSize = 512; // 默认值
+        uint8_t minzoom = 0;
+        uint8_t maxzoom = 22;
+        
+        if (args.Count() >= 2) {
+            napi_value optionsObj = args.GetObject(1, "options");
+            if (!args.HasError() && optionsObj) {
+                // 读取 url
+                url = args.GetStringProperty(optionsObj, "url", "");
+                if (!url.empty()) {
+                    Logger::info("RasterSourceNAPI", "RasterSource URL: %s", url.c_str());
+                }
+                
+                // 读取 tiles 数组
+                napi_value tilesValue;
+                napi_status status = napi_get_named_property(env, optionsObj, "tiles", &tilesValue);
+                if (status == napi_ok) {
+                    bool isArray;
+                    napi_is_array(env, tilesValue, &isArray);
+                    if (isArray) {
+                        uint32_t length;
+                        napi_get_array_length(env, tilesValue, &length);
+                        for (uint32_t i = 0; i < length; i++) {
+                            napi_value element;
+                            napi_get_element(env, tilesValue, i, &element);
+                            napi_valuetype elementType;
+                            napi_typeof(env, element, &elementType);
+                            if (elementType == napi_string) {
+                                size_t strLen;
+                                napi_get_value_string_utf8(env, element, nullptr, 0, &strLen);
+                                if (strLen > 0) {
+                                    char* buffer = new char[strLen + 1];
+                                    napi_get_value_string_utf8(env, element, buffer, strLen + 1, nullptr);
+                                    tiles.push_back(std::string(buffer));
+                                    delete[] buffer;
+                                }
+                            }
+                        }
+                        if (!tiles.empty()) {
+                            Logger::info("RasterSourceNAPI", "RasterSource tiles count: %zu", tiles.size());
+                            Logger::info("RasterSourceNAPI", "RasterSource tiles[0]: %s", tiles[0].c_str());
+                        }
+                    }
+                }
+                
+                // 读取 tileSize
+                int32_t tileSizeInt = args.GetInt32Property(optionsObj, "tileSize", 512);
+                if (tileSizeInt > 0) {
+                    tileSize = static_cast<uint16_t>(tileSizeInt);
+                    Logger::info("RasterSourceNAPI", "RasterSource tileSize: %d", tileSize);
+                }
+                
+                // 读取 minzoom
+                minzoom = static_cast<uint8_t>(args.GetInt32Property(optionsObj, "minzoom", 0));
+                
+                // 读取 maxzoom
+                maxzoom = static_cast<uint8_t>(args.GetInt32Property(optionsObj, "maxzoom", 22));
+            }
+        }
+        
+        // 创建 RasterSource
+        // 优先使用 tiles 数组，如果没有再使用 url
+        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset;
+        if (!tiles.empty()) {
+            // 使用 tiles 数组创建 Tileset
+            mbgl::Tileset tileset;
+            tileset.tiles = tiles;
+            tileset.zoomRange = mbgl::Range<uint8_t>(minzoom, maxzoom);
+            urlOrTileset = std::move(tileset);
+            Logger::info("RasterSourceNAPI", "RasterSource using Tileset with %zu tiles", tiles.size());
+        } else {
+            // 使用 url 字符串
+            urlOrTileset = url;
+            Logger::info("RasterSourceNAPI", "RasterSource using URL: %s", url.c_str());
+        }
+        
         auto source = std::make_unique<mbgl::style::RasterSource>(
             sourceId,
             std::move(urlOrTileset),

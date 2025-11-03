@@ -21,69 +21,66 @@ namespace harmony {
 // Static member initialization
 napi_ref StyleNAPI::constructor = nullptr;
 
-StyleNAPI::StyleNAPI(mbgl::Map* map)
-    : map(map), fullyLoaded(false) {
+StyleNAPI::StyleNAPI(mbgl::Map *map) : map(map), fullyLoaded(false) {
     Logger::info("StyleNAPI", "StyleNAPI instance created");
 }
 
-StyleNAPI::~StyleNAPI() {
-    Logger::info("StyleNAPI", "StyleNAPI instance destroyed");
-}
+StyleNAPI::~StyleNAPI() { Logger::info("StyleNAPI", "StyleNAPI instance destroyed"); }
 
-void StyleNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
-    StyleNAPI* style = static_cast<StyleNAPI*>(nativeObject);
+void StyleNAPI::Destructor(napi_env env, void *nativeObject, void *finalize_hint) {
+    StyleNAPI *style = static_cast<StyleNAPI *>(nativeObject);
     delete style;
 }
 
 napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("StyleNAPI", "========== Initializing Style NAPI class ==========");
-    
+
     napi_property_descriptor properties[] = {
         // Getters
-        { "getUri", nullptr, GetUri, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getJson", nullptr, GetJson, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "isFullyLoaded", nullptr, IsFullyLoaded, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
+        {"getUri", nullptr, GetUri, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getJson", nullptr, GetJson, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"isFullyLoaded", nullptr, IsFullyLoaded, nullptr, nullptr, nullptr, napi_default, nullptr},
+
         // Source 管理
-        { "addSource", nullptr, AddSource, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "removeSource", nullptr, RemoveSource, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSource", nullptr, GetSource, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getSources", nullptr, GetSources, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
+        {"addSource", nullptr, AddSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeSource", nullptr, RemoveSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getSource", nullptr, GetSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getSources", nullptr, GetSources, nullptr, nullptr, nullptr, napi_default, nullptr},
+
         // Layer 管理
-        { "addLayer", nullptr, AddLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "addLayerBelow", nullptr, AddLayerBelow, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "addLayerAbove", nullptr, AddLayerAbove, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "addLayerAt", nullptr, AddLayerAt, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "removeLayer", nullptr, RemoveLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "removeLayerAt", nullptr, RemoveLayerAt, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLayer", nullptr, GetLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getLayers", nullptr, GetLayers, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
+        {"addLayer", nullptr, AddLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addLayerBelow", nullptr, AddLayerBelow, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addLayerAbove", nullptr, AddLayerAbove, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addLayerAt", nullptr, AddLayerAt, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeLayer", nullptr, RemoveLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeLayerAt", nullptr, RemoveLayerAt, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLayer", nullptr, GetLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLayers", nullptr, GetLayers, nullptr, nullptr, nullptr, napi_default, nullptr},
+
         // Image 管理
-        { "addImage", nullptr, AddImage, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "removeImage", nullptr, RemoveImage, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getImage", nullptr, GetImage, nullptr, nullptr, nullptr, napi_default, nullptr },
-        
+        {"addImage", nullptr, AddImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeImage", nullptr, RemoveImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getImage", nullptr, GetImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+
         // Light & Transition
-        { "getLight", nullptr, GetLight, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setLight", nullptr, SetLight, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getTransition", nullptr, GetTransition, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "setTransition", nullptr, SetTransition, nullptr, nullptr, nullptr, napi_default, nullptr },
+        {"getLight", nullptr, GetLight, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setLight", nullptr, SetLight, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getTransition", nullptr, GetTransition, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setTransition", nullptr, SetTransition, nullptr, nullptr, nullptr, napi_default, nullptr},
     };
-    
+
     Logger::info("StyleNAPI", "Defining Style class with %zu methods", sizeof(properties) / sizeof(properties[0]));
-    
+
     napi_value cons;
     napi_status status = napi_define_class(env, "Style", NAPI_AUTO_LENGTH, New, nullptr,
                                            sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
+
     if (status != napi_ok) {
         Logger::error("StyleNAPI", "Failed to define Style class, status=%d", status);
         return nullptr;
     }
     Logger::info("StyleNAPI", "Style class defined successfully");
-    
+
     // 创建构造函数引用
     status = napi_create_reference(env, cons, 1, &constructor);
     if (status != napi_ok) {
@@ -91,14 +88,14 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     Logger::info("StyleNAPI", "Constructor reference created: %p", constructor);
-    
+
     // 将构造函数添加到 exports
     status = napi_set_named_property(env, exports, "Style", cons);
     if (status != napi_ok) {
         Logger::error("StyleNAPI", "Failed to set Style property, status=%d", status);
         return nullptr;
     }
-    
+
     Logger::info("StyleNAPI", "========== Style NAPI class initialized successfully ==========");
     return exports;
 }
@@ -107,15 +104,15 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     size_t argc = 1;
     napi_value args[1];
-    
+
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+
     // 检查参数
     if (argc < 1) {
         napi_throw_error(env, nullptr, "Style constructor requires mapPtr argument");
         return nullptr;
     }
-    
+
     // 获取 mapPtr
     int64_t mapPtr;
     napi_status status = napi_get_value_int64(env, args[0], &mapPtr);
@@ -123,16 +120,16 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
         napi_throw_error(env, nullptr, "Failed to get mapPtr argument");
         return nullptr;
     }
-    
-    mbgl::Map* map = reinterpret_cast<mbgl::Map*>(mapPtr);
+
+    mbgl::Map *map = reinterpret_cast<mbgl::Map *>(mapPtr);
     if (!map) {
         napi_throw_error(env, nullptr, "Invalid mapPtr");
         return nullptr;
     }
-    
+
     // 创建 C++ 对象
-    StyleNAPI* style = new StyleNAPI(map);
-    
+    StyleNAPI *style = new StyleNAPI(map);
+
     // Wrap 到 JS 对象
     status = napi_wrap(env, jsThis, style, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
@@ -140,7 +137,7 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
         napi_throw_error(env, nullptr, "Failed to wrap StyleNAPI object");
         return nullptr;
     }
-    
+
     return jsThis;
 }
 
@@ -149,18 +146,18 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
 napi_value StyleNAPI::GetUri(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    StyleNAPI* style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
-    
+
+    StyleNAPI *style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
+
     if (!style || !style->map) {
         return CreateStringValue(env, "");
     }
-    
+
     try {
         std::string uri = style->map->getStyle().getURL();
         return CreateStringValue(env, uri);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         Logger::error("StyleNAPI", "GetUri failed: %s", e.what());
         return CreateStringValue(env, "");
     }
@@ -169,18 +166,18 @@ napi_value StyleNAPI::GetUri(napi_env env, napi_callback_info info) {
 napi_value StyleNAPI::GetJson(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    StyleNAPI* style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
-    
+
+    StyleNAPI *style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
+
     if (!style || !style->map) {
         return CreateStringValue(env, "");
     }
-    
+
     try {
         std::string json = style->map->getStyle().getJSON();
         return CreateStringValue(env, json);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         Logger::error("StyleNAPI", "GetJson failed: %s", e.what());
         return CreateStringValue(env, "");
     }
@@ -189,14 +186,14 @@ napi_value StyleNAPI::GetJson(napi_env env, napi_callback_info info) {
 napi_value StyleNAPI::IsFullyLoaded(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    StyleNAPI* style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
-    
+
+    StyleNAPI *style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
+
     if (!style) {
         return CreateBoolValue(env, false);
     }
-    
+
     return CreateBoolValue(env, style->fullyLoaded);
 }
 
@@ -207,62 +204,80 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    StyleNAPI* style = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
-    
+
+    StyleNAPI *style = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
+
     if (!style || !style->map) {
         Logger::error("StyleNAPI", "AddSource: Invalid style or map");
         napi_throw_error(env, nullptr, "Invalid style instance");
         return nullptr;
     }
-    
+
     if (argc < 1) {
         napi_throw_error(env, nullptr, "AddSource requires source argument");
         return nullptr;
     }
-    
+
     napi_value sourceValue = args[0];
     std::string sourceId;
     bool sourceAdded = false;
     napi_status status;
-    
-    // 1. Try GeoJsonSource
-    GeoJsonSourceNAPI* geoJsonSource = nullptr;
-    status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&geoJsonSource));
-    if (status == napi_ok && geoJsonSource) {
-        try {
-            sourceId = geoJsonSource->getId();
-            auto source = geoJsonSource->releaseSource();
-            if (!source) {
-                napi_throw_error(env, nullptr, "Source already added to style");
-                return nullptr;
-            }
-            style->map->getStyle().addSource(std::move(source));
-            style->sources[sourceId] = true;
-            sourceAdded = true;
-            
-            // 重要：在添加到 style 后，让 GeoJsonSourceNAPI 保存从 style 获取的 source 指针
-            auto* styleSource = style->map->getStyle().getSource(sourceId);
-            if (styleSource && styleSource->getType() == mbgl::style::SourceType::GeoJSON) {
-                geoJsonSource->attachToStyle(static_cast<mbgl::style::GeoJSONSource*>(styleSource));
-            }
-            
-            Logger::info("StyleNAPI", "AddSource (GeoJsonSource): %s", sourceId.c_str());
-            napi_value result;
-            napi_get_undefined(env, &result);
-            return result;
-        } catch (const std::exception& e) {
-            Logger::error("StyleNAPI", "AddSource (GeoJsonSource) failed: %s", e.what());
-            napi_throw_error(env, nullptr, e.what());
-            return nullptr;
+
+    // 首先检查 _TYPE_ 属性以确定真实类型
+    napi_value typeValue;
+    std::string sourceType;
+    status = napi_get_named_property(env, sourceValue, "_TYPE_", &typeValue);
+    if (status == napi_ok) {
+        size_t typeLen;
+        napi_get_value_string_utf8(env, typeValue, nullptr, 0, &typeLen);
+        if (typeLen > 0) {
+            char *typeBuffer = new char[typeLen + 1];
+            napi_get_value_string_utf8(env, typeValue, typeBuffer, typeLen + 1, nullptr);
+            sourceType = std::string(typeBuffer);
+            delete[] typeBuffer;
+            Logger::info("StyleNAPI", "AddSource: Detected type = %s", sourceType.c_str());
         }
     }
-    
+
+    // 1. Try GeoJsonSource
+    if (sourceType == "GeoJsonSource" || sourceType.empty()) {
+        GeoJsonSourceNAPI *geoJsonSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&geoJsonSource));
+        if (status == napi_ok && geoJsonSource) {
+            try {
+                sourceId = geoJsonSource->getId();
+                auto source = geoJsonSource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->map->getStyle().addSource(std::move(source));
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+
+                // 重要：在添加到 style 后，让 GeoJsonSourceNAPI 保存从 style 获取的 source 指针
+                auto *styleSource = style->map->getStyle().getSource(sourceId);
+                if (styleSource && styleSource->getType() == mbgl::style::SourceType::GeoJSON) {
+                    geoJsonSource->attachToStyle(static_cast<mbgl::style::GeoJSONSource *>(styleSource));
+                }
+
+                Logger::info("StyleNAPI", "AddSource (GeoJsonSource): %s", sourceId.c_str());
+                napi_value result;
+                napi_get_undefined(env, &result);
+                return result;
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddSource (GeoJsonSource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
     // 2. Try VectorSource
-    if (!sourceAdded) {
-        VectorSourceNAPI* vectorSource = nullptr;
-        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&vectorSource));
+    if (!sourceAdded && (sourceType == "VectorSource" || sourceType.empty())) {
+        VectorSourceNAPI *vectorSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&vectorSource));
         if (status == napi_ok && vectorSource) {
             try {
                 sourceId = vectorSource->getId();
@@ -274,29 +289,29 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addSource(std::move(source));
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-                
+
                 // 创建 WeakPtr
-                auto* styleSource = style->map->getStyle().getSource(sourceId);
+                auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::Vector) {
-                    vectorSource->attachToStyle(static_cast<mbgl::style::VectorSource*>(styleSource));
+                    vectorSource->attachToStyle(static_cast<mbgl::style::VectorSource *>(styleSource));
                 }
-                
+
                 Logger::info("StyleNAPI", "AddSource (VectorSource): %s", sourceId.c_str());
                 napi_value result;
                 napi_get_undefined(env, &result);
                 return result;
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (VectorSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
                 return nullptr;
             }
         }
     }
-    
+
     // 3. RasterSource
-    if (!sourceAdded) {
-        RasterSourceNAPI* rasterSource = nullptr;
-        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&rasterSource));
+    if (!sourceAdded && (sourceType == "RasterSource" || sourceType.empty())) {
+        RasterSourceNAPI *rasterSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&rasterSource));
         if (status == napi_ok && rasterSource) {
             try {
                 sourceId = rasterSource->getId();
@@ -308,29 +323,29 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addSource(std::move(source));
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-                
+
                 // 创建 WeakPtr
-                auto* styleSource = style->map->getStyle().getSource(sourceId);
+                auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::Raster) {
-                    rasterSource->attachToStyle(static_cast<mbgl::style::RasterSource*>(styleSource));
+                    rasterSource->attachToStyle(static_cast<mbgl::style::RasterSource *>(styleSource));
                 }
-                
+
                 Logger::info("StyleNAPI", "AddSource (RasterSource): %s", sourceId.c_str());
                 napi_value result;
                 napi_get_undefined(env, &result);
                 return result;
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (RasterSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
                 return nullptr;
             }
         }
     }
-    
+
     // 4. RasterDemSource
-    if (!sourceAdded) {
-        RasterDemSourceNAPI* rasterDemSource = nullptr;
-        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&rasterDemSource));
+    if (!sourceAdded && (sourceType == "RasterDemSource" || sourceType.empty())) {
+        RasterDemSourceNAPI *rasterDemSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&rasterDemSource));
         if (status == napi_ok && rasterDemSource) {
             try {
                 sourceId = rasterDemSource->getId();
@@ -342,29 +357,29 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addSource(std::move(source));
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-                
+
                 // 创建 WeakPtr
-                auto* styleSource = style->map->getStyle().getSource(sourceId);
+                auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::RasterDEM) {
-                    rasterDemSource->attachToStyle(static_cast<mbgl::style::RasterDEMSource*>(styleSource));
+                    rasterDemSource->attachToStyle(static_cast<mbgl::style::RasterDEMSource *>(styleSource));
                 }
-                
+
                 Logger::info("StyleNAPI", "AddSource (RasterDemSource): %s", sourceId.c_str());
                 napi_value result;
                 napi_get_undefined(env, &result);
                 return result;
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (RasterDemSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
                 return nullptr;
             }
         }
     }
-    
+
     // 5. ImageSource
     if (!sourceAdded) {
-        ImageSourceNAPI* imageSource = nullptr;
-        status = napi_unwrap(env, sourceValue, reinterpret_cast<void**>(&imageSource));
+        ImageSourceNAPI *imageSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&imageSource));
         if (status == napi_ok && imageSource) {
             try {
                 sourceId = imageSource->getId();
@@ -376,36 +391,36 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->map->getStyle().addSource(std::move(source));
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-                
+
                 // 创建 WeakPtr
-                auto* styleSource = style->map->getStyle().getSource(sourceId);
+                auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
-                    imageSource->attachToStyle(static_cast<mbgl::style::ImageSource*>(styleSource));
+                    imageSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
                 }
-                
+
                 Logger::info("StyleNAPI", "AddSource (ImageSource): %s", sourceId.c_str());
                 napi_value result;
                 napi_get_undefined(env, &result);
                 return result;
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (ImageSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
                 return nullptr;
             }
         }
     }
-    
+
     // 如果没有成功添加任何source类型
     if (!sourceAdded) {
         Logger::error("StyleNAPI", "AddSource: Unknown source type or source is null");
         napi_throw_error(env, nullptr, "Unknown source type or source object");
         return nullptr;
     }
-    
+
     napi_value result;
     napi_get_undefined(env, &result);
     return result;
 }
 
 } // namespace harmony
-} // namespace mbgl
+} // namespace maplibre

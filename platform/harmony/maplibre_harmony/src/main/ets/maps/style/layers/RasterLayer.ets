@@ -2,19 +2,20 @@
  * RasterLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { NumberValue, StringValue , ExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionLiteral } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
+import { Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
-
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
-  private constructor() {}
+
+  private constructor() {
+  }
 }
 
 export class RasterLayer {
   // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
   static readonly _TYPE_ = 'RasterLayer';
-  
   private nativeInstance: maplibre.RasterLayer;
 
   constructor(idOrMarker: string | InternalMarker, sourceId: string = "", nativeOrNothing?: maplibre.RasterLayer) {
@@ -62,8 +63,13 @@ export class RasterLayer {
     return this;
   }
 
-  setFilter(filter: Object[]): RasterLayer {
-    this.nativeInstance.setFilter(filter);
+  /**
+   * 设置图层过滤器
+   * @param filter Expression 实例或表达式字面量数组
+   */
+  setFilter(filter: Expression<boolean> | ExpressionLiteral): RasterLayer {
+    const filterArray = filter instanceof Expression ? filter.toArray() : filter;
+    this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
   }
 
