@@ -16,6 +16,14 @@ import { DEFAULT_STYLE_URLS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import { MapView } from 'maplibre_harmony';
 
 /**
+ * 随机图标结果接口
+ */
+interface RandomIconResult {
+  icon: Icon;
+  name: string;
+}
+
+/**
  * IconTestPage - Icon 管理系统测试页面
  * 
  * 测试最新的IconFactory/IconManager API功能：
@@ -37,6 +45,78 @@ struct IconTestPage {
   private iconFactory: IconFactory | null = null;
   private markers: Marker[] = [];;
   private testIcon: Icon | null = null;
+  
+  // 可用的图标资源列表
+  private readonly markerIcons: Resource[] = [
+    $r('app.media.marker_dot_blue'),
+    $r('app.media.marker_dot_cyan'),
+    $r('app.media.marker_dot_green'),
+    $r('app.media.marker_dot_red'),
+    $r('app.media.marker_dot_yellow'),
+    $r('app.media.marker_pin_blue'),
+    $r('app.media.marker_pin_green'),
+    $r('app.media.marker_pin_orange'),
+    $r('app.media.marker_pin_purple'),
+    $r('app.media.marker_pin_red')
+  ];
+  
+  private readonly markerIconNames: string[] = [
+    'marker_dot_blue',
+    'marker_dot_cyan',
+    'marker_dot_green',
+    'marker_dot_red',
+    'marker_dot_yellow',
+    'marker_pin_blue',
+    'marker_pin_green',
+    'marker_pin_orange',
+    'marker_pin_purple',
+    'marker_pin_red'
+  ];
+
+  /**
+   * 生成中国境内的随机坐标
+   * 中国经纬度范围：
+   * - 纬度：18°N 到 54°N
+   * - 经度：73°E 到 135°E
+   */
+  private generateRandomChinaLatLng(): LatLng {
+    const minLat = 18;
+    const maxLat = 54;
+    const minLng = 73;
+    const maxLng = 135;
+    
+    const lat = minLat + Math.random() * (maxLat - minLat);
+    const lng = minLng + Math.random() * (maxLng - minLng);
+    
+    return LatLng.create(lat, lng);
+  }
+  
+  /**
+   * 随机选择一个图标资源并创建Icon
+   */
+  private async createRandomIcon(): Promise<RandomIconResult> {
+    if (!this.iconFactory) {
+      await this.initIconSystem();
+    }
+    
+    const randomIndex = Math.floor(Math.random() * this.markerIcons.length);
+    const iconResource = this.markerIcons[randomIndex];
+    const iconName = this.markerIconNames[randomIndex];
+    
+    const result: RandomIconResult = {
+      icon: await this.iconFactory!.defaultMarker(),
+      name: 'default'
+    };
+    
+    try {
+      result.icon = await this.iconFactory!.fromResource(iconResource);
+      result.name = iconName;
+      return result;
+    } catch (error) {
+      console.warn(`[IconTestPage] Failed to load icon ${iconName}, using default`);
+      return result;
+    }
+  }
 
   aboutToAppear() {
     console.info('[IconTestPage] Page loading...');
@@ -69,7 +149,7 @@ struct IconTestPage {
   }
 
   /**
-   * 测试 1: 创建默认图标
+   * 测试 1: 添加随机图标（随机位置）
    */
   private async testDefaultIcon() {
     if (!this.iconFactory) {
@@ -77,34 +157,37 @@ struct IconTestPage {
     }
 
     try {
-      this.testStatus = '测试默认图标...';
-      console.info('[IconTestPage] Testing default icon...');
+      this.testStatus = '添加随机图标...';
+      console.info('[IconTestPage] Adding random marker icon...');
 
-      // 创建默认图标
-      const defaultIcon = await this.iconFactory!.defaultMarker();
-      console.info(`[IconTestPage] Default icon created: ${defaultIcon.getId()}`);
-      console.info(`[IconTestPage] Icon size: ${defaultIcon.getWidth()}x${defaultIcon.getHeight()}`);
+      // 创建随机图标
+      const randomIconResult = await this.createRandomIcon();
+      const icon = randomIconResult.icon;
+      const name = randomIconResult.name;
+      console.info(`[IconTestPage] Random icon created: ${name} (${icon.getId()})`);
+      console.info(`[IconTestPage] Icon size: ${icon.getWidth()}x${icon.getHeight()}`);
 
-      // 在地图上添加使用默认图标的 Marker
-      const position = LatLng.create(39.9042, 116.4074); // 北京
+      // 在地图上添加使用随机图标的 Marker（随机中国境内位置）
+      const position = this.generateRandomChinaLatLng();
       const markerOptions = new MarkerOptions()
         .position(position)
-        .title('默认图标测试')
-        .icon(defaultIcon);
+        .title(name)
+        .snippet(`位置: ${position.latitude.toFixed(2)}, ${position.longitude.toFixed(2)}`)
+        .icon(icon);
 
       const marker: Marker = await this.mapLibreMap!.addMarker(markerOptions);
       this.markers.push(marker);
 
-      this.testStatus = `默认图标测试成功 - ${defaultIcon.toString()}`;
-      this.iconCount = 1;
+      this.testStatus = `添加成功 - ${name}`;
+      this.iconCount = this.markers.length;
     } catch (error) {
-      this.testStatus = `默认图标测试失败: ${error}`;
-      console.error('[IconTestPage] Default icon test failed:', error);
+      this.testStatus = `添加图标失败: ${error}`;
+      console.error('[IconTestPage] Add marker test failed:', error);
     }
   }
 
   /**
-   * 测试 2: 创建自定义图标（从资源 - 性能优化）
+   * 测试 2: 批量添加随机图标
    */
   private async testCustomIcon() {
     if (!this.iconFactory) {
@@ -112,35 +195,33 @@ struct IconTestPage {
     }
 
     try {
-      this.testStatus = '测试fromResource（性能优化版）...';
-      console.info('[IconTestPage] Testing custom icon with fromResource...');
+      this.testStatus = '批量添加随机图标...';
+      console.info('[IconTestPage] Adding multiple random markers...');
 
-      // 使用 fromResource - 在C++层直接解码，性能提升30-50%
-      try {
-        this.testIcon = await this.iconFactory!.fromResource($r('app.media.startIcon'));
-        console.info(`[IconTestPage] Custom icon created: ${this.testIcon.getId()}`);
-        console.info(`[IconTestPage] Icon released? ${this.testIcon.isReleased()}`);
-      } catch (error) {
-        console.warn('[IconTestPage] Failed to load custom icon from resource, using default');
-        this.testIcon = await this.iconFactory!.defaultMarker();
+      // 添加5个随机图标
+      for (let i = 0; i < 5; i++) {
+        const randomIconResult = await this.createRandomIcon();
+        const icon = randomIconResult.icon;
+        const name = randomIconResult.name;
+        const position = this.generateRandomChinaLatLng();
+        
+        const markerOptions = new MarkerOptions()
+          .position(position)
+          .title(`${name}`)
+          .snippet(`${position.latitude.toFixed(2)}, ${position.longitude.toFixed(2)}`)
+          .icon(icon);
+
+        const marker: Marker = await this.mapLibreMap!.addMarker(markerOptions);
+        this.markers.push(marker);
+        
+        console.info(`[IconTestPage] Added marker ${i + 1}: ${name}`);
       }
 
-      // 添加使用自定义图标的 Marker
-      const position = LatLng.create(39.9142, 116.4174);
-      const markerOptions = new MarkerOptions()
-        .position(position)
-        .title('fromResource优化版')
-        .snippet('C++层直接解码，零复制')
-        .icon(this.testIcon);
-
-      const marker: Marker = await this.mapLibreMap!.addMarker(markerOptions);
-      this.markers.push(marker);
-
-      this.testStatus = `✅ fromResource测试成功 - 性能优化版\nIcon ID: ${this.testIcon.getId()}\n已释放: ${this.testIcon.isReleased()}`;
-      this.iconCount = 2;
+      this.testStatus = `✅ 批量添加成功 - 已添加 5 个随机图标`;
+      this.iconCount = this.markers.length;
     } catch (error) {
-      this.testStatus = `自定义图标测试失败: ${error}`;
-      console.error('[IconTestPage] Custom icon test failed:', error);
+      this.testStatus = `批量添加失败: ${error}`;
+      console.error('[IconTestPage] Batch add markers failed:', error);
     }
   }
   
@@ -179,40 +260,40 @@ struct IconTestPage {
   }
 
   /**
-   * 测试 3: 多个 Marker 共享同一 Icon
+   * 测试 3: 大量添加随机图标（压力测试）
    */
   private async testSharedIcon() {
-    if (!this.testIcon) {
-      await this.testCustomIcon();
+    if (!this.iconFactory) {
+      await this.initIconSystem();
     }
 
     try {
-      this.testStatus = '测试共享图标...';
-      console.info('[IconTestPage] Testing shared icon...');
+      this.testStatus = '批量添加随机图标（20个）...';
+      console.info('[IconTestPage] Adding 20 random markers...');
 
-      // 在不同位置添加多个使用相同图标的 Marker
-      const positions = [
-        LatLng.create(39.9242, 116.4274),
-        LatLng.create(39.9342, 116.4374),
-        LatLng.create(39.9442, 116.4474)
-      ]
-
-      for (let i = 0; i < positions.length; i++) {
+      // 添加20个随机图标
+      for (let i = 0; i < 20; i++) {
+        const randomIconResult = await this.createRandomIcon();
+        const icon = randomIconResult.icon;
+        const name = randomIconResult.name;
+        const position = this.generateRandomChinaLatLng();
+        
         const markerOptions = new MarkerOptions()
-          .position(positions[i])
-          .title(`共享图标 Marker ${i + 1}`)
-          .icon(this.testIcon!);
+          .position(position)
+          .title(`${name}`)
+          .snippet(`#${i + 1} | ${position.latitude.toFixed(2)}, ${position.longitude.toFixed(2)}`)
+          .icon(icon);
 
         const marker: Marker = await this.mapLibreMap!.addMarker(markerOptions);
         this.markers.push(marker);
       }
 
-      this.testStatus = `共享图标测试成功 - 创建了 3 个共享图标的 Marker`;
+      this.testStatus = `✅ 批量添加成功 - 已添加 20 个随机图标`;
       this.iconCount = this.markers.length;
-      console.info('[IconTestPage] Shared icon test completed');
+      console.info('[IconTestPage] Batch add 20 markers completed');
     } catch (error) {
-      this.testStatus = `共享图标测试失败: ${error}`;
-      console.error('[IconTestPage] Shared icon test failed:', error);
+      this.testStatus = `批量添加失败: ${error}`;
+      console.error('[IconTestPage] Batch add markers failed:', error);
     }
   }
 
@@ -244,23 +325,37 @@ struct IconTestPage {
    * 运行所有测试
    */
   private async runAllTests() {
-    this.testStatus = '开始运行测试套件...';
-    console.info('[IconTestPage] Running all tests...');
+    this.testStatus = '开始批量添加图标...';
+    console.info('[IconTestPage] Running batch icon tests...');
 
-    await this.testDefaultIcon();
-    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+    // 添加30个随机图标
+    const totalCount = 30;
+    for (let i = 0; i < totalCount; i++) {
+      const randomIconResult = await this.createRandomIcon();
+      const icon = randomIconResult.icon;
+      const name = randomIconResult.name;
+      const position = this.generateRandomChinaLatLng();
+      
+      const markerOptions = new MarkerOptions()
+        .position(position)
+        .title(`${name}`)
+        .snippet(`#${i + 1} | ${position.latitude.toFixed(2)}, ${position.longitude.toFixed(2)}`)
+        .icon(icon);
 
-    await this.testCustomIcon();
-    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
+      const marker: Marker = await this.mapLibreMap!.addMarker(markerOptions);
+      this.markers.push(marker);
+      
+      this.testStatus = `正在添加... (${i + 1}/${totalCount})`;
+      this.iconCount = this.markers.length;
+      
+      // 每10个暂停一下，让UI有时间更新
+      if ((i + 1) % 10 === 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 100));
+      }
+    }
 
-    await this.testSharedIcon();
-    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-
-    this.testCleanup();
-    await new Promise<void>((resolve) => setTimeout(resolve, 1000));
-
-    this.testStatus = '所有测试完成！';
-    console.info('[IconTestPage] All tests completed');
+    this.testStatus = `✅ 全部添加完成 - 共 ${totalCount} 个随机图标`;
+    console.info('[IconTestPage] All batch tests completed');
   }
 
   /**
@@ -314,75 +409,70 @@ struct IconTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-          // 状态信息
-          Column() {
-            Text(`状态: ${this.testStatus}`)
-              .fontSize(14)
-              .margin({ bottom: 4 })
+  buildActionButtons() {
+    // 状态信息
+    Column() {
+      Text(`状态: ${this.testStatus}`)
+        .fontSize(12)
+        .margin({ bottom: 2 })
 
-            Text(`当前 Marker 数量: ${this.iconCount}`)
-              .fontSize(14)
-          }
-          .width('100%')
-          .backgroundColor('#F8F8F8')
-          .margin({ bottom: 8 })
+      Text(`当前 Marker 数量: ${this.iconCount}`)
+        .fontSize(12)
+    }
+    .width('100%')
+    .backgroundColor('#F8F8F8')
+    .padding(8)
+    .borderRadius(4)
+    .margin({ bottom: 8 })
 
-          // 测试按钮
-          Text('基础测试')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
+    // 添加图标按钮行
+    Row() {
+      Button('添加 1 个')
+        .fontSize(12)
+        .layoutWeight(1)
+        .onClick(() => {
+          this.testDefaultIcon();
+        })
 
-          Button('测试默认图标')
-            .width('100%')
-            .onClick(() => {
-              this.testDefaultIcon();
-            })
-            .margin({ bottom: 8 })
+      Button('添加 5 个')
+        .fontSize(12)
+        .layoutWeight(1)
+        .margin({ left: 8 })
+        .onClick(() => {
+          this.testCustomIcon();
+        })
+      
+      Button('添加 20 个')
+        .fontSize(12)
+        .layoutWeight(1)
+        .margin({ left: 8 })
+        .onClick(() => {
+          this.testSharedIcon();
+        })
+    }
+    .width('100%')
+    .margin({ bottom: 8 })
 
-          Button('测试fromResource（优化版）')
-            .width('100%')
-            .onClick(() => {
-              this.testCustomIcon();
-            })
-            .margin({ bottom: 8 })
+    // 清理和批量测试按钮行
+    Row() {
+      Button('清理全部')
+        .fontSize(12)
+        .layoutWeight(1)
+        .backgroundColor('#FF5722')
+        .onClick(() => {
+          this.testCleanup();
+        })
 
-          Divider().margin({ top: 8, bottom: 8 })
-
-          Text('引用计数与生命周期')
-            .fontSize(16)
-            .fontWeight(FontWeight.Medium)
-            .width('100%')
-
-          Button('测试Icon状态（isReleased）')
-            .width('100%')
-            .onClick(() => {
-              this.testIconReleaseStatus();
-            })
-            .margin({ bottom: 8 })
-
-          Button('测试共享图标（引用计数）')
-            .width('100%')
-            .onClick(() => {
-              this.testSharedIcon();
-            })
-            .margin({ bottom: 8 })
-
-          Button('测试清理（自动释放）')
-            .width('100%')
-            .onClick(() => {
-              this.testCleanup();
-            })
-            .margin({ bottom: 8 })
-
-          Divider().margin({ top: 8, bottom: 8 })
-
-          Button('运行全部测试')
-            .width('100%')
-            .onClick(() => {
-              this.runAllTests();
-            })
+      Button('添加 30 个')
+        .fontSize(12)
+        .layoutWeight(1)
+        .margin({ left: 8 })
+        .backgroundColor('#4CAF50')
+        .onClick(() => {
+          this.runAllTests();
+        })
+    }
+    .width('100%')
   }
 
   build() {
@@ -391,7 +481,7 @@ struct IconTestPage {
         showActionBar: true,
         title: this.message,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

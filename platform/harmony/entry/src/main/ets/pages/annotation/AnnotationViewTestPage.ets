@@ -152,7 +152,7 @@ struct AnnotationViewTestPage {
         styleUrl: 'https://demotiles.maplibre.org/style.json',
         initialLatitude: 39.9,
         initialLongitude: 116.4,
-        initialZoom: 10,
+        initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
         onMapReady: this.onMapReady

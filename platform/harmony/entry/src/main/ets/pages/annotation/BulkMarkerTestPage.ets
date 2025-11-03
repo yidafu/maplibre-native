@@ -12,22 +12,21 @@ import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, randomLatLng , DEFAULT_M
 @Entry
 @Component
 struct BulkMarkerTestPage {
-  private mapController: MapLibreMap | null = null;
+  private mapView: MapLibreMap | null = null;
   @State private markerCount: number = 0;
   private markers: Marker[] = [];;
   
   aboutToDisappear() {
-    this.clearMarkers();
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
+    this.clearMarkersAll();
+    if (this.mapView) {
+      this.mapView.destroy();
+      this.mapView = null;
     }
   }
   
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[BulkMarkerTestPage] onMapReady');
-    this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
+    this.mapView = map;
     
     // 设置初始位置
     map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 5);
@@ -36,18 +35,19 @@ struct BulkMarkerTestPage {
   /**
    * 添加批量标注
    */
-  private addMarkers = (count: number): void => {
-    if (!this.mapController) {
+  private addMarkers = async (count: number): Promise<void> => {
+    if (!this.mapView) {
       showToast('地图未就绪');
       return;
     }
     
     // 清除现有标注
-    this.clearMarkers();
+    this.clearMarkersAll();
     
     const startTime = Date.now();
     
-    // 批量添加标注
+    // 🚀 批量添加标注 - 使用 addMarkers API (性能优化)
+    const markerOptionsList: MarkerOptions[] = [];
     for (let i = 0; i < count; i++) {
       const position = randomLatLng(20, 50, 100, 130); // 中国范围
       
@@ -55,55 +55,108 @@ struct BulkMarkerTestPage {
         .position(position)
         .title(`Marker ${i + 1}`);
       
-      // addMarker 返回 Promise<Marker>
-      this.mapController.addMarker(markerOptions).then((marker: Marker) => {
-        this.markers.push(marker);
-      });
+      markerOptionsList.push(markerOptions);
     }
     
-    const endTime = Date.now();
-    this.markerCount = this.markers.length;
-    
-    showToast(`添加 ${count} 个标注，耗时 ${endTime - startTime}ms`);
+    try {
+      // 一次性批量添加,只更新一次GeoJSON (避免ANR)
+      const addedMarkers = await this.mapView.addMarkersBatch(markerOptionsList);
+      this.markers = addedMarkers;
+      this.markerCount = this.markers.length;
+      
+      const endTime = Date.now();
+      showToast(`添加 ${count} 个标注，耗时 ${endTime - startTime}ms`);
+    } catch (error) {
+      console.error(`Failed to add bulk markers: ${error}`);
+      showToast(`添加标注失败: ${error}`);
+    }
   };
   
   /**
-   * 清除所有标注
+   * 清除所有标注 (批量清除API)
    */
-  private clearMarkers = (): void => {
-    if (this.mapController) {
-      // TODO: 实现 removeMarkers 批量删除
-      for (const marker of this.markers) {
-        this.mapController.removeMarker(marker);
-      }
+  private clearMarkersAll = (): void => {
+    if (this.mapView) {
+      const startTime = Date.now();
+      
+      // 使用批量清除API (性能优化, 只更新一次GeoJSON)
+      this.mapView.clearMarkers();
+      
+      const endTime = Date.now();
+      const count = this.markers.length;
       this.markers = [];
       this.markerCount = 0;
-      showToast('已清除所有标注');
+      
+      showToast(`批量清除 ${count} 个标注，耗时 ${endTime - startTime}ms`);
+    }
+  };
+  
+  /**
+   * 逐个清除标注 (测试单个删除性能 - 每次删除50个)
+   */
+  private clearMarkersOneByOne = (): void => {
+    if (this.mapView && this.markers.length > 0) {
+      const startTime = Date.now();
+      
+      // 每次删除最多50个 (测试防抖性能)
+      const batchSize = Math.min(50, this.markers.length);
+      const markersToRemove = this.markers.slice(0, batchSize);
+      
+      console.info(`[BulkMarkerTest] 逐个删除 ${batchSize} 个 markers (防抖测试)`);
+      
+      // 逐个删除 (每次触发updateSource, 会被防抖优化)
+      for (const marker of markersToRemove) {
+        this.mapView.removeMarker(marker);
+      }
+      
+      // 更新剩余 markers
+      this.markers = this.markers.slice(batchSize);
+      this.markerCount = this.markers.length;
+      
+      const endTime = Date.now();
+      showToast(`逐个删除 ${batchSize} 个标注，耗时 ${endTime - startTime}ms，剩余 ${this.markerCount} 个`);
+    } else if (this.mapView) {
+      showToast('没有标注可删除');
     }
   };
   
   @Builder
   actionButtonsBuilder() {
-    Button('10个')
-      .fontSize(14)
-      .onClick(() => this.addMarkers(10));
-    
-    Button('100个')
-      .fontSize(14)
-      .onClick(() => this.addMarkers(100));
-    
-    Button('500个')
-      .fontSize(14)
-      .onClick(() => this.addMarkers(500));
-    
-    Button('1000个')
-      .fontSize(14)
-      .onClick(() => this.addMarkers(1000));
-    
-    Button('清除')
-      .fontSize(14)
-      .backgroundColor('#F44336')
-      .onClick(this.clearMarkers);
+    // 使用 Flex 自动换行布局,支持多行显示
+    Flex({ direction: FlexDirection.Row, wrap: FlexWrap.Wrap, alignItems: ItemAlign.Start }) {
+      Button('10个')
+        .fontSize(14)
+        .margin(4)
+        .onClick(() => this.addMarkers(10));
+      
+      Button('100个')
+        .fontSize(14)
+        .margin(4)
+        .onClick(() => this.addMarkers(100));
+      
+      Button('500个')
+        .fontSize(14)
+        .margin(4)
+        .onClick(() => this.addMarkers(500));
+      
+      Button('1000个')
+        .fontSize(14)
+        .margin(4)
+        .onClick(() => this.addMarkers(1000));
+      
+      Button('批量清除')
+        .fontSize(14)
+        .margin(4)
+        .backgroundColor('#F44336')
+        .onClick(this.clearMarkersAll);
+      
+      Button('逐个清除')
+        .fontSize(14)
+        .margin(4)
+        .backgroundColor('#FF5722')
+        .onClick(this.clearMarkersOneByOne);
+    }
+    .width('100%')
   }
   
   @Builder

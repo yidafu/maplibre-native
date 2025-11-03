@@ -28,7 +28,6 @@ struct PressForMarkerTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[PressForMarkerTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
     
     // TODO: Use jumpTo instead of CameraPosition
     // TODO: map.setCameraPosition(initialPosition);

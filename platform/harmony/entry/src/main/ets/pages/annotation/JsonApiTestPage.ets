@@ -73,7 +73,6 @@ struct JsonApiTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[JsonApiTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.bright);
     
     // 设置初始位置（台湾地区）
     map.jumpTo(0, 24.0, 121.0, 0, 6);

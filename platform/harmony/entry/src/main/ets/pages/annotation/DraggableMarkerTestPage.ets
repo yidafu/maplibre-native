@@ -16,16 +16,19 @@ class DraggableMarkerDragListener implements OnMarkerDragListener {
   }
   
   onMarkerDragStart(marker: Marker): void {
+    console.info(`[DraggableMarkerTest] 🎯 Drag START: marker id=${marker.getId()}`);
     this.page.dragStatus = '开始拖拽...';
   }
   
   onMarkerDrag(marker: Marker): void {
     const pos = marker.getPosition();
+    console.debug(`[DraggableMarkerTest] 🚀 Dragging: ${formatLatLng(pos.latitude, pos.longitude, 6)}`);
     this.page.dragStatus = `拖拽中: ${formatLatLng(pos.latitude, pos.longitude, 4)}`;
   }
   
   onMarkerDragEnd(marker: Marker): void {
     const pos = marker.getPosition();
+    console.info(`[DraggableMarkerTest] 🏁 Drag END: ${formatLatLng(pos.latitude, pos.longitude, 6)}`);
     this.page.dragStatus = `拖拽结束: ${formatLatLng(pos.latitude, pos.longitude, 4)}`;
     showToast('标记已移动');
   }
@@ -55,13 +58,13 @@ struct DraggableMarkerTestPage {
   @Builder
   buildMapContent() {
     MapView({
-      styleUrl: DEFAULT_STYLE_URLS.streets,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10,
+      initialZoom: 5,
       onMapReady: async (map: MapLibreMap) => {
         this.mapController = map;
-        map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 12);
+        // map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 6);
         
         // 添加可拖拽标记
         await map.addMarker(new MarkerOptions()
