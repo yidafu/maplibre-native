@@ -57,7 +57,6 @@ export interface AnnotationViewConfig {
  *   },
  *   
  *   didSelectAnnotationView: (marker: Marker) => {
- *     console.log('Marker selected:', marker.getTitle());
  *   }
  * };
  * 
@@ -125,5 +124,4 @@ export interface AnnotationViewDelegate {
    */
   annotationViewDidEndDragging?(marker: Marker, finalPosition: LatLng): void;
 }
-
 

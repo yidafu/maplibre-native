@@ -8,6 +8,8 @@ using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
 namespace maplibre {
+
+using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization

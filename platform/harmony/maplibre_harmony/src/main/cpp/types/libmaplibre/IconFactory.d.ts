@@ -116,8 +116,11 @@ export class IconFactory {
   /**
    * Create default marker icon (programmatically generated)
    * 
-   * Generates a simple red circle marker without requiring image files.
-   * This is useful as a fallback when custom icons are not available.
+   * Generates a RED pin/cone-shaped marker without requiring image files.
+   * Shape: Circle head (top) + triangle tip (bottom), similar to Google Maps marker.
+   * Color: RED (#FF0000) for high visibility.
+   * 
+   * This is used as fallback when rawfile loading fails in ETS layer.
    * 
    * @param iconId Optional icon identifier (default: 'com.maplibre.marker.default')
    * @param size Optional icon size in pixels (default: 48)
@@ -125,10 +128,10 @@ export class IconFactory {
    * 
    * @example
    * ```typescript
-   * // Create default marker
+   * // Create default RED pin marker
    * const defaultIcon = maplibre.IconFactory.createDefaultMarker();
    * 
-   * // Create custom-sized default marker
+   * // Create custom-sized RED pin marker
    * const largeIcon = maplibre.IconFactory.createDefaultMarker('large-marker', 64);
    * ```
    */

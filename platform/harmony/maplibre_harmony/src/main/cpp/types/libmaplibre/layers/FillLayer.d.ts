@@ -11,6 +11,11 @@ import type { BooleanValue, ColorValue, NumberValue, PropertyValue } from '../La
  */
 export class FillLayer {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 创建填充图层
      * @param layerId 图层 ID
      * @param sourceId 数据源 ID

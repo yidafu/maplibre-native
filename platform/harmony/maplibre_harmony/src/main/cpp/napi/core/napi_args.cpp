@@ -522,6 +522,64 @@ bool NapiArgs::GetBoolOr(size_t index, bool defaultValue) {
 
 // ========== 对象属性访问辅助方法 ==========
 
+int32_t NapiArgs::GetInt32Property(napi_value obj, const char* key, int32_t defaultValue) {
+    if (!obj || !key) {
+        return defaultValue;
+    }
+    
+    napi_value value;
+    napi_status status = napi_get_named_property(env_, obj, key, &value);
+    
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+    
+    napi_valuetype type;
+    status = napi_typeof(env_, value, &type);
+    
+    if (status != napi_ok || type != napi_number) {
+        return defaultValue;
+    }
+    
+    int32_t result = 0;
+    status = napi_get_value_int32(env_, value, &result);
+    
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+    
+    return result;
+}
+
+uint32_t NapiArgs::GetUint32Property(napi_value obj, const char* key, uint32_t defaultValue) {
+    if (!obj || !key) {
+        return defaultValue;
+    }
+    
+    napi_value value;
+    napi_status status = napi_get_named_property(env_, obj, key, &value);
+    
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+    
+    napi_valuetype type;
+    status = napi_typeof(env_, value, &type);
+    
+    if (status != napi_ok || type != napi_number) {
+        return defaultValue;
+    }
+    
+    uint32_t result = 0;
+    status = napi_get_value_uint32(env_, value, &result);
+    
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+    
+    return result;
+}
+
 std::string NapiArgs::GetStringProperty(napi_value obj, const char* key, const std::string& defaultValue) {
     if (!obj || !key) {
         return defaultValue;

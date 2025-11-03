@@ -124,6 +124,11 @@ export type GeoJsonData = string | Geometry | Feature | FeatureCollection | obje
  */
 export class GeoJsonSource {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 构造 GeoJSON 数据源
      * @param id 数据源 ID
      * @param options 可选配置

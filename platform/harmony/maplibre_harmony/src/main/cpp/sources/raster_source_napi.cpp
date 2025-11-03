@@ -7,6 +7,8 @@ using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
 namespace maplibre {
+
+using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
@@ -15,6 +17,15 @@ napi_ref RasterSourceNAPI::constructor = nullptr;
 RasterSourceNAPI::RasterSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterSource> source)
     : id(id), source(std::move(source)), ownsSource(true) {
     Logger::info("RasterSourceNAPI", "RasterSource instance created: %s", id.c_str());
+}
+
+RasterSourceNAPI::RasterSourceNAPI(mbgl::style::RasterSource* sourcePtr)
+    : ownsSource(false) {
+    if (sourcePtr) {
+        id = sourcePtr->getID();
+        weakSource = sourcePtr->makeWeakPtr();
+        Logger::info("RasterSourceNAPI", "RasterSource created from existing source (WeakPtr): %s", id.c_str());
+    }
 }
 
 RasterSourceNAPI::~RasterSourceNAPI() {
@@ -62,20 +73,12 @@ napi_value RasterSourceNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "RasterSource requires sourceId argument");
-        return nullptr;
-    }
-    
-    NapiArgs napiArgs(env, info);
-    std::string sourceId = napiArgs.GetString(0, "sourceId");
-    
-    if (napiArgs.HasError()) {
+    std::string sourceId = args.GetString(0, "sourceId");
+    if (args.HasError()) {
         napi_throw_error(env, nullptr, "Failed to parse sourceId");
         return nullptr;
     }
@@ -93,7 +96,7 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         RasterSourceNAPI* sourceNapi = new RasterSourceNAPI(sourceId, std::move(source));
         
-        napi_status status = napi_wrap(env, jsThis, sourceNapi, Destructor, nullptr, nullptr);
+        napi_status status = napi_wrap(env, args.This(), sourceNapi, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete sourceNapi;
             napi_throw_error(env, nullptr, "Failed to wrap RasterSource object");
@@ -101,7 +104,12 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         Logger::info("RasterSourceNAPI", "RasterSource created: %s", sourceId.c_str());
-        return jsThis;
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "RasterSource", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, args.This(), "_TYPE_", typeValue);
+        return args.This();
     } catch (const std::exception& e) {
         Logger::error("RasterSourceNAPI", "Failed to create RasterSource: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -109,12 +117,78 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
+napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSource* sourcePtr) {
+    if (!sourcePtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("RasterSourceNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    RasterSourceNAPI* napiObj = new RasterSourceNAPI(sourcePtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("RasterSourceNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "RasterSource", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 napi_value RasterSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         return CreateStringValue(env, "");
@@ -124,11 +198,10 @@ napi_value RasterSourceNAPI::GetId(napi_env env, napi_callback_info info) {
 }
 
 napi_value RasterSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         return CreateStringValue(env, "");
@@ -152,23 +225,20 @@ napi_value RasterSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
     
     RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi || !sourceNapi->source) {
         napi_throw_error(env, nullptr, "Invalid source");
         return nullptr;
     }
     
-    NapiArgs args(env, info);
     std::string url = args.GetString(0, "url");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
+    if (args.HasError()) return nullptr;
     
     try {
         // RasterSource 的 URL 在构造时设置，不能后续修改
@@ -202,13 +272,12 @@ napi_value RasterSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
     
     RasterSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         napi_throw_error(env, nullptr, "Invalid source wrapper");
@@ -221,13 +290,8 @@ napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) 
         return nullptr;
     }
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "SetTileSize requires tileSize argument");
-        return nullptr;
-    }
-    
-    uint32_t tileSize = 0;
-    napi_get_value_uint32(env, args[0], &tileSize);
+    uint32_t tileSize = args.GetUint32(0, "tileSize");
+    if (args.HasError()) return nullptr;
     
     if (tileSize == 0 || tileSize > 1024) {
         napi_throw_error(env, nullptr, "Invalid tile size (must be between 1 and 1024)");

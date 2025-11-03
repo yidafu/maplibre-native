@@ -559,6 +559,24 @@ std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
     return renderer_->queryRenderedFeatures(box, options);
 }
 
+void HarmonyMapRenderThread::setOnFpsChangedCallback(std::function<void(double)> callback) {
+    fpsCallback_ = std::move(callback);
+    measureFps_ = (fpsCallback_ != nullptr);
+    if (measureFps_) {
+        lastFrameTime_ = std::chrono::steady_clock::now();
+        Logger::info("MapRenderThread", "FPS measurement enabled");
+    } else {
+        Logger::info("MapRenderThread", "FPS measurement disabled");
+    }
+}
+
+void HarmonyMapRenderThread::enableFpsMeasurement(bool enable) {
+    measureFps_ = enable;
+    if (enable && !fpsCallback_) {
+        Logger::warn("MapRenderThread", "FPS measurement enabled but no callback set");
+    }
+}
+
 // ==================== VSync 控制 ====================
 
 void HarmonyMapRenderThread::onVSyncFrame() {
@@ -588,13 +606,28 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     // 执行实际渲染
     if (params && renderer_ && backend_) {
         try {
-            
+            // 开始帧时间测量
+            auto frameStartTime = std::chrono::steady_clock::now();
             
             auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
             gfx::BackendScope scope{glBackend->getImpl()};
             
             renderer_->render(params);
             
+            // FPS 测量（参考 Android MapRenderer::updateFps）
+            if (measureFps_.load() && fpsCallback_) {
+                auto currentTime = std::chrono::steady_clock::now();
+                auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    currentTime - lastFrameTime_).count();
+                
+                if (elapsedNanos > 0) {
+                    // 计算 FPS：fps = 1E9 / elapsed_nanoseconds
+                    double fps = 1.0e9 / static_cast<double>(elapsedNanos);
+                    fpsCallback_(fps);
+                }
+                
+                lastFrameTime_ = currentTime;
+            }
             
         } catch (const std::exception& e) {
             Logger::error("MapRenderThread", "Render failed on VSync: %s", e.what());

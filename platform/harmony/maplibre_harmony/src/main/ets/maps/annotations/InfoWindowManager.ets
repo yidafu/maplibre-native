@@ -178,8 +178,6 @@ export class InfoWindowManager {
     // 显示
     infoWindow.show(screenWidth, screenHeight, markerScreenPosition);
     
-    console.info('[InfoWindowManager] Showing InfoWindow for marker:', markerId);
-    
     return infoWindow;
   }
   
@@ -190,7 +188,6 @@ export class InfoWindowManager {
     const infoWindow = this.infoWindows.get(marker.getId());
     if (infoWindow && infoWindow.isShown()) {
       infoWindow.close();
-      console.info('[InfoWindowManager] Closed InfoWindow for marker:', marker.getId());
     }
   }
   
@@ -207,7 +204,6 @@ export class InfoWindowManager {
     });
     
     if (closedCount > 0) {
-      console.info('[InfoWindowManager] Closed', closedCount, 'InfoWindows');
     }
   }
   

@@ -330,7 +330,7 @@ export class Polyline {
    * @returns this（支持链式调用）
    */
   setMapLibreMap(map: MapLibreMap): Polyline {
-    this.nativeInstance
+    // Note: NAPI setMapLibreMap is called internally
     return this;
   }
 

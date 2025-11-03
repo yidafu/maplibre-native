@@ -193,11 +193,15 @@ export interface NativeMap {
   updateMarker(markerId: number, lat: number, lon: number, iconId: string): void;
   updatePolygon(polygonId: number, polygon: Polygon): void;
   updatePolyline(polylineId: number, polyline: Polyline): void;
-  queryPointAnnotations(rect: Rect): number[];
-  queryShapeAnnotations(rect: Rect): number[];
   addAnnotationIcon(symbol: string, width: number, height: number, scale: number, pixels: Uint8Array): void;
   removeAnnotationIcon(symbol: string): void;
   getTopOffsetPixelsForAnnotationSymbol(symbolName: string): number;
+  
+  // 性能配置 API（参考 Android MapRenderer）
+  setMaximumFps(maximumFps: number): void;
+  setRenderingRefreshMode(mode: number): void;
+  getRenderingRefreshMode(): number;
+  setOnFpsChangedListener(listener: OnFpsChangedListener | null): void;
   
   // 其他
   isDestroyed(): boolean;
@@ -206,6 +210,5 @@ export interface NativeMap {
   onLowMemory(): void;
   setSwapBehaviorFlush(flush: boolean): void;
   getDensityDependantRectangle(rectangle: Rect): Rect;
-  setOnFpsChangedListener(listener: OnFpsChangedListener | null): void;
   isFullyLoaded(): boolean;
 }

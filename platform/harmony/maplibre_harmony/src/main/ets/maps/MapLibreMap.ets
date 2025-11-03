@@ -16,9 +16,12 @@ import { Light } from './style/light/Light';
 import { Polyline } from './annotations/Polyline';
 import { Polygon } from './annotations/Polygon';
 import { MarkerManager } from './annotations/MarkerManager';
+import { PolygonManager } from './annotations/PolygonManager';
+import { PolylineManager } from './annotations/PolylineManager';
 import { MarkerOptions } from './annotations/MarkerOptions';
 import { Annotation } from './annotations/Annotation';
 import { OnMarkerClickListener } from './listeners/OnMarkerClickListener';
+import { OnMarkerLongClickListener } from './listeners/OnMarkerLongClickListener';
 import { OnMarkerDragListener } from './listeners/OnMarkerDragListener';
 import { OnInfoWindowClickListener } from './listeners/OnInfoWindowClickListener';
 import { OnInfoWindowLongClickListener } from './listeners/OnInfoWindowLongClickListener';
@@ -36,13 +39,15 @@ import { OnCameraIdleListener, OnCameraMoveStartedListener,
          OnCameraMoveListener, OnCameraMoveCanceledListener } from './camera/CameraListener';
 import { CameraMoveReason } from './camera/CameraMoveReason';
 import { UiSettings } from './UiSettings';
-import { OnMapClickListener, OnMapLongClickListener } from './gestures/GestureListeners';
+import { OnMapClickListener, OnMapLongClickListener, OnTouchMoveListener, OnTouchUpListener } from './gestures/GestureListeners';
 import { LocationComponent } from './location/LocationComponent';
 import { Projection } from './projection/Projection';
 import { CameraAnimationCallback } from './camera/CameraAnimationCallback';
 import { registerMapLibreMap } from './NativeMapView';
 import { Marker } from './annotations/Marker';
 import { Style } from './style/Style';
+import { RenderingRefreshMode } from './types/NativeTypes';
+import { OnFpsChangedListener } from './listeners/OnFpsChangedListener';
 
 /**
  * 操作队列项类型
@@ -57,6 +62,8 @@ export class MapLibreMap {
   private options: MapLibreMapOptions;
   private destroyed: boolean = false;
   private markerManager: MarkerManager;
+  private polygonManager: PolygonManager;
+  private polylineManager: PolylineManager;
   private infoWindowManager: InfoWindowManager;
   private annotationViewManager: AnnotationViewManager;
   private annotationViewDelegate: AnnotationViewDelegate | null = null;
@@ -99,6 +106,8 @@ export class MapLibreMap {
     this.nativeMapView = nativeMapView;
     this.options = options;
     this.markerManager = new MarkerManager(this);
+    this.polygonManager = new PolygonManager(this);
+    this.polylineManager = new PolylineManager(this);
     this.infoWindowManager = new InfoWindowManager();
     this.annotationViewManager = new AnnotationViewManager();
     this.locationComponent = new LocationComponent(this);
@@ -133,7 +142,6 @@ export class MapLibreMap {
   private setupNativeStyleListeners(): void {
     // 设置样式加载完成的回调
     this.nativeMapView.setOnStyleLoadedListener(() => {
-      console.info('MapLibreMap: Native style loaded callback triggered');
       this.onStyleLoaded();
     });
     
@@ -290,7 +298,6 @@ export class MapLibreMap {
     
     // 执行队列中的操作
     if (this.pendingOperations.length > 0) {
-      console.info(`MapLibreMap: Executing ${this.pendingOperations.length} pending operations`);
       this.pendingOperations.forEach(operation => {
         try {
           operation();
@@ -303,7 +310,6 @@ export class MapLibreMap {
     
     // 触发监听器
     if (this.styleLoadedListeners.length > 0) {
-      console.info(`MapLibreMap: Notifying ${this.styleLoadedListeners.length} style loaded listeners`);
       this.styleLoadedListeners.forEach(listener => {
         try {
           // 注意: Style 对象暂时传 null，因为 NativeMapView 没有 getStyle() 方法
@@ -331,7 +337,6 @@ export class MapLibreMap {
     
     // 触发错误监听器
     if (this.styleLoadErrorListeners.length > 0) {
-      console.info(`MapLibreMap: Notifying ${this.styleLoadErrorListeners.length} style load error listeners`);
       this.styleLoadErrorListeners.forEach(listener => {
         try {
           listener.onStyleLoadError(error);
@@ -350,12 +355,10 @@ export class MapLibreMap {
       return;
     }
     
-    console.info('MapLibreMap: Starting destroy sequence (Android/iOS pattern)...');
     this.destroyed = true;
     
     try {
       // 1. 清理所有监听器数组（参考 Android）
-      console.debug('MapLibreMap: Clearing all listeners...');
       this.styleLoadedListeners = [];
       this.styleLoadErrorListeners = [];
       this.pendingOperations = [];
@@ -371,23 +374,22 @@ export class MapLibreMap {
       this.animationCancelled = false;
       
       // 3. 清理 MarkerManager（参考 Android）
-      console.debug('MapLibreMap: Clearing MarkerManager...');
       this.markerManager.clear();
       
+      // 3.1 清理 PolygonManager 和 PolylineManager
+      this.polygonManager.clear();
+      this.polylineManager.clear();
+      
       // 4. 清理 InfoWindowManager
-      console.debug('MapLibreMap: Clearing InfoWindowManager...');
       this.infoWindowManager.closeAll();
       
       // 5. 清理 AnnotationViewManager
-      console.debug('MapLibreMap: Clearing AnnotationViewManager...');
       this.annotationViewManager.clear();
       
       // 6. 销毁位置组件（参考 Android）
-      console.debug('MapLibreMap: Destroying LocationComponent...');
       this.locationComponent.onDestroy();
       
       // 7. 清理相机调度器
-      console.debug('MapLibreMap: Clearing CameraChangeDispatcher...');
       // CameraChangeDispatcher 会在下面的 NativeMapView destroy 中清理监听器
       
       // 8. 清理样式引用
@@ -396,8 +398,6 @@ export class MapLibreMap {
       
       // 9. 清理 NativeMapView 引用（实际销毁在 NativeMapView 层）
       // Native 资源会在 NativeMapView.aboutToDisappear() 中异步清理
-      
-      console.info('MapLibreMap: ✅ Destroy sequence completed');
       
     } catch (error) {
       console.error('MapLibreMap: Error during destroy:', error);
@@ -456,7 +456,6 @@ export class MapLibreMap {
         const latLng = this.getLatLng();
         const metersPerPixel = this.getMetersPerPixelAtLatitude(latLng.latitude);
         this.onScaleBarUpdate(metersPerPixel);
-        console.info(`[MapLibreMap] resizeView triggered ScaleBar update: ${metersPerPixel}`);
       } catch (error) {
         console.error(`[MapLibreMap] Failed to update ScaleBar on resize: ${error}`);
       }
@@ -716,8 +715,6 @@ export class MapLibreMap {
    * 
    * // 使用回调
    * map.animateCamera(cameraPosition, 1000, {
-   *   onFinish: () => console.log('Animation finished'),
-   *   onCancel: () => console.log('Animation cancelled')
    * });
    * ```
    */
@@ -990,7 +987,6 @@ export class MapLibreMap {
       // 这样可以更新所有属性：position, icon, alpha, rotation, zIndex 等
       this.markerManager.updateMarker(marker);
       
-      console.debug(`[MapLibreMap] updateMarker: Updated marker ${marker.getId()}`);
     } catch (error) {
       console.error('[MapLibreMap] updateMarker: Failed -', error);
     }
@@ -1003,11 +999,9 @@ export class MapLibreMap {
     }
     
     // [MarkerDebug] 记录调用 NAPI 前的状态
-    console.info(`[MarkerDebug] MapLibreMap: Calling NAPI addMarkers with ${markers.length} NAPI Marker objects`);
     for (let i = 0; i < markers.length; i++) {
       const pos = markers[i].getPosition();
       const icon = markers[i].getIcon();
-      console.info(`[MarkerDebug] MapLibreMap: [${i}] position={${pos.latitude}, ${pos.longitude}}, icon=${icon || 'null'}`);
     }
     
     // 将封装的 Marker 转换为 NAPI Marker 对象数组
@@ -1015,7 +1009,6 @@ export class MapLibreMap {
     const ids: number[] = this.nativeMapView.addMarkers(nativeMarkers);
     
     // [MarkerDebug] 记录 NAPI 返回结果
-    console.info(`[MarkerDebug] MapLibreMap: NAPI returned ${ids.length} IDs: [${ids.join(', ')}]`);
     
     return ids;
   }
@@ -1066,15 +1059,16 @@ export class MapLibreMap {
     this.nativeMapView.onLowMemory();
   }
 
-  // 调试
+  // 调试 (已废弃，使用 setDebugActive 或 setDebugOptions 代替)
+  // 保留此方法以保持向后兼容，但内部调用新的 API
   public setDebug(debug: boolean): void {
     if (this.destroyed) return;
-    this.nativeMapView.setDebug(debug);
+    this.setDebugActive(debug);
   }
 
   public getDebug(): boolean {
     if (this.destroyed) return false;
-    return this.nativeMapView.getDebug();
+    return this.isDebugActive();
   }
 
   // 动作日志
@@ -1147,16 +1141,6 @@ export class MapLibreMap {
     this.nativeMapView.setTransitionOptions(options.toObject());
   }
 
-  // 查询
-  public queryPointAnnotations(rect: Rect): number[] {
-    if (this.destroyed) return [];
-    return this.nativeMapView.queryPointAnnotations(rect.toObject());
-  }
-
-  public queryShapeAnnotations(rect: Rect): number[] {
-    if (this.destroyed) return [];
-    return this.nativeMapView.queryShapeAnnotations(rect.toObject());
-  }
 
   // 光照
   public getLight(): Light | null {
@@ -1460,7 +1444,6 @@ export class MapLibreMap {
   public clear(): void {
     if (this.destroyed) return;
     
-    console.info(`MapLibreMap: Clearing all annotations (Android clear pattern)`);
     // 清除所有 Marker
     this.markerManager.clear();
     
@@ -1544,8 +1527,24 @@ export class MapLibreMap {
    * @param listener 监听器实例
    */
   public setOnMarkerClickListener(listener: OnMarkerClickListener | null): void {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      console.warn(`[MapLibreMap] ⚠️ Map is destroyed, cannot set listener`);
+      return;
+    }
     this.markerManager.setOnMarkerClickListener(listener);
+  }
+  
+  /**
+   * 设置 Marker 长按监听器
+   * 
+   * @param listener 监听器实例
+   */
+  public setOnMarkerLongClickListener(listener: OnMarkerLongClickListener | null): void {
+    if (this.destroyed) {
+      console.warn(`[MapLibreMap] ⚠️ Map is destroyed, cannot set listener`);
+      return;
+    }
+    this.markerManager.setOnMarkerLongClickListener(listener);
   }
   
   /**
@@ -1631,7 +1630,6 @@ export class MapLibreMap {
     if (this.destroyed) return;
     if (!this.styleLoadedListeners.includes(listener)) {
       this.styleLoadedListeners.push(listener);
-      console.info('MapLibreMap: Style loaded listener added');
       
       // 如果样式已经加载，立即触发回调
       if (this.styleLoaded) {
@@ -1654,7 +1652,6 @@ export class MapLibreMap {
     const index = this.styleLoadedListeners.indexOf(listener);
     if (index !== -1) {
       this.styleLoadedListeners.splice(index, 1);
-      console.info('MapLibreMap: Style loaded listener removed');
     }
   }
   
@@ -1667,7 +1664,6 @@ export class MapLibreMap {
     if (this.destroyed) return;
     if (!this.styleLoadErrorListeners.includes(listener)) {
       this.styleLoadErrorListeners.push(listener);
-      console.info('MapLibreMap: Style load error listener added');
     }
   }
   
@@ -1680,7 +1676,6 @@ export class MapLibreMap {
     const index = this.styleLoadErrorListeners.indexOf(listener);
     if (index !== -1) {
       this.styleLoadErrorListeners.splice(index, 1);
-      console.info('MapLibreMap: Style load error listener removed');
     }
   }
   
@@ -1704,7 +1699,6 @@ export class MapLibreMap {
     } else {
       // 样式未加载，加入队列
       this.pendingOperations.push(operation);
-      console.info(`MapLibreMap: Operation added to pending queue (${this.pendingOperations.length} total)`);
     }
   }
   
@@ -1745,6 +1739,64 @@ export class MapLibreMap {
   public hideInfoWindow(marker: Marker): void {
     if (this.destroyed) return;
     this.markerManager.hideInfoWindow(marker);
+  }
+  
+  // ========== Polygon 管理方法 ==========
+  
+  /**
+   * 获取所有 Polygon
+   * 
+   * @returns Polygon 数组
+   */
+  public getPolygons(): Polygon[] {
+    if (this.destroyed) return [];
+    return this.polygonManager.getPolygons();
+  }
+  
+  /**
+   * 清除所有 Polygon
+   */
+  public clearPolygons(): void {
+    if (this.destroyed) return;
+    this.polygonManager.clear();
+  }
+  
+  /**
+   * 获取 PolygonManager 实例（内部使用）
+   * 
+   * @returns PolygonManager 实例
+   */
+  public getPolygonManager(): PolygonManager {
+    return this.polygonManager;
+  }
+  
+  // ========== Polyline 管理方法 ==========
+  
+  /**
+   * 获取所有 Polyline
+   * 
+   * @returns Polyline 数组
+   */
+  public getPolylines(): Polyline[] {
+    if (this.destroyed) return [];
+    return this.polylineManager.getPolylines();
+  }
+  
+  /**
+   * 清除所有 Polyline
+   */
+  public clearPolylines(): void {
+    if (this.destroyed) return;
+    this.polylineManager.clear();
+  }
+  
+  /**
+   * 获取 PolylineManager 实例（内部使用）
+   * 
+   * @returns PolylineManager 实例
+   */
+  public getPolylineManager(): PolylineManager {
+    return this.polylineManager;
   }
   
   /**
@@ -1919,7 +1971,6 @@ export class MapLibreMap {
     if (this.destroyed) return;
     if (!this.mapClickListeners.includes(listener)) {
       this.mapClickListeners.push(listener);
-      console.info('MapLibreMap: Map click listener added');
     }
   }
   
@@ -1933,7 +1984,6 @@ export class MapLibreMap {
     const index = this.mapClickListeners.indexOf(listener);
     if (index > -1) {
       this.mapClickListeners.splice(index, 1);
-      console.info('MapLibreMap: Map click listener removed');
     }
   }
   
@@ -1947,7 +1997,6 @@ export class MapLibreMap {
     if (this.destroyed) return;
     if (!this.mapLongClickListeners.includes(listener)) {
       this.mapLongClickListeners.push(listener);
-      console.info('MapLibreMap: Map long click listener added');
     }
   }
   
@@ -1961,8 +2010,113 @@ export class MapLibreMap {
     const index = this.mapLongClickListeners.indexOf(listener);
     if (index > -1) {
       this.mapLongClickListeners.splice(index, 1);
-      console.info('MapLibreMap: Map long click listener removed');
     }
+  }
+
+  // 触摸事件监听器列表（用于 Marker 拖拽等功能）
+  private touchMoveListeners: OnTouchMoveListener[] = [];
+  private touchUpListeners: OnTouchUpListener[] = [];
+
+  /**
+   * 添加触摸移动监听器
+   * 用于实现 Marker 拖拽等需要连续跟踪触摸位置的功能
+   * 参考 Android AndroidGesturesManager.setMoveGestureListener
+   * 
+   * 注意：触摸事件通过 NativeMapView 的手势系统分发，这里只是注册回调
+   * 
+   * @param listener OnTouchMoveListener 实例
+   */
+  public addOnTouchMoveListener(listener: OnTouchMoveListener): void {
+    if (this.destroyed) return;
+    if (!this.touchMoveListeners.includes(listener)) {
+      this.touchMoveListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除触摸移动监听器
+   * 
+   * @param listener 要移除的监听器
+   */
+  public removeOnTouchMoveListener(listener: OnTouchMoveListener): void {
+    if (this.destroyed) return;
+    const index = this.touchMoveListeners.indexOf(listener);
+    if (index > -1) {
+      this.touchMoveListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 添加触摸释放监听器
+   * 用于检测触摸结束，实现 Marker 拖拽结束等功能
+   * 参考 iOS UIPanGestureRecognizer UIGestureRecognizerStateEnded
+   * 
+   * @param listener OnTouchUpListener 实例
+   */
+  public addOnTouchUpListener(listener: OnTouchUpListener): void {
+    if (this.destroyed) return;
+    if (!this.touchUpListeners.includes(listener)) {
+      this.touchUpListeners.push(listener);
+    }
+  }
+
+  /**
+   * 移除触摸释放监听器
+   * 
+   * @param listener 要移除的监听器
+   */
+  public removeOnTouchUpListener(listener: OnTouchUpListener): void {
+    if (this.destroyed) return;
+    const index = this.touchUpListeners.indexOf(listener);
+    if (index > -1) {
+      this.touchUpListeners.splice(index, 1);
+    }
+  }
+
+  /**
+   * 内部方法：触发触摸移动事件
+   * 由 NativeMapView 或手势系统调用
+   * 
+   * @param x 触摸位置 X 坐标
+   * @param y 触摸位置 Y 坐标
+   * @returns true 如果事件被消费
+   */
+  public fireTouchMoveEvent(x: number, y: number): boolean {
+    if (this.destroyed) return false;
+    
+    for (const listener of this.touchMoveListeners) {
+      try {
+        if (listener.onTouchMove(x, y)) {
+          return true; // 事件被消费
+        }
+      } catch (error) {
+        console.error(`MapLibreMap: Error in touch move listener: ${error}`);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 内部方法：触发触摸释放事件
+   * 由 NativeMapView 或手势系统调用
+   * 
+   * @param x 触摸位置 X 坐标
+   * @param y 触摸位置 Y 坐标
+   * @returns true 如果事件被消费
+   */
+  public fireTouchUpEvent(x: number, y: number): boolean {
+    if (this.destroyed) return false;
+    
+    for (const listener of this.touchUpListeners) {
+      try {
+        if (listener.onTouchUp(x, y)) {
+          return true; // 事件被消费
+        }
+      } catch (error) {
+        console.error(`MapLibreMap: Error in touch up listener: ${error}`);
+      }
+    }
+    return false;
   }
   
   /**
@@ -2004,6 +2158,25 @@ export class MapLibreMap {
         console.error(`MapLibreMap: Error in map long click listener: ${error}`);
       }
     }
+    return false;
+  }
+  
+  /**
+   * 尝试开始拖拽 Marker（在 Pan 手势开始时调用）
+   * 
+   * @param x 触摸位置 X 坐标（逻辑像素）
+   * @param y 触摸位置 Y 坐标（逻辑像素）
+   * @returns true 如果开始拖拽 Marker
+   * @internal
+   */
+  public tryStartMarkerDrag(x: number, y: number): boolean {
+    if (this.destroyed) return false;
+    
+    // 尝试通过 MarkerManager 开始拖拽
+    if (this.markerManager) {
+      return this.markerManager.tryStartDrag(x, y);
+    }
+    
     return false;
   }
   
@@ -2052,7 +2225,6 @@ export class MapLibreMap {
     // 使用 AnnotationViewManager 创建视图
     this.annotationViewManager.createOrUpdateView(marker);
     
-    console.info(`[MapLibreMap] Registered AnnotationView for marker: ${marker.getId()}`);
   }
   
   /**
@@ -2065,7 +2237,6 @@ export class MapLibreMap {
     
     this.annotationViewManager.removeView(marker);
     
-    console.info(`[MapLibreMap] Unregistered AnnotationView for marker: ${marker.getId()}`);
   }
   
   /**
@@ -2180,15 +2351,20 @@ export class MapLibreMap {
   /**
    * 查询指定点的渲染要素
    * 
-   * @param x X 坐标（屏幕像素）
-   * @param y Y 坐标（屏幕像素）
+   * @param x X 坐标（逻辑像素，会自动转换为物理像素）
+   * @param y Y 坐标（逻辑像素，会自动转换为物理像素）
    * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
    * @param filter 可选的过滤器表达式
    * @returns Feature 数组
    * 
+   * @note 坐标系统说明：
+   * - 输入坐标为逻辑像素（与触摸事件坐标一致）
+   * - 内部会自动乘以 pixelRatio 转换为物理像素传递给底层渲染引擎
+   * - 这确保了在不同 DPI 设备上的查询准确性
+   * 
    * @example
    * ```typescript
-   * // 查询屏幕坐标 (100, 200) 处的所有要素
+   * // 查询屏幕坐标 (100, 200) 处的所有要素（使用逻辑像素）
    * const features = map.queryRenderedFeaturesForPoint(100, 200);
    * 
    * // 只查询特定图层的要素
@@ -2210,7 +2386,12 @@ export class MapLibreMap {
     }
     
     try {
-      const features = this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
+      // DPI 转换：逻辑像素 -> 物理像素
+      const pixelRatio = this.nativeMapView.getPixelRatio();
+      const screenX = x * pixelRatio;
+      const screenY = y * pixelRatio;
+      
+      const features = this.nativeMapView.queryRenderedFeaturesForPoint(screenX, screenY, layerIds, filter);
       return features as ESObject as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForPoint failed: ${error.message}`);
@@ -2221,17 +2402,23 @@ export class MapLibreMap {
   /**
    * 查询矩形区域内的渲染要素
    * 
-   * @param left 左边界（屏幕像素）
-   * @param top 上边界（屏幕像素）
-   * @param right 右边界（屏幕像素）
-   * @param bottom 下边界（屏幕像素）
+   * @param left 左边界（逻辑像素，会自动转换为物理像素）
+   * @param top 上边界（逻辑像素，会自动转换为物理像素）
+   * @param right 右边界（逻辑像素，会自动转换为物理像素）
+   * @param bottom 下边界（逻辑像素，会自动转换为物理像素）
    * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
    * @param filter 可选的过滤器表达式
    * @returns IFeature 数组
    * 
+   * @note 坐标系统说明：
+   * - 输入坐标为逻辑像素（与触摸事件坐标一致）
+   * - 内部会自动乘以 pixelRatio 转换为物理像素传递给底层渲染引擎
+   * - 这确保了在不同 DPI 设备上的查询准确性
+   * - 保持与 handleMapClick 等方法的坐标处理一致性
+   * 
    * @example
    * ```typescript
-   * // 查询矩形区域内的所有要素
+   * // 查询矩形区域内的所有要素（逻辑像素坐标）
    * const features = map.queryRenderedFeaturesForBox(100, 100, 300, 300);
    * 
    * // 只查询特定图层的要素
@@ -2262,7 +2449,16 @@ export class MapLibreMap {
     }
     
     try {
-      const features = this.nativeMapView.queryRenderedFeaturesForBox(left, top, right, bottom, layerIds, filter);
+      // DPI 转换：逻辑像素 -> 物理像素
+      const pixelRatio = this.nativeMapView.getPixelRatio();
+      const physicalLeft = left * pixelRatio;
+      const physicalTop = top * pixelRatio;
+      const physicalRight = right * pixelRatio;
+      const physicalBottom = bottom * pixelRatio;
+      
+      const features = this.nativeMapView.queryRenderedFeaturesForBox(
+        physicalLeft, physicalTop, physicalRight, physicalBottom, layerIds, filter
+      );
       return features as ESObject as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
@@ -2280,18 +2476,85 @@ export class MapLibreMap {
     return this.infoWindowManager;
   }
   
-  // ========== 兼容性方法 (从 NativeMapView 迁移) ==========
+  // ========== 性能测量方法 (参考 Android) ==========
   
   /**
-   * 设置调试模式激活状态
-   * 启用后会显示瓦片边界、FPS 等调试信息
-   * @param active 是否激活调试模式
+   * 设置 FPS 变化监听器（参考 Android MapLibreMap.setOnFpsChangedListener）
+   * 用于实时监控渲染帧率
+   * @param listener FPS 变化监听器，传入 null 则移除监听器
    */
-  public setDebugActive(active: boolean): void {
-    if (this.destroyed) return;
-    // 调用 native 层的调试方法
-    this.setDebug(active);
+  public setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'setOnFpsChangedListener: Map is destroyed');
+      return;
+    }
+    
+    try {
+      if (listener === null) {
+        this.nativeMapView.setOnFpsChangedListener(null);
+      } else {
+        this.nativeMapView.setOnFpsChangedListener((fps: number) => {
+          listener.onFpsChanged(fps);
+        });
+      }
+    } catch (error) {
+      console.error('MapLibreMap', `setOnFpsChangedListener failed: ${error.message}`);
+    }
   }
+  
+  /**
+   * 设置最大帧率（参考 Android MapView.setMaximumFps）
+   * @param maximumFps 最大帧率，例如 30、60
+   */
+  public setMaximumFps(maximumFps: number): void {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'setMaximumFps: Map is destroyed');
+      return;
+    }
+    
+    try {
+      this.nativeMapView.setMaximumFps(maximumFps);
+    } catch (error) {
+      console.error('MapLibreMap', `setMaximumFps failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 设置渲染刷新模式（参考 Android MapView.setRenderingRefreshMode）
+   * @param mode 渲染模式：CONTINUOUS（持续渲染）或 WHEN_DIRTY（按需渲染）
+   */
+  public setRenderingRefreshMode(mode: RenderingRefreshMode): void {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'setRenderingRefreshMode: Map is destroyed');
+      return;
+    }
+    
+    try {
+      this.nativeMapView.setRenderingRefreshMode(mode);
+    } catch (error) {
+      console.error('MapLibreMap', `setRenderingRefreshMode failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * 获取渲染刷新模式（参考 Android MapView.getRenderingRefreshMode）
+   * @returns 当前渲染模式
+   */
+  public getRenderingRefreshMode(): RenderingRefreshMode {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'getRenderingRefreshMode: Map is destroyed');
+      return RenderingRefreshMode.WHEN_DIRTY;
+    }
+    
+    try {
+      return this.nativeMapView.getRenderingRefreshMode();
+    } catch (error) {
+      console.error('MapLibreMap', `getRenderingRefreshMode failed: ${error.message}`);
+      return RenderingRefreshMode.WHEN_DIRTY;
+    }
+  }
+  
+  // ========== 兼容性方法 (从 NativeMapView 迁移) ==========
   
   /**
    * 获取设备像素比
@@ -2360,6 +2623,97 @@ export class MapLibreMap {
    */
   private convertNativeLatLngArray(nativeArray: import('libmaplibre.so').LatLng[]): LatLng[] {
     return nativeArray.map(native => LatLng.fromNative(native));
+  }
+  
+  // ========== 调试功能（Debug Mode）==========
+  
+  /**
+   * 设置调试选项
+   * 使用 MapDebugOptions 枚举值的位掩码来启用多个调试功能
+   * 
+   * 调试选项包括：
+   * - TileBoundaries: 显示瓦片边界（红线）
+   * - TileInfo: 显示瓦片坐标（x/y/z）
+   * - Timestamps: 显示瓦片加载时间戳
+   * - CollisionBoxes: 显示碰撞检测框（绿线）
+   * - OverdrawVisualization: 过度绘制可视化
+   * 
+   * @param debugOptions 调试选项的位掩码
+   * @example
+   * ```typescript
+   * import { MapDebugOptions } from '@ohos/maplibre';
+   * 
+   * // 启用多个调试选项
+   * map.setDebugOptions(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes);
+   * 
+   * // 禁用所有调试选项
+   * map.setDebugOptions(MapDebugOptions.NoDebug);
+   * ```
+   */
+  public setDebugOptions(debugOptions: number): void {
+    if (this.destroyed) return;
+    this.nativeMapView.setDebug(debugOptions);
+  }
+  
+  /**
+   * 获取当前调试选项
+   * 
+   * @returns 当前启用的调试选项位掩码
+   * @example
+   * ```typescript
+   * const currentOptions = map.getDebugOptions();
+   * console.log('Current debug options:', currentOptions);
+   * ```
+   */
+  public getDebugOptions(): number {
+    if (this.destroyed) return 0;
+    return this.nativeMapView.getDebug();
+  }
+  
+  /**
+   * 快速开关调试模式（使用默认调试选项组合）
+   * 
+   * 当启用调试模式时，会自动开启以下调试选项：
+   * - 瓦片边界（TileBoundaries）
+   * - 瓦片信息（TileInfo）  
+   * - 碰撞框（CollisionBoxes）
+   * 
+   * 这是最常用的调试选项组合，可以帮助诊断大多数渲染问题。
+   * 
+   * @param active 是否启用调试模式
+   * @example
+   * ```typescript
+   * // 快速启用调试模式
+   * map.setDebugActive(true);
+   * 
+   * // 检查状态
+   * if (map.isDebugActive()) {
+   *   console.log('Debug mode is active');
+   * }
+   * 
+   * // 关闭调试模式
+   * map.setDebugActive(false);
+   * ```
+   */
+  public setDebugActive(active: boolean): void {
+    if (this.destroyed) return;
+    this.nativeMapView.setDebugActive(active);
+  }
+  
+  /**
+   * 检查是否处于调试模式
+   * 
+   * @returns 是否有任何调试选项被启用
+   * @example
+   * ```typescript
+   * if (map.isDebugActive()) {
+   *   console.log('Debug visualizations are currently enabled');
+   * }
+   * ```
+   */
+  public isDebugActive(): boolean {
+    if (this.destroyed) return false;
+    return this.nativeMapView.isDebugActive();
   }
 
 }

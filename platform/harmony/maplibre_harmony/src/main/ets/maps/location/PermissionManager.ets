@@ -30,7 +30,6 @@ export class PermissionManager {
       for (const permission of PermissionManager.LOCATION_PERMISSIONS) {
         const grantStatus = await atManager.checkAccessToken(tokenID, permission);
         if (grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
-          hilog.info(DOMAIN, PermissionManager.TAG, `Permission ${permission} is granted`);
           return true;
         }
       }
@@ -49,8 +48,6 @@ export class PermissionManager {
   static async requestLocationPermission(context: Context): Promise<PermissionRequestResult> {
     try {
       const atManager = abilityAccessCtrl.createAtManager();
-      
-      hilog.info(DOMAIN, PermissionManager.TAG, 'Requesting location permissions');
       
       const requestResult = await atManager.requestPermissionsFromUser(
         context,
@@ -71,7 +68,6 @@ export class PermissionManager {
 
           if (authResult === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
             result.granted = true;
-            hilog.info(DOMAIN, PermissionManager.TAG, `Permission granted: ${permission}`);
           } else {
             result.deniedPermissions.push(permission as Permissions);
             hilog.warn(DOMAIN, PermissionManager.TAG, `Permission denied: ${permission}`);

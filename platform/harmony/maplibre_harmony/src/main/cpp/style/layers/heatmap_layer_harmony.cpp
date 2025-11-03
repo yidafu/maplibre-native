@@ -24,6 +24,14 @@ HeatmapLayerNAPI::HeatmapLayerNAPI(const std::string& layerId, const std::string
     : layer(std::make_unique<mbgl::style::HeatmapLayer>(layerId, sourceId)) {
 }
 
+HeatmapLayerNAPI::HeatmapLayerNAPI(mbgl::style::HeatmapLayer* layerPtr) {
+    if (layerPtr) {
+        weakLayer = layerPtr->makeWeakPtr();
+        Logger::info("HeatmapLayerNAPI", "HeatmapLayer created from existing layer (WeakPtr)");
+    }
+}
+
+
 HeatmapLayerNAPI::~HeatmapLayerNAPI() {
 }
 
@@ -117,8 +125,82 @@ napi_value HeatmapLayerNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
+
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "HeatmapLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
     return thisVar;
 }
+
+napi_value HeatmapLayerNAPI::CreateInstance(napi_env env, mbgl::style::HeatmapLayer* layerPtr) {
+    if (!layerPtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("HeatmapLayerNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    HeatmapLayerNAPI* napiObj = new HeatmapLayerNAPI(layerPtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("HeatmapLayerNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "HeatmapLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 
 // ============================================================================
 // Paint Property Setters (支持 Expression)
@@ -133,10 +215,10 @@ napi_value HeatmapLayerNAPI::SetHeatmapRadius(napi_env env, napi_callback_info i
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), argv[0], "heatmap-radius",
+        env, layerObj->getLayer(), argv[0], "heatmap-radius",
         &mbgl::style::HeatmapLayer::setHeatmapRadius
     );
     return thisVar;
@@ -151,10 +233,10 @@ napi_value HeatmapLayerNAPI::SetHeatmapWeight(napi_env env, napi_callback_info i
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), argv[0], "heatmap-weight",
+        env, layerObj->getLayer(), argv[0], "heatmap-weight",
         &mbgl::style::HeatmapLayer::setHeatmapWeight
     );
     return thisVar;
@@ -169,10 +251,10 @@ napi_value HeatmapLayerNAPI::SetHeatmapIntensity(napi_env env, napi_callback_inf
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), argv[0], "heatmap-intensity",
+        env, layerObj->getLayer(), argv[0], "heatmap-intensity",
         &mbgl::style::HeatmapLayer::setHeatmapIntensity
     );
     return thisVar;
@@ -187,7 +269,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapColor(napi_env env, napi_callback_info in
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     // heatmap-color uses ColorRampPropertyValue, special handling
     // For now, we use the existing conversion approach
@@ -220,10 +302,10 @@ napi_value HeatmapLayerNAPI::SetHeatmapOpacity(napi_env env, napi_callback_info 
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), argv[0], "heatmap-opacity",
+        env, layerObj->getLayer(), argv[0], "heatmap-opacity",
         &mbgl::style::HeatmapLayer::setHeatmapOpacity
     );
     return thisVar;
@@ -247,7 +329,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapRadius(napi_env env, napi_callback_info i
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::HeatmapLayer::getHeatmapRadius
+        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapRadius
     );
 }
 
@@ -265,7 +347,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapWeight(napi_env env, napi_callback_info i
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::HeatmapLayer::getHeatmapWeight
+        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapWeight
     );
 }
 
@@ -283,7 +365,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapIntensity(napi_env env, napi_callback_inf
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::HeatmapLayer::getHeatmapIntensity
+        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapIntensity
     );
 }
 
@@ -326,7 +408,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapOpacity(napi_env env, napi_callback_info 
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::HeatmapLayer::getHeatmapOpacity
+        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapOpacity
     );
 }
 
@@ -541,7 +623,7 @@ napi_value HeatmapLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {

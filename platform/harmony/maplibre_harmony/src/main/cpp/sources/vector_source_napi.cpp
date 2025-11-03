@@ -7,6 +7,8 @@ using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
 namespace maplibre {
+
+using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
@@ -15,6 +17,15 @@ napi_ref VectorSourceNAPI::constructor = nullptr;
 VectorSourceNAPI::VectorSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::VectorSource> source)
     : id(id), source(std::move(source)), ownsSource(true) {
     Logger::info("VectorSourceNAPI", "VectorSource instance created: %s", id.c_str());
+}
+
+VectorSourceNAPI::VectorSourceNAPI(mbgl::style::VectorSource* sourcePtr)
+    : ownsSource(false) {
+    if (sourcePtr) {
+        id = sourcePtr->getID();
+        weakSource = sourcePtr->makeWeakPtr();
+        Logger::info("VectorSourceNAPI", "VectorSource created from existing source (WeakPtr): %s", id.c_str());
+    }
 }
 
 VectorSourceNAPI::~VectorSourceNAPI() {
@@ -62,20 +73,12 @@ napi_value VectorSourceNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "VectorSource requires sourceId argument");
-        return nullptr;
-    }
-    
-    NapiArgs napiArgs(env, info);
-    std::string sourceId = napiArgs.GetString(0, "sourceId");
-    
-    if (napiArgs.HasError()) {
+    std::string sourceId = args.GetString(0, "sourceId");
+    if (args.HasError()) {
         napi_throw_error(env, nullptr, "Failed to parse sourceId");
         return nullptr;
     }
@@ -91,7 +94,7 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         VectorSourceNAPI* sourceNapi = new VectorSourceNAPI(sourceId, std::move(source));
         
-        napi_status status = napi_wrap(env, jsThis, sourceNapi, Destructor, nullptr, nullptr);
+        napi_status status = napi_wrap(env, args.This(), sourceNapi, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete sourceNapi;
             napi_throw_error(env, nullptr, "Failed to wrap VectorSource object");
@@ -99,7 +102,12 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         Logger::info("VectorSourceNAPI", "VectorSource created: %s", sourceId.c_str());
-        return jsThis;
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "VectorSource", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, args.This(), "_TYPE_", typeValue);
+        return args.This();
     } catch (const std::exception& e) {
         Logger::error("VectorSourceNAPI", "Failed to create VectorSource: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -107,12 +115,78 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
 }
 
+napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSource* sourcePtr) {
+    if (!sourcePtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("VectorSourceNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    VectorSourceNAPI* napiObj = new VectorSourceNAPI(sourcePtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("VectorSourceNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "VectorSource", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 napi_value VectorSourceNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         return CreateStringValue(env, "");
@@ -122,11 +196,10 @@ napi_value VectorSourceNAPI::GetId(napi_env env, napi_callback_info info) {
 }
 
 napi_value VectorSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
     
     VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         return CreateStringValue(env, "");
@@ -150,11 +223,12 @@ napi_value VectorSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
     
     VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         napi_throw_error(env, nullptr, "Invalid source wrapper");
@@ -167,12 +241,8 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    NapiArgs args(env, info);
     std::string url = args.GetString(0, "url");
-    
-    if (args.HasError()) {
-        return nullptr;
-    }
+    if (args.HasError()) return nullptr;
     
     // VectorSource 支持 setTiles 方法
     try {
@@ -187,13 +257,12 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
 }
 
 napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
     
     VectorSourceNAPI* sourceNapi = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&sourceNapi));
     
     if (!sourceNapi) {
         napi_throw_error(env, nullptr, "Invalid source wrapper");
@@ -206,28 +275,19 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "SetTiles requires tiles array argument");
-        return nullptr;
-    }
-    
     // 解析 tiles 数组
-    bool isArray = false;
-    napi_is_array(env, args[0], &isArray);
-    if (!isArray) {
-        napi_throw_error(env, nullptr, "tiles argument must be an array");
-        return nullptr;
-    }
+    napi_value tilesArray = args.GetArray(0, "tiles");
+    if (args.HasError()) return nullptr;
     
     uint32_t arrayLength = 0;
-    napi_get_array_length(env, args[0], &arrayLength);
+    napi_get_array_length(env, tilesArray, &arrayLength);
     
     std::vector<std::string> tiles;
     tiles.reserve(arrayLength);
     
     for (uint32_t i = 0; i < arrayLength; ++i) {
         napi_value element;
-        napi_get_element(env, args[0], i, &element);
+        napi_get_element(env, tilesArray, i, &element);
         
         size_t strSize;
         napi_get_value_string_utf8(env, element, nullptr, 0, &strSize);

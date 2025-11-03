@@ -245,6 +245,7 @@ napi_value IconFactoryNAPI::CreateDefaultMarker(napi_env env, napi_callback_info
     NapiArgs args(env, info);
     
     // Signature: createDefaultMarker(iconId?: string, size?: number): Icon
+    // NOTE: ResourceManager parameter removed - rawfile loading handled in ETS layer
     
     // Get optional iconId
     std::string iconId = args.Count() >= 1 ? args.GetString(0, "iconId") : "com.maplibre.marker.default";
@@ -252,11 +253,11 @@ napi_value IconFactoryNAPI::CreateDefaultMarker(napi_env env, napi_callback_info
     // Get optional size
     uint32_t size = args.Count() >= 2 ? static_cast<uint32_t>(args.GetInt32(1, "size")) : 48;
     
-    Logger::info("IconFactoryNAPI", "Creating default marker: id=%s, size=%u",
+    Logger::info("IconFactoryNAPI", "Creating programmatic default marker (RED pin): id=%s, size=%u",
                  iconId.c_str(), size);
     
     try {
-        // Generate default marker icon
+        // 生成程序化的红色 Pin 形状图标
         auto image = mbgl::harmony::IconFactory::createDefaultMarker(size);
         
         // Create Icon NAPI object with scale 1.0

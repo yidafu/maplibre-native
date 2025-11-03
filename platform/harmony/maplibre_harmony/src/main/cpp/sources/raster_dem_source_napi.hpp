@@ -16,11 +16,17 @@ namespace harmony {
 class RasterDemSourceNAPI {
 public:
     RasterDemSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterDEMSource> source);
+    // 从现有 Source 创建（使用 WeakPtr，不拥有所有权）
+    RasterDemSourceNAPI(mbgl::style::RasterDEMSource* sourcePtr);
+    
     ~RasterDemSourceNAPI();
     
     // NAPI 注册
     static napi_value Init(napi_env env, napi_value exports);
-    static napi_value New(napi_env env, napi_callback_info info);
+static napi_value New(napi_env env, napi_callback_info info);
+    // 从现有 native 对象创建 NAPI 实例
+    static napi_value CreateInstance(napi_env env, mbgl::style::RasterDEMSource* sourcePtr);
+    
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     // Getters

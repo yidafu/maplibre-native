@@ -166,6 +166,31 @@ bool setLayoutProperty(
 }
 
 /**
+ * Helper to set data-driven layout property (e.g., icon-image, icon-rotate)
+ * 
+ * Some layout properties support data expressions in MapLibre (property-type: data-driven).
+ * This function explicitly enables data expressions for those properties.
+ */
+template <typename LayerT, typename T>
+bool setDataDrivenLayoutProperty(
+    napi_env env,
+    LayerT* layer,
+    napi_value value,
+    const char* propertyName,
+    void (LayerT::*setter)(const mbgl::style::PropertyValue<T>&)
+) {
+    auto propertyValue = napiValueToPropertyValueWithData<T>(env, value, propertyName);
+    if (propertyValue) {
+        (layer->*setter)(*propertyValue);
+        Logger::info("LayerPropertyUtils", "✅ Data-driven property '%s' set successfully", propertyName);
+        return true;
+    } else {
+        Logger::error("LayerPropertyUtils", "❌ Failed to set data-driven property '%s'", propertyName);
+        return false;
+    }
+}
+
+/**
  * Helper to set paint property with expression support (allows data expressions)
  */
 template <typename LayerT, typename T>

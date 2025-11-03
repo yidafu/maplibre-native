@@ -13,6 +13,9 @@ namespace harmony {
 using Logger = mbgl::harmony::Logger;
 using NapiArgs = mbgl::harmony::napi::NapiArgs;
 
+// 静态构造函数引用初始化
+napi_ref OfflineRegionNAPI::constructor_ = nullptr;
+
 // ========== 构造函数和析构函数 ==========
 
 OfflineRegionNAPI::OfflineRegionNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource,
@@ -66,6 +69,13 @@ napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
+    // 保存构造函数引用
+    status = napi_create_reference(env, cons, 1, &constructor_);
+    if (status != napi_ok) {
+        Logger::error("OfflineRegionNAPI", "Failed to create constructor reference");
+        return nullptr;
+    }
+    
     status = napi_set_named_property(env, exports, "OfflineRegion", cons);
     if (status != napi_ok) {
         Logger::error("OfflineRegionNAPI", "Failed to export class");
@@ -82,15 +92,27 @@ napi_value OfflineRegionNAPI::New(napi_env env,
                                   mbgl::OfflineRegion&& region) {
     napi_status status;
     
-    // 获取构造函数
-    napi_value cons;
-    napi_value global;
-    status = napi_get_global(env, &global);
-    status = napi_get_named_property(env, global, "OfflineRegion", &cons);
+    // 检查构造函数引用是否已初始化
+    if (constructor_ == nullptr) {
+        Logger::error("OfflineRegionNAPI", "Constructor reference is null. Make sure Init() was called.");
+        return nullptr;
+    }
+    
+    // 从引用获取构造函数
+    napi_value cons = nullptr;
+    status = napi_get_reference_value(env, constructor_, &cons);
+    if (status != napi_ok || cons == nullptr) {
+        Logger::error("OfflineRegionNAPI", "Failed to get constructor from reference");
+        return nullptr;
+    }
     
     // 创建实例
-    napi_value instance;
+    napi_value instance = nullptr;
     status = napi_new_instance(env, cons, 0, nullptr, &instance);
+    if (status != napi_ok || instance == nullptr) {
+        Logger::error("OfflineRegionNAPI", "Failed to create instance");
+        return nullptr;
+    }
     
     // 创建 C++ 对象
     auto regionPtr = std::make_unique<mbgl::OfflineRegion>(std::move(region));
@@ -101,6 +123,7 @@ napi_value OfflineRegionNAPI::New(napi_env env,
     status = napi_wrap(env, instance, obj, OfflineRegionNAPI::Destructor, nullptr, &obj->wrapper_);
     
     if (status != napi_ok) {
+        Logger::error("OfflineRegionNAPI", "Failed to wrap native object");
         delete obj;
         return nullptr;
     }

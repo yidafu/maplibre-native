@@ -157,7 +157,6 @@ export struct CompassView {
    * 处理点击事件
    */
   private handleClick(): void {
-    hilog.info(DOMAIN, 'CompassView', 'Compass clicked, resetting north');
     
     if (this.onCompassClick) {
       this.onCompassClick();

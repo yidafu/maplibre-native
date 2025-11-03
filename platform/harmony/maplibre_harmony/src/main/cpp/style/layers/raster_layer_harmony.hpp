@@ -15,6 +15,13 @@ class RasterLayerNAPI {
 public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
+    
+    // 从现有 Layer 创建（使用 WeakPtr，不拥有所有权）
+    RasterLayerNAPI(mbgl::style::RasterLayer* layerPtr);
+
+    // 从现有 native 对象创建 NAPI 实例
+    static napi_value CreateInstance(napi_env env, mbgl::style::RasterLayer* layerPtr);
+    
     static void Destructor(napi_env env, void* nativeObject, void* hint);
     
     // Property setters

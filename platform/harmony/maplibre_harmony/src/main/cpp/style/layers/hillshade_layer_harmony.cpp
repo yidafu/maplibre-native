@@ -20,6 +20,14 @@ HillshadeLayerNAPI::HillshadeLayerNAPI(const std::string& layerId, const std::st
     : layer(std::make_unique<mbgl::style::HillshadeLayer>(layerId, sourceId)) {
 }
 
+HillshadeLayerNAPI::HillshadeLayerNAPI(mbgl::style::HillshadeLayer* layerPtr) {
+    if (layerPtr) {
+        weakLayer = layerPtr->makeWeakPtr();
+        Logger::info("HillshadeLayerNAPI", "HillshadeLayer created from existing layer (WeakPtr)");
+    }
+}
+
+
 HillshadeLayerNAPI::~HillshadeLayerNAPI() {
 }
 
@@ -81,8 +89,82 @@ napi_value HillshadeLayerNAPI::New(napi_env env, napi_callback_info info) {
     
     HillshadeLayerNAPI* layerObj = new HillshadeLayerNAPI(layerId, sourceId);
     napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "HillshadeLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
+    
     return thisVar;
 }
+
+napi_value HillshadeLayerNAPI::CreateInstance(napi_env env, mbgl::style::HillshadeLayer* layerPtr) {
+    if (!layerPtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("HillshadeLayerNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    HillshadeLayerNAPI* napiObj = new HillshadeLayerNAPI(layerPtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("HillshadeLayerNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "HillshadeLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 
 napi_value HillshadeLayerNAPI::SetHillshadeIlluminationDirection(napi_env env, napi_callback_info info) {
     napi_value thisVar;
@@ -93,10 +175,10 @@ napi_value HillshadeLayerNAPI::SetHillshadeIlluminationDirection(napi_env env, n
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->layer.get(), argv[0], "hillshade-illumination-direction",
+        env, layerObj->getLayer(), argv[0], "hillshade-illumination-direction",
         &mbgl::style::HillshadeLayer::setHillshadeIlluminationDirection
     );
     return thisVar;
@@ -111,10 +193,10 @@ napi_value HillshadeLayerNAPI::SetHillshadeIlluminationAnchor(napi_env env, napi
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::style::HillshadeIlluminationAnchorType>(
-        env, layerObj->layer.get(), argv[0], "hillshade-illumination-anchor",
+        env, layerObj->getLayer(), argv[0], "hillshade-illumination-anchor",
         &mbgl::style::HillshadeLayer::setHillshadeIlluminationAnchor
     );
     return thisVar;
@@ -129,10 +211,10 @@ napi_value HillshadeLayerNAPI::SetHillshadeExaggeration(napi_env env, napi_callb
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->layer.get(), argv[0], "hillshade-exaggeration",
+        env, layerObj->getLayer(), argv[0], "hillshade-exaggeration",
         &mbgl::style::HillshadeLayer::setHillshadeExaggeration
     );
     return thisVar;
@@ -147,10 +229,10 @@ napi_value HillshadeLayerNAPI::SetHillshadeShadowColor(napi_env env, napi_callba
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::Color>(
-        env, layerObj->layer.get(), argv[0], "hillshade-shadow-color",
+        env, layerObj->getLayer(), argv[0], "hillshade-shadow-color",
         &mbgl::style::HillshadeLayer::setHillshadeShadowColor
     );
     return thisVar;
@@ -165,10 +247,10 @@ napi_value HillshadeLayerNAPI::SetHillshadeHighlightColor(napi_env env, napi_cal
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::Color>(
-        env, layerObj->layer.get(), argv[0], "hillshade-highlight-color",
+        env, layerObj->getLayer(), argv[0], "hillshade-highlight-color",
         &mbgl::style::HillshadeLayer::setHillshadeHighlightColor
     );
     return thisVar;
@@ -183,10 +265,10 @@ napi_value HillshadeLayerNAPI::SetHillshadeAccentColor(napi_env env, napi_callba
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::Color>(
-        env, layerObj->layer.get(), argv[0], "hillshade-accent-color",
+        env, layerObj->getLayer(), argv[0], "hillshade-accent-color",
         &mbgl::style::HillshadeLayer::setHillshadeAccentColor
     );
     return thisVar;
@@ -206,7 +288,7 @@ napi_value HillshadeLayerNAPI::GetHillshadeIlluminationDirection(napi_env env, n
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::HillshadeLayer::getHillshadeIlluminationDirection
+        env, layerObj->getLayer(), &mbgl::style::HillshadeLayer::getHillshadeIlluminationDirection
     );
 }
 
@@ -224,7 +306,7 @@ napi_value HillshadeLayerNAPI::GetHillshadeExaggeration(napi_env env, napi_callb
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::HillshadeLayer::getHillshadeExaggeration
+        env, layerObj->getLayer(), &mbgl::style::HillshadeLayer::getHillshadeExaggeration
     );
 }
 
@@ -446,7 +528,7 @@ napi_value HillshadeLayerNAPI::SetFilter(napi_env env, napi_callback_info info) 
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     

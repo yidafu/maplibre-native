@@ -54,7 +54,6 @@ export class OfflineManager {
       // 创建 NAPI 离线管理器实例
       const dbPath = context.cacheDir + '/maplibre-offline.db';
       this.nativeManager = new maplibre.OfflineManager(dbPath);
-      hilog.info(DOMAIN, 'OfflineManager', 'OfflineManager instance created');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, 'OfflineManager', `Failed to create OfflineManager: ${errorMsg}`);
@@ -91,7 +90,6 @@ export class OfflineManager {
           } else {
             // 成功情况 - 转换为封装类型
             const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
-            hilog.info(DOMAIN, 'OfflineManager', `Found ${wrappedRegions.length} offline regions`);
             resolve(wrappedRegions);
           }
         });
@@ -118,8 +116,6 @@ export class OfflineManager {
       try {
         const metadataBuffer = metadata;
         
-        hilog.info(DOMAIN, 'OfflineManager', 'Creating offline region...');
-        
         this.nativeManager.createOfflineRegion(
           definition,
           metadataBuffer,
@@ -130,7 +126,6 @@ export class OfflineManager {
             } else {
               // 转换为封装类型
               const wrappedRegion = OfflineRegion.fromNative(result);
-              hilog.info(DOMAIN, 'OfflineManager', 'Offline region created successfully');
               resolve(wrappedRegion);
             }
           }
@@ -176,7 +171,6 @@ export class OfflineManager {
   public setOfflineMapboxTileCountLimit(limit: number): void {
     try {
       this.nativeManager.setOfflineMapboxTileCountLimit(limit);
-      hilog.info(DOMAIN, 'OfflineManager', `Tile count limit set to: ${limit}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, 'OfflineManager', `Error setting tile count limit: ${errorMsg}`);
@@ -223,7 +217,6 @@ export class OfflineManager {
             hilog.error(DOMAIN, 'OfflineManager', `Failed to clear ambient cache: ${error}`);
             reject(new Error(error));
           } else {
-            hilog.info(DOMAIN, 'OfflineManager', 'Ambient cache cleared successfully');
             resolve();
           }
         });
@@ -245,7 +238,6 @@ export class OfflineManager {
       this.nativeManager.setMaximumAmbientCacheSize(size, () => {
         // 回调
       });
-      hilog.info(DOMAIN, 'OfflineManager', `Maximum ambient cache size set to: ${size} bytes`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, 'OfflineManager', `Error setting maximum ambient cache size: ${errorMsg}`);
@@ -264,7 +256,6 @@ export class OfflineManager {
             hilog.error(DOMAIN, 'OfflineManager', `Failed to invalidate ambient cache: ${error}`);
             reject(new Error(error));
           } else {
-            hilog.info(DOMAIN, 'OfflineManager', 'Ambient cache invalidated successfully');
             resolve();
           }
         });

@@ -10,6 +10,8 @@ using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
 namespace maplibre {
+
+using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 napi_ref ImageSourceNAPI::constructor = nullptr;
@@ -17,6 +19,15 @@ napi_ref ImageSourceNAPI::constructor = nullptr;
 ImageSourceNAPI::ImageSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::ImageSource> source)
     : id(id), source(std::move(source)), ownsSource(true) {
     Logger::info("ImageSourceNAPI", "ImageSource instance created: %s", id.c_str());
+}
+
+ImageSourceNAPI::ImageSourceNAPI(mbgl::style::ImageSource* sourcePtr)
+    : ownsSource(false) {
+    if (sourcePtr) {
+        id = sourcePtr->getID();
+        weakSource = sourcePtr->makeWeakPtr();
+        Logger::info("ImageSourceNAPI", "ImageSource created from existing source (WeakPtr): %s", id.c_str());
+    }
 }
 
 ImageSourceNAPI::~ImageSourceNAPI() {
@@ -149,12 +160,84 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
         }
         
         Logger::info("ImageSourceNAPI", "ImageSource created: %s", sourceId.c_str());
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "ImageSource", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, jsThis, "_TYPE_", typeValue);
         return jsThis;
     } catch (const std::exception& e) {
         Logger::error("ImageSourceNAPI", "Failed to create ImageSource: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
         return nullptr;
     }
+}
+
+napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSource* sourcePtr) {
+    if (!sourcePtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("ImageSourceNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    ImageSourceNAPI* napiObj = new ImageSourceNAPI(sourcePtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("ImageSourceNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "ImageSource", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
 }
 
 napi_value ImageSourceNAPI::GetId(napi_env env, napi_callback_info info) {

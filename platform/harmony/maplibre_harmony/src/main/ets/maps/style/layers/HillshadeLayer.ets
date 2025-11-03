@@ -13,6 +13,9 @@ class InternalMarker {
 }
 
 export class HillshadeLayer {
+  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  static readonly _TYPE_ = 'HillshadeLayer';
+  
   private nativeInstance: maplibre.HillshadeLayer;
 
   constructor(idOrMarker: string | InternalMarker, sourceId: string = "", nativeOrNothing?: maplibre.HillshadeLayer) {

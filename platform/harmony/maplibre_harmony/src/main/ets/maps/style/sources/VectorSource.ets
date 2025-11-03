@@ -10,6 +10,9 @@ class InternalMarker {
 }
 
 export class VectorSource {
+  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  static readonly _TYPE_ = 'VectorSource';
+  
   private nativeInstance: maplibre.VectorSource;
 
   constructor(idOrMarker: string | InternalMarker, optionsOrNative?: VectorSourceOptions | maplibre.VectorSource) {

@@ -42,7 +42,6 @@ export struct InfoWindowOverlay {
    * InfoWindow 列表变化时的回调
    */
   onInfoWindowsChanged() {
-    console.info(`[InfoWindowOverlay] Visible InfoWindows changed: ${this.visibleInfoWindows.length}`);
   }
   
   build() {
@@ -56,19 +55,16 @@ export struct InfoWindowOverlay {
             arrowOffsetX: infoWindowState.position.arrowOffsetX,
             customStyle: infoWindowState.style,
             onWindowClick: () => {
-              console.info('[InfoWindowOverlay] InfoWindow clicked:', infoWindowState.marker.getId());
               if (this.onInfoWindowClick) {
                 this.onInfoWindowClick(infoWindowState.marker);
               }
             },
             onLongClick: () => {
-              console.info('[InfoWindowOverlay] InfoWindow long clicked:', infoWindowState.marker.getId());
               if (this.onInfoWindowLongClick) {
                 this.onInfoWindowLongClick(infoWindowState.marker);
               }
             },
             onClose: () => {
-              console.info('[InfoWindowOverlay] InfoWindow close requested:', infoWindowState.marker.getId());
               if (this.onInfoWindowClose) {
                 this.onInfoWindowClose(infoWindowState.marker);
               }
@@ -87,5 +83,4 @@ export struct InfoWindowOverlay {
     .hitTestBehavior(HitTestMode.None) // 不拦截事件，允许穿透到地图
   }
 }
-
 

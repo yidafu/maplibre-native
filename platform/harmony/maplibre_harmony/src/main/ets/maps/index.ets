@@ -25,6 +25,9 @@ export {
 
 export type { Margins } from './types/NativeTypes';
 
+// ========== 调试选项 ==========
+export { MapDebugOptions } from './types/MapDebugOptions';
+
 // ========== 渲染统计 ==========
 export { RenderingStats } from './renderer/RenderingStats';
 
@@ -74,6 +77,7 @@ export {
 
   // 原有监听器
   OnMarkerClickListener,
+  OnMarkerLongClickListener,
   OnMarkerDragListener,
   OnInfoWindowClickListener,
   OnInfoWindowCloseListener,

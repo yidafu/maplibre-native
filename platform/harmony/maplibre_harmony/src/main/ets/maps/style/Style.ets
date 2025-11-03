@@ -73,26 +73,32 @@ export class Style {
    */
   private static wrapSource(nativeSource: Object): Source | null {
     if (!nativeSource) {
+      console.warn('[Style] wrapSource: nativeSource is null/undefined');
       return null;
     }
 
-    // 通过 instanceof 判断具体类型
-    if (nativeSource instanceof maplibre.GeoJsonSource) {
+    // 使用 _TYPE_ 属性判断类型（因为 instanceof 对 NAPI 返回的普通对象不工作）
+    const sourceObj = nativeSource as Record<string, Object>;
+    const napiType = sourceObj._TYPE_ as string;
+    
+    // 根据 _TYPE_ 属性匹配对应的 Source 类
+    if (napiType === GeoJsonSource._TYPE_) {
       return GeoJsonSource.fromNative(nativeSource as maplibre.GeoJsonSource);
     }
-    if (nativeSource instanceof maplibre.VectorSource) {
+    if (napiType === VectorSource._TYPE_) {
       return VectorSource.fromNative(nativeSource as maplibre.VectorSource);
     }
-    if (nativeSource instanceof maplibre.RasterSource) {
+    if (napiType === RasterSource._TYPE_) {
       return RasterSource.fromNative(nativeSource as maplibre.RasterSource);
     }
-    if (nativeSource instanceof maplibre.RasterDemSource) {
+    if (napiType === RasterDemSource._TYPE_) {
       return RasterDemSource.fromNative(nativeSource as maplibre.RasterDemSource);
     }
-    if (nativeSource instanceof maplibre.ImageSource) {
+    if (napiType === ImageSource._TYPE_) {
       return ImageSource.fromNative(nativeSource as maplibre.ImageSource);
     }
 
+    console.error(`[Style] wrapSource: ❌ No matching type found for source! _TYPE_=${napiType}`);
     return null;
   }
 
@@ -101,38 +107,44 @@ export class Style {
    */
   private static wrapLayer(nativeLayer: Object): Layer | null {
     if (!nativeLayer) {
+      console.warn('[Style] wrapLayer: nativeLayer is null/undefined');
       return null;
     }
 
-    // 通过 instanceof 判断具体类型
-    if (nativeLayer instanceof maplibre.FillLayer) {
+    // 使用 _TYPE_ 属性判断类型（因为 instanceof 对 NAPI 返回的普通对象不工作）
+    const layerObj = nativeLayer as Record<string, Object>;
+    const napiType = layerObj._TYPE_ as string;
+
+    // 根据 _TYPE_ 属性匹配对应的 Layer 类
+    if (napiType === FillLayer._TYPE_) {
       return FillLayer.fromNative(nativeLayer as maplibre.FillLayer);
     }
-    if (nativeLayer instanceof maplibre.LineLayer) {
+    if (napiType === LineLayer._TYPE_) {
       return LineLayer.fromNative(nativeLayer as maplibre.LineLayer);
     }
-    if (nativeLayer instanceof maplibre.CircleLayer) {
+    if (napiType === CircleLayer._TYPE_) {
       return CircleLayer.fromNative(nativeLayer as maplibre.CircleLayer);
     }
-    if (nativeLayer instanceof maplibre.SymbolLayer) {
+    if (napiType === SymbolLayer._TYPE_) {
       return SymbolLayer.fromNative(nativeLayer as maplibre.SymbolLayer);
     }
-    if (nativeLayer instanceof maplibre.RasterLayer) {
+    if (napiType === RasterLayer._TYPE_) {
       return RasterLayer.fromNative(nativeLayer as maplibre.RasterLayer);
     }
-    if (nativeLayer instanceof maplibre.BackgroundLayer) {
+    if (napiType === BackgroundLayer._TYPE_) {
       return BackgroundLayer.fromNative(nativeLayer as maplibre.BackgroundLayer);
     }
-    if (nativeLayer instanceof maplibre.HeatmapLayer) {
+    if (napiType === HeatmapLayer._TYPE_) {
       return HeatmapLayer.fromNative(nativeLayer as maplibre.HeatmapLayer);
     }
-    if (nativeLayer instanceof maplibre.HillshadeLayer) {
+    if (napiType === HillshadeLayer._TYPE_) {
       return HillshadeLayer.fromNative(nativeLayer as maplibre.HillshadeLayer);
     }
-    if (nativeLayer instanceof maplibre.FillExtrusionLayer) {
+    if (napiType === FillExtrusionLayer._TYPE_) {
       return FillExtrusionLayer.fromNative(nativeLayer as maplibre.FillExtrusionLayer);
     }
 
+    console.error(`[Style] wrapLayer: ❌ No matching type found for layer! _TYPE_=${napiType}`);
     return null;
   }
 

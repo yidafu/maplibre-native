@@ -20,6 +20,7 @@ import { Expression } from '../style/expressions/Expression';
 import { IconFactory } from './IconFactory';
 
 import { Marker } from './Marker';
+import { IconManager } from './IconManager';
 
 /**
  * MarkerGeometry - Marker 几何对象接口
@@ -84,6 +85,10 @@ export class MarkerLayerManager {
   private nextFeatureId: number = 1;
   private initialized: boolean = false;
   
+  // 更新防抖 (防止频繁更新导致ANR)
+  private updateTimerId: number | null = null;
+  private readonly UPDATE_DEBOUNCE_MS = 16; // ~60fps, 足够快又不会过度更新
+  
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
   }
@@ -137,28 +142,42 @@ export class MarkerLayerManager {
       
       // 设置初始数据（类型转换为 Object）
       this.source.setGeoJsonSync(emptyFeatureCollection as Object);
-      console.debug('[MarkerLayerManager] GeoJSON source created and data set');
       
       // 添加 Source 到 Style（传递 ETS 包装对象，Style 内部会调用 getNative()）
       style.addSource(this.source);
-      console.info('[MarkerLayerManager] Source added to style successfully');
+      
+      // ✅ 从 style 重新获取 source 实例（确保引用的是 style 中的对象）
+      // 使用 __type 属性进行类型匹配（NAPI 修复后支持）
+      const sourceFromStyle = style.getSource(MarkerLayerManager.SOURCE_ID) as GeoJsonSource | null;
+      if (sourceFromStyle) {
+        this.source = sourceFromStyle;
+      } else {
+        console.warn('[MarkerLayerManager] ⚠️ Failed to get source from style, using original reference');
+      }
       
       // 创建 SymbolLayer 使用数据驱动样式（使用 NAPI 类）
-      this.layer = new SymbolLayer(
+      const tempLayer = new SymbolLayer(
         MarkerLayerManager.LAYER_ID,
         MarkerLayerManager.SOURCE_ID
       );
       
       // 配置 Layer 属性（数据驱动）
-      this.configureLayer(this.layer);
-      console.debug('[MarkerLayerManager] SymbolLayer configured');
+      this.configureLayer(tempLayer);
       
       // 添加 Layer 到 Style（传递 ETS 包装对象，Style 内部会调用 getNative()）
-      style.addLayer(this.layer);
-      console.info('[MarkerLayerManager] Layer added to style successfully');
+      style.addLayer(tempLayer);
+      
+      // ✅ 从 style 重新获取 layer 实例（确保引用的是 style 中的对象）
+      // 使用 __type 属性进行类型匹配（NAPI 修复后支持）
+      const layerFromStyle = style.getLayer(MarkerLayerManager.LAYER_ID) as SymbolLayer | null;
+      if (layerFromStyle) {
+        this.layer = layerFromStyle;
+      } else {
+        console.warn('[MarkerLayerManager] ⚠️ Failed to get layer from style, using original reference');
+        this.layer = tempLayer;
+      }
       
       this.initialized = true;
-      console.info('[MarkerLayerManager] Initialized successfully');
     } catch (error) {
       console.error(`[MarkerLayerManager] Failed to initialize: ${error}`);
       this.initialized = false;
@@ -172,20 +191,21 @@ export class MarkerLayerManager {
    * 配置 SymbolLayer 的数据驱动样式
    */
   private configureLayer(layer: SymbolLayer): void {
-    console.info('[MarkerLayerManager] Configuring SymbolLayer with data-driven styling');
     
     // ========== Icon 布局属性 ==========
     
     // Icon 图像：使用 Expression 从 feature properties 动态获取
     // 每个 Marker 可以有不同的图标
-    layer.setIconImage(Expression.get("icon").toArray() as import("libmaplibre.so").ExpressionLiteral);
+    const iconImageExpr = Expression.get("icon").toArray() as import("libmaplibre.so").ExpressionLiteral;
+    layer.setIconImage(iconImageExpr);
     
     // Icon 大小：默认 1.0
     layer.setIconSize(1.0);
     
     // Icon 旋转角度：使用 Expression 从 feature properties 获取
     // 支持每个 Marker 有不同的旋转角度
-    layer.setIconRotate(Expression.get("rotation").toArray() as import("libmaplibre.so").ExpressionLiteral);
+    const iconRotateExpr = Expression.get("rotation").toArray() as import("libmaplibre.so").ExpressionLiteral;
+    layer.setIconRotate(iconRotateExpr);
     
     // Icon 锚点：默认 bottom（底部中心）
     layer.setIconAnchor('bottom');
@@ -206,13 +226,16 @@ export class MarkerLayerManager {
       ).toArray() as import("libmaplibre.so").ExpressionLiteral
     );
     
-    console.info('[MarkerLayerManager] SymbolLayer configured with data-driven expressions successfully');
   }
   
   /**
    * 添加 Marker
+   * 
+   * @param marker Marker 实例
+   * @param skipUpdate 是否跳过source更新(批量添加时使用,默认false)
+   * @returns feature ID
    */
-  public addMarker(marker: Marker): number {
+  public addMarker(marker: Marker, skipUpdate: boolean = false): number {
     // 确保已初始化且 source/layer 存在
     if (!this.initialized || !this.source || !this.layer) {
       console.warn('[MarkerLayerManager] Re-initializing due to missing source/layer');
@@ -226,14 +249,18 @@ export class MarkerLayerManager {
     this.features.set(featureId, feature);
     this.markers.set(featureId, marker);
     
-    // 更新 GeoJSON Source
-    this.updateSource();
+    // 更新 GeoJSON Source (批量添加时跳过,由调用者统一更新)
+    if (!skipUpdate) {
+      this.updateSource();
+    }
     
     return featureId;
   }
   
   /**
    * 批量添加 Markers
+   * 
+   * **性能优化**: 批量添加时只更新一次GeoJSON source,避免重复序列化/解析
    */
   public addMarkers(markers: Marker[]): number[] {
     // 确保已初始化且 source/layer 存在
@@ -254,16 +281,61 @@ export class MarkerLayerManager {
       ids.push(featureId);
     }
     
-    // 一次性更新 Source
-    this.updateSource();
+    // 一次性更新 Source (批量优化! 立即生效)
+    this.forceUpdateSource();
     
     return ids;
   }
   
   /**
-   * 更新 Marker
+   * 手动触发source更新
+   * 
+   * 当使用 addMarker(marker, skipUpdate=true) 批量添加后,
+   * 需要手动调用此方法更新source
    */
-  public updateMarker(featureId: number, marker: Marker): void {
+  /**
+   * 强制立即更新 Source (跳过防抖)
+   * 用于批量操作完成后立即刷新显示
+   */
+  public forceUpdateSource(): void {
+    // 清除防抖定时器
+    if (this.updateTimerId !== null) {
+      clearTimeout(this.updateTimerId);
+      this.updateTimerId = null;
+    }
+    // 立即执行更新
+    this.performUpdate();
+  }
+  
+  /**
+   * 更新 Marker（通过 Marker 对象）
+   * 
+   * 用于实时更新 Marker 显示（例如拖拽过程中）
+   * 参考 Android: symbolsSource.setGeoJson(symbolsCollection)
+   * 
+   * @param marker Marker 对象（必须已有 ID）
+   */
+  public updateMarker(marker: Marker): void {
+    const featureId = marker.getId();
+    if (featureId === 0 || !this.features.has(featureId)) {
+      console.error(`[MarkerLayerManager] Marker not found: id=${featureId}`);
+      return;
+    }
+    
+    // 更新 Feature 和 Marker
+    const feature = this.markerToFeature(marker, featureId);
+    this.features.set(featureId, feature);
+    this.markers.set(featureId, marker);
+    
+    // 🚀 拖拽过程中需要立即更新显示，跳过防抖
+    // 参考 Android: symbolsSource.setGeoJson(symbolsCollection) 立即生效
+    this.forceUpdateSource();
+  }
+
+  /**
+   * 更新 Marker（通过 featureId）- 向后兼容
+   */
+  public updateMarkerById(featureId: number, marker: Marker): void {
     if (!this.features.has(featureId)) {
       console.error(`Marker feature ${featureId} not found`);
       return;
@@ -278,24 +350,30 @@ export class MarkerLayerManager {
   
   /**
    * 删除 Marker
+   * 
+   * @param featureId Feature ID
+   * @param skipUpdate 是否跳过更新(批量删除时使用,默认false)
    */
-  public removeMarker(featureId: number): void {
+  public removeMarker(featureId: number, skipUpdate: boolean = false): void {
     this.features.delete(featureId);
     this.markers.delete(featureId);
     
-    this.updateSource();
+    if (!skipUpdate) {
+      this.updateSource();
+    }
   }
   
   /**
    * 批量删除 Markers
    */
   public removeMarkers(featureIds: number[]): void {
+    // 使用 skipUpdate 避免重复更新
     for (const id of featureIds) {
-      this.features.delete(id);
-      this.markers.delete(id);
+      this.removeMarker(id, true); // skipUpdate = true
     }
     
-    this.updateSource();
+    // 批量删除需要立即生效，跳过防抖
+    this.forceUpdateSource();
   }
   
   /**
@@ -305,7 +383,8 @@ export class MarkerLayerManager {
     this.features.clear();
     this.markers.clear();
     
-    this.updateSource();
+    // 清空操作需要立即生效，跳过防抖
+    this.forceUpdateSource();
   }
   
   /**
@@ -313,7 +392,11 @@ export class MarkerLayerManager {
    */
   private markerToFeature(marker: Marker, featureId: number): MarkerFeature {
     const position = marker.getPosition();
-    const icon = marker.getIcon() || 'default-marker';
+    // 获取 icon ID，如果为空字符串或 falsy 值，使用默认图标
+    let icon = marker.getIcon();
+    if (!icon || icon.trim() === '') {
+      icon = IconFactory.DEFAULT_MARKER_ICON_ID;
+    }
     const title = marker.getTitle();
     const snippet = marker.getSnippet();
     
@@ -355,12 +438,35 @@ export class MarkerLayerManager {
   }
   
   /**
-   * 更新 GeoJSON Source 数据
+   * 更新 GeoJSON Source 数据 (带防抖)
+   * 
+   * **性能优化**: 多层保护避免主线程阻塞
+   * 1. **防抖**: 合并16ms内的多次更新请求为一次 (避免频繁更新)
+   * 2. **异步**: 使用 setTimeout 延迟到下一个宏任务队列 (脱离当前事件循环)
+   * 3. **对象传递**: 直接传 FeatureCollection 对象,无JSON序列化开销
+   * 
+   * 注意：此方法现在是 public，允许外部调用（如 MarkerManager 在 style reload 后）
    */
-  private updateSource(): void {
+  public updateSource(): void {
+    // 清除已有的定时器 (防抖: 合并多次调用为一次)
+    if (this.updateTimerId !== null) {
+      clearTimeout(this.updateTimerId);
+    }
+    
+    // 设置新的定时器
+    this.updateTimerId = setTimeout(() => {
+      this.updateTimerId = null;
+      this.performUpdate();
+    }, this.UPDATE_DEBOUNCE_MS);
+  }
+  
+  /**
+   * 执行实际的 Source 更新 (内部方法)
+   */
+  private performUpdate(): void {
     if (!this.source) {
       console.error('[MarkerLayerManager] Source not initialized, resetting initialized flag');
-      this.initialized = false;  // 重置标志，下次添加时会重新初始化
+      this.initialized = false;
       return;
     }
     
@@ -369,49 +475,37 @@ export class MarkerLayerManager {
       features: Array.from(this.features.values())
     };
     
-    console.debug(`[MarkerLayerManager] Updating source with ${featureCollection.features.length} features`);
+    const featureCount = featureCollection.features.length;
     
-    // 更新 GeoJSON 数据
-    this.source.setGeoJson(JSON.stringify(featureCollection));
-    
-    // 触发地图重绘以显示更改
-    try {
-      const nativeMapView = this.mapLibreMap.getNativeMapView();
-      if (nativeMapView) {
-        nativeMapView.triggerRepaint();
-        console.debug('[MarkerLayerManager] Triggered map repaint after source update');
-      }
-    } catch (error) {
-      console.warn(`[MarkerLayerManager] Failed to trigger repaint: ${error}`);
-    }
-  }
-  
-  /**
-   * 根据屏幕坐标查询 Marker
-   */
-  public queryMarkerAt(x: number, y: number): Marker | null {
-    try {
-      // 使用 queryRenderedFeaturesForPoint 查询
-      const features = this.mapLibreMap.queryRenderedFeaturesForPoint(
-        x, y,
-        [MarkerLayerManager.LAYER_ID],
-        undefined
-      );
+    // 打印第一个 feature 的详细信息用于调试
+    if (featureCount > 0) {
+      const firstFeature = featureCollection.features[0];
       
-      if (features && features.length > 0) {
-        // 获取第一个 feature 的 ID
-        const feature = features[0];
-        const featureId = feature.id;
-        
-        if (typeof featureId === 'number' && this.markers.has(featureId)) {
-          return this.markers.get(featureId)!;
-        }
+      // 检查是否使用默认图标
+      if (firstFeature.properties.icon === IconFactory.DEFAULT_MARKER_ICON_ID) {
+        console.warn(`[MarkerLayerManager] ⚠️ Using default icon ID: ${IconFactory.DEFAULT_MARKER_ICON_ID}. Make sure it's loaded to style!`);
       }
-    } catch (error) {
-      console.error(`Failed to query marker: ${error}`);
     }
     
-    return null;
+    // 🚀 使用 setTimeout(0) 延迟到下一个宏任务,彻底脱离当前事件循环
+    setTimeout(() => {
+      try {
+        const updateStartTime = Date.now();
+        
+        // 直接传递 FeatureCollection 对象 (NAPI 层会处理转换,无需JSON序列化)
+        this.source!.setGeoJson(featureCollection);
+        
+        // 触发地图重绘
+        const nativeMapView = this.mapLibreMap.getNativeMapView();
+        if (nativeMapView) {
+          nativeMapView.triggerRepaint();
+        }
+        
+        const updateTime = Date.now() - updateStartTime;
+      } catch (error) {
+        console.error(`[MarkerLayerManager] ❌ Failed to update source: ${error}`);
+      }
+    }, 0);
   }
   
   /**
@@ -426,6 +520,24 @@ export class MarkerLayerManager {
    */
   public getMarkerCount(): number {
     return this.markers.size;
+  }
+  
+  /**
+   * 获取 Marker Layer ID
+   * 
+   * @returns Layer ID 字符串
+   */
+  public getLayerId(): string {
+    return MarkerLayerManager.LAYER_ID;
+  }
+  
+  /**
+   * 获取 Marker Source ID
+   * 
+   * @returns Source ID 字符串
+   */
+  public getSourceId(): string {
+    return MarkerLayerManager.SOURCE_ID;
   }
   
   /**

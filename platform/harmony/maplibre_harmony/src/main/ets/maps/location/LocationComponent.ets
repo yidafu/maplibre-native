@@ -89,8 +89,6 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
       return;
     }
 
-    hilog.info(DOMAIN, LocationComponent.TAG, 'Activating LocationComponent');
-
     if (options) {
       this.options = options;
     }
@@ -107,7 +105,6 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
       // 初始化子组件
       this.initializeComponents();
       this.isComponentInitialized = true;
-      hilog.info(DOMAIN, LocationComponent.TAG, 'LocationComponent activated successfully');
     } catch (err) {
       const errorMsg = `Failed to initialize LocationComponent: ${err}`;
       hilog.error(DOMAIN, LocationComponent.TAG, errorMsg);
@@ -175,12 +172,9 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
     }
 
     if (this.isEnabled === enabled) {
-      hilog.debug(DOMAIN, LocationComponent.TAG, `LocationComponent already ${enabled ? 'enabled' : 'disabled'}`);
       return;
     }
 
-    hilog.info(DOMAIN, LocationComponent.TAG, `Setting LocationComponent enabled: ${enabled}`);
-    
     try {
       this.isEnabled = enabled;
 
@@ -244,8 +238,6 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
 
   // 实现 LocationEngineCallback
   onSuccess(location: geoLocationManager.Location): void {
-    hilog.debug(DOMAIN, LocationComponent.TAG, 
-      `Location received: ${location.latitude}, ${location.longitude}`);
     
     this.updateLocation(location, true);
   }
@@ -506,7 +498,6 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
     }
 
     this.staleStateTimer = setTimeout(() => {
-      hilog.info(DOMAIN, LocationComponent.TAG, 'Location became stale');
       this.notifyStaleStateChanged(true);
     }, this.options.staleStateTimeout);
   }
@@ -553,7 +544,6 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
    * 组件生命周期：onDestroy
    */
   onDestroy(): void {
-    hilog.info(DOMAIN, LocationComponent.TAG, 'Destroying LocationComponent');
     
     try {
       this.disable();
@@ -596,7 +586,6 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
       this.isComponentInitialized = false;
       this.isEnabled = false;
       
-      hilog.info(DOMAIN, LocationComponent.TAG, 'LocationComponent cleanup completed');
     } catch (err) {
       hilog.error(DOMAIN, LocationComponent.TAG, `Error during cleanup: ${err}`);
     }

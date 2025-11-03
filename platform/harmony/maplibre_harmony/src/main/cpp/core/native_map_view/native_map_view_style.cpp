@@ -217,21 +217,7 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
     return args.Undefined();
 }
 
-napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
-    // Debug 可视化功能未在 Harmony 平台实现
-    // Debug visualization not implemented for Harmony platform
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-}
-
-napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
-    // Debug 可视化功能未在 Harmony 平台实现
-    // Debug visualization not implemented for Harmony platform
-    napi_value result;
-    napi_get_boolean(env, false, &result);
-    return result;
-}
+// Note: setDebug, getDebug, setDebugActive, and isDebugActive are now implemented in native_map_view_debug.cpp
 
 napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_info info) {
     // Action journal 需要 ActionJournal 支持，未在 Harmony 配置

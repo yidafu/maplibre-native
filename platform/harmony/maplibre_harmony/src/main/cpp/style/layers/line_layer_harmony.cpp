@@ -22,6 +22,14 @@ LineLayerNAPI::LineLayerNAPI(const std::string& layerId, const std::string& sour
     : layer(std::make_unique<mbgl::style::LineLayer>(layerId, sourceId)) {
 }
 
+LineLayerNAPI::LineLayerNAPI(mbgl::style::LineLayer* layerPtr) {
+    if (layerPtr) {
+        weakLayer = layerPtr->makeWeakPtr();
+        Logger::info("LineLayerNAPI", "LineLayer created from existing layer (WeakPtr)");
+    }
+}
+
+
 LineLayerNAPI::~LineLayerNAPI() {
 }
 
@@ -134,8 +142,82 @@ napi_value LineLayerNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
+
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "LineLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
     return thisVar;
 }
+
+napi_value LineLayerNAPI::CreateInstance(napi_env env, mbgl::style::LineLayer* layerPtr) {
+    if (!layerPtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("LineLayerNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    LineLayerNAPI* napiObj = new LineLayerNAPI(layerPtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("LineLayerNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "LineLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 
 // ============================================================================
 // Paint Property Setters (支持 Expression)
@@ -150,13 +232,13 @@ napi_value LineLayerNAPI::SetLineColor(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, mbgl::Color>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-color",
         &mbgl::style::LineLayer::setLineColor
@@ -174,13 +256,13 @@ napi_value LineLayerNAPI::SetLineWidth(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-width",
         &mbgl::style::LineLayer::setLineWidth
@@ -198,13 +280,13 @@ napi_value LineLayerNAPI::SetLineOpacity(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-opacity",
         &mbgl::style::LineLayer::setLineOpacity
@@ -222,13 +304,13 @@ napi_value LineLayerNAPI::SetLinePattern(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, mbgl::style::expression::Image>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-pattern",
         &mbgl::style::LineLayer::setLinePattern
@@ -246,13 +328,13 @@ napi_value LineLayerNAPI::SetLineGapWidth(napi_env env, napi_callback_info info)
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-gap-width",
         &mbgl::style::LineLayer::setLineGapWidth
@@ -270,13 +352,13 @@ napi_value LineLayerNAPI::SetLineDasharray(napi_env env, napi_callback_info info
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, std::vector<float>>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-dasharray",
         &mbgl::style::LineLayer::setLineDasharray
@@ -294,13 +376,13 @@ napi_value LineLayerNAPI::SetLineBlur(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-blur",
         &mbgl::style::LineLayer::setLineBlur
@@ -318,13 +400,13 @@ napi_value LineLayerNAPI::SetLineOffset(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-offset",
         &mbgl::style::LineLayer::setLineOffset
@@ -346,13 +428,13 @@ napi_value LineLayerNAPI::SetLineCap(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, mbgl::style::LineCapType>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-cap",
         &mbgl::style::LineLayer::setLineCap
@@ -370,13 +452,13 @@ napi_value LineLayerNAPI::SetLineJoin(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, mbgl::style::LineJoinType>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-join",
         &mbgl::style::LineLayer::setLineJoin
@@ -404,7 +486,7 @@ napi_value LineLayerNAPI::GetLineColor(napi_env env, napi_callback_info info) {
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, mbgl::Color>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineColor
     );
 }
@@ -424,7 +506,7 @@ napi_value LineLayerNAPI::GetLineWidth(napi_env env, napi_callback_info info) {
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineWidth
     );
 }
@@ -444,7 +526,7 @@ napi_value LineLayerNAPI::GetLineOpacity(napi_env env, napi_callback_info info) 
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineOpacity
     );
 }
@@ -674,7 +756,7 @@ napi_value LineLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
@@ -716,13 +798,13 @@ napi_value LineLayerNAPI::SetLineTranslate(napi_env env, napi_callback_info info
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, std::array<float, 2>>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-translate",
         &mbgl::style::LineLayer::setLineTranslate
@@ -746,7 +828,7 @@ napi_value LineLayerNAPI::GetLineTranslate(napi_env env, napi_callback_info info
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, std::array<float, 2>>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineTranslate
     );
 }
@@ -760,13 +842,13 @@ napi_value LineLayerNAPI::SetLineTranslateAnchor(napi_env env, napi_callback_inf
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::LineLayer, mbgl::style::TranslateAnchorType>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-translate-anchor",
         &mbgl::style::LineLayer::setLineTranslateAnchor
@@ -790,7 +872,7 @@ napi_value LineLayerNAPI::GetLineTranslateAnchor(napi_env env, napi_callback_inf
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, mbgl::style::TranslateAnchorType>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineTranslateAnchor
     );
 }
@@ -804,13 +886,13 @@ napi_value LineLayerNAPI::SetLineMiterLimit(napi_env env, napi_callback_info inf
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-miter-limit",
         &mbgl::style::LineLayer::setLineMiterLimit
@@ -834,7 +916,7 @@ napi_value LineLayerNAPI::GetLineMiterLimit(napi_env env, napi_callback_info inf
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineMiterLimit
     );
 }
@@ -848,13 +930,13 @@ napi_value LineLayerNAPI::SetLineRoundLimit(napi_env env, napi_callback_info inf
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-round-limit",
         &mbgl::style::LineLayer::setLineRoundLimit
@@ -878,7 +960,7 @@ napi_value LineLayerNAPI::GetLineRoundLimit(napi_env env, napi_callback_info inf
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineRoundLimit
     );
 }
@@ -892,7 +974,7 @@ napi_value LineLayerNAPI::SetLineGradient(napi_env env, napi_callback_info info)
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
@@ -932,13 +1014,13 @@ napi_value LineLayerNAPI::SetLineSortKey(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setLayoutProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "line-sort-key",
         &mbgl::style::LineLayer::setLineSortKey
@@ -962,7 +1044,7 @@ napi_value LineLayerNAPI::GetLineSortKey(napi_env env, napi_callback_info info) 
     
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineSortKey
     );
 }

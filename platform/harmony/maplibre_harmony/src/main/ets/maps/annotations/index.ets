@@ -34,5 +34,7 @@ export { AnnotationViewManager, AnnotationViewData } from './AnnotationViewManag
 // 其他标注类型
 export { Polyline } from './Polyline';
 export { Polygon } from './Polygon';
+export { PolygonManager } from './PolygonManager';
+export { PolylineManager } from './PolylineManager';
 
 

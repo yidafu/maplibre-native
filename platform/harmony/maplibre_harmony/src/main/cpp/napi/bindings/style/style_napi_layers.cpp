@@ -11,6 +11,9 @@
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/style/layers/raster_layer.hpp>
 #include <mbgl/style/layers/background_layer.hpp>
+#include <mbgl/style/layers/heatmap_layer.hpp>
+#include <mbgl/style/layers/hillshade_layer.hpp>
+#include <mbgl/style/layers/fill_extrusion_layer.hpp>
 
 // Helper function to convert SourceType enum to string
 static const char* sourceTypeToString(mbgl::style::SourceType type) {
@@ -42,6 +45,9 @@ static const char* sourceTypeToString(mbgl::style::SourceType type) {
 #include "style/layers/symbol_layer_harmony.hpp"
 #include "style/layers/raster_layer_harmony.hpp"
 #include "style/layers/background_layer_harmony.hpp"
+#include "style/layers/heatmap_layer_harmony.hpp"
+#include "style/layers/hillshade_layer_harmony.hpp"
+#include "style/layers/fill_extrusion_layer_harmony.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -464,19 +470,42 @@ napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
         
         Logger::info("StyleNAPI", "GetLayer: %s (type: %s)", layerId.c_str(), layer->getTypeInfo()->type);
         
-        // 返回一个包含 layer 信息的对象
-        napi_value result;
-        napi_create_object(env, &result);
+        // 根据 layer type 创建对应的 NAPI 实例
+        std::string layerType = layer->getTypeInfo()->type;
         
-        napi_value idValue;
-        napi_create_string_utf8(env, layerId.c_str(), NAPI_AUTO_LENGTH, &idValue);
-        napi_set_named_property(env, result, "id", idValue);
-        
-        napi_value typeValue;
-        napi_create_string_utf8(env, layer->getTypeInfo()->type, NAPI_AUTO_LENGTH, &typeValue);
-        napi_set_named_property(env, result, "type", typeValue);
-        
-        return result;
+        if (layerType == "symbol") {
+            auto* symbolLayer = static_cast<mbgl::style::SymbolLayer*>(layer);
+            return mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, symbolLayer);
+        } else if (layerType == "fill") {
+            auto* fillLayer = static_cast<mbgl::style::FillLayer*>(layer);
+            return mbgl::harmony::FillLayerNAPI::CreateInstance(env, fillLayer);
+        } else if (layerType == "line") {
+            auto* lineLayer = static_cast<mbgl::style::LineLayer*>(layer);
+            return mbgl::harmony::LineLayerNAPI::CreateInstance(env, lineLayer);
+        } else if (layerType == "circle") {
+            auto* circleLayer = static_cast<mbgl::style::CircleLayer*>(layer);
+            return mbgl::harmony::CircleLayerNAPI::CreateInstance(env, circleLayer);
+        } else if (layerType == "raster") {
+            auto* rasterLayer = static_cast<mbgl::style::RasterLayer*>(layer);
+            return mbgl::harmony::RasterLayerNAPI::CreateInstance(env, rasterLayer);
+        } else if (layerType == "heatmap") {
+            auto* heatmapLayer = static_cast<mbgl::style::HeatmapLayer*>(layer);
+            return mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, heatmapLayer);
+        } else if (layerType == "hillshade") {
+            auto* hillshadeLayer = static_cast<mbgl::style::HillshadeLayer*>(layer);
+            return mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env, hillshadeLayer);
+        } else if (layerType == "fill-extrusion") {
+            auto* fillExtrusionLayer = static_cast<mbgl::style::FillExtrusionLayer*>(layer);
+            return mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(env, fillExtrusionLayer);
+        } else if (layerType == "background") {
+            auto* backgroundLayer = static_cast<mbgl::style::BackgroundLayer*>(layer);
+            return mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env, backgroundLayer);
+        } else {
+            Logger::warn("StyleNAPI", "GetLayer: Unknown layer type: %s", layerType.c_str());
+            napi_value result;
+            napi_get_null(env, &result);
+            return result;
+        }
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetLayer failed: %s", e.what());
         napi_value result;

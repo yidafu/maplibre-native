@@ -27,7 +27,6 @@ export class MapViewComponentController {
    * XComponent onCreate 回调
    */
   public onCreate(): void {
-    console.info('MapViewComponentController: onCreate');
     // 这里可以进行一些初始化工作
   }
 

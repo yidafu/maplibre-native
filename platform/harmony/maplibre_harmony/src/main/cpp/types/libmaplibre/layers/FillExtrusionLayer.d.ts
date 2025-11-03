@@ -14,6 +14,11 @@ import type { ExpressionLiteral } from '../ExpressionTypes';
  */
 export class FillExtrusionLayer {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 创建3D填充拉伸图层
      * @param layerId 图层 ID
      * @param sourceId 数据源 ID

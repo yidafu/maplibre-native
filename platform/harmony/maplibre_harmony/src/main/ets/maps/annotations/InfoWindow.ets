@@ -400,7 +400,6 @@ export struct InfoWindowComponent {
               .height(32)
               .textAlign(TextAlign.Center)
               .onClick(() => {
-                console.info('[InfoWindow] Close button clicked');
                 if (this.onClose) {
                   this.onClose();
                 }
@@ -523,7 +522,6 @@ export struct InfoWindowComponent {
     .scale({ x: this.windowScale, y: this.windowScale })
     .animation({ duration: 250, curve: Curve.EaseOut })
     .onClick(() => {
-      console.info('[InfoWindow] Content clicked for marker:', this.marker.getId());
       if (this.onWindowClick) {
         this.onWindowClick();
       }
@@ -531,7 +529,6 @@ export struct InfoWindowComponent {
     .gesture(
       LongPressGesture({ repeat: false })
         .onAction(() => {
-          console.info('[InfoWindow] Content long pressed for marker:', this.marker.getId());
           if (this.onLongClick) {
             this.onLongClick();
           }
@@ -539,5 +536,4 @@ export struct InfoWindowComponent {
     )
   }
 }
-
 

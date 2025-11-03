@@ -45,14 +45,12 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   requestLocationUpdates(request: LocationEngineRequest, callback: LocationEngineCallback): void {
     try {
-      hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Requesting location updates');
       
       // 保存回调
       this.callbacks.set(callback, true);
       
       // 如果已经在监听，直接返回
       if (this.isListening) {
-        hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Already listening to location updates');
         return;
       }
 
@@ -83,13 +81,9 @@ export class HarmonyLocationEngine implements LocationEngine {
         // 节流处理：限制更新频率
         const now = Date.now();
         if (now - this.lastLocationTime < this.minUpdateInterval) {
-          hilog.debug(DOMAIN, HarmonyLocationEngine.TAG, 'Location update throttled');
           return;
         }
         this.lastLocationTime = now;
-        
-        hilog.debug(DOMAIN, HarmonyLocationEngine.TAG, 
-          `Location update: lat=${location.latitude}, lng=${location.longitude}, accuracy=${location.accuracy}`);
         
         // 重置重试计数
         this.retryCount = 0;
@@ -105,7 +99,6 @@ export class HarmonyLocationEngine implements LocationEngine {
       });
 
       this.isListening = true;
-      hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Started listening to location updates');
 
     } catch (err) {
       hilog.error(DOMAIN, HarmonyLocationEngine.TAG, `Failed to request location updates: ${err}`);
@@ -131,7 +124,6 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   removeLocationUpdates(callback: LocationEngineCallback): void {
     try {
-      hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Removing location updates callback');
       
       // 移除回调
       this.callbacks.delete(callback);
@@ -140,7 +132,6 @@ export class HarmonyLocationEngine implements LocationEngine {
       if (this.callbacks.size === 0 && this.isListening) {
         geoLocationManager.off('locationChange');
         this.isListening = false;
-        hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Stopped listening to location updates');
       }
     } catch (err) {
       hilog.error(DOMAIN, HarmonyLocationEngine.TAG, `Failed to remove location updates: ${err}`);
@@ -152,7 +143,6 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   getLastLocation(callback: LocationEngineCallback): void {
     try {
-      hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Getting last known location');
 
       // 检查位置服务是否开启
       if (!geoLocationManager.isLocationEnabled()) {
@@ -166,8 +156,6 @@ export class HarmonyLocationEngine implements LocationEngine {
       try {
         const location = geoLocationManager.getLastLocation();
         if (location) {
-          hilog.debug(DOMAIN, HarmonyLocationEngine.TAG, 
-            `Got last location: lat=${location.latitude}, lng=${location.longitude}`);
           callback.onSuccess(location);
         } else {
           callback.onFailure(new Error('No last location available'));
@@ -209,7 +197,6 @@ export class HarmonyLocationEngine implements LocationEngine {
         this.isListening = false;
         this.callbacks.clear();
         this.retryCount = 0;
-        hilog.info(DOMAIN, HarmonyLocationEngine.TAG, 'Stopped all location updates');
       }
     } catch (err) {
       hilog.error(DOMAIN, HarmonyLocationEngine.TAG, `Failed to stop all updates: ${err}`);
@@ -221,7 +208,6 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   setMinUpdateInterval(interval: number): void {
     this.minUpdateInterval = Math.max(100, interval); // 最小 100ms
-    hilog.info(DOMAIN, HarmonyLocationEngine.TAG, `Min update interval set to ${this.minUpdateInterval}ms`);
   }
 
   /**
@@ -229,7 +215,6 @@ export class HarmonyLocationEngine implements LocationEngine {
    */
   setMaxRetries(maxRetries: number): void {
     this.maxRetries = Math.max(0, maxRetries);
-    hilog.info(DOMAIN, HarmonyLocationEngine.TAG, `Max retries set to ${this.maxRetries}`);
   }
 }
 

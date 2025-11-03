@@ -342,6 +342,8 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"onLowMemory", nullptr, onLowMemory, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setDebug", nullptr, setDebug, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getDebug", nullptr, getDebug, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setDebugActive", nullptr, setDebugActive, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"isDebugActive", nullptr, isDebugActive, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getActionJournalLogFiles", nullptr, getActionJournalLogFiles, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getActionJournalLog", nullptr, getActionJournalLog, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"clearActionJournalLog", nullptr, clearActionJournalLog, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -364,10 +366,12 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"getTopOffsetPixelsForAnnotationSymbol", nullptr, getTopOffsetPixelsForAnnotationSymbol, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getTransitionOptions", nullptr, getTransitionOptions, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setTransitionOptions", nullptr, setTransitionOptions, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"queryPointAnnotations", nullptr, queryPointAnnotations, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"queryShapeAnnotations", nullptr, queryShapeAnnotations, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"queryRenderedFeaturesForPoint", nullptr, queryRenderedFeaturesForPoint, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"queryRenderedFeaturesForBox", nullptr, queryRenderedFeaturesForBox, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setMaximumFps", nullptr, setMaximumFps, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setRenderingRefreshMode", nullptr, setRenderingRefreshMode, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getRenderingRefreshMode", nullptr, getRenderingRefreshMode, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setOnFpsChangedListener", nullptr, setOnFpsChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getLight", nullptr, getLight, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getLayers", nullptr, getLayers, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getLayer", nullptr, getLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -657,6 +661,11 @@ void NativeMapView::initializeRenderer() {
     }
     
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
+    
+    // ✅ 设置 NativeMapView 引用，以便 HarmonyRenderer 可以转发 MapObserver 事件
+    harmonyRenderer->setNativeMapView(this);
+    Logger::info("NativeMapView", "NativeMapView registered to HarmonyRenderer for event forwarding");
+    
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
     
     // 2. 如果有窗口，设置窗口
@@ -699,6 +708,10 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     harmonyRenderer.reset();
     map = nullptr;
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
+    
+    // ✅ 设置 NativeMapView 引用
+    harmonyRenderer->setNativeMapView(this);
+    
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
     if (nativeWindow) {
         harmonyRenderer->setNativeWindow(nativeWindow);

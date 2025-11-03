@@ -46,7 +46,6 @@ export class CompassEngine {
    * 添加指南针监听器
    */
   addCompassListener(listener: CompassListener): void {
-    hilog.info(DOMAIN, CompassEngine.TAG, 'Adding compass listener');
     this.listeners.add(listener);
     
     if (!this.isListening) {
@@ -58,7 +57,6 @@ export class CompassEngine {
    * 移除指南针监听器
    */
   removeCompassListener(listener: CompassListener): void {
-    hilog.info(DOMAIN, CompassEngine.TAG, 'Removing compass listener');
     this.listeners.delete(listener);
     
     if (this.listeners.size === 0 && this.isListening) {
@@ -78,7 +76,6 @@ export class CompassEngine {
    */
   private startListening(): void {
     try {
-      hilog.info(DOMAIN, CompassEngine.TAG, 'Starting compass sensor');
 
       // 订阅方向传感器
       sensor.on(sensor.SensorId.ORIENTATION, (data: sensor.OrientationResponse) => {
@@ -103,7 +100,6 @@ export class CompassEngine {
         
         if (normalizedDiff > this.changeThreshold) {
           this.lastHeading = heading;
-          hilog.debug(DOMAIN, CompassEngine.TAG, `Compass heading: ${heading.toFixed(2)}`);
           
           this.listeners.forEach(listener => {
             try {
@@ -118,7 +114,6 @@ export class CompassEngine {
       });
 
       this.isListening = true;
-      hilog.info(DOMAIN, CompassEngine.TAG, 'Compass sensor started');
 
     } catch (err) {
       hilog.error(DOMAIN, CompassEngine.TAG, `Failed to start compass sensor: ${err}`);
@@ -133,7 +128,6 @@ export class CompassEngine {
       if (this.isListening) {
         sensor.off(sensor.SensorId.ORIENTATION);
         this.isListening = false;
-        hilog.info(DOMAIN, CompassEngine.TAG, 'Compass sensor stopped');
       }
     } catch (err) {
       hilog.error(DOMAIN, CompassEngine.TAG, `Failed to stop compass sensor: ${err}`);
@@ -232,14 +226,12 @@ export class CompassEngine {
    */
   setChangeThreshold(threshold: number): void {
     this.changeThreshold = Math.max(0.1, threshold);
-    hilog.info(DOMAIN, CompassEngine.TAG, `Change threshold set to ${this.changeThreshold} degrees`);
   }
 
   /**
    * 校准指南针（重置历史数据）
    */
   calibrate(): void {
-    hilog.info(DOMAIN, CompassEngine.TAG, 'Calibrating compass');
     this.headingHistory = [];
     this.lastHeading = 0;
   }

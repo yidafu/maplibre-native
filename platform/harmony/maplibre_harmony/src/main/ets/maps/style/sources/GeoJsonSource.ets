@@ -30,6 +30,9 @@ export type GeoJsonData = string | IFeature | IFeatureCollection | Geometry | Ob
  * GeoJsonSource 类
  */
 export class GeoJsonSource {
+  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  static readonly _TYPE_ = 'GeoJsonSource';
+  
   private nativeInstance: maplibre.GeoJsonSource;
 
   /**

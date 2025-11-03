@@ -584,16 +584,30 @@ export class NativeMapView {
     // ========== Debug ==========
     
     /**
-     * 设置调试模式
-     * @param debug 是否启用调试
+     * 设置调试选项
+     * 使用位掩码来启用多个调试功能
+     * @param debugOptions 调试选项位掩码（MapDebugOptions 枚举值）
      */
-    setDebug(debug: boolean): void;
+    setDebug(debugOptions: number): void;
     
     /**
-     * 获取调试模式状态
-     * @returns 是否启用调试
+     * 获取当前调试选项
+     * @returns 当前启用的调试选项位掩码
      */
-    getDebug(): boolean;
+    getDebug(): number;
+    
+    /**
+     * 快速开关调试模式（使用默认调试选项组合）
+     * 启用时会显示：瓦片边界、瓦片信息和碰撞框
+     * @param active 是否启用调试模式
+     */
+    setDebugActive(active: boolean): void;
+    
+    /**
+     * 检查是否处于调试模式
+     * @returns 是否有任何调试选项被启用
+     */
+    isDebugActive(): boolean;
 
     // ========== Action Journal ==========
     
@@ -693,20 +707,6 @@ export class NativeMapView {
     setTransitionOptions(options: { duration?: number; delay?: number; }): void;
 
     // ========== Query ==========
-    
-    /**
-     * 查询矩形区域内的点注记
-     * @param rect 矩形区域
-     * @returns 注记 ID 数组
-     */
-    queryPointAnnotations(rect: Rect): number[];
-    
-    /**
-     * 查询矩形区域内的形状注记
-     * @param rect 矩形区域
-     * @returns 注记 ID 数组
-     */
-    queryShapeAnnotations(rect: Rect): number[];
     
     /**
      * 查询指定点的渲染要素
@@ -952,6 +952,33 @@ export class NativeMapView {
      * @param enabled 是否启用
      */
     enableRenderingStatsView(enabled: boolean): void;
+
+    // ========== Performance Configuration (参考 Android MapRenderer) ==========
+    
+    /**
+     * 设置最大帧率（参考 Android MapView.setMaximumFps）
+     * @param maximumFps 最大帧率，例如 30、60
+     */
+    setMaximumFps(maximumFps: number): void;
+    
+    /**
+     * 设置渲染刷新模式（参考 Android MapView.setRenderingRefreshMode）
+     * @param mode 渲染模式：0=CONTINUOUS（持续渲染），1=WHEN_DIRTY（按需渲染）
+     */
+    setRenderingRefreshMode(mode: number): void;
+    
+    /**
+     * 获取渲染刷新模式（参考 Android MapView.getRenderingRefreshMode）
+     * @returns 当前渲染模式：0=CONTINUOUS，1=WHEN_DIRTY
+     */
+    getRenderingRefreshMode(): number;
+    
+    /**
+     * 设置 FPS 变化监听器（参考 Android MapView.setOnFpsChangedListener）
+     * 用于实时监控渲染帧率
+     * @param listener FPS 变化回调函数，参数为当前 FPS（每秒帧数），传入 null 则移除监听器
+     */
+    setOnFpsChangedListener(listener: ((fps: number) => void) | null): void;
     
     /**
      * 设置样式加载完成监听器

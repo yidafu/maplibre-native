@@ -16,29 +16,6 @@ namespace harmony {
 using Logger = mbgl::harmony::Logger;
 using NapiArgs = mbgl::harmony::napi::NapiArgs;
 
-// 线程安全函数的数据结构
-struct ListRegionsCallbackData {
-    napi_env env;
-    napi_ref callbackRef;
-    napi_ref fileSourceRef;
-    mbgl::expected<mbgl::OfflineRegions, std::exception_ptr> result;
-    std::shared_ptr<mbgl::DatabaseFileSource> fileSource;
-};
-
-struct CreateRegionCallbackData {
-    napi_env env;
-    napi_ref callbackRef;
-    napi_ref fileSourceRef;
-    mbgl::expected<mbgl::OfflineRegion, std::exception_ptr> result;
-    std::shared_ptr<mbgl::DatabaseFileSource> fileSource;
-};
-
-struct ErrorCallbackData {
-    napi_env env;
-    napi_ref callbackRef;
-    std::exception_ptr error;
-};
-
 // ========== 构造函数和析构函数 ==========
 
 OfflineManagerNAPI::OfflineManagerNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource)
@@ -258,53 +235,37 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
         return nullptr;
     }
     
-    // 创建回调引用
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
-    
-    napi_ref fileSourceRef;
-    napi_create_reference(env, jsThis, 1, &fileSourceRef);
+    // 创建线程安全回调
+    auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "CreateOfflineRegion").release()
+    );
+    if (!threadSafeCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     // 调用核心库方法
     auto fileSource = obj->fileSource_;
+    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
     fileSource->createOfflineRegion(
         definition,
         metadata,
-        [env, callbackRef, fileSourceRef, fileSource](
-            mbgl::expected<mbgl::OfflineRegion, std::exception_ptr> region) {
+        [tsfCallback, fileSource](mbgl::expected<mbgl::OfflineRegion, std::exception_ptr> region) {
             
-            auto* data = new CreateRegionCallbackData{
-                env, callbackRef, fileSourceRef, std::move(region), fileSource
-            };
-            
-            napi_value callback_func;
-            napi_get_reference_value(env, callbackRef, &callback_func);
-            
-            napi_value global;
-            napi_get_global(env, &global);
-            
-            if (data->result) {
-                // 成功 - 创建 OfflineRegion 对象
-                napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move(*data->result));
-                
-                napi_value args[1] = {regionObj};
-                napi_value result;
-                napi_call_function(env, global, callback_func, 1, args, &result);
-            } else {
-                // 错误
-                std::string errorMsg = mbgl::util::toString(data->result.error());
-                napi_value errorValue;
-                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                
-                napi_value args[1] = {errorValue};
-                napi_value result;
-                napi_call_function(env, global, callback_func, 1, args, &result);
-            }
-            
-            // 清理
-            napi_delete_reference(env, callbackRef);
-            napi_delete_reference(env, fileSourceRef);
-            delete data;
+            // 使用线程安全回调在主线程执行
+            tsfCallback->Call([region = std::move(region), fileSource](napi_env env) mutable -> napi_value {
+                if (region) {
+                    // 成功 - 创建 OfflineRegion 对象
+                    napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move(*region));
+                    return regionObj;
+                } else {
+                    // 错误
+                    std::string errorMsg = mbgl::util::toString(region.error());
+                    napi_value errorValue;
+                    napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
+                    return errorValue;
+                }
+            });
         }
     );
     
@@ -335,42 +296,39 @@ napi_value OfflineManagerNAPI::GetOfflineRegion(napi_env env, napi_callback_info
         return nullptr;
     }
     
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
+    // 创建线程安全回调
+    auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "GetOfflineRegion").release()
+    );
+    if (!threadSafeCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     auto fileSource = obj->fileSource_;
-    fileSource->getOfflineRegion(regionId, [env, callbackRef, fileSource](
+    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
+    fileSource->getOfflineRegion(regionId, [tsfCallback, fileSource](
         mbgl::expected<std::optional<mbgl::OfflineRegion>, std::exception_ptr> result) {
         
-        napi_value callback_func;
-        napi_get_reference_value(env, callbackRef, &callback_func);
-        
-        napi_value global;
-        napi_get_global(env, &global);
-        
-        if (result && result->has_value()) {
-            napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move(**result));
-            napi_value args[1] = {regionObj};
-            napi_value ret;
-            napi_call_function(env, global, callback_func, 1, args, &ret);
-        } else if (result) {
-            // Region not found
-            napi_value nullValue;
-            napi_get_null(env, &nullValue);
-            napi_value args[1] = {nullValue};
-            napi_value ret;
-            napi_call_function(env, global, callback_func, 1, args, &ret);
-        } else {
-            // Error
-            std::string errorMsg = mbgl::util::toString(result.error());
-            napi_value errorValue;
-            napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-            napi_value args[1] = {errorValue};
-            napi_value ret;
-            napi_call_function(env, global, callback_func, 1, args, &ret);
-        }
-        
-        napi_delete_reference(env, callbackRef);
+        // 使用线程安全回调在主线程执行
+        tsfCallback->Call([result = std::move(result), fileSource](napi_env env) mutable -> napi_value {
+            if (result && result->has_value()) {
+                // 找到区域
+                napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move(**result));
+                return regionObj;
+            } else if (result) {
+                // Region not found
+                napi_value nullValue;
+                napi_get_null(env, &nullValue);
+                return nullValue;
+            } else {
+                // Error
+                std::string errorMsg = mbgl::util::toString(result.error());
+                napi_value errorValue;
+                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
+                return errorValue;
+            }
+        });
     });
     
     napi_value undefined;
@@ -398,41 +356,39 @@ napi_value OfflineManagerNAPI::MergeOfflineRegions(napi_env env, napi_callback_i
         return nullptr;
     }
     
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
+    // 创建线程安全回调
+    auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "MergeOfflineRegions").release()
+    );
+    if (!threadSafeCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     auto fileSource = obj->fileSource_;
-    fileSource->mergeOfflineRegions(path, [env, callbackRef, fileSource](
+    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
+    fileSource->mergeOfflineRegions(path, [tsfCallback, fileSource](
         mbgl::expected<mbgl::OfflineRegions, std::exception_ptr> regions) {
         
-        napi_value callback_func;
-        napi_get_reference_value(env, callbackRef, &callback_func);
-        
-        napi_value global;
-        napi_get_global(env, &global);
-        
-        if (regions) {
-            napi_value regionsArray;
-            napi_create_array_with_length(env, regions->size(), &regionsArray);
-            
-            for (size_t i = 0; i < regions->size(); i++) {
-                napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move((*regions)[i]));
-                napi_set_element(env, regionsArray, i, regionObj);
+        // 使用线程安全回调在主线程执行
+        tsfCallback->Call([regions = std::move(regions), fileSource](napi_env env) mutable -> napi_value {
+            if (regions) {
+                napi_value regionsArray;
+                napi_create_array_with_length(env, regions->size(), &regionsArray);
+                
+                for (size_t i = 0; i < regions->size(); i++) {
+                    napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move((*regions)[i]));
+                    napi_set_element(env, regionsArray, i, regionObj);
+                }
+                
+                return regionsArray;
+            } else {
+                std::string errorMsg = mbgl::util::toString(regions.error());
+                napi_value errorValue;
+                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
+                return errorValue;
             }
-            
-            napi_value args[1] = {regionsArray};
-            napi_value ret;
-            napi_call_function(env, global, callback_func, 1, args, &ret);
-        } else {
-            std::string errorMsg = mbgl::util::toString(regions.error());
-            napi_value errorValue;
-            napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-            napi_value args[1] = {errorValue};
-            napi_value ret;
-            napi_call_function(env, global, callback_func, 1, args, &ret);
-        }
-        
-        napi_delete_reference(env, callbackRef);
+        });
     });
     
     napi_value undefined;

@@ -107,8 +107,13 @@ public:
     static napi_value updateMarker(napi_env env, napi_callback_info info);
     static napi_value addMarkers(napi_env env, napi_callback_info info);
     static napi_value onLowMemory(napi_env env, napi_callback_info info);
+    
+    // Debug methods
     static napi_value setDebug(napi_env env, napi_callback_info info);
     static napi_value getDebug(napi_env env, napi_callback_info info);
+    static napi_value setDebugActive(napi_env env, napi_callback_info info);
+    static napi_value isDebugActive(napi_env env, napi_callback_info info);
+    
     static napi_value getActionJournalLogFiles(napi_env env, napi_callback_info info);
     static napi_value getActionJournalLog(napi_env env, napi_callback_info info);
     static napi_value clearActionJournalLog(napi_env env, napi_callback_info info);
@@ -131,10 +136,14 @@ public:
     static napi_value getTopOffsetPixelsForAnnotationSymbol(napi_env env, napi_callback_info info);
     static napi_value getTransitionOptions(napi_env env, napi_callback_info info);
     static napi_value setTransitionOptions(napi_env env, napi_callback_info info);
-    static napi_value queryPointAnnotations(napi_env env, napi_callback_info info);
-    static napi_value queryShapeAnnotations(napi_env env, napi_callback_info info);
     static napi_value queryRenderedFeaturesForPoint(napi_env env, napi_callback_info info);
     static napi_value queryRenderedFeaturesForBox(napi_env env, napi_callback_info info);
+    
+    // 性能配置 API（参考 Android MapRenderer）
+    static napi_value setMaximumFps(napi_env env, napi_callback_info info);
+    static napi_value setRenderingRefreshMode(napi_env env, napi_callback_info info);
+    static napi_value getRenderingRefreshMode(napi_env env, napi_callback_info info);
+    static napi_value setOnFpsChangedListener(napi_env env, napi_callback_info info);
     static napi_value getLight(napi_env env, napi_callback_info info);
     static napi_value getLayers(napi_env env, napi_callback_info info);
     static napi_value getLayer(napi_env env, napi_callback_info info);
@@ -301,6 +310,11 @@ private:
     std::atomic<int> renderRequestCount{0};
     std::atomic<int> sourceChangedCount{0};
     std::atomic<int> cameraChangedCount{0};
+    
+    // 性能配置（参考 Android MapRenderer）
+    int maximumFps_ = 60;  // 默认最大 60 FPS
+    int renderingRefreshMode_ = 1;  // 默认 WHEN_DIRTY 模式（0=CONTINUOUS, 1=WHEN_DIRTY）
+    std::unique_ptr<ThreadSafeCallback> fpsChangedCallback_;  // FPS 变化回调
     
     // 统一的回调管理器
     std::unique_ptr<mbgl::harmony::CallbackManager> callbackManager_;

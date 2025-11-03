@@ -3,8 +3,6 @@ import maplibre, { NativeMapView } from 'libmaplibre.so';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { Marker } from './Marker';
 
-
-
 /**
  * AnnotationViewData - Annotation 视图数据
  * 
@@ -266,7 +264,6 @@ export class AnnotationViewManager {
     if (pool && pool.length > 0) {
       const viewData = pool.pop() || null;
       if (viewData) {
-        console.debug(`[AnnotationViewManager] Dequeued reusable view for identifier: ${identifier}`);
         // 注意：prepareForReuse() 应该在重新关联 marker 后由上层调用
       }
       return viewData;
@@ -318,7 +315,6 @@ export class AnnotationViewManager {
       this.onSelectCallback(marker);
     }
     
-    console.info(`[AnnotationViewManager] Selected annotation: ${markerId}`);
   }
   
   /**
@@ -339,7 +335,6 @@ export class AnnotationViewManager {
       this.onDeselectCallback(marker);
     }
     
-    console.info(`[AnnotationViewManager] Deselected annotation: ${markerId}`);
   }
   
   /**
@@ -419,7 +414,6 @@ export class AnnotationViewManager {
       this.onDragStartCallback(marker);
     }
     
-    console.info(`[AnnotationViewManager] Start dragging: ${marker.getId()}`);
   }
   
   /**
@@ -465,7 +459,6 @@ export class AnnotationViewManager {
     this.draggingAnnotation = null;
     this.draggingStartPosition = null;
     
-    console.info(`[AnnotationViewManager] End dragging: ${marker.getId()}`);
   }
   
   /**
@@ -489,7 +482,6 @@ export class AnnotationViewManager {
     this.draggingAnnotation = null;
     this.draggingStartPosition = null;
     
-    console.info(`[AnnotationViewManager] Cancel dragging: ${marker.getId()}`);
   }
   
   /**
@@ -538,7 +530,6 @@ export class AnnotationViewManager {
     });
     
     if (updateCount > 0) {
-      console.debug(`[AnnotationViewManager] Batch updated ${updateCount} view positions`);
     }
   }
   

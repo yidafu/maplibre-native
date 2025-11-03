@@ -292,11 +292,12 @@ export class IconFactory {
    * ```
    */
   public async fromRawfile(fileName: string, iconId?: string): Promise<Icon> {
+    
     if (!this.resourceMgr) {
-      throw new Error(
-        '[IconFactory] ResourceManager not set. ' +
-        'Call setResourceManager() first or pass it to getInstance()'
-      );
+      const error = '[IconFactory] ResourceManager not set. ' +
+        'Call setResourceManager() first or pass it to getInstance()';
+      console.error(error);
+      throw new Error(error);
     }
 
     try {
@@ -318,9 +319,13 @@ export class IconFactory {
       imageSource.release();
       
       // 5. 创建 Icon（可以指定自定义 ID）
-      return this.fromPixelMap(pixelMap, iconId);
+      const icon = await this.fromPixelMap(pixelMap, iconId);
+      return icon;
     } catch (error) {
-      throw new Error(`[IconFactory] Failed to load icon from rawfile '${fileName}': ${error}`);
+      const errorMsg = `[IconFactory] Failed to load icon from rawfile '${fileName}': ${error}`;
+      console.error(errorMsg);
+      console.error('[IconFactory] Error stack:', error?.stack);
+      throw new Error(errorMsg);
     }
   }
 
@@ -346,6 +351,7 @@ export class IconFactory {
    * ```
    */
   public async defaultMarker(): Promise<Icon> {
+    
     // 检查缓存的默认图标是否有效
     if (this.defaultMarkerIcon && !this.defaultMarkerIcon.isReleased()) {
       return this.defaultMarkerIcon;
@@ -353,40 +359,39 @@ export class IconFactory {
     
     // 如果默认图标已被释放，清除缓存并重新创建
     if (this.defaultMarkerIcon?.isReleased()) {
-      console.info('[IconFactory] Cached default marker icon was released, recreating...');
       this.defaultMarkerIcon = null;
     }
 
     try {
-      // 策略 1: 尝试使用 C++ 层程序化生成（最优性能）
-      try {
-        const nativeIcon: maplibre.Icon = maplibre.IconFactory.createDefaultMarker(
-          IconFactory.DEFAULT_MARKER_ICON_ID,
-          48  // 48x48 像素
-        );
-        this.defaultMarkerIcon = Icon.fromNative(nativeIcon);
-        console.info('[IconFactory] Default marker icon created by C++ (programmatic)');
-        return this.defaultMarkerIcon;
-      } catch (cppError) {
-        console.warn('[IconFactory] C++ createDefaultMarker failed, using ETS fallback:', cppError);
-      }
-      
-      // 策略 2: 从 rawfile 加载
+      // 策略 1: 从 rawfile 加载 Android 风格的默认图标 (推荐，视觉效果最好)
       if (this.resourceMgr) {
         try {
           this.defaultMarkerIcon = await this.fromRawfile(
             'maplibre_marker_icon_default.png',
             IconFactory.DEFAULT_MARKER_ICON_ID
           );
-          console.info('[IconFactory] Default marker icon loaded from rawfile');
           return this.defaultMarkerIcon;
         } catch (rawfileError) {
-          console.warn('[IconFactory] Failed to load default icon from rawfile:', rawfileError);
+          console.error('[IconFactory] ❌ Failed to load default icon from rawfile:', rawfileError);
+          console.error('[IconFactory] ❌ Error details:', JSON.stringify(rawfileError));
         }
+      } else {
+        console.warn('[IconFactory] ⚠️ ResourceManager is null, skipping rawfile loading');
+      }
+      
+      // 策略 2: 使用 C++ 层生成程序化红色 Pin 图标
+      try {
+        const nativeIcon: maplibre.Icon = maplibre.IconFactory.createDefaultMarker(
+          IconFactory.DEFAULT_MARKER_ICON_ID,
+          48  // 48x48 像素
+        );
+        this.defaultMarkerIcon = Icon.fromNative(nativeIcon);
+        return this.defaultMarkerIcon;
+      } catch (cppError) {
+        console.error('[IconFactory] ❌ C++ createDefaultMarker failed:', cppError);
       }
 
-      // 策略 3: ETS 层程序化生成后备图标
-      console.info('[IconFactory] Creating ETS fallback marker icon');
+      // 策略 3: ETS 层程序化生成后备图标（最后手段）
       this.defaultMarkerIcon = await this.createFallbackMarkerIcon();
       return this.defaultMarkerIcon;
     } catch (error) {
@@ -436,12 +441,13 @@ export class IconFactory {
   /**
    * 创建程序生成的后备默认 Marker 图标
    * 
-   * 当无法从 rawfile 加载默认图标时，创建一个简单的红色圆形图标作为后备。
+   * 当无法从 rawfile 加载默认图标时，创建一个定位针形状的图标作为后备。
    * 这确保即使没有图片资源，应用也能正常运行。
    * 
    * 图标规格：
    * - 尺寸：48x48 像素
-   * - 颜色：红色圆形，透明背景
+   * - 形状：Pin 形状 (圆形头部 + 三角形尖端，类似 Google Maps)
+   * - 颜色：Material Blue (#2196F3)，透明背景
    * - 格式：RGBA_8888
    * - ID：使用 {@link DEFAULT_MARKER_ICON_ID}
    * 
@@ -453,7 +459,7 @@ export class IconFactory {
       // 图标规格
       const width = 48;
       const height = 48;
-      const color: ColorInfo = { red: 255, green: 0, blue: 0, alpha: 255 }; // 红色
+      const color: ColorInfo = { red: 255, green: 0, blue: 0, alpha: 255 }; // 红色 (#FF0000 - 标准地图标记颜色)
       
       // 1. 创建空白 PixelMap
       const pixelMap = await image.createPixelMap(
@@ -464,28 +470,46 @@ export class IconFactory {
         }
       );
 
-      // 2. 生成圆形图标像素数据
+      // 2. 生成 Pin 形状图标像素数据 (类似 Google Maps 定位针)
+      // Pin 由圆形头部 + 三角形尖端组成
       const buffer = new ArrayBuffer(width * height * 4);
       const pixels = new Uint8Array(buffer);
       const centerX = width / 2;
-      const centerY = height / 2;
-      const radius = Math.min(width, height) / 3;
+      const headCenterY = height * 0.35;  // 头部圆心位置 (上部)
+      const headRadius = width * 0.25;    // 头部圆形半径
+      const tipY = height * 0.9;          // 尖端 Y 坐标 (下部)
 
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const dx = x - centerX;
-          const dy = y - centerY;
+          const dy = y - headCenterY;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           const offset = (y * width + x) * 4;
-          if (distance <= radius) {
-            // 圆形内部 - 红色
+          let isInside = false;
+          
+          // 1. 圆形头部
+          if (distance <= headRadius) {
+            isInside = true;
+          }
+          // 2. 三角形尖端 (从圆心向下到尖端)
+          else if (y > headCenterY) {
+            // 计算三角形边界 (从圆形底部到尖端的等腰三角形)
+            const triangleY = y - headCenterY;
+            const maxWidth = headRadius * (1.0 - (triangleY / (tipY - headCenterY)));
+            if (Math.abs(dx) <= maxWidth) {
+              isInside = true;
+            }
+          }
+          
+          if (isInside) {
+            // Pin 内部 - 红色
             pixels[offset] = color.red;
             pixels[offset + 1] = color.green;
             pixels[offset + 2] = color.blue;
             pixels[offset + 3] = color.alpha;
           } else {
-            // 圆形外部 - 完全透明
+            // Pin 外部 - 完全透明
             pixels[offset] = 0;
             pixels[offset + 1] = 0;
             pixels[offset + 2] = 0;
@@ -534,7 +558,6 @@ export class IconFactory {
     // 重置 ID 计数器
     this.nextId = 0;
     
-    console.info('[IconFactory] Factory state reset');
   }
 }
 

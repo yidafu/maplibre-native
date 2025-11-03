@@ -1,15 +1,13 @@
 #include "icon_factory.hpp"
 #include <mbgl/util/logging.hpp>
 
-// HarmonyOS Image APIs - commented out due to API mismatch
-// Will be implemented in future version with correct API
-// #include <multimedia/image_framework/image_source_mdk.h>
-// #include <multimedia/image_framework/image_pixel_map_mdk.h>
+// HarmonyOS Image APIs - not used in C++ layer
+// Image decoding requires napi_env, handled in ETS layer instead
 // #include <rawfile/raw_file_manager.h>
 // #include <rawfile/raw_file.h>
+// #include <multimedia/image_framework/image_source_mdk.h>
+// #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
-#include <fstream>
-#include <vector>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -49,16 +47,18 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromRawData(
 }
 
 std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createFromRawfile(
-    NativeResourceManager* resourceMgr, const std::string& fileName) {
+    NativeResourceManager* /*resourceMgr*/, const std::string& fileName) {
     
     std::ostringstream oss;
     oss << "[IconFactory] Loading icon from rawfile: " << fileName;
     mbgl::Log::Info(mbgl::Event::General, oss.str());
     
-    // TODO: Implement rawfile loading with correct HarmonyOS API
+    // NOTE: Image decoding in C++ requires napi_env which is not available in this context
+    // HarmonyOS Image APIs (OH_ImageSource_CreateFromData, etc.) require napi_env parameter
+    // Rawfile loading is better handled in ETS layer using IconFactory.fromRawfile()
     throw std::runtime_error(
-        "[IconFactory] createFromRawfile not yet implemented. "
-        "Use fromResource() from ETS layer instead."
+        "[IconFactory] createFromRawfile not implemented. "
+        "Use ETS IconFactory.fromRawfile() which handles ResourceManager and image decoding properly."
     );
 }
 
@@ -81,7 +81,7 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
     uint32_t size) {
     
     std::ostringstream oss;
-    oss << "[IconFactory] Creating programmatic default marker: " << size << "x" << size;
+    oss << "[IconFactory] Creating programmatic default marker (RED pin shape): " << size << "x" << size;
     mbgl::Log::Info(mbgl::Event::General, oss.str());
     
     // Create empty image
@@ -91,11 +91,14 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
     
     uint8_t* data = image->data.get();
     
-    // Generate red circle marker
+    // Generate pin-shaped marker (类似 Google Maps 定位针)
+    // Pin 由圆形头部 + 尖端组成
     const float centerX = size / 2.0f;
-    const float centerY = size / 2.0f;
-    const float radius = size / 3.0f;
+    const float headCenterY = size * 0.35f;  // 头部圆心位置 (上部)
+    const float headRadius = size * 0.25f;   // 头部圆形半径
+    const float tipY = size * 0.9f;          // 尖端 Y 坐标 (下部)
     
+    // 颜色: RED (#FF0000) - 标准地图标记颜色
     const uint8_t red = 255;
     const uint8_t green = 0;
     const uint8_t blue = 0;
@@ -104,19 +107,35 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
     for (uint32_t y = 0; y < size; y++) {
         for (uint32_t x = 0; x < size; x++) {
             const float dx = x - centerX;
-            const float dy = y - centerY;
+            const float dy = y - headCenterY;
             const float distance = std::sqrt(dx * dx + dy * dy);
             
             const size_t offset = (y * size + x) * 4;
             
-            if (distance <= radius) {
-                // Inside circle - red
+            bool isInside = false;
+            
+            // 1. 圆形头部
+            if (distance <= headRadius) {
+                isInside = true;
+            }
+            // 2. 三角形尖端 (从圆心向下到尖端)
+            else if (y > headCenterY) {
+                // 计算三角形边界 (从圆形底部到尖端的等腰三角形)
+                const float triangleY = y - headCenterY;
+                const float maxWidth = headRadius * (1.0f - (triangleY / (tipY - headCenterY)));
+                if (std::abs(dx) <= maxWidth) {
+                    isInside = true;
+                }
+            }
+            
+            if (isInside) {
+                // Pin 内部 - 红色
                 data[offset + 0] = red;
                 data[offset + 1] = green;
                 data[offset + 2] = blue;
                 data[offset + 3] = alpha;
             } else {
-                // Outside circle - transparent
+                // Pin 外部 - 完全透明
                 data[offset + 0] = 0;
                 data[offset + 1] = 0;
                 data[offset + 2] = 0;
@@ -125,7 +144,7 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
         }
     }
     
-    mbgl::Log::Info(mbgl::Event::General, "[IconFactory] Default marker created successfully");
+    mbgl::Log::Info(mbgl::Event::General, "[IconFactory] Default RED pin-shaped marker created successfully");
     
     return image;
 }

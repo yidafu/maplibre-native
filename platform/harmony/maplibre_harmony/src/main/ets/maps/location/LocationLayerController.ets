@@ -43,7 +43,6 @@ export class LocationLayerController {
    * 初始化组件
    */
   initializeComponents(style: Style): void {
-    hilog.info(DOMAIN, LocationLayerController.TAG, 'Initializing location layer controller');
     this.style = style;
     
     // 添加图层
@@ -106,7 +105,6 @@ export class LocationLayerController {
       this.style.addLayer(bearingLayer);
 
       this.layersAdded = true;
-      hilog.info(DOMAIN, LocationLayerController.TAG, 'Location layers added successfully');
       
       // 应用初始样式
       this.styleAccuracy();
@@ -133,7 +131,6 @@ export class LocationLayerController {
       this.style.removeSource(LocationComponentConstants.LOCATION_SOURCE);
       
       this.layersAdded = false;
-      hilog.info(DOMAIN, LocationLayerController.TAG, 'Location layers removed');
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to remove layers: ${err}`);
     }
@@ -170,8 +167,6 @@ export class LocationLayerController {
       // 更新方向
       this.updateBearing(bearing);
       
-      hilog.debug(DOMAIN, LocationLayerController.TAG, 
-        `Location updated: ${location.latitude}, ${location.longitude}, bearing: ${bearing}, accuracy: ${accuracy}`);
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to update location: ${err}`);
     }
@@ -228,9 +223,6 @@ export class LocationLayerController {
     if (this.renderMode === mode) {
       return;
     }
-
-    hilog.info(DOMAIN, LocationLayerController.TAG, 
-      `Changing render mode from ${RenderMode.getName(this.renderMode)} to ${RenderMode.getName(mode)}`);
 
     this.renderMode = mode;
     this.updateIconStyles();
@@ -309,7 +301,6 @@ export class LocationLayerController {
     }
 
     this.isStale = isStale;
-    hilog.info(DOMAIN, LocationLayerController.TAG, `Location stale state: ${isStale}`);
     
     // 更新图标为过期状态的图标
     this.updateIconStyles();
@@ -343,7 +334,6 @@ export class LocationLayerController {
         // layer?.setProperty('visibility', 'visible');
       });
 
-      hilog.info(DOMAIN, LocationLayerController.TAG, 'Location layers shown');
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to show layers: ${err}`);
     }
@@ -377,7 +367,6 @@ export class LocationLayerController {
         // layer?.setProperty('visibility', 'none');
       });
 
-      hilog.info(DOMAIN, LocationLayerController.TAG, 'Location layers hidden');
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to hide layers: ${err}`);
     }

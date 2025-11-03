@@ -24,11 +24,18 @@ using HarmonyRendererBackendImpl = HarmonyGLRendererBackend;
 #endif
 
 class HarmonyMapRenderThread;
+class NativeMapView;  // Forward declaration
 
 class HarmonyRenderer : public mbgl::util::noncopyable, public mbgl::Scheduler, public mbgl::MapObserver {
 public:
     HarmonyRenderer();
     ~HarmonyRenderer();
+    
+    // ✅ 设置 NativeMapView（用于转发 MapObserver 事件）
+    void setNativeMapView(NativeMapView* nativeMapView) { nativeMapView_ = nativeMapView; }
+    
+    // ✅ MapObserver 方法 - 转发给 NativeMapView
+    void onDidFinishLoadingStyle() override;
     
     // 初始化渲染器
     void initialize(int width, int height, float pixelRatio = 1.0f, const std::string& cachePath = "", 
@@ -74,6 +81,10 @@ public:
     std::vector<Feature> queryRenderedFeatures(const ScreenBox& box,
                                                const RenderedQueryOptions& options = {}) const;
     
+    // FPS 测量（参考 Android MapRenderer）
+    void setOnFpsChangedCallback(std::function<void(double)> callback);
+    void enableFpsMeasurement(bool enable);
+    
     // 📝 实例标识
     std::string getInstanceId() const { return instanceId_; }
     
@@ -100,6 +111,9 @@ private:
     // Scheduler support
     util::SimpleIdentity uniqueID;
     std::shared_ptr<mapbox::base::WeakPtrFactory<Scheduler>> weakFactory;
+    
+    // ✅ NativeMapView 引用（用于转发 MapObserver 事件）
+    NativeMapView* nativeMapView_ = nullptr;
 };
 
 } // namespace harmony

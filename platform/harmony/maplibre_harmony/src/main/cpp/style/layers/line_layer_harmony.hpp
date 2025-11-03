@@ -21,6 +21,12 @@ public:
     
     // Constructor callback
     static napi_value New(napi_env env, napi_callback_info info);
+    // 从现有 Layer 创建（使用 WeakPtr，不拥有所有权）
+    LineLayerNAPI(mbgl::style::LineLayer* layerPtr);
+
+    // 从现有 native 对象创建 NAPI 实例
+    static napi_value CreateInstance(napi_env env, mbgl::style::LineLayer* layerPtr);
+
     
     // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* hint);

@@ -17,6 +17,9 @@ namespace harmony {
 class GeoJsonSourceNAPI {
 public:
     GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source);
+    // 从现有 Source 创建（使用 WeakPtr，不拥有所有权）
+    GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr);
+    
     ~GeoJsonSourceNAPI();
     
     // NAPI 注册
@@ -24,6 +27,9 @@ public:
     
     // 构造函数回调
     static napi_value New(napi_env env, napi_callback_info info);
+    
+    // 从现有 native 对象创建 NAPI 实例
+    static napi_value CreateInstance(napi_env env, mbgl::style::GeoJSONSource* sourcePtr);
     
     // 析构函数回调
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);

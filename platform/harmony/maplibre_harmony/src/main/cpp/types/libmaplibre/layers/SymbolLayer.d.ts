@@ -11,6 +11,11 @@ import type { BooleanValue, ColorValue, NumberValue, PropertyValue, StringValue 
  */
 export class SymbolLayer {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 创建 SymbolLayer
      * @param layerId 图层ID
      * @param sourceId 数据源ID

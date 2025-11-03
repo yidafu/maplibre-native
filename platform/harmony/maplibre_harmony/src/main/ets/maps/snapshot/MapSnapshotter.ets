@@ -63,7 +63,6 @@ export interface SnapshotErrorHandler {
  * // 3. 开始生成快照
  * snapshotter.start({
  *   onSnapshotReady: (snapshot) => {
- *     console.log('快照完成！');
  *     const pixelMap = snapshot.getImage();
  *     // 使用 pixelMap
  *   }
@@ -102,9 +101,6 @@ export class MapSnapshotter {
       // 创建 native snapshotter
       // 注意：这需要在 NAPI 模块中实现 createMapSnapshotter
       this.nativeSnapshotter = maplibre.createMapSnapshotter(napiOptions);
-      
-      hilog.info(DOMAIN, 'MapSnapshotter', 
-        `Created snapshotter: ${options.size.width}x${options.size.height} @ ${napiOptions.pixelRatio}x`);
       
       // 设置相机位置（如果提供）
       if (options.cameraPosition) {
@@ -146,8 +142,6 @@ export class MapSnapshotter {
       return;
     }
     
-    hilog.info(DOMAIN, 'MapSnapshotter', 'Starting snapshot generation');
-    
     try {
       // 调用 native start 方法
       this.nativeSnapshotter.start((error: string | null, result: maplibre.SnapshotResultNAPI) => {
@@ -179,7 +173,6 @@ export class MapSnapshotter {
               this.options.showLogo !== false
             );
             
-            hilog.info(DOMAIN, 'MapSnapshotter', `Snapshot ready: ${result.width}x${result.height}`);
             callback.onSnapshotReady(snapshot);
           })
           .catch((err: Error) => {
@@ -206,7 +199,6 @@ export class MapSnapshotter {
       return;
     }
     
-    hilog.info(DOMAIN, 'MapSnapshotter', 'Cancelling snapshot');
     this.cancelled = true;
     
     try {
@@ -227,7 +219,6 @@ export class MapSnapshotter {
     try {
       this.nativeSnapshotter.setStyleUrl(styleUrl);
       this.options.styleUrl = styleUrl;
-      hilog.info(DOMAIN, 'MapSnapshotter', `Style URL set: ${styleUrl}`);
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set style URL: ${error}`);
       throw new Error(`Failed to set style URL: ${error}`);
@@ -252,7 +243,6 @@ export class MapSnapshotter {
     try {
       this.nativeSnapshotter.setCameraPosition(cameraPosition);
       this.options.cameraPosition = cameraPosition;
-      hilog.info(DOMAIN, 'MapSnapshotter', 'Camera position set');
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set camera position: ${error}`);
       throw new Error(`Failed to set camera position: ${error}`);
@@ -277,7 +267,6 @@ export class MapSnapshotter {
     try {
       this.nativeSnapshotter.setRegion(region);
       this.options.region = region;
-      hilog.info(DOMAIN, 'MapSnapshotter', 'Region set');
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set region: ${error}`);
       throw new Error(`Failed to set region: ${error}`);

@@ -50,6 +50,30 @@ export class PixelCoordinate implements IPixelCoordinate {
   }
 
   /**
+   * 从逻辑像素创建物理像素坐标
+   * 
+   * 统一处理 DPI 转换
+   * 
+   * @param x 逻辑像素 X 坐标
+   * @param y 逻辑像素 Y 坐标
+   * @param pixelRatio 像素比率（DPI）
+   * @returns 物理像素坐标
+   */
+  static fromLogicalPixels(x: number, y: number, pixelRatio: number): PixelCoordinate {
+    return new PixelCoordinate(x * pixelRatio, y * pixelRatio);
+  }
+
+  /**
+   * 转换为物理像素
+   * 
+   * @param pixelRatio 像素比率（DPI）
+   * @returns 新的物理像素坐标
+   */
+  toPhysicalPixels(pixelRatio: number): PixelCoordinate {
+    return new PixelCoordinate(this.x * pixelRatio, this.y * pixelRatio);
+  }
+
+  /**
    * 计算到另一个点的距离
    */
   distanceTo(other: PixelCoordinate): number {

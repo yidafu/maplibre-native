@@ -56,9 +56,6 @@ export class LocationCameraController {
       return;
     }
 
-    hilog.info(DOMAIN, LocationCameraController.TAG, 
-      `Changing camera mode from ${CameraMode.getName(this.cameraMode)} to ${CameraMode.getName(mode)}`);
-
     const oldMode = this.cameraMode;
     this.cameraMode = mode;
 
@@ -135,9 +132,6 @@ export class LocationCameraController {
       this.maplibreMap.easeTo(cameraOptions, duration);
       this.isTransitioning = false;
 
-      hilog.debug(DOMAIN, LocationCameraController.TAG, 
-        `Camera updated to: ${location.latitude}, ${location.longitude}, bearing: ${cameraBearing}`);
-        
     } catch (err) {
       hilog.error(DOMAIN, LocationCameraController.TAG, `Failed to update camera: ${err}`);
       this.isTransitioning = false;
@@ -161,7 +155,6 @@ export class LocationCameraController {
     
     // 如果在跟踪模式，取消跟踪
     if (CameraMode.isTracking(this.cameraMode)) {
-      hilog.info(DOMAIN, LocationCameraController.TAG, 'User interaction detected, dismissing camera tracking');
       
       // 通知监听器
       if (this.cameraTrackingChangedListener && this.cameraTrackingChangedListener.onCameraTrackingDismissed) {

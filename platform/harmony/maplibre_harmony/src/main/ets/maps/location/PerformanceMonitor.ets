@@ -22,7 +22,6 @@ export class PerformanceMonitor {
    */
   static enable(): void {
     PerformanceMonitor.enabled = true;
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, 'Performance monitoring enabled');
   }
 
   /**
@@ -30,7 +29,6 @@ export class PerformanceMonitor {
    */
   static disable(): void {
     PerformanceMonitor.enabled = false;
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, 'Performance monitoring disabled');
   }
 
   /**
@@ -108,7 +106,6 @@ export class PerformanceMonitor {
     if (!PerformanceMonitor.enabled) return;
     
     // 注意：鸿蒙可能没有直接的内存 API，这里简化处理
-    hilog.debug(DOMAIN, PerformanceMonitor.TAG, `Memory checkpoint: ${label}`);
   }
 
   /**
@@ -117,18 +114,11 @@ export class PerformanceMonitor {
   static printReport(): void {
     if (!PerformanceMonitor.enabled || PerformanceMonitor.metrics.size === 0) return;
     
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, '=== Performance Report ===');
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, `Current FPS: ${PerformanceMonitor.currentFps}`);
-    
     PerformanceMonitor.metrics.forEach((metric, label) => {
       if (metric.count > 0) {
-        hilog.info(DOMAIN, PerformanceMonitor.TAG, 
-          `${label}: count=${metric.count}, avg=${metric.avgTime.toFixed(2)}ms, ` +
-          `min=${metric.minTime.toFixed(2)}ms, max=${metric.maxTime.toFixed(2)}ms`);
       }
     });
     
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, '=========================');
   }
 
   /**
@@ -139,7 +129,6 @@ export class PerformanceMonitor {
     PerformanceMonitor.frameCount = 0;
     PerformanceMonitor.lastFpsTime = 0;
     PerformanceMonitor.currentFps = 0;
-    hilog.info(DOMAIN, PerformanceMonitor.TAG, 'Performance metrics reset');
   }
 
   /**

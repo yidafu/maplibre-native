@@ -53,6 +53,9 @@ private:
     napi_env env_;
     napi_ref wrapper_;
     napi_ref observerRef_; // 保存观察者的引用
+    
+    // 静态构造函数引用
+    static napi_ref constructor_;
 };
 
 } // namespace harmony

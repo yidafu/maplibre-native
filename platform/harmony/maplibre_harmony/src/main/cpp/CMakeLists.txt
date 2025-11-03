@@ -66,6 +66,8 @@ add_library(maplibre
     core/native_map_view/native_map_view_annotations.cpp
     core/native_map_view/native_map_view_query.cpp
     core/native_map_view/native_map_view_observers.cpp
+    core/native_map_view/native_map_view_performance.cpp
+    core/native_map_view/native_map_view_debug.cpp
     
     # Rendering system
     rendering/harmony_renderer.hpp
@@ -287,5 +289,7 @@ PUBLIC
     native_display_manager
     libnative_vsync.so
     pixelmap_ndk.z
+    rawfile.z
+    image_ndk.z
 )
 

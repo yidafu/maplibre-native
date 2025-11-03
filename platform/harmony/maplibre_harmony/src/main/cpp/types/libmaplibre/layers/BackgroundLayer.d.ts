@@ -11,6 +11,11 @@ import type { ColorValue, ExpressionType, NumberValue, StringValue } from '../La
  */
 export class BackgroundLayer {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 创建背景图层
      * @param layerId 图层 ID
      */

@@ -155,7 +155,6 @@ export struct AttributionButton {
                 message: `Visit: ${selectedAttribution.url}`,
                 duration: 3000
               });
-              hilog.info(DOMAIN, 'AttributionButton', `Attribution clicked: ${selectedAttribution.url}`);
             }
           }
         }

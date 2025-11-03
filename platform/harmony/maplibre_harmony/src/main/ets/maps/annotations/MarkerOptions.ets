@@ -118,7 +118,6 @@ export class MarkerOptions {
     return this;
   }
   
-  
   /**
    * 设置 Marker 是否可拖拽
    * 
@@ -228,7 +227,6 @@ export class MarkerOptions {
     return this;
   }
   
-  
   // ========== Getter 方法 ==========
   
   /**
@@ -265,7 +263,6 @@ export class MarkerOptions {
   public getReuseIdentifier(): string | undefined {
     return this._reuseIdentifier;
   }
-  
   
   /**
    * 是否可拖拽
@@ -323,7 +320,6 @@ export class MarkerOptions {
     return this._infoWindowOffsetY;
   }
   
-  
   /**
    * 创建 Marker 实例
    * 
@@ -343,8 +339,8 @@ export class MarkerOptions {
     
     // 添加可选属性
     if (this._icon !== undefined) {
-      // 传递 Icon 的 native 实例
-      options.icon = this._icon.getNative();
+      // 🔧 传递 Icon ID 字符串 (NAPI 层期望字符串，不是对象)
+      options.icon = this._icon.getId();
     }
     if (this._title !== undefined) {
       options.title = this._title;
@@ -370,13 +366,9 @@ export class MarkerOptions {
     
     // [MarkerDebug] 记录 Marker 创建信息
     const iconStatus = this._icon ? `"${this._icon.getId()}"` : 'null (⚠️ 可能导致不可见)';
-    console.info(`[MarkerDebug] ETS-Create: position={${this._position.latitude}, ${this._position.longitude}}, ` +
-                 `icon=${iconStatus}, visible=${this._visible}, alpha=${this._alpha}, ` +
-                 `rotation=${this._rotation}, zIndex=${this._zIndex}, draggable=${this._draggable}`);
     
     // 创建 Marker 封装类实例
     return Marker.createFromOptions(options);
   }
 }
-
 

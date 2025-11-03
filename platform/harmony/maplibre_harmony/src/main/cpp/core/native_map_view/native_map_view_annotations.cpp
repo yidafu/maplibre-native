@@ -696,7 +696,9 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
                 image->clone(),  // Clone the image for the style
                 scale
             );
+            Logger::info("NativeMapView", "🎯 Adding icon '%s' to style.addImage()...", iconId.c_str());
             m->getStyle().addImage(std::move(styleImage));
+            Logger::info("NativeMapView", "✅ Icon '%s' successfully added to style", iconId.c_str());
         });
         
         Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add (using Icon object)", iconId.c_str());

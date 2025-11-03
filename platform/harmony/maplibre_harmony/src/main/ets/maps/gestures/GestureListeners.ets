@@ -211,3 +211,33 @@ export interface OnQuickZoomListener {
   onQuickZoomEnd(): void;
 }
 
+/**
+ * 触摸移动监听器
+ * 当用户手指在屏幕上移动时触发（不区分单指还是多指）
+ * 用于实现 Marker 拖拽等需要连续跟踪触摸位置的功能
+ */
+export interface OnTouchMoveListener {
+  /**
+   * 触摸移动事件
+   * @param x 当前触摸位置 X 坐标（屏幕坐标）
+   * @param y 当前触摸位置 Y 坐标（屏幕坐标）
+   * @returns 是否消费该事件（如果返回 true，将阻止其他监听器接收）
+   */
+  onTouchMove(x: number, y: number): boolean;
+}
+
+/**
+ * 触摸释放监听器
+ * 当用户手指离开屏幕时触发
+ * 用于实现 Marker 拖拽结束等需要检测触摸结束的功能
+ */
+export interface OnTouchUpListener {
+  /**
+   * 触摸释放事件
+   * @param x 触摸释放位置 X 坐标（屏幕坐标）
+   * @param y 触摸释放位置 Y 坐标（屏幕坐标）
+   * @returns 是否消费该事件（如果返回 true，将阻止其他监听器接收）
+   */
+  onTouchUp(x: number, y: number): boolean;
+}
+

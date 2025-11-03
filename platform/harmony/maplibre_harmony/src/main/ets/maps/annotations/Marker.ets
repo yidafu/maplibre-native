@@ -26,7 +26,12 @@ class InternalMarker {
  * Marker 封装类
  */
 export class Marker {
+
   private nativeInstance: maplibre.Marker;
+  private _id: number = 0;  // 存储 Marker ID（由 MarkerManager 设置）
+  private _map: Object | null = null;  // 存储所属的 MapLibreMap
+  private _selected: boolean = false;  // 存储选中状态
+  private _dragState: number = 0;  // 存储拖拽状态
 
   /**
    * 构造函数
@@ -182,17 +187,14 @@ export class Marker {
    * 获取 Marker ID（内部使用）
    */
   getId(): number {
-    // NAPI Marker 没有 getId 方法，这个是 MarkerManager 添加的
-    // 返回一个临时值，实际 ID 由 MarkerManager 维护
-    return 0;
+    return this._id;
   }
 
   /**
    * 设置 Marker ID（内部使用）
    */
   setId(id: number): Marker {
-    // MarkerManager 使用的内部方法
-    // 实际不修改 NAPI Marker，只是占位
+    this._id = id;
     return this;
   }
 
@@ -200,8 +202,7 @@ export class Marker {
    * 设置所属的 MapLibreMap（内部使用）
    */
   setMapLibreMap(map: Object): Marker {
-    // MarkerManager 使用的内部方法
-    // 实际不修改 NAPI Marker，只是占位
+    this._map = map;
     return this;
   }
 
@@ -209,7 +210,7 @@ export class Marker {
    * 设置选中状态（内部使用）
    */
   setSelected(selected: boolean): Marker {
-    // MarkerManager 使用的内部方法
+    this._selected = selected;
     return this;
   }
 
@@ -217,15 +218,14 @@ export class Marker {
    * 获取拖拽状态（内部使用）
    */
   getDragState(): number {
-    // MarkerManager 使用的内部方法
-    return 0;
+    return this._dragState;
   }
 
   /**
    * 设置拖拽状态（内部使用）
    */
   setDragState(state: number): Marker {
-    // MarkerManager 使用的内部方法
+    this._dragState = state;
     return this;
   }
 

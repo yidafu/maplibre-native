@@ -23,6 +23,11 @@ export interface VectorSourceOptions {
  */
 export class VectorSource {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 构造矢量瓦片数据源
      * @param id 数据源 ID
      * @param options 可选配置

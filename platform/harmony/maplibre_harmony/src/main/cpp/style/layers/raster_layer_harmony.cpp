@@ -18,6 +18,14 @@ RasterLayerNAPI::RasterLayerNAPI(const std::string& layerId, const std::string& 
     : layer(std::make_unique<mbgl::style::RasterLayer>(layerId, sourceId)) {
 }
 
+RasterLayerNAPI::RasterLayerNAPI(mbgl::style::RasterLayer* layerPtr) {
+    if (layerPtr) {
+        weakLayer = layerPtr->makeWeakPtr();
+        Logger::info("RasterLayerNAPI", "RasterLayer created from existing layer (WeakPtr)");
+    }
+}
+
+
 RasterLayerNAPI::~RasterLayerNAPI() {
 }
 
@@ -92,8 +100,82 @@ napi_value RasterLayerNAPI::New(napi_env env, napi_callback_info info) {
     
     RasterLayerNAPI* layerObj = new RasterLayerNAPI(layerId, sourceId);
     napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "RasterLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
+    
     return thisVar;
 }
+
+napi_value RasterLayerNAPI::CreateInstance(napi_env env, mbgl::style::RasterLayer* layerPtr) {
+    if (!layerPtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("RasterLayerNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    RasterLayerNAPI* napiObj = new RasterLayerNAPI(layerPtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("RasterLayerNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "RasterLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 
 napi_value RasterLayerNAPI::SetRasterOpacity(napi_env env, napi_callback_info info) {
     napi_value thisVar;
@@ -104,10 +186,10 @@ napi_value RasterLayerNAPI::SetRasterOpacity(napi_env env, napi_callback_info in
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-opacity",
+        env, layerObj->getLayer(), argv[0], "raster-opacity",
         &mbgl::style::RasterLayer::setRasterOpacity
     );
     return thisVar;
@@ -122,10 +204,10 @@ napi_value RasterLayerNAPI::SetRasterHueRotate(napi_env env, napi_callback_info 
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-hue-rotate",
+        env, layerObj->getLayer(), argv[0], "raster-hue-rotate",
         &mbgl::style::RasterLayer::setRasterHueRotate
     );
     return thisVar;
@@ -140,10 +222,10 @@ napi_value RasterLayerNAPI::SetRasterBrightnessMin(napi_env env, napi_callback_i
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-brightness-min",
+        env, layerObj->getLayer(), argv[0], "raster-brightness-min",
         &mbgl::style::RasterLayer::setRasterBrightnessMin
     );
     return thisVar;
@@ -158,10 +240,10 @@ napi_value RasterLayerNAPI::SetRasterBrightnessMax(napi_env env, napi_callback_i
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-brightness-max",
+        env, layerObj->getLayer(), argv[0], "raster-brightness-max",
         &mbgl::style::RasterLayer::setRasterBrightnessMax
     );
     return thisVar;
@@ -176,10 +258,10 @@ napi_value RasterLayerNAPI::SetRasterSaturation(napi_env env, napi_callback_info
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-saturation",
+        env, layerObj->getLayer(), argv[0], "raster-saturation",
         &mbgl::style::RasterLayer::setRasterSaturation
     );
     return thisVar;
@@ -194,10 +276,10 @@ napi_value RasterLayerNAPI::SetRasterContrast(napi_env env, napi_callback_info i
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-contrast",
+        env, layerObj->getLayer(), argv[0], "raster-contrast",
         &mbgl::style::RasterLayer::setRasterContrast
     );
     return thisVar;
@@ -260,10 +342,10 @@ napi_value RasterLayerNAPI::SetRasterFadeDuration(napi_env env, napi_callback_in
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), argv[0], "raster-fade-duration",
+        env, layerObj->getLayer(), argv[0], "raster-fade-duration",
         &mbgl::style::RasterLayer::setRasterFadeDuration
     );
     return thisVar;
@@ -283,7 +365,7 @@ napi_value RasterLayerNAPI::GetRasterFadeDuration(napi_env env, napi_callback_in
     }
     
     return mbgl::harmony::getProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->layer.get(), &mbgl::style::RasterLayer::getRasterFadeDuration
+        env, layerObj->getLayer(), &mbgl::style::RasterLayer::getRasterFadeDuration
     );
 }
 
@@ -296,10 +378,10 @@ napi_value RasterLayerNAPI::SetRasterResampling(napi_env env, napi_callback_info
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) return thisVar;
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::RasterLayer, mbgl::style::RasterResamplingType>(
-        env, layerObj->layer.get(), argv[0], "raster-resampling",
+        env, layerObj->getLayer(), argv[0], "raster-resampling",
         &mbgl::style::RasterLayer::setRasterResampling
     );
     return thisVar;
@@ -319,7 +401,7 @@ napi_value RasterLayerNAPI::GetRasterResampling(napi_env env, napi_callback_info
     }
     
     return mbgl::harmony::getProperty<mbgl::style::RasterLayer, mbgl::style::RasterResamplingType>(
-        env, layerObj->layer.get(), &mbgl::style::RasterLayer::getRasterResampling
+        env, layerObj->getLayer(), &mbgl::style::RasterLayer::getRasterResampling
     );
 }
 
@@ -516,7 +598,7 @@ napi_value RasterLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     

@@ -15,6 +15,13 @@ class HillshadeLayerNAPI {
 public:
     static napi_value Init(napi_env env, napi_value exports);
     static napi_value New(napi_env env, napi_callback_info info);
+    
+    // 从现有 Layer 创建（使用 WeakPtr，不拥有所有权）
+    HillshadeLayerNAPI(mbgl::style::HillshadeLayer* layerPtr);
+
+    // 从现有 native 对象创建 NAPI 实例
+    static napi_value CreateInstance(napi_env env, mbgl::style::HillshadeLayer* layerPtr);
+    
     static void Destructor(napi_env env, void* nativeObject, void* hint);
     
     // Property methods

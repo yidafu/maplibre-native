@@ -13,6 +13,11 @@ import type { ExpressionType, NumberValue } from '../LayerPropertyTypes';
  */
 export class HeatmapLayer {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 创建热力图层
      * @param layerId 图层 ID
      * @param sourceId 数据源 ID

@@ -233,9 +233,19 @@ public:
     std::string GetStringProperty(napi_value obj, const char* key, const std::string& defaultValue = "");
     
     /**
+     * 从对象中获取 int32 属性
+     */
+    int32_t GetInt32Property(napi_value obj, const char* key, int32_t defaultValue = 0);
+    
+    /**
      * 从对象中获取 int64 属性
      */
     int64_t GetInt64Property(napi_value obj, const char* key, int64_t defaultValue = 0);
+    
+    /**
+     * 从对象中获取 uint32 属性
+     */
+    uint32_t GetUint32Property(napi_value obj, const char* key, uint32_t defaultValue = 0);
     
     /**
      * 从对象中获取 double 属性

@@ -9,6 +9,7 @@
 
 #include "harmony_map_render_thread.hpp"
 #include "utils/logger.h"
+#include "core/native_map_view/native_map_view_harmony.hpp"  // ✅ 用于转发 MapObserver 事件
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/logging.hpp>
@@ -305,6 +306,16 @@ void HarmonyRenderer::cleanup() {
     Log::Info(Event::OpenGL, "HarmonyRenderer cleaned up successfully");
 }
 
+// ✅ MapObserver 方法实现 - 转发给 NativeMapView
+void HarmonyRenderer::onDidFinishLoadingStyle() {
+    Logger::info("HarmonyRenderer", "🎨 onDidFinishLoadingStyle - forwarding to NativeMapView");
+    if (nativeMapView_) {
+        nativeMapView_->onDidFinishLoadingStyle();
+    } else {
+        Logger::warn("HarmonyRenderer", "⚠️ onDidFinishLoadingStyle: nativeMapView_ is null");
+    }
+}
+
 HarmonyRendererBackendImpl* HarmonyRenderer::getRendererBackend() const {
     if (!initialized || !mapRenderThread_) {
         return nullptr;
@@ -337,6 +348,25 @@ std::vector<Feature> HarmonyRenderer::queryRenderedFeatures(
     }
     
     return mapRenderThread_->queryRenderedFeatures(box, options);
+}
+
+void HarmonyRenderer::setOnFpsChangedCallback(std::function<void(double)> callback) {
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "setOnFpsChangedCallback: MapRenderThread not initialized");
+        return;
+    }
+    
+    // 参考 Android MapRenderer::setOnFpsChangedListener
+    mapRenderThread_->setOnFpsChangedCallback(std::move(callback));
+}
+
+void HarmonyRenderer::enableFpsMeasurement(bool enable) {
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "enableFpsMeasurement: MapRenderThread not initialized");
+        return;
+    }
+    
+    mapRenderThread_->enableFpsMeasurement(enable);
 }
 
 // Scheduler interface implementation

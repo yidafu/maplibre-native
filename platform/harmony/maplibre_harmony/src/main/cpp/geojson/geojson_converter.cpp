@@ -180,6 +180,25 @@ napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mbgl::Feature
         napi_set_named_property(env, result, "id", id);
     }
     
+    // source (optional)
+    // 注意：在 queryRenderedFeatures 的上下文中，feature.source 实际上存储的是 style layer ID！
+    // 参考 MapLibre 的实现，feature.source 字段在查询结果中被复用来存储 layer ID
+    if (!feature.source.empty()) {
+        napi_value source;
+        napi_create_string_utf8(env, feature.source.c_str(), NAPI_AUTO_LENGTH, &source);
+        // 设置为 layer 属性（这是 style layer ID）
+        napi_set_named_property(env, result, "layer", source);
+        // 同时保留 source 属性
+        napi_set_named_property(env, result, "source", source);
+    }
+    
+    // sourceLayer (optional) - 这是 vector tile 的 source layer  
+    if (!feature.sourceLayer.empty()) {
+        napi_value sourceLayer;
+        napi_create_string_utf8(env, feature.sourceLayer.c_str(), NAPI_AUTO_LENGTH, &sourceLayer);
+        napi_set_named_property(env, result, "sourceLayer", sourceLayer);
+    }
+    
     // geometry
     napi_value geometry = GeometryToJsObject(env, feature.geometry);
     napi_set_named_property(env, result, "geometry", geometry);
@@ -187,6 +206,12 @@ napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mbgl::Feature
     // properties
     napi_value properties = PropertyMapToNapiObject(env, feature.properties);
     napi_set_named_property(env, result, "properties", properties);
+    
+    // state (optional)
+    if (!feature.state.empty()) {
+        napi_value state = PropertyMapToNapiObject(env, feature.state);
+        napi_set_named_property(env, result, "state", state);
+    }
     
     return result;
 }

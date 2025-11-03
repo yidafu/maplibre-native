@@ -78,19 +78,16 @@ export struct AnnotationViewOverlay {
       screenHeight: this.screenHeight,
       customContentBuilder: this.customViewBuilderFactory?.(viewData.marker) ?? undefined,
       onSelect: (marker: Marker) => {
-        console.debug('[AnnotationViewOverlay] Annotation selected:', marker.getId());
         if (this.onAnnotationSelect) {
           this.onAnnotationSelect(marker);
         }
       },
       onDeselect: (marker: Marker) => {
-        console.debug('[AnnotationViewOverlay] Annotation deselected:', marker.getId());
         if (this.onAnnotationDeselect) {
           this.onAnnotationDeselect(marker);
         }
       },
       onMarkerDragStart: (marker: Marker) => {
-        console.debug('[AnnotationViewOverlay] Drag start:', marker.getId());
         if (this.onAnnotationDragStart) {
           this.onAnnotationDragStart(marker);
         }
@@ -101,7 +98,6 @@ export struct AnnotationViewOverlay {
         }
       },
       onMarkerDragEnd: (marker: Marker, screenX: number, screenY: number) => {
-        console.debug('[AnnotationViewOverlay] Drag end:', marker.getId());
         if (this.onAnnotationDragEnd) {
           this.onAnnotationDragEnd(marker, screenX, screenY);
         }
@@ -159,5 +155,4 @@ export function wrapBuilderWithParams<T>(builder: (params: T) => void, params: T
     builder(params);
   };
 }
-
 

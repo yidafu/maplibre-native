@@ -175,6 +175,16 @@ public:
      */
     std::vector<Feature> queryRenderedFeatures(const ScreenBox& box,
                                                const RenderedQueryOptions& options = {}) const;
+    
+    /**
+     * 设置 FPS 回调（参考 Android MapRenderer::setOnFpsChangedListener）
+     */
+    void setOnFpsChangedCallback(std::function<void(double)> callback);
+    
+    /**
+     * 启用或禁用 FPS 测量
+     */
+    void enableFpsMeasurement(bool enable);
 
 private:
     // ==================== 线程函数 ====================
@@ -237,6 +247,11 @@ private:
     
     // 渲染状态
     std::atomic<bool> paused_{false};
+    
+    // FPS 测量（参考 Android MapRenderer）
+    std::chrono::steady_clock::time_point lastFrameTime_;
+    std::atomic<bool> measureFps_{false};
+    std::function<void(double)> fpsCallback_;
     void* nativeWindow_{nullptr};
     
     // VSync 管理

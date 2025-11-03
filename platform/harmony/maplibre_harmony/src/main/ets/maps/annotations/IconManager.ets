@@ -114,7 +114,6 @@ export class IconManager {
       
       if (!iconId) {
         // Marker 没有图标，加载默认图标
-        console.info('[IconManager] Marker has no icon, loading default marker icon');
         icon = await this.loadDefaultIconForMarker(marker);
         iconId = icon.getId();
       } else {
@@ -192,13 +191,12 @@ export class IconManager {
       
       if (addIconToMap) {
         await this.loadIconToNative(icon);
+      } else {
       }
       
-      console.debug(`[IconManager] Icon '${iconId}' added with refCount=1`);
     } else {
       // 图标已存在，增加引用计数
       cached.refCount++;
-      console.debug(`[IconManager] Icon '${iconId}' refCount increased to ${cached.refCount}`);
     }
   }
 
@@ -334,7 +332,6 @@ export class IconManager {
       // 更新最大图标尺寸
       this.updateHighestIconSize(newIcon);
       
-      console.info(`[IconManager] Updated marker icon from ${oldIcon?.getId() || 'null'} to ${newIcon.getId()}`);
     } catch (error) {
       console.error('[IconManager] Failed to update marker icon:', error);
       throw new Error('Failed to update marker icon: ' + error);
@@ -375,16 +372,10 @@ export class IconManager {
       const height = icon.getHeight();
       const scale = icon.getScale();
       
-      console.info(
-        `[IconManager] Loading icon to native: id='${iconId}', ` +
-        `size=${width}x${height}, scale=${scale}`
-      );
-      
       // 4. 调用 Native API - 传递 NAPI Icon 对象
       // 优势：C++ 层直接访问 PremultipliedImage，无需数据转换
       this.nativeMapView.addAnnotationIcon(icon.getNative());
       
-      console.debug(`[IconManager] Icon '${iconId}' loaded to native successfully`);
     } catch (error) {
       const iconId = icon.getId();
       console.error(`[IconManager] Failed to load icon '${iconId}' to native:`, error);
@@ -433,11 +424,9 @@ export class IconManager {
     if (cached.refCount === 1) {
       // 引用计数为 1，清理后变为 0，执行完全移除
       this.remove(cached.icon);
-      console.debug(`[IconManager] Icon '${iconId}' refCount=0, removed and released`);
     } else {
       // 引用计数 > 1，仅递减计数
       cached.refCount--;
-      console.debug(`[IconManager] Icon '${iconId}' refCount decreased to ${cached.refCount}`);
     }
   }
 
@@ -460,16 +449,13 @@ export class IconManager {
         throw new Error('[IconManager] NativeMapView is not initialized');
       }
       this.nativeMapView.removeAnnotationIcon(iconId);
-      console.debug(`[IconManager] Icon '${iconId}' removed from native layer`);
       
       // 2. 从缓存中移除
       this.iconMap.delete(iconId);
-      console.debug(`[IconManager] Icon '${iconId}' removed from cache`);
       
       // 3. 释放 Icon 资源（C++ 层的 PremultipliedImage）
       if (!icon.isReleased()) {
         icon.release();
-        console.debug(`[IconManager] Icon '${iconId}' resources released`);
       }
     } catch (error) {
       console.error(`[IconManager] Failed to remove icon '${iconId}':`, error);
@@ -482,7 +468,6 @@ export class IconManager {
    * 用于地图恢复或重新初始化
    */
   public async reloadIcons(): Promise<void> {
-    console.info('[IconManager] Reloading all icons...');
     
     let successCount = 0;
     let failCount = 0;
@@ -497,7 +482,6 @@ export class IconManager {
       }
     }
     
-    console.info(`[IconManager] Icons reloaded: ${successCount} success, ${failCount} failed`);
   }
 
   /**
@@ -570,6 +554,7 @@ export class IconManager {
   private updateHighestIconSize(iconOrWidth: Icon | number, height?: number): void {
     let width: number;
     let h: number;
+    let iconId = '';
     
     if (typeof iconOrWidth === 'number') {
       // 直接传入 width 和 height
@@ -579,16 +564,22 @@ export class IconManager {
       // 传入 Icon 对象
       width = iconOrWidth.getWidth();
       h = iconOrWidth.getHeight();
+      iconId = iconOrWidth.getId();
     }
     
+    let updated = false;
     if (width > this.highestIconWidth) {
       this.highestIconWidth = width;
+      updated = true;
     }
     if (h > this.highestIconHeight) {
       this.highestIconHeight = h;
+      updated = true;
+    }
+    
+    if (updated || width === 0 || h === 0) {
     }
   }
-
 
   /**
    * 清理所有图标
@@ -615,7 +606,6 @@ export class IconManager {
    * ```
    */
   public cleanup(): void {
-    console.info('[IconManager] Cleaning up all icons...');
     
     let successCount = 0;
     let failCount = 0;
@@ -648,9 +638,6 @@ export class IconManager {
     this.highestIconWidth = 0;
     this.highestIconHeight = 0;
     
-    console.info(
-      `[IconManager] Cleanup complete: ${successCount} success, ${failCount} failed`
-    );
   }
 
   /**

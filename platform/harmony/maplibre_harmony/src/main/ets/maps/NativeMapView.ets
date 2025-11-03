@@ -22,6 +22,7 @@ import { OrnamentPosition } from './types/NativeTypes';
 import { CompassVisibility } from './widgets/CompassVisibility';
 import { RenderingStats } from './renderer/RenderingStats';
 import { RenderingRefreshMode } from './types/NativeTypes';
+import { OnFpsChangedListener } from './listeners/OnFpsChangedListener';
 import {
   OnCameraWillChangeListener,
   OnCameraIsChangingListener,
@@ -69,7 +70,6 @@ interface MapViewComponent {
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
 
-
 type NullableNativeMapView = NativeMapView | null
 
 /**
@@ -94,7 +94,6 @@ export function registerMapLibreMap(
   const controller = globalControllerMap.get(nativeMapView);
   if (controller) {
     controller.setMapLibreMapInstance(mapLibreMap);
-    hilog.info(DOMAIN, 'NativeMapView', 'MapLibreMap registered to controller');
     
     // 连接 Compass 更新回调
     mapLibreMap.onCompassUpdate = (bearing: number) => {
@@ -110,12 +109,10 @@ export function registerMapLibreMap(
     try {
       const bearing = mapLibreMap.getBearing();
       controller.updateCompassBearing();
-      hilog.info(DOMAIN, 'NativeMapView', `Initial compass bearing: ${bearing}`);
       
       const latLng = mapLibreMap.getLatLng();
       const metersPerPixel = mapLibreMap.getMetersPerPixelAtLatitude(latLng.latitude);
       controller.updateScaleBarMetersPerPixel(metersPerPixel);
-      hilog.info(DOMAIN, 'NativeMapView', `Initial ScaleBar metersPerPixel: ${metersPerPixel}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to trigger initial widget updates: ${error}`);
     }
@@ -213,7 +210,7 @@ class NativeMapViewController extends XComponentController {
    */
   onSurfaceCreated(surfaceId: string): void {
 
-    hilog.warn(DOMAIN, "NativeMapView", `NativeMapView: onSurfaceCreated surfaceId: ${surfaceId}, delaying initialization`);
+    hilog.warn(DOMAIN, "NativeMapView", `🌟 onSurfaceCreated START - surfaceId: ${surfaceId}`);
     this.surfaceId = surfaceId;
 
     try {
@@ -222,7 +219,6 @@ class NativeMapViewController extends XComponentController {
       
       // 使用应用私有缓存目录 + maplibre 子目录
       const cachePath = context.cacheDir + '/maplibre';
-      hilog.info(DOMAIN, "NativeMapView", `Using cache path: ${cachePath}`);
       
       // 创建 MapView 实例并传递缓存路径
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Creating NativeMapView instance with cachePath...`);
@@ -232,17 +228,14 @@ class NativeMapViewController extends XComponentController {
       // 注册到全局映射
       if (this.mapView) {
         globalControllerMap.set(this.mapView, this);
-        hilog.info(DOMAIN, "NativeMapView", `Controller registered to global map`);
       }
 
       // ✅ DPI 现在由 C++ 层直接获取（使用 OH_NativeDisplayManager_GetDefaultDisplayDensityDpi）
       // 不再需要从 ArkTS 传递
-      hilog.info(DOMAIN, "NativeMapView", `DPI will be determined by C++ Native API`);
 
       // 🛡️ 延迟初始化：等待页面转换动画完成（通常需要 400-500ms）
       // ✅ 修复第二次进入崩溃：延迟增加到 800ms，确保 Native Window 完全稳定
       // 原因：页面转换动画可能需要更长时间，特别是在低性能设备上
-      hilog.info(DOMAIN, "NativeMapView", `Scheduling delayed native window initialization (800ms delay)...`);
       
       setTimeout(() => {
         try {
@@ -251,16 +244,12 @@ class NativeMapViewController extends XComponentController {
             return;
           }
           
-          hilog.info(DOMAIN, "NativeMapView", `Setting native window after page transition (800ms elapsed)...`);
           // 设置渲染表面（使用默认方法，尺寸将在onSurfaceChanged中处理）
           this.mapView.setNativeWindow(BigInt(surfaceId));
-          hilog.info(DOMAIN, "NativeMapView", `Native window set successfully`);
 
-          hilog.info(DOMAIN, "NativeMapView", `Setting style URL: ${this.styleUrl}`);
           // 设置地图样式
           this.mapView.setStyleUrl(this.styleUrl);
           
-          hilog.info(DOMAIN, "NativeMapView", `Delayed initialization completed`);
         } catch (error) {
           hilog.error(DOMAIN, "NativeMapView", `Delayed initialization failed: ${error.message}`);
         }
@@ -270,9 +259,7 @@ class NativeMapViewController extends XComponentController {
       setTimeout(() => {
         try {
           if (this.mapView && this.isInitialized) {
-            hilog.info(DOMAIN, "NativeMapView", `Delayed jumpTo: bearing=${this.initialBearing}, lat=${this.initialLatitude}, lng=${this.initialLongitude}, pitch=${this.initialPitch}, zoom=${this.initialZoom}`);
             this.mapView.jumpTo(this.initialBearing, this.initialLatitude, this.initialLongitude, this.initialPitch, this.initialZoom);
-            hilog.info(DOMAIN, 'NativeMapView', 'Delayed jumpTo completed successfully');
           } else {
             hilog.warn(DOMAIN, 'NativeMapView', `Delayed jumpTo skipped - mapView=${this.mapView ? 'exists' : 'null'}, initialized=${this.isInitialized}`);
           }
@@ -299,8 +286,6 @@ class NativeMapViewController extends XComponentController {
       // 设置手势检测器的地图控制器引用
       this.gestureDetector.setMapController(this.mapView);
       
-      hilog.info(DOMAIN, 'NativeMapView', 'Map initialized successfully');
-      
       // 设置相机监听器来更新 Compass 和 AnnotationView
       this.mapView.addOnCameraMoveListener(() => {
         this.updateCompassBearing();
@@ -308,7 +293,6 @@ class NativeMapViewController extends XComponentController {
       });
       
       // ========== 注册 Android/iOS 风格的监听器回调到 C++ 层 ==========
-      hilog.info(DOMAIN, 'NativeMapView', 'Registering event listeners to C++ layer...');
       
       // 相机事件监听器
       this.mapView.addOnCameraWillChangeListener((animated: boolean) => {
@@ -403,6 +387,41 @@ class NativeMapViewController extends XComponentController {
       
       // 样式事件监听器
       this.mapView.addOnDidFinishLoadingStyleListener(() => {
+        
+        // ✅ 在 Style 加载完成后，调用 onMapReady 回调（对齐 Android/iOS 行为）
+        if (!this.mapView) {
+          hilog.warn(DOMAIN, 'NativeMapView', '⚠️ MapView is null, cannot call onMapReady');
+          return;
+        }
+        
+        // 调用 onMapReady 回调
+        if (this.onMapReadyCallback) {
+          try {
+            this.onMapReadyCallback(this.mapView);
+          } catch (callbackError) {
+            hilog.error(DOMAIN, 'NativeMapView', `❌ onMapReady callback error: ${callbackError.message}`);
+            if (callbackError.stack) {
+              hilog.error(DOMAIN, 'NativeMapView', `❌ Stack: ${callbackError.stack}`);
+            }
+          }
+        } else {
+          hilog.warn(DOMAIN, 'NativeMapView', '⚠️ onMapReadyCallback is NULL, not calling');
+        }
+        
+        // 调用所有通过 getMapAsync 注册的回调
+        if (this.onMapReadyCallbacks.length > 0) {
+          for (const callback of this.onMapReadyCallbacks) {
+            try {
+              callback.onMapReady(this.mapView);
+            } catch (callbackError) {
+              hilog.error(DOMAIN, 'NativeMapView', `getMapAsync callback error: ${callbackError.message}`);
+            }
+          }
+          // 清空回调列表
+          this.onMapReadyCallbacks = [];
+        }
+        
+        // 通知用户的 OnDidFinishLoadingStyleListener
         for (const listener of this.onDidFinishLoadingStyleListeners) {
           try { listener.onDidFinishLoadingStyle(); } catch (error) {
             hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishLoadingStyleListener error: ${error.message}`);
@@ -435,46 +454,22 @@ class NativeMapViewController extends XComponentController {
         }
       });
       
-      hilog.info(DOMAIN, 'NativeMapView', 'All event listeners registered to C++ layer');
-      
       // 初始更新一次 Compass bearing
       this.updateCompassBearing();
       
-      // 调用 onMapReady 回调
-      if (this.onMapReadyCallback) {
-        try {
-          this.onMapReadyCallback(this.mapView);
-          hilog.info(DOMAIN, 'NativeMapView', 'onMapReady callback invoked');
-        } catch (callbackError) {
-          hilog.error(DOMAIN, 'NativeMapView', `onMapReady callback error: ${callbackError.message}`);
-        }
-      }
-      
-      // 调用所有通过 getMapAsync 注册的回调
-      if (this.onMapReadyCallbacks.length > 0) {
-        hilog.info(DOMAIN, 'NativeMapView', `Invoking ${this.onMapReadyCallbacks.length} getMapAsync callbacks`);
-        for (const callback of this.onMapReadyCallbacks) {
-          try {
-            callback.onMapReady(this.mapView);
-          } catch (callbackError) {
-            hilog.error(DOMAIN, 'NativeMapView', `getMapAsync callback error: ${callbackError.message}`);
-          }
-        }
-        // 清空回调列表
-        this.onMapReadyCallbacks = [];
-      }
+      // ⚠️ 注意：onMapReady 回调已移至 OnDidFinishLoadingStyleListener 中
+      // 这样可以确保 Style 完全加载后才调用回调，避免 "Style not loaded" 错误
+      // 参考 Android MapView.MapCallback.initialised() 和 iOS MLNMapView 的实现
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to initialize map: ${error.message}`);
       hilog.error(DOMAIN, 'NativeMapView', `Error stack: ${error.stack}`);
     }
   }
 
-
   /**
    * 表面变化回调
    */
   onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
-    hilog.info(DOMAIN, "NativeMapView", `onSurfaceChanged: ${rect.surfaceWidth}x${rect.surfaceHeight}`);
 
     // 防止异常小的尺寸（可能是 setXComponentSurfaceRect 的副作用）
     if (rect.surfaceWidth < 100 || rect.surfaceHeight < 100) {
@@ -489,19 +484,14 @@ class NativeMapViewController extends XComponentController {
 
     if (this.mapView && this.isInitialized) {
       try {
-        hilog.info(DOMAIN, 'NativeMapView', 
-          `Resizing map to: ${rect.surfaceWidth}x${rect.surfaceHeight} (logical), pixelRatio=${this.pixelRatio.toFixed(4)}`);
         
         this.mapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
-        hilog.info(DOMAIN, 'NativeMapView', `Map resized successfully`);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to resize map: ${error.message}`);
       }
     } else if (this.mapView && !this.isInitialized) {
       // 如果地图尚未初始化，使用新的尺寸重新初始化
       try {
-        hilog.info(DOMAIN, 'NativeMapView', 
-          `Initializing map with: ${rect.surfaceWidth}x${rect.surfaceHeight} (logical)`);
         
         this.mapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
         this.isInitialized = true;
@@ -515,7 +505,6 @@ class NativeMapViewController extends XComponentController {
    * 表面销毁回调
    */
   onSurfaceDestroyed(surfaceId: string): void {
-    console.info(`NativeMapView: onSurfaceDestroyed surfaceId: ${surfaceId}`);
 
     if (this.mapView) {
       try {
@@ -523,7 +512,6 @@ class NativeMapViewController extends XComponentController {
         this.cleanupMapResources();
         this.mapView = null;
         this.isInitialized = false;
-        hilog.info(DOMAIN, 'NativeMapView', 'Map destroyed successfully');
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to destroy map: ${error.message}`);
       }
@@ -535,7 +523,6 @@ class NativeMapViewController extends XComponentController {
    */
   private cleanupMapResources(): void {
     try {
-      hilog.info(DOMAIN, 'NativeMapView', 'Starting map resource cleanup');
       
       // 1. 停止所有渲染操作
       if (this.mapView) {
@@ -552,7 +539,6 @@ class NativeMapViewController extends XComponentController {
         // this.mapView.clearCache();
       }
       
-      hilog.info(DOMAIN, 'NativeMapView', 'Map resource cleanup completed');
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Error during map resource cleanup: ${error.message}`);
     }
@@ -577,7 +563,6 @@ class NativeMapViewController extends XComponentController {
    */
   cleanupResources(): void {
     try {
-      hilog.info(DOMAIN, 'NativeMapViewController', 'Starting resource cleanup');
       
       if (this.mapView) {
         // 清理地图资源
@@ -590,7 +575,6 @@ class NativeMapViewController extends XComponentController {
       this.surfaceWidth = 0;
       this.surfaceHeight = 0;
       
-      hilog.info(DOMAIN, 'NativeMapViewController', 'Resource cleanup completed');
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapViewController', `Error during resource cleanup: ${error.message}`);
     }
@@ -603,7 +587,6 @@ class NativeMapViewController extends XComponentController {
     if (this.mapView && this.isInitialized) {
       try {
         this.mapView.setStyleUrl(url);
-        hilog.info(DOMAIN, 'NativeMapView', `Style URL set to: ${url}`);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to set style URL: ${error.message}`);
       }
@@ -617,7 +600,6 @@ class NativeMapViewController extends XComponentController {
     if (this.mapView && this.isInitialized) {
       try {
         this.mapView.jumpTo(angle, latitude, longitude, pitch, zoom);
-        hilog.info(DOMAIN, 'NativeMapView', `Jumped to: lat=${latitude}, lng=${longitude}, zoom=${zoom}`);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to jump to position: ${error.message}`);
       }
@@ -633,8 +615,6 @@ class NativeMapViewController extends XComponentController {
     if (this.mapView && this.isInitialized) {
       try {
         this.mapView.flyTo(options, duration);
-        hilog.info(DOMAIN, 'NativeMapView', 
-          `Flying to: center=${JSON.stringify(options.center)}, zoom=${options.zoom}, bearing=${options.bearing}, pitch=${options.pitch}, duration=${duration}ms`);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to fly to position: ${error.message}`);
       }
@@ -650,8 +630,6 @@ class NativeMapViewController extends XComponentController {
     if (this.mapView && this.isInitialized) {
       try {
         this.mapView.easeTo(options, duration);
-        hilog.info(DOMAIN, 'NativeMapView', 
-          `Easing to: center=${JSON.stringify(options.center)}, zoom=${options.zoom}, bearing=${options.bearing}, pitch=${options.pitch}, duration=${duration}ms`);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to ease to position: ${error.message}`);
       }
@@ -665,7 +643,6 @@ class NativeMapViewController extends XComponentController {
     if (this.mapView && this.isInitialized) {
       try {
         const markerIds: number[] = this.mapView.addMarkers(markers) as number[];
-        hilog.info(DOMAIN, 'NativeMapView', `Added ${markers.length} markers`);
         return markerIds;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
@@ -703,7 +680,6 @@ class NativeMapViewController extends XComponentController {
     
     try {
       this.mapView.setContentPadding(padding);
-      hilog.info(DOMAIN, 'NativeMapView', `setContentPadding: [${padding.join(', ')}]`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setContentPadding error: ${error.message}`);
     }
@@ -862,7 +838,6 @@ class NativeMapViewController extends XComponentController {
       try {
         // 使用动画方式归正北（参考 Android TIME_MAP_NORTH_ANIMATION = 150ms）
         this.mapView.setBearing(0, 150);
-        hilog.info(DOMAIN, 'NativeMapView', 'Reset north animation started');
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to reset north: ${error}`);
       }
@@ -1460,9 +1435,7 @@ class NativeMapViewController extends XComponentController {
     }
     
     try {
-      // TODO: C++ NAPI 绑定
-      // this.mapView.setMaximumFps(maximumFps);
-      hilog.info(DOMAIN, 'NativeMapView', `setMaximumFps: ${maximumFps} (Not yet implemented in C++)`);
+      this.mapView.setMaximumFps(maximumFps);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setMaximumFps error: ${error.message}`);
     }
@@ -1479,10 +1452,9 @@ class NativeMapViewController extends XComponentController {
     }
     
     try {
-      // TODO: C++ NAPI 绑定
-      // this.mapView.setRenderingRefreshMode(mode);
+      this.mapView.setRenderingRefreshMode(mode);
       const modeName = mode === RenderingRefreshMode.CONTINUOUS ? 'CONTINUOUS' : 'WHEN_DIRTY';
-      hilog.info(DOMAIN, 'NativeMapView', `setRenderingRefreshMode: ${modeName} (Not yet implemented in C++)`);
+      hilog.info(DOMAIN, 'NativeMapView', `setRenderingRefreshMode: Set to ${modeName}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setRenderingRefreshMode error: ${error.message}`);
     }
@@ -1493,9 +1465,42 @@ class NativeMapViewController extends XComponentController {
    * @returns 当前渲染模式
    */
   getRenderingRefreshMode(): RenderingRefreshMode {
-    // TODO: C++ NAPI 绑定
-    // 当前返回默认值
-    return RenderingRefreshMode.WHEN_DIRTY;
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getRenderingRefreshMode: Map not initialized, returning default');
+      return RenderingRefreshMode.WHEN_DIRTY;
+    }
+    
+    try {
+      return this.mapView.getRenderingRefreshMode();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getRenderingRefreshMode error: ${error.message}`);
+      return RenderingRefreshMode.WHEN_DIRTY;
+    }
+  }
+
+  /**
+   * 设置 FPS 变化监听器（参考 Android MapView.setOnFpsChangedListener）
+   * @param listener FPS 变化监听器，传入 null 则移除监听器
+   */
+  setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
+    if (!this.mapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setOnFpsChangedListener: Map not initialized');
+      return;
+    }
+    
+    try {
+      if (listener === null) {
+        this.mapView.setOnFpsChangedListener(null);
+        hilog.info(DOMAIN, 'NativeMapView', 'setOnFpsChangedListener: Listener removed');
+      } else {
+        this.mapView.setOnFpsChangedListener((fps: number) => {
+          listener.onFpsChanged(fps);
+        });
+        hilog.info(DOMAIN, 'NativeMapView', 'setOnFpsChangedListener: Listener set');
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setOnFpsChangedListener error: ${error.message}`);
+    }
   }
 
   // ========== 性能和缓存配置 ==========
@@ -1512,7 +1517,6 @@ class NativeMapViewController extends XComponentController {
     
     try {
       this.mapView.setPrefetchTiles(enabled);
-      hilog.info(DOMAIN, 'NativeMapView', `setPrefetchesTiles: ${enabled}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setPrefetchesTiles error: ${error.message}`);
     }
@@ -1531,7 +1535,6 @@ class NativeMapViewController extends XComponentController {
     try {
       // TODO: C++ NAPI 绑定
       // this.mapView.setTileCacheEnabled(enabled);
-      hilog.info(DOMAIN, 'NativeMapView', `setTileCacheEnabled: ${enabled} (Not yet implemented in C++)`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileCacheEnabled error: ${error.message}`);
     }
@@ -1549,7 +1552,6 @@ class NativeMapViewController extends XComponentController {
     
     try {
       this.mapView.setTileLodMinRadius(radius);
-      hilog.info(DOMAIN, 'NativeMapView', `setTileLodMinRadius: ${radius}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileLodMinRadius error: ${error.message}`);
     }
@@ -1567,7 +1569,6 @@ class NativeMapViewController extends XComponentController {
     
     try {
       this.mapView.setTileLodScale(scale);
-      hilog.info(DOMAIN, 'NativeMapView', `setTileLodScale: ${scale}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileLodScale error: ${error.message}`);
     }
@@ -1585,7 +1586,6 @@ class NativeMapViewController extends XComponentController {
     
     try {
       this.mapView.setTileLodPitchThreshold(threshold);
-      hilog.info(DOMAIN, 'NativeMapView', `setTileLodPitchThreshold: ${threshold}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileLodPitchThreshold error: ${error.message}`);
     }
@@ -1603,7 +1603,6 @@ class NativeMapViewController extends XComponentController {
     
     try {
       this.mapView.setTileLodZoomShift(shift);
-      hilog.info(DOMAIN, 'NativeMapView', `setTileLodZoomShift: ${shift}`);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileLodZoomShift error: ${error.message}`);
     }
@@ -1663,7 +1662,6 @@ export struct MapView {
    */
   aboutToAppear(): void {
     try {
-      hilog.info(DOMAIN, 'NativeMapView', 'Component aboutToAppear');
       this.isDestroyed = false;
       
       // 将组件的 prop 和回调传递给 controller
@@ -1686,8 +1684,11 @@ export struct MapView {
           
           // 调用用户的回调，传入 MapLibreMap 实例
           const mapLibreMap = this.controller.getMapLibreMapInstance();
+          
           if (this.onMapReady && mapLibreMap) {
             this.onMapReady(mapLibreMap);
+          } else {
+            hilog.warn(DOMAIN, 'NativeMapView', `⚠️ Not calling user callback - onMapReady=${this.onMapReady !== undefined}, mapLibreMap=${mapLibreMap !== null}`);
           }
           
           // 设置 InfoWindowManager 回调
@@ -1726,7 +1727,6 @@ export struct MapView {
           this.uiSettingsVersion++;
         };
         
-        hilog.info(DOMAIN, 'NativeMapView', `Initial config: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
       } else {
         hilog.error(DOMAIN, 'NativeMapView', 'Controller is null in aboutToAppear');
       }
@@ -1744,15 +1744,12 @@ export struct MapView {
    * 3. 清理所有监听器和回调
    */
   aboutToDisappear(): void {
-    hilog.info(DOMAIN, 'NativeMapView', '========== aboutToDisappear START (Android/iOS pattern) ==========');
     
     // 1. 设置销毁标志（参考 Android MapView.destroyed）
     this.isDestroyed = true;
-    hilog.debug(DOMAIN, 'NativeMapView', 'Set isDestroyed flag');
     
     try {
       // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
-      hilog.debug(DOMAIN, 'NativeMapView', 'Cancelling all animations and gestures...');
       const mapView = this.controller.getMapView();
       if (mapView) {
         try {
@@ -1765,18 +1762,13 @@ export struct MapView {
       // 3. ✅ 使用异步 destroy（参考 Android/iOS 模式）
       // 这样可以避免阻塞主线程，同时确保资源正确释放
       if (mapView) {
-        hilog.info(DOMAIN, 'NativeMapView', 'Calling native destroyAsync()...');
         
         // 使用异步方式，传入完成回调
         mapView.destroyAsync(() => {
-          hilog.info(DOMAIN, 'NativeMapView', '✅ Async destroy completed');
-          hilog.info(DOMAIN, 'NativeMapView', '========== aboutToDisappear END ==========');
         });
         
-        hilog.debug(DOMAIN, 'NativeMapView', 'Async destroy initiated, returning immediately');
       } else {
         hilog.warn(DOMAIN, 'NativeMapView', 'MapView is null, skipping destroy');
-        hilog.info(DOMAIN, 'NativeMapView', '========== aboutToDisappear END ==========');
       }
       
       // 4. 清理 UI 组件引用（立即执行，不等待异步完成）
@@ -1786,7 +1778,6 @@ export struct MapView {
       // 5. 清理全局映射
       if (mapView) {
         globalControllerMap.delete(mapView);
-        hilog.debug(DOMAIN, 'NativeMapView', 'Removed controller from global map');
       }
       
       // 6. 清理 InfoWindow 状态
@@ -1952,7 +1943,6 @@ export struct MapView {
           this.visibleInfoWindows.push(newState);
         }
         
-        hilog.info(DOMAIN, 'NativeMapView', `InfoWindow shown for marker ${marker.getId()}`);
       });
       
       // 隐藏 InfoWindow
@@ -1962,7 +1952,6 @@ export struct MapView {
         );
         if (index >= 0) {
           this.visibleInfoWindows.splice(index, 1);
-          hilog.info(DOMAIN, 'NativeMapView', `InfoWindow hidden for marker ${marker.getId()}`);
         }
       });
       
@@ -1976,8 +1965,6 @@ export struct MapView {
         }
       });
       
-      hilog.info(DOMAIN, 'NativeMapView', 'InfoWindow callbacks setup completed');
-      
       // ========== 设置 AnnotationView 回调 ==========
       const annotationViewManager = mapLibreMap.getMarkerManager().getAnnotationViewManager();
       
@@ -1985,7 +1972,6 @@ export struct MapView {
       // 注意：由于 AnnotationViewManager 目前没有回调机制，我们需要在相机移动时更新
       // 这将在相机监听器中实现
       
-      hilog.info(DOMAIN, 'NativeMapView', 'AnnotationView callbacks setup completed');
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `Failed to setup AnnotationView callbacks: ${error.message}`);
     }
@@ -2304,7 +2290,6 @@ export struct MapView {
     }
     try {
       mapView.setPitch(pitch, duration);
-      hilog.info(DOMAIN, 'NativeMapView', `setPitch: Set pitch to ${pitch} degrees`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, 'NativeMapView', `setPitch failed: ${errorMsg}`);
@@ -2347,7 +2332,6 @@ export struct MapView {
     }
     try {
       mapView.cancelTransitions();
-      hilog.info(DOMAIN, 'NativeMapView', 'cancelTransitions: All transitions cancelled');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, 'NativeMapView', `cancelTransitions failed: ${errorMsg}`);
@@ -2680,6 +2664,13 @@ export struct MapView {
     return this.controller.getRenderingRefreshMode();
   }
 
+  /**
+   * 设置 FPS 变化监听器
+   */
+  setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
+    this.controller.setOnFpsChangedListener(listener);
+  }
+
   // ========== 性能和缓存配置 ==========
   
   /**
@@ -2731,7 +2722,6 @@ export struct MapView {
    * 用于恢复地图渲染
    */
   onPageShow(): void {
-    hilog.info(DOMAIN, 'NativeMapView', 'onPageShow: Resuming map rendering');
     // 恢复渲染
     this.controller.triggerRepaint();
   }
@@ -2741,7 +2731,6 @@ export struct MapView {
    * 用于暂停地图渲染、暂停定位等，节省资源
    */
   onPageHide(): void {
-    hilog.info(DOMAIN, 'NativeMapView', 'onPageHide: Pausing map rendering');
     // 当前实现不暂停渲染，仅记录日志
     // 未来可以添加更多资源管理逻辑
   }
@@ -2751,7 +2740,6 @@ export struct MapView {
    * @returns true 表示消费了返回事件，false 表示不消费
    */
   onBackPress(): boolean {
-    hilog.info(DOMAIN, 'NativeMapView', 'onBackPress: Handling back press');
     
     // 取消正在进行的相机动画
     this.controller.getMapView()?.cancelTransitions();
@@ -2798,5 +2786,100 @@ export struct MapView {
    */
   getPixelRatio(): number {
     return this.controller.getPixelRatio();
+  }
+  
+  // ========== 调试功能（Debug Mode）==========
+  
+  /**
+   * 设置调试选项
+   * 使用 MapDebugOptions 枚举值的位掩码来启用多个调试功能
+   * 
+   * @param debugOptions 调试选项的位掩码
+   * @example
+   * ```typescript
+   * // 启用多个调试选项
+   * nativeMapView.setDebug(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes);
+   * ```
+   */
+  setDebug(debugOptions: number): void {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setDebug: Native map view not initialized');
+      return;
+    }
+    try {
+      mapView.setDebug(debugOptions);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `setDebug failed: ${errorMsg}`);
+    }
+  }
+  
+  /**
+   * 获取当前调试选项
+   * 
+   * @returns 当前启用的调试选项位掩码
+   */
+  getDebug(): number {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getDebug: Native map view not initialized');
+      return 0;
+    }
+    try {
+      return mapView.getDebug();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `getDebug failed: ${errorMsg}`);
+      return 0;
+    }
+  }
+  
+  /**
+   * 快速开关调试模式（使用默认调试选项组合）
+   * 启用时会显示：瓦片边界、瓦片信息和碰撞框
+   * 
+   * @param active 是否启用调试模式
+   * @example
+   * ```typescript
+   * // 快速启用调试模式
+   * nativeMapView.setDebugActive(true);
+   * 
+   * // 关闭调试模式
+   * nativeMapView.setDebugActive(false);
+   * ```
+   */
+  setDebugActive(active: boolean): void {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setDebugActive: Native map view not initialized');
+      return;
+    }
+    try {
+      mapView.setDebugActive(active);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `setDebugActive failed: ${errorMsg}`);
+    }
+  }
+  
+  /**
+   * 检查是否处于调试模式
+   * 
+   * @returns 是否有任何调试选项被启用
+   */
+  isDebugActive(): boolean {
+    const mapView = this.controller.getMapView();
+    if (!mapView) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'isDebugActive: Native map view not initialized');
+      return false;
+    }
+    try {
+      return mapView.isDebugActive();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `isDebugActive failed: ${errorMsg}`);
+      return false;
+    }
   }
 }

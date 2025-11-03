@@ -6,6 +6,7 @@
 
 // 原有的监听器
 export { OnMarkerClickListener } from './OnMarkerClickListener';
+export { OnMarkerLongClickListener } from './OnMarkerLongClickListener';
 export { OnMarkerDragListener } from './OnMarkerDragListener';
 export { OnInfoWindowClickListener } from './OnInfoWindowClickListener';
 export { OnInfoWindowCloseListener } from './OnInfoWindowCloseListener';

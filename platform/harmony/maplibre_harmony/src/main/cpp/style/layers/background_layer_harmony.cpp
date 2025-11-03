@@ -20,6 +20,12 @@ BackgroundLayerNAPI::BackgroundLayerNAPI(const std::string& layerId)
     : layer(std::make_unique<mbgl::style::BackgroundLayer>(layerId)) {
 }
 
+BackgroundLayerNAPI::BackgroundLayerNAPI(mbgl::style::BackgroundLayer* layerPtr) {
+    if (layerPtr) {
+        weakLayer = layerPtr->makeWeakPtr();
+        Logger::info("BackgroundLayerNAPI", "BackgroundLayer created from existing layer (WeakPtr)");
+    }}
+
 BackgroundLayerNAPI::~BackgroundLayerNAPI() {
 }
 
@@ -106,8 +112,82 @@ napi_value BackgroundLayerNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
+
+    
+    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    napi_value typeValue;
+    napi_create_string_utf8(env, "BackgroundLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, thisVar, "_TYPE_", typeValue);
     return thisVar;
 }
+
+napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mbgl::style::BackgroundLayer* layerPtr) {
+    if (!layerPtr) {
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数
+    napi_value cons;
+    napi_status status = napi_get_reference_value(env, constructor, &cons);
+    if (status != napi_ok) {
+        Logger::error("BackgroundLayerNAPI", "Failed to get constructor reference");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    napi_value instance;
+    status = napi_create_object(env, &instance);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to create object");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 获取构造函数的原型
+    napi_value prototype;
+    status = napi_get_named_property(env, cons, "prototype", &prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to get prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 设置对象的原型
+    status = napi_set_named_property(env, instance, "__proto__", prototype);
+    if (status != napi_ok) {
+        Logger::error("CreateInstance", "Failed to set prototype");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    BackgroundLayerNAPI* napiObj = new BackgroundLayerNAPI(layerPtr);
+    
+    // 包装到 JS 对象
+    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
+    if (status != napi_ok) {
+        delete napiObj;
+        Logger::error("BackgroundLayerNAPI", "Failed to wrap instance");
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+    
+    // 添加 _TYPE_ 属性
+    napi_value typeValue;
+    napi_create_string_utf8(env, "BackgroundLayer", NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, instance, "_TYPE_", typeValue);
+    
+    return instance;
+}
+
 
 // ============================================================================
 // Paint Property Setters (支持 Expression)
@@ -122,13 +202,13 @@ napi_value BackgroundLayerNAPI::SetBackgroundColor(napi_env env, napi_callback_i
     BackgroundLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, mbgl::Color>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "background-color",
         &mbgl::style::BackgroundLayer::setBackgroundColor
@@ -146,13 +226,13 @@ napi_value BackgroundLayerNAPI::SetBackgroundOpacity(napi_env env, napi_callback
     BackgroundLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "background-opacity",
         &mbgl::style::BackgroundLayer::setBackgroundOpacity
@@ -170,13 +250,13 @@ napi_value BackgroundLayerNAPI::SetBackgroundPattern(napi_env env, napi_callback
     BackgroundLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer || argc < 1) {
+    if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
     }
     
     mbgl::harmony::setPaintProperty<mbgl::style::BackgroundLayer, mbgl::style::expression::Image>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         argv[0],
         "background-pattern",
         &mbgl::style::BackgroundLayer::setBackgroundPattern
@@ -204,7 +284,7 @@ napi_value BackgroundLayerNAPI::GetBackgroundColor(napi_env env, napi_callback_i
     
     return mbgl::harmony::getProperty<mbgl::style::BackgroundLayer, mbgl::Color>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::BackgroundLayer::getBackgroundColor
     );
 }
@@ -224,7 +304,7 @@ napi_value BackgroundLayerNAPI::GetBackgroundOpacity(napi_env env, napi_callback
     
     return mbgl::harmony::getProperty<mbgl::style::BackgroundLayer, float>(
         env,
-        layerObj->layer.get(),
+        layerObj->getLayer(),
         &mbgl::style::BackgroundLayer::getBackgroundOpacity
     );
 }

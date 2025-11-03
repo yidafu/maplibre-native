@@ -17,6 +17,11 @@ export interface ImageSourceOptions {
  */
 export class ImageSource {
     /**
+     * 类型标识，用于 ETS 层的类型判断
+     */
+    _TYPE_?: string;
+    
+    /**
      * 构造图像数据源
      * @param id 数据源 ID
      * @param options 可选配置（包含 url 和/或 coordinates）
