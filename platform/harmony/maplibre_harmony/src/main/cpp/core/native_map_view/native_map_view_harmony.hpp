@@ -211,6 +211,9 @@ public:
     static napi_value addOnCameraMoveCanceledListener(napi_env env, napi_callback_info info);
     static napi_value removeOnCameraMoveCanceledListener(napi_env env, napi_callback_info info);
     
+    // Map lifecycle listener management
+    static napi_value setOnMapViewCreatedCallback(napi_env env, napi_callback_info info);
+    
     // Style listener management
     static napi_value setOnStyleLoadedListener(napi_env env, napi_callback_info info);
     static napi_value setOnStyleLoadErrorListener(napi_env env, napi_callback_info info);
@@ -254,6 +257,31 @@ public:
     static napi_value removeOnDidBecomeIdleListener(napi_env env, napi_callback_info info);
     static napi_value addOnSourceChangedListener(napi_env env, napi_callback_info info);
     static napi_value removeOnSourceChangedListener(napi_env env, napi_callback_info info);
+    
+    // 观察者事件监听器 (Shader, Glyph, Sprite, Tile)
+    static napi_value addOnPreCompileShaderListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnPreCompileShaderListener(napi_env env, napi_callback_info info);
+    static napi_value addOnPostCompileShaderListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnPostCompileShaderListener(napi_env env, napi_callback_info info);
+    static napi_value addOnShaderCompileFailedListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnShaderCompileFailedListener(napi_env env, napi_callback_info info);
+    
+    static napi_value addOnGlyphsLoadedListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnGlyphsLoadedListener(napi_env env, napi_callback_info info);
+    static napi_value addOnGlyphsErrorListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnGlyphsErrorListener(napi_env env, napi_callback_info info);
+    static napi_value addOnGlyphsRequestedListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnGlyphsRequestedListener(napi_env env, napi_callback_info info);
+    
+    static napi_value addOnSpriteLoadedListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnSpriteLoadedListener(napi_env env, napi_callback_info info);
+    static napi_value addOnSpriteErrorListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnSpriteErrorListener(napi_env env, napi_callback_info info);
+    static napi_value addOnSpriteRequestedListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnSpriteRequestedListener(napi_env env, napi_callback_info info);
+    
+    static napi_value addOnTileActionListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnTileActionListener(napi_env env, napi_callback_info info);
     
     // ========== 新增方法：对齐 Android/iOS API ==========
     

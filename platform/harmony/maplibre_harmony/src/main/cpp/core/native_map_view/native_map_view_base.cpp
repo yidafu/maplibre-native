@@ -432,6 +432,9 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnCameraMoveCanceledListener", nullptr, addOnCameraMoveCanceledListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraMoveCanceledListener", nullptr, removeOnCameraMoveCanceledListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
+        // Map 生命周期监听器方法
+        {"setOnMapViewCreatedCallback", nullptr, setOnMapViewCreatedCallback, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
         // 样式监听器方法（旧的）
         {"setOnStyleLoadedListener", nullptr, setOnStyleLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setOnStyleLoadErrorListener", nullptr, setOnStyleLoadErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -474,7 +477,32 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnDidBecomeIdleListener", nullptr, addOnDidBecomeIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnDidBecomeIdleListener", nullptr, removeOnDidBecomeIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnSourceChangedListener", nullptr, addOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"removeOnSourceChangedListener", nullptr, removeOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr}
+        {"removeOnSourceChangedListener", nullptr, removeOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        // 观察者事件监听器 (Shader, Glyph, Sprite, Tile)
+        {"addOnPreCompileShaderListener", nullptr, addOnPreCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnPreCompileShaderListener", nullptr, removeOnPreCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnPostCompileShaderListener", nullptr, addOnPostCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnPostCompileShaderListener", nullptr, removeOnPostCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnShaderCompileFailedListener", nullptr, addOnShaderCompileFailedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnShaderCompileFailedListener", nullptr, removeOnShaderCompileFailedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        {"addOnGlyphsLoadedListener", nullptr, addOnGlyphsLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnGlyphsLoadedListener", nullptr, removeOnGlyphsLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnGlyphsErrorListener", nullptr, addOnGlyphsErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnGlyphsErrorListener", nullptr, removeOnGlyphsErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnGlyphsRequestedListener", nullptr, addOnGlyphsRequestedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnGlyphsRequestedListener", nullptr, removeOnGlyphsRequestedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        {"addOnSpriteLoadedListener", nullptr, addOnSpriteLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnSpriteLoadedListener", nullptr, removeOnSpriteLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnSpriteErrorListener", nullptr, addOnSpriteErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnSpriteErrorListener", nullptr, removeOnSpriteErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnSpriteRequestedListener", nullptr, addOnSpriteRequestedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnSpriteRequestedListener", nullptr, removeOnSpriteRequestedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
+        {"addOnTileActionListener", nullptr, addOnTileActionListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnTileActionListener", nullptr, removeOnTileActionListener, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
     // 定义类构造函数，并传入所有属性描述符
@@ -690,6 +718,16 @@ void NativeMapView::initializeRenderer() {
             Logger::error("NativeMapView", "Cannot get Map - HarmonyRenderer returned null");
             return;
         }
+        
+        // ✅ 新增: Map 对象创建完成，触发 onMapViewCreated 回调
+        // 此时 C++ Map 对象已创建，可以通知 ArkTS 层创建 MapLibreMap 并注册观察者
+        // 对齐 Android: 在样式加载前触发，允许用户注册监听器
+        if (callbackManager_) {
+            callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
+            Logger::info("NativeMapView", "✅ Triggered onMapViewCreated callback");
+        } else {
+            Logger::warn("NativeMapView", "⚠️ CallbackManager is null, cannot trigger onMapViewCreated");
+        }
     } else {
         Logger::warn("NativeMapView", "Cannot create Map - harmonyRenderer is null");
     }
@@ -728,6 +766,12 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         }
     }
     map = harmonyRenderer->getMap();
+    
+    // ✅ 自愈重建后也需要触发 onMapViewCreated 回调
+    if (map && callbackManager_) {
+        callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
+        Logger::info("NativeMapView", "✅ Triggered onMapViewCreated callback (after recovery)");
+    }
 }
 
 // ========== 本地字体配置方法（鸿蒙版本）==========

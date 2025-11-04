@@ -43,6 +43,23 @@ export interface SnapshotErrorHandler {
 }
 
 /**
+ * MapSnapshotter 观察者接口
+ * 用于监听快照器的状态变化
+ */
+export interface MapSnapshotterObserver {
+  /**
+   * 样式加载完成时调用
+   */
+  onDidFinishLoadingStyle(): void;
+
+  /**
+   * 样式图片缺失时调用
+   * @param imageName 缺失的图片名称
+   */
+  onStyleImageMissing(imageName: string): void;
+}
+
+/**
  * MapSnapshotter 类
  *
  * 使用示例：
@@ -81,6 +98,7 @@ export class MapSnapshotter {
   private nativeSnapshotter: MapSnapshotterNAPI | null = null;
   private options: SnapshotOptions;
   private cancelled: boolean = false;
+  private observer: MapSnapshotterObserver | null = null;
 
   /**
    * 构造函数
@@ -102,18 +120,36 @@ export class MapSnapshotter {
         localFontFamily: options.localFontFamily || ''
       };
 
+      // 如果提供了相机位置，转换为普通对象并添加到选项中
+      if (options.cameraPosition) {
+        const cameraObj: Record<string, ESObject> = napiOptions as Record<string, ESObject>;
+        const targetObj: Record<string, number> = {
+          'latitude': options.cameraPosition.target.latitude,
+          'longitude': options.cameraPosition.target.longitude
+        };
+        const cameraData: Record<string, ESObject> = {
+          'target': targetObj as ESObject,
+          'zoom': options.cameraPosition.zoom as ESObject,
+          'bearing': options.cameraPosition.bearing as ESObject,
+          'tilt': options.cameraPosition.tilt as ESObject
+        };
+        cameraObj['camera'] = cameraData as ESObject;
+      }
+
+      // 如果提供了区域，转换为普通对象并添加到选项中
+      if (options.region) {
+        const regionObj: Record<string, ESObject> = napiOptions as Record<string, ESObject>;
+        const regionData: Record<string, number> = {
+          'north': options.region.north,
+          'south': options.region.south,
+          'east': options.region.east,
+          'west': options.region.west
+        };
+        regionObj['region'] = regionData as ESObject;
+      }
+
       // 创建 native snapshotter
       this.nativeSnapshotter = maplibre.createMapSnapshotter(napiOptions);
-
-      // 设置相机位置（如果提供）
-      if (options.cameraPosition) {
-        this.setCameraPosition(options.cameraPosition);
-      }
-
-      // 设置区域（如果提供）
-      if (options.region) {
-        this.setRegion(options.region);
-      }
 
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to create snapshotter: ${error}`);
@@ -146,16 +182,22 @@ export class MapSnapshotter {
     }
 
     try {
-      // 调用 native start 方法
-      this.nativeSnapshotter.start((error: string | null, result: SnapshotResultNAPI | null) => {
-        if (error) {
-          hilog.error(DOMAIN, 'MapSnapshotter', `Snapshot error: ${error}`);
+      // 包装回调以处理单参数回调（ThreadSafeCallback 的限制）
+      // Native 层使用 ThreadSafeCallback 会传递单个参数：
+      // - 错误时传递 error 字符串
+      // - 成功时传递 result 对象
+      this.nativeSnapshotter.start((param: string | SnapshotResultNAPI | null) => {
+        // 判断参数类型
+        if (typeof param === 'string') {
+          // 错误：param 是错误消息字符串
+          hilog.error(DOMAIN, 'MapSnapshotter', `Snapshot error: ${param}`);
           if (errorHandler) {
-            errorHandler.onError(error);
+            errorHandler.onError(param);
           }
           return;
         }
 
+        const result = param as SnapshotResultNAPI | null;
         if (!result) {
           const errorMsg = 'No result returned from native snapshotter';
           hilog.error(DOMAIN, 'MapSnapshotter', errorMsg);
@@ -216,15 +258,36 @@ export class MapSnapshotter {
    */
   public setStyleUrl(styleUrl: string): void {
     if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
       return;
     }
 
     try {
       this.nativeSnapshotter.setStyleUrl(styleUrl);
       this.options.styleUrl = styleUrl;
+      hilog.info(DOMAIN, 'MapSnapshotter', `Style URL set: ${styleUrl}`);
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set style URL: ${error}`);
       throw new Error(`Failed to set style URL: ${error}`);
+    }
+  }
+
+  /**
+   * 设置样式 JSON
+   */
+  public setStyleJson(styleJson: string): void {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
+      return;
+    }
+
+    try {
+      this.nativeSnapshotter.setStyleJson(styleJson);
+      this.options.styleJson = styleJson;
+      hilog.info(DOMAIN, 'MapSnapshotter', 'Style JSON set');
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set style JSON: ${error}`);
+      throw new Error(`Failed to set style JSON: ${error}`);
     }
   }
 
@@ -240,12 +303,25 @@ export class MapSnapshotter {
    */
   public setCameraPosition(cameraPosition: CameraPosition): void {
     if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
       return;
     }
 
     try {
-      this.nativeSnapshotter.setCameraPosition(cameraPosition);
+      // 将 CameraPosition 转换为普通对象以传递给 native 代码
+      const targetObj: Record<string, number> = {
+        'latitude': cameraPosition.target.latitude,
+        'longitude': cameraPosition.target.longitude
+      };
+      const cameraData: Record<string, ESObject> = {
+        'target': targetObj as ESObject,
+        'zoom': cameraPosition.zoom as ESObject,
+        'bearing': cameraPosition.bearing as ESObject,
+        'tilt': cameraPosition.tilt as ESObject
+      };
+      this.nativeSnapshotter.setCameraPosition(cameraData as ESObject);
       this.options.cameraPosition = cameraPosition;
+      hilog.info(DOMAIN, 'MapSnapshotter', 'Camera position set');
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set camera position: ${error}`);
       throw new Error(`Failed to set camera position: ${error}`);
@@ -264,15 +340,74 @@ export class MapSnapshotter {
    */
   public setRegion(region: LatLngBounds): void {
     if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
       return;
     }
 
     try {
-      this.nativeSnapshotter.setRegion(region);
+      // 将 LatLngBounds 转换为普通对象
+      const regionData: Record<string, number> = {
+        'north': region.north,
+        'south': region.south,
+        'east': region.east,
+        'west': region.west
+      };
+      this.nativeSnapshotter.setRegion(regionData as ESObject);
       this.options.region = region;
+      hilog.info(DOMAIN, 'MapSnapshotter', 'Region set');
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set region: ${error}`);
       throw new Error(`Failed to set region: ${error}`);
+    }
+  }
+
+  /**
+   * 设置快照尺寸
+   */
+  public setSize(width: number, height: number): void {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
+      return;
+    }
+
+    try {
+      this.nativeSnapshotter.setSize(width, height);
+      this.options.size = { width, height };
+      hilog.info(DOMAIN, 'MapSnapshotter', `Size set: ${width}x${height}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set size: ${error}`);
+      throw new Error(`Failed to set size: ${error}`);
+    }
+  }
+
+  /**
+   * 设置观察者
+   * @param observer 观察者对象，传 null 可清除观察者
+   */
+  public setObserver(observer: MapSnapshotterObserver | null): void {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
+      return;
+    }
+
+    this.observer = observer;
+
+    try {
+      if (observer) {
+        // 将 observer 包装为 ESObject 传递给 native
+        const observerObj: Record<string, ESObject> = {
+          'onDidFinishLoadingStyle': observer.onDidFinishLoadingStyle as ESObject,
+          'onStyleImageMissing': observer.onStyleImageMissing as ESObject
+        };
+        this.nativeSnapshotter.setObserver(observerObj as ESObject);
+        hilog.info(DOMAIN, 'MapSnapshotter', 'Observer set');
+      } else {
+        this.nativeSnapshotter.setObserver(null);
+        hilog.info(DOMAIN, 'MapSnapshotter', 'Observer cleared');
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to set observer: ${error}`);
+      throw new Error(`Failed to set observer: ${error}`);
     }
   }
 

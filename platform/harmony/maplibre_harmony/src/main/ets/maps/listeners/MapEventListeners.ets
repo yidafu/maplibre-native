@@ -203,7 +203,7 @@ export interface OnSourceChangedListener {
    * 当数据源改变时调用
    * @param id 改变的数据源 ID
    */
-  onSourceChangedListener(id: string): void;
+  onSourceChanged(id: string): void;
 }
 
 /**

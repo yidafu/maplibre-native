@@ -15,10 +15,22 @@
 #include <string>
 #include <memory>
 
+using mbgl::harmony::ThreadSafeCallback;
+
 namespace mbgl {
 namespace harmony {
 
 using mbgl::harmony::napi::NapiArgs;
+
+// 前向声明
+napi_value SnapshotterStart(napi_env env, napi_callback_info info);
+napi_value SnapshotterCancel(napi_env env, napi_callback_info info);
+napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info);
+napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info);
+napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info);
+napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info);
+napi_value SnapshotterSetSize(napi_env env, napi_callback_info info);
+napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info);
 
 /**
  * MapSnapshotter 内部实例类
@@ -29,6 +41,10 @@ public:
     napi_env env;
     napi_ref callbackRef = nullptr;
     napi_ref errorCallbackRef = nullptr;
+    
+    // 使用 ThreadSafeCallback 替代 observerRef
+    std::unique_ptr<ThreadSafeCallback> onDidFinishLoadingStyleCallback;
+    std::unique_ptr<ThreadSafeCallback> onStyleImageMissingCallback;
 
     MapSnapshotterInstance(napi_env e) : env(e) {}
 
@@ -38,6 +54,25 @@ public:
         }
         if (errorCallbackRef) {
             napi_delete_reference(env, errorCallbackRef);
+        }
+        // ThreadSafeCallback 会在析构时自动释放
+    }
+    
+    /**
+     * 触发 onDidFinishLoadingStyle 回调（线程安全）
+     */
+    void triggerOnDidFinishLoadingStyle() {
+        if (onDidFinishLoadingStyleCallback && onDidFinishLoadingStyleCallback->IsValid()) {
+            onDidFinishLoadingStyleCallback->CallEmpty();
+        }
+    }
+    
+    /**
+     * 触发 onStyleImageMissing 回调（线程安全）
+     */
+    void triggerOnStyleImageMissing(const std::string& imageName) {
+        if (onStyleImageMissingCallback && onStyleImageMissingCallback->IsValid()) {
+            onStyleImageMissingCallback->CallWithString(imageName);
         }
     }
 };
@@ -134,6 +169,17 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         clientOptions
     );
     
+    // 设置 observer 回调，使 C++ 层能够触发 TypeScript 的 observer
+    snapshotterInstance->snapshotter->setObserverCallback(
+        [snapshotterInstance](const std::string& event, const std::string& data) {
+            if (event == "onDidFinishLoadingStyle") {
+                snapshotterInstance->triggerOnDidFinishLoadingStyle();
+            } else if (event == "onStyleImageMissing") {
+                snapshotterInstance->triggerOnStyleImageMissing(data);
+            }
+        }
+    );
+    
     // 创建 JavaScript 对象并关联 native 指针
     napi_value jsSnapshotter;
     napi_create_object(env, &jsSnapshotter);
@@ -144,6 +190,20 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                   delete static_cast<MapSnapshotterInstance*>(data);
               },
               nullptr, nullptr);
+    
+    // 为对象绑定方法
+    napi_property_descriptor methods[] = {
+        {"start", nullptr, SnapshotterStart, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"cancel", nullptr, SnapshotterCancel, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setStyleUrl", nullptr, SnapshotterSetStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setStyleJson", nullptr, SnapshotterSetStyleJson, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setCameraPosition", nullptr, SnapshotterSetCameraPosition, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setRegion", nullptr, SnapshotterSetRegion, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setSize", nullptr, SnapshotterSetSize, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setObserver", nullptr, SnapshotterSetObserver, nullptr, nullptr, nullptr, napi_default, nullptr}
+    };
+    
+    napi_define_properties(env, jsSnapshotter, sizeof(methods) / sizeof(methods[0]), methods);
     
     Logger::info("SnapshotterNAPI", "MapSnapshotter created: %dx%d @ %.2fx",
                  options.width, options.height, options.pixelRatio);
@@ -171,28 +231,30 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 保存回调函数引用
+    // 创建线程安全回调
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) return args.Undefined();
-    napi_create_reference(env, callback, 1, &snapshotterInstance->callbackRef);
+    
+    auto threadSafeCallback = ThreadSafeCallback::Create(env, callback, "SnapshotterCallback");
+    if (!threadSafeCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
 
     Logger::info("SnapshotterNAPI", "Starting snapshot");
 
+    // 使用 shared_ptr 确保回调在异步操作完成前不被释放
+    auto sharedCallback = std::shared_ptr<ThreadSafeCallback>(std::move(threadSafeCallback));
+
     // 调用 C++ snapshot 方法
     snapshotterInstance->snapshotter->snapshot(
-        [env, callbackRef = snapshotterInstance->callbackRef](
+        [sharedCallback](
             std::exception_ptr err,
             mbgl::PremultipliedImage image,
             std::vector<std::string> attributions
         ) {
-            // 在主线程上调用回调
+            // 使用 ThreadSafeCallback 安全地调用到主线程
             Logger::info("SnapshotterNAPI", "Snapshot callback triggered");
-            
-            napi_value callback;
-            napi_get_reference_value(env, callbackRef, &callback);
-            
-            napi_value global;
-            napi_get_global(env, &global);
             
             if (err) {
                 // 发生错误
@@ -201,66 +263,67 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
                 } catch (const std::exception& e) {
                     Logger::error("SnapshotterNAPI", "Snapshot error: %s", e.what());
                     
-                    // 调用 callback(error, null)
-                    napi_value argv[2];
-                    napi_create_string_utf8(env, e.what(), NAPI_AUTO_LENGTH, &argv[0]);
-                    napi_get_null(env, &argv[1]);
-                    
-                    napi_value result;
-                    napi_call_function(env, global, callback, 2, argv, &result);
+                    std::string errorMsg = e.what();
+                    // 使用 ThreadSafeCallback，在 lambda 中获取实际回调并调用
+                    // ThreadSafeCallback 只是用来调度到主线程，实际调用由我们控制
+                    sharedCallback->CallWithString(errorMsg);
                 }
             } else {
-                // 成功
-                Logger::info("SnapshotterNAPI", "Snapshot success: %dx%d, %d bytes",
+                // 成功 - 移动图像数据到堆上以便在线程安全回调中使用
+                Logger::info("SnapshotterNAPI", "Snapshot success: %dx%d, %zu bytes",
                              image.size.width, image.size.height, image.bytes());
                 
-                // 创建 ArrayBuffer 包含图像数据
-                void* data;
-                napi_value arrayBuffer;
-                size_t byteLength = image.bytes();
-                napi_create_arraybuffer(env, byteLength, &data, &arrayBuffer);
+                // 将图像数据复制到 shared_ptr（自动管理内存）
+                auto imageData = std::make_shared<std::vector<uint8_t>>(
+                    image.data.get(), 
+                    image.data.get() + image.bytes()
+                );
+                uint32_t width = image.size.width;
+                uint32_t height = image.size.height;
+                auto attrs = std::make_shared<std::vector<std::string>>(std::move(attributions));
                 
-                // 复制图像数据
-                std::memcpy(data, image.data.get(), byteLength);
-                
-                // 创建结果对象
-                napi_value resultObj;
-                napi_create_object(env, &resultObj);
-                
-                // 设置属性
-                napi_value widthVal, heightVal;
-                napi_create_uint32(env, image.size.width, &widthVal);
-                napi_create_uint32(env, image.size.height, &heightVal);
-                
-                napi_set_named_property(env, resultObj, "data", arrayBuffer);
-                napi_set_named_property(env, resultObj, "width", widthVal);
-                napi_set_named_property(env, resultObj, "height", heightVal);
-                
-                // 添加 attributions
-                if (!attributions.empty()) {
-                    napi_value attributionsArray;
-                    napi_create_array_with_length(env, attributions.size(), &attributionsArray);
+                // 使用 ThreadSafeCallback 在主线程创建 JavaScript 对象
+                sharedCallback->Call([imageData, width, height, attrs](napi_env env) -> napi_value {
+                    // 创建 ArrayBuffer 包含图像数据
+                    void* data;
+                    napi_value arrayBuffer;
+                    size_t byteLength = imageData->size();
+                    napi_create_arraybuffer(env, byteLength, &data, &arrayBuffer);
                     
-                    for (size_t i = 0; i < attributions.size(); i++) {
-                        napi_value attrValue;
-                        napi_create_string_utf8(env, attributions[i].c_str(), NAPI_AUTO_LENGTH, &attrValue);
-                        napi_set_element(env, attributionsArray, i, attrValue);
+                    // 复制图像数据
+                    std::memcpy(data, imageData->data(), byteLength);
+                    
+                    // 创建结果对象
+                    napi_value resultObj;
+                    napi_create_object(env, &resultObj);
+                    
+                    // 设置属性
+                    napi_value widthVal, heightVal;
+                    napi_create_uint32(env, width, &widthVal);
+                    napi_create_uint32(env, height, &heightVal);
+                    
+                    napi_set_named_property(env, resultObj, "data", arrayBuffer);
+                    napi_set_named_property(env, resultObj, "width", widthVal);
+                    napi_set_named_property(env, resultObj, "height", heightVal);
+                    
+                    // 添加 attributions
+                    if (!attrs->empty()) {
+                        napi_value attributionsArray;
+                        napi_create_array_with_length(env, attrs->size(), &attributionsArray);
+                        
+                        for (size_t i = 0; i < attrs->size(); i++) {
+                            napi_value attrValue;
+                            napi_create_string_utf8(env, (*attrs)[i].c_str(), NAPI_AUTO_LENGTH, &attrValue);
+                            napi_set_element(env, attributionsArray, i, attrValue);
+                        }
+                        
+                        napi_set_named_property(env, resultObj, "attributions", attributionsArray);
                     }
                     
-                    napi_set_named_property(env, resultObj, "attributions", attributionsArray);
-                }
-                
-                // 调用 callback(null, result)
-                napi_value argv[2];
-                napi_get_null(env, &argv[0]);
-                argv[1] = resultObj;
-                
-                napi_value result;
-                napi_call_function(env, global, callback, 2, argv, &result);
+                    // 返回结果对象（会作为回调的单个参数传入）
+                    return resultObj;
+                });
             }
-            
-            // 清理回调引用
-            napi_delete_reference(env, callbackRef);
         }
     );
 
@@ -355,6 +418,152 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     
     snapshotterInstance->snapshotter->setCameraOptions(camera);
     Logger::info("SnapshotterNAPI", "Camera position set");
+
+    return nullptr;
+}
+
+/**
+ * 设置样式 JSON
+ */
+napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        napi_throw_error(env, nullptr, "Snapshotter not initialized");
+        return nullptr;
+    }
+
+    // 解析 styleJson
+    std::string styleJson = args.GetString(0, "styleJson");
+    if (args.HasError()) return args.Undefined();
+    
+    snapshotterInstance->snapshotter->setStyleJSON(styleJson);
+    Logger::info("SnapshotterNAPI", "Style JSON set");
+
+    return nullptr;
+}
+
+/**
+ * 设置区域边界
+ */
+napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        napi_throw_error(env, nullptr, "Snapshotter not initialized");
+        return nullptr;
+    }
+
+    // 解析 LatLngBounds
+    napi_value regionObj = args.GetObject(0, "region");
+    if (args.HasError()) return args.Undefined();
+    
+    double north = args.GetDoubleProperty(regionObj, "north", 0.0);
+    double south = args.GetDoubleProperty(regionObj, "south", 0.0);
+    double east = args.GetDoubleProperty(regionObj, "east", 0.0);
+    double west = args.GetDoubleProperty(regionObj, "west", 0.0);
+    
+    mbgl::LatLngBounds bounds = mbgl::LatLngBounds::hull(
+        mbgl::LatLng(north, east),
+        mbgl::LatLng(south, west)
+    );
+    
+    snapshotterInstance->snapshotter->setRegion(bounds);
+    Logger::info("SnapshotterNAPI", "Region set");
+
+    return nullptr;
+}
+
+/**
+ * 设置快照尺寸
+ */
+napi_value SnapshotterSetSize(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        napi_throw_error(env, nullptr, "Snapshotter not initialized");
+        return nullptr;
+    }
+
+    // 解析 width 和 height
+    uint32_t width = static_cast<uint32_t>(args.GetInt64(0, "width"));
+    uint32_t height = static_cast<uint32_t>(args.GetInt64(1, "height"));
+    if (args.HasError()) return args.Undefined();
+    
+    snapshotterInstance->snapshotter->setSize({width, height});
+    Logger::info("SnapshotterNAPI", "Size set to %ux%u", width, height);
+
+    return nullptr;
+}
+
+/**
+ * 设置观察者
+ */
+napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        napi_throw_error(env, nullptr, "Snapshotter not initialized");
+        return nullptr;
+    }
+
+    // 清除旧的 callbacks
+    snapshotterInstance->onDidFinishLoadingStyleCallback.reset();
+    snapshotterInstance->onStyleImageMissingCallback.reset();
+
+    // 获取 observer 对象
+    napi_value argv[1];
+    size_t argc = 1;
+    napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+    napi_value observer = argv[0];
+    
+    // 检查是否为 null（允许传 null 来清除 observer）
+    napi_valuetype valueType;
+    napi_typeof(env, observer, &valueType);
+    
+    if (valueType != napi_null && valueType != napi_undefined) {
+        // 从 observer 对象中提取两个方法
+        napi_value onDidFinishLoadingStyleMethod;
+        napi_value onStyleImageMissingMethod;
+        
+        if (napi_get_named_property(env, observer, "onDidFinishLoadingStyle", &onDidFinishLoadingStyleMethod) == napi_ok) {
+            snapshotterInstance->onDidFinishLoadingStyleCallback = 
+                ThreadSafeCallback::Create(env, onDidFinishLoadingStyleMethod, "SnapshotterOnDidFinishLoadingStyle");
+        }
+        
+        if (napi_get_named_property(env, observer, "onStyleImageMissing", &onStyleImageMissingMethod) == napi_ok) {
+            snapshotterInstance->onStyleImageMissingCallback = 
+                ThreadSafeCallback::Create(env, onStyleImageMissingMethod, "SnapshotterOnStyleImageMissing");
+        }
+        
+        Logger::info("SnapshotterNAPI", "Observer set with ThreadSafeCallback");
+    } else {
+        Logger::info("SnapshotterNAPI", "Observer cleared");
+    }
 
     return nullptr;
 }

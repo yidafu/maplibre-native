@@ -35,7 +35,40 @@ public:
     void setNativeMapView(NativeMapView* nativeMapView) { nativeMapView_ = nativeMapView; }
     
     // ✅ MapObserver 方法 - 转发给 NativeMapView
+    void onCameraWillChange(CameraChangeMode mode) override;
+    void onCameraIsChanging() override;
+    void onCameraDidChange(CameraChangeMode mode) override;
+    void onWillStartLoadingMap() override;
+    void onDidFinishLoadingMap() override;
+    void onDidFailLoadingMap(MapLoadError error, const std::string& message) override;
+    void onWillStartRenderingFrame() override;
+    void onDidFinishRenderingFrame(const RenderFrameStatus& status) override;
+    void onWillStartRenderingMap() override;
+    void onDidFinishRenderingMap(RenderMode mode) override;
     void onDidFinishLoadingStyle() override;
+    void onSourceChanged(style::Source& source) override;
+    void onDidBecomeIdle() override;
+    void onStyleImageMissing(const std::string& id) override;
+    bool onCanRemoveUnusedStyleImage(const std::string& id) override;
+    void onRegisterShaders(gfx::ShaderRegistry& registry) override;
+    
+    // Shader 编译事件
+    void onPreCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) override;
+    void onPostCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) override;
+    void onShaderCompileFailed(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) override;
+    
+    // Glyph 加载事件
+    void onGlyphsLoaded(const FontStack& stack, const GlyphRange& range) override;
+    void onGlyphsError(const FontStack& stack, const GlyphRange& range, std::exception_ptr error) override;
+    void onGlyphsRequested(const FontStack& stack, const GlyphRange& range) override;
+    
+    // Sprite 加载事件
+    void onSpriteLoaded(const std::optional<style::Sprite>& sprite) override;
+    void onSpriteError(const std::optional<style::Sprite>& sprite, std::exception_ptr error) override;
+    void onSpriteRequested(const std::optional<style::Sprite>& sprite) override;
+    
+    // Tile 操作事件
+    void onTileAction(TileOperation operation, const OverscaledTileID& tileID, const std::string& sourceID) override;
     
     // 初始化渲染器
     void initialize(int width, int height, float pixelRatio = 1.0f, const std::string& cachePath = "", 

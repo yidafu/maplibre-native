@@ -4,7 +4,7 @@
  * 导出快照相关的类和接口
  */
 
-export { MapSnapshotter, SnapshotReadyCallback, SnapshotErrorHandler } from './MapSnapshotter';
+export { MapSnapshotter, SnapshotReadyCallback, SnapshotErrorHandler, MapSnapshotterObserver } from './MapSnapshotter';
 
 export { MapSnapshot } from './MapSnapshot';
 

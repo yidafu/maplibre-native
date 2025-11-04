@@ -283,7 +283,8 @@ export {
   SnapshotOptionsBuilder,
   Size,
   SnapshotReadyCallback,
-  SnapshotErrorHandler
+  SnapshotErrorHandler,
+  MapSnapshotterObserver
 } from './snapshot';
 
 // ========== 位置组件 ==========

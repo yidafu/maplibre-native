@@ -307,12 +307,171 @@ void HarmonyRenderer::cleanup() {
 }
 
 // ✅ MapObserver 方法实现 - 转发给 NativeMapView
+
+void HarmonyRenderer::onCameraWillChange(CameraChangeMode mode) {
+    if (nativeMapView_) {
+        nativeMapView_->onCameraWillChange(mode);
+    }
+}
+
+void HarmonyRenderer::onCameraIsChanging() {
+    if (nativeMapView_) {
+        nativeMapView_->onCameraIsChanging();
+    }
+}
+
+void HarmonyRenderer::onCameraDidChange(CameraChangeMode mode) {
+    if (nativeMapView_) {
+        nativeMapView_->onCameraDidChange(mode);
+    }
+}
+
+void HarmonyRenderer::onWillStartLoadingMap() {
+    if (nativeMapView_) {
+        nativeMapView_->onWillStartLoadingMap();
+    }
+}
+
+void HarmonyRenderer::onDidFinishLoadingMap() {
+    if (nativeMapView_) {
+        nativeMapView_->onDidFinishLoadingMap();
+    }
+}
+
+void HarmonyRenderer::onDidFailLoadingMap(MapLoadError error, const std::string& message) {
+    if (nativeMapView_) {
+        nativeMapView_->onDidFailLoadingMap(error, message);
+    }
+}
+
+void HarmonyRenderer::onWillStartRenderingFrame() {
+    if (nativeMapView_) {
+        nativeMapView_->onWillStartRenderingFrame();
+    }
+}
+
+void HarmonyRenderer::onDidFinishRenderingFrame(const RenderFrameStatus& status) {
+    if (nativeMapView_) {
+        nativeMapView_->onDidFinishRenderingFrame(status);
+    }
+}
+
+void HarmonyRenderer::onWillStartRenderingMap() {
+    if (nativeMapView_) {
+        nativeMapView_->onWillStartRenderingMap();
+    }
+}
+
+void HarmonyRenderer::onDidFinishRenderingMap(RenderMode mode) {
+    if (nativeMapView_) {
+        nativeMapView_->onDidFinishRenderingMap(mode);
+    }
+}
+
 void HarmonyRenderer::onDidFinishLoadingStyle() {
     Logger::info("HarmonyRenderer", "🎨 onDidFinishLoadingStyle - forwarding to NativeMapView");
     if (nativeMapView_) {
         nativeMapView_->onDidFinishLoadingStyle();
     } else {
         Logger::warn("HarmonyRenderer", "⚠️ onDidFinishLoadingStyle: nativeMapView_ is null");
+    }
+}
+
+void HarmonyRenderer::onSourceChanged(style::Source& source) {
+    if (nativeMapView_) {
+        nativeMapView_->onSourceChanged(source);
+    }
+}
+
+void HarmonyRenderer::onDidBecomeIdle() {
+    if (nativeMapView_) {
+        nativeMapView_->onDidBecomeIdle();
+    }
+}
+
+void HarmonyRenderer::onStyleImageMissing(const std::string& id) {
+    if (nativeMapView_) {
+        nativeMapView_->onStyleImageMissing(id);
+    }
+}
+
+bool HarmonyRenderer::onCanRemoveUnusedStyleImage(const std::string& id) {
+    if (nativeMapView_) {
+        return nativeMapView_->onCanRemoveUnusedStyleImage(id);
+    }
+    return true;
+}
+
+void HarmonyRenderer::onRegisterShaders(gfx::ShaderRegistry& registry) {
+    if (nativeMapView_) {
+        nativeMapView_->onRegisterShaders(registry);
+    }
+}
+
+// Shader 编译事件
+void HarmonyRenderer::onPreCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) {
+    Logger::info("HarmonyRenderer", "🔧 onPreCompileShader - forwarding to NativeMapView");
+    if (nativeMapView_) {
+        nativeMapView_->onPreCompileShader(shader, backend, source);
+    }
+}
+
+void HarmonyRenderer::onPostCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) {
+    if (nativeMapView_) {
+        nativeMapView_->onPostCompileShader(shader, backend, source);
+    }
+}
+
+void HarmonyRenderer::onShaderCompileFailed(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) {
+    if (nativeMapView_) {
+        nativeMapView_->onShaderCompileFailed(shader, backend, source);
+    }
+}
+
+// Glyph 加载事件
+void HarmonyRenderer::onGlyphsLoaded(const FontStack& stack, const GlyphRange& range) {
+    if (nativeMapView_) {
+        nativeMapView_->onGlyphsLoaded(stack, range);
+    }
+}
+
+void HarmonyRenderer::onGlyphsError(const FontStack& stack, const GlyphRange& range, std::exception_ptr error) {
+    if (nativeMapView_) {
+        nativeMapView_->onGlyphsError(stack, range, error);
+    }
+}
+
+void HarmonyRenderer::onGlyphsRequested(const FontStack& stack, const GlyphRange& range) {
+    Logger::info("HarmonyRenderer", "📝 onGlyphsRequested - forwarding to NativeMapView");
+    if (nativeMapView_) {
+        nativeMapView_->onGlyphsRequested(stack, range);
+    }
+}
+
+// Sprite 加载事件
+void HarmonyRenderer::onSpriteLoaded(const std::optional<style::Sprite>& sprite) {
+    if (nativeMapView_) {
+        nativeMapView_->onSpriteLoaded(sprite);
+    }
+}
+
+void HarmonyRenderer::onSpriteError(const std::optional<style::Sprite>& sprite, std::exception_ptr error) {
+    if (nativeMapView_) {
+        nativeMapView_->onSpriteError(sprite, error);
+    }
+}
+
+void HarmonyRenderer::onSpriteRequested(const std::optional<style::Sprite>& sprite) {
+    Logger::info("HarmonyRenderer", "🎨 onSpriteRequested - forwarding to NativeMapView");
+    if (nativeMapView_) {
+        nativeMapView_->onSpriteRequested(sprite);
+    }
+}
+
+// Tile 操作事件
+void HarmonyRenderer::onTileAction(TileOperation operation, const OverscaledTileID& tileID, const std::string& sourceID) {
+    if (nativeMapView_) {
+        nativeMapView_->onTileAction(operation, tileID, sourceID);
     }
 }
 

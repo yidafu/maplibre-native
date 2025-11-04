@@ -158,17 +158,27 @@ void MapSnapshotterHarmony::cancel() {
 
 void MapSnapshotterHarmony::onDidFailLoadingStyle(const std::string& error) {
     Logger::error("MapSnapshotterHarmony", "Failed loading style: %s", error.c_str());
-    // TODO: 通知 NAPI 层
+    if (observerCallback_) {
+        observerCallback_("onDidFailLoadingStyle", error);
+    }
 }
 
 void MapSnapshotterHarmony::onDidFinishLoadingStyle() {
     Logger::info("MapSnapshotterHarmony", "Finished loading style");
-    // TODO: 通知 NAPI 层
+    if (observerCallback_) {
+        observerCallback_("onDidFinishLoadingStyle", "");
+    }
 }
 
 void MapSnapshotterHarmony::onStyleImageMissing(const std::string& imageName) {
     Logger::warn("MapSnapshotterHarmony", "Style image missing: %s", imageName.c_str());
-    // TODO: 通知 NAPI 层
+    if (observerCallback_) {
+        observerCallback_("onStyleImageMissing", imageName);
+    }
+}
+
+void MapSnapshotterHarmony::setObserverCallback(ObserverCallback callback) {
+    observerCallback_ = callback;
 }
 
 } // namespace harmony

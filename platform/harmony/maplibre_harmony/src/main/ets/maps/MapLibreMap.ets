@@ -55,6 +55,18 @@ import { Marker } from './annotations/Marker';
 import { Style } from './style/Style';
 import { RenderingRefreshMode } from './types/NativeTypes';
 import { OnFpsChangedListener } from './listeners/OnFpsChangedListener';
+import {
+  OnPreCompileShaderListener,
+  OnPostCompileShaderListener,
+  OnShaderCompileFailedListener,
+  OnGlyphsRequestedListener,
+  OnGlyphsLoadedListener,
+  OnGlyphsErrorListener,
+  OnSpriteRequestedListener,
+  OnSpriteLoadedListener,
+  OnSpriteErrorListener,
+  OnTileActionListener
+} from './listeners/MapEventListeners';
 
 /**
  * 操作队列项类型
@@ -3083,6 +3095,280 @@ export class MapLibreMap {
     } catch (error) {
       console.error('MapLibreMap', `setOnFpsChangedListener failed: ${error.message}`);
     }
+  }
+
+  // ========== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) ==========
+  
+  /**
+   * 添加着色器编译前监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnPreCompileShaderListener(listener: OnPreCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
+    if (this.destroyed) return;
+    
+    // 如果是接口实现，转换为回调函数
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (shaderId: number, backendType: number, defines: string) => (listener as OnPreCompileShaderListener).onPreCompileShader(shaderId, backendType, defines);
+    
+    this.nativeMapView.addOnPreCompileShaderListener(callback);
+  }
+  
+  /**
+   * 移除着色器编译前监听器
+   */
+  public removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
+    if (this.destroyed) return;
+    
+    // 如果是接口实现，转换为回调函数
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (shaderId: number, backendType: number, defines: string) => (listener as OnPreCompileShaderListener).onPreCompileShader(shaderId, backendType, defines);
+    
+    this.nativeMapView.removeOnPreCompileShaderListener(callback);
+  }
+  
+  /**
+   * 添加着色器编译后监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnPostCompileShaderListener(listener: OnPostCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (shaderId: number, backendType: number, defines: string) => (listener as OnPostCompileShaderListener).onPostCompileShader(shaderId, backendType, defines);
+    
+    this.nativeMapView.addOnPostCompileShaderListener(callback);
+  }
+  
+  /**
+   * 移除着色器编译后监听器
+   */
+  public removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (shaderId: number, backendType: number, defines: string) => (listener as OnPostCompileShaderListener).onPostCompileShader(shaderId, backendType, defines);
+    
+    this.nativeMapView.removeOnPostCompileShaderListener(callback);
+  }
+  
+  /**
+   * 添加着色器编译失败监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (shaderId: number, backendType: number, defines: string) => (listener as OnShaderCompileFailedListener).onShaderCompileFailed(shaderId, backendType, defines);
+    
+    this.nativeMapView.addOnShaderCompileFailedListener(callback);
+  }
+  
+  /**
+   * 移除着色器编译失败监听器
+   */
+  public removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (shaderId: number, backendType: number, defines: string) => (listener as OnShaderCompileFailedListener).onShaderCompileFailed(shaderId, backendType, defines);
+    
+    this.nativeMapView.removeOnShaderCompileFailedListener(callback);
+  }
+  
+  /**
+   * 添加字形请求监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsRequestedListener).onGlyphsRequested(fontStack, rangeStart, rangeEnd);
+    
+    this.nativeMapView.addOnGlyphsRequestedListener(callback);
+  }
+  
+  /**
+   * 移除字形请求监听器
+   */
+  public removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsRequestedListener).onGlyphsRequested(fontStack, rangeStart, rangeEnd);
+    
+    this.nativeMapView.removeOnGlyphsRequestedListener(callback);
+  }
+  
+  /**
+   * 添加字形加载完成监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsLoadedListener).onGlyphsLoaded(fontStack, rangeStart, rangeEnd);
+    
+    this.nativeMapView.addOnGlyphsLoadedListener(callback);
+  }
+  
+  /**
+   * 移除字形加载完成监听器
+   */
+  public removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsLoadedListener).onGlyphsLoaded(fontStack, rangeStart, rangeEnd);
+    
+    this.nativeMapView.removeOnGlyphsLoadedListener(callback);
+  }
+  
+  /**
+   * 添加字形加载错误监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnGlyphsErrorListener(listener: OnGlyphsErrorListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsErrorListener).onGlyphsError(fontStack, rangeStart, rangeEnd);
+    
+    this.nativeMapView.addOnGlyphsErrorListener(callback);
+  }
+  
+  /**
+   * 移除字形加载错误监听器
+   */
+  public removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsErrorListener).onGlyphsError(fontStack, rangeStart, rangeEnd);
+    
+    this.nativeMapView.removeOnGlyphsErrorListener(callback);
+  }
+  
+  /**
+   * 添加 Sprite 请求监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnSpriteRequestedListener(listener: OnSpriteRequestedListener | ((spriteId: string, url: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (spriteId: string, url: string) => (listener as OnSpriteRequestedListener).onSpriteRequested(spriteId, url);
+    
+    this.nativeMapView.addOnSpriteRequestedListener(callback);
+  }
+  
+  /**
+   * 移除 Sprite 请求监听器
+   */
+  public removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener | ((spriteId: string, url: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (spriteId: string, url: string) => (listener as OnSpriteRequestedListener).onSpriteRequested(spriteId, url);
+    
+    this.nativeMapView.removeOnSpriteRequestedListener(callback);
+  }
+  
+  /**
+   * 添加 Sprite 加载完成监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnSpriteLoadedListener(listener: OnSpriteLoadedListener | ((spriteId: string, url: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (spriteId: string, url: string) => (listener as OnSpriteLoadedListener).onSpriteLoaded(spriteId, url);
+    
+    this.nativeMapView.addOnSpriteLoadedListener(callback);
+  }
+  
+  /**
+   * 移除 Sprite 加载完成监听器
+   */
+  public removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener | ((spriteId: string, url: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (spriteId: string, url: string) => (listener as OnSpriteLoadedListener).onSpriteLoaded(spriteId, url);
+    
+    this.nativeMapView.removeOnSpriteLoadedListener(callback);
+  }
+  
+  /**
+   * 添加 Sprite 加载错误监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnSpriteErrorListener(listener: OnSpriteErrorListener | ((spriteId: string, url: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (spriteId: string, url: string) => (listener as OnSpriteErrorListener).onSpriteError(spriteId, url);
+    
+    this.nativeMapView.addOnSpriteErrorListener(callback);
+  }
+  
+  /**
+   * 移除 Sprite 加载错误监听器
+   */
+  public removeOnSpriteErrorListener(listener: OnSpriteErrorListener | ((spriteId: string, url: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (spriteId: string, url: string) => (listener as OnSpriteErrorListener).onSpriteError(spriteId, url);
+    
+    this.nativeMapView.removeOnSpriteErrorListener(callback);
+  }
+  
+  /**
+   * 添加瓦片操作监听器
+   * @param listener 监听器对象或回调函数
+   */
+  public addOnTileActionListener(listener: OnTileActionListener | ((operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => (listener as OnTileActionListener).onTileAction(operation, x, y, z, wrap, overscaledZ, sourceId);
+    
+    this.nativeMapView.addOnTileActionListener(callback);
+  }
+  
+  /**
+   * 移除瓦片操作监听器
+   */
+  public removeOnTileActionListener(listener: OnTileActionListener | ((operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void)): void {
+    if (this.destroyed) return;
+    
+    const callback = typeof listener === 'function' 
+      ? listener 
+      : (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => (listener as OnTileActionListener).onTileAction(operation, x, y, z, wrap, overscaledZ, sourceId);
+    
+    this.nativeMapView.removeOnTileActionListener(callback);
   }
 
   /**

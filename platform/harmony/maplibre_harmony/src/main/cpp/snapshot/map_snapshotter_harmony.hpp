@@ -146,11 +146,18 @@ public:
     void onDidFinishLoadingStyle() override;
     void onStyleImageMissing(const std::string& imageName) override;
 
+    /**
+     * 设置 observer 回调
+     */
+    using ObserverCallback = std::function<void(const std::string& event, const std::string& data)>;
+    void setObserverCallback(ObserverCallback callback);
+
 private:
     std::unique_ptr<mbgl::MapSnapshotter> snapshotter_;
     float pixelRatio_;
     bool showLogo_;
     SnapshotOptions options_;
+    ObserverCallback observerCallback_;
 };
 
 } // namespace harmony

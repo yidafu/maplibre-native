@@ -1000,6 +1000,18 @@ export class NativeMapView {
    */
   setOnFpsChangedListener(listener: ((fps: number) => void) | null): void;
 
+  // ========== Map Lifecycle Listeners ==========
+
+  /**
+   * 设置 Map 创建完成回调（对齐 Android onMapViewReady）
+   * 
+   * 此回调在 C++ Map 对象创建完成后、样式加载前触发
+   * 用于在样式加载前注册观察者监听器
+   * 
+   * @param callback 回调函数，当 C++ Map 创建完成时触发，传入 null 则移除监听器
+   */
+  setOnMapViewCreatedCallback(callback: (() => void) | null): void;
+
   /**
    * 设置样式加载完成监听器
    * @param callback 回调函数，当样式加载完成时触发
@@ -1182,6 +1194,88 @@ export class NativeMapView {
   addOnSourceChangedListener(callback: (id: string) => void): void;
 
   removeOnSourceChangedListener(callback: (id: string) => void): void;
+
+  // ========== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) ==========
+  
+  /**
+   * 添加着色器编译前监听器
+   * @param callback 回调函数，参数为 (shaderId, backendType, defines)
+   */
+  addOnPreCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
+  
+  removeOnPreCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
+  
+  /**
+   * 添加着色器编译后监听器
+   * @param callback 回调函数，参数为 (shaderId, backendType, defines)
+   */
+  addOnPostCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
+  
+  removeOnPostCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
+  
+  /**
+   * 添加着色器编译失败监听器
+   * @param callback 回调函数，参数为 (shaderId, backendType, defines)
+   */
+  addOnShaderCompileFailedListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
+  
+  removeOnShaderCompileFailedListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
+  
+  /**
+   * 添加字形加载完成监听器
+   * @param callback 回调函数，参数为 (fontStack, rangeStart, rangeEnd)
+   */
+  addOnGlyphsLoadedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
+  
+  removeOnGlyphsLoadedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
+  
+  /**
+   * 添加字形加载错误监听器
+   * @param callback 回调函数，参数为 (fontStack, rangeStart, rangeEnd)
+   */
+  addOnGlyphsErrorListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
+  
+  removeOnGlyphsErrorListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
+  
+  /**
+   * 添加字形请求监听器
+   * @param callback 回调函数，参数为 (fontStack, rangeStart, rangeEnd)
+   */
+  addOnGlyphsRequestedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
+  
+  removeOnGlyphsRequestedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
+  
+  /**
+   * 添加 Sprite 加载完成监听器
+   * @param callback 回调函数，参数为 (spriteId, url)
+   */
+  addOnSpriteLoadedListener(callback: (spriteId: string, url: string) => void): void;
+  
+  removeOnSpriteLoadedListener(callback: (spriteId: string, url: string) => void): void;
+  
+  /**
+   * 添加 Sprite 加载错误监听器
+   * @param callback 回调函数，参数为 (spriteId, url)
+   */
+  addOnSpriteErrorListener(callback: (spriteId: string, url: string) => void): void;
+  
+  removeOnSpriteErrorListener(callback: (spriteId: string, url: string) => void): void;
+  
+  /**
+   * 添加 Sprite 请求监听器
+   * @param callback 回调函数，参数为 (spriteId, url)
+   */
+  addOnSpriteRequestedListener(callback: (spriteId: string, url: string) => void): void;
+  
+  removeOnSpriteRequestedListener(callback: (spriteId: string, url: string) => void): void;
+  
+  /**
+   * 添加瓦片操作监听器
+   * @param callback 回调函数，参数为 (operation, x, y, z, wrap, overscaledZ, sourceId)
+   */
+  addOnTileActionListener(callback: (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void): void;
+  
+  removeOnTileActionListener(callback: (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void): void;
 }
 
 // ==================== MapSnapshotter API ====================
@@ -1230,14 +1324,39 @@ export interface SnapshotResultNAPI {
 }
 
 /**
+ * 相机位置对象（用于 NAPI 传递）
+ */
+export interface CameraPositionLike {
+  target: {
+    latitude: number;
+    longitude: number;
+  };
+  zoom: number;
+  bearing: number;
+  tilt: number;
+}
+
+/**
+ * 边界对象（用于 NAPI 传递）
+ */
+export interface LatLngBoundsLike {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+/**
  * MapSnapshotter NAPI 对象
  */
 export interface MapSnapshotterNAPI {
   /**
    * 开始生成快照
-   * @param callback 回调函数 (error, result)
+   * @param callback 回调函数，接收单个参数：
+   *                 - 错误时为 string（错误消息）
+   *                 - 成功时为 SnapshotResultNAPI（结果对象）
    */
-  start(callback: (error: string | null, result: SnapshotResultNAPI | null) => void): void;
+  start(callback: (param: string | SnapshotResultNAPI | null) => void): void;
 
   /**
    * 取消快照生成
@@ -1251,16 +1370,35 @@ export interface MapSnapshotterNAPI {
   setStyleUrl(styleUrl: string): void;
 
   /**
-   * 设置相机位置
-   * @param position 相机位置对象
+   * 设置样式 JSON
+   * @param styleJson 样式 JSON 字符串
    */
-  setCameraPosition(position: CameraPosition): void;
+  setStyleJson(styleJson: string): void;
+
+  /**
+   * 设置相机位置
+   * @param position 相机位置对象（普通对象，非类实例）
+   */
+  setCameraPosition(position: Record<string, ESObject>): void;
 
   /**
    * 设置区域边界
-   * @param bounds 边界对象
+   * @param bounds 边界对象（普通对象，非类实例）
    */
-  setRegion(bounds: LatLngBounds): void;
+  setRegion(bounds: Record<string, ESObject>): void;
+
+  /**
+   * 设置快照尺寸
+   * @param width 宽度
+   * @param height 高度
+   */
+  setSize(width: number, height: number): void;
+
+  /**
+   * 设置观察者
+   * @param observer 观察者对象，传 null 可清除观察者
+   */
+  setObserver(observer: Record<string, ESObject> | null): void;
 }
 
 /**

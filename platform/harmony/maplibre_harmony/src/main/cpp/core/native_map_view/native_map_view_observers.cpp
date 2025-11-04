@@ -1023,6 +1023,22 @@ void NativeMapView::onRegisterShaders(mbgl::gfx::ShaderRegistry&) {
 void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
     Logger::info("NativeMapView", "onPreCompileShader: shader=%d, backend=%d, source_length=%zu", 
                  static_cast<int>(shader), static_cast<int>(backend), source.length());
+    
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        int shaderId = static_cast<int>(shader);
+        int backendType = static_cast<int>(backend);
+        std::string defines = source; // 复制避免引用失效
+        
+        callbackManager_->InvokeCallback("onPreCompileShader", [shaderId, backendType, defines](napi_env env) {
+            napi_value argv[3];
+            napi_create_int32(env, shaderId, &argv[0]);
+            napi_create_int32(env, backendType, &argv[1]);
+            napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
+            return argv[0];
+        });
+    }
 }
 
 void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
@@ -1039,25 +1055,202 @@ void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx
     if (source.find("a_normal") != std::string::npos) {
         Logger::info("NativeMapView", "Shader contains 'a_normal' attribute");
     }
+    
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        int shaderId = static_cast<int>(shader);
+        int backendType = static_cast<int>(backend);
+        std::string defines = source; // 复制避免引用失效
+        
+        callbackManager_->InvokeCallback("onPostCompileShader", [shaderId, backendType, defines](napi_env env) {
+            napi_value argv[3];
+            napi_create_int32(env, shaderId, &argv[0]);
+            napi_create_int32(env, backendType, &argv[1]);
+            napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
+            return argv[0];
+        });
+    }
 }
 
 void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
     Logger::error("NativeMapView", "onShaderCompileFailed: shader=%d, backend=%d, source_length=%zu", 
                   static_cast<int>(shader), static_cast<int>(backend), source.length());
+    
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        int shaderId = static_cast<int>(shader);
+        int backendType = static_cast<int>(backend);
+        std::string defines = source; // 复制避免引用失效
+        
+        callbackManager_->InvokeCallback("onShaderCompileFailed", [shaderId, backendType, defines](napi_env env) {
+            napi_value argv[3];
+            napi_create_int32(env, shaderId, &argv[0]);
+            napi_create_int32(env, backendType, &argv[1]);
+            napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
+            return argv[0];
+        });
+    }
 }
 
 // Glyph requests
-void NativeMapView::onGlyphsLoaded(const mbgl::FontStack&, const mbgl::GlyphRange&) {}
-void NativeMapView::onGlyphsError(const mbgl::FontStack&, const mbgl::GlyphRange&, std::exception_ptr) {}
-void NativeMapView::onGlyphsRequested(const mbgl::FontStack&, const mbgl::GlyphRange&) {}
+void NativeMapView::onGlyphsLoaded(const mbgl::FontStack& stack, const mbgl::GlyphRange& range) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        // 复制数据避免引用失效
+        std::vector<std::string> fontStack(stack.begin(), stack.end());
+        int rangeStart = range.first;
+        int rangeEnd = range.second;
+        
+        callbackManager_->InvokeCallback("onGlyphsLoaded", [fontStack, rangeStart, rangeEnd](napi_env env) {
+            napi_value argv[3];
+            
+            // 创建字体数组
+            napi_create_array(env, &argv[0]);
+            for (size_t i = 0; i < fontStack.size(); i++) {
+                napi_value fontName;
+                napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
+                napi_set_element(env, argv[0], i, fontName);
+            }
+            
+            napi_create_int32(env, rangeStart, &argv[1]);
+            napi_create_int32(env, rangeEnd, &argv[2]);
+            return argv[0];
+        });
+    }
+}
+
+void NativeMapView::onGlyphsError(const mbgl::FontStack& stack, const mbgl::GlyphRange& range, std::exception_ptr) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        // 复制数据避免引用失效
+        std::vector<std::string> fontStack(stack.begin(), stack.end());
+        int rangeStart = range.first;
+        int rangeEnd = range.second;
+        
+        callbackManager_->InvokeCallback("onGlyphsError", [fontStack, rangeStart, rangeEnd](napi_env env) {
+            napi_value argv[3];
+            
+            // 创建字体数组
+            napi_create_array(env, &argv[0]);
+            for (size_t i = 0; i < fontStack.size(); i++) {
+                napi_value fontName;
+                napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
+                napi_set_element(env, argv[0], i, fontName);
+            }
+            
+            napi_create_int32(env, rangeStart, &argv[1]);
+            napi_create_int32(env, rangeEnd, &argv[2]);
+            return argv[0];
+        });
+    }
+}
+
+void NativeMapView::onGlyphsRequested(const mbgl::FontStack& stack, const mbgl::GlyphRange& range) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        // 复制数据避免引用失效
+        std::vector<std::string> fontStack(stack.begin(), stack.end());
+        int rangeStart = range.first;
+        int rangeEnd = range.second;
+        
+        callbackManager_->InvokeCallback("onGlyphsRequested", [fontStack, rangeStart, rangeEnd](napi_env env) {
+            napi_value argv[3];
+            
+            // 创建字体数组
+            napi_create_array(env, &argv[0]);
+            for (size_t i = 0; i < fontStack.size(); i++) {
+                napi_value fontName;
+                napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
+                napi_set_element(env, argv[0], i, fontName);
+            }
+            
+            napi_create_int32(env, rangeStart, &argv[1]);
+            napi_create_int32(env, rangeEnd, &argv[2]);
+            return argv[0];
+        });
+    }
+}
 
 // Tile requests
-void NativeMapView::onTileAction(mbgl::TileOperation, const mbgl::OverscaledTileID&, const std::string&) {}
+void NativeMapView::onTileAction(mbgl::TileOperation op, const mbgl::OverscaledTileID& tileID, const std::string& sourceID) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_) {
+        int operation = static_cast<int>(op);
+        int x = tileID.canonical.x;
+        int y = tileID.canonical.y;
+        int z = tileID.canonical.z;
+        int wrap = tileID.wrap;
+        int overscaledZ = tileID.overscaledZ;
+        std::string source = sourceID; // 复制避免引用失效
+        
+        callbackManager_->InvokeCallback("onTileAction", [operation, x, y, z, wrap, overscaledZ, source](napi_env env) {
+            napi_value argv[7];
+            napi_create_int32(env, operation, &argv[0]);
+            napi_create_int32(env, x, &argv[1]);
+            napi_create_int32(env, y, &argv[2]);
+            napi_create_int32(env, z, &argv[3]);
+            napi_create_int32(env, wrap, &argv[4]);
+            napi_create_int32(env, overscaledZ, &argv[5]);
+            napi_create_string_utf8(env, source.c_str(), NAPI_AUTO_LENGTH, &argv[6]);
+            return argv[0];
+        });
+    }
+}
 
 // Sprite requests
-void NativeMapView::onSpriteLoaded(const std::optional<mbgl::style::Sprite>&) {}
-void NativeMapView::onSpriteError(const std::optional<mbgl::style::Sprite>&, std::exception_ptr) {}
-void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>&) {}
+void NativeMapView::onSpriteLoaded(const std::optional<mbgl::style::Sprite>& sprite) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_ && sprite) {
+        std::string spriteId = sprite->id;
+        std::string url = sprite->spriteURL;
+        
+        callbackManager_->InvokeCallback("onSpriteLoaded", [spriteId, url](napi_env env) {
+            napi_value argv[2];
+            napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
+            napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
+            return argv[0];
+        });
+    }
+}
+
+void NativeMapView::onSpriteError(const std::optional<mbgl::style::Sprite>& sprite, std::exception_ptr) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_ && sprite) {
+        std::string spriteId = sprite->id;
+        std::string url = sprite->spriteURL;
+        
+        callbackManager_->InvokeCallback("onSpriteError", [spriteId, url](napi_env env) {
+            napi_value argv[2];
+            napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
+            napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
+            return argv[0];
+        });
+    }
+}
+
+void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>& sprite) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+    
+    if (callbackManager_ && sprite) {
+        std::string spriteId = sprite->id;
+        std::string url = sprite->spriteURL;
+        
+        callbackManager_->InvokeCallback("onSpriteRequested", [spriteId, url](napi_env env) {
+            napi_value argv[2];
+            napi_create_string_utf8(env, spriteId.c_str(), NAPI_AUTO_LENGTH, &argv[0]);
+            napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &argv[1]);
+            return argv[0];
+        });
+    }
+}
 
 // ========== 相机监听器方法实现 ==========
 
@@ -1312,6 +1505,72 @@ napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_
     return undefined;
 }
 
+// ========== Map 生命周期监听器方法实现 ==========
+
+/**
+ * setOnMapViewCreatedCallback - 设置 Map 创建完成回调
+ * 
+ * 用途：在 C++ Map 对象创建完成后立即通知 ArkTS 层
+ * 时机：样式加载之前，允许用户注册观察者监听器
+ * 对齐：Android 的 onMapViewReady 回调
+ * 
+ * @param env N-API 环境
+ * @param info 回调信息，参数为 JavaScript 回调函数
+ * @return undefined
+ */
+napi_value NativeMapView::setOnMapViewCreatedCallback(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    
+    // 获取this对象和参数
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "setOnMapViewCreatedCallback: Failed to get callback argument");
+        return undefined;
+    }
+    
+    // 获取NativeMapView实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "setOnMapViewCreatedCallback: Failed to unwrap instance");
+        return undefined;
+    }
+    
+    if (!instance->callbackManager_) {
+        Logger::error("NativeMapView", "setOnMapViewCreatedCallback: CallbackManager not initialized");
+        return undefined;
+    }
+    
+    // 检查是否为null（移除监听器）
+    napi_valuetype valueType;
+    napi_typeof(env, args[0], &valueType);
+    
+    if (valueType == napi_null || valueType == napi_undefined) {
+        instance->callbackManager_->UnregisterCallback("onMapViewCreated");
+        Logger::info("NativeMapView", "setOnMapViewCreatedCallback: Unregistered callback");
+        return undefined;
+    }
+    
+    if (valueType != napi_function) {
+        Logger::error("NativeMapView", "setOnMapViewCreatedCallback: Argument is not a function");
+        return undefined;
+    }
+    
+    // 先移除旧的监听器，再注册新的（单例模式）
+    instance->callbackManager_->UnregisterCallback("onMapViewCreated");
+    
+    // 注册回调
+    if (instance->callbackManager_->RegisterCallback("onMapViewCreated", args[0])) {
+        Logger::info("NativeMapView", "✅ Registered onMapViewCreated callback");
+    } else {
+        Logger::error("NativeMapView", "setOnMapViewCreatedCallback: Failed to register callback");
+    }
+    
+    return undefined;
+}
+
 // ========== 样式监听器方法实现 ==========
 
 napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_info info) {
@@ -1550,6 +1809,31 @@ IMPLEMENT_ADD_LISTENER(addOnDidBecomeIdleListener, "onDidBecomeIdle")
 IMPLEMENT_REMOVE_LISTENER(removeOnDidBecomeIdleListener, "onDidBecomeIdle")
 IMPLEMENT_ADD_LISTENER(addOnSourceChangedListener, "onSourceChanged")
 IMPLEMENT_REMOVE_LISTENER(removeOnSourceChangedListener, "onSourceChanged")
+
+// ===== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) =====
+IMPLEMENT_ADD_LISTENER(addOnPreCompileShaderListener, "onPreCompileShader")
+IMPLEMENT_REMOVE_LISTENER(removeOnPreCompileShaderListener, "onPreCompileShader")
+IMPLEMENT_ADD_LISTENER(addOnPostCompileShaderListener, "onPostCompileShader")
+IMPLEMENT_REMOVE_LISTENER(removeOnPostCompileShaderListener, "onPostCompileShader")
+IMPLEMENT_ADD_LISTENER(addOnShaderCompileFailedListener, "onShaderCompileFailed")
+IMPLEMENT_REMOVE_LISTENER(removeOnShaderCompileFailedListener, "onShaderCompileFailed")
+
+IMPLEMENT_ADD_LISTENER(addOnGlyphsLoadedListener, "onGlyphsLoaded")
+IMPLEMENT_REMOVE_LISTENER(removeOnGlyphsLoadedListener, "onGlyphsLoaded")
+IMPLEMENT_ADD_LISTENER(addOnGlyphsErrorListener, "onGlyphsError")
+IMPLEMENT_REMOVE_LISTENER(removeOnGlyphsErrorListener, "onGlyphsError")
+IMPLEMENT_ADD_LISTENER(addOnGlyphsRequestedListener, "onGlyphsRequested")
+IMPLEMENT_REMOVE_LISTENER(removeOnGlyphsRequestedListener, "onGlyphsRequested")
+
+IMPLEMENT_ADD_LISTENER(addOnSpriteLoadedListener, "onSpriteLoaded")
+IMPLEMENT_REMOVE_LISTENER(removeOnSpriteLoadedListener, "onSpriteLoaded")
+IMPLEMENT_ADD_LISTENER(addOnSpriteErrorListener, "onSpriteError")
+IMPLEMENT_REMOVE_LISTENER(removeOnSpriteErrorListener, "onSpriteError")
+IMPLEMENT_ADD_LISTENER(addOnSpriteRequestedListener, "onSpriteRequested")
+IMPLEMENT_REMOVE_LISTENER(removeOnSpriteRequestedListener, "onSpriteRequested")
+
+IMPLEMENT_ADD_LISTENER(addOnTileActionListener, "onTileAction")
+IMPLEMENT_REMOVE_LISTENER(removeOnTileActionListener, "onTileAction")
 
 #undef IMPLEMENT_ADD_LISTENER
 #undef IMPLEMENT_REMOVE_LISTENER
