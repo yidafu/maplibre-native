@@ -7,6 +7,7 @@
 #include <memory>
 #include <functional>
 #include <unordered_map>
+#include <thread>
 
 namespace mbgl {
 namespace util {
@@ -36,6 +37,9 @@ public:
     std::unique_ptr<AsyncTask> async;
 
     std::unordered_map<int, std::unique_ptr<Watch>> watchPoll;
+    
+    // Store thread ID for thread safety checks (available in both debug and release)
+    std::thread::id tid;
 
 private:
     bool holderClosed = false;  // ✅ 修复退出崩溃：防止 holder 被重复删除

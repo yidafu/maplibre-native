@@ -192,6 +192,9 @@ RunLoop::RunLoop(Type type)
         throw std::runtime_error("Failed to initialize holder async: " + std::string(uvErrorString(err)));
     }
 
+    // Store the thread ID for thread safety checks
+    impl->tid = std::this_thread::get_id();
+    
     Scheduler::SetCurrent(this);
     impl->async = std::make_unique<AsyncTask>(std::bind(&RunLoop::process, this));
 }
@@ -308,7 +311,7 @@ void RunLoop::wake() {
 }
 
 void RunLoop::run() {
-    MBGL_VERIFY_THREAD(tid);
+    MBGL_VERIFY_THREAD(impl->tid);
     
     // ✅ 关键修复：确保当前线程的 Scheduler 设置正确
     // 参考 Android MapRenderer::render() 的做法（line 231）
@@ -323,7 +326,7 @@ void RunLoop::run() {
 }
 
 void RunLoop::runOnce() {
-    MBGL_VERIFY_THREAD(tid);
+    MBGL_VERIFY_THREAD(impl->tid);
     
     // ✅ 确保 Scheduler 正确
     // 参考 Android 的防御性编程模式
@@ -438,7 +441,7 @@ void RunLoop::stop() {
 }
 
 void RunLoop::updateTime() {
-    MBGL_VERIFY_THREAD(tid);
+    MBGL_VERIFY_THREAD(impl->tid);
     uv_update_time(impl->loop);
 }
 
@@ -450,7 +453,7 @@ void RunLoop::updateTime() {
  * Blocks until queues are empty.
  */
 void RunLoop::waitForEmpty([[maybe_unused]] const mbgl::util::SimpleIdentity tag) {
-    if (tid != std::this_thread::get_id()) {
+    if (impl->tid != std::this_thread::get_id()) {
         std::atomic<bool> done{false};
         
         invoke([this, &done]() {
@@ -502,7 +505,7 @@ void RunLoop::waitForEmpty([[maybe_unused]] const mbgl::util::SimpleIdentity tag
  * HarmonyOS Note: Ensure fd is valid and not already being watched.
  */
 void RunLoop::addWatch(int fd, Event event, std::function<void(int, Event)>&& callback) {
-    MBGL_VERIFY_THREAD(tid);
+    MBGL_VERIFY_THREAD(impl->tid);
 
     if (fd < 0) {
         Logger::error("RunLoop", "Invalid fd: %d", fd);
@@ -573,7 +576,7 @@ void RunLoop::addWatch(int fd, Event event, std::function<void(int, Event)>&& ca
  * Properly stops polling and schedules handle close.
  */
 void RunLoop::removeWatch(int fd) {
-    MBGL_VERIFY_THREAD(tid);
+    MBGL_VERIFY_THREAD(impl->tid);
 
     auto watchPollIter = impl->watchPoll.find(fd);
     if (watchPollIter == impl->watchPoll.end()) {
