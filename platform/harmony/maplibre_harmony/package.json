@@ -22,13 +22,13 @@
   "license": "BSD-2-Clause",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yidafu/maplibre-react-native.git",
-    "directory": "harmony"
+    "url": "https://github.com/yidafu/maplibre-native.git",
+    "directory": "platform/harmony/maplibre_harmony"
   },
   "bugs": {
-    "url": "https://github.com/yidafu/maplibre-react-native/issues"
+    "url": "https://github.com/yidafu/maplibre-native/issues"
   },
-  "homepage": "https://github.com/yidafu/maplibre-react-native/tree/hmos/harmony",
+  "homepage": "https://github.com/yidafu/maplibre-native/tree/harmony/platform/harmony",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
@@ -49,6 +49,7 @@
     "hvigorfile.ts",
     "oh-package.json5",
     "README.md",
+    "mapping",
     "docs/api",
     "maplibre_harmony.har"
   ]

@@ -48,7 +48,7 @@ target_link_libraries(
         $<$<CONFIG:Release>:-O2>
         $<$<CONFIG:Release>:-Wl,--icf=all>
         $<$<CONFIG:Release>:-flto>
-        $<$<CONFIG:Release>:-fuse-ld=gold>
+        $<$<CONFIG:Release>:-fuse-ld=lld>
 )
 
 
