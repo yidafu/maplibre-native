@@ -1,0 +1,55 @@
+{
+  "name": "maplibre-harmony",
+  "version": "0.1.0-alpha.1",
+  "description": "MapLibre Native for HarmonyOS - OpenGL-based vector map rendering library",
+  "main": "index.ets",
+  "scripts": {
+    "prepublishOnly": "cd .. && bash ./pre-release.sh"
+  },
+  "keywords": [
+    "maplibre",
+    "maps",
+    "vector",
+    "tiles",
+    "opengl",
+    "harmonyos",
+    "ohos",
+    "native",
+    "rendering",
+    "geospatial"
+  ],
+  "author": "yidafu",
+  "license": "BSD-2-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yidafu/maplibre-react-native.git",
+    "directory": "harmony"
+  },
+  "bugs": {
+    "url": "https://github.com/yidafu/maplibre-react-native/issues"
+  },
+  "homepage": "https://github.com/yidafu/maplibre-react-native/tree/hmos/harmony",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "files": [
+    "index.ets",
+    "src/main/ets/**/*",
+    "src/main/cpp/**/*",
+    "!src/main/cpp/thirdparty/**/*",
+    "src/main/resources/**/*",
+    "libs/**/*.so",
+    "build-profile.json5",
+    "obfuscation-rules.txt",
+    "hvigorfile.ts",
+    "oh-package.json5",
+    "README.md",
+    "docs/api",
+    "maplibre_harmony.har"
+  ]
+}
