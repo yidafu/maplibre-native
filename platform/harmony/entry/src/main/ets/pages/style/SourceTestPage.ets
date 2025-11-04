@@ -3,7 +3,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
 
-import { CircleLayer, FillLayer, GeoJsonSource, ImageSource, LatLng, LatLngBounds, LineLayer, MapLibreMap, MapView, Point, Polygon, RasterDemSource, RasterSource, VectorSource, maplibre, MapLibreMapOptions , NativeMapView, GeoJson} from 'maplibre_harmony';
+import { CircleLayer, FillLayer, GeoJsonSource, ImageSource, LatLng, LatLngBounds, LineLayer, MapLibreMap, MapView, Point, Polygon, RasterDemSource, RasterSource, VectorSource, MapLibreMapOptions , NativeMapView, GeoJson,
+  CameraOptions} from 'maplibre_harmony';
 import type { IFeature } from 'maplibre_harmony';
 import type { JsonObject, LayerPropertyOptions } from '../../types/EntryTypes';
 // 从 ETS 层导入 Layer 和 Source 封装类
@@ -244,7 +245,7 @@ struct SourceTestPage {
 
       if (camera) {
         // FlyTo 到计算出的相机位置
-        const options: maplibre.CameraOptions = {
+        const options: CameraOptions = {
           center: camera.target,
           zoom: camera.zoom,
           bearing: camera.bearing,
@@ -577,7 +578,7 @@ struct SourceTestPage {
 
       // 生成随机位置并 flyTo（数据是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
       };
@@ -616,7 +617,7 @@ struct SourceTestPage {
 
       // 生成随机位置并 flyTo（矢量瓦片是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
       };
@@ -658,7 +659,7 @@ struct SourceTestPage {
 
       // 生成随机位置并 flyTo（栅格瓦片是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
       };
@@ -701,7 +702,7 @@ struct SourceTestPage {
 
       // 生成随机位置并 flyTo（卫星影像是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
       };

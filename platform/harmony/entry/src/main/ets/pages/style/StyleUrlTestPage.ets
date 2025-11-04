@@ -2,7 +2,7 @@ import { router } from '@kit.ArkUI';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapLibreMap, maplibre, MapView , NativeMapView} from 'maplibre_harmony';
+import { MapLibreMap,  MapView , NativeMapView} from 'maplibre_harmony';
 const TAG = 'StyleUrlTestPage';
 
 /**

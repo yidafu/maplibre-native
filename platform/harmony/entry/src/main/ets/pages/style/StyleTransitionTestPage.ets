@@ -1,4 +1,4 @@
-import {maplibre, MapView, NativeMapView, MapLibreMap} from 'maplibre_harmony';
+import { MapView, NativeMapView, MapLibreMap} from 'maplibre_harmony';
 /**
  * StyleTransitionTestPage - 样式过渡选项测试页面
  * 

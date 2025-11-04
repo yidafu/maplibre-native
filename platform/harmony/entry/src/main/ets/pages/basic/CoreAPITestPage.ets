@@ -1,4 +1,4 @@
-import { LatLng, MapView, maplibre, Marker, Icon, MapLibreMap, NativeMapView, Rect,
+import { LatLng, MapView, Marker, Icon, MapLibreMap, NativeMapView, Rect,
   ScreenCoordinate } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';

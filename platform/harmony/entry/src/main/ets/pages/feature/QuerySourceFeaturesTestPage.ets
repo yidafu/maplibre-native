@@ -301,8 +301,7 @@ struct QuerySourceFeaturesTestPage {
     try {
       // 使用 filter 参数查询符合条件的要素
       // filter 格式: ["==", ["get", "type"], "city"]
-      const filter = ["==", ["get", "type"], "city"];
-      const features = this.mapController.querySourceFeatures('test-source', undefined, filter);
+      const features = this.mapController.querySourceFeatures('test-source', undefined, ["==", ["get", "type"], "city"]);
       
       this.queriedFeatures = features;
       this.queryInfo = `GeoJSON: 使用 filter 成功查询到 ${features.length} 个城市类型要素`;
@@ -333,11 +332,10 @@ struct QuerySourceFeaturesTestPage {
     
     try {
       // 查询 openmaptiles 数据源的 place 图层中 class=city 的要素
-      const filter = ["==", ["get", "class"], "city"];
       const features = this.mapController.querySourceFeatures(
         'openmaptiles',
         ['place'],  // 指定 source-layer
-        filter
+        ["==", ["get", "class"], "city"]
       );
       
       this.queriedFeatures = features;
@@ -371,11 +369,10 @@ struct QuerySourceFeaturesTestPage {
     
     try {
       // 查询 openmaptiles 数据源的 place 图层中 class=town 的要素
-      const filter = ["==", ["get", "class"], "town"];
       const features = this.mapController.querySourceFeatures(
         'openmaptiles',
         ['place'],
-        filter
+        ["==", ["get", "class"], "town"]
       );
       
       this.queriedFeatures = features;
@@ -408,11 +405,10 @@ struct QuerySourceFeaturesTestPage {
     
     try {
       // 查询 openmaptiles 数据源的 poi 图层中 rank >= 7 的要素
-      const filter = [">=", ["get", "rank"], 7];
       const features = this.mapController.querySourceFeatures(
         'openmaptiles',
         ['poi'],
-        filter
+        [">=", ["get", "rank"], 7]
       );
       
       this.queriedFeatures = features;

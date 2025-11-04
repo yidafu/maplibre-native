@@ -5,7 +5,7 @@ import { util } from '@kit.ArkTS';
 import { resourceManager } from '@kit.LocalizationKit';
 import { TestPageLayout } from '../common/TestPageLayout';
 
-import { LatLng, MapLibreMap, MapView, maplibre, MapLibreMapOptions, OnStyleLoadedListener , NativeMapView,
+import { LatLng, MapLibreMap, MapView,  MapLibreMapOptions, OnStyleLoadedListener , NativeMapView,
   Style} from 'maplibre_harmony';
 import { DEFAULT_STYLE_URLS } from '../common/TestUtils';
 

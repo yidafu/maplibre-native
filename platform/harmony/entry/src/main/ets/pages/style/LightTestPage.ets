@@ -1,4 +1,4 @@
-import { maplibre, MapLibreMap, MapView , NativeMapView} from 'maplibre_harmony';
+import {  MapLibreMap, MapView , NativeMapView} from 'maplibre_harmony';
 /**
  * LightTestPage - 光照系统测试页面
  * 

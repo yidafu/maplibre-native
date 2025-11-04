@@ -3,8 +3,11 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
 
-import { BackgroundLayer, CircleLayer, FillExtrusionLayer, FillLayer, GeoJson, GeoJsonSource, HeatmapLayer, LatLng, LatLngBounds, LineLayer, MapLibreMap, MapView, Point, Polygon, RasterLayer, RasterSource, SymbolLayer, maplibre, MapLibreMapOptions , NativeMapView,
+import { BackgroundLayer, CircleLayer, FillExtrusionLayer, FillLayer, GeoJson, GeoJsonSource, HeatmapLayer, LatLng, LatLngBounds, LineLayer, MapLibreMap, MapView, Point,
+  RasterLayer, RasterSource, SymbolLayer,
+  NativeMapView,
   IFeature} from 'maplibre_harmony';
+import type { CameraOptions } from 'maplibre_harmony';
 import type { JsonObject, LayerPropertyOptions } from '../../types/EntryTypes';
 // 从 ETS 层导入 Layer 和 Source 封装类
 
@@ -249,7 +252,7 @@ struct LayerTestPage {
 
       if (camera) {
         // FlyTo 到计算出的相机位置
-        const options:  maplibre.CameraOptions = {
+        const options: CameraOptions = {
           center: camera.target,
           zoom: camera.zoom,
           bearing: camera.bearing,
@@ -673,7 +676,7 @@ struct LayerTestPage {
 
       // 生成随机位置并 flyTo（栅格图层是全球的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
       };
@@ -708,7 +711,7 @@ struct LayerTestPage {
 
       // 生成随机位置并 flyTo（背景图层是全局的，选择一个随机位置查看）
       const center = this.generateRandomLocation();
-      const options: maplibre.CameraOptions = {
+      const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
       };

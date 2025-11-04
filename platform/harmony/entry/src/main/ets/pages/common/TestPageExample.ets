@@ -1,4 +1,4 @@
-import {LatLng, maplibre, NativeMapView} from 'maplibre_harmony';
+import {LatLng, NativeMapView} from 'maplibre_harmony';
 /**
  * TestPageExample - TestPageLayout 使用示例
  * 

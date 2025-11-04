@@ -4,7 +4,9 @@
  * 参考 Android: GradientLineActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { Expression, GeoJson, GeoJsonSource, LineLayer, MapLibreMap, MapView } from 'maplibre_harmony';
+import { Expression,
+  ExpressionLiteral,
+  GeoJson, GeoJsonSource, LineLayer, MapLibreMap, MapView } from 'maplibre_harmony';
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 

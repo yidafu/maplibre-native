@@ -57,10 +57,10 @@ struct AnimatedImageSourceTestPage {
       const source = new ImageSource('image-source');
       source.setUrl('https://via.placeholder.com/512');
       source.setCoordinates([
-        [bounds.getSouthWest().longitude, bounds.getNorthEast().latitude],
-        [bounds.getNorthEast().longitude, bounds.getNorthEast().latitude],
-        [bounds.getNorthEast().longitude, bounds.getSouthWest().latitude],
-        [bounds.getSouthWest().longitude, bounds.getSouthWest().latitude]
+        [bounds.getSouthwest().longitude, bounds.getNortheast().latitude],
+        [bounds.getNortheast().longitude, bounds.getNortheast().latitude],
+        [bounds.getNortheast().longitude, bounds.getSouthwest().latitude],
+        [bounds.getSouthwest().longitude, bounds.getSouthwest().latitude]
       ]);
       map.addSource(source);
       

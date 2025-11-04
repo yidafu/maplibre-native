@@ -12,7 +12,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { CameraOptions, LatLng, maplibre, NativeMapView} from 'maplibre_harmony';
+import { CameraOptions, LatLng,  NativeMapView} from 'maplibre_harmony';
 import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { RenderingStats } from 'maplibre_harmony/src/main/ets/maps/renderer/RenderingStats';
