@@ -5,6 +5,7 @@
 
 import type { PropertyValue } from '../LayerPropertyTypes';
 import type { ExpressionLiteral } from '../ExpressionTypes';
+import type { JSONValue } from '../CommonTypes';
 
 /**
  * LineLayer - 线图层
@@ -186,9 +187,9 @@ export class LineLayer {
    * 设置线条渐变色（仅支持 Expression）
    * @param gradient 渐变色表达式
    */
-  setLineGradient(gradient: Object): this;
+  setLineGradient(gradient: PropertyValue<string>): this;
 
-  getLineGradient(): Object | undefined;
+  getLineGradient(): ExpressionLiteral | undefined;
 
   /**
    * 设置线条排序键
@@ -203,7 +204,7 @@ export class LineLayer {
    * @param propertyName 属性名称（如 'line-color', 'line-width'）
    * @param value 属性值（常量值或Expression）
    */
-  setProperty(propertyName: string, value: any): this;
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
    * 批量设置属性（通用方法）
@@ -215,5 +216,5 @@ export class LineLayer {
    *   'line-dasharray': [2, 4]
    * });
    */
-  setProperties(properties: Record<string, any>): this;
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): this;
 }

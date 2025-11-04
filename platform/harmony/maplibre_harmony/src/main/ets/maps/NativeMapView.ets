@@ -205,7 +205,7 @@ class NativeMapViewController extends XComponentController {
 
     try {
       // 获取应用上下文
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = getContext() as common.UIAbilityContext;
 
       // 使用应用私有缓存目录 + maplibre 子目录
       const cachePath = context.cacheDir + '/maplibre';
@@ -440,7 +440,7 @@ class NativeMapViewController extends XComponentController {
           if (this.onMapReadyCallbacks.length > 0) {
             for (const callback of this.onMapReadyCallbacks) {
               try {
-                callback.onMapReady(this.nativeMapView);
+                callback.onMapReady(this.mapLibreMapInstance);
               } catch (callbackError) {
                 hilog.error(DOMAIN, 'NativeMapView', `getMapAsync callback error: ${callbackError.message}`);
               }
@@ -1576,7 +1576,7 @@ class NativeMapViewController extends XComponentController {
     if (this.nativeMapView && this.isInitialized) {
       // 地图已就绪，立即回调
       try {
-        callback.onMapReady(this.nativeMapView);
+        callback.onMapReady(this.mapLibreMapInstance);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `getMapAsync callback error: ${error.message}`);
       }

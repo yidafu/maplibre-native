@@ -82,7 +82,7 @@ export class MarkerManager {
     let iconFactory: IconFactory;
     try {
       // 从当前组件上下文获取 ResourceManager
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = getContext() as common.UIAbilityContext;
       const resourceMgr = context.resourceManager;
       iconFactory = IconFactory.getInstance(resourceMgr);
     } catch (error) {

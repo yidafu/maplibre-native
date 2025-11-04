@@ -5,6 +5,7 @@
 
 import type { PropertyValue } from '../LayerPropertyTypes';
 import type { ExpressionLiteral } from '../ExpressionTypes';
+import type { JSONValue } from '../CommonTypes';
 
 /**
  * CircleLayer - 圆形图层
@@ -177,7 +178,7 @@ export class CircleLayer {
    * @param propertyName 属性名称（如 'circle-color', 'circle-radius'）
    * @param value 属性值（常量值或Expression）
    */
-  setProperty(propertyName: string, value: any): this;
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
    * 批量设置属性（通用方法）
@@ -189,5 +190,5 @@ export class CircleLayer {
    *   'circle-stroke-width': 2
    * });
    */
-  setProperties(properties: Record<string, any>): this;
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): this;
 }

@@ -202,13 +202,6 @@ export interface SymbolLayout {
   // ---------- Icon 属性 ----------
 
   /**
-   * 图标是否允许重叠
-   * @default false
-   * @deprecated 使用 icon-overlap 代替
-   */
-  'icon-allow-overlap'?: DataDrivenProperty<boolean>;
-
-  /**
    * 图标重叠方式
    * @default "never"
    */
@@ -409,13 +402,6 @@ export interface SymbolLayout {
    * @default [0, 0]
    */
   'text-offset'?: DataDrivenProperty<[number, number]>;
-
-  /**
-   * 文本是否允许重叠
-   * @default false
-   * @deprecated 使用 text-overlap 代替
-   */
-  'text-allow-overlap'?: DataDrivenProperty<boolean>;
 
   /**
    * 文本重叠方式

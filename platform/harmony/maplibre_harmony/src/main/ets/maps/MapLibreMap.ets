@@ -1,4 +1,5 @@
 import maplibre, { NativeMapView } from 'libmaplibre.so';
+import type { Icon, ExpressionLiteral as NapiExpressionLiteral } from 'libmaplibre.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
@@ -74,7 +75,61 @@ import {
 type PendingOperation = () => void;
 
 /**
- * MapLibreMap - 主要的地图API类
+ * MapLibreMap - 地图核心控制类
+ * 
+ * 提供完整的地图控制功能，包括：
+ * - 地图显示和样式管理
+ * - 相机位置和动画控制
+ * - 图层和数据源管理
+ * - 标注（Marker、Polygon、Polyline）管理
+ * - 手势交互和UI组件配置
+ * - 位置跟踪和定位功能
+ * 
+ * **生命周期管理**：
+ * - 在页面 `aboutToAppear()` 中创建和初始化
+ * - 在页面 `aboutToDisappear()` 中调用 `destroy()` 释放资源
+ * 
+ * **样式加载**：
+ * - 样式加载是异步的，需要等待 `onStyleLoaded` 回调
+ * - 在样式加载完成前添加图层/数据源会自动加入队列，样式加载后执行
+ * 
+ * @example
+ * ```typescript
+ * // 基本用法
+ * const options = new MapLibreMapOptions({
+ *   styleUrl: DEFAULT_STYLE_URLS.streets,
+ *   size: { width: 800, height: 600 }
+ * });
+ * 
+ * const map = new MapLibreMap(nativeMapView, options);
+ * 
+ * // 设置相机位置
+ * map.setLatLng(39.9, 116.4);
+ * map.setZoom(15);
+ * 
+ * // 添加 Marker
+ * const marker = await map.addMarker(
+ *   new MarkerOptions()
+ *     .position(39.9, 116.4)
+ *     .title("北京")
+ * );
+ * 
+ * // 监听地图事件
+ * map.addOnMapClickListener({
+ *   onMapClick: (x, y) => {
+ *     console.log(`Map clicked at: ${x}, ${y}`);
+ *     return false;
+ *   }
+ * });
+ * 
+ * // 页面销毁时清理
+ * aboutToDisappear() {
+ *   this.map?.destroy();
+ * }
+ * ```
+ * 
+ * @see {@link MapLibreMapOptions} 地图配置选项
+ * @see {@link NativeMapView} 底层地图视图组件
  */
 export class MapLibreMap {
   private nativeMapView: NativeMapView;
@@ -954,7 +1009,6 @@ export class MapLibreMap {
     }
     const result: ESObject =
       this.nativeMapView.getCameraForLatLngBounds(bounds, top, left, bottom, right, bearing, tilt) as ESObject;
-    // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
     return result as CameraPosition;
   }
 
@@ -965,7 +1019,6 @@ export class MapLibreMap {
     }
     const result: ESObject =
       this.nativeMapView.getCameraForGeometry(geometry, top, left, bottom, right, bearing, tilt) as ESObject;
-    // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
     return result as CameraPosition;
   }
 
@@ -1140,13 +1193,12 @@ export class MapLibreMap {
   }
 
   // 相机位置
-  public getCameraPosition(): Object | null {
+  public getCameraPosition(): CameraPosition | null {
     if (this.destroyed) {
       return null;
     }
-    const result: Object = this.nativeMapView.getCameraPosition() as Object;
-    // TODO: 将 NAPI 返回的对象转换为 CameraPosition 实例
-    return result;
+    const result = this.nativeMapView.getCameraPosition();
+    return result as CameraPosition;
   }
 
   // 注解
@@ -1542,13 +1594,6 @@ export class MapLibreMap {
   }
 
   // 图片
-  public addImage(name: string, bitmap: Object, pixelRatio: number, sdf: boolean): void {
-    if (this.destroyed) {
-      return;
-    }
-    this.nativeMapView.addImage(name, bitmap, pixelRatio, sdf);
-  }
-
   public addImages(images: Image[]): void {
     if (this.destroyed) {
       return;
@@ -1564,12 +1609,12 @@ export class MapLibreMap {
     this.nativeMapView.removeImage(name);
   }
 
-  public getImage(name: string): Object | null {
+  public getImage(name: string): Icon | null {
     if (this.destroyed) {
       return null;
     }
-    const result: Object = this.nativeMapView.getImage(name) as Object;
-    return result;
+    const result = this.nativeMapView.getImage(name);
+    return result as Icon | null;
   }
 
   // 瓦片管理
@@ -1834,8 +1879,6 @@ export class MapLibreMap {
 
     // 清除所有 AnnotationView
     this.annotationViewManager.clear();
-
-    // TODO: 清除 Polyline 和 Polygon（当实现后）
   }
 
   /**
@@ -2923,7 +2966,7 @@ export class MapLibreMap {
     x: number,
     y: number,
     layerIds?: string[],
-    filter?: Object
+    filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
       console.warn('MapLibreMap', 'queryRenderedFeaturesForPoint: Map is destroyed');
@@ -2986,7 +3029,7 @@ export class MapLibreMap {
     right: number,
     bottom: number,
     layerIds?: string[],
-    filter?: Object
+    filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
       console.warn('MapLibreMap', 'queryRenderedFeaturesForBox: Map is destroyed');
@@ -3041,7 +3084,7 @@ export class MapLibreMap {
   public querySourceFeatures(
     sourceId: string,
     sourceLayerIds?: string[],
-    filter?: Object
+    filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
       console.warn('MapLibreMap', 'querySourceFeatures: Map is destroyed');

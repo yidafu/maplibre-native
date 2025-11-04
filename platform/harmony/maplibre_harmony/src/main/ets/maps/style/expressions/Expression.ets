@@ -1971,12 +1971,4 @@ export class ExpressionMap<T extends Object> extends Expression<T> {
   }
 }
 
-// ==================== 向后兼容性 ====================
-
-/**
- * @deprecated Use Expression instead. ExpressionBuilder has been merged into Expression.
- * This type alias is provided for backward compatibility only.
- */
-export type ExpressionBuilder<T = Object> = Expression<T>;
-
 export type PropertyValue<T> = Expression<T> | NativePropertyValue<T>

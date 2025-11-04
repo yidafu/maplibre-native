@@ -1,9 +1,10 @@
+import type { ExpressionLiteral } from '../expressions/ExpressionTypes';
+
 /**
  * 聚类属性类型
  * 格式：{ "propertyName": [operatorExpression, mapExpression] }
- * 注意：由于 ArkTS 限制，使用 ESObject 类型
  */
-export type ClusterProperties = ESObject;
+export type ClusterProperties = Record<string, [ExpressionLiteral | string, ExpressionLiteral]>;
 
 /**
  * GeoJsonOptions - GeoJSON数据源选项配置

@@ -115,3 +115,14 @@ export * from './layers';
  * 离线地图下载、管理和使用功能
  */
 export * from './offline';
+
+// ========== 通用类型 (Common Types) ==========
+
+/**
+ * CommonTypes - 通用类型定义
+ * LightSpecification - 光照配置规范
+ * TransitionOptions - 过渡动画选项
+ * MapSnapshotterObserver - 快照器观察者接口
+ * JSONValue/JSONObject - JSON 类型
+ */
+export * from './CommonTypes';

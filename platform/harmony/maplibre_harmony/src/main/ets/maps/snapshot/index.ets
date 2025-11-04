@@ -10,5 +10,3 @@ export { MapSnapshot } from './MapSnapshot';
 
 export { SnapshotOptions, SnapshotOptionsBuilder } from './SnapshotOptions';
 
-export type { Size } from '../types/NativeTypes';
-

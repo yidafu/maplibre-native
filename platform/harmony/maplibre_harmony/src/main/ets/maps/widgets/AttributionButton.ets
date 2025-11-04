@@ -7,7 +7,7 @@
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
-import promptAction from '@ohos.promptAction';
+import { promptAction } from '@kit.ArkUI';
 /**
  * 归属信息项
  */
@@ -115,7 +115,8 @@ export struct AttributionButton {
       if (this.attributions.length === 0) {
         promptAction.showToast({
           message: 'No attribution information available',
-          duration: 2000
+          duration: 2000,
+          bottom: 100
         });
         return;
       }
@@ -132,9 +133,14 @@ export struct AttributionButton {
         return button;
       });
 
-      promptAction.showActionMenu({
+      const dialogButtons: promptAction.Button[] = buttons.map(btn => {
+        const button: promptAction.Button = { text: btn.text, color: btn.color };
+        return button;
+      });
+      promptAction.showDialog({
         title: 'Map Attribution',
-        buttons: buttons as [promptAction.Button, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?, promptAction.Button?]
+        message: options.join('\n'),
+        buttons: dialogButtons
       }).then((result) => {
         if (result.index !== undefined && result.index >= 0) {
           const selectedAttribution = this.attributions[result.index];
@@ -147,7 +153,8 @@ export struct AttributionButton {
             if (selectedAttribution.url) {
               promptAction.showToast({
                 message: `Visit: ${selectedAttribution.url}`,
-                duration: 3000
+                duration: 3000,
+                bottom: 100
               });
             }
           }

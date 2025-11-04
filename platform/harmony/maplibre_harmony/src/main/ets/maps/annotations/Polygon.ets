@@ -7,6 +7,21 @@ import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
+
+/**
+ * 原生 Polygon 选项接口（用于 NAPI 层交互）
+ */
+interface NativePolygonOptions {
+  points: ILatLng[];
+  holes: ILatLng[][];
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  fillAlpha: number;
+  strokeAlpha: number;
+  visible: boolean;
+  zIndex: number;
+}
 /**
  * PolygonOptions - 多边形选项接口
  */
@@ -73,7 +88,7 @@ export class Polygon {
       const options = optionsOrPolygon as PolygonOptions;
 
       // 转换 LatLng 对象为原生格式
-      const nativeOptions: ESObject = {
+      const nativeOptions: NativePolygonOptions = {
         points: options.points.map((p: LatLng): ILatLng => p.toObject()),
         holes: options.holes ? options.holes.map((hole: LatLng[]): ILatLng[] =>
         hole.map((p: LatLng): ILatLng => p.toObject())
@@ -87,7 +102,7 @@ export class Polygon {
         zIndex: options.zIndex || 0
       };
 
-      this.nativeInstance = new maplibre.Polygon(nativeOptions);
+      this.nativeInstance = new maplibre.Polygon(nativeOptions as PolygonOptions);
     } else {
       throw new Error('Invalid Polygon constructor arguments');
     }

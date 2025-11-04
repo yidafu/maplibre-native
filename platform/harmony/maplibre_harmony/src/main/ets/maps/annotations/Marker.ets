@@ -4,13 +4,34 @@
  * 符合 ArkTS 规范的封装实现
  */
 import maplibre from 'libmaplibre.so';
+import type { MarkerOptions as NAPIMarkerOptions } from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
+import type { ILatLng } from '../types/NativeTypes';
+import type { MapLibreMap } from '../MapLibreMap';
+
 /**
  * 锚点接口
  */
 export interface MarkerAnchor {
   u: number;
   v: number;
+}
+
+/**
+ * 原生 Marker 选项接口（用于 NAPI 层交互）
+ * 兼容 NAPI 层的 MarkerOptions，但 position 使用 ILatLng
+ */
+export interface NativeMarkerOptions {
+  position: ILatLng;
+  icon?: string;
+  title?: string;
+  snippet?: string;
+  visible?: boolean;
+  alpha?: number;
+  rotation?: number;
+  draggable?: boolean;
+  zIndex?: number;
+  anchor?: MarkerAnchor;
 }
 
 /**
@@ -29,7 +50,7 @@ class InternalMarker {
 export class Marker {
   private nativeInstance: maplibre.Marker;
   private _id: number = 0; // 存储 Marker ID（由 MarkerManager 设置）
-  private _map: Object | null = null; // 存储所属的 MapLibreMap
+  private _map: MapLibreMap | null = null; // 存储所属的 MapLibreMap
   private _selected: boolean = false; // 存储选中状态
   private _dragState: number = 0; // 存储拖拽状态
 
@@ -39,13 +60,27 @@ export class Marker {
    * 1. 从选项创建: new Marker(options)
    * 2. 从 NAPI 实例创建（内部使用）: new Marker(marker, nativeInstance)
    */
-  constructor(optionsOrMarker: ESObject | InternalMarker, nativeInstance?: maplibre.Marker) {
+  constructor(optionsOrMarker: NativeMarkerOptions | InternalMarker, nativeInstance?: maplibre.Marker) {
     if (optionsOrMarker === InternalMarker.INSTANCE && nativeInstance) {
       // 内部模式：从 NAPI 实例创建
       this.nativeInstance = nativeInstance;
     } else if (typeof optionsOrMarker === 'object') {
       // 正常模式：从选项对象创建
-      this.nativeInstance = new maplibre.Marker(optionsOrMarker as ESObject);
+      // 转换为 NAPI 层期望的 MarkerOptions 类型
+      const opts = optionsOrMarker as NativeMarkerOptions;
+      const napiOptions: NAPIMarkerOptions = {
+        position: opts.position,
+        icon: opts.icon,
+        title: opts.title,
+        snippet: opts.snippet,
+        visible: opts.visible,
+        alpha: opts.alpha,
+        rotation: opts.rotation,
+        draggable: opts.draggable,
+        zIndex: opts.zIndex,
+        anchor: opts.anchor
+      };
+      this.nativeInstance = new maplibre.Marker(napiOptions);
     } else {
       throw new Error('Invalid Marker constructor arguments');
     }
@@ -61,7 +96,7 @@ export class Marker {
   /**
    * 创建 Marker（静态工厂方法）
    */
-  static createFromOptions(options: ESObject): Marker {
+  static createFromOptions(options: NativeMarkerOptions): Marker {
     return new Marker(options);
   }
 
@@ -201,7 +236,7 @@ export class Marker {
   /**
    * 设置所属的 MapLibreMap（内部使用）
    */
-  setMapLibreMap(map: Object): Marker {
+  setMapLibreMap(map: MapLibreMap): Marker {
     this._map = map;
     return this;
   }

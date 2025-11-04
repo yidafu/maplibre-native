@@ -5,6 +5,7 @@
 
 import { RenderingStats } from '../renderer/RenderingStats';
 import { TileOperation } from '../types/NativeTypes';
+import type { MapLibreMap } from '../MapLibreMap';
 
 // ========== 相机事件监听器 ==========
 
@@ -355,8 +356,8 @@ export interface OnSpriteRequestedListener {
 export interface OnMapReadyCallback {
   /**
    * 当地图准备就绪时调用
-   * @param mapView 地图视图实例（这里使用 Object 避免循环依赖，实际使用时为 NativeMapView）
+   * @param mapView 地图视图实例（这里使用 MapLibreMap 类型）
    */
-  onMapReady(mapView: Object | null): void;
+  onMapReady(mapView: MapLibreMap | null): void;
 }
 

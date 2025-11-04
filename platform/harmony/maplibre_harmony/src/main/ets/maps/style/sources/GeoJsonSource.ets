@@ -8,6 +8,7 @@
  * - 聚类功能
  */
 import maplibre from 'libmaplibre.so';
+import type { ExpressionLiteral } from 'libmaplibre.so';
 import { Geometry, IFeature, IFeatureCollection } from '../../geojson';
 import { GeoJsonOptions } from './GeoJsonOptions';
 import type { Expression } from '../../style/expressions/Expression';
@@ -275,7 +276,8 @@ export class GeoJsonSource {
    */
   querySourceFeatures(filter?: Expression): IFeature[] {
     // NAPI 返回的是原生 Feature 对象数组，需要双重类型转换
-    return this.nativeInstance.querySourceFeatures(filter) as Object as IFeature[];
+    const filterArray = filter ? filter.toArray() : undefined;
+    return this.nativeInstance.querySourceFeatures(filterArray as Object as ExpressionLiteral) as Object as IFeature[];
   }
 
   // ==================== 聚类功能 ====================

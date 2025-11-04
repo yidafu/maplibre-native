@@ -1,5 +1,5 @@
 import { CompassVisibility } from './widgets/CompassVisibility';
-import { OrnamentPosition } from './types/NativeTypes';
+import { OrnamentPosition, Margins } from './types/NativeTypes';
 import { ScaleBarUnit } from './widgets/ScaleBarView';
 
 /**
@@ -12,23 +12,6 @@ export class FocalPoint {
   constructor(x: number, y: number) {
     this.x = x;
     this.y = y;
-  }
-}
-
-/**
- * 指南针边距配置
- */
-export class CompassMargins {
-  left: number = 0;
-  top: number = 0;
-  right: number = 0;
-  bottom: number = 0;
-
-  constructor(left: number = 10, top: number = 10, right: number = 10, bottom: number = 10) {
-    this.left = left;
-    this.top = top;
-    this.right = right;
-    this.bottom = bottom;
   }
 }
 
@@ -88,7 +71,7 @@ export class UiSettings {
   // 正北时是否淡出
   private compassFadeWhenFacingNorth: boolean = true;
   // 指南针边距
-  private compassMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  private compassMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
   // 指南针位置
   private compassPosition: OrnamentPosition = OrnamentPosition.TopRight;
   // 指南针更新回调（由 MapLibreMap 注入）
@@ -98,7 +81,7 @@ export class UiSettings {
   // Logo 启用状态
   private logoEnabled: boolean = true;
   // Logo 边距
-  private logoMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  private logoMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
   // Logo 位置
   private logoPosition: OrnamentPosition = OrnamentPosition.BottomLeft;
   // Logo 更新回调
@@ -113,7 +96,7 @@ export class UiSettings {
   // ScaleBar 是否使用深色样式
   private scaleBarUseDarkStyles: boolean = false;
   // ScaleBar 边距
-  private scaleBarMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  private scaleBarMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
   // ScaleBar 位置
   private scaleBarPosition: OrnamentPosition = OrnamentPosition.TopLeft;
   // ScaleBar 更新回调
@@ -123,7 +106,7 @@ export class UiSettings {
   // Attribution 启用状态
   private attributionEnabled: boolean = true;
   // Attribution 边距
-  private attributionMargins: CompassMargins = new CompassMargins(10, 10, 10, 10);
+  private attributionMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
   // Attribution 位置
   private attributionPosition: OrnamentPosition = OrnamentPosition.BottomRight;
   // Attribution 更新回调
@@ -587,7 +570,7 @@ export class UiSettings {
   /**
    * 获取指南针边距
    */
-  getCompassMargins(): CompassMargins {
+  getCompassMargins(): Margins {
     return this.compassMargins;
   }
 
@@ -674,7 +657,7 @@ export class UiSettings {
   /**
    * 获取 Logo 边距
    */
-  getLogoMargins(): CompassMargins {
+  getLogoMargins(): Margins {
     return this.logoMargins;
   }
 
@@ -779,7 +762,7 @@ export class UiSettings {
   /**
    * 获取 ScaleBar 边距
    */
-  getScaleBarMargins(): CompassMargins {
+  getScaleBarMargins(): Margins {
     return this.scaleBarMargins;
   }
 
@@ -796,7 +779,6 @@ export class UiSettings {
 
   /**
    * 设置 Attribution 启用状态
-   * TODO: 这是从 Android SDK 迁移的方法
    * @param enabled 是否启用 Attribution
    */
   setAttributionEnabled(enabled: boolean): void {
@@ -808,7 +790,6 @@ export class UiSettings {
 
   /**
    * 获取 Attribution 启用状态
-   * TODO: 这是从 Android SDK 迁移的方法
    */
   isAttributionEnabled(): boolean {
     return this.attributionEnabled;
@@ -816,7 +797,6 @@ export class UiSettings {
 
   /**
    * 设置 Attribution 位置
-   * TODO: 这是从 Android SDK 迁移的方法
    * @param position 位置枚举
    */
   setAttributionPosition(position: OrnamentPosition): void {
@@ -851,7 +831,7 @@ export class UiSettings {
   /**
    * 获取 Attribution 边距
    */
-  getAttributionMargins(): CompassMargins {
+  getAttributionMargins(): Margins {
     return this.attributionMargins;
   }
 

@@ -1,7 +1,7 @@
 /**
  * FillLayer - 封装类
  */
-import maplibre from 'libmaplibre.so';
+import maplibre, { JSONValue } from 'libmaplibre.so';
 import type { ExpressionLiteral } from 'libmaplibre.so';
 import { PropertyValue, Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
@@ -123,7 +123,7 @@ export class FillLayer {
    * @param value 属性值（常量值或Expression）
    * @returns this（支持链式调用）
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): FillLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): FillLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value));
     return this;
   }
@@ -140,13 +140,13 @@ export class FillLayer {
    * });
    */
   setProperties(properties: Record<string, PropertyValue<Object>>): FillLayer {
-    const convertedProps: Record<string, Object> = {};
+    const convertedProps: Record<string, ESObject> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]);
+      convertedProps[key] = convertValue(properties[key]) as ESObject;
     }
-    this.nativeInstance.setProperties(convertedProps);
+    this.nativeInstance.setProperties(convertedProps as ESObject);
     return this;
   }
 

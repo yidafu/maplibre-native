@@ -6,6 +6,7 @@
 import maplibre from 'libmaplibre.so';
 import type { Layer } from './layers/Layer';
 import type { Source } from './sources/Source';
+import type { Icon, LightSpecification, TransitionOptions } from 'libmaplibre.so';
 
 // Source 包装类
 import { GeoJsonSource } from './sources/GeoJsonSource';
@@ -307,8 +308,9 @@ export class Style {
   /**
    * 获取图像
    */
-  getImage(name: string): Object | null {
-    return this.nativeInstance.getImage(name);
+  getImage(name: string): Icon | null {
+    const result = this.nativeInstance.getImage(name);
+    return result ? (result as Object as Icon) : null;
   }
 
   // ========== 光照管理 ==========
@@ -316,7 +318,7 @@ export class Style {
   /**
    * 获取光照设置
    */
-  getLight(): Object | null {
+  getLight(): LightSpecification | null {
     return this.nativeInstance.getLight();
   }
 
@@ -332,8 +334,8 @@ export class Style {
   /**
    * 获取过渡效果设置
    */
-  getTransition(): Object | null {
-    return this.nativeInstance.getTransition();
+  getTransition(): TransitionOptions | null {
+    return this.nativeInstance.getTransition() as TransitionOptions | null;
   }
 
   /**

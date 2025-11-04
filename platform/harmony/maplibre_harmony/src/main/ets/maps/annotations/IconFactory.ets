@@ -120,47 +120,23 @@ export class IconFactory {
   }
 
   /**
-   * 从 PixelMap 创建图标（Legacy 方法）
+   * 从 PixelMap 创建图标
    *
-   * **性能警告**：此方法需要将 PixelMap 跨 NAPI 边界复制，存在性能开销。
-   * 推荐使用 fromResource() 或 fromPath() 方法，它们在 C++ 层直接解码图片，
-   * 避免 PixelMap 创建和数据复制开销。
+   * 从 HarmonyOS PixelMap 对象创建地图图标。
+   * 
+   * **性能说明**：此方法需要将 PixelMap 数据传递到 C++ 层，
+   * 对于资源文件，推荐使用 fromResource() 或 fromPath() 方法，
+   * 它们可以在 C++ 层直接解码图片，性能更好。
    *
    * @param pixelMap PixelMap 对象（HarmonyOS 图像对象）
    * @param iconId 可选的图标ID，如果不提供则自动生成
    * @returns Icon 封装类实例
    * @throws TooManyIconsException 如果 ID 计数器溢出
    * @throws Error 如果 PixelMap 无效或创建失败
-   *
-   * @deprecated 推荐使用 fromResource() 或 fromPath() 以获得更好的性能
    */
   public fromPixelMap(pixelMap: image.PixelMap, iconId?: string): Icon {
-    // 性能警告：此方法存在 PixelMap 数据复制开销
-    console.warn('[IconFactory] fromPixelMap has performance overhead. ' +
-      'Consider using fromResource() or fromPath() for better performance.');
-
     const id = iconId || this.generateUniqueIconId();
-
-    // 使用封装类的内部创建方法
     return Icon.createInternal(id, pixelMap, this.pixelRatio);
-  }
-
-  /**
-   * 从 PixelMap 创建图标（带复用标识符）
-   *
-   * **注意**：NAPI Icon 不支持 reuseIdentifier 参数。
-   * 此方法保留是为了向后兼容，实际上会忽略 reuseIdentifier。
-   * 图标复用应该由 IconManager 通过 Icon ID 来管理。
-   *
-   * @param pixelMap PixelMap 对象
-   * @param reuseIdentifier 复用标识符（已弃用，将被忽略）
-   * @returns Icon 封装类实例
-   * @throws TooManyIconsException 如果 ID 计数器溢出
-   * @deprecated 建议直接使用 fromPixelMap()，由 IconManager 管理图标复用
-   */
-  public fromPixelMapWithIdentifier(pixelMap: image.PixelMap, reuseIdentifier: string): Icon {
-    // reuseIdentifier 参数被忽略，NAPI Icon 通过 ID 来唯一标识
-    return this.fromPixelMap(pixelMap);
   }
 
   /**
@@ -192,7 +168,7 @@ export class IconFactory {
 
     try {
       // 1. 获取资源内容 (返回 Uint8Array)
-      const uint8Array = await this.resourceMgr.getMediaContent(resource);
+      const uint8Array = await this.resourceMgr.getMediaByName(resource.id.toString());
 
       // 2. 创建 ImageSource
       const imageSource = image.createImageSource(uint8Array.buffer);

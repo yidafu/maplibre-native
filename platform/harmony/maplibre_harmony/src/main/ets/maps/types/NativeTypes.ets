@@ -7,18 +7,29 @@
 
 import maplibre from 'libmaplibre.so';
 
+// 不允许导出 maplibre，原生方法必要在ets里转发一道（或者重新导出）
 // ========== 导出 maplibre namespace ==========
-export { maplibre };
+// export { maplibre };
 
 // ========== 辅助类型定义 ==========
 
 /**
- * 坐标点字面量接口
+ * 经纬度接口（坐标点类型）
+ * 
+ * 用于表示地理坐标，支持对象字面量和 LatLng 类实例
+ * 
+ * @example
+ * ```typescript
+ * const position: ILatLng = { latitude: 39.9, longitude: 116.4 };
+ * const latLng = new LatLng(position.latitude, position.longitude);
+ * ```
  */
-export type LatLngLiteral = maplibre.LatLng
+export type ILatLng = maplibre.LatLng;
 
 /**
  * 矩形字面量接口
+ * 
+ * 表示屏幕矩形区域，坐标系为屏幕像素坐标
  */
 export interface RectangleLiteral {
   left: number;
@@ -29,6 +40,13 @@ export interface RectangleLiteral {
 
 /**
  * 尺寸接口
+ * 
+ * 表示宽度和高度，单位为像素
+ * 
+ * @example
+ * ```typescript
+ * const mapSize: Size = { width: 800, height: 600 };
+ * ```
  */
 export interface Size {
   width: number;
@@ -37,6 +55,14 @@ export interface Size {
 
 /**
  * 边距接口
+ * 
+ * 表示四边的内边距，单位为像素（vp）
+ * 用于配置UI组件相对于容器边缘的偏移量
+ * 
+ * @example
+ * ```typescript
+ * const padding: Padding = { top: 10, left: 10, bottom: 10, right: 10 };
+ * ```
  */
 export interface Padding {
   top: number;
@@ -46,10 +72,18 @@ export interface Padding {
 }
 
 /**
+ * 边距接口（别名）
+ * 
+ * 与 Padding 功能相同，提供更语义化的命名
+ * 用于UI组件（Compass、Logo、ScaleBar、Attribution）的边距配置
+ */
+export type Margins = Padding;
+
+/**
  * 相机选项字面量接口（用于测试页面）
  */
 export interface CameraOptionsLiteral {
-  center?: LatLngLiteral;
+  center?: ILatLng;
   zoom?: number;
   bearing?: number;
   pitch?: number;
@@ -73,23 +107,6 @@ export enum OrnamentPosition {
   BottomRight = 3
 }
 
-/**
- * 边距类型
- * 用于配置 UI 组件相对于容器边缘的偏移量
- */
-export interface Margins {
-  /** 左边距（vp） */
-  left: number;
-
-  /** 上边距（vp） */
-  top: number;
-
-  /** 右边距（vp） */
-  right: number;
-
-  /** 下边距（vp） */
-  bottom: number;
-}
 
 /**
  * 渲染刷新模式（对齐 Android MapRenderer.RenderingRefreshMode）
@@ -141,9 +158,4 @@ export enum CameraMoveReason {
   DEVELOPER_ANIMATION = 3
 }
 
-/**
- * 经纬度接口（ILatLng 是 LatLngLiteral 的别名）
- * 用于 LatLng 类实现和对象字面量
- */
-export type ILatLng = maplibre.LatLng;
 

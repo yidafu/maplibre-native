@@ -4,7 +4,6 @@
 
 export {
   Expression,
-  ExpressionBuilder,
   ExpressionLiteral,
   ExpressionLiteralArray,
   ExpressionMap

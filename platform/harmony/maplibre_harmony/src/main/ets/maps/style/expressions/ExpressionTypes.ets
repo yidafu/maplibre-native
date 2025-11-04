@@ -10,12 +10,6 @@ export type {
 } from 'libmaplibre.so';
 
 /**
- * ExpressionType - Expression 类型（向后兼容别名）
- * @deprecated 请使用 PropertyValue<T> 替代
- */
-export type ExpressionType<T> = import('libmaplibre.so').PropertyValue<T>;
-
-/**
  * Collator 选项
  */
 export interface CollatorOptions {

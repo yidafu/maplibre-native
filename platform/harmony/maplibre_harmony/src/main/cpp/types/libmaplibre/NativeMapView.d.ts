@@ -11,6 +11,8 @@ import type { Polyline } from './annotations/Polyline';
 import type { Layer } from './layers';
 import type { Source } from './sources';
 import type { Feature, Geometry } from './geojson';
+import type { ExpressionLiteral } from './ExpressionTypes';
+import type { LightSpecification, MapSnapshotterObserver } from './CommonTypes';
 
 // ==================== Type Definitions ====================
 
@@ -94,7 +96,15 @@ export interface Rect {
  * 提供地图渲染和交互的底层 C++ 绑定
  */
 export class NativeMapView {
-  querySourceFeatures(sourceId: string, sourceLayerIds: string[] | undefined, filter: Object | undefined): Feature[]
+  /**
+   * 查询数据源要素
+   * @param sourceId 数据源 ID
+   * @param sourceLayerIds 源图层 ID 数组
+   * @param filter 过滤表达式
+   * @returns Feature 数组
+   */
+  querySourceFeatures(sourceId: string, sourceLayerIds: string[] | undefined, filter: ExpressionLiteral | undefined): Feature[]
+  
   /**
    * 创建 NativeMapView 实例
    * @param cachePath 应用缓存目录路径（必需），推荐使用 context.cacheDir + '/maplibre'
@@ -735,7 +745,7 @@ export class NativeMapView {
    * @param filter 可选的过滤表达式
    * @returns GeoJSON Feature 数组
    */
-  queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: object): Feature[];
+  queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: ExpressionLiteral): Feature[];
 
   /**
    * 查询矩形区域内的渲染要素
@@ -748,7 +758,7 @@ export class NativeMapView {
    * @returns GeoJSON Feature 数组
    */
   queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[],
-    filter?: object): Feature[];
+    filter?: ExpressionLiteral): Feature[];
 
   // ========== Light ==========
 
@@ -756,7 +766,7 @@ export class NativeMapView {
    * 获取光照设置
    * @returns 光照对象（包含位置、颜色、强度等属性）
    */
-  getLight(): object;
+  getLight(): LightSpecification;
 
   // ========== Layers ==========
 
@@ -1379,13 +1389,13 @@ export interface MapSnapshotterNAPI {
    * 设置相机位置
    * @param position 相机位置对象（普通对象，非类实例）
    */
-  setCameraPosition(position: Record<string, ESObject>): void;
+  setCameraPosition(position: CameraPositionLike): void;
 
   /**
    * 设置区域边界
    * @param bounds 边界对象（普通对象，非类实例）
    */
-  setRegion(bounds: Record<string, ESObject>): void;
+  setRegion(bounds: LatLngBoundsLike): void;
 
   /**
    * 设置快照尺寸
@@ -1398,7 +1408,7 @@ export interface MapSnapshotterNAPI {
    * 设置观察者
    * @param observer 观察者对象，传 null 可清除观察者
    */
-  setObserver(observer: Record<string, ESObject> | null): void;
+  setObserver(observer: MapSnapshotterObserver | null): void;
 }
 
 /**

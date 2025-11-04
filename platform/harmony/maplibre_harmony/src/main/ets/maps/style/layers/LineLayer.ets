@@ -1,8 +1,8 @@
 /**
  * LineLayer - 封装类
  */
-import maplibre from 'libmaplibre.so';
-import type { ExpressionLiteral } from 'libmaplibre.so';
+import maplibre, { ExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionLiteral as NapiExpressionLiteral } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
 import { Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
@@ -68,7 +68,7 @@ export class LineLayer {
    * 设置图层过滤器
    * @param filter Expression 实例或表达式字面量数组
    */
-  setFilter(filter: Expression<boolean> | ExpressionLiteral): LineLayer {
+  setFilter(filter: PropertyValue<boolean>): LineLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
     this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
@@ -151,7 +151,7 @@ export class LineLayer {
     return this;
   }
 
-  setLineGradient(gradient: Object): LineLayer {
+  setLineGradient(gradient: PropertyValue<string>): LineLayer {
     this.nativeInstance.setLineGradient(convertValue(gradient));
     return this;
   }
@@ -170,7 +170,7 @@ export class LineLayer {
    * @returns this（支持链式调用）
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): LineLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value));
+    this.nativeInstance.setProperty(propertyName, convertValue(value) as ESObject);
     return this;
   }
 
@@ -186,13 +186,13 @@ export class LineLayer {
    * });
    */
   setProperties(properties: Record<string, PropertyValue<Object>>): LineLayer {
-    const convertedProps: Record<string, Object> = {};
+    const convertedProps: Record<string, ESObject> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]);
+      convertedProps[key] = convertValue(properties[key]) as ESObject;
     }
-    this.nativeInstance.setProperties(convertedProps);
+    this.nativeInstance.setProperties(convertedProps as ESObject);
     return this;
   }
 
@@ -226,7 +226,7 @@ export class LineLayer {
     return this.nativeInstance.getLineRoundLimit();
   }
 
-  getLineGradient(): Object | undefined {
+  getLineGradient(): ExpressionLiteral | undefined {
     return this.nativeInstance.getLineGradient();
   }
 

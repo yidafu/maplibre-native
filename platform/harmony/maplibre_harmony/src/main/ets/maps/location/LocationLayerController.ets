@@ -66,7 +66,7 @@ export class LocationLayerController {
 
     try {
       // 获取 ResourceManager
-      const context = getContext(this) as common.UIAbilityContext;
+      const context = getContext() as common.UIAbilityContext;
       const resMgr = context.resourceManager;
 
       // 加载前景图标

@@ -173,22 +173,4 @@ export class LatLngBounds {
   public toString(): string {
     return `LatLngBounds(${this.north}, ${this.east}, ${this.south}, ${this.west})`;
   }
-
-  /**
-   * 获取西南角坐标（别名方法，与 Android API 兼容）
-   * TODO: 与 getSouthwest() 保持一致
-   * @deprecated 使用 getSouthwest() 代替
-   */
-  getSouthWest(): LatLng {
-    return this.getSouthwest();
-  }
-
-  /**
-   * 获取东北角坐标（别名方法，与 Android API 兼容）
-   * TODO: 与 getNortheast() 保持一致
-   * @deprecated 使用 getNortheast() 代替
-   */
-  getNorthEast(): LatLng {
-    return this.getNortheast();
-  }
 }

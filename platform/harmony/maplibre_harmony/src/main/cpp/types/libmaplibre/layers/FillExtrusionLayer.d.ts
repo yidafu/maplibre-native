@@ -5,6 +5,7 @@
 
 import type { PropertyValue } from '../LayerPropertyTypes';
 import type { ExpressionLiteral } from '../ExpressionTypes';
+import type { JSONValue } from '../CommonTypes';
 
 /**
  * FillExtrusionLayer - 3D 填充拉伸图层
@@ -145,7 +146,7 @@ export class FillExtrusionLayer {
    * @param propertyName 属性名称
    * @param value 属性值（常量值或Expression）
    */
-  setProperty(propertyName: string, value: any): this;
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
    * 批量设置属性（通用方法）
@@ -155,5 +156,5 @@ export class FillExtrusionLayer {
    *   'fill-extrusion-height': 100, 'fill-extrusion-color': '#FF0000
    * });
    */
-  setProperties(properties: Record<string, any>): this;
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): this;
 }

@@ -1,4 +1,5 @@
 import type { ExpressionLiteral } from '../ExpressionTypes';
+import type { JSONValue } from '../CommonTypes';
 
 /**
  * 聚类属性配置
@@ -110,7 +111,7 @@ export interface Feature {
   type: 'Feature';
   id?: string | number;
   geometry: Geometry | null;
-  properties: Record<string, any>;
+  properties: Record<string, JSONValue>;
 }
 
 /**
@@ -190,7 +191,7 @@ export class GeoJsonSource {
    * @param filter 可选过滤表达式（Expression 数组格式）
    * @returns Feature 数组
    */
-  querySourceFeatures(filter?: object): Feature[];
+  querySourceFeatures(filter?: ExpressionLiteral): Feature[];
 
   /**
    * 获取聚类的子项

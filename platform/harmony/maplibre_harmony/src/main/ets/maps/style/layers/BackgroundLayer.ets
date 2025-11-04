@@ -91,7 +91,7 @@ export class BackgroundLayer {
    * @returns this（支持链式调用）
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): BackgroundLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value));
+    this.nativeInstance.setProperty(propertyName, convertValue(value) as ESObject);
     return this;
   }
 
@@ -105,13 +105,13 @@ export class BackgroundLayer {
    * });
    */
   setProperties(properties: Record<string, PropertyValue<Object>>): BackgroundLayer {
-    const convertedProps: Record<string, Object> = {};
+    const convertedProps: Record<string, ESObject> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]);
+      convertedProps[key] = convertValue(properties[key]) as ESObject;
     }
-    this.nativeInstance.setProperties(convertedProps);
+    this.nativeInstance.setProperties(convertedProps as ESObject);
     return this;
   }
 

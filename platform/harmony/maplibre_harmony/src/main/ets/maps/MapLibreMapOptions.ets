@@ -1,13 +1,7 @@
 import { LatLngBounds } from './geometry/LatLngBounds';
 import { CameraPosition } from './camera/CameraPosition';
-
-/**
- * MapSize - 地图尺寸接口
- */
-export interface MapSize {
-  width: number;
-  height: number;
-}
+import type { LightSpecification } from 'libmaplibre.so';
+import type { Size } from './types/NativeTypes';
 
 /**
  * MapLibreMapOptions - 地图选项配置类
@@ -17,7 +11,7 @@ export class MapLibreMapOptions {
   public pixelRatio: number = 1.0;
   public contextMode: string = 'unique';
   public crossSourceCollisions: boolean = true;
-  public size: MapSize = { width: 256, height: 256 };
+  public size: Size = { width: 256, height: 256 };
   // 相机配置
   public cameraPosition: CameraPosition | null = null;
   public bounds: LatLngBounds | null = null;
@@ -72,7 +66,7 @@ export class MapLibreMapOptions {
   public tileLodPitchThreshold: number = 0;
   public tileLodZoomShift: number = 0;
   // 光照配置
-  public light: Object | null = null;
+  public light: LightSpecification | null = null;
   // 过渡动画配置
   public transitionDuration: number = 300;
   public transitionDelay: number = 0;

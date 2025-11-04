@@ -25,7 +25,6 @@ export type { LightOptions } from './light/Light';
 // Expression 表达式系统（不导出 PropertyValue 以避免冲突）
 export {
   Expression,
-  ExpressionBuilder,
   ExpressionLiteral,
   ExpressionLiteralArray,
   ExpressionMap,

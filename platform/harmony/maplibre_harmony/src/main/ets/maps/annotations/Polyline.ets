@@ -9,6 +9,21 @@ import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
 
 /**
+ * 原生 Polyline 选项接口（用于 NAPI 层交互）
+ */
+interface NativePolylineOptions {
+  points: ILatLng[];
+  color: string;
+  width: number;
+  alpha: number;
+  visible: boolean;
+  zIndex: number;
+  pattern: number[] | null;
+  jointType: string;
+  capType: string;
+}
+
+/**
  * PolylineOptions - 折线选项接口
  */
 export interface PolylineOptions {
@@ -74,7 +89,7 @@ export class Polyline {
       const options = optionsOrPolyline as PolylineOptions;
 
       // 转换 LatLng 对象为原生格式
-      const nativeOptions: ESObject = {
+      const nativeOptions: NativePolylineOptions = {
         points: options.points.map((p: LatLng): ILatLng => p.toObject()),
         color: options.color || '#000000',
         width: options.width !== undefined ? options.width : 10,
@@ -86,7 +101,7 @@ export class Polyline {
         capType: options.capType || 'round'
       };
 
-      this.nativeInstance = new maplibre.Polyline(nativeOptions);
+      this.nativeInstance = new maplibre.Polyline(nativeOptions as PolylineOptions);
     } else {
       throw new Error('Invalid Polyline constructor arguments');
     }

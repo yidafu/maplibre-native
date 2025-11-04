@@ -3,7 +3,9 @@
  * 栅格图层 API (NAPI 类)
  */
 
+import type { PropertyValue } from '../LayerPropertyTypes';
 import type { ExpressionLiteral } from '../ExpressionTypes';
+import type { JSONValue } from '../CommonTypes';
 
 /**
  * RasterLayer - 栅格图层
@@ -132,7 +134,7 @@ export class RasterLayer {
    * @param propertyName 属性名称
    * @param value 属性值（常量值或Expression）
    */
-  setProperty(propertyName: string, value: any): this;
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
    * 批量设置属性（通用方法）
@@ -142,5 +144,5 @@ export class RasterLayer {
    *   'raster-opacity': 0.8, 'raster-brightness-max': 1.0
    * });
    */
-  setProperties(properties: Record<string, any>): this;
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): this;
 }

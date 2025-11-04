@@ -1,7 +1,7 @@
 import { InfoWindowStyle } from './InfoWindow';
 import { Icon } from './Icon';
 import { LatLng } from '../geometry/LatLng';
-import { Marker } from './Marker';
+import { Marker, NativeMarkerOptions } from './Marker';
 
 /**
  * MarkerOptions - Marker 构建器类
@@ -330,8 +330,7 @@ export class MarkerOptions {
     }
 
     // 构建 options 对象
-    // 注意：ESObject 用于与 NAPI 层交互的动态对象，这是 HarmonyOS 官方推荐的方式
-    const options: ESObject = {
+    const options: NativeMarkerOptions = {
       position: this._position.toObject()  // 传递对象字面量
     };
 

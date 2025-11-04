@@ -1,4 +1,5 @@
 import type { Geometry } from './Geometry';
+import type { JSONValue } from '../CommonTypes';
 
 /**
  * Feature - GeoJSON Feature 类型
@@ -11,7 +12,7 @@ export class Feature {
   constructor(options?: {
     id?: string | number;
     geometry?: Geometry;
-    properties?: Record<string, any>;
+    properties?: Record<string, JSONValue>;
   });
 
   /**
@@ -27,12 +28,12 @@ export class Feature {
   /**
    * 获取属性对象
    */
-  getProperties(): Record<string, any>;
+  getProperties(): Record<string, JSONValue>;
 
   /**
    * 设置属性对象
    */
-  setProperties(properties: Record<string, any>): this;
+  setProperties(properties: Record<string, JSONValue>): this;
 
   /**
    * 获取几何体对象
@@ -51,7 +52,7 @@ export class Feature {
     type: 'Feature';
     id?: string | number;
     geometry: object;
-    properties: Record<string, any>;
+    properties: Record<string, JSONValue>;
   };
 }
 

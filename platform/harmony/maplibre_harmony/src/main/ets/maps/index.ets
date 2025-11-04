@@ -4,6 +4,9 @@
  * 提供所有公共 API 的统一导出
  */
 import maplibre from 'libmaplibre.so';
+// 不能导出 maplibre，会破坏封装性
+// 导出 maplibre namespace（供需要访问底层 NAPI 的用户使用）
+// export { maplibre };
 
 // ========== 核心组件 ==========
 export { MapView } from './NativeMapView';
@@ -23,7 +26,7 @@ export {
   CameraMoveReason
 } from './types/NativeTypes';
 
-export type { Margins } from './types/NativeTypes';
+export type { Margins, Size } from './types/NativeTypes';
 
 // ========== 调试选项 ==========
 export { MapDebugOptions } from './types/MapDebugOptions';
@@ -32,7 +35,7 @@ export { MapDebugOptions } from './types/MapDebugOptions';
 export { RenderingStats } from './renderer/RenderingStats';
 
 // ========== UI 设置 ==========
-export { UiSettings, FocalPoint, CompassMargins } from './UiSettings';
+export { UiSettings, FocalPoint } from './UiSettings';
 
 // ========== 监听器接口 ==========
 export {
@@ -140,9 +143,12 @@ export {
   CameraPosition,
   ICameraPosition,
   EdgeInsets,
-  IEdgeInsets,
-  CameraOptions
+  IEdgeInsets
 } from './camera/CameraPosition';
+
+export type CameraOptions = maplibre.CameraOptions;
+export type { ExpressionLiteral as FilterExpression } from 'libmaplibre.so';
+export type { ExpressionLiteral as NapiExpressionLiteral } from 'libmaplibre.so';
 
 export { CameraAnimationCallback, OnFinishCallback, AnimationOptions } from './camera/CameraAnimationCallback';
 
@@ -252,19 +258,12 @@ export type {
 // ========== 表达式 ==========
 export {
   Expression,
-  ExpressionBuilder, // deprecated: use Expression instead
   ExpressionLiteral,
   ExpressionLiteralArray,
   ExpressionMap
 } from './style/expressions';
 
 export { ExpressionValue } from './style/expressions';
-
-
-// 注意：Interpolator、Stop、CollatorExpression 已整合到 Expression 类中
-// 请使用 Expression.linear()、Expression.exponential()、Expression.cubicBezier()
-// 请使用 Expression.stop()
-// 请使用 Expression.collator()
 
 // ========== 数据源 ==========
 export {
@@ -281,7 +280,6 @@ export {
   MapSnapshot,
   SnapshotOptions,
   SnapshotOptionsBuilder,
-  Size,
   SnapshotReadyCallback,
   SnapshotErrorHandler,
   MapSnapshotterObserver
