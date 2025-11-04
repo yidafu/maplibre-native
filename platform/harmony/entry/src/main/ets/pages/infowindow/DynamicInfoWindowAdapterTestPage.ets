@@ -60,7 +60,7 @@ struct DynamicInfoWindowAdapterTestPage {
       }
       
       getInfoWindow(marker: Marker): ESObject {
-        const colors = ['#FF6200EE', '#FF03DAC5', '#FFBB86FC', '#FF018786']
+        const colors = ['#6200EE', '#03DAC5', '#BB86FC', '#018786']
         const randomColor = colors[this.page.updateCount % colors.length]
         
         const viewData: Record<string, Object> = {

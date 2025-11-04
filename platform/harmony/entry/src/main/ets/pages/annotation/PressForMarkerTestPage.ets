@@ -6,7 +6,9 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions,
+  OnMapClickListener,
+  OnMapLongClickListener} from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, formatLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
@@ -29,8 +31,8 @@ struct PressForMarkerTestPage {
     console.info('[PressForMarkerTestPage] onMapReady');
     this.mapController = map;
     
-    // TODO: Use jumpTo instead of CameraPosition
-    // TODO: map.setCameraPosition(initialPosition);
+    // 设置初始相机位置
+    map.jumpTo(0, 39.9, 116.4, 0, 10);
     
     // 添加点击监听器
     this.setupClickListeners(map);
@@ -42,24 +44,40 @@ struct PressForMarkerTestPage {
    * 设置点击监听器
    */
   private setupClickListeners(map: MapLibreMap): void {
-    // TODO: 实现地图点击监听器
     // 单击添加标注
-    // map.addOnMapClickListener({
-    //   onMapClick: (latLng: LatLng): boolean => {
-    //     this.addMarker(latLng, 'Click');
-    //     return true;
-    //   }
-    // });
+    class MapClickListenerImpl implements OnMapClickListener {
+      private page: PressForMarkerTestPage;
+      
+      constructor(page: PressForMarkerTestPage) {
+        this.page = page;
+      }
+      
+      onMapClick(x: number, y: number): boolean {
+        if (!this.page.mapController) return false;
+        const latLng = this.page.mapController.latLngForPixel(x, y);
+        this.page.addMarker(latLng, '单击');
+        return true;
+      }
+    }
     
     // 长按添加标注
-    // map.addOnMapLongClickListener({
-    //   onMapLongClick: (latLng: LatLng): boolean => {
-    //     this.addMarker(latLng, 'Long Click');
-    //     return true;
-    //   }
-    // });
+    class MapLongClickListenerImpl implements OnMapLongClickListener {
+      private page: PressForMarkerTestPage;
+      
+      constructor(page: PressForMarkerTestPage) {
+        this.page = page;
+      }
+      
+      onMapLongClick(x: number, y: number): boolean {
+        if (!this.page.mapController) return false;
+        const latLng = this.page.mapController.latLngForPixel(x, y);
+        this.page.addMarker(latLng, '长按');
+        return true;
+      }
+    }
     
-    showToast('点击监听器 (TODO: 实现)');
+    map.addOnMapClickListener(new MapClickListenerImpl(this));
+    map.addOnMapLongClickListener(new MapLongClickListenerImpl(this));
   };
   
   /**
@@ -70,9 +88,9 @@ struct PressForMarkerTestPage {
     
     this.lastClickType = clickType;
     
-    // 获取屏幕坐标
-    // TODO: 实现坐标转换
-    // const screenPoint = this.mapController.projection.toScreenLocation(position);
+    // 获取屏幕坐标（用于调试）
+    const screenPoint = this.mapController.pixelForLatLng(position.latitude, position.longitude);
+    console.info(`[PressForMarkerTestPage] Screen point: (${screenPoint.x}, ${screenPoint.y})`);
     
     const markerOptions = new MarkerOptions()
       .position(position)

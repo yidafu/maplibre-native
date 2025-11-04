@@ -31,18 +31,14 @@ struct MapInDialogTestPage {
     console.info('[MapInDialogTestPage] onMapReady');
     this.mapController = map;
     map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
-    // TODO: Use jumpTo instead of CameraPosition
-    // TODO: map.setCameraPosition(initialPosition);
+    map.jumpTo(0, 39.9, 116.4, 0, 10);
   };
   
   private onDialogMapReady = (map: MapLibreMap): void => {
     console.info('[MapInDialogTestPage] onDialogMapReady');
     this.dialogMapController = map;
     map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
-    // TODO: Use jumpTo instead of CameraPosition
-    // TODO: map.setCameraPosition(initialPosition);
+    map.jumpTo(0, 39.9, 116.4, 0, 12);
   };
   
   @Builder

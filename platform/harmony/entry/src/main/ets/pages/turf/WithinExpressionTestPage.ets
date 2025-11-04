@@ -65,16 +65,12 @@ struct WithinExpressionTestPage {
     this.mapController.getStyle()?.addSource(pointsSource);
     
     const polygonLayer = new FillLayer('polygon-layer', 'polygon-source');
-    // TODO: setProperties() not available - polygonLayer.setProperties({
-    //   'fill-opacity': 0.3,
-    //   'fill-outline-color': '#2196F3'
-    // });
+    polygonLayer.setFillOpacity(0.3)
+      .setFillOutlineColor('#2196F3');
     this.mapController.getStyle()?.addLayer(polygonLayer);
     
     const pointsLayer = new CircleLayer('points-layer', 'points-source');
-    // TODO: setProperties() not available - pointsLayer.setProperties({
-    //   'circle-color': '#E74C3C'
-    // });
+    pointsLayer.setCircleColor('#E74C3C');
     this.mapController.getStyle()?.addLayer(pointsLayer);
     
     showToast('Within表达式测试已设置');

@@ -159,76 +159,31 @@ struct ManualLocationUpdatesTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Scroll() {
-      Column({ space: 12 }) {
-        Text('手动定位更新')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Text(`更新次数: ${this.updateCount}`)
-          .fontSize(14)
-          .fontColor('#666')
-        
-        Text(`方向: ${this.heading.toFixed(0)}°`)
-          .fontSize(14)
-          .fontColor('#666')
-        
-        Button('模拟移动')
-          .width('100%')
-          .backgroundColor('#4CAF50')
-          .enabled(this.permissionGranted)
-          .onClick(() => this.simulateMovement())
-        
-        Divider()
-        
-        Text('跳转到预设位置')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        ForEach(this.presetLocations, (preset: Record<string, Object>) => {
-          Button(preset['name'] as string)
-            .width('100%')
-            .enabled(this.permissionGranted)
-            .onClick(() => this.forceLocationUpdate(preset['lat'] as number, preset['lng'] as number))
-        })
-        
-        Divider()
-        
-        Row({ space: 8 }) {
-          Button('随机位置')
-            .layoutWeight(1)
-            .enabled(this.permissionGranted)
-            .onClick(() => {
-              const randomLat = 20 + Math.random() * 30;
-              const randomLng = 100 + Math.random() * 30;
-              this.forceLocationUpdate(randomLat, randomLng);
-            })
-          
-          Button('重置')
-            .layoutWeight(1)
-            .backgroundColor('#FF6B6B')
-            .onClick(() => {
-              this.updateCount = 0;
-              this.heading = 0;
-              this.forceLocationUpdate(39.9042, 116.4074, 0);
-            })
-        }
-        .width('100%')
-        
-        Text(`当前位置: ${this.currentLat.toFixed(6)}, ${this.currentLng.toFixed(6)}`)
-          .fontSize(11)
-          .fontColor('#999')
-          .margin({ top: 8 })
-        
-        Text('说明: 使用forceLocationUpdate手动更新定位')
-          .fontSize(12)
-          .fontColor('#666')
-      }
-      .width('100%')
-      .padding(16)
-    }
-    .height('100%')
+  buildActionButtons() {
+    Button('模拟移动')
+      .enabled(this.permissionGranted)
+      .onClick(() => this.simulateMovement())
+    
+    ForEach(this.presetLocations, (preset: Record<string, Object>) => {
+      Button(preset['name'] as string)
+        .enabled(this.permissionGranted)
+        .onClick(() => this.forceLocationUpdate(preset['lat'] as number, preset['lng'] as number))
+    })
+    
+    Button('随机位置')
+      .enabled(this.permissionGranted)
+      .onClick(() => {
+        const randomLat = 20 + Math.random() * 30;
+        const randomLng = 100 + Math.random() * 30;
+        this.forceLocationUpdate(randomLat, randomLng);
+      })
+    
+    Button('重置')
+      .onClick(() => {
+        this.updateCount = 0;
+        this.heading = 0;
+        this.forceLocationUpdate(39.9042, 116.4074, 0);
+      })
   }
   
   build() {
@@ -238,7 +193,7 @@ struct ManualLocationUpdatesTestPage {
         description: '手动定位更新',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

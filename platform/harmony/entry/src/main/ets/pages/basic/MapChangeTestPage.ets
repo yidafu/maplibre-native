@@ -17,8 +17,8 @@ struct MapChangeTestPage {
   
   aboutToDisappear() {
     if (this.mapController) {
-      // 移除事件监听器
-      // TODO: 实现 removeAllListeners
+      // 移除所有事件监听器
+      this.mapController.removeAllListeners();
       this.mapController.destroy();
       this.mapController = null;
     }
@@ -28,9 +28,7 @@ struct MapChangeTestPage {
     console.info('[MapChangeTestPage] onMapReady');
     this.mapController = map;
     map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
-    // TODO: Use jumpTo instead of CameraPosition
-    // TODO: map.setCameraPosition(initialPosition);
+    map.jumpTo(0, 39.9, 116.4, 0, 10);
     
     // 添加事件监听器
     this.setupEventListeners(map);

@@ -36,16 +36,11 @@ struct CustomLayerTestPage {
     // 设置初始位置（对应Android测试：39.91448, -243.60947）
     map.jumpTo(0, 39.91448, -243.60947, 0, 10);
     
-    showToast('CustomLayer API - 待实现底层NAPI绑定');
+    showToast('CustomLayer 已就绪');
   };
   
   /**
    * 添加/移除自定义图层
-   * 
-   * TODO: 需要实现以下功能：
-   * 1. NAPI层的CustomLayer实现
-   * 2. OpenGL渲染上下文创建
-   * 3. 图层添加/移除到Style
    */
   private toggleCustomLayer = (): void => {
     if (!this.mapController) {
@@ -62,10 +57,10 @@ struct CustomLayerTestPage {
     if (this.layerAdded && this.customLayer) {
       // 移除图层
       try {
-        // TODO: 当NAPI层实现后，这里应该能正常工作
         const removed = style.removeLayer(this.customLayer.getId());
         if (removed) {
           this.layerAdded = false;
+          this.customLayer = null;
           showToast('已移除CustomLayer');
           console.info('[CustomLayerTestPage] Custom layer removed');
         } else {
@@ -78,14 +73,15 @@ struct CustomLayerTestPage {
     } else {
       // 添加图层
       try {
-        // 创建简化的自定义图层
-        // 注意：完整的 CustomLayer 实现需要 Native 层支持
+        // 创建自定义图层，默认红色半透明
         this.customLayer = new CustomLayer('custom-layer');
+        this.customLayer.setColor(1.0, 0.0, 0.0, 0.5);
         
         // 添加图层
-        style.addLayer(this.customLayer!);
+        style.addLayer(this.customLayer);
         this.layerAdded = true;
-        showToast('已添加CustomLayer (简化版)');
+        this.currentColor = '红色';
+        showToast('已添加CustomLayer');
         console.info('[CustomLayerTestPage] Custom layer added');
       } catch (error) {
         showToast(`添加失败: ${error}`);
@@ -96,17 +92,16 @@ struct CustomLayerTestPage {
   
   /**
    * 设置图层颜色
-   * 
-   * TODO: 需要实现Native层的setColor方法
    */
   private setLayerColor = (red: number, green: number, blue: number, colorName: string): void => {
-    if (!this.layerAdded) {
+    if (!this.layerAdded || !this.customLayer) {
       showToast('请先添加自定义图层');
       return;
     }
     
     try {
-      // TODO: 当 CustomLayer API 完善后，可以实现颜色变更
+      // 设置颜色（透明度保持为0.5）
+      this.customLayer.setColor(red, green, blue, 0.5);
       this.currentColor = colorName;
       
       // 触发重绘
@@ -114,7 +109,7 @@ struct CustomLayerTestPage {
         this.mapController.triggerRepaint();
       }
       
-      showToast(`颜色设置为${colorName} (TODO: 需要API实现)`);
+      showToast(`颜色已设置为${colorName}`);
       console.info(`[CustomLayerTestPage] Color set to ${colorName}: (${red}, ${green}, ${blue})`);
     } catch (error) {
       showToast(`设置颜色失败: ${error}`);
@@ -205,7 +200,7 @@ struct CustomLayerTestPage {
         .enabled(this.layerAdded);
       
       // 说明文字
-      Text('注意：CustomLayer需要底层NAPI实现支持')
+      Text('使用OpenGL ES在地图上进行自定义渲染')
         .fontSize(11)
         .fontColor('#999999')
         .margin({ top: 8 })

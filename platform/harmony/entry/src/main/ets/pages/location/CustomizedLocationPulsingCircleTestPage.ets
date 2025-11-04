@@ -133,82 +133,28 @@ struct CustomizedLocationPulsingCircleTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Scroll() {
-      Column({ space: 12 }) {
-        Text('脉冲控制')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Button(this.pulsingEnabled ? '停止脉冲' : '开始脉冲')
-          .width('100%')
-          .backgroundColor(this.pulsingEnabled ? '#FF6B6B' : '#4CAF50')
-          .enabled(this.permissionGranted)
-          .onClick(() => {
-            if (this.pulsingEnabled) {
-              this.stopPulsing();
-            } else {
-              this.startPulsing();
-            }
-          })
-        
-        Divider()
-        
-        Text('自定义参数')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Row() {
-          Text('最大半径:')
-            .fontSize(14)
-            .width(80)
-          Slider({
-            value: this.pulseMaxRadius,
-            min: 30,
-            max: 200,
-            step: 10
-          })
-          .layoutWeight(1)
-          .onChange((value: number) => {
-            this.pulseMaxRadius = value;
-            if (this.pulsingEnabled) {
-              this.applyPulsingConfig();
-            }
-          })
-          Text(`${this.pulseMaxRadius}`)
-            .fontSize(14)
-            .width(50)
+  buildActionButtons() {
+    Button(this.pulsingEnabled ? '停止脉冲' : '开始脉冲')
+      .enabled(this.permissionGranted)
+      .onClick(() => {
+        if (this.pulsingEnabled) {
+          this.stopPulsing();
+        } else {
+          this.startPulsing();
         }
-        .width('100%')
-        
-        Text('颜色预设')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween }) {
-          ForEach(this.colorPresets, (color: string) => {
-            Button()
-              .width(50)
-              .height(50)
-              .backgroundColor(color)
-              .margin({ bottom: 8 })
-              .onClick(() => this.updateColor(color))
-              .border({
-                width: this.pulseColor === color ? 3 : 0,
-                color: '#000000'
-              })
-          })
-        }
-        
-        Text('说明: 使用LocationComponentOptions自定义脉冲圆')
-          .fontSize(12)
-          .fontColor('#666')
-          .margin({ top: 8 })
-      }
-      .width('100%')
-      .padding(16)
-    }
-    .height('100%')
+      })
+    
+    Button('蓝色')
+      .backgroundColor('#4A90E2')
+      .onClick(() => this.updateColor('#4A90E2'))
+    
+    Button('红色')
+      .backgroundColor('#E74C3C')
+      .onClick(() => this.updateColor('#E74C3C'))
+    
+    Button('绿色')
+      .backgroundColor('#2ECC71')
+      .onClick(() => this.updateColor('#2ECC71'))
   }
   
   build() {
@@ -218,7 +164,7 @@ struct CustomizedLocationPulsingCircleTestPage {
         description: '自定义脉冲圆',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

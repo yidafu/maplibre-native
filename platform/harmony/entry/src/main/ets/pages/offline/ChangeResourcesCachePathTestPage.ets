@@ -64,7 +64,7 @@ struct ChangeResourcesCachePathTestPage {
   
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
     
     // 初始化离线管理器
     this.initOfflineManager();

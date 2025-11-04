@@ -74,7 +74,7 @@ struct InfoWindowAdapterTestPage {
           'title': `🏙️ ${marker.getTitle()}`,
           'subtitle': `📍 ${marker.getSnippet()}`,
           'icon': '🗺️',
-          'backgroundColor': '#FF6200EE',
+          'backgroundColor': '#6200EE',
           'titleColor': '#FFFFFF',
           'snippetColor': '#E0E0E0'
         };

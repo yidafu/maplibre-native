@@ -27,9 +27,7 @@ struct OverlayMapTestPage {
     console.info('[OverlayMapTestPage] onMapReady');
     this.mapController = map;
     map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    
-    // TODO: Use jumpTo instead of CameraPosition
-    // TODO: map.setCameraPosition(initialPosition);
+    map.jumpTo(0, 39.9, 116.4, 0, 10);
   };
   
   /**

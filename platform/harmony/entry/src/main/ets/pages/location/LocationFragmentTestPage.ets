@@ -148,52 +148,13 @@ struct LocationFragmentTestPage {
   }
 
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('Fragment 生命周期')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
+  buildActionButtons() {
+    Button(this.fragmentActive ? '停用 Fragment' : '激活 Fragment')
+      .onClick(() => this.toggleFragment())
 
-      Button(this.fragmentActive ? '停用 Fragment' : '激活 Fragment')
-        .width('100%')
-        .backgroundColor(this.fragmentActive ? '#FF6B6B' : '#4CAF50')
-        .onClick(() => this.toggleFragment())
-
-      Button(this.locationActive ? '停止定位' : '启动定位')
-        .width('100%')
-        .backgroundColor(this.locationActive ? '#FF6B6B' : '#2196F3')
-        .enabled(this.fragmentActive)
-        .onClick(() => this.toggleLocation())
-
-      Divider()
-
-      Text('生命周期日志')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-
-      Column() {
-        ForEach(this.lifecycleLog, (log: string, index: number) => {
-          Text(log)
-            .fontSize(11)
-            .fontFamily('monospace')
-            .width('100%')
-            .padding(4)
-            .backgroundColor(index % 2 === 0 ? '#F5F5F5' : '#FFFFFF')
-        })
-      }
-      .width('100%')
-      .backgroundColor('#F9F9F9')
-      .border({ width: 1, color: '#DDD' })
-      .borderRadius(4)
-      .padding(8)
-
-      Text('说明: 测试Fragment生命周期中的LocationComponent')
-        .fontSize(12)
-        .fontColor('#666')
-        .margin({ top: 8 })
-    }
-    .width('100%')
-    .padding(16)
+    Button(this.locationActive ? '停止定位' : '启动定位')
+      .enabled(this.fragmentActive)
+      .onClick(() => this.toggleLocation())
   }
 
   build() {
@@ -203,7 +164,7 @@ struct LocationFragmentTestPage {
         description: '定位Fragment测试',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

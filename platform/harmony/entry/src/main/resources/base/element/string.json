@@ -23,6 +23,14 @@
     {
       "name": "location_permission_reason",
       "value": "Display user location on the map"
+    },
+    {
+      "name": "write_media_permission_reason",
+      "value": "Save map screenshots to photo gallery"
+    },
+    {
+      "name": "read_media_permission_reason",
+      "value": "Verify saved screenshots in photo gallery"
     }
   ]
 }

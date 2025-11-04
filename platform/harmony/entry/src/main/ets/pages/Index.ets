@@ -3,7 +3,7 @@
  * 测试页面导航首页
  *
  * 基于 Android 和 iOS 测试应用的结构重新实现
- * 包含 18 个主要分类，涵盖所有 MapLibre 功能
+ * 包含 19 个主要分类，涵盖所有 MapLibre 功能
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -53,12 +53,12 @@ struct Index {
   @State private selectedGroupIndex: number = 0;
 
   aboutToAppear() {
-    // 初始化测试页面数据，采用 Android 的 18 个分类结构
+    // 初始化测试页面数据，包含 19 个功能分类
     this.testPageGroups = this.initializeTestPages();
   }
 
   /**
-   * 初始化所有测试页面，按照 Android TestApp 的分类结构
+   * 初始化所有测试页面，按照功能模块分类
    * 参考: platform/android/MapLibreAndroidTestApp
    */
   private initializeTestPages(): TestPageGroup[] {
@@ -75,13 +75,16 @@ struct Index {
       // ==================== 9. Styling ====================
       this.createStylingGroup(),
 
+      // ==================== 10. Layer ====================
+      this.createLayerGroup(),
+
       // ==================== 6. Info Window ====================
       this.createInfoWindowGroup(),
 
       // ==================== 5. Fragment ====================
       this.createFragmentGroup(),
 
-      // ==================== 10. Features ====================
+      // ==================== 11. Features ====================
       this.createFeaturesGroup(),
 
       // ==================== 7. Location ====================
@@ -91,28 +94,28 @@ struct Index {
       this.createOfflineGroup(),
 
 
-      // ==================== 11. Storage ====================
+      // ==================== 12. Storage ====================
       this.createStorageGroup(),
 
-      // ==================== 12. Events ====================
+      // ==================== 13. Events ====================
       this.createEventsGroup(),
 
-      // ==================== 13. Image Generator ====================
+      // ==================== 14. Image Generator ====================
       this.createImageGeneratorGroup(),
 
-      // ==================== 14. Texture View ====================
+      // ==================== 15. Texture View ====================
       this.createTextureViewGroup(),
 
-      // ==================== 15. Turf ====================
+      // ==================== 16. Turf ====================
       this.createTurfGroup(),
 
-      // ==================== 16. Map Options ====================
+      // ==================== 17. Map Options ====================
       this.createMapOptionsGroup(),
 
-      // ==================== 17. Integration ====================
+      // ==================== 18. Integration ====================
       this.createIntegrationGroup(),
 
-      // ==================== 18. Performance ====================
+      // ==================== 19. Performance ====================
       this.createPerformanceGroup(),
 
     ]
@@ -257,18 +260,6 @@ struct Index {
       new TestPageItem('Style File', '本地样式文件', 'pages/style/StyleFileTestPage', '📄'),
       new TestPageItem('No Style', '无样式地图', 'pages/style/NoStyleTestPage', '⚪'),
       new TestPageItem('Style Transition', '样式过渡', 'pages/style/StyleTransitionTestPage', '🎬'),
-      new TestPageItem('Circle Layer', '圆形图层', 'pages/style/CircleLayerTestPage', '⭕'),
-      new TestPageItem('Fill Layer', '填充图层', 'pages/style/FillLayerTestPage', '🔷'),
-      new TestPageItem('Line Layer', '线条图层', 'pages/style/LineLayerTestPage', '📈'),
-      new TestPageItem('Symbol Layer', '符号图层', 'pages/style/SymbolLayerTestPage', '🔤'),
-      new TestPageItem('Animated Symbol Layer', '动画符号图层', 'pages/style/AnimatedSymbolLayerTestPage', '🎭'),
-      new TestPageItem('Symbol Generator', '符号生成器', 'pages/style/SymbolGeneratorTestPage', '🔧'),
-      new TestPageItem('Zoom Function Symbol', '缩放函数符号层', 'pages/style/ZoomFunctionSymbolLayerTestPage', '🔍'),
-      new TestPageItem('Background Layer', '背景图层', 'pages/style/BackgroundLayerTestPage', '⬜'),
-      new TestPageItem('Fill Extrusion', '填充拉伸', 'pages/style/FillExtrusionTestPage', '🏢'),
-      new TestPageItem('Building Fill Extrusion', '建筑物填充拉伸', 'pages/style/BuildingFillExtrusionTestPage', '🏙️'),
-      new TestPageItem('Heatmap Layer', '热力图', 'pages/style/HeatmapLayerTestPage', '🔥'),
-      new TestPageItem('Hillshade Layer', '山体阴影', 'pages/style/HillshadeLayerTestPage', '⛰️'),
       new TestPageItem('Raster Source', '栅格数据源', 'pages/style/RasterSourceTestPage', '🖼️'),
       new TestPageItem('Vector Tile Source', '矢量瓦片数据源', 'pages/style/VectorTileTestPage', '📐'),
       new TestPageItem('Animated Image', '动画图片', 'pages/style/AnimatedImageSourceTestPage', '🎞️'),
@@ -284,15 +275,35 @@ struct Index {
       new TestPageItem('Stretchable Image', '可拉伸图片', 'pages/style/StretchableImageTestPage', '↔️'),
       new TestPageItem('Image In Label', '标签中的图片', 'pages/style/ImageInLabelTestPage', '🖼️'),
       new TestPageItem('Source', '数据源管理', 'pages/style/SourceTestPage', '📊'),
-      new TestPageItem('Layer', '图层管理', 'pages/style/LayerTestPage', '🔨'),
       new TestPageItem('Light', '光照系统', 'pages/style/LightTestPage', '💡'),
       new TestPageItem('Expression', 'Expression 测试', 'pages/style/ExpressionTestPage', '🧮'),
+    ]);
+  }
+
+  /**
+   * 10. Layer - 图层系统
+   */
+  private createLayerGroup(): TestPageGroup {
+    return new TestPageGroup('Layer', '🗂️', [
+      new TestPageItem('Layer', '图层管理', 'pages/style/LayerTestPage', '🔨'),
+      new TestPageItem('Circle Layer', '圆形图层', 'pages/style/CircleLayerTestPage', '⭕'),
+      new TestPageItem('Fill Layer', '填充图层', 'pages/style/FillLayerTestPage', '🔷'),
+      new TestPageItem('Line Layer', '线条图层', 'pages/style/LineLayerTestPage', '📈'),
+      new TestPageItem('Symbol Layer', '符号图层', 'pages/style/SymbolLayerTestPage', '🔤'),
+      new TestPageItem('Animated Symbol Layer', '动画符号图层', 'pages/style/AnimatedSymbolLayerTestPage', '🎭'),
+      new TestPageItem('Symbol Generator', '符号生成器', 'pages/style/SymbolGeneratorTestPage', '🔧'),
+      new TestPageItem('Zoom Function Symbol', '缩放函数符号层', 'pages/style/ZoomFunctionSymbolLayerTestPage', '🔍'),
+      new TestPageItem('Background Layer', '背景图层', 'pages/style/BackgroundLayerTestPage', '⬜'),
+      new TestPageItem('Fill Extrusion', '填充拉伸', 'pages/style/FillExtrusionTestPage', '🏢'),
+      new TestPageItem('Building Fill Extrusion', '建筑物填充拉伸', 'pages/style/BuildingFillExtrusionTestPage', '🏙️'),
+      new TestPageItem('Heatmap Layer', '热力图', 'pages/style/HeatmapLayerTestPage', '🔥'),
+      new TestPageItem('Hillshade Layer', '山体阴影', 'pages/style/HillshadeLayerTestPage', '⛰️'),
       new TestPageItem('Custom Layer', '自定义渲染图层', 'pages/customlayer/CustomLayerTestPage', '🎨'),
     ]);
   }
 
   /**
-   * 10. Features - 要素查询
+   * 11. Features - 要素查询
    */
   private createFeaturesGroup(): TestPageGroup {
     return new TestPageGroup('Features', '🔍', [
@@ -306,7 +317,7 @@ struct Index {
   }
 
   /**
-   * 11. Storage - 存储管理
+   * 12. Storage - 存储管理
    */
   private createStorageGroup(): TestPageGroup {
     return new TestPageGroup('Storage', '💿', [
@@ -317,7 +328,7 @@ struct Index {
   }
 
   /**
-   * 12. Events - 事件监听
+   * 13. Events - 事件监听
    */
   private createEventsGroup(): TestPageGroup {
     return new TestPageGroup('Events', '📡', [
@@ -327,7 +338,7 @@ struct Index {
   }
 
   /**
-   * 13. Image Generator - 图片生成
+   * 14. Image Generator - 图片生成
    */
   private createImageGeneratorGroup(): TestPageGroup {
     return new TestPageGroup('Image Generator', '📸', [
@@ -341,7 +352,7 @@ struct Index {
   }
 
   /**
-   * 14. Texture View - 纹理视图
+   * 15. Texture View - 纹理视图
    */
   private createTextureViewGroup(): TestPageGroup {
     return new TestPageGroup('Texture View', '🎬', [
@@ -354,7 +365,7 @@ struct Index {
   }
 
   /**
-   * 15. Turf - 地理计算
+   * 16. Turf - 地理计算
    */
   private createTurfGroup(): TestPageGroup {
     return new TestPageGroup('Turf', '🌍', [
@@ -366,7 +377,7 @@ struct Index {
   }
 
   /**
-   * 16. Map Options - 地图选项
+   * 17. Map Options - 地图选项
    */
   private createMapOptionsGroup(): TestPageGroup {
     return new TestPageGroup('Map Options', '⚙️', [
@@ -376,7 +387,7 @@ struct Index {
   }
 
   /**
-   * 17. Integration - 集成测试
+   * 18. Integration - 集成测试
    */
   private createIntegrationGroup(): TestPageGroup {
     return new TestPageGroup('Integration', '🔗', [
@@ -388,7 +399,7 @@ struct Index {
   }
 
   /**
-   * 18. Performance - 性能测试
+   * 19. Performance - 性能测试
    */
   private createPerformanceGroup(): TestPageGroup {
     return new TestPageGroup('Performance', '⚡', [

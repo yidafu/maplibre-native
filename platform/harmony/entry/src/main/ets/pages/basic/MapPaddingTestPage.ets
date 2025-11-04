@@ -43,10 +43,9 @@ struct MapPaddingTestPage {
     this.paddingRight = right;
     
     if (this.mapController) {
-      // TODO: 实现 setPadding 方法
-      // this.mapController.setPadding(left, top, right, bottom);
-      console.warn('TODO: Implement setPadding');
-      showToast(`边距: ${top}, ${right}, ${bottom}, ${left}`);
+      this.mapController.setPadding(left, top, right, bottom);
+      showToast(`边距已设置: 上${top} 右${right} 下${bottom} 左${left}`);
+      console.info(`[MapPaddingTestPage] Padding set: ${left}, ${top}, ${right}, ${bottom}`);
     }
   };
   

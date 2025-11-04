@@ -133,49 +133,16 @@ struct BasicLocationPulsingCircleTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('状态')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Text(this.statusMessage)
-        .fontSize(12)
-        .fontColor('#666')
-        .padding(8)
-        .backgroundColor('#F5F5F5')
-        .borderRadius(4)
-        .width('100%')
-      
-      Divider()
-      
-      Text('脉冲圆控制')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Button(this.pulsingEnabled ? '禁用定位' : '启用定位（含脉冲）')
-        .width('100%')
-        .backgroundColor(this.pulsingEnabled ? '#FF6B6B' : '#4CAF50')
-        .enabled(this.permissionGranted)
-        .onClick(() => {
-          if (this.pulsingEnabled) {
-            this.disableLocation();
-          } else {
-            this.enableLocationWithPulsing();
-          }
-        })
-      
-      Text('说明: 使用LocationComponentOptions.pulsingEnabled')
-        .fontSize(12)
-        .fontColor('#666')
-        .margin({ top: 8 })
-      
-      Text('脉冲圆会自动在定位点周围产生扩散动画效果')
-        .fontSize(12)
-        .fontColor('#666')
-    }
-    .width('100%')
-    .padding(16)
+  buildActionButtons() {
+    Button(this.pulsingEnabled ? '禁用定位' : '启用定位（含脉冲）')
+      .enabled(this.permissionGranted)
+      .onClick(() => {
+        if (this.pulsingEnabled) {
+          this.disableLocation();
+        } else {
+          this.enableLocationWithPulsing();
+        }
+      })
   }
   
   build() {
@@ -185,7 +152,7 @@ struct BasicLocationPulsingCircleTestPage {
         description: '基础定位脉冲圆',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

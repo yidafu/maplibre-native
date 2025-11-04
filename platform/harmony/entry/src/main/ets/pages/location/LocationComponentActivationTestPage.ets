@@ -188,94 +188,27 @@ struct LocationComponentActivationTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Scroll() {
-      Column({ space: 12 }) {
-        Text('定位组件激活流程')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Text(`当前步骤: ${this.activationStep}/3`)
-          .fontSize(14)
-          .fontColor(this.locationEnabled ? '#4CAF50' : '#666')
-          .fontWeight(FontWeight.Medium)
-        
-        Divider()
-        
-        Text('步骤 1: 请求权限')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Button(`请求定位权限 ${this.permissionGranted ? '✓' : ''}`)
-          .width('100%')
-          .backgroundColor(this.permissionGranted ? '#4CAF50' : '#2196F3')
-          .enabled(this.activationStep >= 1 && !this.permissionGranted)
-          .onClick(() => this.requestPermissions())
-        
-        Divider()
-        
-        Text('步骤 2: 激活组件')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Button(`激活定位组件 ${this.componentActivated ? '✓' : ''}`)
-          .width('100%')
-          .backgroundColor(this.componentActivated ? '#4CAF50' : '#2196F3')
-          .enabled(this.activationStep >= 2 && !this.componentActivated)
-          .onClick(() => this.activateComponent())
-        
-        Divider()
-        
-        Text('步骤 3: 启用定位')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Button(this.locationEnabled ? '停用定位' : `启用定位 ${this.locationEnabled ? '✓' : ''}`)
-          .width('100%')
-          .backgroundColor(this.locationEnabled ? '#FF6B6B' : '#2196F3')
-          .enabled(this.activationStep >= 3)
-          .onClick(() => {
-            if (this.locationEnabled) {
-              this.deactivateComponent();
-            } else {
-              this.enableLocation();
-            }
-          })
-        
-        Divider()
-        
-        Button('重置流程')
-          .width('100%')
-          .backgroundColor('#FF9800')
-          .onClick(() => this.reset())
-        
-        Divider()
-        
-        Text('状态日志')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Column() {
-          ForEach(this.statusLog, (log: string, index: number) => {
-            Text(log)
-              .fontSize(10)
-              .fontFamily('monospace')
-              .width('100%')
-              .padding(4)
-              .backgroundColor(index % 2 === 0 ? '#F5F5F5' : '#FFFFFF')
-          })
+  buildActionButtons() {
+    Button(`请求定位权限 ${this.permissionGranted ? '✓' : ''}`)
+      .enabled(this.activationStep >= 1 && !this.permissionGranted)
+      .onClick(() => this.requestPermissions())
+    
+    Button(`激活定位组件 ${this.componentActivated ? '✓' : ''}`)
+      .enabled(this.activationStep >= 2 && !this.componentActivated)
+      .onClick(() => this.activateComponent())
+    
+    Button(this.locationEnabled ? '停用定位' : '启用定位')
+      .enabled(this.activationStep >= 3)
+      .onClick(() => {
+        if (this.locationEnabled) {
+          this.deactivateComponent();
+        } else {
+          this.enableLocation();
         }
-        .width('100%')
-        .backgroundColor('#F9F9F9')
-        .border({ width: 1, color: '#DDD' })
-        .borderRadius(4)
-        .padding(8)
-        .height(180)
-      }
-      .width('100%')
-      .padding(16)
-    }
-    .height('100%')
+      })
+    
+    Button('重置流程')
+      .onClick(() => this.reset())
   }
   
   build() {
@@ -285,7 +218,7 @@ struct LocationComponentActivationTestPage {
         description: '定位组件激活',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -33,7 +33,7 @@ struct PhysicalUnitCircleTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
     
     setTimeout(() => this.addCircle(), 1000);
   };
@@ -67,12 +67,9 @@ struct PhysicalUnitCircleTestPage {
     this.mapController.getStyle()?.addSource(source);
     
     const circleLayer = new FillLayer('circle-layer', 'circle-source');
-    // TODO: setProperties() not available -
-    //  circleLayer.setProperties({
-    //   'fill-color': '#4A90E2',
-    //   'fill-opacity': 0.4,
-    //   'fill-outline-color': '#2196F3'
-    // });
+    circleLayer.setFillColor('#4A90E2')
+      .setFillOpacity(0.4)
+      .setFillOutlineColor('#2196F3');
     this.mapController.getStyle()?.addLayer(circleLayer);
     
     showToast('物理单位圆已添加');
