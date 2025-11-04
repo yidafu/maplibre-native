@@ -13,10 +13,10 @@ export struct TestPageLayout {
   @Prop description: string = '';
   
   // 是否显示操作按钮区
-  @Prop showActionBar: boolean = true;
+  @Prop showActionBar: boolean = false;
   
   // 操作按钮内容构建器
-  @BuilderParam actionButtons: () => void = this.defaultActionButtons;
+  @BuilderParam actionButtons?: () => void;
   
   // 地图区域内容构建器
   @BuilderParam mapContent: () => void;
@@ -26,7 +26,7 @@ export struct TestPageLayout {
   
   // 控制面板显示状态
   @State isControlPanelVisible: boolean = true;
-  
+
   @Builder
   defaultActionButtons() {
     // 默认无操作按钮
@@ -81,6 +81,7 @@ export struct TestPageLayout {
             this.isControlPanelVisible = !this.isControlPanelVisible;
           })
         }
+
       }
       .width('100%')
       .height(60)
@@ -122,7 +123,7 @@ export struct TestPageLayout {
       .layoutWeight(1)
       
       // 操作按钮区（可选，支持滚动）
-      if (this.showActionBar) {
+      if (this.actionButtons) {
         Scroll() {
           Column() {
             this.actionButtons();

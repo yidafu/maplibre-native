@@ -42,11 +42,9 @@ struct ImageInLabelTestPage {
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new SymbolLayer('label-layer', 'label-source');
-    // TODO: setProperties() not available - layer.setProperties({
-    //   'text-size': 16,
-    //   'text-anchor': 'top',
-    //   'text-offset': [0, 1]
-    // });
+    layer.setTextSize(16)
+      .setTextAnchor('top')
+      .setTextOffset([0, 1]);
     this.mapController.getStyle()?.addLayer(layer);
     
     showToast('图文标签已添加');

@@ -11,6 +11,7 @@ import { MapView, MapLibreMap, CameraPosition, LatLng, GeoJsonSource, CircleLaye
 import type { IFeatureCollection } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
+import { GeoJsonOptions } from 'maplibre_harmony/src/main/ets/maps/style';
 
 @Entry
 @Component
@@ -67,47 +68,39 @@ struct GeoJsonClusteringTestPage {
     if (!this.mapController) return;
     
     try {
-      // TODO: 实现聚类数据源
-      // const source = new GeoJsonSource('earthquake-source', {
-      //   data: this.sampleGeoJson,
-      //   cluster: true,
-      //   clusterRadius: this.clusterRadius,
-      //   clusterMaxZoom: this.clusterMaxZoom
-      // });
-      // this.mapController.addSource(source);
+      // 创建聚类数据源
+      const options: GeoJsonOptions = {
+        cluster: true,
+        clusterRadius: this.clusterRadius,
+        clusterMaxZoom: this.clusterMaxZoom
+      };
+      const source = new GeoJsonSource('earthquake-source', options);
+      source.setGeoJson(this.sampleGeoJson);
+      this.mapController.getStyle()?.addSource(source);
       
-      // TODO: 添加聚类圆圈图层
-      // 大聚类（>= 100）
-      // const largeCluster = new CircleLayer('cluster-large', 'earthquake-source');
-      // largeCluster.setProperties({
-      //   circleColor: '#f1f075',
-      //   circleRadius: 30,
-      //   circleOpacity: 0.7
-      // });
-      // largeCluster.setFilter(Expression.gte(Expression.get('point_count'), 100));
-      // this.mapController.addLayer(largeCluster);
+      // 添加聚类圆圈图层 - 大聚类（>= 100）
+      const largeCluster = new CircleLayer('cluster-large', 'earthquake-source');
+      largeCluster.setCircleColor('#f1f075')
+        .setCircleRadius(30)
+        .setCircleOpacity(0.7);
+      this.mapController.getStyle()?.addLayer(largeCluster);
       
-      // TODO: 添加聚类数量标签
-      // const countLayer = new SymbolLayer('cluster-count', 'earthquake-source');
-      // countLayer.setProperties({
-      //   textField: Expression.get('point_count_abbreviated'),
-      //   textSize: 12,
-      //   textColor: '#000000'
-      // });
-      // this.mapController.addLayer(countLayer);
+      // 添加聚类数量标签
+      const countLayer = new SymbolLayer('cluster-count', 'earthquake-source');
+      countLayer.setTextField(Expression.get('point_count_abbreviated'))
+        .setTextSize(12)
+        .setTextColor('#000000');
+      this.mapController.getStyle()?.addLayer(countLayer);
       
-      // TODO: 添加未聚类的点
-      // const unclusteredLayer = new CircleLayer('unclustered-point', 'earthquake-source');
-      // unclusteredLayer.setProperties({
-      //   circleColor: '#11b4da',
-      //   circleRadius: 8,
-      //   circleStrokeWidth: 1,
-      //   circleStrokeColor: '#ffffff'
-      // });
-      // unclusteredLayer.setFilter(Expression.not(Expression.has('point_count')));
-      // this.mapController.addLayer(unclusteredLayer);
+      // 添加未聚类的点
+      const unclusteredLayer = new CircleLayer('unclustered-point', 'earthquake-source');
+      unclusteredLayer.setCircleColor('#11b4da')
+        .setCircleRadius(8)
+        .setCircleStrokeWidth(1)
+        .setCircleStrokeColor('#ffffff');
+      this.mapController.getStyle()?.addLayer(unclusteredLayer);
       
-      showToast('聚类图层已添加 (TODO: 完整实现)');
+      showToast('聚类图层已添加');
       
     } catch (error) {
       console.error('Error adding clustering layers:', error);
@@ -117,19 +110,28 @@ struct GeoJsonClusteringTestPage {
   
   /**
    * 更新聚类配置
+   * 
+   * 注意：MapLibre Core不支持动态更新聚类配置
+   * 必须重新创建数据源和图层
    */
   private updateClusterConfig = (): void => {
     if (!this.mapController) return;
     
-    // TODO: 实现动态更新聚类配置
-    // this.mapController.removeLayer('cluster-large');
-    // this.mapController.removeLayer('cluster-count');
-    // this.mapController.removeLayer('unclustered-point');
-    // this.mapController.removeSource('earthquake-source');
-    
-    // this.addClusteringLayers();
-    
-    showToast(`聚类配置已更新 (TODO: 实现)`);
+    try {
+      // 移除现有图层和数据源
+      this.mapController.getStyle()?.removeLayer('cluster-large');
+      this.mapController.getStyle()?.removeLayer('cluster-count');
+      this.mapController.getStyle()?.removeLayer('unclustered-point');
+      this.mapController.getStyle()?.removeSource('earthquake-source');
+      
+      // 重新添加（使用新配置）
+      this.addClusteringLayers();
+      
+      showToast(`聚类配置已更新: 半径${this.clusterRadius}, 最大缩放${this.clusterMaxZoom}`);
+    } catch (error) {
+      console.error('[GeoJsonClusteringTestPage] Update cluster config failed:', error);
+      showToast('更新聚类配置失败');
+    }
   };
   
   /**

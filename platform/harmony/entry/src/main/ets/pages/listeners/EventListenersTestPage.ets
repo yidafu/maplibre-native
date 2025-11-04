@@ -4,7 +4,7 @@
  * 完整测试所有 MapLibre 事件监听器：
  * - 相机事件：OnCameraWillChange, OnCameraIsChanging, OnCameraDidChange
  * - 地图加载：OnWillStartLoadingMap, OnDidFinishLoadingMap, OnDidFailLoadingMap
- * - 渲染事件：OnDidFinishRenderingFrame, OnDidFinishRenderingFrameWithStats
+ * - 渲染事件：OnWillStartRenderingFrame, OnDidFinishRenderingFrame, OnDidFinishRenderingFrameWithStats, OnWillStartRenderingMap, OnDidFinishRenderingMap
  * - 样式事件：OnDidFinishLoadingStyle, OnStyleImageMissing
  * - 状态事件：OnDidBecomeIdle, OnSourceChanged
  * 
@@ -15,27 +15,10 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import { CameraOptions, LatLng, maplibre, NativeMapView} from 'maplibre_harmony';
 import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
-import { MapLibreMapOptions } from 'maplibre_harmony/src/main/ets/maps/MapLibreMapOptions';
-import {
-  OnCameraWillChangeListener,
-  OnCameraIsChangingListener,
-  OnCameraDidChangeListener,
-  OnWillStartLoadingMapListener,
-  OnDidFinishLoadingMapListener,
-  OnDidFailLoadingMapListener,
-  OnWillStartRenderingFrameListener,
-  OnDidFinishRenderingFrameListener,
-  OnDidFinishRenderingFrameWithStatsListener,
-  OnWillStartRenderingMapListener,
-  OnDidFinishRenderingMapListener,
-  OnDidFinishLoadingStyleListener,
-  OnStyleImageMissingListener,
-  OnDidBecomeIdleListener,
-  OnSourceChangedListener
-} from 'maplibre_harmony/src/main/ets/maps/listeners/MapEventListeners';
 import { RenderingStats } from 'maplibre_harmony/src/main/ets/maps/renderer/RenderingStats';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
+import { DEFAULT_STYLE_URLS } from '../common/TestUtils';
 
 @Entry
 @Component
@@ -50,13 +33,14 @@ struct EventListenersTestPage {
   
   private mapView: NativeMapView | null = null;
   private map: MapLibreMap | null = null;
-  private nativeMapViewComponent: NativeMapView | null = null;
+  private mapViewComponent: MapView | null = null;
   
   // 测试用样式列表
   private currentStyleIndex: number = 0;
   private styleUrls: string[] = [
-    'https://demotiles.maplibre.org/style.json',
-    'https://demotiles.maplibre.org/style.json', // 同一个样式用于测试重载
+    DEFAULT_STYLE_URLS.streets,
+    DEFAULT_STYLE_URLS.bright,
+    DEFAULT_STYLE_URLS.satellite
   ]
 
   /**
@@ -79,6 +63,45 @@ struct EventListenersTestPage {
 
   /**
    * 操作按钮构建器
+   */
+  @Builder
+  ActionButtonsBuilder() {
+    Column({ space: 4 }) {
+      Row({ space: 4 }) {
+        Button('相机')
+          .fontSize(11)
+          .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+          .backgroundColor('#2196F3')
+          .onClick(() => this.testCameraMove())
+          .enabled(this.mapReady)
+        
+        Button('动画')
+          .fontSize(11)
+          .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+          .backgroundColor('#2196F3')
+          .onClick(() => this.testCameraAnimation())
+          .enabled(this.mapReady)
+      }
+      
+      Row({ space: 4 }) {
+        Button('样式')
+          .fontSize(11)
+          .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+          .backgroundColor('#4CAF50')
+          .onClick(() => this.testStyleChange())
+          .enabled(this.mapReady)
+        
+        Button('清除')
+          .fontSize(11)
+          .padding({ left: 6, right: 6, top: 4, bottom: 4 })
+          .backgroundColor('#FF6B6B')
+          .onClick(() => this.clearLog())
+      }
+    }
+  }
+  
+  /**
+   * 控制面板构建器
    */
   @Builder
   ControlButtonsBuilder() {
@@ -162,75 +185,6 @@ struct EventListenersTestPage {
       Divider()
         .margin({ top: 8, bottom: 8 })
       
-      // 测试按钮组
-      Text('测试操作')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .width('100%')
-      
-      Row() {
-        Button('相机移动')
-          .fontSize(12)
-          .width('48%')
-          .onClick(() => {
-            this.testCameraMove();
-          })
-          .enabled(this.mapReady)
-        
-        Button('相机动画')
-          .fontSize(12)
-          .width('48%')
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.testCameraAnimation();
-          })
-          .enabled(this.mapReady)
-      }
-      .width('100%')
-      
-      Row() {
-        Button('切换样式')
-          .fontSize(12)
-          .width('48%')
-          .onClick(() => {
-            this.testStyleChange();
-          })
-          .enabled(this.mapReady)
-        
-        Button('重置视图')
-          .fontSize(12)
-          .width('48%')
-          .margin({ left: 8 })
-          .onClick(() => {
-            this.testResetView();
-          })
-          .enabled(this.mapReady)
-      }
-      .width('100%')
-      
-      Row() {
-        Button('清除日志')
-          .fontSize(12)
-          .width('48%')
-          .backgroundColor('#FF6B6B')
-          .onClick(() => {
-            this.clearLog();
-          })
-        
-        Button('清除统计')
-          .fontSize(12)
-          .width('48%')
-          .margin({ left: 8 })
-          .backgroundColor('#FFA500')
-          .onClick(() => {
-            this.clearStats();
-          })
-      }
-      .width('100%')
-      
-      Divider()
-        .margin({ top: 8, bottom: 8 })
-      
       // 事件日志
       Text('事件日志')
         .fontSize(14)
@@ -279,12 +233,9 @@ struct EventListenersTestPage {
    * 地图准备完成
    */
   private onMapReady(map?: MapLibreMap): void {
-    if (this.mapView) {
-      this.mapView = this.mapView;
-      
-      // 创建 MapLibreMap 实例
-      const options = new MapLibreMapOptions();
-      this.map = new MapLibreMap(this.mapView, options);
+    if (map) {
+      this.mapView = map.getNativeMapView();
+      this.map = map;
       
       this.mapReady = true;
       this.logEvent('生命周期', '✅ 地图初始化完成');
@@ -348,25 +299,25 @@ struct EventListenersTestPage {
       }
     });
     
-    this.mapView.addOnDidFinishRenderingFrameListener((fully: boolean, frameEncodingTime: number, frameRenderingTime: number) => {
-      if (this.showRenderingEvents) {
-        this.logEvent('渲染', `🎨 帧渲染完成 (完整: ${fully ? '是' : '否'}, 编码: ${frameEncodingTime.toFixed(2)}ms, 渲染: ${frameRenderingTime.toFixed(2)}ms)`);
-      }
-    });
-    
-    // 使用帧渲染监听器计算 FPS
+    // 添加帧渲染完成的监听器（OnDidFinishRenderingFrameListener）
+    // 注意：WithStats 版本需要通过 MapView 组件访问，这里使用简单版本
     let frameCount = 0;
     let lastFpsUpdateTime = Date.now();
-    this.mapView.addOnDidFinishRenderingFrameListener((fully: boolean, frameEncodingTime: number, frameRenderingTime: number) => {
+    this.mapView.addOnDidFinishRenderingFrameListener((fully: boolean, encodingTime: number, renderingTime: number) => {
       if (this.showRenderingEvents) {
+        this.logEvent('渲染', `🎨 帧渲染完成 (完整: ${fully ? '是' : '否'}, 编码: ${encodingTime.toFixed(2)}ms, 渲染: ${renderingTime.toFixed(2)}ms)`);
+        
+        // 计算 FPS
         frameCount++;
         const now = Date.now();
         const elapsed = now - lastFpsUpdateTime;
         
         // 每秒更新一次 FPS 统计
         if (elapsed >= 1000) {
-          const fps = frameCount / (elapsed / 1000);
-          this.lastRenderingStats = `FPS: ${fps.toFixed(1)} | 编码: ${frameEncodingTime.toFixed(2)}ms | 渲染: ${frameRenderingTime.toFixed(2)}ms`;
+          const actualFps = frameCount / (elapsed / 1000);
+          const totalTime = encodingTime + renderingTime;
+          const estimatedFps = totalTime > 0 ? 1000.0 / totalTime : 0;
+          this.lastRenderingStats = `FPS: ${actualFps.toFixed(1)} | 编码: ${encodingTime.toFixed(2)}ms | 渲染: ${renderingTime.toFixed(2)}ms | 总计: ${totalTime.toFixed(2)}ms | 估算FPS: ${estimatedFps.toFixed(1)}`;
           frameCount = 0;
           lastFpsUpdateTime = now;
         }
@@ -580,7 +531,8 @@ struct EventListenersTestPage {
       TestPageLayout({
         title: '事件监听器测试',
         mapContent: (): void => this.MapAreaBuilder(),
-        controlPanel: (): void => this.ControlButtonsBuilder()
+        controlPanel: (): void => this.ControlButtonsBuilder(),
+        actionButtons: (): void => this.ActionButtonsBuilder()
       })
     }
     .width('100%')

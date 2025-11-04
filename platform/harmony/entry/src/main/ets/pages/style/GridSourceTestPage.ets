@@ -24,7 +24,7 @@ struct GridSourceTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
     
     setTimeout(() => this.addGrid(), 1000);
   };
@@ -60,10 +60,8 @@ struct GridSourceTestPage {
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new LineLayer('grid-layer', 'grid-source');
-    // TODO: setProperties() not available - layer.setProperties({
-    //   'line-width': 1,
-    //   'line-opacity': 0.6
-    // });
+    layer.setLineWidth(1)
+      .setLineOpacity(0.6);
     this.mapController.getStyle()?.addLayer(layer);
     
     showToast('网格已添加');

@@ -78,12 +78,9 @@ struct MapSnapshotterHeatMapTestPage {
       this.mapController.getStyle()?.addSource(source);
 
       const heatmapLayer = new HeatmapLayer('heatmap-layer', 'heatmap-source');
-      // TODO: setProperties() not available -
-      // heatmapLayer.setProperties({
-      //   'heatmap-intensity': 1,
-      //   'heatmap-radius': 20,
-      //   'heatmap-opacity': 0.8
-      // });
+      heatmapLayer.setHeatmapIntensity(1)
+        .setHeatmapRadius(20)
+        .setHeatmapOpacity(0.8);
       this.mapController.getStyle()?.addLayer(heatmapLayer);
 
       showToast('热力图已添加');

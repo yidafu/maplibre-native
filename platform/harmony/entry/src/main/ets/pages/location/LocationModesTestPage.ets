@@ -54,7 +54,7 @@ struct LocationModesTestPage {
     console.info('[LocationModesTestPage] onMapReady');
     this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
     
     // 等待样式加载后初始化定位组件
     setTimeout(() => {
@@ -224,106 +224,36 @@ struct LocationModesTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Scroll() {
-      Column({ space: 12 }) {
-        Text('状态')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Text(this.statusMessage)
-          .fontSize(12)
-          .fontColor('#666')
-          .padding(8)
-          .backgroundColor('#F5F5F5')
-          .borderRadius(4)
-          .width('100%')
-        
-        Divider()
-        
-        Text('定位控制')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Button(this.locationEnabled ? '禁用定位' : '启用定位')
-          .width('100%')
-          .backgroundColor(this.locationEnabled ? '#FF6B6B' : '#4CAF50')
-          .enabled(this.permissionGranted)
-          .onClick(() => {
-            if (this.locationEnabled) {
-              this.disableLocation();
-            } else {
-              this.enableLocation();
-            }
-          })
-        
-        Divider()
-        
-        Text('渲染模式 (RenderMode)')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Button(`NORMAL ${this.currentRenderMode === RenderMode.NORMAL ? '✓' : ''}`)
-          .width('100%')
-          .backgroundColor(this.currentRenderMode === RenderMode.NORMAL ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchRenderMode(RenderMode.NORMAL))
-        
-        Button(`COMPASS ${this.currentRenderMode === RenderMode.COMPASS ? '✓' : ''}`)
-          .width('100%')
-          .backgroundColor(this.currentRenderMode === RenderMode.COMPASS ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchRenderMode(RenderMode.COMPASS))
-        
-        Button(`GPS ${this.currentRenderMode === RenderMode.GPS ? '✓' : ''}`)
-          .width('100%')
-          .backgroundColor(this.currentRenderMode === RenderMode.GPS ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchRenderMode(RenderMode.GPS))
-        
-        Divider()
-        
-        Text('相机跟踪模式 (CameraMode)')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Button(`NONE ${this.currentCameraMode === CameraMode.NONE ? '✓' : ''}`)
-          .width('100%')
-          .fontSize(12)
-          .backgroundColor(this.currentCameraMode === CameraMode.NONE ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchCameraMode(CameraMode.NONE))
-        
-        Button(`TRACKING ${this.currentCameraMode === CameraMode.TRACKING ? '✓' : ''}`)
-          .width('100%')
-          .fontSize(12)
-          .backgroundColor(this.currentCameraMode === CameraMode.TRACKING ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchCameraMode(CameraMode.TRACKING))
-        
-        Button(`TRACKING_COMPASS ${this.currentCameraMode === CameraMode.TRACKING_COMPASS ? '✓' : ''}`)
-          .width('100%')
-          .fontSize(11)
-          .backgroundColor(this.currentCameraMode === CameraMode.TRACKING_COMPASS ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchCameraMode(CameraMode.TRACKING_COMPASS))
-        
-        Button(`TRACKING_GPS ${this.currentCameraMode === CameraMode.TRACKING_GPS ? '✓' : ''}`)
-          .width('100%')
-          .fontSize(11)
-          .backgroundColor(this.currentCameraMode === CameraMode.TRACKING_GPS ? '#2196F3' : '#9E9E9E')
-          .enabled(this.locationEnabled)
-          .onClick(() => this.switchCameraMode(CameraMode.TRACKING_GPS))
-        
-        Text('说明: 使用MapLibre LocationComponent')
-          .fontSize(12)
-          .fontColor('#666')
-          .margin({ top: 8 })
-      }
-      .width('100%')
-      .padding(16)
-    }
-    .height('100%')
+  buildActionButtons() {
+    Button(this.locationEnabled ? '禁用定位' : '启用定位')
+      .enabled(this.permissionGranted)
+      .onClick(() => {
+        if (this.locationEnabled) {
+          this.disableLocation();
+        } else {
+          this.enableLocation();
+        }
+      })
+    
+    Button(`NORMAL ${this.currentRenderMode === RenderMode.NORMAL ? '✓' : ''}`)
+      .enabled(this.locationEnabled)
+      .onClick(() => this.switchRenderMode(RenderMode.NORMAL))
+    
+    Button(`COMPASS ${this.currentRenderMode === RenderMode.COMPASS ? '✓' : ''}`)
+      .enabled(this.locationEnabled)
+      .onClick(() => this.switchRenderMode(RenderMode.COMPASS))
+    
+    Button(`GPS ${this.currentRenderMode === RenderMode.GPS ? '✓' : ''}`)
+      .enabled(this.locationEnabled)
+      .onClick(() => this.switchRenderMode(RenderMode.GPS))
+    
+    Button(`TRACKING ${this.currentCameraMode === CameraMode.TRACKING ? '✓' : ''}`)
+      .enabled(this.locationEnabled)
+      .onClick(() => this.switchCameraMode(CameraMode.TRACKING))
+    
+    Button(`TRACKING_COMPASS ${this.currentCameraMode === CameraMode.TRACKING_COMPASS ? '✓' : ''}`)
+      .enabled(this.locationEnabled)
+      .onClick(() => this.switchCameraMode(CameraMode.TRACKING_COMPASS))
   }
   
   build() {
@@ -333,7 +263,7 @@ struct LocationModesTestPage {
         description: '定位模式测试',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

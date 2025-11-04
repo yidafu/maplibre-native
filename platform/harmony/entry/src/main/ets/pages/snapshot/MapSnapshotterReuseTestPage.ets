@@ -48,7 +48,7 @@ struct MapSnapshotterReuseTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
   };
   
   /**

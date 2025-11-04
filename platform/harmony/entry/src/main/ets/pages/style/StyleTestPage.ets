@@ -7,6 +7,8 @@ import { TestPageLayout } from '../common/TestPageLayout';
 
 import { LatLng, MapLibreMap, MapView, maplibre, MapLibreMapOptions, OnStyleLoadedListener , NativeMapView,
   Style} from 'maplibre_harmony';
+import { DEFAULT_STYLE_URLS } from '../common/TestUtils';
+
 const TAG = 'StyleTestPage';
 
 /**
@@ -133,33 +135,33 @@ struct StyleTestPage {
     // 基础样式
     {
       name: 'MapLibre Demo',
-      url: 'https://demotiles.maplibre.org/style.json',
+      url: DEFAULT_STYLE_URLS.streets,
       description: 'MapLibre 官方演示样式',
       category: '基础样式'
     },
     {
       name: 'OSM Bright',
-      url: 'https://demotiles.maplibre.org/style.json',
+      url:  DEFAULT_STYLE_URLS.bright,
       description: 'OpenStreetMap 明亮风格',
       category: '基础样式'
     },
     // 特色样式
     {
       name: 'Americana',
-      url: 'https://americanamap.org/style.json',
+      url:  DEFAULT_STYLE_URLS.americana,
       description: '美式风格地图',
       category: '特色样式'
     },
     {
-      name: 'VersaTiles Colorful',
-      url: 'https://tiles.versatiles.org/assets/styles/colorful.json',
-      description: '多彩风格地图',
+      name: 'Light Style',
+      url:  DEFAULT_STYLE_URLS.light,
+      description: '浅色样式',
       category: '特色样式'
     },
     {
-      name: 'VersaTiles Neutrino',
-      url: 'https://tiles.versatiles.org/assets/styles/neutrino.json',
-      description: '简约中性风格',
+      name: 'Dark Style',
+      url: DEFAULT_STYLE_URLS.dark,
+      description: '深色样式',
       category: '特色样式'
     }
   ]
@@ -675,10 +677,31 @@ struct StyleTestPage {
         return;
       }
       
-      // 隐藏所有图层（设置可见性）
-      this.message = '✅ 所有图层已隐藏';
-      hilog.info(DOMAIN, TAG, 'All layers hidden');
-      console.info('隐藏所有图层功能待实现');
+      // 获取所有图层
+      const layers = style.getLayers();
+      hilog.info(DOMAIN, TAG, `Found ${layers.length} layers to hide`);
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      // 遍历所有图层并设置为不可见
+      layers.forEach((layer) => {
+        try {
+          const layerId = layer.getId();
+          layer.setVisibility('none');
+          successCount++;
+          hilog.info(DOMAIN, TAG, `Hidden layer: ${layerId}`);
+        } catch (layerError) {
+          failCount++;
+          hilog.error(DOMAIN, TAG, `Failed to hide layer: ${layerError}`);
+        }
+      });
+      
+      // 触发地图重绘
+      this.mapLibreMap.triggerRepaint();
+      
+      this.message = `✅ 已隐藏 ${successCount} 个图层` + (failCount > 0 ? ` (失败: ${failCount})` : '');
+      hilog.info(DOMAIN, TAG, `All layers hidden: success=${successCount}, failed=${failCount}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed to hide layers: ${errorMsg}`);
@@ -699,10 +722,31 @@ struct StyleTestPage {
         return;
       }
       
-      // 显示所有图层（设置可见性）
-      this.message = '✅ 所有图层已显示';
-      hilog.info(DOMAIN, TAG, 'All layers shown');
-      console.info('显示所有图层功能待实现');
+      // 获取所有图层
+      const layers = style.getLayers();
+      hilog.info(DOMAIN, TAG, `Found ${layers.length} layers to show`);
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      // 遍历所有图层并设置为可见
+      layers.forEach((layer) => {
+        try {
+          const layerId = layer.getId();
+          layer.setVisibility('visible');
+          successCount++;
+          hilog.info(DOMAIN, TAG, `Shown layer: ${layerId}`);
+        } catch (layerError) {
+          failCount++;
+          hilog.error(DOMAIN, TAG, `Failed to show layer: ${layerError}`);
+        }
+      });
+      
+      // 触发地图重绘
+      this.mapLibreMap.triggerRepaint();
+      
+      this.message = `✅ 已显示 ${successCount} 个图层` + (failCount > 0 ? ` (失败: ${failCount})` : '');
+      hilog.info(DOMAIN, TAG, `All layers shown: success=${successCount}, failed=${failCount}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed to show layers: ${errorMsg}`);

@@ -20,7 +20,7 @@ struct QueryRenderedFeaturesPropertiesTestPage {
       description: '查询要素属性',
       showActionBar: true,
       mapContent: (): void => this.buildMapContent(),
-      controlPanel: (): void => this.buildControlPanel()
+      actionButtons: (): void => this.buildActionButtons()
     })
       .width('100%')
       .height('100%')
@@ -43,21 +43,32 @@ struct QueryRenderedFeaturesPropertiesTestPage {
   }
 
   @Builder
-  buildControlPanel() {
+  buildActionButtons() {
     Column({ space: 8 }) {
-      Text('要素信息')
+      Text('点击地图查询要素属性')
         .fontSize(14)
         .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ bottom: 4 })
       
-      Text(this.featureInfo)
-        .fontSize(11)
-        .fontColor('#666666')
-        .maxLines(5)
+      Column({ space: 4 }) {
+        Text('要素信息')
+          .fontSize(12)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#666')
+          .width('100%')
+        
+        Text(this.featureInfo)
+          .fontSize(11)
+          .fontColor('#333')
+          .width('100%')
+      }
+      .width('100%')
+      .padding(12)
+      .backgroundColor('#f5f5f5')
+      .borderRadius(4)
     }
-    .width(280)
-    .padding(12)
     .width('100%')
-    .height('100%')
   }
 
   private setupClickListener(map: MapLibreMap): void {

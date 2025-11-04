@@ -32,13 +32,13 @@ struct QueryRenderedFeaturesBoxCountTestPage {
   @Builder
   buildMapContent() {
     MapView({
-      styleUrl: DEFAULT_STYLE_URLS.streets,
+      styleUrl: DEFAULT_STYLE_URLS.bright,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
       initialZoom: 5,
       onMapReady: (map: MapLibreMap) => {
         this.mapController = map;
-        map.jumpTo(0, 39.9, 116.4, 0, 14);
+        // map.jumpTo(0, 39.9, 116.4, 0, 14);
       }
     })
   }

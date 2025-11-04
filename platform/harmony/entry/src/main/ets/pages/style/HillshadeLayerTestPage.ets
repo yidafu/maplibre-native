@@ -10,8 +10,10 @@ import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/Te
 @Entry
 @Component
 struct HillshadeLayerTestPage {
-  private scroller: Scroller = new Scroller();
   private mapController: MapLibreMap | null = null;
+  @State private currentStyleIndex: number = 0;
+  @State private layerVisible: boolean = true;
+  private readonly STYLES = [DEFAULT_STYLE_URLS.streets, DEFAULT_STYLE_URLS.bright];
 
   build() {
     Column() {
@@ -63,38 +65,165 @@ struct HillshadeLayerTestPage {
 
   @Builder
   buildActionButtons() {
-    Scroll(this.scroller) {
-      Column({ space: 8 }) {
-        Button('调整光照方向')
-          .width('100%')
-          .onClick(() => {
-            if (this.mapController) {
-              const layer = this.mapController.getLayer('hillshade-layer');
-              if (layer) {
-                const direction = Math.random() * 360;
-                (layer as HillshadeLayer).setHillshadeIlluminationDirection(direction);
-                showToast(`光照方向: ${direction.toFixed(0)}°`);
-              }
-            }
-          })
-
-        Button('调整夸张度')
-          .width('100%')
-          .onClick(() => {
-            if (this.mapController) {
-              const layer = this.mapController.getLayer('hillshade-layer');
-              if (layer) {
-                const exaggeration = Math.random();
-                (layer as HillshadeLayer).setHillshadeExaggeration(exaggeration);
-                showToast(`夸张度: ${exaggeration.toFixed(2)}`);
-              }
-            }
-          })
+    // 移除内层 Scroll，TestPageLayout 已经提供了外层 Scroll
+    Column({ space: 8 }) {
+      Text('基础操作')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('重新加载图层')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.reloadLayer())
+        
+        Button('切换样式')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeMapStyle())
       }
-      .width('100%')
-      .padding(8)
+      
+      Text('阴影效果')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('光照方向')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeIlluminationDirection())
+        
+        Button('夸张系数')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeExaggeration())
+      }
+      
+      Text('显示模式')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('显示/隐藏')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.toggleVisibility())
+        
+        Button('重置视图')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.resetView())
+      }
     }
-    .scrollBar(BarState.Auto)
-    .scrollable(ScrollDirection.Vertical)
+    .width('100%')
+  }
+
+  // 重新加载图层
+  private reloadLayer(): void {
+    if (!this.mapController) return;
+    
+    try {
+      this.mapController.removeLayer('hillshade-layer');
+      this.mapController.removeSource('hillshade-source');
+      this.addHillshadeLayer(this.mapController);
+      showToast('图层已重新加载');
+    } catch (error) {
+      showToast(`重新加载失败: ${error}`);
+    }
+  }
+
+  // 切换地图样式
+  private changeMapStyle(): void {
+    if (!this.mapController) return;
+    
+    try {
+      this.currentStyleIndex = (this.currentStyleIndex + 1) % this.STYLES.length;
+      const newStyleUrl = this.STYLES[this.currentStyleIndex];
+      
+      this.mapController.setStyleUrl(newStyleUrl);
+      showToast(`正在切换到样式 ${this.currentStyleIndex + 1}`);
+      
+      setTimeout(() => {
+        if (this.mapController) {
+          this.addHillshadeLayer(this.mapController);
+        }
+      }, 1000);
+    } catch (error) {
+      showToast(`切换样式失败: ${error}`);
+    }
+  }
+
+  // 改变光照方向
+  private changeIlluminationDirection(): void {
+    if (!this.mapController) return;
+    
+    try {
+      const layer = this.mapController.getLayer('hillshade-layer');
+      
+      if (!layer || !(layer instanceof HillshadeLayer)) {
+        showToast('未找到山体阴影图层');
+        return;
+      }
+      
+      const direction = Math.random() * 360; // 0-360 degrees
+      layer.setHillshadeIlluminationDirection(direction);
+      showToast(`光照方向: ${direction.toFixed(0)}°`);
+    } catch (error) {
+      showToast(`更改光照方向失败: ${error}`);
+    }
+  }
+
+  // 改变夸张系数
+  private changeExaggeration(): void {
+    if (!this.mapController) return;
+    
+    try {
+      const layer = this.mapController.getLayer('hillshade-layer');
+      
+      if (!layer || !(layer instanceof HillshadeLayer)) {
+        showToast('未找到山体阴影图层');
+        return;
+      }
+      
+      const exaggeration = 0.2 + Math.random() * 0.8; // 0.2-1.0
+      layer.setHillshadeExaggeration(exaggeration);
+      showToast(`夸张系数: ${exaggeration.toFixed(2)}`);
+    } catch (error) {
+      showToast(`更改夸张系数失败: ${error}`);
+    }
+  }
+
+  // 切换显示/隐藏
+  private toggleVisibility(): void {
+    if (!this.mapController) return;
+    
+    try {
+      const layer = this.mapController.getLayer('hillshade-layer');
+      
+      if (!layer || !(layer instanceof HillshadeLayer)) {
+        showToast('未找到山体阴影图层');
+        return;
+      }
+      
+      this.layerVisible = !this.layerVisible;
+      layer.setVisibility(this.layerVisible ? 'visible' : 'none');
+      showToast(`图层: ${this.layerVisible ? '显示' : '隐藏'}`);
+    } catch (error) {
+      showToast(`切换显示失败: ${error}`);
+    }
+  }
+
+  // 重置视图
+  private resetView(): void {
+    if (!this.mapController) return;
+    
+    this.mapController.jumpTo(0, 30, 105, 0, 8);
+    showToast('视图已重置');
   }
 }

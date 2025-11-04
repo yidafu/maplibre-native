@@ -17,6 +17,7 @@ import { MapLibreMap, MapView } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG  } from '../common/TestUtils';
 import { image } from '@kit.ImageKit';
 import { componentSnapshot } from '@kit.ArkUI';
+import { ImageSaveUtil } from '../../utils/ImageSaveUtil';
 
 @Entry
 @Component
@@ -26,6 +27,7 @@ struct SnapshotBasicTestPage {
   @State private snapshotCount: number = 0;
   @State private lastSnapshotSize: string = '';
   private mapComponentId: string = 'map-snapshot-view';
+  private currentPixelMap: image.PixelMap | null = null;
   
   aboutToDisappear() {
     if (this.mapController) {
@@ -67,19 +69,84 @@ struct SnapshotBasicTestPage {
         
         showToast(`截图成功! ${this.lastSnapshotSize}`);
         
-        // TODO: 可以将 pixelMap 保存到文件
-        // const imagePackerApi = image.createImagePacker();
-        // const packOptions = { format: 'image/jpeg', quality: 90 };
-        // const buffer = await imagePackerApi.packing(pixelMap, packOptions);
-        // // 保存 buffer 到文件...
+        // 保存当前的 pixelMap，以便用户选择保存时使用
+        this.currentPixelMap = pixelMap;
         
-        pixelMap.release();
+        // 弹出对话框询问用户是否保存
+        this.showSaveConfirmDialog();
       } else {
         showToast('截图失败');
       }
     } catch (error) {
       console.error(`截图失败: ${error}`);
       showToast(`截图失败: ${error}`);
+    }
+  };
+  
+  /**
+   * 显示保存确认对话框
+   */
+  private showSaveConfirmDialog = (): void => {
+    AlertDialog.show({
+      title: '保存截图',
+      message: '是否将截图保存到相册？',
+      primaryButton: {
+        value: '取消',
+        action: () => {
+          // 用户取消，释放 pixelMap
+          if (this.currentPixelMap) {
+            this.currentPixelMap.release();
+            this.currentPixelMap = null;
+          }
+        }
+      },
+      secondaryButton: {
+        value: '保存',
+        action: async () => {
+          await this.saveToGallery();
+        }
+      }
+    });
+  };
+  
+  /**
+   * 使用 PhotoViewPicker 保存截图到相册
+   * 无需权限声明，系统会拉起相册选择器让用户选择保存位置
+   */
+  private saveToGallery = async (): Promise<void> => {
+    if (!this.currentPixelMap) {
+      showToast('没有可保存的截图');
+      return;
+    }
+    
+    try {
+      // 使用 PhotoViewPicker 保存到相册（无需权限）
+      const result = await ImageSaveUtil.savePixelMapToGalleryWithPicker(
+        this.currentPixelMap,
+        `maplibre_snapshot_${Date.now()}`
+      );
+      
+      if (result.success) {
+        showToast('截图已保存到相册');
+      } else {
+        // 如果用户取消，不显示错误提示
+        if (result.message !== '用户取消保存') {
+          showToast(result.message);
+        }
+      }
+      
+      // 释放 pixelMap
+      this.currentPixelMap.release();
+      this.currentPixelMap = null;
+    } catch (error) {
+      console.error(`保存到相册失败: ${error}`);
+      showToast(`保存失败: ${error}`);
+      
+      // 释放 pixelMap
+      if (this.currentPixelMap) {
+        this.currentPixelMap.release();
+        this.currentPixelMap = null;
+      }
     }
   };
   

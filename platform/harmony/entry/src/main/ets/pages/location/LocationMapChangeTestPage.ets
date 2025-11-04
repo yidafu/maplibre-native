@@ -31,9 +31,9 @@ struct LocationMapChangeTestPage {
   @State private permissionGranted: boolean = false;
   
   private styles: Array<Record<string, string>> = [
+    { 'name': 'OSM', 'url': DEFAULT_STYLE_URLS.bright },
     { 'name': 'Streets', 'url': DEFAULT_STYLE_URLS.streets },
     { 'name': 'Satellite', 'url': DEFAULT_STYLE_URLS.satellite },
-    { 'name': 'OSM', 'url': 'https://demotiles.maplibre.org/style.json' }
   ]
   
   aboutToDisappear() {
@@ -48,8 +48,8 @@ struct LocationMapChangeTestPage {
   
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
-    this.mapController.setStyleUrl(this.styles[0].url);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+    // this.mapController.setStyleUrl(this.styles[0].url);
+    // this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
     
     setTimeout(() => this.initLocationComponent(), 1500);
   };
@@ -129,46 +129,15 @@ struct LocationMapChangeTestPage {
   }
   
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('定位控制')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Button(this.locationActive ? '停止定位' : '启动定位')
-        .width('100%')
-        .backgroundColor(this.locationActive ? '#FF6B6B' : '#4CAF50')
-        .enabled(this.permissionGranted)
-        .onClick(() => this.toggleLocation())
-      
-      Text(`状态: ${this.locationActive ? '定位中' : '未定位'}`)
-        .fontSize(12)
-        .fontColor(this.locationActive ? '#4CAF50' : '#666')
-      
-      Divider()
-      
-      Text('样式切换测试')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-      
-      Text(`当前样式: ${this.currentStyle}`)
-        .fontSize(14)
-        .fontColor('#666')
-      
-      ForEach(this.styles, (style: Record<string, string>) => {
-        Button(style.name)
-          .width('100%')
-          .backgroundColor(this.currentStyle === style.name ? '#2196F3' : '#9E9E9E')
-          .onClick(() => this.switchStyle(style.name, style.url))
-      })
-      
-      Text('说明: 切换样式时，定位状态应该保持')
-        .fontSize(12)
-        .fontColor('#666')
-        .margin({ top: 8 })
-    }
-    .width('100%')
-    .padding(16)
+  buildActionButtons() {
+    Button(this.locationActive ? '停止定位' : '启动定位')
+      .enabled(this.permissionGranted)
+      .onClick(() => this.toggleLocation())
+    
+    ForEach(this.styles, (style: Record<string, string>) => {
+      Button(style.name)
+        .onClick(() => this.switchStyle(style.name, style.url))
+    })
   }
   
   build() {
@@ -178,7 +147,7 @@ struct LocationMapChangeTestPage {
         description: '定位地图变化测试',
         showActionBar: true,
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

@@ -91,7 +91,7 @@ struct RealTimeGeoJsonTestPage {
       
       const layer = new CircleLayer('realtime-layer', 'realtime-source');
       layer.setCircleRadius(15);
-      layer.setCircleColor('#FFFF5722');
+      layer.setCircleColor('#FF5722');
       layer.setCircleOpacity(0.9);
       layer.setCircleStrokeWidth(3);
       layer.setCircleStrokeColor('#FFFFFF');

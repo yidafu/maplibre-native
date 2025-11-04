@@ -22,7 +22,6 @@ import {
   SymbolLayer,
   Expression
 } from 'maplibre_harmony';
-import type { PropertyValue } from 'libmaplibre.so';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 import { http } from '@kit.NetworkKit';
 
@@ -32,7 +31,6 @@ struct CircleLayerTestPage {
   private mapController: MapLibreMap | null = null;
   @State private isClusterMode: boolean = false;
   @State private currentStyleIndex: number = 0;
-  private scroller: Scroller = new Scroller();
   
   // 远程 GeoJSON 数据 URL
   private readonly BUS_STOPS_URL = 'https://s3.eu-central-1.amazonaws.com/maplibre-native/android-documentation-resources/bus-stops.geojson';
@@ -70,72 +68,109 @@ struct CircleLayerTestPage {
   
   @Builder
   buildActionButtons() {
-    Scroll(this.scroller) {
-      Column({ space: 8 }) {
-        Text('基础操作')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-          .width('100%')
-          .margin({ top: 8, bottom: 4 })
-        
-        Row({ space: 8 }) {
-          Button('加载远程数据')
-            .fontSize(14)
-            .layoutWeight(1)
-            .onClick(() => this.loadRemoteData())
-          
-          Button('改变颜色')
-            .fontSize(14)
-            .layoutWeight(1)
-            .onClick(() => this.changeCircleColor())
-        }
-        
-        Row({ space: 8 }) {
-          Button('改变大小')
-            .fontSize(14)
-            .layoutWeight(1)
-            .onClick(() => this.changeCircleSize())
-          
-          Button('切换样式')
-            .fontSize(14)
-            .layoutWeight(1)
-            .onClick(() => this.changeMapStyle())
-        }
-        
-        Text('聚类功能')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-          .width('100%')
-          .margin({ top: 8, bottom: 4 })
-        
-        Button(this.isClusterMode ? '关闭聚类' : '开启聚类')
+    // 移除内层 Scroll，TestPageLayout 已经提供了外层 Scroll
+    Column({ space: 8 }) {
+      Text('基础操作')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('加载远程数据')
           .fontSize(14)
-          .width('100%')
-          .onClick(() => this.toggleCluster())
+          .layoutWeight(1)
+          .onClick(() => this.loadRemoteData())
         
-        Text('显示模式')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-          .width('100%')
-          .margin({ top: 8, bottom: 4 })
-        
-        Row({ space: 8 }) {
-          Button('基础图层')
-            .fontSize(14)
-            .layoutWeight(1)
-            .onClick(() => this.loadBasicCircleLayer())
-          
-          Button('重置视图')
-            .fontSize(14)
-            .layoutWeight(1)
-            .onClick(() => this.resetView())
-        }
+        Button('切换样式')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeMapStyle())
       }
-      .width('100%')
-      .padding(8)
+      
+      Text('圆形样式')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('改变颜色')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeCircleColor())
+        
+        Button('改变大小')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeCircleSize())
+      }
+      
+      Row({ space: 8 }) {
+        Button('改变透明度')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeCircleOpacity())
+        
+        Button('改变模糊度')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeCircleBlur())
+      }
+      
+      Text('边框样式')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('边框颜色')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeStrokeColor())
+        
+        Button('边框宽度')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.changeStrokeWidth())
+      }
+      
+      Button('边框透明度')
+        .fontSize(14)
+        .width('100%')
+        .onClick(() => this.changeStrokeOpacity())
+      
+      Text('聚类功能')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Button(this.isClusterMode ? '关闭聚类' : '开启聚类')
+        .fontSize(14)
+        .width('100%')
+        .onClick(() => this.toggleCluster())
+      
+      Text('显示模式')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('基础图层')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.loadBasicCircleLayer())
+        
+        Button('重置视图')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.resetView())
+      }
     }
-    .scrollBar(BarState.Auto)
-    .scrollable(ScrollDirection.Vertical)
+    .width('100%')
   }
 
   // 加载基础圆形图层
@@ -160,10 +195,10 @@ struct CircleLayerTestPage {
       
       const layer = new CircleLayer('circle-layer', 'circle-source');
       layer.setCircleRadius(15);
-      layer.setCircleColor('#FF2196F3');
+      layer.setCircleColor('#2196F3');
       layer.setCircleOpacity(0.8);
       layer.setCircleStrokeWidth(2);
-      layer.setCircleStrokeColor('#FFFFFFFF');
+      layer.setCircleStrokeColor('#FFFFFF');
       this.mapController.addLayer(layer);
       
       showToast('基础圆形图层已加载');
@@ -206,7 +241,7 @@ struct CircleLayerTestPage {
             
             const layer = new CircleLayer('bus-stop-layer', 'bus-stop-source');
             layer.setCircleRadius(4);
-            layer.setCircleColor('#FFFF9800');
+            layer.setCircleColor('#FF9800');
             layer.setCircleOpacity(0.9);
             this.mapController!.addLayer(layer);
             
@@ -281,7 +316,7 @@ struct CircleLayerTestPage {
             
             // 添加聚类圆圈 - 大型聚类（150+）
             const circles1 = new CircleLayer('cluster-0', 'bus-stop-cluster-source');
-            circles1.setCircleColor('#FFF44336'); // 红色
+            circles1.setCircleColor('#F44336'); // 红色
             circles1.setCircleRadius(18);
             // TODO: Expression 过滤器需要转换为正确的格式
             // const filter1 = Expression.all(
@@ -293,7 +328,7 @@ struct CircleLayerTestPage {
             
             // 中型聚类（20-150）
             const circles2 = new CircleLayer('cluster-1', 'bus-stop-cluster-source');
-            circles2.setCircleColor('#FF4CAF50'); // 绿色
+            circles2.setCircleColor('#4CAF50'); // 绿色
             circles2.setCircleRadius(18);
             // TODO: Expression 过滤器需要转换为正确的格式
             // const filter2 = Expression.all(
@@ -306,7 +341,7 @@ struct CircleLayerTestPage {
             
             // 小型聚类（0-20）
             const circles3 = new CircleLayer('cluster-2', 'bus-stop-cluster-source');
-            circles3.setCircleColor('#FF2196F3'); // 蓝色
+            circles3.setCircleColor('#2196F3'); // 蓝色
             circles3.setCircleRadius(18);
             // TODO: Expression 过滤器需要转换为正确的格式
             // const filter3 = Expression.all(
@@ -318,9 +353,9 @@ struct CircleLayerTestPage {
             
             // 添加计数文本
             const countLayer = new SymbolLayer('count', 'bus-stop-cluster-source');
-            countLayer.setTextField(Expression.get('point_count').toArray() as PropertyValue<string>);
+            countLayer.setTextField(Expression.get('point_count'));
             countLayer.setTextSize(12);
-            countLayer.setTextColor('#FFFFFFFF');
+            countLayer.setTextColor('#FFFFFF');
             this.mapController!.addLayer(countLayer);
             
             showToast('聚类模式已开启');
@@ -340,17 +375,31 @@ struct CircleLayerTestPage {
     if (!this.mapController) return;
     
     try {
-      const layer = this.mapController.getLayer('circle-layer') ||
-                     this.mapController.getLayer('bus-stop-layer');
-      
-      if (layer && layer instanceof CircleLayer) {
-        const colors: string[] = ['#FF2196F3', '#FFFF9800', '#FF4CAF50', '#FFF44336', '#FF9C27B0'];
-        const randomColor: string = colors[Math.floor(Math.random() * colors.length)];
-        layer.setCircleColor(randomColor);
-        showToast('颜色已更改');
-      } else {
-        showToast('未找到圆形图层');
+      // 尝试获取圆形图层
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
       }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      // 检查是否是 CircleLayer 类型（使用类型属性检查）
+      const layerObj = layer;
+      if (!(layer instanceof  CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const colors: string[] = ['#2196F3', '#FF9800', '#4CAF50', '#F44336', '#9C27B0'];
+      const randomColor: string = colors[Math.floor(Math.random() * colors.length)];
+      
+      // 设置新颜色
+      circleLayer.setCircleColor(randomColor);
+      showToast(`颜色已更改为 ${randomColor}`);
     } catch (error) {
       showToast(`更改颜色失败: ${error}`);
     }
@@ -361,30 +410,222 @@ struct CircleLayerTestPage {
     if (!this.mapController) return;
     
     try {
-      const layer = this.mapController.getLayer('circle-layer') ||
-                     this.mapController.getLayer('bus-stop-layer');
-      
-      if (layer && layer instanceof CircleLayer) {
-        const size = 5 + Math.random() * 20;
-        layer.setCircleRadius(size);
-        showToast(`大小: ${size.toFixed(1)}`);
-      } else {
-        showToast('未找到圆形图层');
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
       }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      if (!(layer instanceof CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const size = 5 + Math.random() * 20;
+      circleLayer.setCircleRadius(size);
+      showToast(`大小: ${size.toFixed(1)}`);
     } catch (error) {
       showToast(`更改大小失败: ${error}`);
     }
   }
 
+  // 改变圆形透明度
+  private changeCircleOpacity(): void {
+    if (!this.mapController) return;
+    
+    try {
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
+      }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      if (!(layer instanceof CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const opacity = 0.3 + Math.random() * 0.7; // 0.3 - 1.0
+      circleLayer.setCircleOpacity(opacity);
+      
+      // 触发地图重绘
+      const currentZoom = this.mapController.getZoom();
+      this.mapController.setZoom(currentZoom + 0.0001, 0, 0, 0);
+      
+      showToast(`透明度: ${opacity.toFixed(2)}`);
+    } catch (error) {
+      showToast(`更改透明度失败: ${error}`);
+    }
+  }
+
+  // 改变圆形模糊度
+  private changeCircleBlur(): void {
+    if (!this.mapController) return;
+    
+    try {
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
+      }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      if (!(layer instanceof CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const blur = Math.random() * 2; // 0 - 2
+      circleLayer.setCircleBlur(blur);
+      
+      // 触发地图重绘
+      const currentZoom = this.mapController.getZoom();
+      this.mapController.setZoom(currentZoom + 0.0001, 0, 0, 0);
+      
+      showToast(`模糊度: ${blur.toFixed(2)}`);
+    } catch (error) {
+      showToast(`更改模糊度失败: ${error}`);
+    }
+  }
+
+  // 改变边框颜色
+  private changeStrokeColor(): void {
+    if (!this.mapController) return;
+    
+    try {
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
+      }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      if (!(layer instanceof CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const colors: string[] = ['#FFFFFF', '#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'];
+      const randomColor: string = colors[Math.floor(Math.random() * colors.length)];
+      circleLayer.setCircleStrokeColor(randomColor);
+      
+      // 触发地图重绘
+      const currentZoom = this.mapController.getZoom();
+      this.mapController.setZoom(currentZoom + 0.0001, 0, 0, 0);
+      
+      showToast(`边框颜色: ${randomColor}`);
+    } catch (error) {
+      showToast(`更改边框颜色失败: ${error}`);
+    }
+  }
+
+  // 改变边框宽度
+  private changeStrokeWidth(): void {
+    if (!this.mapController) return;
+    
+    try {
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
+      }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      if (!(layer instanceof CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const width = 1 + Math.random() * 5; // 1 - 6
+      circleLayer.setCircleStrokeWidth(width);
+      
+      // 触发地图重绘
+      const currentZoom = this.mapController.getZoom();
+      this.mapController.setZoom(currentZoom + 0.0001, 0, 0, 0);
+      
+      showToast(`边框宽度: ${width.toFixed(1)}`);
+    } catch (error) {
+      showToast(`更改边框宽度失败: ${error}`);
+    }
+  }
+
+  // 改变边框透明度
+  private changeStrokeOpacity(): void {
+    if (!this.mapController) return;
+    
+    try {
+      let layer = this.mapController.getLayer('circle-layer');
+      if (!layer) {
+        layer = this.mapController.getLayer('bus-stop-layer');
+      }
+      
+      if (!layer) {
+        showToast('未找到圆形图层，请先加载图层');
+        return;
+      }
+      
+      if (!(layer instanceof CircleLayer)) {
+        showToast('图层不是圆形图层类型');
+        return;
+      }
+      
+      const circleLayer = layer;
+      const opacity = 0.3 + Math.random() * 0.7; // 0.3 - 1.0
+      circleLayer.setCircleStrokeOpacity(opacity);
+      
+      // 触发地图重绘
+      const currentZoom = this.mapController.getZoom();
+      this.mapController.setZoom(currentZoom + 0.0001, 0, 0, 0);
+      
+      showToast(`边框透明度: ${opacity.toFixed(2)}`);
+    } catch (error) {
+      showToast(`更改边框透明度失败: ${error}`);
+    }
+  }
+
   // 切换地图样式
   private changeMapStyle(): void {
-    this.currentStyleIndex = (this.currentStyleIndex + 1) % this.STYLES.length;
-    showToast(`已切换到样式 ${this.currentStyleIndex + 1}`);
+    if (!this.mapController) return;
     
-    // 重新加载地图会触发 onMapReady
-    if (this.mapController) {
-      // 注意：实际实现中可能需要调用 setStyle 方法
-      showToast('样式切换功能需要地图支持');
+    try {
+      // 切换到下一个样式
+      this.currentStyleIndex = (this.currentStyleIndex + 1) % this.STYLES.length;
+      const newStyleUrl = this.STYLES[this.currentStyleIndex];
+      
+      // 使用 setStyleUrl 方法切换样式
+      this.mapController.setStyleUrl(newStyleUrl);
+      
+      showToast(`正在切换到样式 ${this.currentStyleIndex + 1}`);
+      
+      // 样式加载完成后重新加载基础图层
+      // 注意：样式切换会清除所有图层和数据源
+      setTimeout(() => {
+        this.loadBasicCircleLayer();
+      }, 1000);
+    } catch (error) {
+      showToast(`切换样式失败: ${error}`);
     }
   }
 

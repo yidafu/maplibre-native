@@ -25,7 +25,7 @@ struct DistanceExpressionTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
     
     setTimeout(() => this.addLayers(), 1000);
   };
@@ -50,9 +50,7 @@ struct DistanceExpressionTestPage {
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new CircleLayer('distance-layer', 'distance-points');
-    // TODO: setProperties() not available - layer.setProperties({
-    //   'circle-color': '#4A90E2'
-    // });
+    layer.setCircleColor('#4A90E2');
     this.mapController.getStyle()?.addLayer(layer);
     
     showToast('距离表达式图层已添加');

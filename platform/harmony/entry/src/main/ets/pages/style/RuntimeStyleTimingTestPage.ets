@@ -28,7 +28,7 @@ struct RuntimeStyleTimingTestPage {
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
     this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 10);
+    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
   };
   
   private testAddLayer = (): void => {
@@ -45,10 +45,8 @@ struct RuntimeStyleTimingTestPage {
     this.mapController.getStyle()?.addSource(source);
     
     const layer = new CircleLayer(`test-layer-${this.layerCount}`, `test-source-${this.layerCount}`);
-    // TODO: setProperties() not available - layer.setProperties({
-    //   'circle-radius': 10,
-    //   'circle-color': '#E74C3C'
-    // });
+    layer.setCircleRadius(10)
+      .setCircleColor('#E74C3C');
     this.mapController.getStyle()?.addLayer(layer);
     
     this.addLayerTime = Date.now() - startTime;
