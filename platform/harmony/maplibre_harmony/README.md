@@ -110,7 +110,7 @@ MapLibre Native for HarmonyOS uses a multi-threaded architecture to ensure smoot
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
-│                          Thread Architecture                         │
+│                          Thread Architecture                        │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────┐      ┌──────────────────────────────┐
@@ -121,25 +121,25 @@ MapLibre Native for HarmonyOS uses a multi-threaded architecture to ensure smoot
 │  • User Interactions     │      │  • Map Core Instance         │
 │  • Event Callbacks       │      │  • Renderer Instance         │
 │  • UI Updates            │◀────▶│  • EGL Context               │
-│  • API Calls             │  ①②  │  • OpenGL Drawing            │
+│  • API Calls             │ ①②  │  • OpenGL Drawing            │
 │  • NativeMapView         │      │  • RunLoop (libuv)           │
 │                          │      │  • VSync Management          │
 └────────────┬─────────────┘      └────────────┬─────────────────┘
              │                                 │
-             │ ③ ThreadSafeCallback            │ ④ Async Tasks
+             │ ③ ThreadSafeCallback           │ ④ Async Tasks
              │                                 │
              ▼                                 ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                       Resource Thread Pool                        │
-│                   (Network & File Operations)                     │
+│                       Resource Thread Pool                       │
+│                   (Network & File Operations)                    │
 ├──────────────────────────────────────────────────────────────────┤
-│                                                                   │
+│                                                                  │
 │  • HTTP Requests (libcurl)          • Tile Downloads             │
 │  • File I/O Operations              • Image Decoding             │
 │  • Style Loading                    • GeoJSON Parsing            │
 │  • Database Access (SQLite)         • Asset Loading              │
-│                                                                   │
-└───────────────────────────────────────────────────────────────────┘
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### Communication Mechanisms

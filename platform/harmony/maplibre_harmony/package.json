@@ -1,6 +1,6 @@
 {
   "name": "maplibre-harmony",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "MapLibre Native for HarmonyOS - OpenGL-based vector map rendering library",
   "main": "index.ets",
   "scripts": {
@@ -22,7 +22,7 @@
   "license": "BSD-2-Clause",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yidafu/maplibre-native.git",
+    "url": "git+https://github.com/yidafu/maplibre-native.git",
     "directory": "platform/harmony/maplibre_harmony"
   },
   "bugs": {
