@@ -1,125 +1,192 @@
 # MapLibre Native for HarmonyOS
 
-MapLibre Native port for HarmonyOS platform.
+OpenGL-based vector map rendering library for HarmonyOS platform.
+
+> 📦 **Package**: `maplibre-harmony` | 🔖 **Version**: 0.1.0-alpha.1 | 📄 **License**: BSD-2-Clause
 
 ## Project Structure
 
 ```
 platform/harmony/
-├── maplibre_harmony/          # Main HarmonyOS module
-│   ├── src/main/
-│   │   ├── ets/               # TypeScript/ArkTS code
-│   │   │   ├── maps/          # Map API and gesture handling
-│   │   │   └── pages/         # Demo pages
-│   │   └── cpp/               # Native C++ bridge (NAPI)
-│   └── Index.ets              # Module entry point
-├── src/                       # Additional native implementations
-├── platform/                  # Platform-specific implementations
-├── docs/                      # Documentation
-│   └── archived/              # Archived analysis and logs
-├── build-profile.json5        # HarmonyOS build configuration
-├── oh-package.json5           # HarmonyOS package configuration
-└── README.md                  # This file
-
+├── maplibre_harmony/          # HAR module (publishable package)
+│   ├── src/main/ets/          # ArkTS API layer
+│   ├── src/main/cpp/          # C++ NAPI bridge
+│   └── README.md              # 👉 Full documentation
+├── entry/                     # Demo application
+├── src/                       # Platform implementation
+└── harmony.cmake              # Build configuration
 ```
 
 ## Quick Start
 
+### Requirements
+
+- HarmonyOS SDK 5.0.0+ (API 12)
+- DevEco Studio 5.0.5+
+- Node.js 18.0+
+
 ### Build
+
 ```bash
-# Build the HarmonyOS module
-./build.sh
+cd platform/harmony/maplibre_harmony
+
+# Set environment (macOS)
+export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
+export NODE_HOME=/Applications/DevEco-Studio.app/Contents/tools/node
+
+# Build release HAR
+./pre-release.sh
 ```
 
-### Documentation
+**Output**: `maplibre_harmony/build/default/outputs/default/maplibre-harmony.har`
 
-- **[00_START_HERE.md](00_START_HERE.md)** - Start here for project overview
-- **[BUILD_AND_TEST.md](BUILD_AND_TEST.md)** - Build and test instructions
-- **[STATUS.md](STATUS.md)** - Current implementation status
-- **[TODO_FEATURES.md](TODO_FEATURES.md)** - Planned features and improvements
+## Usage
 
-### Architecture Documentation
+```typescript
+import { NativeMapView, MapLibreMap } from 'maplibre-harmony';
 
-- **[README_LIBUV_AND_TIMER.md](README_LIBUV_AND_TIMER.md)** - Timer system design
-- **[README_TIMER_THREAD_POOL.md](README_TIMER_THREAD_POOL.md)** - Thread pool implementation
-- **[SCRIPTS_README.md](SCRIPTS_README.md)** - Build scripts documentation
+@Entry
+@Component
+struct MapPage {
+  build() {
+    NativeMapView({
+      styleUrl: 'https://demotiles.maplibre.org/style.json',
+      onMapReady: (map: MapLibreMap) => {
+        console.log('Map ready!');
+      }
+    })
+  }
+}
+```
 
-## Recent Changes
+For complete examples and API documentation, see **[maplibre_harmony/README.md](maplibre_harmony/README.md)**.
 
-See [README_RECENT_CHANGES.md](README_RECENT_CHANGES.md) for the latest updates.
+## Features
 
-## Key Features
+- ✅ Vector map rendering (OpenGL ES 3.0)
+- ✅ Full gesture support (pan, zoom, rotate, tilt)
+- ✅ Markers, polylines, polygons
+- ✅ Camera animations (move, animate, flyTo)
+- ✅ Runtime styling and data sources
+- ✅ 26 event listeners (Android/iOS compatible)
+- ✅ Offline maps and snapshots
+- ✅ Thread-safe, DPI-aware
 
-- ✅ Full gesture support (pan, pinch, rotate, tilt)
-- ✅ Vector tile rendering
-- ✅ Style API compatibility
-- ✅ Marker support
-- ✅ Camera animations
-- ✅ DPI/High-resolution display support
-- ✅ Optimized rendering pipeline
-- ✅ **Android/iOS API alignment** - Complete event listener system
-- ✅ **Performance control** - FPS, rendering mode, LOD configuration
-- ✅ **Comprehensive UI settings** - Compass, Logo, ScaleBar configuration
+See **[Feature Comparison Table](maplibre_harmony/README.md#feature-comparison-harmonyos-vs-android-vs-ios)** for detailed comparison with Android/iOS.
 
-## Gesture System
+## Documentation
 
-The gesture system has been recently improved with:
-- Incremental zoom calculation (Android style)
-- Fixed rotation anchor points (iOS style)
-- DPI-aware coordinate transformation
-- Gesture mutex control to prevent conflicts
-- Performance optimizations with cached pixelRatio
+- **[maplibre_harmony/README.md](maplibre_harmony/README.md)** - Complete package documentation
+- **[API Documentation](maplibre_harmony/docs/api/)** - API reference and guides
+- **[00_START_HERE.md](00_START_HERE.md)** - Developer setup guide
+- **[BUILD_AND_TEST.md](BUILD_AND_TEST.md)** - Build instructions
 
 ## Architecture
 
-### Native Bridge (NAPI)
-- `native_map_view_harmony.cpp/hpp` - Main NAPI bridge
-- `napi_utils.h` - NAPI helper utilities
-- `harmony_renderer_frontend.cpp/hpp` - Rendering frontend
-- `harmony_gl_renderer_backend.cpp/hpp` - OpenGL backend
+```text
+                      User Actions (Touch/API Calls)
+                                    │
+                                    ▼
+        ┌───────────────────────────────────────────────────┐
+        │         Application Layer (ArkTS/TypeScript)       │
+        │                                                    │
+        │    NativeMapView  ──▶  MapLibreMap API           │
+        │    (XComponent)        (Map Control Interface)    │
+        └────────────────────┬──────────────────────────────┘
+                             │ NAPI Calls
+                             ▼
+        ┌───────────────────────────────────────────────────┐
+        │           NAPI Bridge Layer (C++)                  │
+        │                                                    │
+        │    Type Conversion  ←→  ThreadSafe  ←→  Bindings │
+        └────────────────────┬──────────────────────────────┘
+                             │ C++ Objects
+                             ▼
+        ┌───────────────────────────────────────────────────┐
+        │         MapLibre Core Engine (C++)                │
+        │                                                    │
+        │    NativeMapView (Core Map Logic)                 │
+        │    Camera | Style | Annotations | Query           │
+        └────────┬───────────────────────────┬──────────────┘
+                 │                           │
+    UI Thread    │                           │  Render Thread
+                 │                           │
+                 ▼                           ▼
+        ┌─────────────────┐       ┌──────────────────────┐
+        │   Event          │       │   Rendering System   │
+        │   Callbacks      │       │                      │
+        │                 │       │   OpenGL ES 3.0      │
+        │   ThreadSafe    │       │   EGL Context        │
+        │   Callback      │       │   Render Thread      │
+        └─────────────────┘       └──────────┬───────────┘
+                                             │
+                                             ▼
+        ┌───────────────────────────────────────────────────┐
+        │         HarmonyOS System Layer                     │
+        │                                                    │
+        │  XComponent | libuv | EGL | libcurl | SQLite     │
+        └────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+                     GPU Hardware → Screen Display
+```
 
-### TypeScript/ArkTS Layer
-- `MapLibreMap.ets` - Main map API
-- `MapGestureDetector.ets` - Gesture handling
-- `UiSettings.ets` - UI configuration
-- `NativeMapView.ets` - XComponent wrapper
+### Key Concepts
 
-## Development
+- **Layered Architecture**: ArkTS → NAPI → Core → System
+- **Bidirectional Communication**: API Calls (Downstream) + Event Callbacks (Upstream)  
+- **Multi-Threading**: Separate UI Thread and Render Thread
+- **Thread-Safe**: ThreadSafeCallback ensures cross-thread safety
+- **Hardware-Accelerated**: OpenGL ES 3.0 + VSync synchronization
 
-### Requirements
-- HarmonyOS SDK 5.0+
-- DevEco Studio
-- CMake 3.20+
+Details: See **[Architecture Documentation](maplibre_harmony/docs/)**
 
-### Testing
-Run the demo app on a HarmonyOS device or emulator.
+## Troubleshooting
 
-## API 完整性
+**Build issues?** 
+```bash
+# Clean and rebuild
+cd platform/harmony/maplibre_harmony
+rm -rf build/ .cxx/
+./pre-release.sh
+```
 
-MapLibre Native 鸿蒙版现已提供与 Android/iOS 平台对等的 API：
+**Map not rendering?**
+1. Check OpenGL ES 3.0 support
+2. Verify style URL accessibility
+3. Check logs: `hdc hilog | grep MapLibre`
 
-### 事件监听器（Android 风格）
-- ✅ 26 个事件监听器接口
-- ✅ 52 个 add/remove 方法
-- ✅ 完整的 C++ NAPI 绑定
-- ✅ 线程安全的跨线程回调
+**More help:** See **[Troubleshooting Guide](maplibre_harmony/docs/troubleshooting/TROUBLESHOOTING.md)**
 
-### 性能控制
-- ✅ 渲染模式控制（CONTINUOUS / WHEN_DIRTY）
-- ✅ FPS 限制
-- ✅ 瓦片预加载
-- ✅ LOD 参数配置（iOS 风格）
+## Testing
 
-### 生命周期
-- ✅ 鸿蒙原生生命周期钩子
-- ✅ 页面显示/隐藏处理
-- ✅ 内存压力管理
+```bash
+# Run demo app
+cd platform/harmony
+hdc install entry/build/default/outputs/default/entry-default-signed.hap
+```
 
-详细信息请参阅：
-- **[API_README.md](maplibre_harmony/docs/API_README.md)** - API 快速参考
-- **[API_USAGE_GUIDE.md](maplibre_harmony/docs/API_USAGE_GUIDE.md)** - 完整使用指南
-- **[API_IMPLEMENTATION_COMPLETE.md](maplibre_harmony/docs/API_IMPLEMENTATION_COMPLETE.md)** - 实施报告
+## Contributing
+
+Contributions welcome! Please:
+1. Follow C++17/20 and ArkTS conventions
+2. Update documentation for new features
+3. Ensure tests pass before submitting PR
+
+See **[CONTRIBUTING.md](../../CONTRIBUTING.md)** for details.
+
+## Links
+
+- 📦 **Package**: [maplibre-harmony on npm](https://www.npmjs.com/package/maplibre-harmony) (coming soon)
+- 🏠 **Homepage**: https://github.com/yidafu/maplibre-react-native/tree/hmos/harmony
+- 🐛 **Issues**: https://github.com/yidafu/maplibre-react-native/issues
+- 🌐 **MapLibre**: https://maplibre.org
+- 📚 **HarmonyOS Docs**: https://developer.huawei.com/consumer/en/harmonyos/
 
 ## License
 
-See [LICENSE.md](../../LICENSE.md) in the root directory.
+BSD-2-Clause - See [LICENSE.md](../../LICENSE.md)
+
+---
+
+**Made with ❤️ for the HarmonyOS community**

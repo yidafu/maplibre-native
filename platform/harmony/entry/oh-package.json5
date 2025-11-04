@@ -6,7 +6,8 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "maplibre_harmony": "file:../maplibre_harmony"
+//    "maplibre_harmony": "file:../maplibre_harmony",
+    "maplibre_harmony": "file:./node_modules/maplibre-harmony/maplibre_harmony.har"
   }
 }
 

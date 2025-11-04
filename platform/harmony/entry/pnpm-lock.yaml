@@ -1,0 +1,23 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      maplibre-harmony:
+        specifier: 0.1.0-alpha.1
+        version: 0.1.0-alpha.1
+
+packages:
+
+  maplibre-harmony@0.1.0-alpha.1:
+    resolution: {integrity: sha512-C/LnSGiYUJ+uJAC7nGbENfkCzJI143x4KpWkQZay1TypvG3viFoETJbxpW3+OukKH44ASn4a2rXcwSQzaJyuAg==}
+    engines: {node: '>=18.0.0', npm: '>=9.0.0'}
+
+snapshots:
+
+  maplibre-harmony@0.1.0-alpha.1: {}

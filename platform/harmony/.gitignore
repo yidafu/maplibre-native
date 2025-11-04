@@ -15,3 +15,5 @@
 *.sh
 *.bak
 *.py
+
+archived-backup/
