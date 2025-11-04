@@ -197,4 +197,23 @@ export class LineLayer {
   setLineSortKey(sortKey: PropertyValue<number>): this;
 
   getLineSortKey(): number | undefined;
+
+  /**
+   * 设置单个属性（通用方法）
+   * @param propertyName 属性名称（如 'line-color', 'line-width'）
+   * @param value 属性值（常量值或Expression）
+   */
+  setProperty(propertyName: string, value: any): this;
+
+  /**
+   * 批量设置属性（通用方法）
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @example
+   * layer.setProperties({
+   *   'line-color': '#0000FF',
+   *   'line-width': 3,
+   *   'line-dasharray': [2, 4]
+   * });
+   */
+  setProperties(properties: Record<string, any>): this;
 }

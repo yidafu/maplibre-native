@@ -76,7 +76,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
    * @param options 配置选项
    * @throws Error 如果地图样式未加载或组件初始化失败
    */
-  activateLocationComponent(options?: LocationComponentOptions): void {
+  async activateLocationComponent(options?: LocationComponentOptions): Promise<void> {
     if (this.isComponentInitialized) {
       hilog.warn(DOMAIN, LocationComponent.TAG, 'LocationComponent already initialized');
       return;
@@ -95,8 +95,8 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
     }
 
     try {
-      // 初始化子组件
-      this.initializeComponents();
+      // 初始化子组件（异步加载图标资源）
+      await this.initializeComponents();
       this.isComponentInitialized = true;
     } catch (err) {
       const errorMsg = `Failed to initialize LocationComponent: ${err}`;
@@ -111,7 +111,7 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
   /**
    * 初始化子组件
    */
-  private initializeComponents(): void {
+  private async initializeComponents(): Promise<void> {
     if (!this.style) {
       return;
     }
@@ -132,7 +132,8 @@ export class LocationComponent implements OnRenderModeChangedListener, OnCameraT
       this.options,
       this
     );
-    this.locationLayerController.initializeComponents(this.style);
+    // 异步初始化图层（加载图标资源）
+    await this.locationLayerController.initializeComponents(this.style);
 
     // 创建相机控制器
     this.locationCameraController = new LocationCameraController(

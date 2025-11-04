@@ -1,4 +1,5 @@
 #include "circle_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
@@ -89,6 +90,10 @@ napi_value CircleLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getCirclePitchAlignment", nullptr, GetCirclePitchAlignment, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setCircleSortKey", nullptr, SetCircleSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getCircleSortKey", nullptr, GetCircleSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -912,6 +917,16 @@ napi_value CircleLayerNAPI::GetCircleSortKey(napi_env env, napi_callback_info in
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
         env, layerObj->getLayer(), &mbgl::style::CircleLayer::getCircleSortKey
     );
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value CircleLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<CircleLayerNAPI, mbgl::style::CircleLayer>(env, info);
+}
+
+napi_value CircleLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<CircleLayerNAPI, mbgl::style::CircleLayer>(env, info);
 }
 
 } // namespace harmony

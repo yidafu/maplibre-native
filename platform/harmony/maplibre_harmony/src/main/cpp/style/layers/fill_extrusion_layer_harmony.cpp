@@ -1,4 +1,5 @@
 #include "fill_extrusion_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
@@ -63,6 +64,10 @@ napi_value FillExtrusionLayerNAPI::Init(napi_env env, napi_value exports) {
         // New properties
         { "setFillExtrusionTranslateAnchor", nullptr, SetFillExtrusionTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFillExtrusionTranslateAnchor", nullptr, GetFillExtrusionTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -549,6 +554,16 @@ napi_value FillExtrusionLayerNAPI::GetFillExtrusionTranslateAnchor(napi_env env,
     return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, mbgl::style::TranslateAnchorType>(
         env, layerObj->getLayer(), &mbgl::style::FillExtrusionLayer::getFillExtrusionTranslateAnchor
     );
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value FillExtrusionLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>(env, info);
+}
+
+napi_value FillExtrusionLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>(env, info);
 }
 
 } // namespace harmony

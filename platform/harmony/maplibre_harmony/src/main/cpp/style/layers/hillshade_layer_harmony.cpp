@@ -1,4 +1,5 @@
 #include "hillshade_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
@@ -60,6 +61,10 @@ napi_value HillshadeLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -555,6 +560,16 @@ napi_value HillshadeLayerNAPI::GetFilter(napi_env env, napi_callback_info info) 
     
     auto filter = layerObj->layer->getFilter();
     return mbgl::harmony::filterToNapiArray(env, filter);
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value HillshadeLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<HillshadeLayerNAPI, mbgl::style::HillshadeLayer>(env, info);
+}
+
+napi_value HillshadeLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<HillshadeLayerNAPI, mbgl::style::HillshadeLayer>(env, info);
 }
 
 } // namespace harmony

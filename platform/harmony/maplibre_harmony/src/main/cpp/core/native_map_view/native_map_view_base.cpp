@@ -418,6 +418,10 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"getPixelRatio", nullptr, getPixelRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getDensityDependantRectangle", nullptr, getDensityDependantRectangle, nullptr, nullptr, nullptr, napi_default, nullptr},
         
+        // 本地字体配置
+        {"setLocalIdeographFontFamily", nullptr, setLocalIdeographFontFamily, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLocalIdeographFontFamily", nullptr, getLocalIdeographFontFamily, nullptr, nullptr, nullptr, napi_default, nullptr},
+        
         // 相机监听器方法（旧的）
         {"addOnCameraIdleListener", nullptr, addOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraIdleListener", nullptr, removeOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -644,10 +648,13 @@ void NativeMapView::initializeRenderer() {
         int32_t ret = OH_NativeDisplayManager_GetDefaultDisplayDensityDpi(&densityDPI);
         if (ret == 0) {
             pixelRatio = static_cast<float>(densityDPI) / 160.0f;
+            Logger::info("NativeMapView", "🔍 [DPI] Calculated pixelRatio: densityDPI=%d, pixelRatio=%.2f", densityDPI, pixelRatio);
         } else {
             pixelRatio = 1.0f;
-            Logger::warn("NativeMapView", "Failed to pre-fetch DPI, using 1.0");
+            Logger::warn("NativeMapView", "⚠️ [DPI] Failed to get densityDPI, using default pixelRatio=1.0");
         }
+    } else {
+        Logger::info("NativeMapView", "🔍 [DPI] Using pre-set pixelRatio=%.2f", pixelRatio);
     }
     
     // Always create a brand-new HarmonyRenderer to guarantee isolation per NativeMapView instance
@@ -723,6 +730,125 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     map = harmonyRenderer->getMap();
 }
 
+// ========== 本地字体配置方法（鸿蒙版本）==========
+
+/**
+ * 设置本地表意文字字体族
+ * 
+ * 鸿蒙实现说明：
+ * - 使用 OH_Drawing_TextBlob API 进行字形渲染
+ * - 支持自动字体回退机制（TextBlob 特性）
+ * - 字体配置在 LocalGlyphRasterizer 中，需要重新初始化 Renderer
+ * 
+ * 参考官方文档：
+ * https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/textblock-drawing-c
+ * 
+ * @param fontFamily 字体族名称（如 "HarmonyOS Sans"），null 表示禁用本地渲染
+ */
+napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "setLocalIdeographFontFamily: Failed to unwrap instance");
+        return args.Undefined();
+    }
+    
+    // 解析参数：fontFamily (string | null)
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+    
+    // 检查参数类型
+    napi_valuetype valueType;
+    napi_typeof(env, args.GetValue(0), &valueType);
+    
+    if (valueType == napi_null || valueType == napi_undefined) {
+        // null 表示禁用本地字体渲染
+        instance->localIdeographFontFamily_ = std::nullopt;
+        Logger::info("NativeMapView", "setLocalIdeographFontFamily: Local glyph rendering disabled");
+    } else if (valueType == napi_string) {
+        // 获取字体族名称
+        std::string fontFamily = args.GetString(0, "fontFamily");
+        if (args.HasError()) {
+            return args.Undefined();
+        }
+        
+        // 验证字体族名称不为空
+        if (fontFamily.empty()) {
+            Logger::info("NativeMapView", "setLocalIdeographFontFamily: Empty font family, treating as disabled");
+            instance->localIdeographFontFamily_ = std::nullopt;
+        } else {
+            instance->localIdeographFontFamily_ = fontFamily;
+            Logger::info("NativeMapView", "setLocalIdeographFontFamily: Font family set to '%s' (HarmonyOS TextBlob)", 
+                        fontFamily.c_str());
+        }
+    } else {
+        Logger::error("NativeMapView", "setLocalIdeographFontFamily: Invalid parameter type");
+        napi_throw_type_error(env, nullptr, "fontFamily must be a string or null");
+        return args.Undefined();
+    }
+    
+    // 重新初始化 Renderer 以应用新的字体配置
+    // 
+    // 原理：
+    // 1. LocalGlyphRasterizer 在 RenderOrchestrator 构造时创建
+    // 2. 字体族传递给 LocalGlyphRasterizer 构造函数
+    // 3. LocalGlyphRasterizer 使用 OH_Drawing_TextBlob API 渲染字形
+    // 4. GlyphManager 缓存已渲染的字形，因此需要重建
+    //
+    // 此方法与 Android/iOS 实现一致，都需要重新初始化 Renderer
+    try {
+        Logger::info("NativeMapView", "setLocalIdeographFontFamily: Reinitializing renderer with new font config...");
+        
+        // 保存当前地图状态
+        std::string currentStyleUrl = instance->styleUrl;
+        
+        // 重新初始化渲染器
+        // 这会创建新的 RenderOrchestrator -> GlyphManager -> LocalGlyphRasterizer
+        instance->initializeRenderer();
+        
+        // 恢复样式（会自动触发字形重新渲染）
+        if (!currentStyleUrl.empty() && instance->map) {
+            instance->map->getStyle().loadURL(currentStyleUrl);
+            Logger::info("NativeMapView", "setLocalIdeographFontFamily: Style reloaded, glyphs will be re-rasterized");
+        }
+        
+        Logger::info("NativeMapView", "setLocalIdeographFontFamily: Renderer reinitialized successfully");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setLocalIdeographFontFamily: Failed to reinitialize renderer: %s", e.what());
+        napi_throw_error(env, nullptr, "Failed to apply font family change");
+        return args.Undefined();
+    }
+    
+    return args.Undefined();
+}
+
+/**
+ * 获取当前配置的本地表意文字字体族
+ * 
+ * @returns 当前配置的字体族名称（如 "HarmonyOS Sans"），null 表示已禁用
+ */
+napi_value NativeMapView::getLocalIdeographFontFamily(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "getLocalIdeographFontFamily: Failed to unwrap instance");
+        return args.Null();
+    }
+    
+    // 返回当前配置的字体族
+    if (instance->localIdeographFontFamily_) {
+        napi_value result;
+        napi_create_string_utf8(env, instance->localIdeographFontFamily_->c_str(), 
+                               NAPI_AUTO_LENGTH, &result);
+        return result;
+    } else {
+        return args.Null();
+    }
+}
 
 napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);

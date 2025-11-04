@@ -1,4 +1,5 @@
 #include "background_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
@@ -60,6 +61,10 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getMinZoom", nullptr, GetMinZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setMaxZoom", nullptr, SetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getMaxZoom", nullptr, GetMaxZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -472,6 +477,16 @@ napi_value BackgroundLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value BackgroundLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<BackgroundLayerNAPI, mbgl::style::BackgroundLayer>(env, info);
+}
+
+napi_value BackgroundLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<BackgroundLayerNAPI, mbgl::style::BackgroundLayer>(env, info);
 }
 
 } // namespace harmony

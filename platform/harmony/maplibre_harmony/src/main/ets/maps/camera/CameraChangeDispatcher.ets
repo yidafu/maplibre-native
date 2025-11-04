@@ -194,6 +194,13 @@ export class CameraChangeDispatcher {
   }
 
   /**
+   * 清除所有监听器（别名方法）
+   */
+  clearAllListeners(): void {
+    this.clear();
+  }
+
+  /**
    * 获取当前状态
    */
   isCurrentlyIdle(): boolean {

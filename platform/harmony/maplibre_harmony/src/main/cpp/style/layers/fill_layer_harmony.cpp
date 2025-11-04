@@ -1,4 +1,5 @@
 #include "fill_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
@@ -82,6 +83,10 @@ napi_value FillLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getFillTranslateAnchor", nullptr, GetFillTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setFillSortKey", nullptr, SetFillSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFillSortKey", nullptr, GetFillSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -753,6 +758,16 @@ napi_value FillLayerNAPI::GetFillSortKey(napi_env env, napi_callback_info info) 
     return mbgl::harmony::getProperty<mbgl::style::FillLayer, float>(
         env, layerObj->getLayer(), &mbgl::style::FillLayer::getFillSortKey
     );
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value FillLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<FillLayerNAPI, mbgl::style::FillLayer>(env, info);
+}
+
+napi_value FillLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<FillLayerNAPI, mbgl::style::FillLayer>(env, info);
 }
 
 } // namespace harmony

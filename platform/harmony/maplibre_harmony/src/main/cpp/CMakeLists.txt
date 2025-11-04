@@ -29,6 +29,17 @@ ADD_DEFINITIONS(-DOHOS_PLATFORM)
 set(NATIVERENDER_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 set(MBGL_SOURCE_DIR "/Users/yidafu/github/maplibre-native")
 
+# 获取 DevEco Studio SDK 路径
+if(DEFINED ENV{DEVECO_SDK_HOME})
+    set(DEVECO_SDK_HOME $ENV{DEVECO_SDK_HOME})
+else()
+    # 如果没有设置环境变量，使用默认路径
+    set(DEVECO_SDK_HOME "/Applications/DevEco-Studio.app/Contents/sdk")
+    message(WARNING "DEVECO_SDK_HOME 环境变量未设置，使用默认路径: ${DEVECO_SDK_HOME}")
+endif()
+
+message(STATUS "DevEco SDK Home: ${DEVECO_SDK_HOME}")
+
 if(DEFINED PACKAGE_FIND_FILE)
     include(${PACKAGE_FIND_FILE})
 endif()
@@ -269,7 +280,8 @@ target_include_directories(
           ../../../../../../vendor/maplibre-native-base/include
           ../../../../../../vendor/nunicode/include
           ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/curl/${OHOS_ARCH}/include
-          /Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native/sysroot/usr/include)
+          ${DEVECO_SDK_HOME}/default/openharmony/native/sysroot/usr/include
+          ${MBGL_SOURCE_DIR}/platform/harmony/src)
 
 
 target_link_libraries(maplibre
@@ -291,5 +303,6 @@ PUBLIC
     pixelmap_ndk.z
     rawfile.z
     image_ndk.z
+    libnative_drawing.so
 )
 

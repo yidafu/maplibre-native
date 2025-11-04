@@ -127,4 +127,20 @@ export class RasterLayer {
   setRasterResampling(resampling: PropertyValue<string>): this;
 
   getRasterResampling(): string | undefined;
+  /**
+   * 设置单个属性（通用方法）
+   * @param propertyName 属性名称
+   * @param value 属性值（常量值或Expression）
+   */
+  setProperty(propertyName: string, value: any): this;
+
+  /**
+   * 批量设置属性（通用方法）
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @example
+   * layer.setProperties({
+   *   'raster-opacity': 0.8, 'raster-brightness-max': 1.0
+   * });
+   */
+  setProperties(properties: Record<string, any>): this;
 }

@@ -140,4 +140,23 @@ export class FillLayer {
   setFillSortKey(sortKey: PropertyValue<number>): this;
 
   getFillSortKey(): number | undefined;
+
+  /**
+   * 设置单个属性（通用方法）
+   * @param propertyName 属性名称（如 'fill-color', 'fill-opacity'）
+   * @param value 属性值（常量值或Expression）
+   */
+  setProperty(propertyName: string, value: any): this;
+
+  /**
+   * 批量设置属性（通用方法）
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @example
+   * layer.setProperties({
+   *   'fill-color': '#FF0000',
+   *   'fill-opacity': 0.5,
+   *   'fill-outline-color': '#000000'
+   * });
+   */
+  setProperties(properties: Record<string, any>): this;
 }

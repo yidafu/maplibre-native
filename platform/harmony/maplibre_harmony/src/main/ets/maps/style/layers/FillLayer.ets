@@ -115,6 +115,41 @@ export class FillLayer {
     return this;
   }
 
+  // ========== 通用属性方法（Android兼容API）==========
+
+  /**
+   * 设置单个属性
+   * @param propertyName 属性名称（如 'fill-color', 'fill-opacity'）
+   * @param value 属性值（常量值或Expression）
+   * @returns this（支持链式调用）
+   */
+  setProperty(propertyName: string, value: PropertyValue<Object>): FillLayer {
+    this.nativeInstance.setProperty(propertyName, convertValue(value));
+    return this;
+  }
+
+  /**
+   * 批量设置属性
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @returns this（支持链式调用）
+   * @example
+   * layer.setProperties({
+   *   'fill-color': '#FF0000',
+   *   'fill-opacity': 0.5,
+   *   'fill-outline-color': '#000000'
+   * });
+   */
+  setProperties(properties: Record<string, PropertyValue<Object>>): FillLayer {
+    const convertedProps: Record<string, Object> = {};
+    const keys = Object.keys(properties);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      convertedProps[key] = convertValue(properties[key]);
+    }
+    this.nativeInstance.setProperties(convertedProps);
+    return this;
+  }
+
   // ========== Getter 方法 ==========
 
   getFillColor(): string | undefined {

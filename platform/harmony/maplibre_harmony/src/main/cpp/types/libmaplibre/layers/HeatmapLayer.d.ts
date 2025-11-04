@@ -131,4 +131,20 @@ export class HeatmapLayer {
    * @returns 颜色表达式，如果未设置则返回 undefined
    */
   getHeatmapColor(): ExpressionLiteral | undefined;
+  /**
+   * 设置单个属性（通用方法）
+   * @param propertyName 属性名称
+   * @param value 属性值（常量值或Expression）
+   */
+  setProperty(propertyName: string, value: any): this;
+
+  /**
+   * 批量设置属性（通用方法）
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @example
+   * layer.setProperties({
+   *   'heatmap-radius': 30, 'heatmap-weight': 1
+   * });
+   */
+  setProperties(properties: Record<string, any>): this;
 }

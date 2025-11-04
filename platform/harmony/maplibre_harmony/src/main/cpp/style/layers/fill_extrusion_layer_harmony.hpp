@@ -55,6 +55,10 @@ public:
     static napi_value SetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info);
     static napi_value GetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info);
     
+    // Generic property methods (Android-compatible API)
+    static napi_value SetProperty(napi_env env, napi_callback_info info);
+    static napi_value SetProperties(napi_env env, napi_callback_info info);
+    
     std::unique_ptr<mbgl::style::Layer> releaseLayer() {
         if (!layer) throw std::runtime_error("Layer already added to style");
         return std::move(layer);

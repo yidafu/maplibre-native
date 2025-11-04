@@ -85,4 +85,37 @@ export class HillshadeLayer {
     this.nativeInstance.setHillshadeExaggeration(convertValue(exaggeration));
     return this;
   }
+  // ========== 通用属性方法（Android兼容API）==========
+
+  /**
+   * 设置单个属性
+   * @param propertyName 属性名称
+   * @param value 属性值（常量值或Expression）
+   * @returns this（支持链式调用）
+   */
+  setProperty(propertyName: string, value: PropertyValue<Object>): HillshadeLayer {
+    this.nativeInstance.setProperty(propertyName, convertValue(value));
+    return this;
+  }
+
+  /**
+   * 批量设置属性
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @returns this（支持链式调用）
+   * @example
+   * layer.setProperties({
+   *   'hillshade-exaggeration': 0.5
+   * });
+   */
+  setProperties(properties: Record<string, PropertyValue<Object>>): HillshadeLayer {
+    const convertedProps: Record<string, Object> = {};
+    const keys = Object.keys(properties);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      convertedProps[key] = convertValue(properties[key]);
+    }
+    this.nativeInstance.setProperties(convertedProps);
+    return this;
+  }
+
 }

@@ -1,4 +1,5 @@
 #include "line_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
@@ -89,6 +90,10 @@ napi_value LineLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getLineGradient", nullptr, GetLineGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setLineSortKey", nullptr, SetLineSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getLineSortKey", nullptr, GetLineSortKey, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -1047,6 +1052,16 @@ napi_value LineLayerNAPI::GetLineSortKey(napi_env env, napi_callback_info info) 
         layerObj->getLayer(),
         &mbgl::style::LineLayer::getLineSortKey
     );
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value LineLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<LineLayerNAPI, mbgl::style::LineLayer>(env, info);
+}
+
+napi_value LineLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<LineLayerNAPI, mbgl::style::LineLayer>(env, info);
 }
 
 } // namespace harmony

@@ -866,6 +866,20 @@ export class MarkerManager {
 
   }
 
+  /**
+   * 清除所有监听器
+   * 
+   * 移除所有 Marker 相关的事件监听器，防止内存泄漏
+   */
+  public clearAllListeners(): void {
+    this.onMarkerClickListener = null;
+    this.onMarkerLongClickListener = null;
+    this.onMarkerDragListener = null;
+    this.onInfoWindowClickListener = null;
+    this.onMarkerSelectListener = null;
+    this.infoWindowAdapter = null;
+  }
+
   // ========== 选中管理 ==========
 
   /**

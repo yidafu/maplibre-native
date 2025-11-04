@@ -662,9 +662,14 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
             napi_typeof(env, filterValue, &type);
 
             if (type == napi_object) {
-                // TODO: 解析 filter 表达式
-                // 目前先跳过 filter 功能
-                Logger::warn("NativeMapView", "querySourceFeatures: Filter parameter is not yet fully supported");
+                // 解析 filter 表达式
+                auto filterOpt = napiArrayToFilter(env, filterValue);
+                if (filterOpt.has_value()) {
+                    options.filter = std::move(filterOpt.value());
+                    Logger::info("NativeMapView", "querySourceFeatures: Filter applied");
+                } else {
+                    Logger::warn("NativeMapView", "querySourceFeatures: Failed to parse filter expression");
+                }
             }
         }
 

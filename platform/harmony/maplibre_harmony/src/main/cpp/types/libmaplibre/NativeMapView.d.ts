@@ -136,6 +136,20 @@ export class NativeMapView {
   getDensityDependantRectangle(rectangle: Rect): Rect;
 
   /**
+   * 设置本地表意文字字体族（对齐 Android/iOS API）
+   * 用于本地渲染 CJK 字符，避免从网络加载大量字形数据
+   * 注意：此操作会重新初始化 Renderer 和重新加载样式
+   * @param fontFamily 字体族名称（如 "HarmonyOS_Sans"），null 表示禁用本地渲染
+   */
+  setLocalIdeographFontFamily(fontFamily: string | null): void;
+
+  /**
+   * 获取当前配置的本地表意文字字体族（对齐 Android/iOS API）
+   * @returns 当前配置的字体族名称，null 表示已禁用
+   */
+  getLocalIdeographFontFamily(): string | null;
+
+  /**
    * 设置原生窗口
    * @param surfaceId Surface ID
    */

@@ -312,7 +312,8 @@ export interface SymbolLayout {
 
   /**
    * 文本字体
-   * @default ["Open Sans Regular", "Arial Unicode MS Regular"]
+   * @default ["HarmonyOS Sans", "HarmonyOS Sans SC", "Noto Sans CJK SC", "Noto Sans", "sans-serif"]
+   * @platform Harmony: Uses official HarmonyOS font family names (with spaces), automatically mapped to font files
    */
   'text-font'?: DataDrivenProperty<string[]>;
 

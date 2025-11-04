@@ -60,3 +60,16 @@ out.png
 **/*.rs.bk
 **/*.profraw
 *.md
+*.py
+# macOS 系统文件
+.DS_Store
+**/.DS_Store
+
+# 日志文件
+*.log
+.hvigor/outputs/build-logs/
+
+# CMake 构建文件
+.cxx/
+output.log
+*.backup

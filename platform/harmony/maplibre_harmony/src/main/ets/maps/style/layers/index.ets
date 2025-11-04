@@ -10,6 +10,7 @@ export { LineLayer } from './LineLayer';
 export { CircleLayer } from './CircleLayer';
 
 export { SymbolLayer } from './SymbolLayer';
+export type { TextProperties, IconProperties, SymbolProperties } from './SymbolLayer';
 
 export { RasterLayer } from './RasterLayer';
 

@@ -203,6 +203,10 @@ private:
     static napi_value SetTextTranslateAnchor(napi_env env, napi_callback_info info);
     static napi_value GetTextTranslateAnchor(napi_env env, napi_callback_info info);
     
+    // Generic property methods (Android-compatible API)
+    static napi_value SetProperty(napi_env env, napi_callback_info info);
+    static napi_value SetProperties(napi_env env, napi_callback_info info);
+    
 private:
     std::unique_ptr<mbgl::style::SymbolLayer> layer;
     bool ownsLayer;

@@ -1,4 +1,5 @@
 #include "raster_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/layer_property_utils.hpp"
@@ -71,6 +72,10 @@ napi_value RasterLayerNAPI::Init(napi_env env, napi_value exports) {
         // Filter
         { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -625,6 +630,16 @@ napi_value RasterLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     
     auto filter = layerObj->layer->getFilter();
     return mbgl::harmony::filterToNapiArray(env, filter);
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value RasterLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<RasterLayerNAPI, mbgl::style::RasterLayer>(env, info);
+}
+
+napi_value RasterLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<RasterLayerNAPI, mbgl::style::RasterLayer>(env, info);
 }
 
 } // namespace harmony

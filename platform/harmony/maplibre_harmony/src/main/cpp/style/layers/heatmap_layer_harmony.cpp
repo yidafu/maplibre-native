@@ -1,4 +1,5 @@
 #include "heatmap_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
@@ -72,6 +73,10 @@ napi_value HeatmapLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getSourceLayer", nullptr, GetSourceLayer, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setFilter", nullptr, SetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFilter", nullptr, GetFilter, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -647,6 +652,16 @@ napi_value HeatmapLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     
     const auto& filter = layerObj->layer->getFilter();
     return filterToNapiArray(env, filter);
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value HeatmapLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<HeatmapLayerNAPI, mbgl::style::HeatmapLayer>(env, info);
+}
+
+napi_value HeatmapLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<HeatmapLayerNAPI, mbgl::style::HeatmapLayer>(env, info);
 }
 
 } // namespace harmony

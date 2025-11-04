@@ -54,6 +54,10 @@ public:
     static napi_value SetMaxZoom(napi_env env, napi_callback_info info);
     static napi_value GetMaxZoom(napi_env env, napi_callback_info info);
     
+    // Generic property methods (Android-compatible API)
+    static napi_value SetProperty(napi_env env, napi_callback_info info);
+    static napi_value SetProperties(napi_env env, napi_callback_info info);
+    
     // Internal methods for Style API
     std::string getId() const { return layer ? layer->getID() : ""; }
     

@@ -88,4 +88,20 @@ export class HillshadeLayer {
    * @returns 过滤器表达式字面量或 null
    */
   getFilter(): ExpressionLiteral | null;
+  /**
+   * 设置单个属性（通用方法）
+   * @param propertyName 属性名称
+   * @param value 属性值（常量值或Expression）
+   */
+  setProperty(propertyName: string, value: any): this;
+
+  /**
+   * 批量设置属性（通用方法）
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @example
+   * layer.setProperties({
+   *   'hillshade-exaggeration': 0.5
+   * });
+   */
+  setProperties(properties: Record<string, any>): this;
 }

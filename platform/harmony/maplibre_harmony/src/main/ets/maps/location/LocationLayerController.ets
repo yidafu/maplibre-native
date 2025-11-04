@@ -10,6 +10,9 @@ import { Style } from '../style';
 import { GeoJsonSource } from '../style/sources/GeoJsonSource';
 import { CircleLayer } from '../style/layers/CircleLayer';
 import { SymbolLayer } from '../style/layers/SymbolLayer';
+import resourceManager from '@ohos.resourceManager';
+import common from '@ohos.app.ability.common';
+import image from '@ohos.multimedia.image';
 
 /**
  * 位置图层控制器
@@ -38,8 +41,11 @@ export class LocationLayerController {
   /**
    * 初始化组件
    */
-  initializeComponents(style: Style): void {
+  async initializeComponents(style: Style): Promise<void> {
     this.style = style;
+
+    // 加载定位图标
+    await this.loadLocationIcons();
 
     // 添加图层
     this.addLayers();
@@ -47,6 +53,79 @@ export class LocationLayerController {
     // 初始化时隐藏
     if (this.isHidden) {
       this.hide();
+    }
+  }
+
+  /**
+   * 加载定位图标到 Style
+   */
+  private async loadLocationIcons(): Promise<void> {
+    if (!this.style) {
+      return;
+    }
+
+    try {
+      // 获取 ResourceManager
+      const context = getContext(this) as common.UIAbilityContext;
+      const resMgr = context.resourceManager;
+
+      // 加载前景图标
+      await this.loadIcon(resMgr, 'maplibre_location_icon_foreground.png', LocationComponentConstants.FOREGROUND_ICON);
+      
+      // 加载背景图标
+      await this.loadIcon(resMgr, 'maplibre_location_icon_background.png', LocationComponentConstants.BACKGROUND_ICON);
+      
+      // 加载方向图标
+      await this.loadIcon(resMgr, 'maplibre_location_icon_bearing.png', LocationComponentConstants.BEARING_ICON);
+
+      hilog.info(DOMAIN, LocationLayerController.TAG, 'Location icons loaded successfully');
+    } catch (err) {
+      hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to load location icons: ${err}`);
+    }
+  }
+
+  /**
+   * 加载单个图标
+   */
+  private async loadIcon(resMgr: resourceManager.ResourceManager, fileName: string, iconName: string): Promise<void> {
+    try {
+      // 从 rawfile 目录加载图片
+      const uint8Array = await resMgr.getRawFileContent(fileName);
+      hilog.info(DOMAIN, LocationLayerController.TAG, `Loading icon: ${fileName}, size: ${uint8Array.byteLength} bytes`);
+
+      // 创建 ImageSource
+      const imageSource = image.createImageSource(uint8Array.buffer);
+      if (!imageSource) {
+        throw new Error('Failed to create ImageSource');
+      }
+
+      // 解码为 PixelMap
+      const pixelMap = await imageSource.createPixelMap({
+        desiredPixelFormat: image.PixelMapFormat.RGBA_8888
+      });
+
+      // 获取图片信息
+      const imageInfo = await pixelMap.getImageInfo();
+      const width = imageInfo.size.width;
+      const height = imageInfo.size.height;
+      hilog.info(DOMAIN, LocationLayerController.TAG, `Icon ${iconName}: ${width}x${height}`);
+
+      // 读取 RGBA 数据
+      const pixelBytes = new ArrayBuffer(width * height * 4);
+      await pixelMap.readPixelsToBuffer(pixelBytes);
+
+      // 添加图标到样式
+      if (this.style) {
+        this.style.addImage(iconName, pixelBytes, width, height, false);
+        hilog.info(DOMAIN, LocationLayerController.TAG, `Icon ${iconName} added to style successfully`);
+      }
+
+      // 清理资源
+      imageSource.release();
+      pixelMap.release();
+    } catch (err) {
+      hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to load icon ${fileName}: ${err}`);
+      throw new Error(`Failed to load icon ${fileName}: ${err}`);
     }
   }
 
@@ -79,25 +158,37 @@ export class LocationLayerController {
       );
       this.style.addLayer(accuracyLayer);
 
-      // 添加背景图标图层
+      // 添加背景图标图层（白色圆圈，最大）
       const backgroundLayer = new SymbolLayer(
         LocationComponentConstants.BACKGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
+      backgroundLayer.setIconImage(LocationComponentConstants.BACKGROUND_ICON);
+      backgroundLayer.setIconSize(0.5);  // 调整图标大小
+      backgroundLayer.setIconAllowOverlap(true);
+      backgroundLayer.setIconIgnorePlacement(true);
       this.style.addLayer(backgroundLayer);
 
-      // 添加前景图标图层
+      // 添加前景图标图层（蓝色圆点，中等）
       const foregroundLayer = new SymbolLayer(
         LocationComponentConstants.FOREGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
+      foregroundLayer.setIconImage(LocationComponentConstants.FOREGROUND_ICON);
+      foregroundLayer.setIconSize(0.35);  // 比背景小
+      foregroundLayer.setIconAllowOverlap(true);
+      foregroundLayer.setIconIgnorePlacement(true);
       this.style.addLayer(foregroundLayer);
 
-      // 添加方向图标图层
+      // 添加方向图标图层（蓝色箭头）
       const bearingLayer = new SymbolLayer(
         LocationComponentConstants.BEARING_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
+      bearingLayer.setIconImage(LocationComponentConstants.BEARING_ICON);
+      bearingLayer.setIconSize(0.4);  // 箭头大小
+      bearingLayer.setIconAllowOverlap(true);
+      bearingLayer.setIconIgnorePlacement(true);
       this.style.addLayer(bearingLayer);
 
       this.layersAdded = true;
@@ -200,7 +291,7 @@ export class LocationLayerController {
     try {
       const layer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
       if (layer && layer instanceof SymbolLayer && this.renderMode !== RenderMode.NORMAL) {
-        // layer.setProperties({ 'icon-rotate': bearing });
+        layer.setIconRotate(bearing);
       }
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to update bearing: ${err}`);
@@ -244,14 +335,14 @@ export class LocationLayerController {
 
       if (this.renderMode === RenderMode.NORMAL) {
         // 普通模式：只显示前景和背景
-        // foregroundLayer?.setProperty('visibility', 'visible');
-        // backgroundLayer?.setProperty('visibility', 'visible');
-        // bearingLayer?.setProperty('visibility', 'none');
+        if (foregroundLayer && foregroundLayer instanceof SymbolLayer) foregroundLayer.setVisibility('visible');
+        if (backgroundLayer && backgroundLayer instanceof SymbolLayer) backgroundLayer.setVisibility('visible');
+        if (bearingLayer && bearingLayer instanceof SymbolLayer) bearingLayer.setVisibility('none');
       } else if (this.renderMode === RenderMode.COMPASS || this.renderMode === RenderMode.GPS) {
-        // 指南针/GPS 模式：显示所有图层
-        // foregroundLayer?.setProperty('visibility', 'visible');
-        // backgroundLayer?.setProperty('visibility', 'visible');
-        // bearingLayer?.setProperty('visibility', 'visible');
+        // 指南针/GPS 模式：显示所有图层包括方向箭头
+        if (foregroundLayer && foregroundLayer instanceof SymbolLayer) foregroundLayer.setVisibility('visible');
+        if (backgroundLayer && backgroundLayer instanceof SymbolLayer) backgroundLayer.setVisibility('visible');
+        if (bearingLayer && bearingLayer instanceof SymbolLayer) bearingLayer.setVisibility('visible');
       }
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to update icon styles: ${err}`);
@@ -317,18 +408,26 @@ export class LocationLayerController {
     }
 
     try {
-      // 设置所有图层为可见
-      const layers = [
-        LocationComponentConstants.ACCURACY_LAYER,
-        LocationComponentConstants.BACKGROUND_LAYER,
-        LocationComponentConstants.FOREGROUND_LAYER,
-        LocationComponentConstants.BEARING_LAYER
-      ];
+      // 设置精度圈图层为可见
+      const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
+      if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
+        accuracyLayer.setVisibility('visible');
+      }
 
-      layers.forEach(layerId => {
-        const layer: object | null = this.style!.getLayer(layerId);
-        // layer?.setProperty('visibility', 'visible');
-      });
+      // 设置背景图层为可见
+      const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
+      if (backgroundLayer && backgroundLayer instanceof SymbolLayer) {
+        backgroundLayer.setVisibility('visible');
+      }
+
+      // 设置前景图层为可见
+      const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
+      if (foregroundLayer && foregroundLayer instanceof SymbolLayer) {
+        foregroundLayer.setVisibility('visible');
+      }
+
+      // 方向图层的可见性由 updateIconStyles() 根据渲染模式控制
+      this.updateIconStyles();
 
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to show layers: ${err}`);
@@ -350,18 +449,29 @@ export class LocationLayerController {
     }
 
     try {
-      // 设置所有图层为不可见
-      const layers = [
-        LocationComponentConstants.ACCURACY_LAYER,
-        LocationComponentConstants.BACKGROUND_LAYER,
-        LocationComponentConstants.FOREGROUND_LAYER,
-        LocationComponentConstants.BEARING_LAYER
-      ];
+      // 设置精度圈图层为不可见
+      const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
+      if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
+        accuracyLayer.setVisibility('none');
+      }
 
-      layers.forEach(layerId => {
-        const layer: object | null = this.style!.getLayer(layerId);
-        // layer?.setProperty('visibility', 'none');
-      });
+      // 设置背景图层为不可见
+      const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
+      if (backgroundLayer && backgroundLayer instanceof SymbolLayer) {
+        backgroundLayer.setVisibility('none');
+      }
+
+      // 设置前景图层为不可见
+      const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
+      if (foregroundLayer && foregroundLayer instanceof SymbolLayer) {
+        foregroundLayer.setVisibility('none');
+      }
+
+      // 设置方向图层为不可见
+      const bearingLayer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
+      if (bearingLayer && bearingLayer instanceof SymbolLayer) {
+        bearingLayer.setVisibility('none');
+      }
 
     } catch (err) {
       hilog.error(DOMAIN, LocationLayerController.TAG, `Failed to hide layers: ${err}`);

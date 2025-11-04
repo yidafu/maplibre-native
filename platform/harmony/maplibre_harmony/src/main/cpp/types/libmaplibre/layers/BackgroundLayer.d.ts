@@ -78,4 +78,22 @@ export class BackgroundLayer {
   setMaxZoom(zoom: number): this;
 
   getMaxZoom(): number;
+
+  /**
+   * 设置单个属性（通用方法）
+   * @param propertyName 属性名称（如 'background-color', 'background-opacity'）
+   * @param value 属性值（常量值或Expression）
+   */
+  setProperty(propertyName: string, value: any): this;
+
+  /**
+   * 批量设置属性（通用方法）
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @example
+   * layer.setProperties({
+   *   'background-color': '#F0E9E1',
+   *   'background-opacity': 1.0
+   * });
+   */
+  setProperties(properties: Record<string, any>): this;
 }

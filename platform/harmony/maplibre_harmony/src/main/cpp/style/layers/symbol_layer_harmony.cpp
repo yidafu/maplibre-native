@@ -1,9 +1,11 @@
 #include "symbol_layer_harmony.hpp"
+#include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
 #include "style/layers/layer_property_utils.hpp"
+#include "style/harmony_symbol_layer_properties.hpp"
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/style/expression/formatted.hpp>
 #include <mbgl/style/expression/image.hpp>
@@ -20,7 +22,13 @@ napi_ref SymbolLayerNAPI::constructor = nullptr;
 SymbolLayerNAPI::SymbolLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : ownsLayer(true) {
     layer = std::make_unique<mbgl::style::SymbolLayer>(layerId, sourceId);
-    Logger::info("SymbolLayerNAPI", "SymbolLayer created: %s (source: %s)", layerId.c_str(), sourceId.c_str());
+    
+    // 设置鸿蒙平台的默认字体
+    auto defaultFonts = mbgl::style::harmony::getDefaultTextFont();
+    layer->setTextFont(mbgl::style::PropertyValue<std::vector<std::string>>(defaultFonts));
+    
+    Logger::info("SymbolLayerNAPI", "SymbolLayer created: %s (source: %s) with Harmony fonts", 
+                 layerId.c_str(), sourceId.c_str());
 }
 
 SymbolLayerNAPI::SymbolLayerNAPI(mbgl::style::SymbolLayer* layerPtr)
@@ -196,6 +204,10 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         { "getTextTranslate", nullptr, GetTextTranslate, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setTextTranslateAnchor", nullptr, SetTextTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getTextTranslateAnchor", nullptr, GetTextTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        
+        // Generic property methods (Android-compatible API)
+        { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setProperties", nullptr, SetProperties, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -2629,6 +2641,16 @@ napi_value SymbolLayerNAPI::GetTextVariableAnchorOffset(napi_env env, napi_callb
     return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::VariableAnchorOffsetCollection>(
         env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextVariableAnchorOffset
     );
+}
+
+// ==================== Generic Property Methods ====================
+
+napi_value SymbolLayerNAPI::SetProperty(napi_env env, napi_callback_info info) {
+    return SetPropertyImpl<SymbolLayerNAPI, mbgl::style::SymbolLayer>(env, info);
+}
+
+napi_value SymbolLayerNAPI::SetProperties(napi_env env, napi_callback_info info) {
+    return SetPropertiesImpl<SymbolLayerNAPI, mbgl::style::SymbolLayer>(env, info);
 }
 
 } // namespace harmony

@@ -265,6 +265,10 @@ public:
     static napi_value getPixelRatio(napi_env env, napi_callback_info info);
     static napi_value getDensityDependantRectangle(napi_env env, napi_callback_info info);
     
+    // 本地字体配置 (Local Glyph)
+    static napi_value setLocalIdeographFontFamily(napi_env env, napi_callback_info info);
+    static napi_value getLocalIdeographFontFamily(napi_env env, napi_callback_info info);
+    
     // Helper methods for notifying style listeners
     void notifyStyleLoaded();
     void notifyStyleLoadError(const std::string& error);

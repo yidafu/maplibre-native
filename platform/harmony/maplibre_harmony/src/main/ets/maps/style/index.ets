@@ -3,7 +3,10 @@
  */
 
 // 核心样式类（直接导出 NAPI 类型）
-export { Style, StyleBuilder } from './Style';
+export { Style } from './Style';
+
+// 样式构建器（参考 Android Style.Builder）
+export { StyleBuilder } from './StyleBuilder';
 
 // 数据源
 export * from './sources/index';

@@ -288,4 +288,228 @@ export class SymbolLayer {
   getTextHaloWidth(): number {
     return this.nativeInstance.getTextHaloWidth();
   }
+
+  // ========== 批量属性设置方法（参考 Android withProperties）==========
+
+  /**
+   * 批量设置文本属性
+   * @param props 文本属性配置对象
+   * @returns 返回 this 以支持链式调用
+   * @example
+   * ```typescript
+   * layer.withTextProperties({
+   *   textField: ['get', 'title'],
+   *   textSize: 14,
+   *   textColor: '#000000',
+   *   textAllowOverlap: true
+   * });
+   * ```
+   */
+  withTextProperties(props: TextProperties): SymbolLayer {
+    if (props.textField !== undefined) {
+      this.setTextField(props.textField);
+    }
+    if (props.textFont !== undefined) {
+      this.setTextFont(props.textFont);
+    }
+    if (props.textSize !== undefined) {
+      this.setTextSize(props.textSize);
+    }
+    if (props.textMaxWidth !== undefined) {
+      this.setTextMaxWidth(props.textMaxWidth);
+    }
+    if (props.textOffset !== undefined) {
+      this.setTextOffset(props.textOffset);
+    }
+    if (props.textAnchor !== undefined) {
+      this.setTextAnchor(props.textAnchor);
+    }
+    if (props.textAllowOverlap !== undefined) {
+      this.setTextAllowOverlap(props.textAllowOverlap);
+    }
+    if (props.textIgnorePlacement !== undefined) {
+      this.setTextIgnorePlacement(props.textIgnorePlacement);
+    }
+    if (props.textOptional !== undefined) {
+      this.setTextOptional(props.textOptional);
+    }
+    if (props.textOpacity !== undefined) {
+      this.setTextOpacity(props.textOpacity);
+    }
+    if (props.textColor !== undefined) {
+      this.setTextColor(props.textColor);
+    }
+    if (props.textHaloColor !== undefined) {
+      this.setTextHaloColor(props.textHaloColor);
+    }
+    if (props.textHaloWidth !== undefined) {
+      this.setTextHaloWidth(props.textHaloWidth);
+    }
+    return this;
+  }
+
+  /**
+   * 批量设置图标属性
+   * @param props 图标属性配置对象
+   * @returns 返回 this 以支持链式调用
+   * @example
+   * ```typescript
+   * layer.withIconProperties({
+   *   iconImage: ['get', 'icon'],
+   *   iconSize: 1.0,
+   *   iconAnchor: 'bottom',
+   *   iconAllowOverlap: true
+   * });
+   * ```
+   */
+  withIconProperties(props: IconProperties): SymbolLayer {
+    if (props.iconImage !== undefined) {
+      this.setIconImage(props.iconImage);
+    }
+    if (props.iconSize !== undefined) {
+      this.setIconSize(props.iconSize);
+    }
+    if (props.iconRotate !== undefined) {
+      this.setIconRotate(props.iconRotate);
+    }
+    if (props.iconOffset !== undefined) {
+      this.setIconOffset(props.iconOffset);
+    }
+    if (props.iconAnchor !== undefined) {
+      this.setIconAnchor(props.iconAnchor);
+    }
+    if (props.iconAllowOverlap !== undefined) {
+      this.setIconAllowOverlap(props.iconAllowOverlap);
+    }
+    if (props.iconIgnorePlacement !== undefined) {
+      this.setIconIgnorePlacement(props.iconIgnorePlacement);
+    }
+    if (props.iconOptional !== undefined) {
+      this.setIconOptional(props.iconOptional);
+    }
+    if (props.iconOpacity !== undefined) {
+      this.setIconOpacity(props.iconOpacity);
+    }
+    if (props.iconColor !== undefined) {
+      this.setIconColor(props.iconColor);
+    }
+    if (props.iconHaloColor !== undefined) {
+      this.setIconHaloColor(props.iconHaloColor);
+    }
+    if (props.iconHaloWidth !== undefined) {
+      this.setIconHaloWidth(props.iconHaloWidth);
+    }
+    return this;
+  }
+
+  /**
+   * 批量设置所有属性（文本 + 图标）
+   * @param props 完整属性配置对象
+   * @returns 返回 this 以支持链式调用
+   * @example
+   * ```typescript
+   * layer.withProperties({
+   *   text: {
+   *     textField: ['get', 'title'],
+   *     textSize: 14,
+   *     textColor: '#000000'
+   *   },
+   *   icon: {
+   *     iconImage: ['get', 'icon'],
+   *     iconSize: 1.0,
+   *     iconAnchor: 'bottom'
+   *   }
+   * });
+   * ```
+   */
+  withProperties(props: SymbolProperties): SymbolLayer {
+    if (props.text) {
+      this.withTextProperties(props.text);
+    }
+    if (props.icon) {
+      this.withIconProperties(props.icon);
+    }
+    return this;
+  }
+
+  // ========== 通用属性方法（Android兼容API）==========
+
+  /**
+   * 设置单个属性
+   * @param propertyName 属性名称（如 'text-field', 'icon-image', 'text-color'）
+   * @param value 属性值（常量值或Expression）
+   * @returns this（支持链式调用）
+   */
+  setProperty(propertyName: string, value: PropertyValue<Object>): SymbolLayer {
+    this.nativeInstance.setProperty(propertyName, convertValue(value));
+    return this;
+  }
+
+  /**
+   * 批量设置属性
+   * @param properties 属性对象，键为属性名，值为属性值
+   * @returns this（支持链式调用）
+   * @example
+   * layer.setProperties({
+   *   'text-field': ['get', 'name'],
+   *   'text-size': 16,
+   *   'text-color': '#000000',
+   *   'icon-image': 'marker'
+   * });
+   */
+  setProperties(properties: Record<string, PropertyValue<Object>>): SymbolLayer {
+    const convertedProps: Record<string, Object> = {};
+    const keys = Object.keys(properties);
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      convertedProps[key] = convertValue(properties[key]);
+    }
+    this.nativeInstance.setProperties(convertedProps);
+    return this;
+  }
+}
+
+/**
+ * 文本属性接口
+ */
+export interface TextProperties {
+  textField?: PropertyValue<string>;
+  textFont?: PropertyValue<string[]>;
+  textSize?: PropertyValue<number>;
+  textMaxWidth?: PropertyValue<number>;
+  textOffset?: PropertyValue<number[]>;
+  textAnchor?: PropertyValue<string>;
+  textAllowOverlap?: boolean;
+  textIgnorePlacement?: boolean;
+  textOptional?: boolean;
+  textOpacity?: PropertyValue<number>;
+  textColor?: PropertyValue<string>;
+  textHaloColor?: PropertyValue<string>;
+  textHaloWidth?: PropertyValue<number>;
+}
+
+/**
+ * 图标属性接口
+ */
+export interface IconProperties {
+  iconImage?: PropertyValue<string>;
+  iconSize?: PropertyValue<number>;
+  iconRotate?: PropertyValue<number>;
+  iconOffset?: PropertyValue<number[]>;
+  iconAnchor?: PropertyValue<string>;
+  iconAllowOverlap?: boolean;
+  iconIgnorePlacement?: boolean;
+  iconOptional?: boolean;
+  iconOpacity?: PropertyValue<number>;
+  iconColor?: PropertyValue<string>;
+  iconHaloColor?: PropertyValue<string>;
+  iconHaloWidth?: PropertyValue<number>;
+}
+
+/**
+ * Symbol 完整属性接口
+ */
+export interface SymbolProperties {
+  text?: TextProperties;
+  icon?: IconProperties;
 }

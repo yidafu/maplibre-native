@@ -494,6 +494,53 @@ export class MapLibreMap {
     this.style = null; // 重置 style 缓存
   }
 
+  /**
+   * 设置样式并在加载完成后执行回调
+   * 这个方法结合了 setStyleUrl 和 addOnStyleLoadedListener 的功能
+   * 参考 Android Style.Builder 模式，提供更流畅的 API
+   * 
+   * @param url 样式 URL
+   * @param callback 样式加载完成后的回调函数
+   * @example
+   * ```typescript
+   * map.setStyleWithCallback(DEFAULT_STYLE_URLS.streets, (style) => {
+   *   new StyleBuilder()
+   *     .withSource(source)
+   *     .withLayer(layer)
+   *     .build(map);
+   * });
+   * ```
+   */
+  public setStyleWithCallback(
+    url: string,
+    callback: (style: Style | null) => void
+  ): void {
+    if (this.destroyed) {
+      return;
+    }
+
+    // 创建一次性监听器
+    const self = this;
+    class OneTimeStyleLoadedListener implements OnStyleLoadedListener {
+      onStyleLoaded(style: Style | null): void {
+        try {
+          callback(style);
+        } catch (error) {
+          console.error(`MapLibreMap: Error in setStyleWithCallback callback: ${error}`);
+        }
+        // 回调执行后移除监听器
+        self.removeOnStyleLoadedListener(this);
+      }
+    }
+    const oneTimeListener = new OneTimeStyleLoadedListener();
+
+    // 添加监听器
+    this.addOnStyleLoadedListener(oneTimeListener);
+
+    // 设置样式 URL
+    this.setStyleUrl(url);
+  }
+
   public getStyleUrl(): string {
     if (this.destroyed) {
       return '';
@@ -505,9 +552,9 @@ export class MapLibreMap {
    * 设置本地表意文字字体族
    *
    * 用于本地渲染 CJK 字符，避免从网络加载大量字形数据。
-   * 注意：此设置在初始化时生效，运行时更改需要重新加载样式。
+   * 注意：此操作会重新初始化 Renderer 并重新加载样式。
    *
-   * @param fontFamily 字体族名称，如 "sans-serif"，null 表示禁用本地渲染
+   * @param fontFamily 字体族名称，如 "HarmonyOS_Sans"，null 表示禁用本地渲染
    */
   public setLocalIdeographFontFamily(fontFamily: string | null): void {
     if (this.destroyed) {
@@ -517,9 +564,15 @@ export class MapLibreMap {
     // 更新内部状态
     this.options.localIdeographFontFamily = fontFamily;
 
-    // 注意：运行时更改需要重新创建 Renderer
-    // 当前实现：建议在初始化时通过 MapLibreMapOptions 配置
-    console.warn('setLocalIdeographFontFamily: 配置已更新，但需要重新加载样式才能生效');
+    // 调用 C++ 接口更新字体配置并重新初始化 Renderer
+    // 参考 Android/iOS：本地字体是在 Renderer 创建时固定的，运行时更改需要重新创建
+    try {
+      this.nativeMapView.setLocalIdeographFontFamily(fontFamily);
+      console.info('[MapLibreMap] setLocalIdeographFontFamily: 本地字体已更新为 ' + 
+                   (fontFamily || '(禁用)'));
+    } catch (error) {
+      console.error('[MapLibreMap] setLocalIdeographFontFamily: 更新失败', error);
+    }
   }
 
   /**
@@ -528,7 +581,17 @@ export class MapLibreMap {
    * @returns 当前配置的字体族名称，null 表示已禁用
    */
   public getLocalIdeographFontFamily(): string | null {
-    return this.options.localIdeographFontFamily;
+    if (this.destroyed) {
+      return null;
+    }
+    
+    // 从 C++ 层获取实际配置的字体
+    try {
+      return this.nativeMapView.getLocalIdeographFontFamily();
+    } catch (error) {
+      console.error('[MapLibreMap] getLocalIdeographFontFamily: 获取失败', error);
+      return this.options.localIdeographFontFamily;
+    }
   }
 
   public setStyleJson(json: string): void {
@@ -2466,6 +2529,50 @@ export class MapLibreMap {
   }
 
   /**
+   * 移除所有监听器
+   * 
+   * 批量移除地图上的所有事件监听器，包括：
+   * - 样式加载监听器
+   * - 相机移动监听器
+   * - 地图点击/长按监听器
+   * - 触摸事件监听器
+   * - Marker 相关监听器
+   * 
+   * 通常在页面销毁时调用，防止内存泄漏
+   * 
+   * @example
+   * aboutToDisappear() {
+   *   if (this.mapController) {
+   *     this.mapController.removeAllListeners();
+   *     this.mapController.destroy();
+   *   }
+   * }
+   */
+  public removeAllListeners(): void {
+    if (this.destroyed) {
+      return;
+    }
+    
+    // 清除样式监听器
+    this.styleLoadedListeners = [];
+    this.styleLoadErrorListeners = [];
+    
+    // 清除相机移动监听器（通过 dispatcher）
+    this.cameraChangeDispatcher.clearAllListeners();
+    
+    // 清除地图交互监听器
+    this.mapClickListeners = [];
+    this.mapLongClickListeners = [];
+    this.touchMoveListeners = [];
+    this.touchUpListeners = [];
+    
+    // 清除 Marker 相关监听器
+    this.markerManager.clearAllListeners();
+    
+    console.info('[MapLibreMap] All listeners removed');
+  }
+
+  /**
    * 内部方法：触发触摸移动事件
    * 由 NativeMapView 或手势系统调用
    *
@@ -2929,9 +3036,17 @@ export class MapLibreMap {
       return [];
     }
 
-    // TODO: 实现 querySourceFeatures
-    console.warn('MapLibreMap', 'querySourceFeatures not yet implemented');
-    return [];
+    try {
+      const features = this.nativeMapView.querySourceFeatures(
+        sourceId,
+        sourceLayerIds || undefined,
+        filter || undefined
+      );
+      return features as Object as IFeature[];
+    } catch (error) {
+      console.error('MapLibreMap', `querySourceFeatures failed: ${error}`);
+      return [];
+    }
   }
 
   // ========== InfoWindow 支持方法 ==========
