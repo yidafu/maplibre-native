@@ -219,17 +219,20 @@ Map updates and triggers render
 - **DevEco Studio**: 5.0.5 or higher
 - **Node.js**: 18.0.0 or higher
 
-### From npm registry (when published)
+### From npm registry
+
+> ohpm registry not support.
 
 ```bash
-ohpm install maplibre-harmony
+npm install maplibre-harmony
 ```
+
 Add to your module's `oh-package.json5`:
 
 ```json5
 {
   "dependencies": {
-    "maplibre-harmony": "file:./node_modules/maplibre-harmony/maplibre_harmony.har"
+    "maplibre_harmony": "file:./node_modules/maplibre-harmony/maplibre_harmony.har"
   }
 }
 ```
