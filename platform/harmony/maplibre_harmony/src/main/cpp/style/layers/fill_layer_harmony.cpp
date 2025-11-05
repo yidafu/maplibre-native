@@ -32,6 +32,8 @@ FillLayerNAPI::FillLayerNAPI(mbgl::style::FillLayer* layerPtr) {
 
 
 FillLayerNAPI::~FillLayerNAPI() {
+    // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
+    weakLayer.reset();
 }
 
 void FillLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

@@ -31,6 +31,8 @@ RasterSourceNAPI::RasterSourceNAPI(mbgl::style::RasterSource* sourcePtr)
 }
 
 RasterSourceNAPI::~RasterSourceNAPI() {
+    // Reset weakSource before source is destroyed to avoid accessing invalidated WeakPtrFactory
+    weakSource.reset();
     Logger::info("RasterSourceNAPI", "RasterSource instance destroyed: %s", id.c_str());
 }
 

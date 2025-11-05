@@ -31,6 +31,8 @@ ImageSourceNAPI::ImageSourceNAPI(mbgl::style::ImageSource* sourcePtr)
 }
 
 ImageSourceNAPI::~ImageSourceNAPI() {
+    // Reset weakSource before source is destroyed to avoid accessing invalidated WeakPtrFactory
+    weakSource.reset();
     Logger::info("ImageSourceNAPI", "ImageSource instance destroyed: %s", id.c_str());
 }
 

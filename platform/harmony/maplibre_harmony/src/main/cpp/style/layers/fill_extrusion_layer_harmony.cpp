@@ -31,6 +31,8 @@ FillExtrusionLayerNAPI::FillExtrusionLayerNAPI(mbgl::style::FillExtrusionLayer* 
 
 
 FillExtrusionLayerNAPI::~FillExtrusionLayerNAPI() {
+    // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
+    weakLayer.reset();
 }
 
 void FillExtrusionLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

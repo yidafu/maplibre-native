@@ -23,6 +23,8 @@ CustomLayerNAPI::CustomLayerNAPI(const std::string& layerId,
 }
 
 CustomLayerNAPI::~CustomLayerNAPI() {
+    // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
+    weakLayer.reset();
     Logger::info("CustomLayerNAPI", "CustomLayer destroyed: %s", layerId.c_str());
 }
 

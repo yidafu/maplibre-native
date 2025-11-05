@@ -291,6 +291,11 @@ void HarmonyRenderer::cleanup() {
     
     Logger::info("HarmonyRenderer", "Cleaning up...");
     
+    // Invalidate weak pointers early to prevent accessing this Scheduler after cleanup begins
+    if (weakFactory) {
+        weakFactory->invalidateWeakPtrs();
+    }
+    
     // 首先停止所有网络请求
     stopAllRequests();
     

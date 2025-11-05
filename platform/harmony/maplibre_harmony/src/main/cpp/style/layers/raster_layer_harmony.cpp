@@ -28,6 +28,8 @@ RasterLayerNAPI::RasterLayerNAPI(mbgl::style::RasterLayer* layerPtr) {
 
 
 RasterLayerNAPI::~RasterLayerNAPI() {
+    // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
+    weakLayer.reset();
 }
 
 void RasterLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {
