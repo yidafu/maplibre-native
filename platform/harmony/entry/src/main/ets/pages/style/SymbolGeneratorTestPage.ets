@@ -8,6 +8,7 @@ import { MapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJson, GeoJson
 import type { JsonObject } from '../../types/EntryTypes';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct SymbolGeneratorTestPage {
@@ -38,7 +39,7 @@ struct SymbolGeneratorTestPage {
     const lng = 116.35 + Math.random() * 0.1;
     const emoji = ['📍', '⭐', '❤️', '🎯', '🏠'][Math.floor(Math.random() * 5)];
     
-    const props: Record<string, Object> = { 'symbol': emoji };
+    const props: Record<string, JSONValue> = { 'symbol': emoji };
     const geojson = GeoJson.featureCollection([
       GeoJson.pointFeature([lng, lat], props)
     ]);

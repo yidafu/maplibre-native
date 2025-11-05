@@ -3,18 +3,19 @@
  * 
  * 为测试页面提供通用的类型定义，避免 ArkTS 类型限制错误
  */
+import type { JSONValue } from 'libmaplibre.so';
 
 // ==================== 通用类型别名 ====================
 
 /**
  * JSON 对象类型 - 替代 any/unknown
  */
-export type JsonObject = Record<string, Object>;
+export type JsonObject = Record<string, JSONValue>;
 
 /**
  * 属性映射类型 - 用于 GeoJSON properties 等
  */
-export type PropertiesMap = Record<string, Object>;
+export type PropertiesMap = Record<string, JSONValue>;
 
 /**
  * 配置选项类型

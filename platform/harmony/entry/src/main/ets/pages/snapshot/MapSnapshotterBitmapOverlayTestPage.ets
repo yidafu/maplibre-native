@@ -56,7 +56,9 @@ struct MapSnapshotterBitmapOverlayTestPage {
       const latLng = this.mapController?.getLatLng() || LatLng.create(39.9042, 116.4074);
       const zoom = this.mapController?.getZoom() || 12;
       
-      const cameraPosition = CameraPosition.create(latLng, zoom, 0, 0);
+      const cameraPosition: CameraPosition = {
+        target:  latLng, zoom, bearing: 0, tilt: 0
+      };
       
       const options: SnapshotOptions = {
         size: { width: 800, height: 600 },

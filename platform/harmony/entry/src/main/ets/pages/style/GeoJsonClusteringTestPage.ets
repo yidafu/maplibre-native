@@ -13,6 +13,7 @@ import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } fr
 import type { JsonObject } from '../../types/EntryTypes';
 import { GeoJsonOptions } from 'maplibre_harmony/src/main/ets/maps/style';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct GeoJsonClusteringTestPage {
@@ -26,11 +27,11 @@ struct GeoJsonClusteringTestPage {
   private sampleGeoJson: Object = this.createInitialGeoJson();
   
   private createInitialGeoJson(): Object {
-    const props1: Record<string, Object> = { 'name': '北京', 'type': 'city' };
-    const props2: Record<string, Object> = { 'name': '上海', 'type': 'city' };
-    const props3: Record<string, Object> = { 'name': '广州', 'type': 'city' };
-    const props4: Record<string, Object> = { 'name': '深圳', 'type': 'city' };
-    const props5: Record<string, Object> = { 'name': '杭州', 'type': 'city' };
+    const props1: Record<string, JSONValue> = { 'name': '北京', 'type': 'city' };
+    const props2: Record<string, JSONValue> = { 'name': '上海', 'type': 'city' };
+    const props3: Record<string, JSONValue> = { 'name': '广州', 'type': 'city' };
+    const props4: Record<string, JSONValue> = { 'name': '深圳', 'type': 'city' };
+    const props5: Record<string, JSONValue> = { 'name': '杭州', 'type': 'city' };
     return GeoJson.featureCollection([
       GeoJson.pointFeature([116.4074, 39.9042], props1),
       GeoJson.pointFeature([121.4737, 31.2304], props2),
@@ -144,7 +145,7 @@ struct GeoJsonClusteringTestPage {
       const lat = 20 + Math.random() * 30;
       const lng = 100 + Math.random() * 30;
       
-      const props: Record<string, Object> = {
+      const props: Record<string, JSONValue> = {
         'name': `Point ${i + 1}`,
         'value': Math.floor(Math.random() * 100)
       };

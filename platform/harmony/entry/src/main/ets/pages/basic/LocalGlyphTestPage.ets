@@ -11,6 +11,7 @@ import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } fr
 import { image } from '@kit.ImageKit';
 import { resourceManager } from '@kit.LocalizationKit';
 
+import type { JSONValue } from 'libmaplibre.so';
 class LanguageText {
   language: string = '';
   text: string = '';
@@ -245,7 +246,7 @@ struct LocalGlyphTestPage {
       
       // 3. 创建 GeoJSON 数据
       const features = multiLanguageTexts.map(item => {
-        const props: Record<string, Object> = {
+        const props: Record<string, JSONValue> = {
           'text': item.text,
           'language': item.language,
           'color': item.color

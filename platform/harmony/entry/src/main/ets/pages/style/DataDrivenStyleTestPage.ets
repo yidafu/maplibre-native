@@ -8,7 +8,7 @@ import { CircleLayer, Expression, GeoJson, GeoJsonSource, MapLibreMap, MapView, 
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 import { convertValue } from 'maplibre_harmony/src/main/ets/maps/style/layers/LayerUtils';
-import type { PropertyValue } from 'libmaplibre.so';
+import type { PropertyValue, JSONValue } from 'libmaplibre.so';
 
 @Entry
 @Component
@@ -48,9 +48,9 @@ struct DataDrivenStyleTestPage {
   private addDataDrivenLayer(map: MapLibreMap): void {
     try {
       // 添加带数据的 GeoJSON 源
-      const props1: Record<string, Object> = { 'population': 2154, 'type': 'capital' };
-      const props2: Record<string, Object> = { 'population': 2424, 'type': 'major' };
-      const props3: Record<string, Object> = { 'population': 1501, 'type': 'major' };
+      const props1: Record<string, JSONValue> = { 'population': 2154, 'type': 'capital' };
+      const props2: Record<string, JSONValue> = { 'population': 2424, 'type': 'major' };
+      const props3: Record<string, JSONValue> = { 'population': 1501, 'type': 'major' };
       const geojson = GeoJson.featureCollection([
         GeoJson.pointFeature([116.4, 39.9], props1),
         GeoJson.pointFeature([121.5, 31.2], props2),

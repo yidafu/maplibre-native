@@ -7,6 +7,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import { GeoJsonSource, HeatmapLayer, LatLng, MapLibreMap, MapView, ScreenPoint, GeoJson, IFeature } from 'maplibre_harmony';
 import { DEFAULT_STYLE_URLS, showToast, randomLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct HeatmapLayerTestPage {
@@ -51,7 +52,7 @@ struct HeatmapLayerTestPage {
       const features: IFeature[] = [];
       for (let i = 0; i < 500; i++) {
         const latLng = randomLatLng(18, 54, 73, 135);
-        const props: Record<string, Object> = {
+        const props: Record<string, JSONValue> = {
           'magnitude': Math.random() * 10
         };
         features.push(GeoJson.pointFeature(

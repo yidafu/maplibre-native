@@ -7,6 +7,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import { MapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJsonSource, GeoJson, IFeature } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct ZoomFunctionSymbolLayerTestPage {
@@ -34,7 +35,7 @@ struct ZoomFunctionSymbolLayerTestPage {
   private addSymbolLayer = (): void => {
     if (!this.mapController) return;
     
-    const props: Record<string, Object> = { 'title': '缩放测试' };
+    const props: Record<string, JSONValue> = { 'title': '缩放测试' };
     const geojson = GeoJson.featureCollection([
       GeoJson.pointFeature([116.4074, 39.9042], props)
     ]);

@@ -8,6 +8,7 @@ import { GeoJson, GeoJsonSource, MapLibreMap, MapView, SymbolLayer } from 'mapli
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct CustomSpriteTestPage {
@@ -80,7 +81,7 @@ struct CustomSpriteTestPage {
     if (!this.mapController) return;
     
     try {
-      const props: Record<string, Object> = { 'icon': 'custom-icon' };
+      const props: Record<string, JSONValue> = { 'icon': 'custom-icon' };
       const geojson = GeoJson.featureCollection([
         GeoJson.pointFeature([116.4, 39.9], props)
       ]);

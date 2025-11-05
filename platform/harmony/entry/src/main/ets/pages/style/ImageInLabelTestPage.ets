@@ -8,6 +8,7 @@ import { MapView, MapLibreMap, MapLibreMapOptions, SymbolLayer, GeoJson, GeoJson
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct ImageInLabelTestPage {
@@ -32,7 +33,7 @@ struct ImageInLabelTestPage {
   private addSymbolLayer = (): void => {
     if (!this.mapController) return;
     
-    const props: Record<string, Object> = { 'title': '📍 北京' };
+    const props: Record<string, JSONValue> = { 'title': '📍 北京' };
     const geojson = GeoJson.featureCollection([
       GeoJson.pointFeature([116.4074, 39.9042], props)
     ]);

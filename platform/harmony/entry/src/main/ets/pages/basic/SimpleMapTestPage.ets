@@ -6,7 +6,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry

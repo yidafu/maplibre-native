@@ -7,6 +7,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import { MapView, MapLibreMap, FillExtrusionLayer, GeoJsonSource, GeoJson } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct BuildingFillExtrusionTestPage {
@@ -63,13 +64,13 @@ struct BuildingFillExtrusionTestPage {
         ]
       ];
       
-      const properties1: Record<string, Object> = { 'height': 80 };
+      const properties1: Record<string, JSONValue> = { 'height': 80 };
       const feature1 = GeoJson.polygonFeature(building1Coords, properties1);
       
-      const properties2: Record<string, Object> = { 'height': 120 };
+      const properties2: Record<string, JSONValue> = { 'height': 120 };
       const feature2 = GeoJson.polygonFeature(building2Coords, properties2);
       
-      const properties3: Record<string, Object> = { 'height': 60 };
+      const properties3: Record<string, JSONValue> = { 'height': 60 };
       const feature3 = GeoJson.polygonFeature(building3Coords, properties3);
       
       const features = [feature1, feature2, feature3];

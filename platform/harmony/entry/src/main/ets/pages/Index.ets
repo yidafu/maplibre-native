@@ -97,7 +97,10 @@ struct Index {
       // ==================== 12. Storage ====================
       this.createStorageGroup(),
 
-      // ==================== 13. Events ====================
+      // ==================== 13. Network Configuration ====================
+      this.createNetworkGroup(),
+
+      // ==================== 14. Events ====================
       this.createEventsGroup(),
 
       // ==================== 14. Image Generator ====================
@@ -327,8 +330,17 @@ struct Index {
     ]);
   }
 
+  // /**
+  //  * 13. Network Configuration - 网络配置
+  //  */
+  // private createNetworkGroup(): TestPageGroup {
+  //   return new TestPageGroup('Network', '🌐', [
+  //     new TestPageItem('Custom HTTP Headers', '自定义HTTP请求头', 'pages/NetworkConfigTestPage', '📡'),
+  //   ]);
+  // }
+
   /**
-   * 13. Events - 事件监听
+   * 14. Events - 事件监听
    */
   private createEventsGroup(): TestPageGroup {
     return new TestPageGroup('Events', '📡', [

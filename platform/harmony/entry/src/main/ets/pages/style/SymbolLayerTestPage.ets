@@ -18,6 +18,7 @@ import type { JsonObject } from '../../types/EntryTypes';
 import image from '@ohos.multimedia.image';
 import { common } from '@kit.AbilityKit';
 
+import type { JSONValue } from 'libmaplibre.so';
 // 城市数据接口
 interface CityMarker {
   name: string;
@@ -390,7 +391,7 @@ struct SymbolLayerTestPage {
       
       // 3. 创建 GeoJSON 数据
       const features = cities.map(city => {
-        const props: Record<string, Object> = { 'title': city.name };
+        const props: Record<string, JSONValue> = { 'title': city.name };
         // ✅ 根据模式决定是否包含 icon 属性
         if (iconsLoaded && this.currentMarkerMode !== 'text') {
           props['icon'] = city.icon;

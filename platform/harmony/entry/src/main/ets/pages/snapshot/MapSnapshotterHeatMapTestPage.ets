@@ -8,6 +8,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
+import type { JSONValue } from 'libmaplibre.so';
 import {
   NativeMapView,
   MapLibreMap,
@@ -53,7 +54,7 @@ struct MapSnapshotterHeatMapTestPage {
   private generateHeatmapData(): IFeatureCollection {
     const features: IFeature[] = [];
     for (let i = 0; i < 100; i++) {
-      const props: Record<string, Object> = {
+      const props: Record<string, JSONValue> = {
         'intensity': Math.random()
       };
       features.push(GeoJson.pointFeature(
@@ -98,12 +99,12 @@ struct MapSnapshotterHeatMapTestPage {
     this.isGenerating = true;
     
     try {
-      const cameraPosition = CameraPosition.create(
-        LatLng.create(35, 105),
-        4,
-        0,
-        0
-      );
+      const cameraPosition: CameraPosition = {
+        target: LatLng.create(35, 105),
+        zoom: 4,
+        bearing: 0,
+        tilt: 0
+      }
       
       // 注意：MapSnapshotter需要自己配置样式和图层
       // 这里使用当前地图的样式JSON

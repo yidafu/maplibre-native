@@ -6,6 +6,7 @@ import { MapLibreMap, MapView, OnMapClickListener, ScreenPoint } from 'maplibre_
  */
 import { TestPageLayout } from '../common/TestPageLayout';
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import type { JSONValue } from 'libmaplibre.so';
 
 @Entry
 @Component
@@ -96,7 +97,7 @@ struct QueryRenderedFeaturesPropertiesTestPage {
 
       if (features.length > 0) {
         const feature = features[0];
-        const props: Record<string, Object> = feature.properties || {};
+        const props: Record<string, JSONValue> = feature.properties || {};
         const propStr = JSON.stringify(props, null, 2);
         const layerName: string = feature.layer || '未知';
         this.featureInfo = `类型: ${feature.type}\n图层: ${layerName}\n属性:\n${propStr}`;

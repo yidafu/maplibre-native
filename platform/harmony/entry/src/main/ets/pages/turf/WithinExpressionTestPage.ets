@@ -8,6 +8,7 @@ import { MapView, MapLibreMap, MapLibreMapOptions, FillLayer, CircleLayer, GeoJs
   IFeature } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
+import type { JSONValue } from 'libmaplibre.so';
 
 @Entry
 @Component
@@ -45,7 +46,7 @@ struct WithinExpressionTestPage {
     ]);
     
     // 添加随机点
-    const randomProps: Record<string, Object> = {};
+    const randomProps: Record<string, JSONValue> = {};
     const points = GeoJson.featureCollection(
       Array.from<number>({ length: 50 }).fill(1).map((): IFeature => {
         return GeoJson.pointFeature([

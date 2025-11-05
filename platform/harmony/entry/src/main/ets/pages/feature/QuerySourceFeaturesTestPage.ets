@@ -8,6 +8,7 @@ import { GeoJson, GeoJsonSource, LatLng, MapLibreMap, MapView, ScreenPoint, Circ
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 import type { IFeature } from 'maplibre_harmony/src/main/ets/maps/geojson/types';
+import type { JSONValue } from 'libmaplibre.so';
 
 @Entry
 @Component
@@ -48,10 +49,10 @@ struct QuerySourceFeaturesTestPage {
 
   private addTestSource(map: MapLibreMap): void {
     // 添加测试 GeoJSON 数据源，包含多个测试点
-    const props1: Record<string, Object> = { 'name': '北京', 'type': 'city', 'population': 21540000 };
-    const props2: Record<string, Object> = { 'name': '天津', 'type': 'city', 'population': 13870000 };
-    const props3: Record<string, Object> = { 'name': '石家庄', 'type': 'city', 'population': 11040000 };
-    const props4: Record<string, Object> = { 'name': '太原', 'type': 'city', 'population': 5300000 };
+    const props1: Record<string, JSONValue> = { 'name': '北京', 'type': 'city', 'population': 21540000 };
+    const props2: Record<string, JSONValue> = { 'name': '天津', 'type': 'city', 'population': 13870000 };
+    const props3: Record<string, JSONValue> = { 'name': '石家庄', 'type': 'city', 'population': 11040000 };
+    const props4: Record<string, JSONValue> = { 'name': '太原', 'type': 'city', 'population': 5300000 };
     
     const geojsonData = GeoJson.featureCollection([
       GeoJson.pointFeature([116.4074, 39.9042], props1),

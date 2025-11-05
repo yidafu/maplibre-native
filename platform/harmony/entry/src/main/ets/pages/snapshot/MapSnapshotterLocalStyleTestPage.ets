@@ -87,8 +87,9 @@ struct MapSnapshotterLocalStyleTestPage {
       
       this.mapController?.setStyleJson(this.styleJson);
       showToast('本地样式已加载');
-    } catch (error) {
-      showToast(`加载样式失败: ${error}`);
+    } catch (e) {
+      const error = e as Error;
+      showToast(`加载样式失败: ${error.message || String(e)}`);
     }
   };
   
@@ -104,12 +105,12 @@ struct MapSnapshotterLocalStyleTestPage {
     this.isGenerating = true;
     
     try {
-      const cameraPosition = CameraPosition.create(
-        LatLng.create(30, 120),
-        5,
-        0,
-        0
-      );
+      const cameraPosition: CameraPosition = {
+        target: new LatLng(30, 120),
+        zoom: 5,
+        bearing: 0,
+        tilt: 0
+      };
       
       const options: SnapshotOptions = {
         size: { width: 800, height: 600 },
@@ -123,9 +124,10 @@ struct MapSnapshotterLocalStyleTestPage {
       const snapshotter = new MapSnapshotter(options);
 
       snapshotter.start(new ReadyCallback(this, snapshotter) , new ErrorCallback(this) );
-    } catch (error) {
+    } catch (e) {
+      const error = e as Error;
       this.isGenerating = false;
-      showToast(`生成失败: ${error}`);
+      showToast(`生成失败: ${error.message || String(e)}`);
     }
   };
   

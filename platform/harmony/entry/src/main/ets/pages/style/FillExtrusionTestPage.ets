@@ -8,6 +8,7 @@ import { FillExtrusionLayer, GeoJson, GeoJsonSource, MapLibreMap, MapView } from
 import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 import type { JsonObject } from '../../types/EntryTypes';
 
+import type { JSONValue } from 'libmaplibre.so';
 @Entry
 @Component
 struct FillExtrusionTestPage {
@@ -49,8 +50,8 @@ struct FillExtrusionTestPage {
 
   private addExtrusionLayer(map: MapLibreMap): void {
     try {
-      const props1: Record<string, Object> = { 'height': 100 };
-      const props2: Record<string, Object> = { 'height': 150 };
+      const props1: Record<string, JSONValue> = { 'height': 100 };
+      const props2: Record<string, JSONValue> = { 'height': 150 };
       const geojson = GeoJson.featureCollection([
         GeoJson.polygonFeature([[
           [116.39, 39.89],

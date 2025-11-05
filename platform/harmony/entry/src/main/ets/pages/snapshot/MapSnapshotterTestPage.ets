@@ -91,12 +91,12 @@ struct MapSnapshotterTestPage {
    */
   private captureSnapshot = async (lat: number, lng: number, zoom: number, name: string): Promise<void> => {
     try {
-      const cameraPosition = CameraPosition.create(
-        LatLng.create(lat, lng),
-        zoom,
-        0,
-        0
-      );
+      const cameraPosition: CameraPosition = {
+        target: new LatLng(lat, lng),
+        zoom: zoom,
+        bearing: 0,
+        tilt: 0
+      };
 
       const options: SnapshotOptions = {
         size: { width: 400, height: 300 },
@@ -145,9 +145,10 @@ struct MapSnapshotterTestPage {
       }
 
       snapshotter.start(new ReadyCallback(this, snapshotter, name), new ErrorCallback());
-    } catch (error) {
-      console.error('[MapSnapshotterTestPage] Snapshot creation failed:', error);
-      showToast(`创建快照失败: ${error}`);
+    } catch (e) {
+      const error = e as Error;
+      console.error('[MapSnapshotterTestPage] Snapshot creation failed:', error.message || String(e));
+      showToast(`创建快照失败: ${error.message || String(e)}`);
     }
   };
   /**
@@ -271,9 +272,10 @@ struct MapSnapshotterTestPage {
       // 清空当前快照信息
       this.currentSnapshotPixelMap = null;
       this.currentSnapshotName = '';
-    } catch (error) {
-      console.error(`保存快照到相册失败: ${error}`);
-      showToast(`保存失败: ${error}`);
+    } catch (e) {
+      const error = e as Error;
+      console.error(`保存快照到相册失败: ${error.message || String(e)}`);
+      showToast(`保存失败: ${error.message || String(e)}`);
 
       // 清空当前快照信息
       this.currentSnapshotPixelMap = null;

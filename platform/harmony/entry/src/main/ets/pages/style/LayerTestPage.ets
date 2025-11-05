@@ -8,7 +8,8 @@ import { BackgroundLayer, CircleLayer, FillExtrusionLayer, FillLayer, GeoJson, G
   NativeMapView,
   IFeature} from 'maplibre_harmony';
 import type { CameraOptions } from 'maplibre_harmony';
-import type { JsonObject, LayerPropertyOptions } from '../../types/EntryTypes';
+import type { JsonObject, LayerPropertyOptions, PropertiesMap } from '../../types/EntryTypes';
+import type { JSONValue } from 'libmaplibre.so';
 // 从 ETS 层导入 Layer 和 Source 封装类
 
 const TAG = 'LayerTestPage';
@@ -329,10 +330,10 @@ struct LayerTestPage {
       const offset = 1.5; // 经纬度偏移范围（适合 zoom=5）
       
       // 添加通用测试数据源
-      const props1: Record<string, Object> = { 'name': "中心点", 'type': "center", 'value': 100 };
-      const props2: Record<string, Object> = { 'name': "点2", 'type': "point", 'value': 80 };
-      const props3: Record<string, Object> = { 'name': "路径1" };
-      const props4: Record<string, Object> = { 'name': "区域1", 'height': 50 };
+      const props1: Record<string, JSONValue> = { 'name': "中心点", 'type': "center", 'value': 100 };
+      const props2: Record<string, JSONValue> = { 'name': "点2", 'type': "point", 'value': 80 };
+      const props3: Record<string, JSONValue> = { 'name': "路径1" };
+      const props4: Record<string, JSONValue> = { 'name': "区域1", 'height': 50 };
       const geojsonData = GeoJson.featureCollection([
         // 点要素
         GeoJson.pointFeature([centerLng, centerLat], props1),
@@ -535,7 +536,7 @@ struct LayerTestPage {
         const lng: number = centerLng + (Math.random() - 0.5) * offset * 2;
         const lat: number = centerLat + (Math.random() - 0.5) * offset * 2;
         
-        const props: Record<string, Object> = { 'intensity': Math.random() * 100 };
+        const props: Record<string, JSONValue> = { 'intensity': Math.random() * 100 };
         features.push(GeoJson.pointFeature([lng, lat], props));
         
         if (i % 20 === 0) {
@@ -592,8 +593,8 @@ struct LayerTestPage {
       const centerLat = center.latitude;
       const offset = 0.5; // 建筑物间距（适合 zoom=5）
 
-      const props1: Record<string, Object> = { 'height': 80, 'base_height': 0 };
-      const props2: Record<string, Object> = { 'height': 120, 'base_height': 0 };
+      const props1: Record<string, JSONValue> = { 'height': 80, 'base_height': 0 };
+      const props2: Record<string, JSONValue> = { 'height': 120, 'base_height': 0 };
       const geojsonData = GeoJson.featureCollection([
         GeoJson.polygonFeature([[
             [centerLng - offset, centerLat - offset],

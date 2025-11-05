@@ -7,6 +7,7 @@ import { CircleLayer, FillLayer, GeoJsonSource, ImageSource, LatLng, LatLngBound
   CameraOptions} from 'maplibre_harmony';
 import type { IFeature } from 'maplibre_harmony';
 import type { JsonObject, LayerPropertyOptions } from '../../types/EntryTypes';
+import type { JSONValue } from 'libmaplibre.so';
 // 从 ETS 层导入 Layer 和 Source 封装类
 const TAG = 'SourceTestPage';
 
@@ -319,7 +320,7 @@ struct SourceTestPage {
       const centerLng = center.longitude;
       const centerLat = center.latitude;
 
-      const props: Record<string, Object> = { 'name': "随机点", 'value': 100 };
+      const props: Record<string, JSONValue> = { 'name': "随机点", 'value': 100 };
       const geojsonData = GeoJson.featureCollection([
         GeoJson.pointFeature([centerLng, centerLat], props)
       ]);
@@ -373,7 +374,7 @@ struct SourceTestPage {
       const centerLat = center.latitude;
       const offset = 1.5; // 线条偏移范围（适合 zoom=5）
 
-      const props: Record<string, Object> = { 'name': "测试路径" };
+      const props: Record<string, JSONValue> = { 'name': "测试路径" };
       const geojsonData = GeoJson.featureCollection([
         GeoJson.lineStringFeature([
             [centerLng - offset, centerLat],
@@ -434,7 +435,7 @@ struct SourceTestPage {
       const centerLat = center.latitude;
       const offset = 1.5; // 多边形大小（适合 zoom=5）
 
-      const props: Record<string, Object> = { 'name': "测试区域" };
+      const props: Record<string, JSONValue> = { 'name': "测试区域" };
       const geojsonData = GeoJson.featureCollection([
         GeoJson.polygonFeature([[
             [centerLng - offset, centerLat - offset],
@@ -507,7 +508,7 @@ struct SourceTestPage {
         const lng: number = centerLng + (Math.random() - 0.5) * offset * 2;
         const lat: number = centerLat + (Math.random() - 0.5) * offset * 2;
         
-        const props: Record<string, Object> = { 'id': i };
+        const props: Record<string, JSONValue> = { 'id': i };
         features.push(GeoJson.pointFeature(
           [lng, lat],
           props
