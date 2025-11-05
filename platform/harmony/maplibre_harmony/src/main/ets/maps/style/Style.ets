@@ -7,6 +7,7 @@ import maplibre from 'libmaplibre.so';
 import type { Layer } from './layers/Layer';
 import type { Source } from './sources/Source';
 import type { Icon, LightSpecification, TransitionOptions } from 'libmaplibre.so';
+import { Image } from './images/Image';
 
 // Source 包装类
 import { GeoJsonSource } from './sources/GeoJsonSource';
@@ -296,6 +297,21 @@ export class Style {
    */
   addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void {
     this.nativeInstance.addImage(name, imageData, width, height, sdf);
+  }
+
+  /**
+   * 异步添加图像（不阻塞UI线程）
+   */
+  addImageAsync(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): Promise<void> {
+    return this.nativeInstance.addImageAsync(name, imageData, width, height, sdf);
+  }
+
+  /**
+   * 异步批量添加图像（不阻塞UI线程）
+   */
+  addImagesAsync(images: Image[]): Promise<void> {
+    const nativeImages = images.map(img => img.getNative());
+    return this.nativeInstance.addImagesAsync(nativeImages);
   }
 
   /**

@@ -30,11 +30,15 @@
 
 // HarmonyOS独立CURL事件循环
 #include "curl_event_loop.hpp"
+#include "http_request_config.hpp"
+#include "url_transform_manager.hpp"
 #include "utils/logger.h"
 #include "utils/anr_detector.hpp"
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::ANRDetector;
+using mbgl::harmony::HTTPRequestConfig;
+using mbgl::harmony::URLTransformManager;
 
 namespace {
 // handleError(CURLMcode)已移除，现在由CURLEventLoop处理
@@ -305,6 +309,23 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
       callback(std::move(callback_)),
       handle(context->getHandle()) {
     
+    // 应用URL转换（如果设置了转换回调）
+    // 参考Android实现：platform/android/.../file_source.cpp:122-124
+    // 参考iOS实现：platform/darwin/src/MLNOfflineStorage.mm:138-141
+    auto& transformManager = URLTransformManager::getInstance();
+    if (transformManager.hasCallback()) {
+        std::string originalUrl = resource.url;
+        std::string transformedUrl = transformManager.transform(resource.kind, resource.url);
+        
+        if (!transformedUrl.empty() && transformedUrl != originalUrl) {
+            resource.url = transformedUrl;
+            Logger::info("HTTP", "URL transformed for request");
+            Logger::debug("HTTP", "  Resource kind: %d", static_cast<int>(resource.kind));
+            Logger::debug("HTTP", "  Original URL: %s", originalUrl.c_str());
+            Logger::debug("HTTP", "  Transformed URL: %s", transformedUrl.c_str());
+        }
+    }
+    
     if (resource.dataRange) {
         const std::string header = std::string("Range: bytes=") + std::to_string(resource.dataRange->first) +
                                    std::string("-") + std::to_string(resource.dataRange->second);
@@ -317,6 +338,28 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
     } else if (resource.priorModified) {
         const std::string time = std::string("If-Modified-Since: ") + util::rfc1123(*resource.priorModified);
         headers = curl_slist_append(headers, time.c_str());
+    }
+
+    // 应用自定义HTTP请求头
+    // 参考iOS实现：platform/darwin/core/http_file_source.mm:89-96
+    // 参考Android实现：platform/android/.../HttpRequestImpl.java:115-117
+    auto& config = HTTPRequestConfig::getInstance();
+    auto customHeaders = config.getCustomHeaders();
+    if (!customHeaders.empty()) {
+        Logger::info("HTTP", "Applying %zu custom headers to request", customHeaders.size());
+        for (const auto& [key, value] : customHeaders) {
+            // 跳过User-Agent（已经在下面单独设置）
+            std::string lowerKey = key;
+            std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
+            if (lowerKey == "user-agent") {
+                Logger::warn("HTTP", "Skipping User-Agent header (managed by SDK)");
+                continue;
+            }
+            
+            const std::string header = key + ": " + value;
+            headers = curl_slist_append(headers, header.c_str());
+            Logger::debug("HTTP", "Applied custom header: %s", key.c_str());
+        }
     }
     
     try {

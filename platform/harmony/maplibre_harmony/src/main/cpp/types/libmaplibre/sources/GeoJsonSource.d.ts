@@ -1,5 +1,6 @@
 import type { ExpressionLiteral } from '../ExpressionTypes';
 import type { JSONValue } from '../CommonTypes';
+import type { Geometry, IFeature, IFeatureCollection } from '../geojson';
 
 /**
  * 聚类属性配置
@@ -115,17 +116,9 @@ export interface Feature {
 }
 
 /**
- * GeoJSON FeatureCollection 接口
- */
-export interface FeatureCollection {
-  type: 'FeatureCollection';
-  features: Feature[];
-}
-
-/**
  * GeoJSON 数据类型（支持多种格式）
  */
-export type GeoJsonData = string | Geometry | Feature | FeatureCollection | object;
+export type GeoJsonData = string | Geometry | IFeature | IFeatureCollection | object;
 
 /**
  * GeoJsonSource - GeoJSON 数据源
@@ -189,30 +182,30 @@ export class GeoJsonSource {
   /**
    * 查询数据源要素
    * @param filter 可选过滤表达式（Expression 数组格式）
-   * @returns Feature 数组
+   * @returns IFeature 数组
    */
-  querySourceFeatures(filter?: ExpressionLiteral): Feature[];
+  querySourceFeatures(filter?: ExpressionLiteral): IFeature[];
 
   /**
    * 获取聚类的子项
-   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
-   * @returns 子 Feature 数组
+   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 IFeature
+   * @returns 子 IFeature 数组
    */
-  getClusterChildren(clusterId: number | Feature): Feature[];
+  getClusterChildren(clusterId: number | IFeature): IFeature[];
 
   /**
    * 获取聚类的叶子节点
-   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
+   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 IFeature
    * @param limit 限制数量，默认 10
    * @param offset 偏移量，默认 0
-   * @returns 叶子 Feature 数组
+   * @returns 叶子 IFeature 数组
    */
-  getClusterLeaves(clusterId: number | Feature, limit?: number, offset?: number): Feature[];
+  getClusterLeaves(clusterId: number | IFeature, limit?: number, offset?: number): IFeature[];
 
   /**
    * 获取聚类展开的缩放级别
-   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 Feature
+   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 IFeature
    * @returns 目标缩放级别
    */
-  getClusterExpansionZoom(clusterId: number | Feature): number;
+  getClusterExpansionZoom(clusterId: number | IFeature): number;
 }

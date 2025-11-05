@@ -4,14 +4,39 @@ import maplibre from 'libmaplibre.so';
  * ImageOptions - 图片选项接口
  */
 export interface ImageOptions {
+  /** 图片名称，用于在样式中引用 */
   name: string;
+  /** 图片宽度（像素） */
   width: number;
+  /** 图片高度（像素） */
   height: number;
+  /** 像素比例，默认 1.0 */
   pixelRatio?: number;
+  /** 
+   * 是否为 SDF (Signed Distance Field) 图片
+   * SDF 图片可以通过样式动态改变颜色，常用于图标
+   * 默认 false
+   */
   sdf?: boolean;
+  /** 图片数据（RGBA 格式，预乘 alpha） */
   data: Uint8Array;
+  /**
+   * 可拉伸区域（水平方向）- 9-patch 风格
+   * 数组格式：[start1, end1, start2, end2, ...]，单位为像素
+   * 例如：[25, 55, 85, 115] 表示 25-55 和 85-115 两个区域可拉伸
+   */
   stretchX?: number[];
+  /**
+   * 可拉伸区域（垂直方向）- 9-patch 风格
+   * 数组格式：[start1, end1, start2, end2, ...]，单位为像素
+   * 例如：[25, 100] 表示 25-100 区域可拉伸
+   */
   stretchY?: number[];
+  /**
+   * 内容区域（用于文本放置）
+   * 数组格式：[left, top, right, bottom]，单位为像素
+   * 定义了拉伸后文本应该显示在哪个区域内
+   */
   content?: number[];
 }
 

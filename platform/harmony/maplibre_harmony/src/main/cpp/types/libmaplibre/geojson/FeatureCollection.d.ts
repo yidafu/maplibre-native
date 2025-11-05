@@ -1,45 +1,41 @@
+import type { Feature } from './Feature';
 
 /**
- * FeatureCollection - GeoJSON FeatureCollection 类型
+ * FeatureCollection - GeoJSON FeatureCollection 接口
+ * 
+ * 表示一个 GeoJSON FeatureCollection 对象。
+ * C++ 层返回的是符合此结构的普通 JavaScript 对象（对象字面量），而非类实例。
+ * 
+ * 规范参考：RFC 7946 (GeoJSON)
+ * 
+ * @example
+ * ```typescript
+ * const featureCollection: FeatureCollection = {
+ *   type: 'FeatureCollection',
+ *   features: [
+ *     {
+ *       type: 'Feature',
+ *       geometry: { type: 'Point', coordinates: [116.4, 39.9] },
+ *       properties: { name: 'Beijing' }
+ *     },
+ *     {
+ *       type: 'Feature',
+ *       geometry: { type: 'Point', coordinates: [121.5, 31.2] },
+ *       properties: { name: 'Shanghai' }
+ *     }
+ *   ]
+ * };
+ * ```
  */
-export class FeatureCollection {
+export interface FeatureCollection {
   /**
-   * 创建空 FeatureCollection
+   * GeoJSON 对象类型，固定为 "FeatureCollection"
    */
-  constructor();
+  type: 'FeatureCollection';
 
   /**
-   * 从 Feature 数组创建 FeatureCollection
-   * @param features Feature 数组
+   * Feature 对象数组
    */
-  constructor(features: IFeature[]);
-
-  /**
-   * 获取 Feature 数组
-   * @returns Feature[] - NAPI Feature 类实例数组
-   */
-  getFeatures(): IFeature[];
-
-  /**
-   * 设置 Feature 数组
-   * @param features Feature 数组
-   */
-  setFeatures(features: IFeature[]): this;
-
-  /**
-   * 添加 Feature
-   * @param feature Feature 实例
-   */
-  addFeature(feature: IFeature): this;
-
-  /**
-   * 获取 Feature 数量
-   */
-  getFeatureCount(): number;
-
-  /**
-   * 转换为 JSON 对象
-   */
-  toJSON(): { type: 'FeatureCollection', features: object[] };
+  features: Feature[];
 }
 

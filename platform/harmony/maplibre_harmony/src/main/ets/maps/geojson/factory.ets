@@ -17,6 +17,7 @@ import type {
     IFeatureCollection,
     Geometry
 } from './types';
+import type { JSONValue } from 'libmaplibre.so';
 // ==================== Geometry 工厂函数 ====================
 
 /**
@@ -181,7 +182,7 @@ export function geometryCollection(geometries: Geometry[]): IGeometryCollection 
 export interface CreateFeatureOptions {
   id?: string | number;
   geometry: Geometry;
-  properties?: Record<string, Object>;
+  properties?: Record<string, JSONValue>;
 }
 
 /**
@@ -216,14 +217,14 @@ export function feature(options: CreateFeatureOptions): IFeature;
  */
 export function feature(
   geometry: Geometry,
-  properties?: Record<string, Object>,
+  properties?: Record<string, JSONValue>,
   id?: string | number
 ): IFeature;
 
 // 实现
 export function feature(
   optionsOrGeometry: CreateFeatureOptions | Geometry,
-  properties?: Record<string, Object>,
+  properties?: Record<string, JSONValue>,
   id?: string | number
 ): IFeature {
   // ArkTS 不支持 'in' 操作符，通过检查属性是否存在来判断
@@ -234,7 +235,7 @@ export function feature(
       type: 'Feature',
       id,
       geometry: optionsOrGeometry as Geometry,
-      properties: properties || {}
+      properties: (properties || {}) as Record<string, JSONValue>
     };
   } else {
     // 第一种重载：options 对象
@@ -243,7 +244,7 @@ export function feature(
       type: 'Feature',
       id: opts.id,
       geometry: opts.geometry,
-      properties: opts.properties || {}
+      properties: (opts.properties || {}) as Record<string, JSONValue>
     };
   }
 }
@@ -286,7 +287,7 @@ export function featureCollection(features: IFeature[]): IFeatureCollection {
  */
 export function pointFeature(
   coordinates: Position,
-  properties?: Record<string, Object>,
+  properties?: Record<string, JSONValue>,
   id?: string | number
 ): IFeature {
   return feature(point(coordinates), properties, id);
@@ -307,7 +308,7 @@ export function pointFeature(
  */
 export function lineStringFeature(
   coordinates: Position[],
-  properties?: Record<string, Object>,
+  properties?: Record<string, JSONValue>,
   id?: string | number
 ): IFeature {
   return feature(lineString(coordinates), properties, id);
@@ -330,7 +331,7 @@ export function lineStringFeature(
  */
 export function polygonFeature(
   coordinates: Position[][],
-  properties?: Record<string, Object>,
+  properties?: Record<string, JSONValue>,
   id?: string | number
 ): IFeature {
   return feature(polygon(coordinates), properties, id);

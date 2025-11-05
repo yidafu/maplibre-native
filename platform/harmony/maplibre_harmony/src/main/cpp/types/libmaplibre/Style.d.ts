@@ -131,6 +131,24 @@ export class Style {
   addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void;
 
   /**
+   * 异步添加图像到样式（不阻塞UI线程）
+   * @param name 图像名称
+   * @param imageData 图像数据（ArrayBuffer 或 Uint8Array，RGBA 格式）
+   * @param width 图像宽度（像素）
+   * @param height 图像高度（像素）
+   * @param sdf 是否为 SDF (Signed Distance Field) 图像，默认 false
+   * @returns Promise<void> 完成时resolve
+   */
+  addImageAsync(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): Promise<void>;
+
+  /**
+   * 异步批量添加图像到样式（不阻塞UI线程）
+   * @param images 图像对象数组
+   * @returns Promise<void> 完成时resolve
+   */
+  addImagesAsync(images: Image[]): Promise<void>;
+
+  /**
    * 从样式中移除图像
    * @param name 图像名称
    * @returns 是否成功移除

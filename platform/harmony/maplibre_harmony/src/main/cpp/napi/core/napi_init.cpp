@@ -37,6 +37,9 @@
 #include "napi/bindings/style/custom_layer_napi.hpp"
 // Style components
 #include "style/light_harmony.hpp"
+// Network configuration
+#include "napi/bindings/network/network_napi.hpp"
+#include "napi/bindings/network/url_transform_napi.hpp"
 
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
@@ -99,6 +102,10 @@ static napi_value Init(napi_env env, napi_value exports) {
     // 样式组件
     mbgl::harmony::LightHarmony::Init(env, exports);
     
+    // 网络配置
+    mbgl::harmony::NetworkNAPI::Init(env, exports);
+    mbgl::harmony::URLTransformNAPI::Init(env, exports);
+
     return exports;
 }
 EXTERN_C_END

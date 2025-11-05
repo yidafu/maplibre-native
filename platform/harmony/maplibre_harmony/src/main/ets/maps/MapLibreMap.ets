@@ -156,6 +156,7 @@ export class MapLibreMap {
   // Style 监听器
   private styleLoadedListeners: OnStyleLoadedListener[] = [];
   private styleLoadErrorListeners: OnStyleLoadErrorListener[] = [];
+  private styleImageMissingListener?: (imageId: string) => void;
   // 操作队列 - 在样式加载前缓存操作
   private pendingOperations: PendingOperation[] = [];
   // Compass 更新回调（由外部 UI 层注入）
@@ -214,6 +215,17 @@ export class MapLibreMap {
     this.nativeMapView.setOnStyleLoadErrorListener((error: string) => {
       console.error(`MapLibreMap: Native style load error callback triggered: ${error}`);
       this.onStyleLoadError(error);
+    });
+
+    // 设置样式图片缺失的回调
+    this.nativeMapView.addOnStyleImageMissingListener((imageId: string) => {
+      if (this.styleImageMissingListener) {
+        try {
+          this.styleImageMissingListener(imageId);
+        } catch (error) {
+          console.error(`MapLibreMap: Error in onStyleImageMissing listener: ${error}`);
+        }
+      }
     });
   }
 
@@ -434,6 +446,7 @@ export class MapLibreMap {
       // 1. 清理所有监听器数组（参考 Android）
       this.styleLoadedListeners = [];
       this.styleLoadErrorListeners = [];
+      this.styleImageMissingListener = undefined;
       this.pendingOperations = [];
       this.mapClickListeners = [];
       this.mapLongClickListeners = [];
@@ -1007,8 +1020,8 @@ export class MapLibreMap {
     if (this.destroyed) {
       return null;
     }
-    const result: ESObject =
-      this.nativeMapView.getCameraForLatLngBounds(bounds, top, left, bottom, right, bearing, tilt) as ESObject;
+    const result = this.nativeMapView.getCameraForLatLngBounds(bounds, top, left, bottom, right, bearing, tilt);
+    // Native 返回的对象已经符合 CameraPosition 接口
     return result as CameraPosition;
   }
 
@@ -1017,8 +1030,8 @@ export class MapLibreMap {
     if (this.destroyed) {
       return null;
     }
-    const result: ESObject =
-      this.nativeMapView.getCameraForGeometry(geometry, top, left, bottom, right, bearing, tilt) as ESObject;
+    const result = this.nativeMapView.getCameraForGeometry(geometry, top, left, bottom, right, bearing, tilt);
+    // Native 返回的对象已经符合 CameraPosition 接口
     return result as CameraPosition;
   }
 
@@ -1464,8 +1477,7 @@ export class MapLibreMap {
     if (this.destroyed) {
       return null;
     }
-    const result: ESObject = this.nativeMapView.getLight() as ESObject;
-    return result as Light;
+    return this.nativeMapView.getLight();
   }
 
   // 图层方法 - 使用强类型 Layer
@@ -1599,7 +1611,23 @@ export class MapLibreMap {
       return;
     }
     const nativeImages = images.map(img => img.getNative());
-    this.nativeMapView.addImages(nativeImages as ESObject);
+    this.nativeMapView.addImages(nativeImages);
+  }
+
+  /**
+   * 异步批量添加图像（不阻塞UI线程）
+   * @param images 图像对象数组
+   * @returns Promise<void> 完成时resolve
+   */
+  public addImagesAsync(images: Image[]): Promise<void> {
+    if (this.destroyed) {
+      return Promise.reject(new Error('Map is destroyed'));
+    }
+    const style = this.getStyle();
+    if (!style) {
+      return Promise.reject(new Error('Style not loaded'));
+    }
+    return style.addImagesAsync(images);
   }
 
   public removeImage(name: string): void {
@@ -2134,6 +2162,26 @@ export class MapLibreMap {
   }
 
   /**
+   * 设置样式图片缺失监听器
+   * 当地图渲染需要的图片不存在时会触发此回调，可用于懒加载图片
+   *
+   * @param listener 监听器回调函数，参数为缺失的图片ID
+   */
+  public setOnStyleImageMissingListener(listener: ((imageId: string) => void) | null): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.styleImageMissingListener = listener ?? undefined;
+  }
+
+  /**
+   * 移除样式图片缺失监听器
+   */
+  public removeOnStyleImageMissingListener(): void {
+    this.styleImageMissingListener = undefined;
+  }
+
+  /**
    * 添加待处理操作到队列
    *
    * 如果样式已加载，立即执行；否则加入队列等待样式加载后执行
@@ -2611,6 +2659,7 @@ export class MapLibreMap {
     // 清除样式监听器
     this.styleLoadedListeners = [];
     this.styleLoadErrorListeners = [];
+    this.styleImageMissingListener = undefined;
     
     // 清除相机移动监听器（通过 dispatcher）
     this.cameraChangeDispatcher.clearAllListeners();
@@ -2980,7 +3029,7 @@ export class MapLibreMap {
       const screenY = y * pixelRatio;
 
       const features = this.nativeMapView.queryRenderedFeaturesForPoint(screenX, screenY, layerIds, filter);
-      return features as ESObject as IFeature[];
+      return features as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForPoint failed: ${error.message}`);
       return [];
@@ -3047,7 +3096,7 @@ export class MapLibreMap {
       const features = this.nativeMapView.queryRenderedFeaturesForBox(
         physicalLeft, physicalTop, physicalRight, physicalBottom, layerIds, filter
       );
-      return features as ESObject as IFeature[];
+      return features as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
       return [];
@@ -3097,7 +3146,7 @@ export class MapLibreMap {
         sourceLayerIds || undefined,
         filter || undefined
       );
-      return features as Object as IFeature[];
+      return features as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `querySourceFeatures failed: ${error}`);
       return [];

@@ -1,33 +1,40 @@
 /**
- * MultiLineString - GeoJSON MultiLineString 几何体类型
+ * MultiLineString - GeoJSON MultiLineString 几何体接口
+ * 
+ * 表示一个 GeoJSON MultiLineString 对象，包含多条线。
+ * C++ 层返回的是符合此结构的普通 JavaScript 对象（对象字面量）。
+ * 
+ * 规范参考：RFC 7946 (GeoJSON)
+ * 
+ * @example
+ * ```typescript
+ * const multiLineString: MultiLineString = {
+ *   type: 'MultiLineString',
+ *   coordinates: [
+ *     // 第一条线
+ *     [
+ *       [116.4, 39.9],
+ *       [121.5, 31.2]
+ *     ],
+ *     // 第二条线
+ *     [
+ *       [113.3, 23.1],
+ *       [114.1, 22.5]
+ *     ]
+ *   ]
+ * };
+ * ```
  */
-export class MultiLineString {
+export interface MultiLineString {
   /**
-   * 创建空 MultiLineString
+   * GeoJSON 对象类型，固定为 "MultiLineString"
    */
-  constructor();
+  type: 'MultiLineString';
 
   /**
-   * 从坐标数组创建 MultiLineString
-   * @param coordinates [[[lng, lat], [lng, lat], ...], ...]
+   * 坐标数组
+   * 由多条 LineString 的坐标数组组成
    */
-  constructor(coordinates: number[][][]);
-
-  /**
-   * 获取坐标数组
-   * @returns [[[lng, lat], [lng, lat], ...], ...]
-   */
-  getCoordinates(): number[][][];
-
-  /**
-   * 设置坐标
-   * @param coordinates [[[lng, lat], [lng, lat], ...], ...]
-   */
-  setCoordinates(coordinates: number[][][]): this;
-
-  /**
-   * 转换为 JSON 对象
-   */
-  toJSON(): { type: 'MultiLineString', coordinates: number[][][] };
+  coordinates: number[][][];
 }
 

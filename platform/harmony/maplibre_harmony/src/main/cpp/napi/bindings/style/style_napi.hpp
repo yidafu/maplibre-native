@@ -53,6 +53,8 @@ public:
     
     // Image 管理
     static napi_value AddImage(napi_env env, napi_callback_info info);
+    static napi_value AddImageAsync(napi_env env, napi_callback_info info);
+    static napi_value AddImagesAsync(napi_env env, napi_callback_info info);
     static napi_value RemoveImage(napi_env env, napi_callback_info info);
     static napi_value GetImage(napi_env env, napi_callback_info info);
     
@@ -78,6 +80,8 @@ private:
     // 注意：这里只缓存 ID，实际对象由 mbgl::style::Style 管理
     std::unordered_map<std::string, bool> sources;  // sourceId -> exists
     std::unordered_map<std::string, bool> layers;   // layerId -> exists
+
+public:
     std::unordered_map<std::string, bool> images;   // imageName -> exists
 };
 

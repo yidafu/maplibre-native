@@ -1,6 +1,7 @@
 #include "native_map_view_harmony.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include "napi/bindings/style/style_napi.hpp"
+#include "napi/bindings/image/image_napi.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
@@ -16,6 +17,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
+using maplibre::harmony::ImageNAPI;
 
 namespace mbgl {
 namespace harmony {
@@ -692,25 +694,112 @@ napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(4);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Bitmap 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/bitmap.cpp
-    Logger::warn("NativeMapView", "addImage: Not implemented - requires Bitmap wrapper class");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addImage: Invalid arguments");
+        return undefined;
+    }
     
-    return undefined;
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "addImage: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        // TODO: 实现从 PixelMap 创建图像
+        // 参考 Android bitmap.cpp 和 iOS UIImage+MLNAdditions.mm
+        // 需要实现 PixelMap -> PremultipliedImage 的转换
+        Logger::warn("NativeMapView", "addImage: PixelMap conversion not implemented yet");
+        Logger::info("NativeMapView", "addImage: Please use Image class or Style.addImage() instead");
+        
+        return undefined;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "addImage: Failed - %s", e.what());
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Image 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/map/image.cpp
-    Logger::warn("NativeMapView", "addImages: Not implemented - requires Image wrapper class");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addImages: Invalid arguments");
+        return undefined;
+    }
     
-    return undefined;
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "addImages: Map not initialized");
+        return undefined;
+    }
+    
+    try {
+        // 获取 Image 数组参数
+        napi_value imagesArray = args.GetValue(0);
+        bool isArray = false;
+        napi_is_array(env, imagesArray, &isArray);
+        
+        if (!isArray) {
+            Logger::error("NativeMapView", "addImages: First argument must be an array");
+            return undefined;
+        }
+        
+        uint32_t length = 0;
+        napi_get_array_length(env, imagesArray, &length);
+        
+        if (length == 0) {
+            Logger::warn("NativeMapView", "addImages: Empty array provided");
+            return undefined;
+        }
+        
+        // 遍历数组，逐个添加图像
+        for (uint32_t i = 0; i < length; i++) {
+            napi_value imageValue;
+            napi_get_element(env, imagesArray, i, &imageValue);
+            
+            // Unwrap Image NAPI object
+            ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, imageValue);
+            if (!imageNapi) {
+                Logger::error("NativeMapView", "addImages: Failed to unwrap Image at index %u", i);
+                continue;
+            }
+            
+            // Convert to mbgl::style::Image
+            auto styleImage = imageNapi->toStyleImage();
+            if (!styleImage) {
+                Logger::error("NativeMapView", "addImages: Failed to convert Image to style::Image at index %u", i);
+                continue;
+            }
+            
+            // Add to style
+            std::string imageName = imageNapi->getName();
+            instance->invokeOnMapThread([styleImagePtr = styleImage.release()](mbgl::Map* m) {
+                std::unique_ptr<mbgl::style::Image> img(styleImagePtr);
+                m->getStyle().addImage(std::move(img));
+            });
+            
+            Logger::info("NativeMapView", "addImages: Added image '%s'", imageName.c_str());
+        }
+        
+        Logger::info("NativeMapView", "addImages: Successfully added %u images", length);
+        return undefined;
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "addImages: Failed - %s", e.what());
+        return undefined;
+    }
 }
 
 napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {

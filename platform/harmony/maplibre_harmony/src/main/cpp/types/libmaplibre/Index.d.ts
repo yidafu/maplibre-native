@@ -126,3 +126,53 @@ export * from './offline';
  * JSONValue/JSONObject - JSON 类型
  */
 export * from './CommonTypes';
+
+// ========== 网络配置 (Network Configuration) ==========
+
+/**
+ * 设置自定义HTTP请求头（替换所有现有请求头）
+ * @param headers - 请求头键值对对象
+ */
+export function setCustomHttpHeaders(headers: Record<string, string>): void;
+
+/**
+ * 添加单个自定义HTTP请求头
+ * @param key - 请求头名称
+ * @param value - 请求头值
+ */
+export function addCustomHttpHeader(key: string, value: string): void;
+
+/**
+ * 移除指定的自定义HTTP请求头
+ * @param key - 请求头名称
+ * @returns 如果成功移除返回true，否则返回false
+ */
+export function removeCustomHttpHeader(key: string): boolean;
+
+/**
+ * 清除所有自定义HTTP请求头
+ */
+export function clearCustomHttpHeaders(): void;
+
+/**
+ * 获取所有自定义HTTP请求头
+ * @returns 请求头键值对对象
+ */
+export function getCustomHttpHeaders(): Record<string, string>;
+
+/**
+ * 设置资源URL转换回调
+ * @param callback - URL转换回调函数
+ */
+export function setResourceTransformCallback(callback: (kind: number, url: string) => string): void;
+
+/**
+ * 清除资源URL转换回调
+ */
+export function clearResourceTransformCallback(): void;
+
+/**
+ * 检查是否设置了URL转换回调
+ * @returns 如果设置了回调返回true，否则返回false
+ */
+export function hasResourceTransformCallback(): boolean;

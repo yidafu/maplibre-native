@@ -1,33 +1,34 @@
 /**
- * MultiPoint - GeoJSON MultiPoint 几何体类型
+ * MultiPoint - GeoJSON MultiPoint 几何体接口
+ * 
+ * 表示一个 GeoJSON MultiPoint 对象，包含多个点。
+ * C++ 层返回的是符合此结构的普通 JavaScript 对象（对象字面量）。
+ * 
+ * 规范参考：RFC 7946 (GeoJSON)
+ * 
+ * @example
+ * ```typescript
+ * const multiPoint: MultiPoint = {
+ *   type: 'MultiPoint',
+ *   coordinates: [
+ *     [116.4, 39.9],  // 北京
+ *     [121.5, 31.2],  // 上海
+ *     [113.3, 23.1]   // 广州
+ *   ]
+ * };
+ * ```
  */
-export class MultiPoint {
+export interface MultiPoint {
   /**
-   * 创建空 MultiPoint
+   * GeoJSON 对象类型，固定为 "MultiPoint"
    */
-  constructor();
+  type: 'MultiPoint';
 
   /**
-   * 从坐标数组创建 MultiPoint
-   * @param coordinates [[lng, lat], [lng, lat], ...]
+   * 坐标数组
+   * 由多个位置坐标组成的数组
+   * 每个位置为 [经度, 纬度] 或 [经度, 纬度, 海拔]
    */
-  constructor(coordinates: number[][]);
-
-  /**
-   * 获取坐标数组
-   * @returns [[lng, lat], [lng, lat], ...]
-   */
-  getCoordinates(): number[][];
-
-  /**
-   * 设置坐标
-   * @param coordinates [[lng, lat], [lng, lat], ...]
-   */
-  setCoordinates(coordinates: number[][]): this;
-
-  /**
-   * 转换为 JSON 对象
-   */
-  toJSON(): { type: 'MultiPoint', coordinates: number[][] };
+  coordinates: number[][];
 }
 

@@ -1,45 +1,33 @@
 /**
- * LineString - GeoJSON LineString 几何体类型
+ * LineString - GeoJSON LineString 几何体接口
+ * 
+ * 表示一个 GeoJSON LineString 对象。
+ * C++ 层返回的是符合此结构的普通 JavaScript 对象（对象字面量）。
+ * 
+ * 规范参考：RFC 7946 (GeoJSON)
+ * 
+ * @example
+ * ```typescript
+ * const lineString: LineString = {
+ *   type: 'LineString',
+ *   coordinates: [
+ *     [116.4, 39.9],  // 起点
+ *     [121.5, 31.2]   // 终点
+ *   ]
+ * };
+ * ```
  */
-export class LineString {
+export interface LineString {
   /**
-   * 创建空 LineString
+   * GeoJSON 对象类型，固定为 "LineString"
    */
-  constructor();
+  type: 'LineString';
 
   /**
-   * 从坐标数组创建 LineString
-   * @param coordinates [[lng, lat], [lng, lat], ...]
+   * 坐标数组
+   * 由两个或更多位置坐标组成的数组
+   * 每个位置为 [经度, 纬度] 或 [经度, 纬度, 海拔]
    */
-  constructor(coordinates: number[][]);
-
-  /**
-   * 获取坐标数组
-   * @returns [[lng, lat], [lng, lat], ...]
-   */
-  getCoordinates(): number[][];
-
-  /**
-   * 设置坐标
-   * @param coordinates [[lng, lat], [lng, lat], ...]
-   */
-  setCoordinates(coordinates: number[][]): this;
-
-  /**
-   * 添加点到 LineString
-   * @param lng 经度
-   * @param lat 纬度
-   */
-  addPoint(lng: number, lat: number): this;
-
-  /**
-   * 获取点数量
-   */
-  getPointCount(): number;
-
-  /**
-   * 转换为 JSON 对象
-   */
-  toJSON(): { type: 'LineString', coordinates: number[][] };
+  coordinates: number[][];
 }
 

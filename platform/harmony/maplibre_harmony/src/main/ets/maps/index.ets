@@ -17,6 +17,15 @@ export { MapLibreMap } from './MapLibreMap';
 
 export { MapLibreMapOptions } from './MapLibreMapOptions';
 
+// ========== 网络配置 ==========
+export { NetworkConfiguration } from './network/NetworkConfiguration';
+export type { HttpHeaders } from './network/NetworkConfiguration';
+
+// ========== 存储和资源 ==========
+export { FileSource } from './storage/FileSource';
+export { ResourceTransform, ResourceKind } from './storage/ResourceTransform';
+export type { ResourceTransformCallback } from './storage/ResourceTransform';
+
 // ========== 类型定义 ==========
 export {
   OrnamentPosition,
@@ -141,9 +150,7 @@ export type {
 // ========== 相机 ==========
 export {
   CameraPosition,
-  ICameraPosition,
-  EdgeInsets,
-  IEdgeInsets
+  EdgeInsets
 } from './camera/CameraPosition';
 
 export type CameraOptions = maplibre.CameraOptions;

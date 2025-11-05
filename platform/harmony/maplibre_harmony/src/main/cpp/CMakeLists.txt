@@ -137,11 +137,19 @@ add_library(maplibre
     napi/bindings/style/style_napi_images.cpp
     napi/bindings/style/custom_layer_napi.hpp
     napi/bindings/style/custom_layer_napi.cpp
+    napi/bindings/network/network_napi.hpp
+    napi/bindings/network/network_napi.cpp
+    napi/bindings/network/url_transform_napi.hpp
+    napi/bindings/network/url_transform_napi.cpp
     
     # Network module
     network/http_file_source_harmony.cpp
     network/curl_event_loop.hpp
     network/curl_event_loop.cpp
+    network/http_request_config.hpp
+    network/http_request_config.cpp
+    network/url_transform_manager.hpp
+    network/url_transform_manager.cpp
     
     # VSync management
     vsync/harmony_vsync_manager.hpp

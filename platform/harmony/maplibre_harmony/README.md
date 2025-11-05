@@ -1,6 +1,32 @@
 # MapLibre Native for HarmonyOS
 
+![Development Status](https://img.shields.io/badge/Status-Alpha%20%2F%20Unstable-red)
+![Production Ready](https://img.shields.io/badge/Production%20Ready-No-red)
+![API Stability](https://img.shields.io/badge/API%20Stability-Unstable-orange)
+
 OpenGL-based vector map rendering library for HarmonyOS.
+
+> ⚠️ **IMPORTANT: Development Status - Alpha/Unstable**
+> 
+> This project is currently under **active development** and is **NOT production-ready**.
+> 
+> **Current Status**:
+> - 🚧 **Stability**: Alpha stage - expect bugs, crashes, and memory leaks
+> - 🔄 **API Changes**: Breaking changes WILL occur without notice
+> - 🧪 **Testing**: Limited testing coverage, many edge cases untested  
+> - 📝 **Documentation**: Work in progress, incomplete
+> - ⚡ **Performance**: Not optimized for production workloads
+> - 🔒 **Security**: Security review not yet performed
+> 
+> **⛔ NOT RECOMMENDED for production applications**
+> 
+> **Use at your own risk** - This software is provided "AS IS" without warranty of any kind.
+> Only suitable for:
+> - 🧪 Experimental projects
+> - 📚 Learning and research
+> - 🔬 Early testing and feedback
+> 
+> If you need production-ready map solutions, please use the mature Android or iOS platforms.
 
 ## Features
 
@@ -213,6 +239,8 @@ Map updates and triggers render
 
 ## Installation
 
+> ⚠️ **Warning**: This library is in **alpha stage**. Please evaluate thoroughly before using in any application.
+
 ### Prerequisites
 
 - **HarmonyOS SDK**: 5.0.0 (API 12) or higher
@@ -221,7 +249,7 @@ Map updates and triggers render
 
 ### From npm registry
 
-> ohpm registry not support.
+> ⚠️ **Note**: This package is not yet published to npm/ohpm registry. Currently for development and testing only.
 
 ```bash
 npm install maplibre-harmony
@@ -238,6 +266,8 @@ Add to your module's `oh-package.json5`:
 ```
 
 ## Usage
+
+> ⚠️ **Alpha Software Notice**: The following APIs are subject to change. Always check the latest documentation before upgrading.
 
 ### Basic Map
 
@@ -427,20 +457,31 @@ build/default/outputs/default/maplibre-harmony.har
 
 ## Troubleshooting
 
+> ⚠️ **Known Issues**: This is alpha software. Many edge cases and stability issues are still being addressed.
+
 ### Map not rendering
 1. Verify OpenGL ES 3.0 support
 2. Check style URL accessibility
 3. Inspect HiLog: `hdc hilog | grep MapLibre`
+4. **Known Issue**: Map may crash on repeated page transitions (being fixed)
 
 ### Build errors
 1. Clean build cache: `npm run clean`
 2. Verify environment variables are set
 3. Check HarmonyOS SDK version (≥5.0.0)
+4. **Known Issue**: Incremental builds may fail, try clean build
 
 ### Gesture issues
 1. Ensure proper DPI configuration
 2. Check XComponent touch event handling
 3. Verify gesture settings are enabled
+4. **Known Issue**: Some gesture combinations may not work as expected
+
+### Stability issues
+1. **Memory leaks**: May occur in long-running applications
+2. **Thread safety**: Some race conditions still being addressed
+3. **Crash recovery**: Limited error recovery mechanisms
+4. **Performance**: Not optimized for production workloads
 
 ## Documentation
 
@@ -465,12 +506,21 @@ See the [`entry`](../entry/) module for complete working examples:
 
 We welcome contributions! Please see the main repository's [CONTRIBUTING.md](../../../CONTRIBUTING.md) for guidelines.
 
+> 🙏 **Help Wanted**: This project is in early development. Contributions for bug fixes, testing, and documentation are especially appreciated!
+
 ### Development Setup
 
 1. Clone the repository
 2. Set up environment variables
 3. Build the project: `npm run build:debug`
 4. Run tests in DevEco Studio
+
+### Known Development Issues
+
+- Build system may require clean builds frequently
+- Some test cases are still being developed
+- Documentation is incomplete
+- Performance profiling not yet complete
 
 ## License
 
@@ -486,11 +536,19 @@ BSD-2-Clause License - See [LICENSE.md](../../../LICENSE.md)
 
 ## Support
 
-- **Documentation**: See `/docs` directory
+- **Documentation**: See `/docs` directory (⚠️ incomplete)
 - **Issues**: Report bugs on GitHub Issues
 - **Discussions**: Join MapLibre community discussions
-- **Commercial Support**: Contact MapLibre team
+- **Commercial Support**: ⚠️ Not available for HarmonyOS platform yet
+
+## Disclaimer
+
+**THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.**
+
+This is experimental software under active development. It may contain bugs, security vulnerabilities, and performance issues. The maintainers are not responsible for any damages or issues arising from the use of this software.
+
+**Use in production environments is strongly discouraged at this stage.**
 
 ---
 
-Made with ❤️ by the MapLibre community
+Made with ❤️ by the MapLibre community (HarmonyOS port in alpha)

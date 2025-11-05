@@ -5,12 +5,13 @@
 
 import type { Style } from './Style';
 import type { Icon } from './Icon';
+import type { Image } from './images/Image';
 import type { Marker } from './Marker';
 import type { Polygon } from './annotations/Polygon';
 import type { Polyline } from './annotations/Polyline';
 import type { Layer } from './layers';
 import type { Source } from './sources';
-import type { Feature, Geometry } from './geojson';
+import type { IFeature, Geometry } from './geojson';
 import type { ExpressionLiteral } from './ExpressionTypes';
 import type { LightSpecification, MapSnapshotterObserver } from './CommonTypes';
 
@@ -101,9 +102,9 @@ export class NativeMapView {
    * @param sourceId 数据源 ID
    * @param sourceLayerIds 源图层 ID 数组
    * @param filter 过滤表达式
-   * @returns Feature 数组
+   * @returns IFeature 数组
    */
-  querySourceFeatures(sourceId: string, sourceLayerIds: string[] | undefined, filter: ExpressionLiteral | undefined): Feature[]
+  querySourceFeatures(sourceId: string, sourceLayerIds: string[] | undefined, filter: ExpressionLiteral | undefined): IFeature[]
   
   /**
    * 创建 NativeMapView 实例
@@ -743,9 +744,9 @@ export class NativeMapView {
    * @param y Y 坐标（像素）
    * @param layerIds 可选的图层 ID 数组，为空则查询所有图层
    * @param filter 可选的过滤表达式
-   * @returns GeoJSON Feature 数组
+   * @returns GeoJSON IFeature 数组
    */
-  queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: ExpressionLiteral): Feature[];
+  queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: ExpressionLiteral): IFeature[];
 
   /**
    * 查询矩形区域内的渲染要素
@@ -755,10 +756,10 @@ export class NativeMapView {
    * @param bottom 下边界（像素）
    * @param layerIds 可选的图层 ID 数组，为空则查询所有图层
    * @param filter 可选的过滤表达式
-   * @returns GeoJSON Feature 数组
+   * @returns GeoJSON IFeature 数组
    */
   queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[],
-    filter?: ExpressionLiteral): Feature[];
+    filter?: ExpressionLiteral): IFeature[];
 
   // ========== Light ==========
 
@@ -849,19 +850,23 @@ export class NativeMapView {
 
   /**
    * 添加图像（原始位图方式，不推荐）
-   * @deprecated 建议使用 Icon 对象方式
+   * @deprecated 建议使用 Image 类或 Icon 对象方式
    * @param name 图像名称
-   * @param bitmap 位图数据（内部格式，不建议直接使用）
+   * @param bitmap PixelMap 位图数据（HarmonyOS PixelMap 对象）
    * @param pixelRatio 像素比
    * @param sdf 是否为 SDF 图像
+   * 
+   * @note 此方法当前 PixelMap 转换未实现，建议使用 Image 类或 Style.addImage()
    */
   addImage(name: string, bitmap: unknown, pixelRatio: number, sdf: boolean): void;
 
   /**
    * 批量添加图像
    * @param images 图像数组（Image 对象数组）
+   * 
+   * @note 此方法当前在 C++ 层未实现，建议逐个添加或使用 Style API
    */
-  addImages(images: Icon[]): void;
+  addImages(images: Image[]): void;
 
   /**
    * 移除图像

@@ -1834,6 +1834,10 @@ export struct MapView {
   onMapReady?: (map: MapLibreMap) => void | Promise<void>; // 常规回调：样式加载完成后调用
   onMapLoaded?: () => void;
   onMapError?: (error: string) => void;
+  // 声明式子组件支持
+  @BuilderParam children?: () => void;
+  // 提供地图实例给子组件（声明式 API）
+  @Provide('mapLibreMap') mapInstance: MapLibreMap | null = null;
   // UI 组件状态
   @State private compassBearing: number = 0;
   @State private uiSettingsVersion: number = 0;
@@ -1876,6 +1880,9 @@ export struct MapView {
             hilog.error(DOMAIN, 'NativeMapView', '❌ MapLibreMap not initialized in onMapReady');
             return;
           }
+
+          // 更新地图实例，触发声明式子组件初始化
+          this.mapInstance = mapLibreMap;
 
           // 样式加载完成，触发 onMapReady
           if (this.onMapReady) {
@@ -1941,6 +1948,9 @@ export struct MapView {
 
     // 1. 设置销毁标志（参考 Android MapView.destroyed）
     this.isDestroyed = true;
+
+    // 清理地图实例引用（用于声明式子组件）
+    this.mapInstance = null;
 
     try {
       // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
@@ -2392,6 +2402,11 @@ export struct MapView {
           }
         }
       })
+
+      // 声明式子组件渲染（Marker、Source、Layer 等）
+      if (this.children) {
+        this.children()
+      }
     }
   }
 

@@ -59,6 +59,8 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
 
         // Image 管理
         {"addImage", nullptr, AddImage, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addImageAsync", nullptr, AddImageAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addImagesAsync", nullptr, AddImagesAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeImage", nullptr, RemoveImage, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getImage", nullptr, GetImage, nullptr, nullptr, nullptr, napi_default, nullptr},
 
