@@ -1,4 +1,4 @@
-import maplibre, { NativeMapView } from 'libmaplibre.so';
+import maplibre, { EdgeInsets, NativeMapView } from 'libmaplibre.so';
 import type { Icon, ExpressionLiteral as NapiExpressionLiteral } from 'libmaplibre.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
@@ -1025,6 +1025,143 @@ export class MapLibreMap {
     return result as CameraPosition;
   }
 
+  /**
+   * 获取适配指定坐标边界的相机位置（使用当前 bearing 和 tilt）
+   * 参考 Android 的 getCameraForLatLngBounds(LatLngBounds) 方法
+   * 
+   * @param bounds 要适配的坐标边界
+   * @return 适配边界的相机位置，如果地图已销毁则返回 null
+   */
+  public getCameraForBounds(bounds: LatLngBounds): CameraPosition | null {
+    if (this.destroyed) {
+      return null;
+    }
+    // 获取当前相机位置以使用当前的 bearing 和 tilt
+    const currentCamera = this.getCameraPosition();
+    const bearing = currentCamera ? currentCamera.bearing : 0;
+    const tilt = currentCamera ? currentCamera.tilt : 0;
+    
+    // 使用零 padding
+    return this.getCameraForLatLngBounds(bounds, 0, 0, 0, 0, bearing, tilt);
+  }
+
+  /**
+   * 获取适配指定坐标边界和内边距的相机位置（使用当前 bearing 和 tilt）
+   * 参考 Android 的 getCameraForLatLngBounds(LatLngBounds, int[] padding) 方法
+   * 
+   * @param bounds 要适配的坐标边界
+   * @param padding 内边距（EdgeInsets 对象）
+   * @return 适配边界和内边距的相机位置，如果地图已销毁则返回 null
+   */
+  public getCameraForBoundsWithPadding(bounds: LatLngBounds, padding: EdgeInsets): CameraPosition | null {
+    if (this.destroyed) {
+      return null;
+    }
+    // 获取当前相机位置以使用当前的 bearing 和 tilt
+    const currentCamera = this.getCameraPosition();
+    const bearing = currentCamera ? currentCamera.bearing : 0;
+    const tilt = currentCamera ? currentCamera.tilt : 0;
+    
+    // 将 EdgeInsets 解构为独立的 padding 参数
+    return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, bearing, tilt);
+  }
+
+  /**
+   * 获取适配指定坐标边界、内边距、bearing 和 tilt 的相机位置
+   * 参考 Android 的 getCameraForLatLngBounds(LatLngBounds, int[] padding, double bearing, double tilt) 方法
+   * 
+   * @param bounds 要适配的坐标边界
+   * @param padding 内边距（EdgeInsets 对象）
+   * @param bearing 方位角（0-360度，0表示正北）
+   * @param tilt 倾斜角（0-60度，0表示垂直俯视）
+   * @return 适配所有参数的相机位置，如果地图已销毁则返回 null
+   */
+  public getCameraForBoundsWithOptions(bounds: LatLngBounds, padding: EdgeInsets, bearing: number, tilt: number): CameraPosition | null {
+    if (this.destroyed) {
+      return null;
+    }
+    // 将 EdgeInsets 解构为独立的 padding 参数
+    return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, bearing, tilt);
+  }
+
+  /**
+   * 设置相机以适配指定的坐标边界
+   * 参考 iOS 的 setVisibleCoordinateBounds:animated: 方法
+   * 
+   * @param bounds 要适配的坐标边界
+   * @param animated 是否使用动画，默认 true
+   * @param duration 动画持续时间（毫秒），默认 300ms
+   */
+  public setCameraForBounds(bounds: LatLngBounds, animated: boolean = true, duration: number = 300): void {
+    if (this.destroyed) {
+      return;
+    }
+    
+    const camera = this.getCameraForBounds(bounds);
+    if (!camera) {
+      return;
+    }
+    
+    if (animated) {
+      this.animateCamera(camera, duration);
+    } else {
+      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
+    }
+  }
+
+  /**
+   * 设置相机以适配指定的坐标边界和内边距
+   * 参考 iOS 的 setVisibleCoordinateBounds:edgePadding:animated: 方法
+   * 
+   * @param bounds 要适配的坐标边界
+   * @param padding 内边距（EdgeInsets 对象）
+   * @param animated 是否使用动画，默认 true
+   * @param duration 动画持续时间（毫秒），默认 300ms
+   */
+  public setCameraForBoundsWithPadding(bounds: LatLngBounds, padding: EdgeInsets, animated: boolean = true, duration: number = 300): void {
+    if (this.destroyed) {
+      return;
+    }
+    
+    const camera = this.getCameraForBoundsWithPadding(bounds, padding);
+    if (!camera) {
+      return;
+    }
+    
+    if (animated) {
+      this.animateCamera(camera, duration);
+    } else {
+      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
+    }
+  }
+
+  /**
+   * 设置相机以适配指定的坐标边界、内边距、bearing 和 tilt
+   * 
+   * @param bounds 要适配的坐标边界
+   * @param padding 内边距（EdgeInsets 对象）
+   * @param bearing 方位角（0-360度，0表示正北）
+   * @param tilt 倾斜角（0-60度，0表示垂直俯视）
+   * @param animated 是否使用动画，默认 true
+   * @param duration 动画持续时间（毫秒），默认 300ms
+   */
+  public setCameraForBoundsWithOptions(bounds: LatLngBounds, padding: EdgeInsets, bearing: number, tilt: number, animated: boolean = true, duration: number = 300): void {
+    if (this.destroyed) {
+      return;
+    }
+    
+    const camera = this.getCameraForBoundsWithOptions(bounds, padding, bearing, tilt);
+    if (!camera) {
+      return;
+    }
+    
+    if (animated) {
+      this.animateCamera(camera, duration);
+    } else {
+      this.jumpTo(camera.bearing, camera.target.latitude, camera.target.longitude, camera.tilt, camera.zoom);
+    }
+  }
+
   public getCameraForGeometry(geometry: ESObject, top: number, left: number, bottom: number, right: number,
     bearing?: number, tilt?: number): CameraPosition | null {
     if (this.destroyed) {
@@ -1212,6 +1349,46 @@ export class MapLibreMap {
     }
     const result = this.nativeMapView.getCameraPosition();
     return result as CameraPosition;
+  }
+
+  /**
+   * 设置相机位置（立即跳转，无动画）
+   * 参考 Android 的简化相机设置方法
+   * 
+   * @param position 目标相机位置
+   */
+  public setCameraPosition(position: CameraPosition): void;
+  
+  /**
+   * 设置相机位置（带动画）
+   * 参考 Android 的简化相机设置方法
+   * 
+   * @param position 目标相机位置
+   * @param duration 动画持续时间（毫秒）
+   */
+  public setCameraPosition(position: CameraPosition, duration: number): void;
+  
+  /**
+   * setCameraPosition 实现
+   */
+  public setCameraPosition(position: CameraPosition, duration?: number): void {
+    if (this.destroyed) {
+      return;
+    }
+    
+    if (duration !== undefined && duration > 0) {
+      // 使用动画
+      this.animateCamera(position, duration);
+    } else {
+      // 立即跳转
+      this.jumpTo(
+        position.bearing,
+        position.target.latitude,
+        position.target.longitude,
+        position.tilt,
+        position.zoom
+      );
+    }
   }
 
   // 注解

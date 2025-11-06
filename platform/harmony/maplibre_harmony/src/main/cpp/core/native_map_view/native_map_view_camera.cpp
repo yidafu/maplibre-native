@@ -4,6 +4,7 @@
 #include "geometry/lat_lng_harmony.hpp"
 #include "geometry/point_harmony.hpp"
 #include "geometry/lat_lng_bounds_harmony.hpp"
+#include "geometry/rect_harmony.hpp"
 #include "camera/camera_position_harmony.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include <mbgl/style/style.hpp>
@@ -1236,10 +1237,101 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
 
 napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
+    args.RequireMinArgs(4);
     
-    // TODO: 需要实现 LatLng 数组和 RectF 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:583-615
-    Logger::warn("NativeMapView", "setVisibleCoordinateBounds: Not implemented - requires LatLng array and RectF wrapper classes");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "setVisibleCoordinateBounds: Invalid arguments");
+        return args.Undefined();
+    }
+    
+    // 获取 NativeMapView 实例
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "setVisibleCoordinateBounds: Map not initialized");
+        return args.Undefined();
+    }
+    
+    try {
+        // 1. 解析 LatLng 数组 (参数0)
+        napi_value coordsArray = args.Get(0);
+        
+        // 检查是否为数组
+        bool isArray = false;
+        napi_status status = napi_is_array(env, coordsArray, &isArray);
+        if (status != napi_ok || !isArray) {
+            Logger::error("NativeMapView", "setVisibleCoordinateBounds: First argument must be an array");
+            return args.Undefined();
+        }
+        
+        uint32_t count = 0;
+        status = napi_get_array_length(env, coordsArray, &count);
+        if (status != napi_ok || count == 0) {
+            Logger::error("NativeMapView", "setVisibleCoordinateBounds: Empty coordinates array");
+            return args.Undefined();
+        }
+        
+        std::vector<mbgl::LatLng> latLngs;
+        latLngs.reserve(count);
+        
+        for (uint32_t i = 0; i < count; i++) {
+            napi_value item;
+            status = napi_get_element(env, coordsArray, i, &item);
+            if (status == napi_ok) {
+                mbgl::LatLng latLng;
+                if (LatLngHarmony::ParseLatLng(env, item, latLng)) {
+                    latLngs.push_back(latLng);
+                } else {
+                    Logger::warn("NativeMapView", "setVisibleCoordinateBounds: Failed to parse LatLng at index %u", i);
+                }
+            }
+        }
+        
+        if (latLngs.empty()) {
+            Logger::error("NativeMapView", "setVisibleCoordinateBounds: No valid coordinates");
+            return args.Undefined();
+        }
+        
+        // 2. 解析 padding (参数1: Rect 对象)
+        napi_value paddingObj = args.Get(1);
+        mbgl::EdgeInsets padding;
+        if (!RectHarmony::ParseAsEdgeInsets(env, paddingObj, padding)) {
+            Logger::error("NativeMapView", "setVisibleCoordinateBounds: Failed to parse padding");
+            return args.Undefined();
+        }
+        
+        // 3. 解析 direction/bearing (参数2)
+        double direction = args.GetDoubleOr(2, -1.0);
+        
+        // 4. 解析 duration (参数3)
+        int64_t duration = args.GetInt64Or(3, 0);
+        
+        // 5. 在地图线程上执行相机计算和动画
+        instance->invokeOnMapThread([latLngs, padding, direction, duration](mbgl::Map* m) {
+            // 计算适配所有坐标的相机位置
+            mbgl::CameraOptions cameraOptions = m->cameraForLatLngs(latLngs, padding);
+            
+            // 如果指定了 direction，设置 bearing
+            if (direction >= 0) {
+                cameraOptions.bearing = direction;
+            }
+            
+            // 构建动画选项
+            mbgl::AnimationOptions animOptions;
+            if (duration > 0) {
+                animOptions.duration.emplace(mbgl::Milliseconds(duration));
+                // 使用与 iOS 相同的缓动函数
+                animOptions.easing.emplace(mbgl::util::UnitBezier{0.25, 0.1, 0.25, 0.1});
+            }
+            
+            // 执行相机动画
+            m->easeTo(cameraOptions, animOptions);
+        });
+        
+        Logger::info("NativeMapView", "setVisibleCoordinateBounds: Successfully set camera for %zu coordinates", latLngs.size());
+        
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setVisibleCoordinateBounds: Exception - %s", e.what());
+    }
     
     return args.Undefined();
 }

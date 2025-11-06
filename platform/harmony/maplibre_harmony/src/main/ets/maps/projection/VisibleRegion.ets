@@ -1,10 +1,29 @@
 /**
  * VisibleRegion - 地图可见区域
  *
- * 表示地图当前视口的可见区域，包含屏幕四个角对应的地理坐标和边界
+ * 表示地图当前视口的可见区域，包含屏幕四个角对应的地理坐标和边界。
+ * 
+ * **平台对照**：
+ * - Android: `VisibleRegion` 类
+ * - iOS: `visibleCoordinateBounds` 属性
+ * 
+ * **坐标系统**：
+ * - topLeft: 屏幕左上角（远左角）
+ * - topRight: 屏幕右上角（远右角）
+ * - bottomLeft: 屏幕左下角（近左角）
+ * - bottomRight: 屏幕右下角（近右角）
+ * 
+ * @example
+ * ```typescript
+ * const projection = map.getProjection();
+ * const visibleRegion = projection.getVisibleRegion();
+ * console.log('可见区域左上角:', visibleRegion.topLeft);
+ * console.log('可见边界:', visibleRegion.latLngBounds);
+ * ```
  */
 import { LatLng } from '../geometry/LatLng';
 import { LatLngBounds } from '../geometry/LatLngBounds';
+
 /**
  * VisibleRegion 类
  *
@@ -12,46 +31,76 @@ import { LatLngBounds } from '../geometry/LatLngBounds';
  */
 export class VisibleRegion {
   /**
-   * 近左角（屏幕左下角）的地理坐标
+   * 屏幕左上角的地理坐标（远左角）
+   * 对应 Android: topLeft
    */
-  public readonly nearLeft: LatLng;
+  public readonly topLeft: LatLng;
+  
   /**
-   * 近右角（屏幕右下角）的地理坐标
+   * 屏幕右上角的地理坐标（远右角）
+   * 对应 Android: topRight
    */
-  public readonly nearRight: LatLng;
+  public readonly topRight: LatLng;
+  
   /**
-   * 远左角（屏幕左上角）的地理坐标
+   * 屏幕左下角的地理坐标（近左角）
+   * 对应 Android: bottomLeft
    */
-  public readonly farLeft: LatLng;
+  public readonly bottomLeft: LatLng;
+  
   /**
-   * 远右角（屏幕右上角）的地理坐标
+   * 屏幕右下角的地理坐标（近右角）
+   * 对应 Android: bottomRight
    */
-  public readonly farRight: LatLng;
+  public readonly bottomRight: LatLng;
+  
   /**
    * 包含整个可见区域的最小边界
+   * 对应 Android: latLngBounds
    */
   public readonly latLngBounds: LatLngBounds;
 
+  // 兼容旧命名（向后兼容）
   /**
-   * 构造函数
+   * @deprecated 使用 bottomLeft 替代
+   */
+  public get nearLeft(): LatLng { return this.bottomLeft; }
+  
+  /**
+   * @deprecated 使用 bottomRight 替代
+   */
+  public get nearRight(): LatLng { return this.bottomRight; }
+  
+  /**
+   * @deprecated 使用 topLeft 替代
+   */
+  public get farLeft(): LatLng { return this.topLeft; }
+  
+  /**
+   * @deprecated 使用 topRight 替代
+   */
+  public get farRight(): LatLng { return this.topRight; }
+
+  /**
+   * 构造函数（Android 风格命名）
    *
-   * @param nearLeft 近左角坐标（屏幕左下角）
-   * @param nearRight 近右角坐标（屏幕右下角）
-   * @param farLeft 远左角坐标（屏幕左上角）
-   * @param farRight 远右角坐标（屏幕右上角）
+   * @param topLeft 屏幕左上角坐标
+   * @param topRight 屏幕右上角坐标
+   * @param bottomLeft 屏幕左下角坐标
+   * @param bottomRight 屏幕右下角坐标
    * @param latLngBounds 边界对象
    */
   constructor(
-    nearLeft: LatLng,
-    nearRight: LatLng,
-    farLeft: LatLng,
-    farRight: LatLng,
+    topLeft: LatLng,
+    topRight: LatLng,
+    bottomLeft: LatLng,
+    bottomRight: LatLng,
     latLngBounds: LatLngBounds
   ) {
-    this.nearLeft = nearLeft;
-    this.nearRight = nearRight;
-    this.farLeft = farLeft;
-    this.farRight = farRight;
+    this.topLeft = topLeft;
+    this.topRight = topRight;
+    this.bottomLeft = bottomLeft;
+    this.bottomRight = bottomRight;
     this.latLngBounds = latLngBounds;
   }
 
@@ -66,14 +115,33 @@ export class VisibleRegion {
   }
 
   /**
+   * 获取可见区域的四个角点坐标数组
+   * 对应 Android API
+   * 
+   * @returns 按 [topLeft, topRight, bottomRight, bottomLeft] 顺序排列的角点数组
+   */
+  public getCorners(): LatLng[] {
+    return [this.topLeft, this.topRight, this.bottomRight, this.bottomLeft];
+  }
+
+  /**
+   * 获取可见区域的中心点坐标
+   * 
+   * @returns 可见区域的中心点地理坐标
+   */
+  public getCenter(): LatLng {
+    return this.latLngBounds.getCenter();
+  }
+
+  /**
    * 转换为字符串表示
    */
   public toString(): string {
     return `VisibleRegion{` +
-      `nearLeft=${this.nearLeft.latitude},${this.nearLeft.longitude}, ` +
-      `nearRight=${this.nearRight.latitude},${this.nearRight.longitude}, ` +
-      `farLeft=${this.farLeft.latitude},${this.farLeft.longitude}, ` +
-      `farRight=${this.farRight.latitude},${this.farRight.longitude}, ` +
+      `topLeft=${this.topLeft.latitude},${this.topLeft.longitude}, ` +
+      `topRight=${this.topRight.latitude},${this.topRight.longitude}, ` +
+      `bottomLeft=${this.bottomLeft.latitude},${this.bottomLeft.longitude}, ` +
+      `bottomRight=${this.bottomRight.latitude},${this.bottomRight.longitude}, ` +
       `bounds=${this.latLngBounds.toString()}}`;
   }
 
@@ -85,14 +153,14 @@ export class VisibleRegion {
       return false;
     }
 
-    return this.nearLeft.latitude === other.nearLeft.latitude &&
-      this.nearLeft.longitude === other.nearLeft.longitude &&
-      this.nearRight.latitude === other.nearRight.latitude &&
-      this.nearRight.longitude === other.nearRight.longitude &&
-      this.farLeft.latitude === other.farLeft.latitude &&
-      this.farLeft.longitude === other.farLeft.longitude &&
-      this.farRight.latitude === other.farRight.latitude &&
-      this.farRight.longitude === other.farRight.longitude;
+    return this.topLeft.latitude === other.topLeft.latitude &&
+      this.topLeft.longitude === other.topLeft.longitude &&
+      this.topRight.latitude === other.topRight.latitude &&
+      this.topRight.longitude === other.topRight.longitude &&
+      this.bottomLeft.latitude === other.bottomLeft.latitude &&
+      this.bottomLeft.longitude === other.bottomLeft.longitude &&
+      this.bottomRight.latitude === other.bottomRight.latitude &&
+      this.bottomRight.longitude === other.bottomRight.longitude;
   }
 }
 
