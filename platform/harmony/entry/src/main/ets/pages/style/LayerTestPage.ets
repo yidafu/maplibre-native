@@ -75,15 +75,19 @@ struct LayerTestPage {
   @State currentLayer: string = '无';
   @State mapReady: boolean = false;
   @State isInitializing: boolean = false;
+  
+  // 固定的测试中心位置（杭州）
+  private readonly TEST_CENTER_LNG: number = 120.2; // 杭州经度
+  private readonly TEST_CENTER_LAT: number = 30.3;  // 杭州纬度
 
   @Builder
   buildMapContent() {
     Stack() {
       MapView({
         styleUrl: 'https://demotiles.maplibre.org/style.json',
-        initialLatitude: 39.9,
-        initialLongitude: 116.4,
-        initialZoom: 5,
+        initialLatitude: 30.3,  // 杭州纬度
+        initialLongitude: 120.2,  // 杭州经度
+        initialZoom: 10,  // 提高缩放级别以便看清图层
         initialBearing: 0,
         initialPitch: 0,
         onMapReady: (map: MapLibreMap) => {
@@ -235,6 +239,17 @@ struct LayerTestPage {
   }
 
   /**
+   * 获取固定的测试中心位置（杭州）
+   * 让所有图层都集中在杭州
+   */
+  private getTestCenter(): RandomLocation {
+    return {
+      longitude: this.TEST_CENTER_LNG,
+      latitude: this.TEST_CENTER_LAT
+    };
+  }
+
+  /**
    * FlyTo 到指定边界范围
    */
   private flyToBounds(points: LatLng[]) {
@@ -277,8 +292,8 @@ struct LayerTestPage {
       return;
     }
     
-    if (!this.mapLibreMap) {
-      hilog.error(DOMAIN, TAG, 'onMapReady: this.mapView is null');
+    if (!map) {
+      hilog.error(DOMAIN, TAG, 'onMapReady: map parameter is null');
       this.message = '❌ 地图初始化失败';
       return;
     }
@@ -287,7 +302,7 @@ struct LayerTestPage {
     
     try {
       this.mapLibreMap = map;
-      this.nativeMapView = map?.getNativeMapView();
+      this.nativeMapView = map.getNativeMapView();
 
       this.mapReady = true;
       this.message = '✅ 地图已就绪 - 可以开始测试 Layer';
@@ -304,7 +319,7 @@ struct LayerTestPage {
   }
 
   /**
-   * 确保测试数据源已添加（使用随机位置）
+   * 确保测试数据源已添加（使用固定中心位置）
    * @returns 所有坐标点的数组，用于计算边界
    */
   private ensureDataSource(): LatLng[] {
@@ -321,8 +336,8 @@ struct LayerTestPage {
         // 忽略不存在的情况
       }
 
-      // 生成随机中心位置
-      const center = this.generateRandomLocation();
+      // 使用固定的测试中心位置
+      const center = this.getTestCenter();
       const centerLng = center.longitude;
       const centerLat = center.latitude;
 
@@ -383,7 +398,7 @@ struct LayerTestPage {
    */
   private testFillLayer: () => void = () : void => {
     if (!this.mapLibreMap) return;
-    const style = this
+    const style = this.mapLibreMap.getStyle();
     if (!style) return;
 
     const allPoints = this.ensureDataSource();
@@ -475,6 +490,7 @@ struct LayerTestPage {
 
   /**
    * 测试 SymbolLayer
+   * 参考 SymbolLayerTestPage 的实现
    */
   private testSymbolLayer() {
     if (!this.mapLibreMap) return;
@@ -486,17 +502,28 @@ struct LayerTestPage {
 
     try {
       const layer: SymbolLayer = new SymbolLayer('symbol-test-layer', 'test-data');
-      layer.setTextField('{name}');
+      
+      // Layout 属性（必须在 addLayer 之前设置）
+      layer.setTextField(['get', 'name']);  // 使用表达式语法
+      layer.setTextMaxWidth(10);
+      layer.setTextAnchor('center');
+      layer.setTextOffset([0, 0]);
       layer.setTextSize(16);
-      layer.setTextColor('#000000');
+      layer.setTextOptional(false);  // 文本不可选：优先显示文本
+      
+      // Paint 属性 - 设置文字样式
+      layer.setTextColor('#2196F3');  // 蓝色文字
+      layer.setTextHaloColor('#FFFFFF');  // 白色光晕
+      layer.setTextHaloWidth(2);  // 光晕宽度
+      layer.setTextOpacity(1.0);
       
       style.addLayer(layer);
 
       // FlyTo 到图层边界
       this.flyToBounds(allPoints);
 
-      hilog.info(DOMAIN, TAG, 'SymbolLayer added');
-      this.message = '✅ 已添加 SymbolLayer (符号图层)';
+      hilog.info(DOMAIN, TAG, 'SymbolLayer added with enhanced styling');
+      this.message = '✅ 已添加 SymbolLayer (符号图层 - 增强样式)';
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       hilog.error(DOMAIN, TAG, `Failed: ${errorMsg}`);
@@ -522,8 +549,8 @@ struct LayerTestPage {
         // 忽略不存在的情况
       }
 
-      // 生成随机中心位置
-      const center = this.generateRandomLocation();
+      // 使用固定的测试中心位置
+      const center = this.getTestCenter();
       const centerLng = center.longitude;
       const centerLat = center.latitude;
       const offset = 1.0; // 热力图点分布范围（适合 zoom=5）
@@ -587,8 +614,8 @@ struct LayerTestPage {
         // 忽略不存在的情况
       }
 
-      // 生成随机中心位置
-      const center = this.generateRandomLocation();
+      // 使用固定的测试中心位置
+      const center = this.getTestCenter();
       const centerLng = center.longitude;
       const centerLat = center.latitude;
       const offset = 0.5; // 建筑物间距（适合 zoom=5）
@@ -675,8 +702,8 @@ struct LayerTestPage {
       
       style.addLayer(layer);
 
-      // 生成随机位置并 flyTo（栅格图层是全球的，选择一个随机位置查看）
-      const center = this.generateRandomLocation();
+      // 使用固定的测试中心位置（栅格图层是全球的，使用测试中心查看）
+      const center = this.getTestCenter();
       const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8
@@ -710,8 +737,8 @@ struct LayerTestPage {
       // 背景图层应该添加到最底层
       style.addLayer(layer);
 
-      // 生成随机位置并 flyTo（背景图层是全局的，选择一个随机位置查看）
-      const center = this.generateRandomLocation();
+      // 使用固定的测试中心位置（背景图层是全局的，使用测试中心查看）
+      const center = this.getTestCenter();
       const options: CameraOptions = {
         center: LatLng.create(center.latitude, center.longitude),
         zoom: 8

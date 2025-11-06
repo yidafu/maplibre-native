@@ -98,7 +98,7 @@ struct Index {
       this.createStorageGroup(),
 
       // ==================== 13. Network Configuration ====================
-      this.createNetworkGroup(),
+      // this.createNetworkGroup(),
 
       // ==================== 14. Events ====================
       this.createEventsGroup(),
@@ -141,6 +141,7 @@ struct Index {
       new TestPageItem('Local Glyph', '本地字体', 'pages/basic/LocalGlyphTestPage', '🔤'),
       new TestPageItem('Map State', '地图状态管理', 'pages/basic/MapStateTestPage', '🔄'),
       new TestPageItem('Core API', '核心API测试', 'pages/basic/CoreAPITestPage', '⚙️'),
+      new TestPageItem('Mapbox Config', 'Mapbox配置测试', 'pages/tests/MapboxConfigTestPage', '🔧'),
     ]);
   }
 

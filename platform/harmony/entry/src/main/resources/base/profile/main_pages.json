@@ -141,6 +141,8 @@
     "pages/options/MapOptionsXmlTestPage",
     
     "pages/other/BenchmarkTestPage",
-    "pages/other/PerformanceMeasurementTestPage"
+    "pages/other/PerformanceMeasurementTestPage",
+    
+    "pages/tests/MapboxConfigTestPage"
   ]
 }
