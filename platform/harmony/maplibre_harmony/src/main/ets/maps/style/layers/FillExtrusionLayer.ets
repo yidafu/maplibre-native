@@ -76,6 +76,16 @@ export class FillExtrusionLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): FillExtrusionLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
+  setFillExtrusionVerticalGradient(gradient: PropertyValue<boolean>): FillExtrusionLayer {
+    this.nativeInstance.setFillExtrusionVerticalGradient(convertValue(gradient));
+    return this;
+  }
+
   // ========== FillExtrusion 样式属性方法 ==========
 
   setFillExtrusionColor(color: PropertyValue<string>): FillExtrusionLayer {

@@ -32,7 +32,6 @@ FillExtrusionLayerNAPI::FillExtrusionLayerNAPI(mbgl::style::FillExtrusionLayer* 
 
 FillExtrusionLayerNAPI::~FillExtrusionLayerNAPI() {
     // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakLayer.reset();
 }
 
 void FillExtrusionLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {
@@ -66,6 +65,8 @@ napi_value FillExtrusionLayerNAPI::Init(napi_env env, napi_value exports) {
         // New properties
         { "setFillExtrusionTranslateAnchor", nullptr, SetFillExtrusionTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getFillExtrusionTranslateAnchor", nullptr, GetFillExtrusionTranslateAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setFillExtrusionVerticalGradient", nullptr, SetFillExtrusionVerticalGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "getFillExtrusionVerticalGradient", nullptr, GetFillExtrusionVerticalGradient, nullptr, nullptr, nullptr, napi_default, nullptr },
         
         // Generic property methods (Android-compatible API)
         { "setProperty", nullptr, SetProperty, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -555,6 +556,42 @@ napi_value FillExtrusionLayerNAPI::GetFillExtrusionTranslateAnchor(napi_env env,
     
     return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, mbgl::style::TranslateAnchorType>(
         env, layerObj->getLayer(), &mbgl::style::FillExtrusionLayer::getFillExtrusionTranslateAnchor
+    );
+}
+
+napi_value FillExtrusionLayerNAPI::SetFillExtrusionVerticalGradient(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+    
+    FillExtrusionLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    
+    mbgl::harmony::setPaintProperty<mbgl::style::FillExtrusionLayer, bool>(
+        env, layerObj->getLayer(), argv[0], "fill-extrusion-vertical-gradient",
+        &mbgl::style::FillExtrusionLayer::setFillExtrusionVerticalGradient
+    );
+    return thisVar;
+}
+
+napi_value FillExtrusionLayerNAPI::GetFillExtrusionVerticalGradient(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+    
+    FillExtrusionLayerNAPI* layerObj;
+    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    
+    if (!layerObj || !layerObj->layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, bool>(
+        env, layerObj->getLayer(), &mbgl::style::FillExtrusionLayer::getFillExtrusionVerticalGradient
     );
 }
 

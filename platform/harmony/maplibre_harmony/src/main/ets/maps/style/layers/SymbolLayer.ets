@@ -74,6 +74,26 @@ export class SymbolLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): SymbolLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
+  setSymbolPlacement(placement: PropertyValue<string>): SymbolLayer {
+    this.nativeInstance.setSymbolPlacement(convertValue(placement));
+    return this;
+  }
+
+  setSymbolSpacing(spacing: PropertyValue<number>): SymbolLayer {
+    this.nativeInstance.setSymbolSpacing(convertValue(spacing));
+    return this;
+  }
+
+  setSymbolAvoidEdges(avoid: PropertyValue<boolean>): SymbolLayer {
+    this.nativeInstance.setSymbolAvoidEdges(convertValue(avoid));
+    return this;
+  }
+
   // ========== Symbol 图标属性方法 ==========
 
   setIconImage(iconImage: PropertyValue<string>): SymbolLayer {
@@ -128,6 +148,11 @@ export class SymbolLayer {
 
   setIconHaloWidth(width: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setIconHaloWidth(convertValue(width));
+    return this;
+  }
+
+  setIconTranslate(translate: PropertyValue<number[]>): SymbolLayer {
+    this.nativeInstance.setIconTranslate(convertValue(translate));
     return this;
   }
 
@@ -200,6 +225,41 @@ export class SymbolLayer {
 
   setTextHaloWidth(width: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setTextHaloWidth(convertValue(width));
+    return this;
+  }
+
+  setTextHaloBlur(blur: PropertyValue<number>): SymbolLayer {
+    this.nativeInstance.setTextHaloBlur(convertValue(blur));
+    return this;
+  }
+
+  setTextTranslate(translate: PropertyValue<number[]>): SymbolLayer {
+    this.nativeInstance.setTextTranslate(convertValue(translate));
+    return this;
+  }
+
+  setTextLineHeight(height: PropertyValue<number>): SymbolLayer {
+    this.nativeInstance.setTextLineHeight(convertValue(height));
+    return this;
+  }
+
+  setTextLetterSpacing(spacing: PropertyValue<number>): SymbolLayer {
+    this.nativeInstance.setTextLetterSpacing(convertValue(spacing));
+    return this;
+  }
+
+  setTextJustify(justify: PropertyValue<string>): SymbolLayer {
+    this.nativeInstance.setTextJustify(convertValue(justify));
+    return this;
+  }
+
+  setTextRotate(angle: PropertyValue<number>): SymbolLayer {
+    this.nativeInstance.setTextRotate(convertValue(angle));
+    return this;
+  }
+
+  setTextTransform(transform: PropertyValue<string>): SymbolLayer {
+    this.nativeInstance.setTextTransform(convertValue(transform));
     return this;
   }
 

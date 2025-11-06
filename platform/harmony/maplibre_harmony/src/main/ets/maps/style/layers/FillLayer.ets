@@ -73,6 +73,11 @@ export class FillLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): FillLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
   // ========== Fill 绘制属性方法 ==========
 
   setFillColor(color: PropertyValue<string>): FillLayer {

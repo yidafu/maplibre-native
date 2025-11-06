@@ -74,6 +74,11 @@ export class HeatmapLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): HeatmapLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
   // ========== Heatmap 样式属性方法 ==========
 
   setHeatmapRadius(radius: PropertyValue<number>): HeatmapLayer {

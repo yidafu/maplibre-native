@@ -32,7 +32,6 @@ CircleLayerNAPI::CircleLayerNAPI(mbgl::style::CircleLayer* layerPtr) {
 
 CircleLayerNAPI::~CircleLayerNAPI() {
     // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakLayer.reset();
 }
 
 void CircleLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

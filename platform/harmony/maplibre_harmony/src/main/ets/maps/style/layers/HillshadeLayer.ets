@@ -74,6 +74,11 @@ export class HillshadeLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): HillshadeLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
   // ========== Hillshade 样式属性方法 ==========
 
   setHillshadeIlluminationDirection(direction: PropertyValue<number>): HillshadeLayer {

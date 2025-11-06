@@ -47,7 +47,6 @@ SymbolLayerNAPI::SymbolLayerNAPI(std::unique_ptr<mbgl::style::SymbolLayer> layer
 
 SymbolLayerNAPI::~SymbolLayerNAPI() {
     // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakLayer.reset();
     Logger::info("SymbolLayerNAPI", "SymbolLayer destroyed");
 }
 

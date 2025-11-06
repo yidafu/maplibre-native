@@ -405,9 +405,10 @@ export class SymbolLayer {
 
   /**
    * 设置图标平移
+   * @param translate 平移量或 Expression
    * @returns this（支持链式调用）
    */
-  setIconTranslate(translate: number[]): SymbolLayer;
+  setIconTranslate(translate: PropertyValue<number[]>): SymbolLayer;
 
   getIconTranslate(): number[];
 
@@ -431,17 +432,19 @@ export class SymbolLayer {
 
   /**
    * 设置文本字母间距
+   * @param spacing 字母间距或 Expression
    * @returns this（支持链式调用）
    */
-  setTextLetterSpacing(spacing: number): SymbolLayer;
+  setTextLetterSpacing(spacing: PropertyValue<number>): SymbolLayer;
 
   getTextLetterSpacing(): number;
 
   /**
    * 设置文本对齐方式
+   * @param justify 对齐方式或 Expression（'auto' | 'left' | 'center' | 'right'）
    * @returns this（支持链式调用）
    */
-  setTextJustify(justify: string): SymbolLayer;
+  setTextJustify(justify: PropertyValue<string>): SymbolLayer;
 
   getTextJustify(): string;
 
@@ -471,9 +474,10 @@ export class SymbolLayer {
 
   /**
    * 设置文本旋转角度
+   * @param rotate 旋转角度或 Expression（度数）
    * @returns this（支持链式调用）
    */
-  setTextRotate(rotate: number): SymbolLayer;
+  setTextRotate(rotate: PropertyValue<number>): SymbolLayer;
 
   getTextRotate(): number;
 
@@ -495,9 +499,10 @@ export class SymbolLayer {
 
   /**
    * 设置文本转换
+   * @param transform 转换类型或 Expression（'none' | 'uppercase' | 'lowercase'）
    * @returns this（支持链式调用）
    */
-  setTextTransform(transform: string): SymbolLayer;
+  setTextTransform(transform: PropertyValue<string>): SymbolLayer;
 
   getTextTransform(): string;
 
@@ -527,9 +532,10 @@ export class SymbolLayer {
 
   /**
    * 设置文本行高
+   * @param lineHeight 行高或 Expression（em 单位）
    * @returns this（支持链式调用）
    */
-  setTextLineHeight(lineHeight: number): SymbolLayer;
+  setTextLineHeight(lineHeight: PropertyValue<number>): SymbolLayer;
 
   getTextLineHeight(): number;
 
@@ -561,17 +567,19 @@ export class SymbolLayer {
 
   /**
    * 设置文本光晕模糊
+   * @param blur 模糊半径或 Expression（像素）
    * @returns this（支持链式调用）
    */
-  setTextHaloBlur(blur: number): SymbolLayer;
+  setTextHaloBlur(blur: PropertyValue<number>): SymbolLayer;
 
   getTextHaloBlur(): number;
 
   /**
    * 设置文本平移
+   * @param translate 平移量或 Expression（[x, y] 像素）
    * @returns this（支持链式调用）
    */
-  setTextTranslate(translate: number[]): SymbolLayer;
+  setTextTranslate(translate: PropertyValue<number[]>): SymbolLayer;
 
   getTextTranslate(): number[];
 
@@ -587,25 +595,28 @@ export class SymbolLayer {
 
   /**
    * 设置符号放置方式
+   * @param placement 放置方式或 Expression（'point' | 'line' | 'line-center'）
    * @returns this（支持链式调用）
    */
-  setSymbolPlacement(placement: string): SymbolLayer;
+  setSymbolPlacement(placement: PropertyValue<string>): SymbolLayer;
 
   getSymbolPlacement(): string;
 
   /**
    * 设置符号间距
+   * @param spacing 间距或 Expression（像素）
    * @returns this（支持链式调用）
    */
-  setSymbolSpacing(spacing: number): SymbolLayer;
+  setSymbolSpacing(spacing: PropertyValue<number>): SymbolLayer;
 
   getSymbolSpacing(): number;
 
   /**
    * 设置符号避免边缘
+   * @param avoid 是否避免边缘或 Expression
    * @returns this（支持链式调用）
    */
-  setSymbolAvoidEdges(avoid: boolean): SymbolLayer;
+  setSymbolAvoidEdges(avoid: PropertyValue<boolean>): SymbolLayer;
 
   getSymbolAvoidEdges(): boolean;
 

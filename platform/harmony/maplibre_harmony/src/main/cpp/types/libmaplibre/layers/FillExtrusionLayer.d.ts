@@ -141,6 +141,14 @@ export class FillExtrusionLayer {
   setFillExtrusionTranslateAnchor(anchor: string): this;
 
   getFillExtrusionTranslateAnchor(): string | undefined;
+
+  /**
+   * 设置垂直渐变效果
+   * @param gradient 是否启用垂直渐变或 Expression
+   */
+  setFillExtrusionVerticalGradient(gradient: PropertyValue<boolean>): this;
+
+  getFillExtrusionVerticalGradient(): boolean | undefined;
   /**
    * 设置单个属性（通用方法）
    * @param propertyName 属性名称

@@ -30,7 +30,6 @@ VectorSourceNAPI::VectorSourceNAPI(mbgl::style::VectorSource* sourcePtr)
 
 VectorSourceNAPI::~VectorSourceNAPI() {
     // Reset weakSource before source is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakSource.reset();
     Logger::info("VectorSourceNAPI", "VectorSource instance destroyed: %s", id.c_str());
 }
 

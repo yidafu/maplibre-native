@@ -73,6 +73,11 @@ export class RasterLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): RasterLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
   // ========== Raster 样式属性方法 ==========
 
   setRasterOpacity(opacity: PropertyValue<number>): RasterLayer {

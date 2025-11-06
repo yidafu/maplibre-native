@@ -75,6 +75,11 @@ export class CircleLayer {
     return this;
   }
 
+  setSourceLayer(sourceLayer: string): CircleLayer {
+    this.nativeInstance.setSourceLayer(sourceLayer);
+    return this;
+  }
+
   // ========== Circle 样式属性方法 ==========
 
   setCircleRadius(radius: PropertyValue<number>): CircleLayer {

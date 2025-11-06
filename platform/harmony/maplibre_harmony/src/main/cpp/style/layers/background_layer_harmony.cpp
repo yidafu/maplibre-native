@@ -29,7 +29,6 @@ BackgroundLayerNAPI::BackgroundLayerNAPI(mbgl::style::BackgroundLayer* layerPtr)
 
 BackgroundLayerNAPI::~BackgroundLayerNAPI() {
     // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakLayer.reset();
 }
 
 void BackgroundLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

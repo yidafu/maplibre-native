@@ -31,7 +31,6 @@ HillshadeLayerNAPI::HillshadeLayerNAPI(mbgl::style::HillshadeLayer* layerPtr) {
 
 HillshadeLayerNAPI::~HillshadeLayerNAPI() {
     // Reset weakLayer before layer is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakLayer.reset();
 }
 
 void HillshadeLayerNAPI::Destructor(napi_env env, void* nativeObject, void* hint) {

@@ -54,6 +54,8 @@ public:
     // New properties
     static napi_value SetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info);
     static napi_value GetFillExtrusionTranslateAnchor(napi_env env, napi_callback_info info);
+    static napi_value SetFillExtrusionVerticalGradient(napi_env env, napi_callback_info info);
+    static napi_value GetFillExtrusionVerticalGradient(napi_env env, napi_callback_info info);
     
     // Generic property methods (Android-compatible API)
     static napi_value SetProperty(napi_env env, napi_callback_info info);

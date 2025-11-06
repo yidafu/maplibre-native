@@ -35,7 +35,6 @@ GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
 
 GeoJsonSourceNAPI::~GeoJsonSourceNAPI() {
     // Reset weakSource before source is destroyed to avoid accessing invalidated WeakPtrFactory
-    weakSource.reset();
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource instance destroyed: %s", id.c_str());
 }
 

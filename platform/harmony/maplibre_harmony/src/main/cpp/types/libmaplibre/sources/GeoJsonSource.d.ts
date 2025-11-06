@@ -1,6 +1,6 @@
 import type { ExpressionLiteral } from '../ExpressionTypes';
 import type { JSONValue } from '../CommonTypes';
-import type { Geometry, IFeature, IFeatureCollection } from '../geojson';
+import type { IFeature, IFeatureCollection } from '../geojson';
 
 /**
  * 聚类属性配置
