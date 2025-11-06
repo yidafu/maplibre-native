@@ -1,6 +1,7 @@
 import { CompassVisibility } from './widgets/CompassVisibility';
 import { OrnamentPosition, Margins } from './types/NativeTypes';
 import { ScaleBarUnit } from './widgets/ScaleBarView';
+import { WidgetLayoutHelper, Offset2D } from './widgets/WidgetLayoutTypes';
 
 /**
  * 焦点位置类型
@@ -70,20 +71,24 @@ export class UiSettings {
   private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
   // 正北时是否淡出
   private compassFadeWhenFacingNorth: boolean = true;
+  // 指南针对齐方式（使用 ArkUI Alignment）
+  private compassAlignment: Alignment = Alignment.TopEnd;
   // 指南针边距
   private compassMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // 指南针位置
-  private compassPosition: OrnamentPosition = OrnamentPosition.TopRight;
+  // 指南针额外偏移（可选）
+  private compassOffset?: Offset2D;
   // 指南针更新回调（由 MapLibreMap 注入）
   public onCompassConfigChanged?: () => void;
   // ==================== Logo 配置 ====================
 
   // Logo 启用状态
   private logoEnabled: boolean = true;
+  // Logo 对齐方式（使用 ArkUI Alignment）
+  private logoAlignment: Alignment = Alignment.BottomStart;
   // Logo 边距
   private logoMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Logo 位置
-  private logoPosition: OrnamentPosition = OrnamentPosition.BottomLeft;
+  // Logo 额外偏移（可选）
+  private logoOffset?: Offset2D;
   // Logo 更新回调
   public onLogoConfigChanged?: () => void;
   // ==================== ScaleBar 配置 ====================
@@ -95,20 +100,24 @@ export class UiSettings {
   private scaleBarUnit: ScaleBarUnit = ScaleBarUnit.Metric;
   // ScaleBar 是否使用深色样式
   private scaleBarUseDarkStyles: boolean = false;
+  // ScaleBar 对齐方式（使用 ArkUI Alignment）
+  private scaleBarAlignment: Alignment = Alignment.TopStart;
   // ScaleBar 边距
   private scaleBarMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // ScaleBar 位置
-  private scaleBarPosition: OrnamentPosition = OrnamentPosition.TopLeft;
+  // ScaleBar 额外偏移（可选）
+  private scaleBarOffset?: Offset2D;
   // ScaleBar 更新回调
   public onScaleBarConfigChanged?: () => void;
   // ==================== Attribution 配置 ====================
 
   // Attribution 启用状态
   private attributionEnabled: boolean = true;
+  // Attribution 对齐方式（使用 ArkUI Alignment）
+  private attributionAlignment: Alignment = Alignment.BottomEnd;
   // Attribution 边距
   private attributionMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Attribution 位置
-  private attributionPosition: OrnamentPosition = OrnamentPosition.BottomRight;
+  // Attribution 额外偏移（可选）
+  private attributionOffset?: Offset2D;
   // Attribution 更新回调
   public onAttributionConfigChanged?: () => void;
 
@@ -573,23 +582,86 @@ export class UiSettings {
   getCompassMargins(): Margins {
     return this.compassMargins;
   }
+  
+  /**
+   * 获取指南针左边距
+   */
+  getCompassMarginLeft(): number {
+    return this.compassMargins.left;
+  }
+  
+  /**
+   * 获取指南针上边距
+   */
+  getCompassMarginTop(): number {
+    return this.compassMargins.top;
+  }
+  
+  /**
+   * 获取指南针右边距
+   */
+  getCompassMarginRight(): number {
+    return this.compassMargins.right;
+  }
+  
+  /**
+   * 获取指南针下边距
+   */
+  getCompassMarginBottom(): number {
+    return this.compassMargins.bottom;
+  }
 
   /**
-   * 设置指南针位置
-   * @param position 位置枚举
+   * 设置指南针对齐方式（鸿蒙风格）
+   * @param alignment ArkUI Alignment 枚举
    */
-  setCompassPosition(position: OrnamentPosition): void {
-    if (this.compassPosition !== position) {
-      this.compassPosition = position;
+  setCompassAlignment(alignment: Alignment): void {
+    if (this.compassAlignment !== alignment) {
+      this.compassAlignment = alignment;
       this.notifyCompassConfigChanged();
     }
   }
 
   /**
-   * 获取指南针位置
+   * 获取指南针对齐方式
+   */
+  getCompassAlignment(): Alignment {
+    return this.compassAlignment;
+  }
+  
+  /**
+   * 设置指南针额外偏移
+   * @param offset 偏移量 { x, y }（vp）
+   */
+  setCompassOffset(offset: Offset2D | undefined): void {
+    this.compassOffset = offset;
+    this.notifyCompassConfigChanged();
+  }
+
+  /**
+   * 获取指南针额外偏移
+   */
+  getCompassOffset(): Offset2D | undefined {
+    return this.compassOffset;
+  }
+
+  /**
+   * 设置指南针位置（向后兼容）
+   * @param position 位置枚举
+   * @deprecated 请使用 setCompassAlignment() 替代
+   */
+  setCompassPosition(position: OrnamentPosition): void {
+    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
+    this.setCompassAlignment(alignment);
+  }
+
+  /**
+   * 获取指南针位置（向后兼容）
+   * @deprecated 请使用 getCompassAlignment() 替代
    */
   getCompassPosition(): OrnamentPosition {
-    return this.compassPosition;
+    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.compassAlignment);
+    return position !== null ? position : OrnamentPosition.TopRight;
   }
 
   /**
@@ -622,21 +694,40 @@ export class UiSettings {
   }
 
   /**
-   * 设置 Logo 位置
-   * @param position 位置枚举
+   * 设置 Logo 对齐方式（鸿蒙风格）
+   * @param alignment ArkUI Alignment 枚举
    */
-  setLogoPosition(position: OrnamentPosition): void {
-    if (this.logoPosition !== position) {
-      this.logoPosition = position;
+  setLogoAlignment(alignment: Alignment): void {
+    if (this.logoAlignment !== alignment) {
+      this.logoAlignment = alignment;
       this.notifyLogoConfigChanged();
     }
   }
 
   /**
-   * 获取 Logo 位置
+   * 获取 Logo 对齐方式
+   */
+  getLogoAlignment(): Alignment {
+    return this.logoAlignment;
+  }
+
+  /**
+   * 设置 Logo 位置（向后兼容）
+   * @param position 位置枚举
+   * @deprecated 请使用 setLogoAlignment() 替代
+   */
+  setLogoPosition(position: OrnamentPosition): void {
+    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
+    this.setLogoAlignment(alignment);
+  }
+
+  /**
+   * 获取 Logo 位置（向后兼容）
+   * @deprecated 请使用 getLogoAlignment() 替代
    */
   getLogoPosition(): OrnamentPosition {
-    return this.logoPosition;
+    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.logoAlignment);
+    return position !== null ? position : OrnamentPosition.BottomLeft;
   }
 
   /**
@@ -659,6 +750,50 @@ export class UiSettings {
    */
   getLogoMargins(): Margins {
     return this.logoMargins;
+  }
+  
+  /**
+   * 获取 Logo 左边距
+   */
+  getLogoMarginLeft(): number {
+    return this.logoMargins.left;
+  }
+  
+  /**
+   * 获取 Logo 上边距
+   */
+  getLogoMarginTop(): number {
+    return this.logoMargins.top;
+  }
+  
+  /**
+   * 获取 Logo 右边距
+   */
+  getLogoMarginRight(): number {
+    return this.logoMargins.right;
+  }
+  
+  /**
+   * 获取 Logo 下边距
+   */
+  getLogoMarginBottom(): number {
+    return this.logoMargins.bottom;
+  }
+  
+  /**
+   * 设置 Logo 额外偏移
+   * @param offset 偏移量 { x, y }（vp）
+   */
+  setLogoOffset(offset: Offset2D | undefined): void {
+    this.logoOffset = offset;
+    this.notifyLogoConfigChanged();
+  }
+
+  /**
+   * 获取 Logo 额外偏移
+   */
+  getLogoOffset(): Offset2D | undefined {
+    return this.logoOffset;
   }
 
   /**
@@ -727,21 +862,40 @@ export class UiSettings {
   }
 
   /**
-   * 设置 ScaleBar 位置
-   * @param position 位置枚举
+   * 设置 ScaleBar 对齐方式（鸿蒙风格）
+   * @param alignment ArkUI Alignment 枚举
    */
-  setScaleBarPosition(position: OrnamentPosition): void {
-    if (this.scaleBarPosition !== position) {
-      this.scaleBarPosition = position;
+  setScaleBarAlignment(alignment: Alignment): void {
+    if (this.scaleBarAlignment !== alignment) {
+      this.scaleBarAlignment = alignment;
       this.notifyScaleBarConfigChanged();
     }
   }
 
   /**
-   * 获取 ScaleBar 位置
+   * 获取 ScaleBar 对齐方式
+   */
+  getScaleBarAlignment(): Alignment {
+    return this.scaleBarAlignment;
+  }
+
+  /**
+   * 设置 ScaleBar 位置（向后兼容）
+   * @param position 位置枚举
+   * @deprecated 请使用 setScaleBarAlignment() 替代
+   */
+  setScaleBarPosition(position: OrnamentPosition): void {
+    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
+    this.setScaleBarAlignment(alignment);
+  }
+
+  /**
+   * 获取 ScaleBar 位置（向后兼容）
+   * @deprecated 请使用 getScaleBarAlignment() 替代
    */
   getScaleBarPosition(): OrnamentPosition {
-    return this.scaleBarPosition;
+    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.scaleBarAlignment);
+    return position !== null ? position : OrnamentPosition.TopLeft;
   }
 
   /**
@@ -764,6 +918,50 @@ export class UiSettings {
    */
   getScaleBarMargins(): Margins {
     return this.scaleBarMargins;
+  }
+  
+  /**
+   * 获取 ScaleBar 左边距
+   */
+  getScaleBarMarginLeft(): number {
+    return this.scaleBarMargins.left;
+  }
+  
+  /**
+   * 获取 ScaleBar 上边距
+   */
+  getScaleBarMarginTop(): number {
+    return this.scaleBarMargins.top;
+  }
+  
+  /**
+   * 获取 ScaleBar 右边距
+   */
+  getScaleBarMarginRight(): number {
+    return this.scaleBarMargins.right;
+  }
+  
+  /**
+   * 获取 ScaleBar 下边距
+   */
+  getScaleBarMarginBottom(): number {
+    return this.scaleBarMargins.bottom;
+  }
+  
+  /**
+   * 设置 ScaleBar 额外偏移
+   * @param offset 偏移量 { x, y }（vp）
+   */
+  setScaleBarOffset(offset: Offset2D | undefined): void {
+    this.scaleBarOffset = offset;
+    this.notifyScaleBarConfigChanged();
+  }
+
+  /**
+   * 获取 ScaleBar 额外偏移
+   */
+  getScaleBarOffset(): Offset2D | undefined {
+    return this.scaleBarOffset;
   }
 
   /**
@@ -796,21 +994,40 @@ export class UiSettings {
   }
 
   /**
-   * 设置 Attribution 位置
-   * @param position 位置枚举
+   * 设置 Attribution 对齐方式（鸿蒙风格）
+   * @param alignment ArkUI Alignment 枚举
    */
-  setAttributionPosition(position: OrnamentPosition): void {
-    if (this.attributionPosition !== position) {
-      this.attributionPosition = position;
+  setAttributionAlignment(alignment: Alignment): void {
+    if (this.attributionAlignment !== alignment) {
+      this.attributionAlignment = alignment;
       this.notifyAttributionConfigChanged();
     }
   }
 
   /**
-   * 获取 Attribution 位置
+   * 获取 Attribution 对齐方式
+   */
+  getAttributionAlignment(): Alignment {
+    return this.attributionAlignment;
+  }
+
+  /**
+   * 设置 Attribution 位置（向后兼容）
+   * @param position 位置枚举
+   * @deprecated 请使用 setAttributionAlignment() 替代
+   */
+  setAttributionPosition(position: OrnamentPosition): void {
+    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
+    this.setAttributionAlignment(alignment);
+  }
+
+  /**
+   * 获取 Attribution 位置（向后兼容）
+   * @deprecated 请使用 getAttributionAlignment() 替代
    */
   getAttributionPosition(): OrnamentPosition {
-    return this.attributionPosition;
+    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.attributionAlignment);
+    return position !== null ? position : OrnamentPosition.BottomRight;
   }
 
   /**
@@ -833,6 +1050,50 @@ export class UiSettings {
    */
   getAttributionMargins(): Margins {
     return this.attributionMargins;
+  }
+  
+  /**
+   * 获取 Attribution 左边距
+   */
+  getAttributionMarginLeft(): number {
+    return this.attributionMargins.left;
+  }
+  
+  /**
+   * 获取 Attribution 上边距
+   */
+  getAttributionMarginTop(): number {
+    return this.attributionMargins.top;
+  }
+  
+  /**
+   * 获取 Attribution 右边距
+   */
+  getAttributionMarginRight(): number {
+    return this.attributionMargins.right;
+  }
+  
+  /**
+   * 获取 Attribution 下边距
+   */
+  getAttributionMarginBottom(): number {
+    return this.attributionMargins.bottom;
+  }
+  
+  /**
+   * 设置 Attribution 额外偏移
+   * @param offset 偏移量 { x, y }（vp）
+   */
+  setAttributionOffset(offset: Offset2D | undefined): void {
+    this.attributionOffset = offset;
+    this.notifyAttributionConfigChanged();
+  }
+
+  /**
+   * 获取 Attribution 额外偏移
+   */
+  getAttributionOffset(): Offset2D | undefined {
+    return this.attributionOffset;
   }
 
   /**

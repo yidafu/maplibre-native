@@ -10,3 +10,7 @@ export { MapSnapshot } from './MapSnapshot';
 
 export { SnapshotOptions, SnapshotOptionsBuilder } from './SnapshotOptions';
 
+export { SnapshotOverlay, LogoPosition, AttributionPosition } from './SnapshotOverlay';
+
+export type { OverlayOptions } from './SnapshotOverlay';
+

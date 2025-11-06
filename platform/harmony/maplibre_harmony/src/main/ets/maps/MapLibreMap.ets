@@ -1,5 +1,5 @@
 import maplibre, { EdgeInsets, NativeMapView } from 'libmaplibre.so';
-import type { Icon, ExpressionLiteral as NapiExpressionLiteral } from 'libmaplibre.so';
+import type { Icon, ExpressionLiteral as NapiExpressionLiteral, Geometry } from 'libmaplibre.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
 import { LatLng } from './geometry/LatLng';
@@ -171,11 +171,16 @@ export class MapLibreMap {
   constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
     this.options = options;
+    
+    // ⚠️ 重要：InfoWindowManager 必须先于 MarkerManager 创建
+    // 因为 MarkerManager 构造函数中会调用 this.mapLibreMap.getInfoWindowManager()
+    this.infoWindowManager = new InfoWindowManager();
+    this.annotationViewManager = new AnnotationViewManager();
+    
+    // 创建 Annotation 管理器（依赖 InfoWindowManager）
     this.markerManager = new MarkerManager(this);
     this.polygonManager = new PolygonManager(this);
     this.polylineManager = new PolylineManager(this);
-    this.infoWindowManager = new InfoWindowManager();
-    this.annotationViewManager = new AnnotationViewManager();
     this.locationComponent = new LocationComponent(this);
     this.projection = new Projection(nativeMapView, 0, 0); // 初始尺寸为 0，稍后更新
 
@@ -532,6 +537,7 @@ export class MapLibreMap {
     // 保存尺寸
     this.viewWidth = width;
     this.viewHeight = height;
+    console.info(`[MapLibreMap] resizeView called: ${width}x${height}`);
 
     // 更新 Projection 的视图尺寸
     this.projection.updateViewSize(width, height);
@@ -1162,7 +1168,7 @@ export class MapLibreMap {
     }
   }
 
-  public getCameraForGeometry(geometry: ESObject, top: number, left: number, bottom: number, right: number,
+  public getCameraForGeometry(geometry: Geometry, top: number, left: number, bottom: number, right: number,
     bearing?: number, tilt?: number): CameraPosition | null {
     if (this.destroyed) {
       return null;
@@ -2914,15 +2920,22 @@ export class MapLibreMap {
     if (this.destroyed) {
       return false;
     }
+
+    console.info(`[MapLibreMap] _notifyMapClick at (${x}, ${y}), listeners count: ${this.mapClickListeners.length}`);
+
+    // 遍历所有地图点击监听器（包括 MarkerManager 注册的监听器）
     for (const listener of this.mapClickListeners) {
       try {
+        console.info(`[MapLibreMap] Calling map click listener...`);
         if (listener.onMapClick(x, y)) {
+          console.info(`[MapLibreMap] Event consumed by listener`);
           return true; // 事件被消费
         }
       } catch (error) {
         console.error(`MapLibreMap: Error in map click listener: ${error}`);
       }
     }
+    console.info(`[MapLibreMap] No listener consumed the event`);
     return false;
   }
 

@@ -2,6 +2,7 @@
  * BackgroundLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
+import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
 import { convertValue } from './LayerUtils';
 
@@ -91,7 +92,7 @@ export class BackgroundLayer {
    * @returns this（支持链式调用）
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): BackgroundLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value) as ESObject);
+    this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
 
@@ -105,13 +106,13 @@ export class BackgroundLayer {
    * });
    */
   setProperties(properties: Record<string, PropertyValue<Object>>): BackgroundLayer {
-    const convertedProps: Record<string, ESObject> = {};
+    const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]) as ESObject;
+      convertedProps[key] = convertValue(properties[key]) as NativePropertyValue<JSONValue>;
     }
-    this.nativeInstance.setProperties(convertedProps as ESObject);
+    this.nativeInstance.setProperties(convertedProps);
     return this;
   }
 

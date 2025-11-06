@@ -422,9 +422,10 @@ export class SymbolLayer {
 
   /**
    * 设置图标光晕模糊
+   * @param blur 模糊半径或 Expression（像素）
    * @returns this（支持链式调用）
    */
-  setIconHaloBlur(blur: number): SymbolLayer;
+  setIconHaloBlur(blur: PropertyValue<number>): SymbolLayer;
 
   getIconHaloBlur(): number;
 

@@ -2,7 +2,7 @@
  * LineLayer - 封装类
  */
 import maplibre, { ExpressionLiteral } from 'libmaplibre.so';
-import type { ExpressionLiteral as NapiExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionLiteral as NapiExpressionLiteral, PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
 import { Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
@@ -170,7 +170,7 @@ export class LineLayer {
    * @returns this（支持链式调用）
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): LineLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value) as ESObject);
+    this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
 
@@ -186,13 +186,13 @@ export class LineLayer {
    * });
    */
   setProperties(properties: Record<string, PropertyValue<Object>>): LineLayer {
-    const convertedProps: Record<string, ESObject> = {};
+    const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]) as ESObject;
+      convertedProps[key] = convertValue(properties[key]) as NativePropertyValue<JSONValue>;
     }
-    this.nativeInstance.setProperties(convertedProps as ESObject);
+    this.nativeInstance.setProperties(convertedProps);
     return this;
   }
 

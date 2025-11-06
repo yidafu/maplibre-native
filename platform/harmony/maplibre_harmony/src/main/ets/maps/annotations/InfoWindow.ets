@@ -159,8 +159,11 @@ export class InfoWindow {
    */
   public show(screenWidth: number, screenHeight: number, markerScreenPosition: Point): void {
     if (this._isShown) {
+      console.info(`[InfoWindow] Already shown, skipping`);
       return;
     }
+
+    console.info(`[InfoWindow] show() called, calculating position...`);
 
     // 计算位置
     const position = this.calculateScreenPosition(
@@ -171,11 +174,18 @@ export class InfoWindow {
 
     this.screenPosition = position;
     this._isShown = true;
-    this.marker.showInfoWindow();
+    // 移除循环调用：this.marker.showInfoWindow() 
+    // Marker 的状态会在 MarkerManager.selectMarker() 中管理
+
+    console.info(`[InfoWindow] Position calculated: (${position.x}, ${position.y}), calling onShowCallback...`);
 
     // 通知外部显示 UI
     if (this.onShowCallback) {
+      console.info(`[InfoWindow] onShowCallback exists, invoking...`);
       this.onShowCallback(this.marker, position);
+      console.info(`[InfoWindow] onShowCallback completed`);
+    } else {
+      console.warn(`[InfoWindow] onShowCallback is null or undefined!`);
     }
   }
 
@@ -188,7 +198,8 @@ export class InfoWindow {
     }
 
     this._isShown = false;
-    this.marker.hideInfoWindow();
+    // 移除循环调用：this.marker.hideInfoWindow()
+    // Marker 的状态会在 MarkerManager 中管理
 
     // 通知外部隐藏 UI
     if (this.onCloseCallback) {
@@ -352,7 +363,11 @@ export class InfoWindow {
  */
 @Component
 export struct InfoWindowComponent {
-  @Prop marker: Marker;
+  // ⚠️ 重要：不使用 @Prop marker: Marker，因为 NAPI 对象无法被 @Prop 正确传递
+  // 改为传递 Marker 的数据字段
+  @Prop markerId: number = 0;
+  @Prop markerTitle: string = '';
+  @Prop markerSnippet: string = '';
   @Prop arrowOffsetX: number = 0; // 箭头相对于中心的偏移量
   @Prop customContent: object | null = null;
   @Prop customStyle: InfoWindowStyle | null = null;
@@ -365,6 +380,8 @@ export struct InfoWindowComponent {
   onClose?: () => void;
 
   aboutToAppear() {
+    console.info(`[InfoWindowComponent] aboutToAppear - marker title: "${this.markerTitle}", snippet: "${this.markerSnippet}"`);
+    console.info(`[InfoWindowComponent] arrowOffsetX: ${this.arrowOffsetX}`);
     // 显示动画
     const animated = this.customStyle?.animated !== false;
     if (animated) {
@@ -417,7 +434,7 @@ export struct InfoWindowComponent {
           // 中间内容区域
           Column() {
             // 标题行：缩略图 + 标题
-            if (this.marker.getTitle()) {
+            if (this.markerTitle) {
               Row() {
                 // 缩略图
                 if (this.customStyle?.thumbnailImage) {
@@ -429,7 +446,7 @@ export struct InfoWindowComponent {
                 }
 
                 // 标题
-                Text(this.marker.getTitle())
+                Text(this.markerTitle)
                   .fontSize(this.customStyle?.titleFontSize ?? 16)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.customStyle?.titleFontColor ?? '#333333')
@@ -442,8 +459,8 @@ export struct InfoWindowComponent {
             }
 
             // 描述
-            if (this.marker.getSnippet()) {
-              Text(this.marker.getSnippet())
+            if (this.markerSnippet) {
+              Text(this.markerSnippet)
                 .fontSize(this.customStyle?.snippetFontSize ?? 14)
                 .fontColor(this.customStyle?.snippetFontColor ?? '#666666')
                 // 移除 maxLines 限制，支持多行文本自动换行

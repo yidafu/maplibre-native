@@ -6,6 +6,11 @@
 
 export { OfflineManager } from './OfflineManager';
 
+export type {
+  MergeOfflineRegionsCallback,
+  FileSourceCallback
+} from './OfflineManager';
+
 export { OfflineRegion } from './OfflineRegion';
 
 export { createTilePyramidRegionDefinition } from './OfflineRegionDefinition';

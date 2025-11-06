@@ -51,11 +51,15 @@ public:
      * - exception_ptr: 错误（如果有）
      * - PremultipliedImage: 图像数据
      * - vector<string>: 归属信息
+     * - PointForFn: 地理坐标→屏幕坐标转换函数
+     * - LatLngForFn: 屏幕坐标→地理坐标转换函数
      */
     using SnapshotCallback = std::function<void(
         std::exception_ptr,
         mbgl::PremultipliedImage,
-        std::vector<std::string>
+        std::vector<std::string>,
+        mbgl::MapSnapshotter::PointForFn,
+        mbgl::MapSnapshotter::LatLngForFn
     )>;
 
     /**

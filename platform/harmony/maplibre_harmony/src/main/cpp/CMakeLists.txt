@@ -222,7 +222,10 @@ add_library(maplibre
     # Snapshot API - 地图快照功能
     snapshot/map_snapshotter_harmony.hpp
     snapshot/map_snapshotter_harmony.cpp
+    snapshot/snapshotter_napi.hpp
     snapshot/snapshotter_napi.cpp
+    snapshot/map_snapshot_napi.hpp
+    snapshot/map_snapshot_napi.cpp
     
     # Source NAPI 类
     sources/geojson_source_napi.hpp

@@ -10,6 +10,13 @@ import maplibre, {
   SnapshotOptionsNAPI,
   SnapshotResultNAPI
 } from 'libmaplibre.so';
+import type { 
+  Layer, 
+  Source,
+  CameraPositionLike,
+  LatLngBoundsLike,
+  MapSnapshotterObserver as NativeMapSnapshotterObserver
+} from 'libmaplibre.so';
 import image from '@ohos.multimedia.image';
 import { SnapshotOptions } from './SnapshotOptions';
 import { MapSnapshot } from './MapSnapshot';
@@ -17,6 +24,8 @@ import { CameraPosition } from '../camera/CameraPosition';
 import { LatLngBounds } from '../geometry/LatLngBounds';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
+
+export type { MapSnapshotterObserver } from 'libmaplibre.so';
 
 /**
  * 快照就绪回调
@@ -40,23 +49,6 @@ export interface SnapshotErrorHandler {
    * @param error 错误消息
    */
   onError(error: string): void;
-}
-
-/**
- * MapSnapshotter 观察者接口
- * 用于监听快照器的状态变化
- */
-export interface MapSnapshotterObserver {
-  /**
-   * 样式加载完成时调用
-   */
-  onDidFinishLoadingStyle(): void;
-
-  /**
-   * 样式图片缺失时调用
-   * @param imageName 缺失的图片名称
-   */
-  onStyleImageMissing(imageName: string): void;
 }
 
 /**
@@ -98,7 +90,7 @@ export class MapSnapshotter {
   private nativeSnapshotter: MapSnapshotterNAPI | null = null;
   private options: SnapshotOptions;
   private cancelled: boolean = false;
-  private observer: MapSnapshotterObserver | null = null;
+  private observer: NativeMapSnapshotterObserver | null = null;
 
   /**
    * 构造函数
@@ -122,30 +114,27 @@ export class MapSnapshotter {
 
       // 如果提供了相机位置，转换为普通对象并添加到选项中
       if (options.cameraPosition) {
-        const cameraObj: Record<string, ESObject> = napiOptions as Record<string, ESObject>;
-        const targetObj: Record<string, number> = {
-          'latitude': options.cameraPosition.target.latitude,
-          'longitude': options.cameraPosition.target.longitude
+        const cameraData: CameraPositionLike = {
+          target: {
+            latitude: options.cameraPosition.target.latitude,
+            longitude: options.cameraPosition.target.longitude
+          },
+          zoom: options.cameraPosition.zoom,
+          bearing: options.cameraPosition.bearing,
+          tilt: options.cameraPosition.tilt
         };
-        const cameraData: Record<string, ESObject> = {
-          'target': targetObj as ESObject,
-          'zoom': options.cameraPosition.zoom as ESObject,
-          'bearing': options.cameraPosition.bearing as ESObject,
-          'tilt': options.cameraPosition.tilt as ESObject
-        };
-        cameraObj['camera'] = cameraData as ESObject;
+        napiOptions.camera = cameraData;
       }
 
       // 如果提供了区域，转换为普通对象并添加到选项中
       if (options.region) {
-        const regionObj: Record<string, ESObject> = napiOptions as Record<string, ESObject>;
-        const regionData: Record<string, number> = {
-          'north': options.region.north,
-          'south': options.region.south,
-          'east': options.region.east,
-          'west': options.region.west
+        const regionData: LatLngBoundsLike = {
+          north: options.region.north,
+          south: options.region.south,
+          east: options.region.east,
+          west: options.region.west
         };
-        regionObj['region'] = regionData as ESObject;
+        napiOptions.region = regionData;
       }
 
       // 创建 native snapshotter
@@ -210,12 +199,14 @@ export class MapSnapshotter {
         // 从 native 结果创建 PixelMap
         this.createPixelMapFromNativeResult(result)
           .then(pixelMap => {
+            // 创建 MapSnapshot 对象，传递 native 对象以支持坐标转换
             const snapshot = new MapSnapshot(
               pixelMap,
               result.width,
               result.height,
               result.attributions || [],
-              this.options.showLogo !== false
+              this.options.showLogo !== false,
+              result  // 传递 native 快照对象
             );
 
             callback.onSnapshotReady(snapshot);
@@ -309,17 +300,16 @@ export class MapSnapshotter {
 
     try {
       // 将 CameraPosition 转换为普通对象以传递给 native 代码
-      const targetObj: Record<string, number> = {
-        'latitude': cameraPosition.target.latitude,
-        'longitude': cameraPosition.target.longitude
+      const cameraData: CameraPositionLike = {
+        target: {
+          latitude: cameraPosition.target.latitude,
+          longitude: cameraPosition.target.longitude
+        },
+        zoom: cameraPosition.zoom,
+        bearing: cameraPosition.bearing,
+        tilt: cameraPosition.tilt
       };
-      const cameraData: Record<string, ESObject> = {
-        'target': targetObj as ESObject,
-        'zoom': cameraPosition.zoom as ESObject,
-        'bearing': cameraPosition.bearing as ESObject,
-        'tilt': cameraPosition.tilt as ESObject
-      };
-      this.nativeSnapshotter.setCameraPosition(cameraData as ESObject);
+      this.nativeSnapshotter.setCameraPosition(cameraData);
       this.options.cameraPosition = cameraPosition;
       hilog.info(DOMAIN, 'MapSnapshotter', 'Camera position set');
     } catch (error) {
@@ -346,13 +336,13 @@ export class MapSnapshotter {
 
     try {
       // 将 LatLngBounds 转换为普通对象
-      const regionData: Record<string, number> = {
-        'north': region.north,
-        'south': region.south,
-        'east': region.east,
-        'west': region.west
+      const regionData: LatLngBoundsLike = {
+        north: region.north,
+        south: region.south,
+        east: region.east,
+        west: region.west
       };
-      this.nativeSnapshotter.setRegion(regionData as ESObject);
+      this.nativeSnapshotter.setRegion(regionData);
       this.options.region = region;
       hilog.info(DOMAIN, 'MapSnapshotter', 'Region set');
     } catch (error) {
@@ -384,7 +374,7 @@ export class MapSnapshotter {
    * 设置观察者
    * @param observer 观察者对象，传 null 可清除观察者
    */
-  public setObserver(observer: MapSnapshotterObserver | null): void {
+  public setObserver(observer: NativeMapSnapshotterObserver | null): void {
     if (!this.nativeSnapshotter) {
       hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
       return;
@@ -394,12 +384,7 @@ export class MapSnapshotter {
 
     try {
       if (observer) {
-        // 将 observer 包装为 ESObject 传递给 native
-        const observerObj: Record<string, ESObject> = {
-          'onDidFinishLoadingStyle': observer.onDidFinishLoadingStyle as ESObject,
-          'onStyleImageMissing': observer.onStyleImageMissing as ESObject
-        };
-        this.nativeSnapshotter.setObserver(observerObj as ESObject);
+        this.nativeSnapshotter.setObserver(observer);
         hilog.info(DOMAIN, 'MapSnapshotter', 'Observer set');
       } else {
         this.nativeSnapshotter.setObserver(null);
@@ -416,6 +401,88 @@ export class MapSnapshotter {
    */
   public getRegion(): LatLngBounds | undefined {
     return this.options.region;
+  }
+
+  /**
+   * 获取图层（样式加载完成后可用）
+   * 
+   * 对应 Android: `MapSnapshotter.getLayer(String)`
+   * 
+   * @param layerId 图层ID
+   * @returns 图层对象，如果不存在则返回 null
+   */
+  public getLayer(layerId: string): Layer | null {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
+      return null;
+    }
+
+    try {
+      return this.nativeSnapshotter.getLayer(layerId) || null;
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to get layer: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 获取数据源（样式加载完成后可用）
+   * 
+   * 对应 Android: `MapSnapshotter.getSource(String)`
+   * 
+   * @param sourceId 数据源ID
+   * @returns 数据源对象，如果不存在则返回 null
+   */
+  public getSource(sourceId: string): Source | null {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
+      return null;
+    }
+
+    try {
+      return this.nativeSnapshotter.getSource(sourceId) || null;
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to get source: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * 添加图片到快照样式
+   * 
+   * 对应 Android: `MapSnapshotter.addImage(String, Bitmap, boolean)`
+   * 
+   * 应在 onDidFinishLoadingStyle 回调中调用
+   * 
+   * @param name 图片名称
+   * @param imageData 图片数据（ImageBitmap 或 ArrayBuffer）
+   * @param sdf 是否为 SDF（Signed Distance Field）图片
+   * 
+   * @example
+   * ```typescript
+   * snapshotter.setObserver({
+   *   onDidFinishLoadingStyle: () => {
+   *     snapshotter.addImage('custom-marker', imageData, false);
+   *   },
+   *   onStyleImageMissing: (imageName) => {
+   *     console.log('Missing image:', imageName);
+   *   }
+   * });
+   * ```
+   */
+  public addImage(name: string, imageData: ArrayBuffer | Uint8Array, sdf: boolean = false): void {
+    if (!this.nativeSnapshotter) {
+      hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
+      return;
+    }
+
+    try {
+      this.nativeSnapshotter.addImage(name, imageData, sdf);
+      hilog.info(DOMAIN, 'MapSnapshotter', `Image added: ${name}`);
+    } catch (error) {
+      hilog.error(DOMAIN, 'MapSnapshotter', `Failed to add image: ${error}`);
+      throw new Error(`Failed to add image: ${error}`);
+    }
   }
 
   /**

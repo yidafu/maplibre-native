@@ -4,6 +4,7 @@
 
 #include "snapshotter_napi.hpp"
 #include "map_snapshotter_harmony.hpp"
+#include "map_snapshot_napi.hpp"
 #include "../utils/logger.h"
 #include "../camera/camera_position_harmony.hpp"
 #include "../geometry/lat_lng_bounds_harmony.hpp"
@@ -16,6 +17,8 @@
 #include <memory>
 
 using mbgl::harmony::ThreadSafeCallback;
+using mbgl::harmony::Logger;
+using mbgl::harmony::napi::NapiArgs;
 
 namespace mbgl {
 namespace harmony {
@@ -31,6 +34,9 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info);
 napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info);
 napi_value SnapshotterSetSize(napi_env env, napi_callback_info info);
 napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info);
+napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info);
+napi_value SnapshotterGetSource(napi_env env, napi_callback_info info);
+napi_value SnapshotterAddImage(napi_env env, napi_callback_info info);
 
 /**
  * MapSnapshotter 内部实例类
@@ -200,7 +206,10 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         {"setCameraPosition", nullptr, SnapshotterSetCameraPosition, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setRegion", nullptr, SnapshotterSetRegion, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setSize", nullptr, SnapshotterSetSize, nullptr, nullptr, nullptr, napi_default, nullptr},
-        {"setObserver", nullptr, SnapshotterSetObserver, nullptr, nullptr, nullptr, napi_default, nullptr}
+        {"setObserver", nullptr, SnapshotterSetObserver, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getLayer", nullptr, SnapshotterGetLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getSource", nullptr, SnapshotterGetSource, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addImage", nullptr, SnapshotterAddImage, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
     napi_define_properties(env, jsSnapshotter, sizeof(methods) / sizeof(methods[0]), methods);
@@ -246,12 +255,18 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     // 使用 shared_ptr 确保回调在异步操作完成前不被释放
     auto sharedCallback = std::shared_ptr<ThreadSafeCallback>(std::move(threadSafeCallback));
 
+    // 获取 pixelRatio（从 snapshotter 的选项中）
+    float pixelRatio = 1.0f; // 默认值，实际应该从 snapshotter 获取
+    // TODO: 从 snapshotterInstance 的选项中获取 pixelRatio
+    
     // 调用 C++ snapshot 方法
     snapshotterInstance->snapshotter->snapshot(
-        [sharedCallback](
+        [sharedCallback, pixelRatio](
             std::exception_ptr err,
             mbgl::PremultipliedImage image,
-            std::vector<std::string> attributions
+            std::vector<std::string> attributions,
+            mbgl::MapSnapshotter::PointForFn pointForFn,
+            mbgl::MapSnapshotter::LatLngForFn latLngForFn
         ) {
             // 使用 ThreadSafeCallback 安全地调用到主线程
             Logger::info("SnapshotterNAPI", "Snapshot callback triggered");
@@ -269,59 +284,30 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
                     sharedCallback->CallWithString(errorMsg);
                 }
             } else {
-                // 成功 - 移动图像数据到堆上以便在线程安全回调中使用
+                // 成功 - 移动数据到堆上以便在线程安全回调中使用
                 Logger::info("SnapshotterNAPI", "Snapshot success: %dx%d, %zu bytes",
                              image.size.width, image.size.height, image.bytes());
                 
-                // 将图像数据复制到 shared_ptr（自动管理内存）
-                auto imageData = std::make_shared<std::vector<uint8_t>>(
-                    image.data.get(), 
-                    image.data.get() + image.bytes()
-                );
-                uint32_t width = image.size.width;
-                uint32_t height = image.size.height;
+                // 移动所有数据到 shared_ptr（自动管理内存）
+                auto imageData = std::make_shared<mbgl::PremultipliedImage>(std::move(image));
                 auto attrs = std::make_shared<std::vector<std::string>>(std::move(attributions));
                 
-                // 使用 ThreadSafeCallback 在主线程创建 JavaScript 对象
-                sharedCallback->Call([imageData, width, height, attrs](napi_env env) -> napi_value {
-                    // 创建 ArrayBuffer 包含图像数据
-                    void* data;
-                    napi_value arrayBuffer;
-                    size_t byteLength = imageData->size();
-                    napi_create_arraybuffer(env, byteLength, &data, &arrayBuffer);
+                // 使用 ThreadSafeCallback 在主线程创建 MapSnapshot 对象
+                sharedCallback->Call([imageData, attrs, pixelRatio, pointForFn, latLngForFn](napi_env env) -> napi_value {
+                    // 使用新的 CreateMapSnapshotObject 函数创建完整的 MapSnapshot 对象
+                    // 注意：需要移动 imageData 的数据
+                    mbgl::PremultipliedImage imageCopy = std::move(*imageData);
+                    napi_value mapSnapshotObj = CreateMapSnapshotObject(
+                        env,
+                        std::move(imageCopy),
+                        *attrs,
+                        pixelRatio,
+                        pointForFn,
+                        latLngForFn
+                    );
                     
-                    // 复制图像数据
-                    std::memcpy(data, imageData->data(), byteLength);
-                    
-                    // 创建结果对象
-                    napi_value resultObj;
-                    napi_create_object(env, &resultObj);
-                    
-                    // 设置属性
-                    napi_value widthVal, heightVal;
-                    napi_create_uint32(env, width, &widthVal);
-                    napi_create_uint32(env, height, &heightVal);
-                    
-                    napi_set_named_property(env, resultObj, "data", arrayBuffer);
-                    napi_set_named_property(env, resultObj, "width", widthVal);
-                    napi_set_named_property(env, resultObj, "height", heightVal);
-                    
-                    // 添加 attributions
-                    if (!attrs->empty()) {
-                        napi_value attributionsArray;
-                        napi_create_array_with_length(env, attrs->size(), &attributionsArray);
-                        
-                        for (size_t i = 0; i < attrs->size(); i++) {
-                            napi_value attrValue;
-                            napi_create_string_utf8(env, (*attrs)[i].c_str(), NAPI_AUTO_LENGTH, &attrValue);
-                            napi_set_element(env, attributionsArray, i, attrValue);
-                        }
-                        
-                        napi_set_named_property(env, resultObj, "attributions", attributionsArray);
-                    }
-                    
-                    // 返回结果对象（会作为回调的单个参数传入）
-                    return resultObj;
+                    // 返回 MapSnapshot 对象（会作为回调的单个参数传入）
+                    return mapSnapshotObj;
                 });
             }
         }
@@ -566,6 +552,107 @@ napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
     }
 
     return nullptr;
+}
+
+/**
+ * 获取图层
+ * 
+ * JavaScript 调用：
+ * const layer = snapshotter.getLayer(layerId);
+ */
+napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        Logger::warn("SnapshotterNAPI", "getLayer: Snapshotter not initialized");
+        return args.Undefined();
+    }
+
+    // 解析 layerId
+    std::string layerId = args.GetString(0, "layerId");
+    if (args.HasError()) return args.Undefined();
+
+    // TODO: 实现图层获取
+    // 需要访问 snapshotter->getStyle().getLayer(layerId)
+    // 并将结果转换为 NAPI Layer 对象
+    Logger::warn("SnapshotterNAPI", "getLayer: Not fully implemented yet");
+    
+    return args.Undefined();
+}
+
+/**
+ * 获取数据源
+ * 
+ * JavaScript 调用：
+ * const source = snapshotter.getSource(sourceId);
+ */
+napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        Logger::warn("SnapshotterNAPI", "getSource: Snapshotter not initialized");
+        return args.Undefined();
+    }
+
+    // 解析 sourceId
+    std::string sourceId = args.GetString(0, "sourceId");
+    if (args.HasError()) return args.Undefined();
+
+    // TODO: 实现数据源获取
+    // 需要访问 snapshotter->getStyle().getSource(sourceId)
+    // 并将结果转换为 NAPI Source 对象
+    Logger::warn("SnapshotterNAPI", "getSource: Not fully implemented yet");
+    
+    return args.Undefined();
+}
+
+/**
+ * 添加图片
+ * 
+ * JavaScript 调用：
+ * snapshotter.addImage(name, imageData, sdf);
+ */
+napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(3);
+    if (args.HasError()) return args.Undefined();
+
+    // 获取 native 实例
+    MapSnapshotterInstance* snapshotterInstance;
+    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    
+    if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
+        Logger::warn("SnapshotterNAPI", "addImage: Snapshotter not initialized");
+        return args.Undefined();
+    }
+
+    // 解析参数
+    std::string name = args.GetString(0, "name");
+    // napi_value imageData = args.GetValue(1); // ImageBitmap 或 ArrayBuffer
+    bool sdf = args.GetBool(2, "sdf");
+    
+    if (args.HasError()) return args.Undefined();
+
+    // TODO: 实现图片添加
+    // 需要：
+    // 1. 解析 ImageBitmap/ArrayBuffer 为 mbgl::PremultipliedImage
+    // 2. 调用 snapshotter->getStyle().addImage(name, std::move(image), sdf)
+    Logger::warn("SnapshotterNAPI", "addImage: Not fully implemented yet - name=%s, sdf=%d", 
+                 name.c_str(), sdf);
+    
+    return args.Undefined();
 }
 
 } // namespace harmony

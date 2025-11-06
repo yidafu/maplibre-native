@@ -7,8 +7,6 @@ import { CameraOptions, CameraPosition } from '../camera/CameraPosition';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
-type ESObject = object;
-
 /**
  * 位置相机控制器
  * 负责管理相机跟踪用户位置的行为

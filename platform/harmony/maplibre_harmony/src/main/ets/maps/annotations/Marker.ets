@@ -205,15 +205,28 @@ export class Marker {
   }
 
   showInfoWindow(): void {
-    this.nativeInstance.showInfoWindow();
+    // 通过 MapLibreMap 显示 InfoWindow（ETS 层实现）
+    if (this._map) {
+      this._map.showInfoWindow(this);
+    } else {
+      console.warn('[Marker] Cannot show InfoWindow: marker not added to map');
+    }
   }
 
   hideInfoWindow(): void {
-    this.nativeInstance.hideInfoWindow();
+    // 通过 MapLibreMap 隐藏 InfoWindow（ETS 层实现）
+    if (this._map) {
+      this._map.hideInfoWindow(this);
+    }
   }
 
   isInfoWindowShown(): boolean {
-    return this.nativeInstance.isInfoWindowShown();
+    // 通过 InfoWindowManager 检查状态
+    if (this._map) {
+      const infoWindow = this._map.getInfoWindowManager().get(this);
+      return infoWindow ? infoWindow.isShown() : false;
+    }
+    return false;
   }
 
   // ========== 扩展方法（MarkerManager 需要的）==========

@@ -616,6 +616,7 @@ class NativeMapViewController extends XComponentController {
    * 表面变化回调
    */
   onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
+    console.info(`[NativeMapView] onSurfaceChanged called: ${rect.surfaceWidth}x${rect.surfaceHeight}`);
 
     // 防止异常小的尺寸（可能是 setXComponentSurfaceRect 的副作用）
     if (rect.surfaceWidth < 100 || rect.surfaceHeight < 100) {
@@ -630,19 +631,33 @@ class NativeMapViewController extends XComponentController {
 
     if (this.nativeMapView && this.isInitialized) {
       try {
-
+        // 同时更新 NAPI 层和 ETS 层的视图尺寸
         this.nativeMapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
+        
+        // ⚠️ 重要：同步更新 MapLibreMap 的视图尺寸（用于 InfoWindow 等 ETS 层功能）
+        const mapLibreMap = this.getMapLibreMapInstance();
+        if (mapLibreMap) {
+          mapLibreMap.resizeView(rect.surfaceWidth, rect.surfaceHeight);
+        }
       } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to resize map: ${error.message}`);
+        const err = error as Error;
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to resize map: ${err.message}`);
       }
     } else if (this.nativeMapView && !this.isInitialized) {
       // 如果地图尚未初始化，使用新的尺寸重新初始化
       try {
-
         this.nativeMapView.resizeView(rect.surfaceWidth, rect.surfaceHeight);
+        
+        // ⚠️ 重要：初始化时也要设置 MapLibreMap 的视图尺寸
+        const mapLibreMap = this.getMapLibreMapInstance();
+        if (mapLibreMap) {
+          mapLibreMap.resizeView(rect.surfaceWidth, rect.surfaceHeight);
+        }
+        
         this.isInitialized = true;
       } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to reinitialize map: ${error.message}`);
+        const err = error as Error;
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to reinitialize map: ${err.message}`);
       }
     }
   }
@@ -914,6 +929,12 @@ class NativeMapViewController extends XComponentController {
         const options = new MapLibreMapOptions();
         this.mapLibreMapInstance = new MapLibreMap(this.nativeMapView, options);
         hilog.info(DOMAIN, 'NativeMapViewController', '✅ MapLibreMap instance created');
+        
+        // ⚠️ 重要：立即同步当前的视图尺寸（因为 onSurfaceChanged 可能在 MapLibreMap 创建前就已经被调用）
+        if (this.surfaceWidth > 0 && this.surfaceHeight > 0) {
+          console.info(`[NativeMapView] Syncing view size to MapLibreMap: ${this.surfaceWidth}x${this.surfaceHeight}`);
+          this.mapLibreMapInstance.resizeView(this.surfaceWidth, this.surfaceHeight);
+        }
         
         // 连接手势检测器到 MapLibreMap
         this.gestureDetector.setMapLibreMapInstance(this.mapLibreMapInstance);
@@ -1884,6 +1905,13 @@ export struct MapView {
           // 更新地图实例，触发声明式子组件初始化
           this.mapInstance = mapLibreMap;
 
+          // ⚠️ 重要：先设置 InfoWindowManager 回调，再触发 onMapReady
+          // 参考 Android/iOS 实现：回调设置应该在用户代码执行前完成
+          // 避免竞态条件：如果用户在 onMapReady 中立即添加 Marker 并点击，回调必须已经设置好
+          console.info(`[NativeMapView] Setting up InfoWindow callbacks before onMapReady...`);
+          this.setupInfoWindowCallbacks();
+          console.info(`[NativeMapView] InfoWindow callbacks setup completed`);
+
           // 样式加载完成，触发 onMapReady
           if (this.onMapReady) {
             hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapReady callback');
@@ -1891,11 +1919,6 @@ export struct MapView {
           } else {
             hilog.warn(DOMAIN, 'NativeMapView', '⚠️ No onMapReady callback registered');
           }
-
-          // 设置 InfoWindowManager 回调
-          setTimeout(() => {
-            this.setupInfoWindowCallbacks();
-          }, 100);
         };
 
         // 设置 UI 组件更新回调
@@ -2119,34 +2142,51 @@ export struct MapView {
    * 设置 InfoWindowManager 的UI回调
    */
   setupInfoWindowCallbacks(): void {
+    console.info(`[NativeMapView] setupInfoWindowCallbacks called`);
     try {
       const mapLibreMap = this.controller.getMapLibreMapInstance();
+      console.info(`[NativeMapView] MapLibreMap instance: ${mapLibreMap ? 'exists' : 'null'}`);
       if (!mapLibreMap) {
         hilog.warn(DOMAIN, 'NativeMapView', 'MapLibreMap instance not available for InfoWindow setup');
         return;
       }
 
       const infoWindowManager = mapLibreMap.getInfoWindowManager();
+      console.info(`[NativeMapView] InfoWindowManager instance: ${infoWindowManager ? 'exists' : 'null'}`);
 
       // 显示 InfoWindow
       infoWindowManager.setOnShowUICallback((marker: Marker, position: InfoWindowPosition) => {
+        console.info(`[NativeMapView] onShowUICallback triggered for marker: ${marker.getTitle()}, position: (${position.x}, ${position.y})`);
+        console.info(`[NativeMapView] Marker details - ID: ${marker.getId()}, title: "${marker.getTitle()}", snippet: "${marker.getSnippet()}"`);
+        console.info(`[NativeMapView] Position details - x: ${position.x}, y: ${position.y}, arrowOffsetX: ${position.arrowOffsetX}`);
+        
         const existingIndex = this.visibleInfoWindows.findIndex(
           item => item.marker.getId() === marker.getId()
         );
 
+        const style = mapLibreMap.getMarkerManager().getInfoWindowStyle(marker);
+        console.info(`[NativeMapView] InfoWindow style: ${style ? 'exists' : 'null'}`);
+
         const newState: InfoWindowState = {
-          marker: marker,
+          marker: marker, // 保留引用用于回调
+          markerId: marker.getId(),
+          markerTitle: marker.getTitle(),
+          markerSnippet: marker.getSnippet(),
           position: position,
-          style: mapLibreMap.getMarkerManager().getInfoWindowStyle(marker),
+          style: style,
           key: `infowindow-${marker.getId()}-${Date.now()}`
         };
 
         if (existingIndex >= 0) {
+          console.info(`[NativeMapView] Updating existing InfoWindow at index ${existingIndex}`);
           this.visibleInfoWindows[existingIndex] = newState;
         } else {
+          console.info(`[NativeMapView] Adding new InfoWindow, total will be: ${this.visibleInfoWindows.length + 1}`);
           this.visibleInfoWindows.push(newState);
         }
-
+        
+        console.info(`[NativeMapView] visibleInfoWindows updated, count: ${this.visibleInfoWindows.length}`);
+        console.info(`[NativeMapView] Last added state - marker title: "${newState.marker.getTitle()}", position: (${newState.position.x}, ${newState.position.y})`);
       });
 
       // 隐藏 InfoWindow
@@ -2169,6 +2209,8 @@ export struct MapView {
         }
       });
 
+      console.info(`[NativeMapView] InfoWindow callbacks set successfully`);
+
       // ========== 设置 AnnotationView 回调 ==========
       const annotationViewManager = mapLibreMap.getMarkerManager().getAnnotationViewManager();
 
@@ -2177,7 +2219,8 @@ export struct MapView {
       // 这将在相机监听器中实现
 
     } catch (error) {
-      hilog.error(DOMAIN, 'NativeMapView', `Failed to setup AnnotationView callbacks: ${error.message}`);
+      hilog.error(DOMAIN, 'NativeMapView', `Failed to setup InfoWindow/AnnotationView callbacks: ${error.message}`);
+      console.error(`[NativeMapView] Error details: ${error.stack || error}`);
     }
   }
 

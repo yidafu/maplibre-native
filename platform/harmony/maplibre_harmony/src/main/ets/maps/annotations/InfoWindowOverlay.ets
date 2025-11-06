@@ -7,7 +7,11 @@ import { Marker } from './Marker';
  * InfoWindow 状态数据
  */
 export interface InfoWindowState {
-  marker: Marker;
+  marker: Marker; // 保留引用用于回调
+  // 以下是用于渲染的数据（避免 @Prop 传递 NAPI 对象的问题）
+  markerId: number;
+  markerTitle: string;
+  markerSnippet: string;
   position: InfoWindowPosition;
   style?: InfoWindowStyle;
   key: string; // 用于 ForEach 的唯一键
@@ -41,6 +45,7 @@ export struct InfoWindowOverlay {
    * InfoWindow 列表变化时的回调
    */
   onInfoWindowsChanged() {
+    console.info(`[InfoWindowOverlay] visibleInfoWindows changed, count: ${this.visibleInfoWindows.length}`);
   }
 
   build() {
@@ -50,7 +55,9 @@ export struct InfoWindowOverlay {
         this.visibleInfoWindows,
         (infoWindowState: InfoWindowState) => {
           InfoWindowComponent({
-            marker: infoWindowState.marker,
+            markerId: infoWindowState.markerId,
+            markerTitle: infoWindowState.markerTitle,
+            markerSnippet: infoWindowState.markerSnippet,
             arrowOffsetX: infoWindowState.position.arrowOffsetX,
             customStyle: infoWindowState.style,
             onWindowClick: () => {

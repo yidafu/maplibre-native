@@ -31,6 +31,7 @@ export class InfoWindowManager {
    * 设置 UI 显示回调
    */
   setOnShowUICallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
+    console.info(`[InfoWindowManager] setOnShowUICallback called`);
     this.onShowUICallback = callback;
   }
 
@@ -128,6 +129,9 @@ export class InfoWindowManager {
    */
   show(marker: Marker, screenWidth: number, screenHeight: number, markerScreenPosition: Point,
     style?: InfoWindowStyle): InfoWindow | null {
+    console.info(`[InfoWindowManager] show() called for marker: ${marker.getTitle()}, screenWidth: ${screenWidth}, screenHeight: ${screenHeight}, markerPos: (${markerScreenPosition.x}, ${markerScreenPosition.y})`);
+    console.info(`[InfoWindowManager] onShowUICallback is ${this.onShowUICallback ? 'defined' : 'null/undefined'}`);
+    
     // 如果不允许多个，先关闭已有的
     if (!this.allowConcurrentMultiple) {
       this.closeAll();
@@ -138,6 +142,8 @@ export class InfoWindowManager {
       console.warn('[InfoWindowManager] Marker has no title or snippet, cannot show InfoWindow');
       return null;
     }
+    
+    console.info(`[InfoWindowManager] Marker has valid content, proceeding to create/show InfoWindow`);
 
     // 创建或获取 InfoWindow
     const markerId = marker.getId();
@@ -176,7 +182,9 @@ export class InfoWindowManager {
     }
 
     // 显示
+    console.info(`[InfoWindowManager] Calling infoWindow.show()`);
     infoWindow.show(screenWidth, screenHeight, markerScreenPosition);
+    console.info(`[InfoWindowManager] InfoWindow.show() completed, isShown: ${infoWindow.isShown()}`);
 
     return infoWindow;
   }

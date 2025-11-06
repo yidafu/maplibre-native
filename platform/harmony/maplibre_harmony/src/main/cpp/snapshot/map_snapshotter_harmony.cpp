@@ -131,7 +131,7 @@ void MapSnapshotterHarmony::snapshot(SnapshotCallback callback) {
     if (!snapshotter_) {
         Logger::error("MapSnapshotterHarmony", "Snapshotter not initialized");
         callback(std::make_exception_ptr(std::runtime_error("Snapshotter not initialized")),
-                 mbgl::PremultipliedImage{}, {});
+                 mbgl::PremultipliedImage{}, {}, nullptr, nullptr);
         return;
     }
 
@@ -142,9 +142,8 @@ void MapSnapshotterHarmony::snapshot(SnapshotCallback callback) {
                                      std::vector<std::string> attributions,
                                      mbgl::MapSnapshotter::PointForFn pointForFn,
                                      mbgl::MapSnapshotter::LatLngForFn latLngForFn) {
-        // 简化回调，只返回图像和归属信息
-        // pointForFn 和 latLngForFn 暂时不暴露给 NAPI
-        callback(err, std::move(image), std::move(attributions));
+        // 传递完整回调参数，包含坐标转换函数
+        callback(err, std::move(image), std::move(attributions), pointForFn, latLngForFn);
     });
 }
 

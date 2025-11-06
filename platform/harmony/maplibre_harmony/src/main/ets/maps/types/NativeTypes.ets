@@ -80,6 +80,64 @@ export interface Padding {
 export type Margins = Padding;
 
 /**
+ * 从数组创建 Margins 对象
+ * 
+ * @param arr 边距数组 [left, top, right, bottom]
+ * @returns Margins 对象
+ * 
+ * @example
+ * ```typescript
+ * const margins = createMargins([10, 20, 10, 20]);
+ * // { left: 10, top: 20, right: 10, bottom: 20 }
+ * ```
+ */
+export function createMargins(arr: number[]): Margins {
+  return {
+    left: arr[0] || 0,
+    top: arr[1] || 0,
+    right: arr[2] || 0,
+    bottom: arr[3] || 0
+  };
+}
+
+/**
+ * 从单个值创建统一的 Margins 对象
+ * 
+ * @param value 统一的边距值
+ * @returns Margins 对象
+ * 
+ * @example
+ * ```typescript
+ * const margins = createUniformMargins(10);
+ * // { left: 10, top: 10, right: 10, bottom: 10 }
+ * ```
+ */
+export function createUniformMargins(value: number): Margins {
+  return {
+    left: value,
+    top: value,
+    right: value,
+    bottom: value
+  };
+}
+
+/**
+ * 合并两个 Margins 对象（第二个覆盖第一个）
+ * 
+ * @param base 基础 Margins
+ * @param override 覆盖的 Margins（仅覆盖非 undefined 的值）
+ * @returns 合并后的 Margins 对象
+ */
+export function mergeMargins(base: Margins, override: Partial<Margins>): Margins {
+  return {
+    left: override.left !== undefined ? override.left : base.left,
+    top: override.top !== undefined ? override.top : base.top,
+    right: override.right !== undefined ? override.right : base.right,
+    bottom: override.bottom !== undefined ? override.bottom : base.bottom
+  };
+}
+
+/**
  * 相机选项字面量接口（用于测试页面）
  */
 export interface CameraOptionsLiteral {

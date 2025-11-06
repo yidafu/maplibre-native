@@ -10,6 +10,41 @@ import common from '@ohos.app.ability.common';
 import { OfflineRegion } from './OfflineRegion';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
+
+/**
+ * 合并离线区域回调
+ * 对应 Android: MergeOfflineRegionsCallback
+ */
+export interface MergeOfflineRegionsCallback {
+  /**
+   * 合并成功时调用
+   * @param offlineRegions 合并后的离线区域列表
+   */
+  onMerge(offlineRegions: OfflineRegion[]): void;
+
+  /**
+   * 合并失败时调用
+   * @param error 错误消息
+   */
+  onError(error: string): void;
+}
+
+/**
+ * 文件源操作回调
+ * 对应 Android: FileSourceCallback
+ */
+export interface FileSourceCallback {
+  /**
+   * 操作成功时调用
+   */
+  onSuccess(): void;
+
+  /**
+   * 操作失败时调用
+   * @param message 错误消息
+   */
+  onError(message: string): void;
+}
 /**
  * OfflineManager 类
  *
@@ -262,5 +297,146 @@ export class OfflineManager {
         reject(new Error(errorMsg));
       }
     });
+  }
+
+  /**
+   * 从辅助数据库合并离线区域到主数据库
+   *
+   * 对应 Android: OfflineManager.mergeOfflineRegions(String, MergeOfflineRegionsCallback)
+   *
+   * **功能说明**：
+   * - 自动升级辅助数据库架构
+   * - 相同区域会被合并为一个
+   * - 检查瓦片数量限制
+   * - 处理文件权限问题
+   *
+   * **使用场景**：
+   * - 导入其他设备的离线数据
+   * - 批量分发预下载的离线地图
+   * - 合并多个离线包
+   *
+   * @param path 辅助数据库文件路径
+   * @returns Promise<OfflineRegion[]> 合并后的区域列表
+   *
+   * @example
+   * ```typescript
+   * const offlineManager = OfflineManager.getInstance(context);
+   * const mergedRegions = await offlineManager.mergeOfflineRegions('/path/to/secondary.db');
+   * console.log(`合并了 ${mergedRegions.length} 个离线区域`);
+   * ```
+   */
+  public async mergeOfflineRegions(path: string): Promise<OfflineRegion[]> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.nativeManager.mergeOfflineRegions(path, (result: maplibre.OfflineRegion[] | string) => {
+          if (typeof result === 'string') {
+            // 错误情况
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to merge offline regions: ${result}`);
+            reject(new Error(result));
+          } else {
+            // 成功情况 - 转换为封装类型
+            const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
+            hilog.info(DOMAIN, 'OfflineManager', `Successfully merged ${wrappedRegions.length} offline regions`);
+            resolve(wrappedRegions);
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error merging offline regions: ${errorMsg}`);
+        reject(new Error(errorMsg));
+      }
+    });
+  }
+
+  /**
+   * 打包数据库文件，压缩并回收空间
+   *
+   * 对应 Android: OfflineManager.packDatabase(FileSourceCallback)
+   *
+   * **功能说明**：
+   * - 执行 VACUUM 操作压缩数据库
+   * - 回收删除区域后的空间
+   * - 有性能影响，建议在后台执行
+   *
+   * **使用场景**：
+   * - 删除离线区域后回收空间
+   * - 定期数据库维护
+   * - 优化存储性能
+   *
+   * @returns Promise<void>
+   *
+   * @example
+   * ```typescript
+   * const offlineManager = OfflineManager.getInstance(context);
+   *
+   * // 删除区域后打包数据库
+   * await offlineManager.deleteOfflineRegion(region);
+   * await offlineManager.packDatabase();
+   * console.log('数据库已压缩');
+   * ```
+   */
+  public async packDatabase(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        this.nativeManager.packDatabase((error?: string) => {
+          if (error) {
+            hilog.error(DOMAIN, 'OfflineManager', `Failed to pack database: ${error}`);
+            reject(new Error(error));
+          } else {
+            hilog.info(DOMAIN, 'OfflineManager', 'Database packed successfully');
+            resolve();
+          }
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        hilog.error(DOMAIN, 'OfflineManager', `Error packing database: ${errorMsg}`);
+        reject(new Error(errorMsg));
+      }
+    });
+  }
+
+  /**
+   * 设置是否自动打包数据库
+   *
+   * 对应 Android: OfflineManager.runPackDatabaseAutomatically(Boolean)
+   *
+   * **功能说明**：
+   * - 默认启用（true）
+   * - 在删除区域或清除缓存后自动压缩数据库
+   * - 禁用后需要手动调用 packDatabase()
+   *
+   * **性能考虑**：
+   * - 自动打包会在删除操作后增加延迟
+   * - 禁用后可以批量操作完再手动打包，提高性能
+   *
+   * @param autopack 是否自动打包
+   *
+   * @example
+   * ```typescript
+   * const offlineManager = OfflineManager.getInstance(context);
+   *
+   * // 批量删除时禁用自动打包
+   * offlineManager.runPackDatabaseAutomatically(false);
+   *
+   * for (const region of regionsToDelete) {
+   *   await offlineManager.deleteOfflineRegion(region);
+   * }
+   *
+   * // 手动打包一次
+   * await offlineManager.packDatabase();
+   *
+   * // 恢复自动打包
+   * offlineManager.runPackDatabaseAutomatically(true);
+   * ```
+   */
+  public runPackDatabaseAutomatically(autopack: boolean): void {
+    try {
+      this.nativeManager.runPackDatabaseAutomatically(autopack);
+      hilog.info(DOMAIN, 'OfflineManager', `Auto-pack database set to: ${autopack}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'OfflineManager', `Error setting auto-pack: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
   }
 }

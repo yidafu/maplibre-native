@@ -72,7 +72,9 @@ export class MarkerManager {
    */
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
-    this.infoWindowManager = new InfoWindowManager();
+    // ✅ 使用 MapLibreMap 的 InfoWindowManager（已经设置了 UI 回调）
+    // 而不是创建新的实例（没有回调）
+    this.infoWindowManager = mapLibreMap.getInfoWindowManager();
     this.annotationViewManager = new AnnotationViewManager();
 
     // 初始化 IconManager - 传递 ResourceManager 以支持 rawfile 加载
@@ -225,14 +227,18 @@ export class MarkerManager {
    */
   private handleMapClick(x: number, y: number): boolean {
     try {
+      console.info(`[MarkerManager] handleMapClick at (${x}, ${y})`);
+      
       // 查询点击位置的 Marker（坐标转换在 queryRenderedFeaturesForBox 中统一处理）
       const marker = this.queryMarkerAtPoint(x, y);
 
       if (marker) {
+        console.info(`[MarkerManager] Found marker at click position: ${marker.getTitle()}`);
         // 触发 Marker 点击事件
         return this.handleMarkerClick(marker);
       }
 
+      console.info(`[MarkerManager] No marker found at click position`);
       return false; // 没有点击到 Marker，事件未消费
     } catch (error) {
       console.error(`[MarkerManager] Error handling map click: ${error}`);
@@ -1238,23 +1244,52 @@ export class MarkerManager {
   }
 
   /**
+   * 将 Marker 地理坐标转换为逻辑像素屏幕坐标
+   * 
+   * 用于 InfoWindow 等 ArkUI 组件的定位（ArkUI 使用逻辑像素）
+   * 
+   * @param marker Marker 实例
+   * @returns 逻辑像素屏幕坐标
+   */
+  private getMarkerLogicalScreenPosition(marker: Marker): PixelCoordinate {
+    // 获取 Marker 屏幕坐标（物理像素）
+    const pos = marker.getPosition();
+    const physicalScreenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
+    
+    // 将物理像素转换为逻辑像素
+    const pixelRatio: number = this.mapLibreMap.getNativeMapView().getPixelRatio();
+    const logicalX: number = physicalScreenPoint.x / pixelRatio;
+    const logicalY: number = physicalScreenPoint.y / pixelRatio;
+    
+    console.info(`[MarkerManager] Coordinate conversion: physical(${physicalScreenPoint.x}, ${physicalScreenPoint.y}) -> logical(${logicalX}, ${logicalY}), DPI=${pixelRatio}`);
+    
+    return new PixelCoordinate(logicalX, logicalY);
+  }
+
+  /**
    * 显示 Marker 的 InfoWindow
    */
   public showInfoWindow(marker: Marker): void {
     try {
-      // 获取 Marker 屏幕坐标
-      const pos = marker.getPosition();
-      const screenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
+      const title = marker.getTitle();
+      const snippet = marker.getSnippet();
+      console.info(`[MarkerManager] showInfoWindow called for marker - title: "${title}", snippet: "${snippet}"`);
+      
+      // 获取 Marker 逻辑像素屏幕坐标（用于 InfoWindow 定位）
+      const logicalScreenPoint: PixelCoordinate = this.getMarkerLogicalScreenPosition(marker);
 
-      // 获取视图尺寸
+      // 获取视图尺寸（逻辑像素）
       const viewWidth: number = this.mapLibreMap.getViewWidth();
       const viewHeight: number = this.mapLibreMap.getViewHeight();
+      console.info(`[MarkerManager] View dimensions: ${viewWidth}x${viewHeight}`);
 
       // 获取 InfoWindow 样式
       const style = this.getInfoWindowStyle(marker);
 
-      // 显示 InfoWindow
-      this.infoWindowManager.show(marker, viewWidth, viewHeight, screenPoint, style);
+      // 显示 InfoWindow（使用逻辑像素坐标）
+      console.info(`[MarkerManager] Calling InfoWindowManager.show()`);
+      this.infoWindowManager.show(marker, viewWidth, viewHeight, logicalScreenPoint, style);
+      console.info(`[MarkerManager] InfoWindow shown successfully`);
 
     } catch (error) {
       console.error(`[MarkerManager] Failed to show InfoWindow: ${error.message}`);

@@ -1319,6 +1319,28 @@ export interface SnapshotOptionsNAPI {
 
   /** 本地字体族 */
   localFontFamily?: string;
+
+  /** 相机位置（可选，动态添加） */
+  camera?: CameraPositionLike;
+
+  /** 区域边界（可选，动态添加） */
+  region?: LatLngBoundsLike;
+}
+
+/**
+ * 像素坐标结果
+ */
+export interface PixelCoordinateResult {
+  x: number;
+  y: number;
+}
+
+/**
+ * 地理坐标结果
+ */
+export interface LatLngResult {
+  latitude: number;
+  longitude: number;
 }
 
 /**
@@ -1336,6 +1358,24 @@ export interface SnapshotResultNAPI {
 
   /** 归属信息 */
   attributions?: string[];
+
+  /**
+   * 将地理坐标转换为快照图像上的像素坐标
+   * 
+   * @param latitude 纬度
+   * @param longitude 经度
+   * @returns 图像上的像素坐标
+   */
+  pixelForLatLng(latitude: number, longitude: number): PixelCoordinateResult;
+
+  /**
+   * 将快照图像上的像素坐标转换为地理坐标
+   * 
+   * @param x 图像上的 X 坐标
+   * @param y 图像上的 Y 坐标
+   * @returns 地理坐标
+   */
+  latLngForPixel(x: number, y: number): LatLngResult;
 }
 
 /**
@@ -1414,6 +1454,28 @@ export interface MapSnapshotterNAPI {
    * @param observer 观察者对象，传 null 可清除观察者
    */
   setObserver(observer: MapSnapshotterObserver | null): void;
+
+  /**
+   * 获取图层
+   * @param layerId 图层ID
+   * @returns 图层对象，如果不存在则返回 null
+   */
+  getLayer(layerId: string): Layer | null;
+
+  /**
+   * 获取数据源
+   * @param sourceId 数据源ID
+   * @returns 数据源对象，如果不存在则返回 null
+   */
+  getSource(sourceId: string): Source | null;
+
+  /**
+   * 添加图片到快照样式
+   * @param name 图片名称
+   * @param imageData 图片数据
+   * @param sdf 是否为 SDF 图标
+   */
+  addImage(name: string, imageData: ArrayBuffer | Uint8Array, sdf: boolean): void;
 }
 
 /**

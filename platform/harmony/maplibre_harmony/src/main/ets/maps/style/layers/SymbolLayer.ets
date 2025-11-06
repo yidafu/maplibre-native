@@ -2,7 +2,7 @@
  * SymbolLayer - 封装类
  */
 import maplibre from 'libmaplibre.so';
-import type { ExpressionLiteral } from 'libmaplibre.so';
+import type { ExpressionLiteral, PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
 import { Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
@@ -148,6 +148,11 @@ export class SymbolLayer {
 
   setIconHaloWidth(width: PropertyValue<number>): SymbolLayer {
     this.nativeInstance.setIconHaloWidth(convertValue(width));
+    return this;
+  }
+
+  setIconHaloBlur(blur: PropertyValue<number>): SymbolLayer {
+    this.nativeInstance.setIconHaloBlur(convertValue(blur));
     return this;
   }
 
@@ -305,6 +310,10 @@ export class SymbolLayer {
     return this.nativeInstance.getIconHaloWidth();
   }
 
+  getIconHaloBlur(): number {
+    return this.nativeInstance.getIconHaloBlur();
+  }
+
   getTextField(): string {
     return this.nativeInstance.getTextField();
   }
@@ -459,6 +468,9 @@ export class SymbolLayer {
     if (props.iconHaloWidth !== undefined) {
       this.setIconHaloWidth(props.iconHaloWidth);
     }
+    if (props.iconHaloBlur !== undefined) {
+      this.setIconHaloBlur(props.iconHaloBlur);
+    }
     return this;
   }
 
@@ -501,7 +513,7 @@ export class SymbolLayer {
    * @returns this（支持链式调用）
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): SymbolLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value) as ESObject);
+    this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
 
@@ -518,13 +530,13 @@ export class SymbolLayer {
    * });
    */
   setProperties(properties: Record<string, PropertyValue<Object>>): SymbolLayer {
-    const convertedProps: Record<string, ESObject> = {};
+    const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]) as ESObject;
+      convertedProps[key] = convertValue(properties[key]) as NativePropertyValue<JSONValue>;
     }
-    this.nativeInstance.setProperties(convertedProps as ESObject);
+    this.nativeInstance.setProperties(convertedProps);
     return this;
   }
 }
@@ -564,6 +576,7 @@ export interface IconProperties {
   iconColor?: PropertyValue<string>;
   iconHaloColor?: PropertyValue<string>;
   iconHaloWidth?: PropertyValue<number>;
+  iconHaloBlur?: PropertyValue<number>;
 }
 
 /**
