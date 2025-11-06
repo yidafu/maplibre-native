@@ -542,6 +542,34 @@ export class IconManager {
   }
 
   /**
+   * 获取指定 Icon 的高度
+   *
+   * @param iconId Icon ID
+   * @returns Icon 的高度（逻辑像素），如果不存在返回 0
+   */
+  public getIconHeight(iconId: string): number {
+    const iconRefData = this.iconMap.get(iconId);
+    if (iconRefData) {
+      return iconRefData.icon.getHeight();
+    }
+    return 0;
+  }
+
+  /**
+   * 获取指定 Icon 的宽度
+   *
+   * @param iconId Icon ID
+   * @returns Icon 的宽度（逻辑像素），如果不存在返回 0
+   */
+  public getIconWidth(iconId: string): number {
+    const iconRefData = this.iconMap.get(iconId);
+    if (iconRefData) {
+      return iconRefData.icon.getWidth();
+    }
+    return 0;
+  }
+
+  /**
    * 更新最大图标尺寸（Icon 版本）
    *
    * @param iconOrWidth Icon 封装类实例或宽度

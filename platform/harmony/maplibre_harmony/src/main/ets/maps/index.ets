@@ -208,11 +208,17 @@ export { InfoWindow, InfoWindowComponent } from './annotations/InfoWindow';
 
 export { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
 
-export { AnnotationView } from './annotations/AnnotationView';
+export { AnnotationView, DragState } from './annotations/AnnotationView';
 
-export { AnnotationViewAdapter } from './annotations/AnnotationViewAdapter';
+export type { CenterOffset } from './annotations/AnnotationView';
 
-export { AnnotationViewManager, AnnotationViewData } from './annotations/AnnotationViewManager';
+export { AnnotationViewAdapter, createDelegateFromAdapter } from './annotations/AnnotationViewAdapter';
+
+export type { AnnotationViewDelegate, AnnotationViewConfig, AnnotationViewBuilder, AnnotationViewSize } from './annotations/AnnotationViewDelegate';
+
+export { AnnotationViewManager } from './annotations/AnnotationViewManager';
+
+export type { AnnotationViewData } from './annotations/AnnotationViewManager';
 
 // ========== GeoJSON 类型（通过命名空间导出）==========
 export * from './geojson';

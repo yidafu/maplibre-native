@@ -202,6 +202,10 @@ export class MapLibreMap {
     // 设置相机移动监听器，自动更新 ScaleBar
     this.setupScaleBarCameraListener();
 
+    // 🔧 注册 NAPI 层的相机事件回调
+    // 这些回调会触发 cameraChangeDispatcher，进而通知所有内部监听器
+    this.setupNativeCameraCallbacks();
+
     // 注册到 NativeMapView 以启用 InfoWindow 功能
     registerMapLibreMap(nativeMapView, this);
   }
@@ -248,6 +252,8 @@ export class MapLibreMap {
       }
 
       onCameraMove(): void {
+        console.info(`[InfoWindowCameraListener] onCameraMove triggered, updating InfoWindow positions`);
+        
         // 地图相机移动时，更新所有 InfoWindow 的位置
         // 使用内部维护的尺寸（通过 resizeView 更新）
         this.parent.infoWindowManager.updatePositions(
@@ -258,6 +264,8 @@ export class MapLibreMap {
             return this.parent.pixelForLatLng(pos.latitude, pos.longitude);
           }
         );
+        
+        console.info(`[InfoWindowCameraListener] InfoWindow positions updated`);
       }
     }
 
@@ -316,6 +324,50 @@ export class MapLibreMap {
     }
 
     this.cameraChangeDispatcher.addOnCameraMoveListener(new ScaleBarMoveListenerImpl(this));
+  }
+
+  /**
+   * 设置 NAPI 层的相机事件回调
+   * 
+   * 这个方法注册 native 层的相机事件回调，当 native 地图触发相机事件时，
+   * 会调用 cameraChangeDispatcher 的相应方法，进而通知所有内部监听器
+   * （InfoWindow、AnnotationView、Compass、ScaleBar 等）
+   * 
+   * TODO: 后续优化 - 在 ETS 层实现 Android 风格回调映射
+   * 当前实现：C++ 层在 MapObserver 回调中同时触发 Android 风格回调（临时方案）
+   * 建议实现：
+   *   1. C++ 层仅保留 MapLibre 原生回调（onCameraWillChange, onCameraIsChanging, onCameraDidChange）
+   *   2. ETS 层监听这些原生回调，在此方法中转换为 Android 风格回调
+   *   3. 示例：监听 onCameraWillChange -> 触发 cameraChangeDispatcher.notifyCameraMoveStarted()
+   *   4. 好处：解耦 C++ 和 ETS 层，更清晰的架构，更容易维护
+   * 
+   * @private
+   */
+  private setupNativeCameraCallbacks(): void {
+    console.info('[MapLibreMap] Setting up native camera callbacks...');
+
+    // 相机开始移动回调（Android 风格）
+    // TODO: 改为监听 onCameraWillChange 并在 ETS 层转换
+    this.nativeMapView.addOnCameraMoveStartedListener((reason: number) => {
+      console.info(`[MapLibreMap] Native camera move started, reason: ${reason}`);
+      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
+    });
+
+    // 相机移动中回调（Android 风格）
+    // TODO: 改为监听 onCameraIsChanging 并在 ETS 层转换
+    this.nativeMapView.addOnCameraMoveListener(() => {
+      console.info('[MapLibreMap] Native camera move');
+      this.cameraChangeDispatcher.notifyCameraMove();
+    });
+
+    // 相机停止移动回调（Android 风格）
+    // TODO: 改为监听 onCameraDidChange 并在 ETS 层转换
+    this.nativeMapView.addOnCameraIdleListener(() => {
+      console.info('[MapLibreMap] Native camera idle');
+      this.cameraChangeDispatcher.notifyCameraIdle();
+    });
+
+    console.info('[MapLibreMap] Native camera callbacks setup complete');
   }
 
   /**
@@ -1599,12 +1651,40 @@ export class MapLibreMap {
     return ProjectedMeters.fromObject(result);
   }
 
-  public pixelForLatLng(latitude: number, longitude: number): Point {
+  /**
+   * 将地理坐标转换为物理像素屏幕坐标（地图内部坐标系）
+   * 
+   * ⚠️ 用于地图内部计算（如点击检测、Feature 查询等）
+   * 如果需要用于 ArkUI 组件定位，请使用 pixelForLatLng()
+   * 
+   * @param latitude 纬度
+   * @param longitude 经度
+   * @returns 物理像素屏幕坐标
+   */
+  public pixelForLatLngPhysical(latitude: number, longitude: number): Point {
     if (this.destroyed) {
       return new PixelCoordinate(0, 0);
     }
     const result: IPixelCoordinate = this.nativeMapView.pixelForLatLng(latitude, longitude);
     return PixelCoordinate.fromObject(result);
+  }
+
+  /**
+   * 将地理坐标转换为逻辑像素屏幕坐标
+   * 
+   * 用于 ArkUI 组件定位（InfoWindow、自定义覆盖层等）
+   * 
+   * @param latitude 纬度
+   * @param longitude 经度
+   * @returns 逻辑像素屏幕坐标
+   */
+  public pixelForLatLng(latitude: number, longitude: number): Point {
+    const physicalPixel = this.pixelForLatLngPhysical(latitude, longitude);
+    const pixelRatio = this.nativeMapView.getPixelRatio();
+    return new PixelCoordinate(
+      physicalPixel.x / pixelRatio,
+      physicalPixel.y / pixelRatio
+    );
   }
 
   public pixelsForLatLngs(input: number[], output: number[]): void {
@@ -1622,12 +1702,38 @@ export class MapLibreMap {
     return LatLng.fromNative(nativeLatLng);
   }
 
-  public latLngForPixel(x: number, y: number): LatLng {
+  /**
+   * 将物理像素屏幕坐标转换为地理坐标（地图内部坐标系）
+   * 
+   * ⚠️ 用于地图内部计算
+   * 如果输入的是逻辑像素坐标，请使用 latLngForPixel()
+   * 
+   * @param x 物理像素 X 坐标
+   * @param y 物理像素 Y 坐标
+   * @returns 地理坐标
+   */
+  public latLngForPixelPhysical(x: number, y: number): LatLng {
     if (this.destroyed) {
       return LatLng.create(0, 0);
     }
     const nativeLatLng: maplibre.LatLng = this.nativeMapView.latLngForPixel(x, y);
     return LatLng.fromNative(nativeLatLng);
+  }
+
+  /**
+   * 将逻辑像素屏幕坐标转换为地理坐标
+   * 
+   * 用于 ArkUI 组件坐标转换
+   * 
+   * @param x 逻辑像素 X 坐标
+   * @param y 逻辑像素 Y 坐标
+   * @returns 地理坐标
+   */
+  public latLngForPixel(x: number, y: number): LatLng {
+    const pixelRatio = this.nativeMapView.getPixelRatio();
+    const physicalX = x * pixelRatio;
+    const physicalY = y * pixelRatio;
+    return this.latLngForPixelPhysical(physicalX, physicalY);
   }
 
   public latLngsForPixels(input: number[], output: number[]): void {
@@ -2664,9 +2770,12 @@ export class MapLibreMap {
    */
   public _notifyCameraMove(): void {
     if (this.destroyed) {
+      console.warn('[MapLibreMap] _notifyCameraMove() called but map is destroyed, skipping');
       return;
     }
+    console.info('[MapLibreMap] _notifyCameraMove() called, forwarding to CameraChangeDispatcher');
     this.cameraChangeDispatcher.notifyCameraMove();
+    console.info('[MapLibreMap] CameraChangeDispatcher.notifyCameraMove() completed');
   }
 
   /**
@@ -2997,16 +3106,53 @@ export class MapLibreMap {
    * 设置 AnnotationViewDelegate
    * 用于自定义 AnnotationView 的创建和事件处理
    *
+   * 参考：iOS MLNMapView.delegate
+   * 
+   * 设置 delegate 后，地图会自动为所有 Marker 调用 viewForAnnotation
+   * 来创建自定义视图。已存在的 Marker 会立即重新创建视图。
+   * 
    * @param delegate AnnotationViewDelegate 实例，传 null 则清除委托
+   * 
+   * @example
+   * ```typescript
+   * const delegate: AnnotationViewDelegate = {
+   *   viewForAnnotation: (marker: Marker) => {
+   *     if (marker.getSnippet() === 'restaurant') {
+   *       return {
+   *         reuseIdentifier: 'restaurant-pin',
+   *         contentBuilder: () => {
+   *           Column() {
+   *             Image($r('app.media.restaurant_icon'))
+   *               .width(32).height(32)
+   *           }
+   *         },
+   *         scalesWithViewingDistance: true
+   *       };
+   *     }
+   *     return null; // 使用默认图标
+   *   },
+   *   
+   *   didSelectAnnotationView: (marker: Marker) => {
+   *     console.log('Selected:', marker.getTitle());
+   *   }
+   * };
+   * 
+   * map.setAnnotationViewDelegate(delegate);
+   * ```
    */
   public setAnnotationViewDelegate(delegate: AnnotationViewDelegate | null): void {
     if (this.destroyed) {
       return;
     }
+    
+    // 保存 delegate
     this.annotationViewDelegate = delegate;
 
-    // 设置到管理器的 adapter（如果需要）
-    // 注：AnnotationViewDelegate 和 AnnotationViewAdapter 可以统一
+    // 将 delegate 传递给 AnnotationViewManager
+    this.annotationViewManager.setDelegate(delegate);
+
+    // 注意：AnnotationViewManager.setDelegate 会自动调用 recreateAllViews()
+    // 所以已存在的 Marker 会重新创建视图
   }
 
   /**
@@ -3227,7 +3373,58 @@ export class MapLibreMap {
   }
 
   /**
-   * 查询矩形区域内的渲染要素
+   * 查询矩形区域内的渲染要素（物理像素版本）
+   * 
+   * **注意**：此方法接受**物理像素**坐标，直接传递给底层渲染引擎，不进行 DPI 转换。
+   * 用于内部地图计算和需要精确物理像素控制的场景。
+   *
+   * @param left 左边界（物理像素）
+   * @param top 上边界（物理像素）
+   * @param right 右边界（物理像素）
+   * @param bottom 下边界（物理像素）
+   * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
+   * @param filter 可选的过滤器表达式
+   * @returns IFeature 数组
+   *
+   * @example
+   * ```typescript
+   * // 内部地图计算使用物理像素
+   * const pixelRatio = map.getNativeMapView().getPixelRatio();
+   * const physicalLeft = logicalLeft * pixelRatio;
+   * const features = map.queryRenderedFeaturesForBoxPhysical(
+   *   physicalLeft, physicalTop, physicalRight, physicalBottom
+   * );
+   * ```
+   */
+  public queryRenderedFeaturesForBoxPhysical(
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+    layerIds?: string[],
+    filter?: NapiExpressionLiteral
+  ): IFeature[] {
+    if (this.destroyed) {
+      console.warn('MapLibreMap', 'queryRenderedFeaturesForBoxPhysical: Map is destroyed');
+      return [];
+    }
+
+    try {
+      const features = this.nativeMapView.queryRenderedFeaturesForBox(
+        left, top, right, bottom, layerIds, filter
+      );
+      return features as IFeature[];
+    } catch (error) {
+      console.error('MapLibreMap', `queryRenderedFeaturesForBoxPhysical failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 查询矩形区域内的渲染要素（逻辑像素版本）
+   * 
+   * **注意**：此方法接受**逻辑像素**坐标（ArkUI 标准），会自动转换为物理像素。
+   * 用于 ArkUI 组件交互、触摸事件处理等场景。
    *
    * @param left 左边界（逻辑像素，会自动转换为物理像素）
    * @param top 上边界（逻辑像素，会自动转换为物理像素）
@@ -3283,10 +3480,9 @@ export class MapLibreMap {
       const physicalRight = right * pixelRatio;
       const physicalBottom = bottom * pixelRatio;
 
-      const features = this.nativeMapView.queryRenderedFeaturesForBox(
+      return this.queryRenderedFeaturesForBoxPhysical(
         physicalLeft, physicalTop, physicalRight, physicalBottom, layerIds, filter
       );
-      return features as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
       return [];

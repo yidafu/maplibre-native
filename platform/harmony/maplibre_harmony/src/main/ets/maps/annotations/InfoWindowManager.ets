@@ -244,10 +244,13 @@ export class InfoWindowManager {
     screenHeight: number,
     getMarkerScreenPosition: (marker: Marker) => Point
   ): void {
+    console.info(`[InfoWindowManager] updatePositions called, infoWindows count: ${this.infoWindows.size}`);
+    
     this.infoWindows.forEach(infoWindow => {
       if (infoWindow.isShown()) {
         const marker = infoWindow.getMarker();
         const markerPos = getMarkerScreenPosition(marker);
+        console.info(`[InfoWindowManager] Updating InfoWindow for marker: ${marker.getTitle()}, pos: (${markerPos.x}, ${markerPos.y})`);
         infoWindow.update(screenWidth, screenHeight, markerPos);
       }
     });

@@ -14,6 +14,14 @@ export interface InfoWindowPosition {
 }
 
 /**
+ * InfoWindow 尺寸信息
+ */
+interface InfoWindowSize {
+  width: number;
+  height: number;
+}
+
+/**
  * InfoWindow 样式配置
  */
 export interface InfoWindowStyle {
@@ -215,8 +223,11 @@ export class InfoWindow {
    */
   public update(screenWidth: number, screenHeight: number, markerScreenPosition: Point): void {
     if (!this._isShown) {
+      console.info(`[InfoWindow] update() skipped - InfoWindow not shown`);
       return;
     }
+
+    console.info(`[InfoWindow] update() called - recalculating position with size: ${this._width}x${this._height}`);
 
     // 重新计算位置
     const position = this.calculateScreenPosition(
@@ -226,10 +237,15 @@ export class InfoWindow {
     );
 
     this.screenPosition = position;
+    console.info(`[InfoWindow] New position calculated: (${position.x}, ${position.y}), arrowOffsetX: ${position.arrowOffsetX}`);
 
     // 通知外部更新 UI
     if (this.onUpdateCallback) {
+      console.info(`[InfoWindow] Calling onUpdateCallback to update UI position`);
       this.onUpdateCallback(this.marker, position);
+      console.info(`[InfoWindow] onUpdateCallback completed`);
+    } else {
+      console.warn(`[InfoWindow] onUpdateCallback is null/undefined!`);
     }
   }
 
@@ -283,6 +299,60 @@ export class InfoWindow {
   }
 
   /**
+   * 估算 InfoWindow 的尺寸
+   * 
+   * 在实际渲染前，基于内容和样式估算尺寸
+   * 
+   * @returns 估算的宽度和高度（物理像素）
+   */
+  private estimateSize(): InfoWindowSize {
+    const title = this.marker.getTitle() || '';
+    const snippet = this.marker.getSnippet() || '';
+    
+    // 从样式中获取配置
+    const titleFontSize = this.style.titleFontSize ?? 16;
+    const snippetFontSize = this.style.snippetFontSize ?? 14;
+    const padding = this.style.padding ?? 12;
+    
+    // 估算宽度：基于文本长度和字体大小
+    // 使用 0.7 作为平均字符宽度比例（中英文混合）
+    const titleWidth = title.length * titleFontSize * 0.7;
+    const snippetWidth = snippet ? snippet.length * snippetFontSize * 0.6 : 0;
+    const maxTextWidth = Math.max(titleWidth, snippetWidth);
+    
+    // 额外宽度：只在有缩略图时添加
+    const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;  // 32px 图标 + 8px margin
+    
+    // 估算宽度 = 文本宽度 + 左右 padding + 缩略图宽度
+    const estimatedWidth = Math.max(
+      maxTextWidth + padding * 2 + thumbnailWidth,
+      80  // 最小宽度（保证美观）
+    );
+    
+    // 限制最大宽度
+    const maxWidth = this.style.maxWidth ?? 280;
+    const width = Math.min(estimatedWidth, maxWidth);
+    
+    // 估算高度：基于内容行数
+    const titleHeight = title ? titleFontSize + 8 : 0;  // 标题行 + 间距
+    const snippetHeight = snippet ? snippetFontSize + 4 : 0;  // 描述行 + 间距
+    const arrowHeight = 10;  // 箭头高度
+    const closeButtonHeight = this.style.showCloseButton ? 32 : 0;
+    
+    const estimatedHeight = 
+      closeButtonHeight +
+      titleHeight +
+      snippetHeight +
+      padding * 2 + 
+      arrowHeight;
+    
+    return {
+      width: width,
+      height: estimatedHeight
+    };
+  }
+
+  /**
    * 计算 InfoWindow 的屏幕位置
    * 参考 Android InfoWindow.java 的位置计算逻辑
    *
@@ -296,9 +366,20 @@ export class InfoWindow {
     screenWidth: number,
     screenHeight: number
   ): InfoWindowPosition {
+    // 如果尺寸未知（首次显示），使用估算尺寸
+    let width = this._width;
+    let height = this._height;
+    
+    if (width === 0 || height === 0) {
+      const estimated = this.estimateSize();
+      width = estimated.width;
+      height = estimated.height;
+      console.info(`[InfoWindow] Using estimated size: ${width}x${height}`);
+    }
+    
     // 默认位置：居中在 Marker 上方
-    let x = markerScreenPosition.x - (this._width / 2) + this.offsetX;
-    let y = markerScreenPosition.y - this._height + this.offsetY;
+    let x = markerScreenPosition.x - (width / 2) + this.offsetX;
+    let y = markerScreenPosition.y - height + this.offsetY;
 
     // 记录偏移量（用于后续更新）
     this.markerHeightOffset = this.offsetY;
@@ -306,7 +387,7 @@ export class InfoWindow {
 
     // 计算视图偏移量
     this.viewWidthOffset = x - markerScreenPosition.x - this.offsetX;
-    this.viewHeightOffset = -this._height + this.offsetY;
+    this.viewHeightOffset = -height + this.offsetY;
 
     // 箭头默认居中
     let arrowOffsetX = 0;
@@ -317,7 +398,7 @@ export class InfoWindow {
     const tipViewOffset = arrowWidth / 2;
 
     // 检测右边界
-    const rightSide = x + this._width;
+    const rightSide = x + width;
     if (rightSide > screenWidth - margin) {
       const overflow = rightSide - (screenWidth - margin);
       x -= overflow;
@@ -378,6 +459,7 @@ export struct InfoWindowComponent {
   onWindowClick?: () => void; // 重命名避免与 CustomComponent.onClick 冲突
   onLongClick?: () => void;
   onClose?: () => void;
+  onSizeChanged?: (width: number, height: number) => void; // 尺寸变化回调
 
   aboutToAppear() {
     console.info(`[InfoWindowComponent] aboutToAppear - marker title: "${this.markerTitle}", snippet: "${this.markerSnippet}"`);
@@ -450,11 +532,11 @@ export struct InfoWindowComponent {
                   .fontSize(this.customStyle?.titleFontSize ?? 16)
                   .fontWeight(FontWeight.Bold)
                   .fontColor(this.customStyle?.titleFontColor ?? '#333333')
+                  .textAlign(TextAlign.Center)
                   .maxLines(1)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  .layoutWeight(1)
+                  .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 250 })
               }
-              .width('100%')
               .alignItems(VerticalAlign.Center)
             }
 
@@ -463,10 +545,10 @@ export struct InfoWindowComponent {
               Text(this.markerSnippet)
                 .fontSize(this.customStyle?.snippetFontSize ?? 14)
                 .fontColor(this.customStyle?.snippetFontColor ?? '#666666')
-                // 移除 maxLines 限制，支持多行文本自动换行
+                .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .margin({ top: 4 })
-                .width('100%')
+                .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 250 })
             }
 
             // 自定义内容（TODO: 等待 SDK 支持）
@@ -475,7 +557,6 @@ export struct InfoWindowComponent {
             //     .margin({ top: 8 })
             // }
           }
-          .layoutWeight(1)
 
           // 右侧附件视图（参考 iOS rightAccessoryView）
           if (this.rightAccessoryBuilder || this.customStyle?.rightAccessoryBuilder) {
@@ -487,7 +568,6 @@ export struct InfoWindowComponent {
             .margin({ left: 8 })
           }
         }
-        .width('100%')
         .alignItems(VerticalAlign.Top)
       }
       .padding(this.customStyle?.padding ?? 12)
@@ -544,6 +624,14 @@ export struct InfoWindowComponent {
           }
         })
     )
+    .onAreaChange((oldValue: Area, newValue: Area) => {
+      const width = Number(newValue.width);
+      const height = Number(newValue.height);
+      if (this.onSizeChanged && width > 0 && height > 0) {
+        console.info(`[InfoWindowComponent] Size measured: ${width}x${height}`);
+        this.onSizeChanged(width, height);
+      }
+    })
   }
 }
 

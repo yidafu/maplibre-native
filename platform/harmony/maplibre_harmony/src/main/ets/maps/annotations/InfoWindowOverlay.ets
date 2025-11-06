@@ -40,6 +40,7 @@ export struct InfoWindowOverlay {
   onInfoWindowClick?: (marker: Marker) => void;
   onInfoWindowLongClick?: (marker: Marker) => void;
   onInfoWindowClose?: (marker: Marker) => void;
+  onInfoWindowSizeChanged?: (marker: Marker, width: number, height: number) => void;
 
   /**
    * InfoWindow 列表变化时的回调
@@ -73,6 +74,11 @@ export struct InfoWindowOverlay {
             onClose: () => {
               if (this.onInfoWindowClose) {
                 this.onInfoWindowClose(infoWindowState.marker);
+              }
+            },
+            onSizeChanged: (width: number, height: number) => {
+              if (this.onInfoWindowSizeChanged) {
+                this.onInfoWindowSizeChanged(infoWindowState.marker, width, height);
               }
             }
           })

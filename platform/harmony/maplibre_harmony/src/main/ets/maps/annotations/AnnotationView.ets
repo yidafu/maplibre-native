@@ -70,23 +70,71 @@ export interface AnnotationViewProtocol {
 /**
  * AnnotationView - Marker 自定义视图组件
  *
- * 允许使用 ETS 组件作为 Marker 的显示视图
- * 支持选中状态、拖拽、视图重用、动画效果等高级特性
- *
- * 参考:
- * - iOS: MLNAnnotationView
- * - Android: 使用自定义布局 XML
- *
- * 使用示例:
+ * 允许使用 ArkTS 组件作为 Marker 的显示视图，提供完整的自定义能力和交互特性
+ * 
+ * **核心特性**：
+ * - ✅ 自定义视图内容（通过 @BuilderParam）
+ * - ✅ 选中状态管理（点击切换）
+ * - ✅ 拖拽支持（长按启动）
+ * - ✅ 视图复用（reuseIdentifier）
+ * - ✅ 距离缩放（scalesWithViewingDistance）
+ * - ✅ 跟随旋转（rotatesToMatchCamera）
+ * - ✅ 流畅动画效果
+ * 
+ * **参考实现**：
+ * - iOS: MLNAnnotationView - UIView 子类，支持完整的视图层次
+ * - Android: 使用自定义布局 XML 或 View
+ * 
+ * **生命周期**：
+ * 1. 创建 - 从委托或复用池获取
+ * 2. aboutToAppear - 初始化位置和变换
+ * 3. 更新 - 响应地图相机变化
+ * 4. prepareForReuse - 重置状态用于复用
+ * 5. 销毁 - 从地图移除
+ * 
+ * **使用示例**：
  * ```typescript
+ * // 基础用法 - 使用默认图标
  * AnnotationView({
  *   marker: myMarker,
- *   reuseIdentifier: "custom-pin",
- *   customContentBuilder: () => { ... },
+ *   reuseIdentifier: "default-pin",
  *   screenX: 100,
  *   screenY: 200
  * })
+ * 
+ * // 高级用法 - 自定义内容
+ * AnnotationView({
+ *   marker: myMarker,
+ *   reuseIdentifier: "custom-pin",
+ *   customContentBuilder: () => {
+ *     Column() {
+ *       Image($r('app.media.custom_marker'))
+ *         .width(40)
+ *         .height(40)
+ *       Text(this.marker.getTitle())
+ *         .fontSize(12)
+ *         .fontColor(Color.White)
+ *         .backgroundColor(Color.Red)
+ *         .padding(4)
+ *         .borderRadius(4)
+ *     }
+ *   },
+ *   screenX: 100,
+ *   screenY: 200,
+ *   scalesWithViewingDistance: true,
+ *   rotatesToMatchCamera: true
+ * })
  * ```
+ * 
+ * **性能优化建议**：
+ * - 使用 reuseIdentifier 启用视图复用
+ * - 避免在 customContentBuilder 中执行耗时操作
+ * - 谨慎使用 scalesWithViewingDistance（大量视图时）
+ * - 合理设置 zIndex 避免过度重绘
+ * 
+ * @see {@link AnnotationViewDelegate} 委托接口定义
+ * @see {@link AnnotationViewConfig} 配置选项
+ * @see {@link AnnotationViewManager} 管理器实现
  */
 @Component
 export struct AnnotationView {
@@ -507,38 +555,86 @@ export struct AnnotationView {
     }
   }
 
+  /**
+   * 构建视图
+   * 
+   * 渲染逻辑：
+   * 1. 如果提供了 customContentBuilder，渲染自定义内容
+   * 2. 否则渲染默认图标（从 Marker 获取）
+   * 3. 应用所有变换（位置、缩放、旋转、透明度）
+   * 4. 设置手势、动画和 z-index
+   */
   build() {
     Stack() {
+      // 内容区域
       if (this.customContentBuilder) {
-        // 自定义内容
+        // 渲染自定义内容
+        // 参考：iOS MLNAnnotationView 的子视图层次
         this.customContentBuilder()
       } else {
-        // 默认图标
+        // 渲染默认图标
+        // 参考：Android Marker 的 Icon 显示
         Image(this.marker.getIcon() || $r('app.media.startIcon'))
-          .width(this.viewWidth)
-          .height(this.viewHeight)
+          .width(this.viewWidth || DEFAULT_VIEW_SIZE)
+          .height(this.viewHeight || DEFAULT_VIEW_SIZE)
           .opacity(this.marker.getAlpha())
           .objectFit(ImageFit.Contain)
+          .interpolation(ImageInterpolation.High) // 高质量插值
       }
     }
+    .width('auto')
+    .height('auto')
+    // 位置变换
     .position({ x: this.computedPosX, y: this.computedPosY })
+    // 透明度变换（组合 Marker 的 alpha 和视图状态的 opacity）
     .opacity(this.viewOpacity * this.marker.getAlpha())
-    .scale({ x: this.computedScale, y: this.computedScale })
-    .rotate({ angle: this.computedRotation })
+    // 缩放变换（组合距离缩放和状态缩放）
+    .scale({ 
+      x: this.computedScale, 
+      y: this.computedScale,
+      centerX: '50%',
+      centerY: '100%' // 从底部中心缩放，模拟 pin 效果
+    })
+    // 旋转变换（组合 Marker 旋转和相机旋转）
+    .rotate({ 
+      angle: this.computedRotation,
+      centerX: '50%',
+      centerY: '100%' // 从底部中心旋转
+    })
+    // 动画配置
     .animation({
       duration: this.getAnimationDuration(),
       curve: this.getAnimationCurve(),
-      tempo: 1.0
+      tempo: 1.0,
+      playMode: PlayMode.Normal
     })
-    .visibility(this.visible ? Visibility.Visible : Visibility.None)
+    // 可见性
+    .visibility(this.visible && this.marker.getVisible() ? Visibility.Visible : Visibility.None)
+    // 手势处理
     .gesture(this.createGestures())
-    .zIndex(this.viewState.selected ? 1000 : (this.viewState.dragState !== DragState.None ? 999 : 1))
+    // Z-index 层级管理
+    // 选中 > 拖拽中 > Marker 的 zIndex > 默认
+    .zIndex(
+      this.viewState.selected 
+        ? 1000 
+        : (this.viewState.dragState !== DragState.None 
+            ? 999 
+            : (this.marker.getZIndex() || 1))
+    )
+    // 监听尺寸变化（用于位置计算）
     .onAreaChange((oldValue: Area, newValue: Area) => {
-      // 更新视图尺寸
-      this.viewWidth = Number(newValue.width);
-      this.viewHeight = Number(newValue.height);
-      this.updateComputedProperties();
+      const newWidth = Number(newValue.width);
+      const newHeight = Number(newValue.height);
+      
+      // 只在尺寸真正改变时更新
+      if (newWidth !== this.viewWidth || newHeight !== this.viewHeight) {
+        this.viewWidth = newWidth;
+        this.viewHeight = newHeight;
+        this.updateComputedProperties();
+      }
     })
+    // 辅助开发：设置组件 ID（便于调试）
+    .id(`annotation-view-${this.marker.getId()}`)
   }
 }
 

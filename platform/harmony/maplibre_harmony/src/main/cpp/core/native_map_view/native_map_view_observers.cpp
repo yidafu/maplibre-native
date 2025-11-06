@@ -43,6 +43,18 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
                     napi_get_boolean(env, animated, &argv[0]);
                     return argv[0];
                 });
+                
+                // TODO: 将 Android 风格回调映射移到 ETS 层实现
+                // 临时方案：在 C++ 层同时触发 Android 风格回调
+                // 长期方案：在 NativeMapView.ets 中监听 onCameraWillChange 并转换为 onCameraMoveStarted
+                // 🔧 触发 Android 风格的 onCameraMoveStarted 回调
+                // reason: 3=DEVELOPER_ANIMATION（动画）, 1=GESTURE（手势）
+                int reason = animated ? 3 : 1;
+                callbackManager_->InvokeCallback("onCameraMoveStarted", [reason](napi_env env) {
+                    napi_value argv[1];
+                    napi_create_int32(env, reason, &argv[0]);
+                    return argv[0];
+                });
             }
         });
         return;
@@ -56,18 +68,39 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
             napi_get_boolean(env, animated, &argv[0]);
             return argv[0];
         });
+        
+        // TODO: 将 Android 风格回调映射移到 ETS 层实现
+        // 临时方案：在 C++ 层同时触发 Android 风格回调
+        // 长期方案：在 NativeMapView.ets 中监听 onCameraWillChange 并转换为 onCameraMoveStarted
+        // 🔧 触发 Android 风格的 onCameraMoveStarted 回调
+        // reason: 3=DEVELOPER_ANIMATION（动画）, 1=GESTURE（手势）
+        int reason = animated ? 3 : 1;
+        callbackManager_->InvokeCallback("onCameraMoveStarted", [reason](napi_env env) {
+            napi_value argv[1];
+            napi_create_int32(env, reason, &argv[0]);
+            return argv[0];
+        });
     }
 }
 
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
+    Logger::info("NativeMapView", "🔵 onCameraIsChanging called");
+    
     // ✅ 架构修复：确保回调在渲染线程上执行
     if (!isOnRenderThread()) {
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
             if (callbackManager_) {
+                Logger::info("NativeMapView", "🔵 onCameraIsChanging - invoking callbacks on render thread");
                 callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
+                
+                // TODO: 将 Android 风格回调映射移到 ETS 层实现
+                // 临时方案：在 C++ 层同时触发 Android 风格回调
+                // 长期方案：在 NativeMapView.ets 中监听 onCameraIsChanging 并转换为 onCameraMove
+                // 🔧 触发 Android 风格的 onCameraMove 回调
+                callbackManager_->InvokeCallbackEmpty("onCameraMove");
             }
         });
         return;
@@ -75,7 +108,14 @@ void NativeMapView::onCameraIsChanging() {
     
     // 通知监听器
     if (callbackManager_) {
+        Logger::info("NativeMapView", "🔵 onCameraIsChanging - invoking callbacks on same thread");
         callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
+        
+        // TODO: 将 Android 风格回调映射移到 ETS 层实现
+        // 临时方案：在 C++ 层同时触发 Android 风格回调
+        // 长期方案：在 NativeMapView.ets 中监听 onCameraIsChanging 并转换为 onCameraMove
+        // 🔧 触发 Android 风格的 onCameraMove 回调
+        callbackManager_->InvokeCallbackEmpty("onCameraMove");
     }
 }
 
@@ -93,6 +133,12 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
                     napi_get_boolean(env, animated, &argv[0]);
                     return argv[0];
                 });
+                
+                // TODO: 将 Android 风格回调映射移到 ETS 层实现
+                // 临时方案：在 C++ 层同时触发 Android 风格回调
+                // 长期方案：在 NativeMapView.ets 中监听 onCameraDidChange 并转换为 onCameraIdle
+                // 🔧 触发 Android 风格的 onCameraIdle 回调
+                callbackManager_->InvokeCallbackEmpty("onCameraIdle");
             }
         });
         return;
@@ -106,6 +152,12 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
             napi_get_boolean(env, animated, &argv[0]);
             return argv[0];
         });
+        
+        // TODO: 将 Android 风格回调映射移到 ETS 层实现
+        // 临时方案：在 C++ 层同时触发 Android 风格回调
+        // 长期方案：在 NativeMapView.ets 中监听 onCameraDidChange 并转换为 onCameraIdle
+        // 🔧 触发 Android 风格的 onCameraIdle 回调
+        callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
     
     // MapLibre 内部已经处理渲染时机（通过 triggerRepaint）

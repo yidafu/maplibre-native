@@ -2205,7 +2205,22 @@ export struct MapView {
           item => item.marker.getId() === marker.getId()
         );
         if (index >= 0) {
-          this.visibleInfoWindows[index].position = position;
+          // 🔧 关键修复：创建新数组引用以触发 @State 变化检测
+          // ArkUI 的 @State 只能检测对象/数组引用变化，不能检测内部属性变化
+          // 使用 slice() 创建数组浅拷贝，然后替换指定索引的元素
+          const newArray = this.visibleInfoWindows.slice();
+          const oldItem = newArray[index];
+          newArray[index] = {
+            marker: oldItem.marker,
+            markerId: oldItem.markerId,
+            markerTitle: oldItem.markerTitle,
+            markerSnippet: oldItem.markerSnippet,
+            position: { x: position.x, y: position.y, arrowOffsetX: position.arrowOffsetX },
+            style: oldItem.style,
+            key: oldItem.key
+          };
+          this.visibleInfoWindows = newArray;
+          console.info(`[NativeMapView] InfoWindow position updated in @State array: (${position.x}, ${position.y})`);
         }
       });
 
@@ -2442,6 +2457,30 @@ export struct MapView {
             marker.hideInfoWindow();
           } catch (error) {
             hilog.error(DOMAIN, 'NativeMapView', `InfoWindow close error: ${error.message}`);
+          }
+        },
+        onInfoWindowSizeChanged: (marker: Marker, width: number, height: number) => {
+          try {
+            const mapLibreMap = this.controller.getMapLibreMapInstance();
+            if (mapLibreMap) {
+              const infoWindowManager = mapLibreMap.getInfoWindowManager();
+              const infoWindow = infoWindowManager.get(marker);
+              if (infoWindow) {
+                console.info(`[NativeMapView] InfoWindow size changed: ${width}x${height}, updating position`);
+                infoWindow.setSize(width, height);
+                // 获取 marker 屏幕位置（逻辑像素）并重新计算 InfoWindow 位置
+                const pos = marker.getPosition();
+                const screenPoint = mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
+                console.info(`[NativeMapView] Recalculating position with actual size, marker pos: (${screenPoint.x}, ${screenPoint.y})`);
+                const viewWidth = mapLibreMap.getViewWidth();
+                const viewHeight = mapLibreMap.getViewHeight();
+                // update() 会重新计算位置并触发 onUpdateCallback
+                infoWindow.update(viewWidth, viewHeight, screenPoint);
+                console.info(`[NativeMapView] InfoWindow position updated after size change`);
+              }
+            }
+          } catch (error) {
+            hilog.error(DOMAIN, 'NativeMapView', `InfoWindow size changed error: ${error.message}`);
           }
         }
       })

@@ -475,6 +475,20 @@ build/default/outputs/default/maplibre-harmony.har
 3. Inspect HiLog: `hdc hilog | grep MapLibre`
 4. **Known Issue**: Map may crash on repeated page transitions (being fixed)
 
+### Multiple maps limitation
+
+> ⚠️ **IMPORTANT**: Multiple map instances on the same screen are **NOT supported** currently.
+>
+> **Current Limitation**:
+>
+> - Only **ONE** map instance can be rendered on screen at a time
+> - Creating multiple `NativeMapView` components simultaneously will cause rendering conflicts
+> - Switching between maps requires proper cleanup of the previous instance
+>
+> **Status**: 🚧 Multi-map support is **planned** and under investigation
+>
+> **Workaround**: Use navigation or tabs to display maps one at a time
+
 ### Build errors
 1. Clean build cache: `npm run clean`
 2. Verify environment variables are set
@@ -511,6 +525,58 @@ See the [`entry`](../entry/) module for complete working examples:
 - Gesture handling
 - Offline maps
 - Custom layers
+
+## Roadmap
+
+### Planned Features
+
+#### 🎯 High Priority
+
+**Declarative API** 🚧 Planning
+
+- Native ArkTS declarative API design
+- Seamless integration with HarmonyOS ArkUI
+- Type-safe, reactive map configuration
+- Simplified component composition
+
+**Multiple Map Support** 🚧 Planned
+
+- Support rendering multiple map instances on the same screen
+- Independent camera and style control for each instance
+- Optimized resource sharing between instances
+
+#### 🔬 Research & Investigation
+
+**Vulkan Rendering Backend** 🔬 Under Investigation
+
+- Modern graphics API support
+- Potential performance improvements
+- Better GPU utilization
+- Cross-platform rendering consistency
+
+**TextureView Support** 🔬 Under Investigation
+
+- Alternative rendering mode for better composition
+- Improved integration with ArkUI component tree
+- Support for view transformations and effects
+- Enhanced multi-map support
+
+#### 📋 Future Considerations
+
+- React Native bridge for cross-platform apps
+- Advanced annotation customization (ComponentContent support)
+- Enhanced offline map management
+- Improved accessibility features
+- Performance profiling tools
+
+### Timeline
+
+> ⚠️ **Note**: Timeline is subject to change. Features will be prioritized based on community feedback and technical feasibility.
+
+- **Q1-Q2 2025**: Declarative API design & prototyping
+- **Q2-Q3 2025**: Multiple map support implementation
+- **Q3-Q4 2025**: Vulkan backend research & evaluation
+- **2025+**: TextureView support and React Native bridge
 
 ## Contributing
 

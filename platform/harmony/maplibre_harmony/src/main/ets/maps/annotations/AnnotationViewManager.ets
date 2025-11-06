@@ -1,6 +1,7 @@
 import maplibre, { NativeMapView } from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
+import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
 import { Marker } from './Marker';
 
 /**
@@ -22,21 +23,58 @@ export interface AnnotationViewData {
 /**
  * AnnotationViewManager - 自定义 Annotation 视图管理器
  *
- * 管理所有自定义 AnnotationView：
- * - 维护 Marker → AnnotationView 映射
- * - 处理视图复用（性能优化）
- * - 更新视图位置（地图移动时）
- * - 选中状态管理
- * - 拖拽管理
- * - 与 AnnotationViewAdapter 交互
+ * 管理所有自定义 AnnotationView 的完整生命周期，提供高性能的视图管理能力
+ * 
+ * **核心职责**：
+ * - ✅ 维护 Marker → AnnotationView 映射关系
+ * - ✅ 处理视图复用（reuseIdentifier 机制）
+ * - ✅ 更新视图位置（响应地图相机变化）
+ * - ✅ 选中状态管理（单选模式）
+ * - ✅ 拖拽状态管理
+ * - ✅ 与 AnnotationViewDelegate 交互
+ * - ✅ 性能优化（批量更新、虚拟化渲染）
  *
- * 参考:
- * - iOS: MLNAnnotationView dequeue/reuse mechanism
+ * **参考实现**：
+ * - iOS: MLNMapView 的 annotation view 管理机制
+ *   - dequeueReusableAnnotationViewWithIdentifier:
+ *   - 自动视图复用和池管理
+ *   - 委托方法调用
+ * - Android: AnnotationManager
+ *   - 注解容器管理
+ *   - 事件分发
+ * 
+ * **性能特性**：
+ * - 视图复用池（减少创建开销）
+ * - 批量位置更新（减少 UI 刷新）
+ * - 虚拟化渲染支持（只渲染可见区域）
+ * - 增量更新机制
+ * 
+ * **使用示例**：
+ * ```typescript
+ * // 创建管理器
+ * const manager = new AnnotationViewManager();
+ * manager.setNativeMapView(nativeMapView);
+ * 
+ * // 设置委托
+ * manager.setDelegate(myDelegate);
+ * 
+ * // 为 Marker 创建视图
+ * manager.createOrUpdateView(marker);
+ * 
+ * // 更新所有视图位置
+ * manager.batchUpdatePositions(true);
+ * ```
  */
 export class AnnotationViewManager {
+  // 委托（新增，替代 adapter）
+  private delegate: AnnotationViewDelegate | null = null;
+  // 适配器（保留用于向后兼容）
   private adapter: AnnotationViewAdapter | null = null;
+  // 视图数据映射：Marker ID → AnnotationViewData
   private annotationViews: Map<number, AnnotationViewData> = new Map();
+  // 复用池：reuseIdentifier → AnnotationViewData[]
   private reusePool: Map<string, AnnotationViewData[]> = new Map();
+  // Native 地图视图（用于坐标转换）
   private nativeMapView: NativeMapView | null = null;
   // 选中状态管理
   private selectedAnnotations: Set<number> = new Set();
@@ -58,7 +96,53 @@ export class AnnotationViewManager {
   }
 
   /**
-   * 设置 AnnotationViewAdapter
+   * 设置 AnnotationViewDelegate（推荐使用）
+   * 
+   * 参考：iOS MLNMapView.delegate
+   * 
+   * @param delegate AnnotationViewDelegate 实例，传 null 清除委托
+   * 
+   * @example
+   * ```typescript
+   * const delegate: AnnotationViewDelegate = {
+   *   viewForAnnotation: (marker) => {
+   *     return {
+   *       reuseIdentifier: 'custom-pin',
+   *       contentBuilder: () => {
+   *         Column() {
+   *           Image($r('app.media.marker')).width(32).height(32)
+   *         }
+   *       }
+   *     };
+   *   }
+   * };
+   * manager.setDelegate(delegate);
+   * ```
+   */
+  setDelegate(delegate: AnnotationViewDelegate | null): void {
+    this.delegate = delegate;
+
+    // 委托改变时，清除所有视图重新创建
+    if (delegate) {
+      this.recreateAllViews();
+    }
+  }
+
+  /**
+   * 获取 AnnotationViewDelegate
+   * 
+   * @returns 当前设置的 delegate，如果未设置则返回 null
+   */
+  getDelegate(): AnnotationViewDelegate | null {
+    return this.delegate;
+  }
+
+  /**
+   * 设置 AnnotationViewAdapter（兼容方法）
+   * 
+   * @deprecated 使用 {@link setDelegate} 替代
+   * 
+   * @param adapter AnnotationViewAdapter 实例，传 null 清除适配器
    */
   setAdapter(adapter: AnnotationViewAdapter | null): void {
     this.adapter = adapter;
@@ -71,6 +155,10 @@ export class AnnotationViewManager {
 
   /**
    * 获取 AnnotationViewAdapter
+   * 
+   * @deprecated 使用 {@link getDelegate} 替代
+   * 
+   * @returns 当前设置的 adapter，如果未设置则返回 null
    */
   getAdapter(): AnnotationViewAdapter | null {
     return this.adapter;
@@ -78,27 +166,62 @@ export class AnnotationViewManager {
 
   /**
    * 为 Marker 创建或更新 AnnotationView
+   * 
+   * 优先使用 delegate，如果没有则尝试使用 adapter（向后兼容）
+   * 
+   * 参考：iOS MLNMapView 自动为 annotation 创建视图的机制
+   * 
+   * @param marker 要创建/更新视图的 Marker
+   * 
+   * 工作流程：
+   * 1. 调用 delegate.viewForAnnotation 获取配置
+   * 2. 如果没有 delegate，尝试使用 adapter（兼容）
+   * 3. 如果返回 null，移除已有的自定义视图（使用默认图标）
+   * 4. 创建或更新 AnnotationViewData
+   * 5. 存储到 annotationViews Map
    */
   createOrUpdateView(marker: Marker): void {
-    if (!this.adapter) {
-      // 没有适配器，移除已有的自定义视图
-      this.removeView(marker);
-      return;
-    }
-
     const markerId = marker.getId();
-    const customView = this.adapter.getAnnotationView(marker);
+    let viewConfig: AnnotationViewConfig | null = null;
+    let customView: object | null = null;
+    let reuseIdentifier: string;
 
-    if (!customView) {
-      // 适配器返回 null，使用默认图标
+    // 优先使用 delegate
+    if (this.delegate && this.delegate.viewForAnnotation) {
+      viewConfig = this.delegate.viewForAnnotation(marker);
+      
+      if (viewConfig) {
+        reuseIdentifier = viewConfig.reuseIdentifier;
+        // 注意：这里我们存储 contentBuilder 到 customView
+        // 实际渲染时由 AnnotationViewOverlay 处理
+        customView = viewConfig.contentBuilder ?? null;
+      } else {
+        // delegate 返回 null，使用默认图标
+        this.removeView(marker);
+        return;
+      }
+    }
+    // 如果没有 delegate，尝试使用 adapter（向后兼容）
+    else if (this.adapter) {
+      customView = this.adapter.getAnnotationView(marker);
+
+      if (!customView) {
+        // adapter 返回 null，使用默认图标
+        this.removeView(marker);
+        return;
+      }
+
+      // 获取复用标识符
+      reuseIdentifier = this.adapter.getReuseIdentifier
+        ? this.adapter.getReuseIdentifier(marker)
+        : (marker.getIcon() || 'default');
+    }
+    // 既没有 delegate 也没有 adapter
+    else {
+      // 移除已有的自定义视图，使用默认图标
       this.removeView(marker);
       return;
     }
-
-    // 获取复用标识符
-    const reuseIdentifier = this.adapter.getReuseIdentifier
-      ? this.adapter.getReuseIdentifier(marker)
-      : (marker.getIcon() || 'default');
 
     // 计算屏幕位置
     const position = this.calculateScreenPosition(marker);
@@ -117,6 +240,12 @@ export class AnnotationViewManager {
       visible: marker.getVisible(),
       reuseIdentifier: reuseIdentifier
     };
+
+    // 应用配置选项（如果有）
+    if (viewConfig) {
+      // TODO: 将 viewConfig 的其他属性应用到 Marker 或 viewData
+      // 例如：draggable, scalesWithViewingDistance, rotatesToMatchCamera 等
+    }
 
     this.annotationViews.set(markerId, viewData);
   }

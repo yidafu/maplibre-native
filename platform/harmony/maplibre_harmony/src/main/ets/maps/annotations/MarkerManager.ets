@@ -19,7 +19,7 @@ import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
 import type { InfoWindowStyle } from './InfoWindow';
 import type { Icon } from './Icon';
-import type { Marker } from './Marker';
+import type { Marker, MarkerAnchor } from './Marker';
 import common from '@ohos.app.ability.common';
 import type {
   OnMapClickListener,
@@ -268,19 +268,24 @@ export class MarkerManager {
     //   int touchSurfaceWidth = (int) (iconManager.getHighestIconHeight() * 1.5);
     //   int touchSurfaceHeight = (int) (iconManager.getHighestIconWidth() * 1.5);
 
-    // 默认触摸区域（像素） - 参考 Android minimalTouchSize = 32dp
+    // 默认触摸区域（逻辑像素） - 参考 Android minimalTouchSize = 32dp
     const DEFAULT_TOUCH_SIZE = 48;
     let touchWidth = DEFAULT_TOUCH_SIZE;
     let touchHeight = DEFAULT_TOUCH_SIZE;
 
     // 使用图标最大尺寸计算自适应触摸区域
-    const iconWidth = this.iconManager.getHighestIconWidth();
-    const iconHeight = this.iconManager.getHighestIconHeight();
+    const iconWidthPhysical = this.iconManager.getHighestIconWidth();   // 物理像素
+    const iconHeightPhysical = this.iconManager.getHighestIconHeight(); // 物理像素
 
-    if (iconWidth > 0 || iconHeight > 0) {
+    if (iconWidthPhysical > 0 || iconHeightPhysical > 0) {
+      // 转换为逻辑像素（触摸区域计算需要使用逻辑像素）
+      const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
+      const iconWidthLogical = iconWidthPhysical / pixelRatio;
+      const iconHeightLogical = iconHeightPhysical / pixelRatio;
+      
       // 注意：Android 中 width 和 height 交换了，因为 marker 通常是竖直的
-      touchWidth = Math.max(iconHeight * 1.5, DEFAULT_TOUCH_SIZE);
-      touchHeight = Math.max(iconWidth * 1.5, DEFAULT_TOUCH_SIZE);
+      touchWidth = Math.max(iconHeightLogical * 1.5, DEFAULT_TOUCH_SIZE);
+      touchHeight = Math.max(iconWidthLogical * 1.5, DEFAULT_TOUCH_SIZE);
     }
 
     // 构建查询矩形（逻辑像素，queryRenderedFeaturesForBox 会处理 DPI 转换）
@@ -297,6 +302,12 @@ export class MarkerManager {
       undefined
     );
 
+    console.info(`[MarkerManager] queryMarkerAtPoint - features found: ${features ? features.length : 0}`);
+    if (features && features.length > 0) {
+      console.info(`[MarkerManager] Feature IDs: ${features.map(f => f.id).join(', ')}`);
+      console.info(`[MarkerManager] MarkerMap has ${this.markerMap.size} markers`);
+    }
+
     if (!features || features.length === 0) {
       return null;
     }
@@ -304,9 +315,13 @@ export class MarkerManager {
     // 如果只有一个 Feature，直接返回对应的 Marker
     if (features.length === 1) {
       const featureId = features[0].id;
+      console.info(`[MarkerManager] Single feature - ID: ${featureId}, type: ${typeof featureId}`);
       if (typeof featureId === 'number' && this.markerMap.has(featureId)) {
-        return this.markerMap.get(featureId)!;
+        const marker = this.markerMap.get(featureId)!;
+        console.info(`[MarkerManager] Found marker: ${marker.getTitle()}`);
+        return marker;
       }
+      console.warn(`[MarkerManager] Feature ID ${featureId} not found in markerMap`);
       return null;
     }
 
@@ -315,12 +330,18 @@ export class MarkerManager {
     const candidateIds: number[] = [];
     for (const feature of features) {
       const featureId = feature.id;
+      console.info(`[MarkerManager] Checking feature ID: ${featureId}, type: ${typeof featureId}`);
       if (typeof featureId === 'number' && this.markerMap.has(featureId)) {
         candidateIds.push(featureId);
+        console.info(`[MarkerManager] Added candidate ID: ${featureId}`);
+      } else {
+        console.warn(`[MarkerManager] Feature ID ${featureId} not in markerMap or wrong type`);
       }
     }
 
+    console.info(`[MarkerManager] Candidate markers: ${candidateIds.length}`);
     if (candidateIds.length === 0) {
+      console.warn(`[MarkerManager] No candidate markers found from ${features.length} features`);
       return null;
     }
 
@@ -338,6 +359,8 @@ export class MarkerManager {
    * @returns 最接近点击点的 Marker，如果没有则返回 null
    */
   private resolveMarkerHit(x: number, y: number, markerIds: number[]): Marker | null {
+    console.info(`[MarkerManager] resolveMarkerHit called with ${markerIds.length} candidates at logical (${x}, ${y})`);
+    
     let closestMarker: Marker | null = null;
     let maxIntersectionArea = 0;
 
@@ -345,26 +368,31 @@ export class MarkerManager {
     // pixelForLatLng 返回物理像素，需要统一坐标系统进行比较
     const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
     const physicalPoint = PixelCoordinate.fromLogicalPixels(x, y, pixelRatio);
+    console.info(`[MarkerManager] Click point - logical: (${x}, ${y}), physical: (${physicalPoint.x}, ${physicalPoint.y}), pixelRatio: ${pixelRatio}`);
 
     for (const markerId of markerIds) {
       const marker = this.markerMap.get(markerId);
       if (!marker) {
+        console.warn(`[MarkerManager] Marker ID ${markerId} not found in markerMap`);
         continue;
       }
 
-      // 获取 Marker 的屏幕位置（返回物理像素）
+      // 获取 Marker 的屏幕位置（物理像素，用于点击检测）
       const position = marker.getPosition();
-      const screenPoint = this.mapLibreMap.pixelForLatLng(position.latitude, position.longitude);
+      const screenPoint = this.mapLibreMap.pixelForLatLngPhysical(position.latitude, position.longitude);
+      console.info(`[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") - geo: (${position.latitude}, ${position.longitude}), physical screen: (${screenPoint.x}, ${screenPoint.y})`);
 
       // 获取图标尺寸
       const icon = this.markerIconMap.get(markerId);
       if (!icon) {
+        console.warn(`[MarkerManager] Icon not found for marker ID ${markerId}`);
         continue;
       }
 
 
       let bitmapWidth = icon.getWidth();
       let bitmapHeight = icon.getHeight()
+      console.info(`[MarkerManager] Marker ${markerId} - original icon size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
       // 参考 Android: 最小触摸尺寸 32dp
       const minimalTouchSize = 48;
@@ -374,25 +402,48 @@ export class MarkerManager {
       if (bitmapWidth < minimalTouchSize) {
         bitmapWidth = minimalTouchSize;
       }
+      console.info(`[MarkerManager] Marker ${markerId} - adjusted touch size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
-      // 构建 Marker 的矩形区域（考虑锚点）
-      const markerLeft = screenPoint.x - bitmapWidth / 2;
-      const markerTop = screenPoint.y - bitmapHeight / 2;
+      // 获取 Marker 的锚点（默认是底部中心：0.5, 1.0）
+      // 参考 Android: MarkerView 默认锚点是 (0.5f, 1.0f)
+      // anchorU: 水平锚点 (0=左, 0.5=中, 1=右)
+      // anchorV: 垂直锚点 (0=上, 0.5=中, 1=下)
+      const anchor: MarkerAnchor = marker.getAnchor();
+      const anchorU: number = anchor ? anchor.u : 0.5;
+      const anchorV: number = anchor ? anchor.v : 1.0;
+      console.info(`[MarkerManager] Marker ${markerId} - anchor: (${anchorU}, ${anchorV})`);
+
+      // 构建 Marker 的矩形区域（基于锚点计算）
+      // screenPoint 是锚点在屏幕上的位置
+      const markerLeft = screenPoint.x - bitmapWidth * anchorU;
+      const markerTop = screenPoint.y - bitmapHeight * anchorV;
       const markerRight = markerLeft + bitmapWidth;
       const markerBottom = markerTop + bitmapHeight;
+      console.info(`[MarkerManager] Marker ${markerId} - hit rect (physical): [${markerLeft}, ${markerTop}, ${markerRight}, ${markerBottom}]`);
 
       // 检查点击点是否在 Marker 矩形内（使用物理像素进行比较）
-      if (physicalPoint.x >= markerLeft && physicalPoint.x <= markerRight &&
-        physicalPoint.y >= markerTop && physicalPoint.y <= markerBottom) {
+      const isInside = physicalPoint.x >= markerLeft && physicalPoint.x <= markerRight &&
+        physicalPoint.y >= markerTop && physicalPoint.y <= markerBottom;
+      console.info(`[MarkerManager] Marker ${markerId} - click point (${physicalPoint.x}, ${physicalPoint.y}) isInside: ${isInside}`);
+      
+      if (isInside) {
         // 计算交集面积（这里简化为 Marker 矩形面积）
         const intersectionArea = bitmapWidth * bitmapHeight;
+        console.info(`[MarkerManager] Marker ${markerId} - intersection area: ${intersectionArea}, current max: ${maxIntersectionArea}`);
 
         // 选择交集面积最大的 Marker（最接近点击点）
         if (intersectionArea > maxIntersectionArea) {
           maxIntersectionArea = intersectionArea;
           closestMarker = marker;
+          console.info(`[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") is now the closest marker`);
         }
       }
+    }
+
+    if (closestMarker) {
+      console.info(`[MarkerManager] resolveMarkerHit result: "${closestMarker.getTitle()}"`);
+    } else {
+      console.warn(`[MarkerManager] resolveMarkerHit result: null (no marker hit)`);
     }
 
     return closestMarker;
@@ -1244,29 +1295,6 @@ export class MarkerManager {
   }
 
   /**
-   * 将 Marker 地理坐标转换为逻辑像素屏幕坐标
-   * 
-   * 用于 InfoWindow 等 ArkUI 组件的定位（ArkUI 使用逻辑像素）
-   * 
-   * @param marker Marker 实例
-   * @returns 逻辑像素屏幕坐标
-   */
-  private getMarkerLogicalScreenPosition(marker: Marker): PixelCoordinate {
-    // 获取 Marker 屏幕坐标（物理像素）
-    const pos = marker.getPosition();
-    const physicalScreenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
-    
-    // 将物理像素转换为逻辑像素
-    const pixelRatio: number = this.mapLibreMap.getNativeMapView().getPixelRatio();
-    const logicalX: number = physicalScreenPoint.x / pixelRatio;
-    const logicalY: number = physicalScreenPoint.y / pixelRatio;
-    
-    console.info(`[MarkerManager] Coordinate conversion: physical(${physicalScreenPoint.x}, ${physicalScreenPoint.y}) -> logical(${logicalX}, ${logicalY}), DPI=${pixelRatio}`);
-    
-    return new PixelCoordinate(logicalX, logicalY);
-  }
-
-  /**
    * 显示 Marker 的 InfoWindow
    */
   public showInfoWindow(marker: Marker): void {
@@ -1275,20 +1303,49 @@ export class MarkerManager {
       const snippet = marker.getSnippet();
       console.info(`[MarkerManager] showInfoWindow called for marker - title: "${title}", snippet: "${snippet}"`);
       
-      // 获取 Marker 逻辑像素屏幕坐标（用于 InfoWindow 定位）
-      const logicalScreenPoint: PixelCoordinate = this.getMarkerLogicalScreenPosition(marker);
+      // 获取 Marker 屏幕坐标（逻辑像素，用于 ArkUI InfoWindow 组件定位）
+      const pos = marker.getPosition();
+      const screenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
+      console.info(`[MarkerManager] Marker logical screen position: (${screenPoint.x}, ${screenPoint.y})`);
 
-      // 获取视图尺寸（逻辑像素）
+      // 获取 Marker 图标高度（用于计算 InfoWindow 偏移量）
+      // 参考 Android InfoWindow.java 和 iOS positioningRectForCalloutForAnnotationWithTag
+      const iconId = marker.getIcon();
+      const iconHeightPhysical = this.iconManager.getIconHeight(iconId);
+      const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
+      // Icon 高度是物理像素，需要转换为逻辑像素
+      const iconHeightLogical = iconHeightPhysical / pixelRatio;
+      console.info(`[MarkerManager] Icon "${iconId}" height: ${iconHeightPhysical}px (physical) = ${iconHeightLogical}px (logical)`);
+
+      // 获取视图尺寸
       const viewWidth: number = this.mapLibreMap.getViewWidth();
       const viewHeight: number = this.mapLibreMap.getViewHeight();
       console.info(`[MarkerManager] View dimensions: ${viewWidth}x${viewHeight}`);
 
-      // 获取 InfoWindow 样式
-      const style = this.getInfoWindowStyle(marker);
+      // 获取 InfoWindow 样式，并设置垂直偏移量（参考 Android/iOS 实现）
+      let style = this.getInfoWindowStyle(marker);
+      
+      // 参考 Android InfoWindow.java:137-143:
+      // markerHeightOffset = offsetY
+      // y = coordinates.y - view.getMeasuredHeight() + offsetY
+      // 
+      // 参考 iOS MLNMapView.mm:5745-5792:
+      // centerPoint = CGPointMake(CGRectGetMidX(positioningRect), CGRectGetMinY(positioningRect))
+      // 即 InfoWindow 定位在 Marker 图标的顶部
+      //
+      // 因此 offsetY 应该设置为负的图标高度，将 InfoWindow 从地理坐标点向上偏移到图标顶部
+      if (!style) {
+        // 如果没有自定义样式，创建默认样式
+        style = {};
+      }
+      if (style.offsetY === undefined && iconHeightLogical > 0) {
+        style.offsetY = -iconHeightLogical;
+        console.info(`[MarkerManager] Setting offsetY to -${iconHeightLogical} (negative icon height for top positioning)`);
+      }
 
       // 显示 InfoWindow（使用逻辑像素坐标）
-      console.info(`[MarkerManager] Calling InfoWindowManager.show()`);
-      this.infoWindowManager.show(marker, viewWidth, viewHeight, logicalScreenPoint, style);
+      console.info(`[MarkerManager] Calling InfoWindowManager.show() with offsetY: ${style.offsetY}`);
+      this.infoWindowManager.show(marker, viewWidth, viewHeight, screenPoint, style);
       console.info(`[MarkerManager] InfoWindow shown successfully`);
 
     } catch (error) {
