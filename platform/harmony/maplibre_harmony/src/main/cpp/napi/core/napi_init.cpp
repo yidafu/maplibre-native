@@ -40,6 +40,8 @@
 // Network configuration
 #include "napi/bindings/network/network_napi.hpp"
 #include "napi/bindings/network/url_transform_napi.hpp"
+// Global settings
+#include "config/maplibre_settings_napi.hpp"
 
 EXTERN_C_START
 static napi_value Init(napi_env env, napi_value exports) {
@@ -105,6 +107,9 @@ static napi_value Init(napi_env env, napi_value exports) {
     // 网络配置
     mbgl::harmony::NetworkNAPI::Init(env, exports);
     mbgl::harmony::URLTransformNAPI::Init(env, exports);
+    
+    // 全局配置管理
+    mbgl::harmony::MapLibreSettingsNAPI::Init(env, exports);
 
     return exports;
 }

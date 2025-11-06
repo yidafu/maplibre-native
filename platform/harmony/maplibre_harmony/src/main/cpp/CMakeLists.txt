@@ -80,6 +80,12 @@ add_library(maplibre
     core/native_map_view/native_map_view_performance.cpp
     core/native_map_view/native_map_view_debug.cpp
     
+    # Configuration management
+    config/maplibre_settings.hpp
+    config/maplibre_settings.cpp
+    config/maplibre_settings_napi.hpp
+    config/maplibre_settings_napi.cpp
+    
     # Rendering system
     rendering/harmony_renderer.hpp
     rendering/harmony_renderer.cpp

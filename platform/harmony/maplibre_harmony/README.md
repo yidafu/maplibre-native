@@ -496,9 +496,9 @@ build/default/outputs/default/maplibre-harmony.har
 ## Documentation
 
 ### API Documentation
-- **[API Documentation Index](./docs/api/INDEX.md)** 📚 - Complete API documentation hub
-- **[API Reference](./docs/api/README.md)** - Core API overview and quick start
-- **[Usage Guide](./docs/api/USAGE_GUIDE.md)** - Detailed usage examples and patterns
+- **[API Documentation Index](./docs/apis/INDEX.md)** 📚 - Complete API documentation hub
+- **[API Reference](./docs/apis/README.md)** - Core API overview and quick start
+- **[Usage Guide](./docs/apis/USAGE_GUIDE.md)** - Detailed usage examples and patterns
 - **[Implementation Progress](./docs/api/ALIGNMENT_PROGRESS.md)** - API alignment status
 
 ## Examples

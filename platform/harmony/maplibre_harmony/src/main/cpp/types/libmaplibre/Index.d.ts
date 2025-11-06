@@ -176,3 +176,47 @@ export function clearResourceTransformCallback(): void;
  * @returns 如果设置了回调返回true，否则返回false
  */
 export function hasResourceTransformCallback(): boolean;
+
+// ========== 全局配置 (Global Configuration) ==========
+
+/**
+ * 设置 Access Token（用于 Mapbox、MapTiler 等服务）
+ * @param token - API Key / Access Token
+ */
+export function setAccessToken(token: string): void;
+
+/**
+ * 获取当前配置的 Access Token
+ * @returns 当前的 API Key / Access Token
+ */
+export function getAccessToken(): string;
+
+/**
+ * 使用 Mapbox 瓦片服务器配置
+ * 配置后支持使用 mapbox:// 协议的 URL
+ */
+export function useMapboxConfiguration(): void;
+
+/**
+ * 使用 MapTiler 瓦片服务器配置
+ * 配置后支持使用 maptiler:// 协议的 URL
+ */
+export function useMapTilerConfiguration(): void;
+
+/**
+ * 使用 MapLibre 默认瓦片服务器配置（开源，无需 token）
+ * 配置后支持使用 maplibre:// 协议的 URL
+ */
+export function useMapLibreConfiguration(): void;
+
+/**
+ * 设置自定义 API Base URL
+ * @param url - 基础 URL（如 https://api.example.com）
+ */
+export function setApiBaseURL(url: string): void;
+
+/**
+ * 获取当前 API Base URL
+ * @returns 当前配置的基础 URL
+ */
+export function getApiBaseURL(): string;

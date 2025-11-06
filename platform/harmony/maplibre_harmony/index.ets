@@ -46,6 +46,9 @@
  * @packageDocumentation
  */
 
+// 导出全局配置类
+export { MapLibre } from './src/main/ets/MapLibre';
+
 // 导出所有公共 API
 export * from './src/main/ets/maps/index';
 

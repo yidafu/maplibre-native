@@ -10,6 +10,7 @@
 #include "harmony_map_render_thread.hpp"
 #include "utils/logger.h"
 #include "core/native_map_view/native_map_view_harmony.hpp"  // ✅ 用于转发 MapObserver 事件
+#include "config/maplibre_settings.hpp"  // ✅ 全局配置管理
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/logging.hpp>
@@ -17,6 +18,7 @@
 #include <mbgl/actor/scheduler.hpp>
 #include <mbgl/util/run_loop.hpp>
 #include <mbgl/storage/file_source_manager.hpp>
+#include <mbgl/storage/file_source.hpp>
 #include <mbgl/storage/resource_options.hpp>
 #include <mbgl/storage/sqlite3.hpp>
 
@@ -86,6 +88,9 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
     if (!cachePath.empty()) {
         resourceOptions.withCachePath(cachePath);
     }
+    
+    // ✅ 应用全局配置（TileServerOptions 和 API Key）
+    resourceOptions = MapLibreSettings::getInstance().applyToResourceOptions(std::move(resourceOptions));
     
     // Create Client options
     ClientOptions clientOptions;
@@ -217,21 +222,49 @@ void HarmonyRenderer::resume() {
 void HarmonyRenderer::stopAllRequests() {
     
     try {
-        // 停止FileSourceManager的所有网络请求
-        if (auto fileSourceManager = mbgl::FileSourceManager::get()) {
+        Logger::info("HarmonyRenderer", "[%s] Stopping all file source requests...", instanceId_.c_str());
+        
+        // Get FileSourceManager and pause all file sources
+        // This prevents new requests from starting and pauses active ones
+        auto* fileSourceManager = mbgl::FileSourceManager::get();
+        if (fileSourceManager) {
+            // Create empty ResourceOptions to get file sources
+            mbgl::ResourceOptions resourceOptions;
+            mbgl::ClientOptions clientOptions;
+            
+            // Pause ResourceLoader (manages all other file sources)
+            if (auto resourceLoader = fileSourceManager->getFileSource(
+                    mbgl::FileSourceType::ResourceLoader, resourceOptions, clientOptions)) {
+                Logger::info("HarmonyRenderer", "[%s] Pausing ResourceLoader...", instanceId_.c_str());
+                resourceLoader->pause();
+            }
+            
+            // Also pause Online and Database file sources directly for safety
+            if (auto onlineSource = fileSourceManager->getFileSource(
+                    mbgl::FileSourceType::Network, resourceOptions, clientOptions)) {
+                Logger::info("HarmonyRenderer", "[%s] Pausing Online file source...", instanceId_.c_str());
+                onlineSource->pause();
+            }
+            
+            if (auto databaseSource = fileSourceManager->getFileSource(
+                    mbgl::FileSourceType::Database, resourceOptions, clientOptions)) {
+                Logger::info("HarmonyRenderer", "[%s] Pausing Database file source...", instanceId_.c_str());
+                databaseSource->pause();
+            }
         }
         
-        // 暂停渲染
+        // Pause rendering to prevent new render requests
         if (mapRenderThread_) {
+            Logger::info("HarmonyRenderer", "[%s] Pausing render thread...", instanceId_.c_str());
             mapRenderThread_->pause();
         }
         
-        Logger::info("HarmonyRenderer", "All network requests stopped successfully");
+        Logger::info("HarmonyRenderer", "[%s] All file source requests stopped successfully", instanceId_.c_str());
         
     } catch (const std::exception& e) {
-        Logger::error("HarmonyRenderer", "Error stopping network requests: %s", e.what());
+        Logger::error("HarmonyRenderer", "[%s] Error stopping network requests: %s", instanceId_.c_str(), e.what());
     } catch (...) {
-        Logger::error("HarmonyRenderer", "Unknown error stopping network requests");
+        Logger::error("HarmonyRenderer", "[%s] Unknown error stopping network requests", instanceId_.c_str());
     }
     
 }
@@ -289,26 +322,37 @@ void HarmonyRenderer::cleanup() {
         return;
     }
     
-    Logger::info("HarmonyRenderer", "Cleaning up...");
+    Logger::info("HarmonyRenderer", "[%s] Starting cleanup...", instanceId_.c_str());
     
     // Invalidate weak pointers early to prevent accessing this Scheduler after cleanup begins
     if (weakFactory) {
         weakFactory->invalidateWeakPtrs();
     }
     
-    // 首先停止所有网络请求
+    // 首先停止所有网络请求（pause all file sources）
     stopAllRequests();
+    
+    // 🔑 Critical: Wait for active network callbacks to complete
+    // Network requests in OnlineFileSource thread may still be executing callbacks
+    // even after pause() is called. We need to give them time to finish to avoid
+    // accessing destroyed mutexes (SIGSEGV in pthread_mutex_lock)
+    Logger::info("HarmonyRenderer", "[%s] Waiting for active network callbacks to complete...", instanceId_.c_str());
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     
     // 停止 Map+Render 线程
     if (mapRenderThread_) {
-        Logger::info("HarmonyRenderer", "Stopping Map+Render thread...");
+        Logger::info("HarmonyRenderer", "[%s] Stopping Map+Render thread...", instanceId_.c_str());
         mapRenderThread_->stop();
+        
+        // Give render thread time to finish current frame
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        
         mapRenderThread_.reset();
-        Logger::info("HarmonyRenderer", "Map+Render thread stopped");
+        Logger::info("HarmonyRenderer", "[%s] Map+Render thread stopped", instanceId_.c_str());
     }
     
     initialized = false;
-    Log::Info(Event::OpenGL, "HarmonyRenderer cleaned up successfully");
+    Logger::info("HarmonyRenderer", "[%s] Cleanup completed successfully", instanceId_.c_str());
 }
 
 // ✅ MapObserver 方法实现 - 转发给 NativeMapView
