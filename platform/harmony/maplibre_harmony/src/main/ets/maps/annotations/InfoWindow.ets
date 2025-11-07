@@ -50,6 +50,10 @@ export interface InfoWindowStyle {
   offsetY?: number; // Y 轴偏移量（像素）
 }
 
+const DEFAULT_INFO_WINDOW_STYLE: InfoWindowStyle = {
+  showCloseButton: true
+};
+
 /**
  * InfoWindow - 信息窗口类
  *
@@ -74,7 +78,9 @@ export class InfoWindow {
   private viewHeightOffset: number = 0;
   private screenPosition: InfoWindowPosition | null = null;
   // 样式配置
-  private style: InfoWindowStyle = {};
+  private style: InfoWindowStyle = {
+    showCloseButton: DEFAULT_INFO_WINDOW_STYLE.showCloseButton,
+  };
   // 回调函数，用于通知外部需要显示/隐藏 InfoWindow
   private onShowCallback?: (marker: Marker, position: InfoWindowPosition) => void;
   private onCloseCallback?: (marker: Marker) => void;
@@ -82,16 +88,7 @@ export class InfoWindow {
 
   constructor(marker: Marker, style?: InfoWindowStyle) {
     this.marker = marker;
-    if (style) {
-      this.setStyle(style);
-      // 从样式中应用偏移量
-      if (style.offsetX !== undefined) {
-        this.offsetX = style.offsetX;
-      }
-      if (style.offsetY !== undefined) {
-        this.offsetY = style.offsetY;
-      }
-    }
+    this.setStyle(style ?? {});
   }
 
   /**
@@ -149,7 +146,71 @@ export class InfoWindow {
    * 设置样式
    */
   public setStyle(style: InfoWindowStyle): void {
-    this.style = style;
+    const mergedStyle: InfoWindowStyle = {};
+
+    if (style.backgroundColor !== undefined) {
+      mergedStyle.backgroundColor = style.backgroundColor;
+    }
+    if (style.borderRadius !== undefined) {
+      mergedStyle.borderRadius = style.borderRadius;
+    }
+    if (style.shadowRadius !== undefined) {
+      mergedStyle.shadowRadius = style.shadowRadius;
+    }
+    if (style.shadowColor !== undefined) {
+      mergedStyle.shadowColor = style.shadowColor;
+    }
+    if (style.titleFontSize !== undefined) {
+      mergedStyle.titleFontSize = style.titleFontSize;
+    }
+    if (style.titleFontColor !== undefined) {
+      mergedStyle.titleFontColor = style.titleFontColor;
+    }
+    if (style.snippetFontSize !== undefined) {
+      mergedStyle.snippetFontSize = style.snippetFontSize;
+    }
+    if (style.snippetFontColor !== undefined) {
+      mergedStyle.snippetFontColor = style.snippetFontColor;
+    }
+    if (style.padding !== undefined) {
+      mergedStyle.padding = style.padding;
+    }
+    if (style.maxWidth !== undefined) {
+      mergedStyle.maxWidth = style.maxWidth;
+    }
+    if (style.animated !== undefined) {
+      mergedStyle.animated = style.animated;
+    }
+    if (style.leftAccessoryBuilder !== undefined) {
+      mergedStyle.leftAccessoryBuilder = style.leftAccessoryBuilder;
+    }
+    if (style.rightAccessoryBuilder !== undefined) {
+      mergedStyle.rightAccessoryBuilder = style.rightAccessoryBuilder;
+    }
+    if (style.thumbnailImage !== undefined) {
+      mergedStyle.thumbnailImage = style.thumbnailImage;
+    }
+    if (style.offsetX !== undefined) {
+      mergedStyle.offsetX = style.offsetX;
+    }
+    if (style.offsetY !== undefined) {
+      mergedStyle.offsetY = style.offsetY;
+    }
+
+    if (style.showCloseButton !== undefined) {
+      mergedStyle.showCloseButton = style.showCloseButton;
+    } else {
+      mergedStyle.showCloseButton = DEFAULT_INFO_WINDOW_STYLE.showCloseButton;
+    }
+
+    this.style = mergedStyle;
+
+    if (mergedStyle.offsetX !== undefined) {
+      this.offsetX = mergedStyle.offsetX;
+    }
+    if (mergedStyle.offsetY !== undefined) {
+      this.offsetY = mergedStyle.offsetY;
+    }
   }
 
   /**
@@ -322,22 +383,24 @@ export class InfoWindow {
     
     // 额外宽度：只在有缩略图时添加
     const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;  // 32px 图标 + 8px margin
+    const showCloseButton = this.style.showCloseButton !== false;
+    const closeButtonWidth = showCloseButton ? 36 : 0; // 28 按钮宽 + 8 间距
     
     // 估算宽度 = 文本宽度 + 左右 padding + 缩略图宽度
     const estimatedWidth = Math.max(
-      maxTextWidth + padding * 2 + thumbnailWidth,
+      maxTextWidth + padding * 2 + thumbnailWidth + closeButtonWidth,
       80  // 最小宽度（保证美观）
     );
     
     // 限制最大宽度
-    const maxWidth = this.style.maxWidth ?? 280;
+    const maxWidth = this.style.maxWidth ?? 240;
     const width = Math.min(estimatedWidth, maxWidth);
     
     // 估算高度：基于内容行数
     const titleHeight = title ? titleFontSize + 8 : 0;  // 标题行 + 间距
     const snippetHeight = snippet ? snippetFontSize + 4 : 0;  // 描述行 + 间距
     const arrowHeight = 10;  // 箭头高度
-    const closeButtonHeight = this.style.showCloseButton ? 32 : 0;
+    const closeButtonHeight = showCloseButton ? 32 : 0;
     
     const estimatedHeight = 
       closeButtonHeight +
@@ -461,32 +524,8 @@ export struct InfoWindowComponent {
 
   build() {
     Column() {
-      // 内容区域
       Column() {
-        // 顶部：关闭按钮
-        if (this.customStyle?.showCloseButton) {
-          Row() {
-            Blank()
-
-            Text('×')
-              .fontSize(24)
-              .fontColor('#999999')
-              .width(32)
-              .height(32)
-              .textAlign(TextAlign.Center)
-              .onClick(() => {
-                if (this.onClose) {
-                  this.onClose();
-                }
-              })
-          }
-          .width('100%')
-          .height(32)
-        }
-
-        // 主内容区域：左附件 + 内容 + 右附件
-        Row() {
-          // 左侧附件视图（参考 iOS leftAccessoryView）
+        Row({ space: 8 }) {
           if (this.leftAccessoryBuilder || this.customStyle?.leftAccessoryBuilder) {
             Column() {
               if (this.leftAccessoryBuilder) {
@@ -496,12 +535,9 @@ export struct InfoWindowComponent {
             .margin({ right: 8 })
           }
 
-          // 中间内容区域
           Column() {
-            // 标题行：缩略图 + 标题
             if (this.markerTitle) {
               Row() {
-                // 缩略图
                 if (this.customStyle?.thumbnailImage) {
                   Image(this.customStyle.thumbnailImage)
                     .width(32)
@@ -510,7 +546,6 @@ export struct InfoWindowComponent {
                     .margin({ right: 8 })
                 }
 
-                // 标题
                 Text(this.markerTitle)
                   .fontSize(this.customStyle?.titleFontSize ?? 16)
                   .fontWeight(FontWeight.Bold)
@@ -523,7 +558,6 @@ export struct InfoWindowComponent {
               .alignItems(VerticalAlign.Center)
             }
 
-            // 描述
             if (this.markerSnippet) {
               Text(this.markerSnippet)
                 .fontSize(this.customStyle?.snippetFontSize ?? 14)
@@ -533,22 +567,31 @@ export struct InfoWindowComponent {
                 .margin({ top: 4 })
                 .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 250 })
             }
-
-            // 自定义内容（TODO: 等待 SDK 支持）
-            // if (this.customContent) {
-            //   ContentSlot(this.customContent)
-            //     .margin({ top: 8 })
-            // }
           }
 
-          // 右侧附件视图（参考 iOS rightAccessoryView）
           if (this.rightAccessoryBuilder || this.customStyle?.rightAccessoryBuilder) {
             Column() {
               if (this.rightAccessoryBuilder) {
                 this.rightAccessoryBuilder()
               }
             }
-            .margin({ left: 8 })
+          }
+
+          if (this.customStyle?.showCloseButton !== false) {
+            Text('×')
+              .fontSize(20)
+              .fontColor('#999999')
+              .width(28)
+              .height(28)
+              .textAlign(TextAlign.Center)
+              .borderRadius(14)
+              .backgroundColor('rgba(0,0,0,0.05)')
+              .margin({ left: 8, top: -4 })
+              .onClick(() => {
+                if (this.onClose) {
+                  this.onClose();
+                }
+              })
           }
         }
         .alignItems(VerticalAlign.Top)
@@ -564,14 +607,12 @@ export struct InfoWindowComponent {
       })
       .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 280 })
 
-      // 箭头指示器（指向 Marker）
       Row() {
         Polygon()
           .points([[0, 0], [10, 10], [20, 0]])
           .fill(this.customStyle?.backgroundColor ?? Color.White)
           .width(20)
           .height(10)
-          // 🔧 使用 translate 让箭头按照 arrowOffsetX 精确移动（支持负值）
           .translate({ x: this.arrowOffsetX, y: 0 })
       }
       .width('100%')

@@ -1,5 +1,7 @@
 import { NativeMapView } from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
+import { Point } from '../geometry/Point';
+import { CenterOffset } from './AnnotationView';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
 import { Marker } from './Marker';
@@ -11,13 +13,23 @@ import { Marker } from './Marker';
  */
 export interface AnnotationViewData {
   marker: Marker | null; // 允许为 null，避免 ObservedObject 错误
-  customView: object | null;
+  customBuilder: (() => void) | null;
   screenX: number;
   screenY: number;
   anchorU: number;
   anchorV: number;
   visible: boolean;
   reuseIdentifier: string;
+  centerOffset: CenterOffset;
+  draggable: boolean;
+  scalesWithViewingDistance: boolean;
+  rotatesToMatchCamera: boolean;
+  enabled: boolean;
+  selected: boolean;
+  alpha: number;
+  zIndex: number;
+  preferredWidth?: number;
+  preferredHeight?: number;
 }
 
 /**
@@ -87,12 +99,23 @@ export class AnnotationViewManager {
   private onDragStartCallback?: (marker: Marker) => void;
   private onDragCallback?: (marker: Marker, screenX: number, screenY: number) => void;
   private onDragEndCallback?: (marker: Marker, screenX: number, screenY: number) => void;
+  private onViewsUpdateCallback?: (views: AnnotationViewData[]) => void;
 
   /**
    * 设置 Native MapView（用于坐标转换）
    */
   setNativeMapView(mapView: NativeMapView): void {
     this.nativeMapView = mapView;
+  }
+
+  setOnViewsUpdateCallback(callback: ((views: AnnotationViewData[]) => void) | null): void {
+    this.onViewsUpdateCallback = callback ?? undefined;
+  }
+
+  private notifyViewsUpdated(): void {
+    if (this.onViewsUpdateCallback) {
+      this.onViewsUpdateCallback(this.getAllViews());
+    }
   }
 
   /**
@@ -183,7 +206,7 @@ export class AnnotationViewManager {
   createOrUpdateView(marker: Marker): void {
     const markerId = marker.getId();
     let viewConfig: AnnotationViewConfig | null = null;
-    let customView: object | null = null;
+    let customBuilder: (() => void) | null = null;
     let reuseIdentifier: string;
 
     // 优先使用 delegate
@@ -192,9 +215,9 @@ export class AnnotationViewManager {
 
       if (viewConfig) {
         reuseIdentifier = viewConfig.reuseIdentifier;
-        // 注意：这里我们存储 contentBuilder 到 customView
+        // 注意：这里我们存储 contentBuilder 到 customBuilder
         // 实际渲染时由 AnnotationViewOverlay 处理
-        customView = viewConfig.contentBuilder ?? null;
+        customBuilder = viewConfig.contentBuilder ?? null;
       } else {
         // delegate 返回 null，使用默认图标
         this.removeView(marker);
@@ -203,9 +226,7 @@ export class AnnotationViewManager {
     }
     // 如果没有 delegate，尝试使用 adapter（向后兼容）
     else if (this.adapter) {
-      customView = this.adapter.getAnnotationView(marker);
-
-      if (!customView) {
+      if (!this.adapter.getAnnotationView(marker)) {
         // adapter 返回 null，使用默认图标
         this.removeView(marker);
         return;
@@ -215,6 +236,7 @@ export class AnnotationViewManager {
       reuseIdentifier = this.adapter.getReuseIdentifier
         ? this.adapter.getReuseIdentifier(marker)
         : (marker.getIcon() || 'default');
+      customBuilder = null;
     }
     // 既没有 delegate 也没有 adapter
     else {
@@ -230,24 +252,58 @@ export class AnnotationViewManager {
     const anchor = marker.getAnchor();
 
     // 创建视图数据
+    const defaultCenterOffset: CenterOffset = { dx: 0, dy: 0 };
     const viewData: AnnotationViewData = {
       marker: marker,
-      customView: customView,
+      customBuilder: customBuilder,
       screenX: position.x,
       screenY: position.y,
       anchorU: anchor.u,
       anchorV: anchor.v,
       visible: marker.getVisible(),
-      reuseIdentifier: reuseIdentifier
+      reuseIdentifier: reuseIdentifier,
+      centerOffset: { dx: defaultCenterOffset.dx, dy: defaultCenterOffset.dy },
+      draggable: marker.getDraggable(),
+      scalesWithViewingDistance: false,
+      rotatesToMatchCamera: false,
+      enabled: true,
+      selected: this.selectedAnnotations.has(markerId),
+      alpha: marker.getAlpha(),
+      zIndex: marker.getZIndex() || 1
     };
 
     // 应用配置选项（如果有）
     if (viewConfig) {
-      // TODO: 将 viewConfig 的其他属性应用到 Marker 或 viewData
-      // 例如：draggable, scalesWithViewingDistance, rotatesToMatchCamera 等
+      viewData.centerOffset = viewConfig.centerOffset
+        ? { dx: viewConfig.centerOffset.dx, dy: viewConfig.centerOffset.dy }
+        : defaultCenterOffset;
+      viewData.draggable = viewConfig.draggable ?? marker.getDraggable();
+      viewData.scalesWithViewingDistance = viewConfig.scalesWithViewingDistance ?? false;
+      viewData.rotatesToMatchCamera = viewConfig.rotatesToMatchCamera ?? false;
+      viewData.enabled = viewConfig.enabled ?? true;
+      viewData.alpha = viewConfig.alpha ?? 1;
+      viewData.zIndex = viewConfig.zIndex ?? (marker.getZIndex() || 1);
+      if (viewConfig.size) {
+        viewData.preferredWidth = viewConfig.size.width;
+        viewData.preferredHeight = viewConfig.size.height;
+      }
+
+      // 更新可拖拽属性（同时作用于 Marker）
+      marker.setDraggable(viewData.draggable);
+
+      if (viewConfig.selected) {
+        viewData.selected = true;
+        this.selectedAnnotations.add(markerId);
+      }
     }
 
     this.annotationViews.set(markerId, viewData);
+
+    if (viewConfig?.selected) {
+      this.selectAnnotation(marker, false);
+    }
+
+    this.notifyViewsUpdated();
   }
 
   /**
@@ -261,6 +317,7 @@ export class AnnotationViewManager {
       // 将视图放入复用池
       this.returnToReusePool(viewData);
       this.annotationViews.delete(markerId);
+      this.notifyViewsUpdated();
     }
   }
 
@@ -295,6 +352,16 @@ export class AnnotationViewManager {
     }
   }
 
+  public updatePositionsWithProjector(projector: (marker: Marker) => Point): void {
+    this.annotationViews.forEach(viewData => {
+      if (viewData.marker !== null) {
+        const screenPoint = projector(viewData.marker);
+        viewData.screenX = screenPoint.x;
+        viewData.screenY = screenPoint.y;
+      }
+    });
+  }
+
   /**
    * 获取所有可见的视图数据
    */
@@ -323,6 +390,10 @@ export class AnnotationViewManager {
   clear(): void {
     this.annotationViews.clear();
     this.reusePool.clear();
+    this.selectedAnnotations.clear();
+    this.draggingAnnotation = null;
+    this.draggingStartPosition = null;
+    this.notifyViewsUpdated();
   }
 
   /**
@@ -355,7 +426,11 @@ export class AnnotationViewManager {
     try {
       // 调用 NAPI 方法转换坐标
       const pixelCoord: Object = this.nativeMapView.pixelForLatLng(latLng.latitude, latLng.longitude);
-      return new ScreenCoord((pixelCoord as ScreenCoord).x, (pixelCoord as ScreenCoord).y);
+      const pixelRatio = this.nativeMapView.getPixelRatio();
+      const safePixelRatio = pixelRatio === 0 ? 1 : pixelRatio;
+      const logicalX = (pixelCoord as ScreenCoord).x / safePixelRatio;
+      const logicalY = (pixelCoord as ScreenCoord).y / safePixelRatio;
+      return new ScreenCoord(logicalX, logicalY);
     } catch (e) {
       console.error('[AnnotationViewManager] Failed to calculate screen position:', e);
       return new ScreenCoord(0, 0);
@@ -447,6 +522,13 @@ export class AnnotationViewManager {
       this.onSelectCallback(marker);
     }
 
+    const viewData = this.annotationViews.get(markerId);
+    if (viewData) {
+      viewData.selected = true;
+    }
+
+    this.notifyViewsUpdated();
+
   }
 
   /**
@@ -466,6 +548,13 @@ export class AnnotationViewManager {
     if (this.onDeselectCallback) {
       this.onDeselectCallback(marker);
     }
+
+    const viewData = this.annotationViews.get(markerId);
+    if (viewData) {
+      viewData.selected = false;
+    }
+
+    this.notifyViewsUpdated();
 
   }
 
@@ -667,6 +756,7 @@ export class AnnotationViewManager {
     });
 
     if (updateCount > 0) {
+      // 外部负责触发渲染更新回调
     }
   }
 

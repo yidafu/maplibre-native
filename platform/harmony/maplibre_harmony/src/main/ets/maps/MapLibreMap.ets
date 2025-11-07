@@ -167,6 +167,7 @@ export class MapLibreMap {
   private pendingAnimationCallback: CameraAnimationCallback | null = null;
   private animationTimerId: number | null = null;
   private animationCancelled: boolean = false;
+  private annotationViewUpdateHook: (() => void) | null = null;
 
   constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
@@ -257,6 +258,15 @@ export class MapLibreMap {
         return screenPos;
       }
     );
+
+    this.annotationViewManager.updatePositionsWithProjector((marker: Marker) => {
+      const position = marker.getPosition();
+      return this.pixelForLatLng(position.latitude, position.longitude);
+    });
+
+    if (this.annotationViewUpdateHook) {
+      this.annotationViewUpdateHook();
+    }
     
     // 未来可以在这里更新其他UI元素
     // - Compass方向
@@ -489,6 +499,7 @@ export class MapLibreMap {
     }
 
     this.destroyed = true;
+    this.annotationViewUpdateHook = null;
 
     try {
       // 1. 清理所有监听器数组（参考 Android）
@@ -3096,6 +3107,10 @@ export class MapLibreMap {
    */
   public getAnnotationViewManager(): AnnotationViewManager {
     return this.annotationViewManager;
+  }
+
+  public setAnnotationViewUpdateHook(hook: (() => void) | null): void {
+    this.annotationViewUpdateHook = hook;
   }
 
   /**

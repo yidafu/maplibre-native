@@ -116,6 +116,10 @@ export function registerMapLibreMap(
       hilog.error(DOMAIN, 'NativeMapView', `Failed to trigger initial widget updates: ${error}`);
     }
 
+    mapLibreMap.setAnnotationViewUpdateHook(() => {
+      controller.updateAnnotationViews(false);
+    });
+
     // 如果提供了组件引用，立即设置 InfoWindow 回调
     // 否则，延迟设置（在 aboutToAppear 中已经设置了延迟逻辑）
     if (nativeMapViewComponent) {
@@ -249,6 +253,7 @@ class NativeMapViewController extends XComponentController {
       setTimeout(() => {
         try {
           if (this.nativeMapView && this.isInitialized) {
+            hilog.info(DOMAIN, 'NativeMapView', `Applying initial camera: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
             this.nativeMapView.jumpTo(this.initialBearing, this.initialLatitude, this.initialLongitude, this.initialPitch,
               this.initialZoom);
           } else {
@@ -639,6 +644,8 @@ class NativeMapViewController extends XComponentController {
         if (mapLibreMap) {
           mapLibreMap.resizeView(rect.surfaceWidth, rect.surfaceHeight);
         }
+
+        this.updateAnnotationViews(true);
       } catch (error) {
         const err = error as Error;
         hilog.error(DOMAIN, 'NativeMapView', `Failed to resize map: ${err.message}`);
@@ -655,6 +662,8 @@ class NativeMapViewController extends XComponentController {
         }
         
         this.isInitialized = true;
+
+        this.updateAnnotationViews(true);
       } catch (error) {
         const err = error as Error;
         hilog.error(DOMAIN, 'NativeMapView', `Failed to reinitialize map: ${err.message}`);
@@ -938,6 +947,11 @@ class NativeMapViewController extends XComponentController {
         
         // 连接手势检测器到 MapLibreMap
         this.gestureDetector.setMapLibreMapInstance(this.mapLibreMapInstance);
+
+        if (this.annotationViewUpdateCallback) {
+          const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
+          annotationViewManager.setOnViewsUpdateCallback(this.annotationViewUpdateCallback);
+        }
         
         // 触发用户的 onMapViewCreated 回调
         if (this.onMapViewCreatedCallback) {
@@ -1019,20 +1033,24 @@ class NativeMapViewController extends XComponentController {
    */
   setAnnotationViewUpdateCallback(callback: (views: AnnotationViewData[]) => void): void {
     this.annotationViewUpdateCallback = callback;
+    if (this.mapLibreMapInstance) {
+      const manager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
+      manager.setOnViewsUpdateCallback(callback);
+    }
   }
 
   /**
    * 更新 AnnotationView 位置
    */
-  updateAnnotationViews(): void {
+  updateAnnotationViews(recalculate: boolean = true): void {
     if (this.mapLibreMapInstance && this.annotationViewUpdateCallback) {
       try {
         const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
-        // 更新所有视图位置
-        annotationViewManager.batchUpdatePositions(true);
-        // 获取可见视图并通知 UI
-        const visibleViews = annotationViewManager.getAllViews();
-        this.annotationViewUpdateCallback(visibleViews);
+        if (recalculate) {
+          annotationViewManager.batchUpdatePositions(true);
+        }
+        const views = annotationViewManager.getAllViews();
+        this.annotationViewUpdateCallback(views);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to update annotation views: ${error}`);
       }
@@ -1868,6 +1886,25 @@ export struct MapView {
   // AnnotationView 状态管理
   @State private visibleAnnotationViews: AnnotationViewData[] = [];
 
+  private syncInitialCameraProps(applyToNative: boolean = false): void {
+    if (!this.controller) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'Controller not ready for syncing initial camera props');
+      return;
+    }
+
+    this.controller.styleUrl = this.styleUrl;
+    this.controller.initialLatitude = this.initialLatitude;
+    this.controller.initialLongitude = this.initialLongitude;
+    this.controller.initialZoom = this.initialZoom;
+    this.controller.initialBearing = this.initialBearing;
+    this.controller.initialPitch = this.initialPitch;
+
+    if (applyToNative && this.controller.isMapInitialized()) {
+      hilog.info(DOMAIN, 'NativeMapView', `Re-applying initial camera: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
+      this.controller.jumpTo(this.initialBearing, this.initialLatitude, this.initialLongitude, this.initialPitch, this.initialZoom);
+    }
+  }
+
   /**
    * 组件即将出现
    */
@@ -1877,12 +1914,7 @@ export struct MapView {
 
       // 将组件的 prop 和回调传递给 controller
       if (this.controller) {
-        this.controller.styleUrl = this.styleUrl;
-        this.controller.initialLatitude = this.initialLatitude;
-        this.controller.initialLongitude = this.initialLongitude;
-        this.controller.initialZoom = this.initialZoom;
-        this.controller.initialBearing = this.initialBearing;
-        this.controller.initialPitch = this.initialPitch;
+        this.syncInitialCameraProps(true);
 
         // ✅ 设置 onMapViewCreated 回调（C++ Map 创建完成后触发）
         this.controller.onMapViewCreatedCallback = (mapLibreMap: MapLibreMap) => {

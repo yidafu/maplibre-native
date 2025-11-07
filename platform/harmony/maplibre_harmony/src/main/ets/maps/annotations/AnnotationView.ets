@@ -151,6 +151,16 @@ export struct AnnotationView {
   // 锚点（用于定位，默认底部中心）
   @Prop anchorU: number = 0.5;
   @Prop anchorV: number = 1.0;
+  // 配置属性
+  @Prop isDraggable: boolean = false;
+  @Prop scalesWithViewingDistance: boolean = false;
+  @Prop rotatesToMatchCamera: boolean = false;
+  @Prop isEnabled: boolean = true;
+  @Prop selected: boolean = false;
+  @Prop viewAlpha: number = 1;
+  @Prop baseZIndex: number = -1;
+  @Prop preferredWidth: number | null = null;
+  @Prop preferredHeight: number | null = null;
   // 可见性
   @Prop visible: boolean = true;
   // 自定义内容构建器
@@ -181,6 +191,10 @@ export struct AnnotationView {
   onMarkerDragStart?: (marker: Marker) => void; // 重命名
   onDrag?: (marker: Marker, screenX: number, screenY: number) => void;
   onMarkerDragEnd?: (marker: Marker, screenX: number, screenY: number) => void; // 重命名
+  // 外部配置缓存
+  private viewAlphaInternal: number = 1;
+  private baseZIndexInternal: number = 1;
+  private lastSelectedProp: boolean = false;
 
   /**
    * 准备复用（重置状态）
@@ -301,7 +315,47 @@ export struct AnnotationView {
   }
 
   aboutToAppear() {
+    this.syncStateWithProps(true);
     this.updateComputedProperties();
+  }
+
+  aboutToRender() {
+    this.syncStateWithProps(false);
+    this.updateComputedProperties();
+  }
+
+  private syncStateWithProps(initial: boolean): void {
+    this.viewState.enabled = this.isEnabled;
+    this.viewState.draggable = this.isEnabled && this.isDraggable;
+
+    this.viewState.scalesWithViewingDistance = this.scalesWithViewingDistance;
+    this.viewState.rotatesToMatchCamera = this.rotatesToMatchCamera;
+
+    if (this.preferredWidth !== null && this.preferredWidth > 0) {
+      this.viewWidth = this.preferredWidth;
+    }
+
+    if (this.preferredHeight !== null && this.preferredHeight > 0) {
+      this.viewHeight = this.preferredHeight;
+    }
+
+    this.viewAlphaInternal = this.viewAlpha >= 0 ? this.viewAlpha : 1;
+    this.baseZIndexInternal = this.baseZIndex >= 0 ? this.baseZIndex : (this.marker.getZIndex() || 1);
+
+    if (initial || this.lastSelectedProp !== this.selected) {
+      this.applyExternalSelection(this.selected);
+      this.lastSelectedProp = this.selected;
+    }
+  }
+
+  private applyExternalSelection(selected: boolean): void {
+    if (this.viewState.selected === selected) {
+      return;
+    }
+
+    this.viewState.selected = selected;
+    this.viewScale = selected ? 1.2 : 1.0;
+    this.viewOpacity = selected ? 1.0 : 0.8;
   }
 
   /**
@@ -587,7 +641,7 @@ export struct AnnotationView {
     // 位置变换
     .position({ x: this.computedPosX, y: this.computedPosY })
     // 透明度变换（组合 Marker 的 alpha 和视图状态的 opacity）
-    .opacity(this.viewOpacity * this.marker.getAlpha())
+    .opacity(this.viewOpacity * this.marker.getAlpha() * this.viewAlphaInternal)
     // 缩放变换（组合距离缩放和状态缩放）
     .scale({ 
       x: this.computedScale, 
@@ -615,11 +669,11 @@ export struct AnnotationView {
     // Z-index 层级管理
     // 选中 > 拖拽中 > Marker 的 zIndex > 默认
     .zIndex(
-      this.viewState.selected 
-        ? 1000 
-        : (this.viewState.dragState !== DragState.None 
-            ? 999 
-            : (this.marker.getZIndex() || 1))
+      this.viewState.selected
+        ? this.baseZIndexInternal + 1000
+        : (this.viewState.dragState !== DragState.None
+            ? this.baseZIndexInternal + 500
+            : this.baseZIndexInternal)
     )
     // 监听尺寸变化（用于位置计算）
     .onAreaChange((oldValue: Area, newValue: Area) => {

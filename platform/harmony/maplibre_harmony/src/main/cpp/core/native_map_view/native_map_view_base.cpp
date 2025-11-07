@@ -136,6 +136,10 @@ void NativeMapView::cleanupAllResources() {
     nativeWindow = nullptr;
 
     // 4. 释放 NAPI 引用
+    if (styleRef_) {
+        napi_delete_reference(env_, styleRef_);
+        styleRef_ = nullptr;
+    }
     if (wrapper_) {
         napi_delete_reference(env_, wrapper_);
         wrapper_ = nullptr;
@@ -209,6 +213,10 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
                     nativeWindow = nullptr;
                     
                     // 7. 释放NAPI引用
+                    if (styleRef_) {
+                        napi_delete_reference(env_, styleRef_);
+                        styleRef_ = nullptr;
+                    }
                     if (wrapper_) {
                         napi_delete_reference(env_, wrapper_);
                         wrapper_ = nullptr;
@@ -243,6 +251,11 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         
         mapRenderer = nullptr;
         nativeWindow = nullptr;
+
+        if (styleRef_) {
+            napi_delete_reference(env_, styleRef_);
+            styleRef_ = nullptr;
+        }
         
         if (wrapper_) {
             napi_delete_reference(env_, wrapper_);

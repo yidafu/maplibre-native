@@ -288,6 +288,19 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
+    // 检查是否已有缓存的 Style 实例
+    if (instance->styleRef_ != nullptr) {
+        napi_value cachedStyle;
+        napi_status status = napi_get_reference_value(env, instance->styleRef_, &cachedStyle);
+        if (status == napi_ok && cachedStyle != nullptr) {
+            return cachedStyle;
+        }
+
+        // Cached reference is no longer valid, clean it up and recreate.
+        napi_delete_reference(env, instance->styleRef_);
+        instance->styleRef_ = nullptr;
+    }
+
     // 检查 Style 构造函数引用是否已初始化
     if (maplibre::harmony::StyleNAPI::constructor == nullptr) {
         Logger::error("NativeMapView", "getStyle: StyleNAPI::constructor is nullptr - Style class not initialized");
@@ -330,6 +343,12 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
+    // Cache Style instance to avoid recreating wrappers during polling.
+    status = napi_create_reference(env, styleInstance, 1, &instance->styleRef_);
+    if (status != napi_ok) {
+        Logger::warn("NativeMapView", "getStyle: Failed to create reference for Style instance, status=%d", status);
+    }
+
     return styleInstance;
 }
 

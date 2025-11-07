@@ -62,20 +62,28 @@ export struct AnnotationViewOverlay {
   buildAnnotationView(viewData: AnnotationViewData) {
     // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
     if (viewData.marker !== null) {
-      // 获取自定义内容构建器（如果提供）
       AnnotationView({
         marker: viewData.marker,
         reuseIdentifier: viewData.reuseIdentifier,
         screenX: viewData.screenX,
         screenY: viewData.screenY,
-        centerOffset: { dx: 0, dy: 0 }, // 从 viewData 获取
+        centerOffset: viewData.centerOffset,
         anchorU: viewData.anchorU,
         anchorV: viewData.anchorV,
         visible: viewData.visible,
         mapBearing: this.mapBearing,
         mapPitch: this.mapPitch,
         screenHeight: this.screenHeight,
-        customContentBuilder: this.customViewBuilderFactory?.(viewData.marker) ?? undefined,
+        customContentBuilder: this.resolveCustomContentBuilder(viewData),
+        isDraggable: viewData.draggable,
+        scalesWithViewingDistance: viewData.scalesWithViewingDistance,
+        rotatesToMatchCamera: viewData.rotatesToMatchCamera,
+        isEnabled: viewData.enabled,
+        selected: viewData.selected,
+        viewAlpha: viewData.alpha,
+        baseZIndex: viewData.zIndex,
+        preferredWidth: viewData.preferredWidth,
+        preferredHeight: viewData.preferredHeight,
         onSelect: (marker: Marker) => {
           if (this.onAnnotationSelect) {
             this.onAnnotationSelect(marker);
@@ -103,6 +111,16 @@ export struct AnnotationViewOverlay {
         }
       })
     }
+  }
+
+  private resolveCustomContentBuilder(viewData: AnnotationViewData): (() => void) | undefined {
+    if (viewData.customBuilder) {
+      return viewData.customBuilder;
+    }
+    if (viewData.marker !== null && this.customViewBuilderFactory) {
+      return this.customViewBuilderFactory(viewData.marker) ?? undefined;
+    }
+    return undefined;
   }
 
   /**

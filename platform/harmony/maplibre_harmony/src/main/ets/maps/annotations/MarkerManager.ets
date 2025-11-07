@@ -75,7 +75,7 @@ export class MarkerManager {
     // ✅ 使用 MapLibreMap 的 InfoWindowManager（已经设置了 UI 回调）
     // 而不是创建新的实例（没有回调）
     this.infoWindowManager = mapLibreMap.getInfoWindowManager();
-    this.annotationViewManager = new AnnotationViewManager();
+    this.annotationViewManager = mapLibreMap.getAnnotationViewManager();
 
     // 初始化 IconManager - 传递 ResourceManager 以支持 rawfile 加载
     const nativeMapView = mapLibreMap.getNativeMapView();
@@ -130,6 +130,9 @@ export class MarkerManager {
           // 重新添加到 layer
           for (const marker of markersToRestore) {
             manager.markerLayerManager.addMarker(marker, true); // skipUpdate=true
+
+            // 重新创建自定义 Annotation 视图
+            manager.annotationViewManager.createOrUpdateView(marker);
           }
 
           // 统一更新 source
@@ -712,6 +715,9 @@ export class MarkerManager {
         if (infoWindowStyle) {
           this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
         }
+
+        // 同步创建或更新自定义视图
+        this.annotationViewManager.createOrUpdateView(marker);
       }
 
       return markers;
@@ -826,6 +832,9 @@ export class MarkerManager {
       // 更新 MarkerLayerManager 中的特征（更新 GeoJSON）
       this.markerLayerManager.updateMarkerById(markerId, marker);
 
+      // 同步刷新自定义视图
+      this.annotationViewManager.createOrUpdateView(marker);
+
     } catch (e) {
       const error = e as Error;
       console.error(`[MarkerManager] Failed to update marker: ${error.message}`);
@@ -920,6 +929,10 @@ export class MarkerManager {
     this.markerMap.clear();
     this.markerIconMap.clear();
     this.selectedMarkers.clear();
+    this.markerInfoWindowStyleMap.clear();
+
+    // 清理自定义视图
+    this.annotationViewManager.clear();
 
   }
 

@@ -317,6 +317,7 @@ private:
     
     napi_env env_;
     napi_ref wrapper_;
+    napi_ref styleRef_ = nullptr;
     
     std::unique_ptr<HarmonyRenderer> harmonyRenderer;
     
