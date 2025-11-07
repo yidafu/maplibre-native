@@ -319,10 +319,6 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
         
         if (!transformedUrl.empty() && transformedUrl != originalUrl) {
             resource.url = transformedUrl;
-            Logger::info("HTTP", "URL transformed for request");
-            Logger::debug("HTTP", "  Resource kind: %d", static_cast<int>(resource.kind));
-            Logger::debug("HTTP", "  Original URL: %s", originalUrl.c_str());
-            Logger::debug("HTTP", "  Transformed URL: %s", transformedUrl.c_str());
         }
     }
     
@@ -346,19 +342,16 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
     auto& config = HTTPRequestConfig::getInstance();
     auto customHeaders = config.getCustomHeaders();
     if (!customHeaders.empty()) {
-        Logger::info("HTTP", "Applying %zu custom headers to request", customHeaders.size());
         for (const auto& [key, value] : customHeaders) {
             // 跳过User-Agent（已经在下面单独设置）
             std::string lowerKey = key;
             std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
             if (lowerKey == "user-agent") {
-                Logger::warn("HTTP", "Skipping User-Agent header (managed by SDK)");
                 continue;
             }
             
             const std::string header = key + ": " + value;
             headers = curl_slist_append(headers, header.c_str());
-            Logger::debug("HTTP", "Applied custom header: %s", key.c_str());
         }
     }
     
@@ -382,16 +375,6 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
 #endif
         handleError(curl_easy_setopt(handle, CURLOPT_USERAGENT, "MapLibreNative/1.0"));
         handleError(curl_easy_setopt(handle, CURLOPT_SHARE, context->share));
-
-        // 🔍 诊断：记录请求信息
-        Logger::info("HTTP", "📤 Sending Request:");
-        Logger::info("HTTP", "  URL: %s", resource.url.c_str());
-        Logger::info("HTTP", "  Request: %p", this);
-        Logger::info("HTTP", "  CURL Handle: %p", handle);
-        if (resource.priorEtag) {
-        }
-        if (resource.priorModified) {
-        }
 
         // Start requesting the information using CURLEventLoop
         if (context->curlEventLoop) {
@@ -425,9 +408,6 @@ HTTPRequest::~HTTPRequest() {
     // Step 1: 从 CURLEventLoop 移除 CURL 句柄（停止新的回调）
     if (context && context->curlEventLoop && handle) {
         bool success = context->curlEventLoop->removeHandle(handle);
-        if (!success) {
-            Logger::warn("Network", "Error removing CURL handle from CURLEventLoop");
-        }
         
         // Step 2: 短暂等待，确保进行中的回调完成
         // 注意：这个等待时间应该足够短，避免ANR，但足够长让回调完成
@@ -546,12 +526,6 @@ void HTTPRequest::handleResult(CURLcode code) {
     // 🔒 CRASH FIX: 确保 handleResult 执行期间对象不被析构
     // 注意：这个方法可能在 CURLEventLoop 线程中被调用
     
-    // 🔍 诊断：记录结果处理开始
-    Logger::info("HTTP", "📥 Processing Result:");
-    Logger::info("HTTP", "  Request: %p", this);
-    Logger::info("HTTP", "  URL: %s", resource.url.c_str());
-    Logger::info("HTTP", "  CURLcode: %d (%s)", code, curl_easy_strerror(code));
-    
     // Make sure a response object exists
     if (!response) {
         response = std::make_unique<Response>();
@@ -605,15 +579,10 @@ void HTTPRequest::handleResult(CURLcode code) {
     }
     
     // 🔍 诊断：记录响应状态
-    Logger::info("HTTP", "📊 Response Status:");
     if (response->error) {
         Logger::warn("HTTP", "  Error: %s", response->error->message.c_str());
-    } else if (response->notModified) {
-        Logger::info("HTTP", "  Status: Not Modified (304)");
     } else if (response->noContent) {
-        Logger::info("HTTP", "  Status: No Content");
     } else if (response->data) {
-        Logger::info("HTTP", "  Status: Success, Data size: %zu bytes", response->data->size());
     } else {
         Logger::warn("HTTP", "  Status: Unknown/Empty");
     }

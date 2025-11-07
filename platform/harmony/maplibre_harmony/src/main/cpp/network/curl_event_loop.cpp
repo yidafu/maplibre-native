@@ -343,16 +343,6 @@ void CURLEventLoop::onPolling(uv_timer_t* timer) {
     int running_handles = 0;
     CURLMcode result = curl_multi_perform(eventLoop->multi_, &running_handles);
     
-    // 🔍 诊断日志：每秒输出一次状态（降低日志量）
-    static auto last_log_time = std::chrono::steady_clock::now();
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_log_time).count();
-    
-    if (running_handles > 0 && elapsed > 1000) {
-        Logger::info("CURL", "🔄 Polling: %d active requests", running_handles);
-        last_log_time = now;
-    }
-    
     if (result != CURLM_OK) {
         Logger::error("Network", "curl_multi_perform failed: %s", curl_multi_strerror(result));
         return;
@@ -475,10 +465,6 @@ void CURLEventLoop::processCURLMessages() {
                 Logger::warn("Network", "  URL: %s", url ? url : "unknown");
                 Logger::warn("Network", "  Error: %s", curl_easy_strerror(result));
                 Logger::warn("Network", "  Time: %.2f seconds", total_time);
-            } else {
-                Logger::info("Network", "  URL: %s", url ? url : "unknown");
-                Logger::info("Network", "  Status: %ld", response_code);
-                Logger::info("Network", "  Time: %.2f seconds", total_time);
             }
             
             // 获取HTTPRequest并通知结果
@@ -495,7 +481,6 @@ void CURLEventLoop::processCURLMessages() {
                 CURLcode info_result = curl_easy_getinfo(handle, CURLINFO_PRIVATE, &verify);
                 
                 if (info_result == CURLE_OK && verify == privateData) {
-                    Logger::info("Network", "✅ privateData validity check passed: %p", privateData);
                     // 调用外部函数处理结果
                     handleHTTPRequestResult(privateData, result);
                 } else {
