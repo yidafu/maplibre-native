@@ -190,8 +190,8 @@ export class MapLibreMap {
     // 设置 Native 层的样式监听器
     this.setupNativeStyleListeners();
 
-    // 设置相机移动监听器，自动更新 InfoWindow 位置
-    this.setupInfoWindowCameraListener();
+    // InfoWindow 位置更新现在通过 onUpdateRegionChange() 自动处理（参考 Android）
+    // 不再需要单独的 CameraMoveListener
 
     // 设置相机移动监听器，自动更新 AnnotationView 位置
     this.setupAnnotationViewCameraListener();
@@ -239,38 +239,29 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 InfoWindow 相机移动监听器
-   * 当地图相机移动时，自动更新所有显示中的 InfoWindow 位置
+   * 当地图区域改变时调用（参考 Android MapLibreMap.onUpdateRegionChange）
+   * 在相机移动、动画等任何视口变化时更新UI元素
    * @private
    */
-  private setupInfoWindowCameraListener(): void {
-    class InfoWindowMoveListenerImpl implements OnCameraMoveListener {
-      parent: MapLibreMap;
-
-      constructor(parent: MapLibreMap) {
-        this.parent = parent;
+  private onUpdateRegionChange(): void {
+    console.info('[MapLibreMap] onUpdateRegionChange - updating UI elements');
+    
+    // 更新 InfoWindow 位置
+    this.infoWindowManager.updatePositions(
+      this.viewWidth,
+      this.viewHeight,
+      (marker: Marker) => {
+        const pos = marker.getPosition();
+        const screenPos = this.pixelForLatLng(pos.latitude, pos.longitude);
+        console.info(`[MapLibreMap] Marker "${marker.getTitle()}" - LatLng: (${pos.latitude}, ${pos.longitude}) -> Screen: (${screenPos.x}, ${screenPos.y})`);
+        return screenPos;
       }
-
-      onCameraMove(): void {
-        console.info(`[InfoWindowCameraListener] onCameraMove triggered, updating InfoWindow positions`);
-        
-        // 地图相机移动时，更新所有 InfoWindow 的位置
-        // 使用内部维护的尺寸（通过 resizeView 更新）
-        this.parent.infoWindowManager.updatePositions(
-          this.parent.viewWidth,
-          this.parent.viewHeight,
-          (marker: Marker) => {
-            const pos = marker.getPosition();
-            return this.parent.pixelForLatLng(pos.latitude, pos.longitude);
-          }
-        );
-        
-        console.info(`[InfoWindowCameraListener] InfoWindow positions updated`);
-      }
-    }
-
-    const infoWindowMoveListener = new InfoWindowMoveListenerImpl(this);
-    this.cameraChangeDispatcher.addOnCameraMoveListener(infoWindowMoveListener);
+    );
+    
+    // 未来可以在这里更新其他UI元素
+    // - Compass方向
+    // - Scale比例尺
+    // - Attribution信息
   }
 
   /**
@@ -2760,6 +2751,8 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
+    // 参考 Android: 在相机移动时更新UI元素（InfoWindow等）
+    this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraMoveStarted(CameraMoveReason.GESTURE);
   }
 
@@ -2773,9 +2766,10 @@ export class MapLibreMap {
       console.warn('[MapLibreMap] _notifyCameraMove() called but map is destroyed, skipping');
       return;
     }
-    console.info('[MapLibreMap] _notifyCameraMove() called, forwarding to CameraChangeDispatcher');
+    console.info('[MapLibreMap] _notifyCameraMove() called');
+    // 参考 Android: 在相机移动时更新UI元素（InfoWindow等）
+    this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraMove();
-    console.info('[MapLibreMap] CameraChangeDispatcher.notifyCameraMove() completed');
   }
 
   /**
@@ -2787,6 +2781,8 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
+    // 参考 Android: 在相机停止时更新UI元素（InfoWindow等）
+    this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraIdle();
   }
 
@@ -3301,7 +3297,10 @@ export class MapLibreMap {
 
     // 获取所有具有自定义视图的 Marker
     const allViews = this.annotationViewManager.getVisibleViews();
-    return allViews.map(viewData => viewData.marker);
+    // 🔒 修复 ObservedObject 错误：过滤掉 marker 为 null 的情况
+    return allViews
+      .filter(viewData => viewData.marker !== null)
+      .map(viewData => viewData.marker!);
   }
 
   /**

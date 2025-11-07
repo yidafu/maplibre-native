@@ -504,6 +504,23 @@ export class MapGestureDetector {
     // ✅ HarmonyOS 手势语义：手指向右滑 → 地图向右移（跟随手指）
     if (this.mapController && (actualDeltaX !== 0 || deltaY !== 0)) {
       this.mapController.moveBy(actualDeltaX, deltaY, 0);
+      
+      // ✅ 关键修复：手势拖动时通知相机移动（用于更新 InfoWindow 等）
+      // 原因：moveBy(0) 不会触发 Native 层的 onCameraIsChanging 回调（仅在动画时触发）
+      // 需要手动通知 CameraChangeDispatcher 来更新 InfoWindow 位置
+      // 参考：Android 中 MapGestureDetector 在手势过程中也会持续触发 onCameraMove
+      // 
+      // ⚠️ 重要：延迟到下一个事件循环，确保 moveBy() 完成并更新地图内部状态
+      // 否则 pixelForLatLng() 可能返回旧坐标，导致 InfoWindow 位置不正确
+      if (this.mapLibreMapInstance) {
+        hilog.info(DOMAIN, TAG, `   📍 Scheduling _notifyCameraMove for InfoWindow update`);
+        setTimeout(() => {
+          if (this.mapLibreMapInstance && !this.mapLibreMapInstance.isDestroyed()) {
+            hilog.info(DOMAIN, TAG, `   📍 Calling _notifyCameraMove for InfoWindow update`);
+            this.mapLibreMapInstance._notifyCameraMove();
+          }
+        }, 0);
+      }
     }
 
     // 通知监听器

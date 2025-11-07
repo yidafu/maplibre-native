@@ -60,46 +60,49 @@ export struct AnnotationViewOverlay {
    */
   @Builder
   buildAnnotationView(viewData: AnnotationViewData) {
-    // 获取自定义内容构建器（如果提供）
-    AnnotationView({
-      marker: viewData.marker,
-      reuseIdentifier: viewData.reuseIdentifier,
-      screenX: viewData.screenX,
-      screenY: viewData.screenY,
-      centerOffset: { dx: 0, dy: 0 }, // 从 viewData 获取
-      anchorU: viewData.anchorU,
-      anchorV: viewData.anchorV,
-      visible: viewData.visible,
-      mapBearing: this.mapBearing,
-      mapPitch: this.mapPitch,
-      screenHeight: this.screenHeight,
-      customContentBuilder: this.customViewBuilderFactory?.(viewData.marker) ?? undefined,
-      onSelect: (marker: Marker) => {
-        if (this.onAnnotationSelect) {
-          this.onAnnotationSelect(marker);
+    // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+    if (viewData.marker !== null) {
+      // 获取自定义内容构建器（如果提供）
+      AnnotationView({
+        marker: viewData.marker,
+        reuseIdentifier: viewData.reuseIdentifier,
+        screenX: viewData.screenX,
+        screenY: viewData.screenY,
+        centerOffset: { dx: 0, dy: 0 }, // 从 viewData 获取
+        anchorU: viewData.anchorU,
+        anchorV: viewData.anchorV,
+        visible: viewData.visible,
+        mapBearing: this.mapBearing,
+        mapPitch: this.mapPitch,
+        screenHeight: this.screenHeight,
+        customContentBuilder: this.customViewBuilderFactory?.(viewData.marker) ?? undefined,
+        onSelect: (marker: Marker) => {
+          if (this.onAnnotationSelect) {
+            this.onAnnotationSelect(marker);
+          }
+        },
+        onDeselect: (marker: Marker) => {
+          if (this.onAnnotationDeselect) {
+            this.onAnnotationDeselect(marker);
+          }
+        },
+        onMarkerDragStart: (marker: Marker) => {
+          if (this.onAnnotationDragStart) {
+            this.onAnnotationDragStart(marker);
+          }
+        },
+        onDrag: (marker: Marker, screenX: number, screenY: number) => {
+          if (this.onAnnotationDrag) {
+            this.onAnnotationDrag(marker, screenX, screenY);
+          }
+        },
+        onMarkerDragEnd: (marker: Marker, screenX: number, screenY: number) => {
+          if (this.onAnnotationDragEnd) {
+            this.onAnnotationDragEnd(marker, screenX, screenY);
+          }
         }
-      },
-      onDeselect: (marker: Marker) => {
-        if (this.onAnnotationDeselect) {
-          this.onAnnotationDeselect(marker);
-        }
-      },
-      onMarkerDragStart: (marker: Marker) => {
-        if (this.onAnnotationDragStart) {
-          this.onAnnotationDragStart(marker);
-        }
-      },
-      onDrag: (marker: Marker, screenX: number, screenY: number) => {
-        if (this.onAnnotationDrag) {
-          this.onAnnotationDrag(marker, screenX, screenY);
-        }
-      },
-      onMarkerDragEnd: (marker: Marker, screenX: number, screenY: number) => {
-        if (this.onAnnotationDragEnd) {
-          this.onAnnotationDragEnd(marker, screenX, screenY);
-        }
-      }
-    })
+      })
+    }
   }
 
   /**
@@ -128,7 +131,8 @@ export struct AnnotationViewOverlay {
         },
         (viewData: AnnotationViewData) => {
           // 使用 marker ID 作为唯一键，确保视图复用正确
-          return `annotation-view-${viewData.marker.getId()}`;
+          // 🔒 修复 ObservedObject 错误：添加 null 检查
+          return `annotation-view-${viewData.marker?.getId() ?? 0}`;
         }
       )
     }

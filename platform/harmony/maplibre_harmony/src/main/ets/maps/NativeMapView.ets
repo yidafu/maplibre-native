@@ -2201,6 +2201,7 @@ export struct MapView {
 
       // 更新 InfoWindow 位置
       infoWindowManager.setOnUpdateUICallback((marker: Marker, position: InfoWindowPosition) => {
+        console.info(`[NativeMapView] setOnUpdateUICallback called for marker: ${marker.getTitle()}, new position: (${position.x}, ${position.y})`);
         const index = this.visibleInfoWindows.findIndex(
           item => item.marker.getId() === marker.getId()
         );
@@ -2210,6 +2211,10 @@ export struct MapView {
           // 使用 slice() 创建数组浅拷贝，然后替换指定索引的元素
           const newArray = this.visibleInfoWindows.slice();
           const oldItem = newArray[index];
+          // 🔧 关键修复：更新 key 以强制 ForEach 重新渲染
+          // ForEach 使用 key 来判断是否需要更新组件
+          // 通过在 key 后面添加时间戳，确保每次 position 变化时都会触发重新渲染
+          const newKey = `${oldItem.markerId}_${Date.now()}`;
           newArray[index] = {
             marker: oldItem.marker,
             markerId: oldItem.markerId,
@@ -2217,10 +2222,12 @@ export struct MapView {
             markerSnippet: oldItem.markerSnippet,
             position: { x: position.x, y: position.y, arrowOffsetX: position.arrowOffsetX },
             style: oldItem.style,
-            key: oldItem.key
+            key: newKey
           };
           this.visibleInfoWindows = newArray;
-          console.info(`[NativeMapView] InfoWindow position updated in @State array: (${position.x}, ${position.y})`);
+          console.info(`[NativeMapView] InfoWindow position updated in @State array: (${position.x}, ${position.y}), new key: ${newKey}`);
+        } else {
+          console.warn(`[NativeMapView] setOnUpdateUICallback - marker not found in visibleInfoWindows: ${marker.getTitle()}`);
         }
       });
 
@@ -2466,7 +2473,19 @@ export struct MapView {
               const infoWindowManager = mapLibreMap.getInfoWindowManager();
               const infoWindow = infoWindowManager.get(marker);
               if (infoWindow) {
-                console.info(`[NativeMapView] InfoWindow size changed: ${width}x${height}, updating position`);
+                // 🔧 关键修复:只在尺寸真正变化时更新位置,避免死循环
+                // 死循环链条: onAreaChange -> setSize -> update -> onUpdateCallback -> 更新key -> ForEach重新渲染 -> onAreaChange ...
+                const oldWidth = infoWindow.getWidth();
+                const oldHeight = infoWindow.getHeight();
+                
+                // 比较新旧尺寸,只有真正变化时才更新
+                const EPSILON = 0.1; // 容差值,避免浮点数精度问题
+                if (Math.abs(width - oldWidth) < EPSILON && Math.abs(height - oldHeight) < EPSILON) {
+                  // 尺寸未变化,跳过更新
+                  return;
+                }
+                
+                console.info(`[NativeMapView] InfoWindow size changed: ${oldWidth}x${oldHeight} -> ${width}x${height}, updating position`);
                 infoWindow.setSize(width, height);
                 // 获取 marker 屏幕位置（逻辑像素）并重新计算 InfoWindow 位置
                 const pos = marker.getPosition();

@@ -392,36 +392,19 @@ export class InfoWindow {
     // 箭头默认居中
     let arrowOffsetX = 0;
 
-    // 边界检测和调整
-    const margin = 16; // 边距（像素）
+    // 🔧 箭头指向校准
+    // 目标：让箭头始终指向 Marker（或自定义偏移后的锚点）
     const arrowWidth = 20; // 箭头宽度
-    const tipViewOffset = arrowWidth / 2;
+    const maxArrowOffset = (width / 2) - (arrowWidth / 2) - 4; // 箭头最大偏移，避免超出窗口边缘
+    const infoWindowCenterX = x + (width / 2);
+    const markerAnchorX = markerScreenPosition.x;
 
-    // 检测右边界
-    const rightSide = x + width;
-    if (rightSide > screenWidth - margin) {
-      const overflow = rightSide - (screenWidth - margin);
-      x -= overflow;
-      arrowOffsetX += overflow;
-    }
+    arrowOffsetX = markerAnchorX - infoWindowCenterX;
 
-    // 检测左边界
-    const leftSide = x;
-    if (leftSide < margin) {
-      const overflow = margin - leftSide;
-      x += overflow;
-      arrowOffsetX -= overflow;
-    }
-
-    // 检测上边界
-    if (y < margin) {
-      y = margin;
-    }
-
-    // 检测下边界（InfoWindow 显示在 Marker 下方）
-    if (y < 0) {
-      // 如果上方空间不够，考虑显示在 Marker 下方
-      y = markerScreenPosition.y + 10; // 10px 偏移
+    if (arrowOffsetX > maxArrowOffset) {
+      arrowOffsetX = maxArrowOffset;
+    } else if (arrowOffsetX < -maxArrowOffset) {
+      arrowOffsetX = -maxArrowOffset;
     }
 
     return {
@@ -582,26 +565,14 @@ export struct InfoWindowComponent {
       .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 280 })
 
       // 箭头指示器（指向 Marker）
-      // 根据 arrowOffsetX 调整箭头位置
       Row() {
-        // 左侧占位
-        if (this.arrowOffsetX < 0) {
-          Blank()
-            .width(-this.arrowOffsetX)
-        }
-
-        // 箭头
         Polygon()
           .points([[0, 0], [10, 10], [20, 0]])
           .fill(this.customStyle?.backgroundColor ?? Color.White)
           .width(20)
           .height(10)
-
-        // 右侧占位
-        if (this.arrowOffsetX > 0) {
-          Blank()
-            .width(this.arrowOffsetX)
-        }
+          // 🔧 使用 translate 让箭头按照 arrowOffsetX 精确移动（支持负值）
+          .translate({ x: this.arrowOffsetX, y: 0 })
       }
       .width('100%')
       .justifyContent(FlexAlign.Center)

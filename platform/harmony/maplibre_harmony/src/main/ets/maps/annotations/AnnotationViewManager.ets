@@ -1,4 +1,4 @@
-import maplibre, { NativeMapView } from 'libmaplibre.so';
+import { NativeMapView } from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
@@ -10,7 +10,7 @@ import { Marker } from './Marker';
  * 包含渲染自定义视图所需的所有信息
  */
 export interface AnnotationViewData {
-  marker: Marker;
+  marker: Marker | null; // 允许为 null，避免 ObservedObject 错误
   customView: object | null;
   screenX: number;
   screenY: number;
@@ -24,7 +24,7 @@ export interface AnnotationViewData {
  * AnnotationViewManager - 自定义 Annotation 视图管理器
  *
  * 管理所有自定义 AnnotationView 的完整生命周期，提供高性能的视图管理能力
- * 
+ *
  * **核心职责**：
  * - ✅ 维护 Marker → AnnotationView 映射关系
  * - ✅ 处理视图复用（reuseIdentifier 机制）
@@ -42,25 +42,25 @@ export interface AnnotationViewData {
  * - Android: AnnotationManager
  *   - 注解容器管理
  *   - 事件分发
- * 
+ *
  * **性能特性**：
  * - 视图复用池（减少创建开销）
  * - 批量位置更新（减少 UI 刷新）
  * - 虚拟化渲染支持（只渲染可见区域）
  * - 增量更新机制
- * 
+ *
  * **使用示例**：
  * ```typescript
  * // 创建管理器
  * const manager = new AnnotationViewManager();
  * manager.setNativeMapView(nativeMapView);
- * 
+ *
  * // 设置委托
  * manager.setDelegate(myDelegate);
- * 
+ *
  * // 为 Marker 创建视图
  * manager.createOrUpdateView(marker);
- * 
+ *
  * // 更新所有视图位置
  * manager.batchUpdatePositions(true);
  * ```
@@ -97,13 +97,13 @@ export class AnnotationViewManager {
 
   /**
    * 设置 AnnotationViewDelegate（推荐使用）
-   * 
+   *
    * 参考：iOS MLNMapView.delegate
-   * 
+   *
    * @param delegate AnnotationViewDelegate 实例，传 null 清除委托
-   * 
+   *
    * @example
-   * ```typescript
+  * ```typescript
    * const delegate: AnnotationViewDelegate = {
    *   viewForAnnotation: (marker) => {
    *     return {
@@ -130,7 +130,7 @@ export class AnnotationViewManager {
 
   /**
    * 获取 AnnotationViewDelegate
-   * 
+   *
    * @returns 当前设置的 delegate，如果未设置则返回 null
    */
   getDelegate(): AnnotationViewDelegate | null {
@@ -139,9 +139,9 @@ export class AnnotationViewManager {
 
   /**
    * 设置 AnnotationViewAdapter（兼容方法）
-   * 
+   *
    * @deprecated 使用 {@link setDelegate} 替代
-   * 
+   *
    * @param adapter AnnotationViewAdapter 实例，传 null 清除适配器
    */
   setAdapter(adapter: AnnotationViewAdapter | null): void {
@@ -155,9 +155,9 @@ export class AnnotationViewManager {
 
   /**
    * 获取 AnnotationViewAdapter
-   * 
+   *
    * @deprecated 使用 {@link getDelegate} 替代
-   * 
+   *
    * @returns 当前设置的 adapter，如果未设置则返回 null
    */
   getAdapter(): AnnotationViewAdapter | null {
@@ -166,13 +166,13 @@ export class AnnotationViewManager {
 
   /**
    * 为 Marker 创建或更新 AnnotationView
-   * 
+   *
    * 优先使用 delegate，如果没有则尝试使用 adapter（向后兼容）
-   * 
+   *
    * 参考：iOS MLNMapView 自动为 annotation 创建视图的机制
-   * 
+   *
    * @param marker 要创建/更新视图的 Marker
-   * 
+   *
    * 工作流程：
    * 1. 调用 delegate.viewForAnnotation 获取配置
    * 2. 如果没有 delegate，尝试使用 adapter（兼容）
@@ -189,7 +189,7 @@ export class AnnotationViewManager {
     // 优先使用 delegate
     if (this.delegate && this.delegate.viewForAnnotation) {
       viewConfig = this.delegate.viewForAnnotation(marker);
-      
+
       if (viewConfig) {
         reuseIdentifier = viewConfig.reuseIdentifier;
         // 注意：这里我们存储 contentBuilder 到 customView
@@ -269,9 +269,12 @@ export class AnnotationViewManager {
    */
   updateAllPositions(): void {
     this.annotationViews.forEach((viewData, markerId) => {
-      const position = this.calculateScreenPosition(viewData.marker);
-      viewData.screenX = position.x;
-      viewData.screenY = position.y;
+      // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+      if (viewData.marker !== null) {
+        const position = this.calculateScreenPosition(viewData.marker);
+        viewData.screenX = position.x;
+        viewData.screenY = position.y;
+      }
     });
   }
 
@@ -333,7 +336,9 @@ export class AnnotationViewManager {
     this.annotationViews.clear();
 
     markers.forEach(marker => {
-      this.createOrUpdateView(marker);
+      if (marker) {
+        this.createOrUpdateView(marker);
+      }
     });
   }
 
@@ -428,7 +433,8 @@ export class AnnotationViewManager {
     // 取消其他选中的（单选模式）
     this.selectedAnnotations.forEach(id => {
       const viewData = this.annotationViews.get(id);
-      if (viewData && id !== markerId) {
+      // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+      if (viewData && viewData.marker !== null && id !== markerId) {
         this.deselectAnnotation(viewData.marker, animated);
       }
     });
@@ -470,7 +476,8 @@ export class AnnotationViewManager {
     const selectedIds = Array.from(this.selectedAnnotations);
     selectedIds.forEach(id => {
       const viewData = this.annotationViews.get(id);
-      if (viewData) {
+      // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+      if (viewData && viewData.marker !== null) {
         this.deselectAnnotation(viewData.marker, animated);
       }
     });
@@ -483,7 +490,8 @@ export class AnnotationViewManager {
     const selected: Marker[] = [];
     this.selectedAnnotations.forEach(id => {
       const viewData = this.annotationViews.get(id);
-      if (viewData) {
+      // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+      if (viewData && viewData.marker !== null) {
         selected.push(viewData.marker);
       }
     });
@@ -649,10 +657,13 @@ export class AnnotationViewManager {
   public batchUpdatePositions(cameraChanged: boolean = false): void {
     let updateCount = 0;
     this.annotationViews.forEach((viewData, markerId) => {
-      const position = this.calculateScreenPosition(viewData.marker);
-      viewData.screenX = position.x;
-      viewData.screenY = position.y;
-      updateCount++;
+      // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+      if (viewData.marker !== null) {
+        const position = this.calculateScreenPosition(viewData.marker);
+        viewData.screenX = position.x;
+        viewData.screenY = position.y;
+        updateCount++;
+      }
     });
 
     if (updateCount > 0) {
