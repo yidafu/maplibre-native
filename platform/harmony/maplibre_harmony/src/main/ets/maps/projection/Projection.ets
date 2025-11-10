@@ -61,6 +61,7 @@ export class Projection {
   private viewWidth: number = 0;
   private viewHeight: number = 0;
   private contentPadding: number[] = [0, 0, 0, 0]; // [left, top, right, bottom]
+  private static readonly DEFAULT_PIXEL_RATIO: number = 1;
 
   /**
    * 构造函数
@@ -73,6 +74,19 @@ export class Projection {
     this.nativeMapView = nativeMapView;
     this.viewWidth = viewWidth;
     this.viewHeight = viewHeight;
+  }
+
+  private getPixelRatio(): number {
+    try {
+      const ratioCandidate = this.nativeMapView.getPixelRatio?.();
+      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
+        return ratioCandidate;
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.warn(`[Projection] Failed to read pixel ratio, fallback to 1: ${reason}`);
+    }
+    return Projection.DEFAULT_PIXEL_RATIO;
   }
 
   /**
@@ -98,8 +112,9 @@ export class Projection {
    * @returns 屏幕坐标（像素）
    */
   public toScreenLocation(location: LatLng): Point {
-    const result: IPixelCoordinate = this.nativeMapView.pixelForLatLng(location.latitude, location.longitude);
-    return PixelCoordinate.fromObject(result);
+    const physical: IPixelCoordinate = this.nativeMapView.pixelForLatLng(location.latitude, location.longitude);
+    const pixelRatio = this.getPixelRatio();
+    return PixelCoordinate.create(physical.x / pixelRatio, physical.y / pixelRatio);
   }
 
   /**
@@ -112,7 +127,10 @@ export class Projection {
    * @returns 地理坐标
    */
   public fromScreenLocation(point: Point): LatLng {
-    return LatLng.fromNative(this.nativeMapView.latLngForPixel(point.x, point.y));
+    const pixelRatio = this.getPixelRatio();
+    const physicalX = point.x * pixelRatio;
+    const physicalY = point.y * pixelRatio;
+    return LatLng.fromNative(this.nativeMapView.latLngForPixel(physicalX, physicalY));
   }
 
   /**
@@ -156,12 +174,13 @@ export class Projection {
       throw new Error('Output array must be at least as long as input array');
     }
     
+    const pixelRatio = this.getPixelRatio();
     for (let i = 0; i < input.length; i += 2) {
       const lat = input[i];
       const lng = input[i + 1];
-      const result: IPixelCoordinate = this.nativeMapView.pixelForLatLng(lat, lng);
-      output[i] = result.x;
-      output[i + 1] = result.y;
+      const physical: IPixelCoordinate = this.nativeMapView.pixelForLatLng(lat, lng);
+      output[i] = physical.x / pixelRatio;
+      output[i + 1] = physical.y / pixelRatio;
     }
   }
 
@@ -182,10 +201,11 @@ export class Projection {
       throw new Error('Output array must be at least as long as input array');
     }
     
+    const pixelRatio = this.getPixelRatio();
     for (let i = 0; i < input.length; i += 2) {
-      const x = input[i];
-      const y = input[i + 1];
-      const latLng = this.nativeMapView.latLngForPixel(x, y);
+      const physicalX = input[i] * pixelRatio;
+      const physicalY = input[i + 1] * pixelRatio;
+      const latLng = this.nativeMapView.latLngForPixel(physicalX, physicalY);
       output[i] = latLng.latitude;
       output[i + 1] = latLng.longitude;
     }
@@ -484,7 +504,8 @@ export class Projection {
         this.contentPadding = padding;
       }
     } catch (error) {
-      console.error('[Projection] Failed to get content padding from native:', error);
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.error(`[Projection] Failed to get content padding from native: ${reason}`);
     }
 
     // 返回副本，防止外部修改
@@ -509,8 +530,8 @@ export class Projection {
     const lat2 = Projection.degreesToRadians(latLng2.latitude);
 
     const value1 = Math.sin(lon2 - lon1) * Math.cos(lat2);
-    const value2 = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) 
-                   * Math.cos(lat2) * Math.cos(lon2 - lon1);
+    const value2 = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1)
+      * Math.cos(lat2) * Math.cos(lon2 - lon1);
 
     return Projection.radiansToDegrees(Math.atan2(value1, value2));
   }
@@ -572,4 +593,3 @@ export class Projection {
     return this.nativeMapView.getZoom() + Math.log(minScale) / Math.log(2);
   }
 }
-

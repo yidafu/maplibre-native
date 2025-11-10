@@ -749,7 +749,7 @@ export class NativeMapView {
   // ========== Coordinate Conversion ==========
 
   /**
-   * 获取指定纬度和缩放级别下每像素对应的米数
+   * 获取指定纬度和缩放级别下每个物理像素对应的米数（乘以设备像素比后的像素）
    * @param latitude 纬度
    * @param zoom 缩放级别
    * @returns 每像素米数
@@ -765,17 +765,17 @@ export class NativeMapView {
   projectedMetersForLatLng(latitude: number, longitude: number): { northing: number; easting: number; };
 
   /**
-   * 将经纬度转换为像素坐标
+   * 将经纬度转换为物理像素坐标（乘以设备像素比后的值）
    * @param latitude 纬度
    * @param longitude 经度
-   * @returns 像素坐标（对象字面量）
+   * @returns 像素坐标（对象字面量，物理像素）
    */
   pixelForLatLng(latitude: number, longitude: number): { x: number; y: number; };
 
   /**
-   * 批量将经纬度转换为像素坐标
+   * 批量将经纬度转换为物理像素坐标（乘以设备像素比后的值）
    * @param input 输入经纬度数组 [lat1, lon1, lat2, lon2, ...]
-   * @param output 输出像素坐标数组 [x1, y1, x2, y2, ...]
+   * @param output 输出像素坐标数组 [x1, y1, x2, y2, ...]（物理像素）
    */
   pixelsForLatLngs(input: number[], output: number[]): void;
 
@@ -788,16 +788,16 @@ export class NativeMapView {
   latLngForProjectedMeters(northing: number, easting: number): LatLng;
 
   /**
-   * 将像素坐标转换为经纬度
-   * @param x X 坐标
-   * @param y Y 坐标
+   * 将物理像素坐标转换为经纬度（乘以设备像素比后的值）
+   * @param x X 坐标（物理像素）
+   * @param y Y 坐标（物理像素）
    * @returns 经纬度坐标
    */
   latLngForPixel(x: number, y: number): LatLng;
 
   /**
-   * 批量将像素坐标转换为经纬度
-   * @param input 输入像素坐标数组 [x1, y1, x2, y2, ...]
+   * 批量将物理像素坐标转换为经纬度（乘以设备像素比后的值）
+   * @param input 输入像素坐标数组 [x1, y1, x2, y2, ...]（物理像素）
    * @param output 输出经纬度数组 [lat1, lon1, lat2, lon2, ...]
    */
   latLngsForPixels(input: number[], output: number[]): void;

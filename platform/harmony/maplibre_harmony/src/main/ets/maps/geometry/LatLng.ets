@@ -6,7 +6,6 @@
 import type { ILatLng } from '../types/NativeTypes';
 
 /**
- * LatLng 类
  * 表示地理坐标（纬度和经度）
  */
 export class LatLng implements ILatLng {

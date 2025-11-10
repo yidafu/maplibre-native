@@ -735,7 +735,20 @@ export struct MapView {
           try {
             const mapView = this.controller.getMapView();
             if (mapView) {
-              const nativeLatLng: maplibre.LatLng = mapView.latLngForPixel(screenX, screenY);
+              let pixelRatio = 1;
+              try {
+                const candidate = mapView.getPixelRatio?.();
+                if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
+                  pixelRatio = candidate;
+                }
+              } catch (ratioError) {
+                const reason = ratioError instanceof Error ? ratioError.message : `${ratioError}`;
+                this.logNativeMapViewError('latLngForPixel pixelRatio read error', reason);
+              }
+
+              const physicalX = screenX * pixelRatio;
+              const physicalY = screenY * pixelRatio;
+              const nativeLatLng: maplibre.LatLng = mapView.latLngForPixel(physicalX, physicalY);
               const mapLibreMap = this.controller.getMapLibreMapInstance();
               if (mapLibreMap && nativeLatLng) {
                 const latLng = LatLng.fromNative(nativeLatLng);

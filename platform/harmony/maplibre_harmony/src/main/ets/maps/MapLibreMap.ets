@@ -1718,6 +1718,12 @@ export class MapLibreMap {
       return;
     }
     this.nativeMapView.pixelsForLatLngs(input, output);
+    const pixelRatio = this.readPixelRatioSafe(this.nativeMapView);
+    const safeRatio = pixelRatio === 0 ? 1 : pixelRatio;
+    for (let i = 0; i + 1 < output.length; i += 2) {
+      output[i] = output[i] / safeRatio;
+      output[i + 1] = output[i + 1] / safeRatio;
+    }
   }
 
   public latLngForProjectedMeters(northing: number, easting: number): LatLng {
@@ -1766,7 +1772,14 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
-    this.nativeMapView.latLngsForPixels(input, output);
+    const pixelRatio = this.readPixelRatioSafe(this.nativeMapView);
+    const safeRatio = pixelRatio === 0 ? 1 : pixelRatio;
+    const physicalInput: number[] = input.slice();
+    for (let i = 0; i + 1 < physicalInput.length; i += 2) {
+      physicalInput[i] = physicalInput[i] * safeRatio;
+      physicalInput[i + 1] = physicalInput[i + 1] * safeRatio;
+    }
+    this.nativeMapView.latLngsForPixels(physicalInput, output);
   }
 
   // 过渡

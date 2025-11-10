@@ -352,7 +352,8 @@ export class ViewAnnotationManager {
    * Pulls frame data from native and recomputes ArkUI render states.
    */
   refreshRenderStates(): void {
-    if (!this.nativeMapView) {
+    // TODO: temporarily disable heavy refresh logic for diagnostics.
+    /* if (!this.nativeMapView) {
       this.renderStates = [];
       this.notifyRenderCallback();
       return;
@@ -422,7 +423,7 @@ export class ViewAnnotationManager {
 
     this.renderStates = nextStates;
     console.info(`[ViewAnnotationManager] refreshRenderStates: computed ${this.renderStates.length} render states`);
-    this.notifyRenderCallback();
+    this.notifyRenderCallback(); */
   }
 
   private notifyRenderCallback(): void {
