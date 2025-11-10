@@ -411,15 +411,22 @@ napi_value CircleLayerNAPI::GetCircleRadius(napi_env env, napi_callback_info inf
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::CircleLayer::getCircleRadius
     );
 }
@@ -431,15 +438,22 @@ napi_value CircleLayerNAPI::GetCircleColor(napi_env env, napi_callback_info info
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::Color>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::CircleLayer::getCircleColor
     );
 }
@@ -451,15 +465,22 @@ napi_value CircleLayerNAPI::GetCircleOpacity(napi_env env, napi_callback_info in
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::CircleLayer::getCircleOpacity
     );
 }
@@ -576,14 +597,19 @@ napi_value CircleLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     
     return thisVar;
@@ -596,13 +622,20 @@ napi_value CircleLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
     
-    float minZoom = layerObj->layer->getMinZoom();
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -616,14 +649,19 @@ napi_value CircleLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     
     return thisVar;
@@ -636,13 +674,20 @@ napi_value CircleLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 24.0, &result);
         return result;
     }
     
-    float maxZoom = layerObj->layer->getMaxZoom();
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -660,14 +705,19 @@ napi_value CircleLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     
     return thisVar;
@@ -680,13 +730,20 @@ napi_value CircleLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -705,14 +762,19 @@ napi_value CircleLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
+    if (!layerObj || argc < 1) {
         return thisVar;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     // Convert NAPI array to Filter
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     
     return thisVar;
@@ -725,14 +787,21 @@ napi_value CircleLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
     }
-    
+
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+
     // Get filter and convert to NAPI array
-    const auto& filter = layerObj->layer->getFilter();
+    const auto& filter = layer->getFilter();
     return filterToNapiArray(env, filter);
 }
 
@@ -765,14 +834,21 @@ napi_value CircleLayerNAPI::GetCircleTranslate(napi_env env, napi_callback_info 
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), &mbgl::style::CircleLayer::getCircleTranslate
+        env, layer, &mbgl::style::CircleLayer::getCircleTranslate
     );
 }
 
@@ -801,14 +877,21 @@ napi_value CircleLayerNAPI::GetCircleTranslateAnchor(napi_env env, napi_callback
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::CircleLayer::getCircleTranslateAnchor
+        env, layer, &mbgl::style::CircleLayer::getCircleTranslateAnchor
     );
 }
 
@@ -837,14 +920,21 @@ napi_value CircleLayerNAPI::GetCirclePitchScale(napi_env env, napi_callback_info
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::style::CirclePitchScaleType>(
-        env, layerObj->getLayer(), &mbgl::style::CircleLayer::getCirclePitchScale
+        env, layer, &mbgl::style::CircleLayer::getCirclePitchScale
     );
 }
 
@@ -873,14 +963,21 @@ napi_value CircleLayerNAPI::GetCirclePitchAlignment(napi_env env, napi_callback_
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), &mbgl::style::CircleLayer::getCirclePitchAlignment
+        env, layer, &mbgl::style::CircleLayer::getCirclePitchAlignment
     );
 }
 
@@ -909,14 +1006,21 @@ napi_value CircleLayerNAPI::GetCircleSortKey(napi_env env, napi_callback_info in
     CircleLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::CircleLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::CircleLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::CircleLayer::getCircleSortKey
+        env, layer, &mbgl::style::CircleLayer::getCircleSortKey
     );
 }
 

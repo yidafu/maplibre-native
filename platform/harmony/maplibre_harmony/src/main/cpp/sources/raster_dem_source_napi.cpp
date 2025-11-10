@@ -241,8 +241,8 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     RasterDemSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
-        napi_throw_error(env, nullptr, "Invalid source");
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
         return nullptr;
     }
     
@@ -253,29 +253,25 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
+    // 只有在 Source 尚未添加到 Style（仍由 unique_ptr 持有）时才能重建
+    auto* ownedSource = sourceNapi->source.get();
+    if (!ownedSource) {
+        napi_throw_error(env, nullptr, "RasterDEMSource URL cannot be changed after adding to the map style");
+        return nullptr;
+    }
+    
+    const uint16_t tileSize = ownedSource->getTileSize();
+    
     try {
-        // RasterDEMSource 的 URL 在构造时设置，不能后续修改
-        // 我们需要重新创建 Source 对象
-        std::string sourceId = sourceNapi->id;
-        uint16_t tileSize = 512;  // 使用默认的 tile size
-        
-        // 创建新的 RasterDEMSource
         mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = url;
         auto newSource = std::make_unique<mbgl::style::RasterDEMSource>(
-            sourceId,
+            sourceNapi->id,
             std::move(urlOrTileset),
             tileSize
         );
-        
-        // 替换原有的 source
         sourceNapi->source = std::move(newSource);
-        
-        Logger::info("RasterDemSourceNAPI", "RasterDEMSource recreated with new URL: %s -> %s", 
-                    sourceId.c_str(), url.c_str());
-        
-        // 注意：调用者需要将新的 Source 重新添加到 Style 中
-        Logger::warn("RasterDemSourceNAPI", "Source recreated. You may need to remove and re-add the source to the style.");
-        
+        Logger::info("RasterDemSourceNAPI", "RasterDEMSource recreated with new URL: %s -> %s",
+                     sourceNapi->id.c_str(), url.c_str());
     } catch (const std::exception& e) {
         Logger::error("RasterDemSourceNAPI", "SetUrl failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());

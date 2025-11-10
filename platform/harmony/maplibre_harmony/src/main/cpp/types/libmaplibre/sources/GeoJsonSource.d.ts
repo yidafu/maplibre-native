@@ -32,6 +32,9 @@ export type ClusterProperties = Record<string, [ExpressionLiteral | string, Expr
  * GeoJSON 数据源选项
  */
 export interface GeoJsonOptions {
+  /** 最小缩放级别 */
+  minzoom?: number;
+
   /** 最大缩放级别 */
   maxzoom?: number;
 
@@ -83,6 +86,9 @@ export interface GeoJsonOptions {
 
   /** 是否生成要素 ID */
   generateId?: boolean;
+
+  /** 提升 ID 属性 */
+  promoteId?: string;
 }
 
 /**
@@ -173,6 +179,30 @@ export class GeoJsonSource {
    * @returns this（支持链式调用）
    */
   setUrl(url: string): this;
+
+  /** 设置瓦片生成的最大缩放级别 */
+  setMaxZoom(maxZoom: number): this;
+
+  /** 设置瓦片缓冲区大小（像素） */
+  setBuffer(buffer: number): this;
+
+  /** 设置几何简化容差 */
+  setTolerance(tolerance: number): this;
+
+  /** 启用或禁用线段度量 */
+  setLineMetrics(lineMetrics: boolean): this;
+
+  /** 启用或禁用聚类 */
+  setCluster(cluster: boolean): this;
+
+  /** 设置聚类半径（像素） */
+  setClusterRadius(clusterRadius: number): this;
+
+  /** 设置聚类的最大缩放级别 */
+  setClusterMaxZoom(clusterMaxZoom: number): this;
+
+  /** 设置聚类的最小点数 */
+  setClusterMinPoints(clusterMinPoints: number): this;
 
   /**
    * 获取数据 URL

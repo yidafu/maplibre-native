@@ -484,15 +484,22 @@ napi_value LineLayerNAPI::GetLineColor(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, mbgl::Color>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineColor
     );
 }
@@ -504,15 +511,22 @@ napi_value LineLayerNAPI::GetLineWidth(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineWidth
     );
 }
@@ -524,15 +538,22 @@ napi_value LineLayerNAPI::GetLineOpacity(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineOpacity
     );
 }
@@ -641,14 +662,19 @@ napi_value LineLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     
     return thisVar;
@@ -661,13 +687,20 @@ napi_value LineLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
     
-    float minZoom = layerObj->layer->getMinZoom();
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -681,14 +714,19 @@ napi_value LineLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     
     return thisVar;
@@ -701,13 +739,20 @@ napi_value LineLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 24.0, &result);
         return result;
     }
-    
-    float maxZoom = layerObj->layer->getMaxZoom();
+
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -721,14 +766,19 @@ napi_value LineLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     
     return thisVar;
@@ -741,13 +791,20 @@ napi_value LineLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -762,13 +819,18 @@ napi_value LineLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
+    if (!layerObj || argc < 1) {
         return thisVar;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     
     return thisVar;
@@ -781,13 +843,20 @@ napi_value LineLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
     }
-    
-    const auto& filter = layerObj->layer->getFilter();
+
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+
+    const auto& filter = layer->getFilter();
     return filterToNapiArray(env, filter);
 }
 
@@ -826,15 +895,22 @@ napi_value LineLayerNAPI::GetLineTranslate(napi_env env, napi_callback_info info
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, std::array<float, 2>>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineTranslate
     );
 }
@@ -870,15 +946,22 @@ napi_value LineLayerNAPI::GetLineTranslateAnchor(napi_env env, napi_callback_inf
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, mbgl::style::TranslateAnchorType>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineTranslateAnchor
     );
 }
@@ -914,15 +997,22 @@ napi_value LineLayerNAPI::GetLineMiterLimit(napi_env env, napi_callback_info inf
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineMiterLimit
     );
 }
@@ -958,15 +1048,22 @@ napi_value LineLayerNAPI::GetLineRoundLimit(napi_env env, napi_callback_info inf
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineRoundLimit
     );
 }
@@ -998,7 +1095,14 @@ napi_value LineLayerNAPI::GetLineGradient(napi_env env, napi_callback_info info)
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
@@ -1042,15 +1146,22 @@ napi_value LineLayerNAPI::GetLineSortKey(napi_env env, napi_callback_info info) 
     LineLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::LineLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::LineLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::LineLayer::getLineSortKey
     );
 }

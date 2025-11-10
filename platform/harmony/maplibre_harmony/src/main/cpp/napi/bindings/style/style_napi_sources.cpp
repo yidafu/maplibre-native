@@ -25,11 +25,13 @@ namespace harmony {
 // ==================== Source 管理 ====================
 
 napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
@@ -39,13 +41,10 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "RemoveSource requires sourceId argument");
+    std::string sourceId = GetStringFromValue(env, napiArgs.GetValue(0));
+    if (napiArgs.HasError()) {
         return nullptr;
     }
-    
-    // 获取 sourceId
-    std::string sourceId = GetStringFromValue(env, args[0]);
     if (sourceId.empty()) {
         napi_throw_error(env, nullptr, "sourceId cannot be empty");
         return nullptr;
@@ -65,9 +64,7 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
         
         Logger::info("StyleNAPI", "RemoveSource: %s", sourceId.c_str());
         
-        napi_value result;
-        napi_get_undefined(env, &result);
-        return result;
+        return napiArgs.Undefined();
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "RemoveSource failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -76,28 +73,25 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
     if (!style || !style->map) {
         Logger::error("StyleNAPI", "GetSource: Invalid style or map");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
+        return napiArgs.Null();
     }
     
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "GetSource requires sourceId argument");
+    std::string sourceId = GetStringFromValue(env, napiArgs.GetValue(0));
+    if (napiArgs.HasError()) {
         return nullptr;
     }
-    
-    // 获取 sourceId
-    std::string sourceId = GetStringFromValue(env, args[0]);
     if (sourceId.empty()) {
         napi_throw_error(env, nullptr, "sourceId cannot be empty");
         return nullptr;
@@ -139,22 +133,21 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
             }
             default:
                 Logger::warn("StyleNAPI", "GetSource: Unknown source type: %d", static_cast<int>(source->getType()));
-                napi_value result;
-                napi_get_null(env, &result);
-                return result;
+                return napiArgs.Null();
         }
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetSource failed: %s", e.what());
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
+        return napiArgs.Null();
     }
 }
 
 napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    NapiArgs napiArgs(env, info);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     

@@ -10,6 +10,9 @@ export type ClusterProperties = Record<string, [ExpressionLiteral | string, Expr
  * GeoJsonOptions - GeoJSON数据源选项配置
  */
 export interface GeoJsonOptions {
+  // 最小缩放级别
+  minzoom?: number;
+
   // 最大缩放级别
   maxzoom?: number;
 
@@ -49,6 +52,11 @@ export interface GeoJsonOptions {
  */
 export class GeoJsonOptionsBuilder {
   private options: GeoJsonOptions = {};
+
+  public withMinZoom(minzoom: number): GeoJsonOptionsBuilder {
+    this.options.minzoom = minzoom;
+    return this;
+  }
 
   public withMaxZoom(maxzoom: number): GeoJsonOptionsBuilder {
     this.options.maxzoom = maxzoom;

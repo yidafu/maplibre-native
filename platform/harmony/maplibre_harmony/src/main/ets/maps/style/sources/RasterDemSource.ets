@@ -53,13 +53,11 @@ export class RasterDemSource {
   }
 
   /**
-   * 设置瓦片大小
-   * 注意：tileSize 在源创建时设置，运行时动态修改需要重新创建源。
-   * 此方法暂不支持运行时修改。
-   * 请在构造函数的 options 参数中设置 tileSize 属性。
+   * Configure tile size in pixels
+   * @param tileSize tile size value
    */
   setTileSize(tileSize: number): RasterDemSource {
-    console.warn('[RasterDemSource] setTileSize: tileSize should be set via constructor options');
+    this.nativeInstance.setTileSize(tileSize);
     return this;
   }
 }

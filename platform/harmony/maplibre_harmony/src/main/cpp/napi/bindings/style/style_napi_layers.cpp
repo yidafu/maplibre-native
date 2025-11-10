@@ -14,6 +14,7 @@
 #include <mbgl/style/layers/heatmap_layer.hpp>
 #include <mbgl/style/layers/hillshade_layer.hpp>
 #include <mbgl/style/layers/fill_extrusion_layer.hpp>
+#include <vector>
 
 // Helper function to convert SourceType enum to string
 static const char *sourceTypeToString(mbgl::style::SourceType type) {
@@ -65,11 +66,23 @@ namespace harmony {
 // ==================== Layer 管理 ====================
 
 napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -417,11 +430,23 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(2);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -554,11 +579,23 @@ napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::RemoveLayer(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -584,11 +621,23 @@ napi_value StyleNAPI::RemoveLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -661,9 +710,12 @@ napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -729,11 +781,23 @@ napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::RemoveLayerAt(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -768,11 +832,23 @@ napi_value StyleNAPI::RemoveLayerAt(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(2);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -920,11 +996,23 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(2);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    size_t argc = napiArgs.Count();
+    std::vector<napi_value> argsVec(argc);
+    for (size_t i = 0; i < argc; ++i) {
+        argsVec[i] = napiArgs.GetValue(i);
+        if (napiArgs.HasError()) {
+            return nullptr;
+        }
+    }
+    napi_value* args = argsVec.data();
+
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 

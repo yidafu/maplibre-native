@@ -248,6 +248,78 @@ export class GeoJsonSource {
   }
 
   /**
+   * Configure maximum zoom level for tile generation
+   * @param maxZoom maximum zoom level
+   */
+  setMaxZoom(maxZoom: number): GeoJsonSource {
+    this.nativeInstance.setMaxZoom(maxZoom);
+    return this;
+  }
+
+  /**
+   * Configure tile buffer size in pixels
+   * @param buffer tile buffer size
+   */
+  setBuffer(buffer: number): GeoJsonSource {
+    this.nativeInstance.setBuffer(buffer);
+    return this;
+  }
+
+  /**
+   * Configure geometry simplification tolerance
+   * @param tolerance simplification tolerance
+   */
+  setTolerance(tolerance: number): GeoJsonSource {
+    this.nativeInstance.setTolerance(tolerance);
+    return this;
+  }
+
+  /**
+   * Enable or disable line metrics generation
+   * @param lineMetrics whether line metrics should be generated
+   */
+  setLineMetrics(lineMetrics: boolean): GeoJsonSource {
+    this.nativeInstance.setLineMetrics(lineMetrics);
+    return this;
+  }
+
+  /**
+   * Enable or disable clustering for the source
+   * @param cluster whether clustering should be enabled
+   */
+  setCluster(cluster: boolean): GeoJsonSource {
+    this.nativeInstance.setCluster(cluster);
+    return this;
+  }
+
+  /**
+   * Configure cluster radius in pixels
+   * @param clusterRadius cluster radius size
+   */
+  setClusterRadius(clusterRadius: number): GeoJsonSource {
+    this.nativeInstance.setClusterRadius(clusterRadius);
+    return this;
+  }
+
+  /**
+   * Configure maximum zoom level for clustering
+   * @param clusterMaxZoom maximum cluster zoom level
+   */
+  setClusterMaxZoom(clusterMaxZoom: number): GeoJsonSource {
+    this.nativeInstance.setClusterMaxZoom(clusterMaxZoom);
+    return this;
+  }
+
+  /**
+   * Configure minimum number of points to form a cluster
+   * @param clusterMinPoints minimum points required for clustering
+   */
+  setClusterMinPoints(clusterMinPoints: number): GeoJsonSource {
+    this.nativeInstance.setClusterMinPoints(clusterMinPoints);
+    return this;
+  }
+
+  /**
    * 获取数据源 URL
    * @returns 数据源 URL，如果没有设置则返回空字符串
    */

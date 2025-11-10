@@ -580,7 +580,14 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
@@ -642,7 +649,14 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
@@ -711,7 +725,12 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
     GeoJsonSourceNAPI* sourceNapi = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
     
-    if (!sourceNapi || !sourceNapi->source) {
+    if (!sourceNapi) {
+        return CreateDoubleValue(env, 0.0);
+    }
+    
+    auto* source = sourceNapi->getSource();
+    if (!source) {
         return CreateDoubleValue(env, 0.0);
     }
     

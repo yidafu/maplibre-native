@@ -221,7 +221,10 @@ napi_value HeatmapLayerNAPI::SetHeatmapRadius(napi_env env, napi_callback_info i
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    if (!layerObj || argc < 1) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
         env, layerObj->getLayer(), argv[0], "heatmap-radius",
@@ -239,7 +242,12 @@ napi_value HeatmapLayerNAPI::SetHeatmapWeight(napi_env env, napi_callback_info i
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    if (!layerObj || argc < 1) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
         env, layerObj->getLayer(), argv[0], "heatmap-weight",
@@ -257,7 +265,12 @@ napi_value HeatmapLayerNAPI::SetHeatmapIntensity(napi_env env, napi_callback_inf
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    if (!layerObj || argc < 1) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
     
     mbgl::harmony::setPaintProperty<mbgl::style::HeatmapLayer, float>(
         env, layerObj->getLayer(), argv[0], "heatmap-intensity",
@@ -275,7 +288,12 @@ napi_value HeatmapLayerNAPI::SetHeatmapColor(napi_env env, napi_callback_info in
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    if (!layerObj || argc < 1) return thisVar;
+    
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
     
     // heatmap-color uses ColorRampPropertyValue, special handling
     // For now, we use the existing conversion approach
@@ -288,7 +306,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapColor(napi_env env, napi_callback_info in
         );
         
         if (converted) {
-            layerObj->layer->setHeatmapColor(*converted);
+            layer->setHeatmapColor(*converted);
         } else {
             Logger::error("HeatmapLayerNAPI", "Failed to convert heatmap-color: %s", error.message.c_str());
         }
@@ -328,14 +346,21 @@ napi_value HeatmapLayerNAPI::GetHeatmapRadius(napi_env env, napi_callback_info i
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapRadius
+        env, layer, &mbgl::style::HeatmapLayer::getHeatmapRadius
     );
 }
 
@@ -346,14 +371,21 @@ napi_value HeatmapLayerNAPI::GetHeatmapWeight(napi_env env, napi_callback_info i
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapWeight
+        env, layer, &mbgl::style::HeatmapLayer::getHeatmapWeight
     );
 }
 
@@ -364,14 +396,21 @@ napi_value HeatmapLayerNAPI::GetHeatmapIntensity(napi_env env, napi_callback_inf
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapIntensity
+        env, layer, &mbgl::style::HeatmapLayer::getHeatmapIntensity
     );
 }
 
@@ -382,14 +421,21 @@ napi_value HeatmapLayerNAPI::GetHeatmapColor(napi_env env, napi_callback_info in
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     // heatmap-color is ColorRampPropertyValue
-    const auto& colorRamp = layerObj->layer->getHeatmapColor();
+    const auto& colorRamp = layer->getHeatmapColor();
     auto result = mbgl::harmony::conversion::colorRampPropertyValueToNapi(env, colorRamp);
     if (result) {
         return *result;
@@ -407,14 +453,21 @@ napi_value HeatmapLayerNAPI::GetHeatmapOpacity(napi_env env, napi_callback_info 
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::HeatmapLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::HeatmapLayer::getHeatmapOpacity
+        env, layer, &mbgl::style::HeatmapLayer::getHeatmapOpacity
     );
 }
 
@@ -517,12 +570,15 @@ napi_value HeatmapLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
+    if (!layerObj) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     return thisVar;
 }
@@ -534,13 +590,20 @@ napi_value HeatmapLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
     
-    float minZoom = layerObj->layer->getMinZoom();
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -554,12 +617,15 @@ napi_value HeatmapLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
+    if (!layerObj) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     return thisVar;
 }
@@ -571,13 +637,20 @@ napi_value HeatmapLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 24.0, &result);
         return result;
     }
-    
-    float maxZoom = layerObj->layer->getMaxZoom();
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -591,12 +664,15 @@ napi_value HeatmapLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info inf
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
+    if (!layerObj) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     return thisVar;
 }
@@ -608,13 +684,20 @@ napi_value HeatmapLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info inf
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -629,11 +712,14 @@ napi_value HeatmapLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    if (!layerObj || argc < 1) return thisVar;
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     return thisVar;
 }
@@ -645,13 +731,20 @@ napi_value HeatmapLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     HeatmapLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
     }
-    
-    const auto& filter = layerObj->layer->getFilter();
+
+    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+
+    const auto& filter = layer->getFilter();
     return filterToNapiArray(env, filter);
 }
 

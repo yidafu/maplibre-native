@@ -287,14 +287,21 @@ napi_value HillshadeLayerNAPI::GetHillshadeIlluminationDirection(napi_env env, n
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::HillshadeLayer::getHillshadeIlluminationDirection
+        env, layer, &mbgl::style::HillshadeLayer::getHillshadeIlluminationDirection
     );
 }
 
@@ -305,14 +312,21 @@ napi_value HillshadeLayerNAPI::GetHillshadeExaggeration(napi_env env, napi_callb
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
     return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::HillshadeLayer::getHillshadeExaggeration
+        env, layer, &mbgl::style::HillshadeLayer::getHillshadeExaggeration
     );
 }
 
@@ -411,12 +425,15 @@ napi_value HillshadeLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info)
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
-    
+    if (!layerObj) return thisVar;
+
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     return thisVar;
 }
@@ -428,13 +445,20 @@ napi_value HillshadeLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info)
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
-    
-    float minZoom = layerObj->layer->getMinZoom();
+
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -448,12 +472,15 @@ napi_value HillshadeLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info)
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
-    
+    if (!layerObj) return thisVar;
+
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     return thisVar;
 }
@@ -465,13 +492,20 @@ napi_value HillshadeLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info)
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 24.0, &result);
         return result;
     }
-    
-    float maxZoom = layerObj->layer->getMaxZoom();
+
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -489,14 +523,19 @@ napi_value HillshadeLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info i
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
+        return thisVar;
+    }
+    
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
         return thisVar;
     }
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     
     return thisVar;
@@ -509,13 +548,20 @@ napi_value HillshadeLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info i
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -534,13 +580,18 @@ napi_value HillshadeLayerNAPI::SetFilter(napi_env env, napi_callback_info info) 
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
+    if (!layerObj || argc < 1) {
+        return thisVar;
+    }
+    
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
         return thisVar;
     }
     
     auto filter = mbgl::harmony::napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     
     return thisVar;
@@ -553,13 +604,20 @@ napi_value HillshadeLayerNAPI::GetFilter(napi_env env, napi_callback_info info) 
     HillshadeLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
-    auto filter = layerObj->layer->getFilter();
+    mbgl::style::HillshadeLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+    
+    auto filter = layer->getFilter();
     return mbgl::harmony::filterToNapiArray(env, filter);
 }
 

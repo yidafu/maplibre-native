@@ -1,4 +1,5 @@
 #include "url_transform_napi.hpp"
+#include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "network/url_transform_manager.hpp"
 #include "utils/logger.h"
@@ -9,6 +10,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::URLTransformManager;
+using mbgl::harmony::napi::NapiArgs;
 
 namespace mbgl {
 namespace harmony {
@@ -94,20 +96,14 @@ napi_value URLTransformNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "Missing argument: callback function required");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
         return nullptr;
     }
 
-    // 检查参数是否为函数
-    napi_valuetype valuetype;
-    napi_typeof(env, args[0], &valuetype);
-    if (valuetype != napi_function) {
-        napi_throw_type_error(env, nullptr, "Argument must be a function");
+    napi_value callbackValue = args.GetFunction(0, "callback");
+    if (args.HasError()) {
         return nullptr;
     }
 
@@ -128,7 +124,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
     callbackContext_->env = env;
 
     // 创建持久引用
-    napi_create_reference(env, args[0], 1, &callbackContext_->callbackRef);
+    napi_create_reference(env, callbackValue, 1, &callbackContext_->callbackRef);
 
     // 创建线程安全函数
     napi_value async_resource_name;
@@ -136,7 +132,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
 
     napi_status status = napi_create_threadsafe_function(
         env,
-        args[0],
+        callbackValue,
         nullptr,
         async_resource_name,
         0,  // 无限队列大小
@@ -209,10 +205,15 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
 
     Logger::info("URLTransformNAPI", "Resource transform callback set");
 
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value URLTransformNAPI::ClearResourceTransformCallback(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
     // 清理回调上下文
     if (callbackContext_ != nullptr) {
         if (callbackContext_->tsfn != nullptr) {
@@ -232,10 +233,15 @@ napi_value URLTransformNAPI::ClearResourceTransformCallback(napi_env env, napi_c
 
     Logger::info("URLTransformNAPI", "Resource transform callback cleared");
 
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value URLTransformNAPI::HasResourceTransformCallback(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
     bool hasCallback = URLTransformManager::getInstance().hasCallback();
 
     napi_value result;

@@ -103,23 +103,39 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-
-    // 检查参数
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "Style constructor requires mapPtr argument");
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
         return nullptr;
     }
 
-    // 获取 mapPtr
-    int64_t mapPtr;
-    napi_status status = napi_get_value_int64(env, args[0], &mapPtr);
+    napi_value jsThis = napiArgs.This();
+
+    napi_value mapPtrValue = napiArgs.GetValue(0);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
+
+    int64_t mapPtr = 0;
+    napi_status status = napi_ok;
+    napi_valuetype valueType;
+    napi_typeof(env, mapPtrValue, &valueType);
+
+    if (valueType == napi_number) {
+        status = napi_get_value_int64(env, mapPtrValue, &mapPtr);
+    } else if (valueType == napi_bigint) {
+        bool lossless = true;
+        status = napi_get_value_bigint_int64(env, mapPtrValue, &mapPtr, &lossless);
+        if (status == napi_ok && !lossless) {
+            Logger::warn("StyleNAPI", "mapPtr bigint conversion was not lossless");
+        }
+    } else {
+        napi_throw_type_error(env, nullptr, "mapPtr must be a number or BigInt");
+        return nullptr;
+    }
+
     if (status != napi_ok) {
-        napi_throw_error(env, nullptr, "Failed to get mapPtr argument");
+        napi_throw_error(env, nullptr, "Failed to parse mapPtr argument");
         return nullptr;
     }
 
@@ -146,9 +162,12 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
 // ==================== Getters ====================
 
 napi_value StyleNAPI::GetUri(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -166,9 +185,12 @@ napi_value StyleNAPI::GetUri(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::GetJson(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -186,9 +208,12 @@ napi_value StyleNAPI::GetJson(napi_env env, napi_callback_info info) {
 }
 
 napi_value StyleNAPI::IsFullyLoaded(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -202,11 +227,13 @@ napi_value StyleNAPI::IsFullyLoaded(napi_env env, napi_callback_info info) {
 // ==================== Source 管理 ====================
 
 napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
+    NapiArgs napiArgs(env, info);
+    napiArgs.RequireMinArgs(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
+    }
 
+    napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
@@ -216,12 +243,11 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "AddSource requires source argument");
+    napi_value sourceValue = napiArgs.GetObject(0, "source");
+    if (napiArgs.HasError()) {
         return nullptr;
     }
 
-    napi_value sourceValue = args[0];
     std::string sourceId;
     bool sourceAdded = false;
     napi_status status;
@@ -265,9 +291,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 }
 
                 Logger::info("StyleNAPI", "AddSource (GeoJsonSource): %s", sourceId.c_str());
-                napi_value result;
-                napi_get_undefined(env, &result);
-                return result;
+                return napiArgs.Undefined();
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (GeoJsonSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
@@ -299,9 +323,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 }
 
                 Logger::info("StyleNAPI", "AddSource (VectorSource): %s", sourceId.c_str());
-                napi_value result;
-                napi_get_undefined(env, &result);
-                return result;
+                return napiArgs.Undefined();
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (VectorSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
@@ -333,9 +355,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 }
 
                 Logger::info("StyleNAPI", "AddSource (RasterSource): %s", sourceId.c_str());
-                napi_value result;
-                napi_get_undefined(env, &result);
-                return result;
+                return napiArgs.Undefined();
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (RasterSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
@@ -367,9 +387,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 }
 
                 Logger::info("StyleNAPI", "AddSource (RasterDemSource): %s", sourceId.c_str());
-                napi_value result;
-                napi_get_undefined(env, &result);
-                return result;
+                return napiArgs.Undefined();
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (RasterDemSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
@@ -401,9 +419,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 }
 
                 Logger::info("StyleNAPI", "AddSource (ImageSource): %s", sourceId.c_str());
-                napi_value result;
-                napi_get_undefined(env, &result);
-                return result;
+                return napiArgs.Undefined();
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (ImageSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
@@ -419,9 +435,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    napi_value result;
-    napi_get_undefined(env, &result);
-    return result;
+    return napiArgs.Undefined();
 }
 
 } // namespace harmony

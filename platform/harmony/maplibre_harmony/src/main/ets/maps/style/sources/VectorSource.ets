@@ -58,23 +58,17 @@ export class VectorSource {
 
   /**
    * 设置最小缩放级别
-   * 注意：minZoom 和 maxZoom 通常在源创建时通过 TileSet 配置设置，
-   * 运行时动态修改需要重新创建源。此方法暂不支持运行时修改。
-   * 请在构造函数的 options 参数中设置 minzoom 属性。
    */
   setMinZoom(minZoom: number): VectorSource {
-    console.warn('[VectorSource] setMinZoom: minZoom should be set via constructor options (minzoom property)');
+    this.nativeInstance.setMinZoom(minZoom);
     return this;
   }
 
   /**
    * 设置最大缩放级别
-   * 注意：minZoom 和 maxZoom 通常在源创建时通过 TileSet 配置设置，
-   * 运行时动态修改需要重新创建源。此方法暂不支持运行时修改。
-   * 请在构造函数的 options 参数中设置 maxzoom 属性。
    */
   setMaxZoom(maxZoom: number): VectorSource {
-    console.warn('[VectorSource] setMaxZoom: maxZoom should be set via constructor options (maxzoom property)');
+    this.nativeInstance.setMaxZoom(maxZoom);
     return this;
   }
 }

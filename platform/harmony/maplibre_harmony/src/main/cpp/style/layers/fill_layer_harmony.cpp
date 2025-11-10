@@ -380,15 +380,22 @@ napi_value FillLayerNAPI::GetFillColor(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::FillLayer, mbgl::Color>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::FillLayer::getFillColor
     );
 }
@@ -400,15 +407,22 @@ napi_value FillLayerNAPI::GetFillOpacity(napi_env env, napi_callback_info info) 
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::FillLayer, float>(
         env,
-        layerObj->getLayer(),
+        layer,
         &mbgl::style::FillLayer::getFillOpacity
     );
 }
@@ -525,14 +539,19 @@ napi_value FillLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     
     return thisVar;
@@ -545,13 +564,20 @@ napi_value FillLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
     
-    float minZoom = layerObj->layer->getMinZoom();
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -565,14 +591,19 @@ napi_value FillLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     
     return thisVar;
@@ -585,13 +616,20 @@ napi_value FillLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 24.0, &result);
         return result;
     }
     
-    float maxZoom = layerObj->layer->getMaxZoom();
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -609,14 +647,19 @@ napi_value FillLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) 
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     
     return thisVar;
@@ -629,13 +672,20 @@ napi_value FillLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) 
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -654,14 +704,19 @@ napi_value FillLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
+    if (!layerObj || argc < 1) {
         return thisVar;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     // Convert NAPI array to Filter
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     
     return thisVar;
@@ -674,14 +729,21 @@ napi_value FillLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
     }
-    
+
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+
     // Get filter and convert to NAPI array
-    const auto& filter = layerObj->layer->getFilter();
+    const auto& filter = layer->getFilter();
     return filterToNapiArray(env, filter);
 }
 
@@ -714,14 +776,21 @@ napi_value FillLayerNAPI::GetFillTranslateAnchor(napi_env env, napi_callback_inf
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::FillLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::FillLayer::getFillTranslateAnchor
+        env, layer, &mbgl::style::FillLayer::getFillTranslateAnchor
     );
 }
 
@@ -750,14 +819,21 @@ napi_value FillLayerNAPI::GetFillSortKey(napi_env env, napi_callback_info info) 
     FillLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::FillLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::FillLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::FillLayer::getFillSortKey
+        env, layer, &mbgl::style::FillLayer::getFillSortKey
     );
 }
 

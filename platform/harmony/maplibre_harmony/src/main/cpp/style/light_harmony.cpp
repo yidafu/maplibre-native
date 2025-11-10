@@ -1,10 +1,12 @@
 #include "light_harmony.hpp"
+#include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include <mbgl/style/types.hpp>
 #include <mbgl/util/color.hpp>
 #include <mbgl/style/transition_options.hpp>
 
 using mbgl::harmony::Logger;
+using mbgl::harmony::napi::NapiArgs;
 
 namespace mbgl {
 namespace harmony {
@@ -114,16 +116,17 @@ napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map, mbgl::sty
 }
 
 napi_value LightHarmony::GetAnchor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     auto anchorType = lightHarmony->light.getAnchor();
@@ -135,42 +138,46 @@ napi_value LightHarmony::GetAnchor(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetAnchor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    LightHarmony* lightHarmony = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
-    
-    if (!lightHarmony || argc < 1) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
         return nullptr;
     }
-    
-    char anchorStr[32];
-    size_t result;
-    napi_get_value_string_utf8(env, args[0], anchorStr, sizeof(anchorStr), &result);
-    
-    if (strcmp(anchorStr, "map") == 0) {
-        lightHarmony->light.setAnchor(style::LightAnchorType::Map);
-    } else if (strcmp(anchorStr, "viewport") == 0) {
-        lightHarmony->light.setAnchor(style::LightAnchorType::Viewport);
-    }
-    
-    return nullptr;
-}
 
-napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
+    }
+    
+    std::string anchorStr = args.GetString(0, "anchor");
+    if (args.HasError()) {
+        return nullptr;
+    }
+    
+    if (anchorStr == "map") {
+        lightHarmony->light.setAnchor(style::LightAnchorType::Map);
+    } else if (anchorStr == "viewport") {
+        lightHarmony->light.setAnchor(style::LightAnchorType::Viewport);
+    }
+    
+    return args.Undefined();
+}
+
+napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
+    LightHarmony* lightHarmony = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
+    
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
     auto position = lightHarmony->light.getPosition().asConstant();
@@ -192,25 +199,32 @@ napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
-    if (!lightHarmony || argc < 1) {
-        return nullptr;
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
+    napi_value positionObj = args.GetObject(0, "position");
+    if (args.HasError()) {
+        return nullptr;
+    }
+
     // Parse position object {radial, azimuthal, polar}
     napi_value radialValue, azimuthalValue, polarValue;
-    double radial, azimuthal, polar;
+    double radial = 0.0, azimuthal = 0.0, polar = 0.0;
     
-    napi_get_named_property(env, args[0], "radial", &radialValue);
-    napi_get_named_property(env, args[0], "azimuthal", &azimuthalValue);
-    napi_get_named_property(env, args[0], "polar", &polarValue);
+    napi_get_named_property(env, positionObj, "radial", &radialValue);
+    napi_get_named_property(env, positionObj, "azimuthal", &azimuthalValue);
+    napi_get_named_property(env, positionObj, "polar", &polarValue);
     
     napi_get_value_double(env, radialValue, &radial);
     napi_get_value_double(env, azimuthalValue, &azimuthal);
@@ -224,20 +238,21 @@ napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
     style::Position position(positionArray);
     lightHarmony->light.setPosition(position);
     
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value LightHarmony::GetPositionTransition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     auto transition = lightHarmony->light.getPositionTransition();
@@ -261,41 +276,46 @@ napi_value LightHarmony::GetPositionTransition(napi_env env, napi_callback_info 
 }
 
 napi_value LightHarmony::SetPositionTransition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
-    if (!lightHarmony || argc < 2) {
-        return nullptr;
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
-    int64_t duration, delay;
-    napi_get_value_int64(env, args[0], &duration);
-    napi_get_value_int64(env, args[1], &delay);
+    int64_t duration = args.GetInt64(0, "duration");
+    int64_t delay = args.GetInt64(1, "delay");
+    if (args.HasError()) {
+        return nullptr;
+    }
     
     style::TransitionOptions options;
     options.duration.emplace(mbgl::Milliseconds(duration));
     options.delay.emplace(mbgl::Milliseconds(delay));
     lightHarmony->light.setPositionTransition(options);
     
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value LightHarmony::GetColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     auto color = lightHarmony->light.getColor().asConstant();
@@ -307,41 +327,45 @@ napi_value LightHarmony::GetColor(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetColor(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    LightHarmony* lightHarmony = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
-    
-    if (!lightHarmony || argc < 1) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
         return nullptr;
     }
-    
-    char colorStr[64];
-    size_t result;
-    napi_get_value_string_utf8(env, args[0], colorStr, sizeof(colorStr), &result);
-    
-    auto color = Color::parse(colorStr);
-    if (color) {
-        lightHarmony->light.setColor(*color);
-    }
-    
-    return nullptr;
-}
 
-napi_value LightHarmony::GetColorTransition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
+    }
+    
+    std::string colorStr = args.GetString(0, "color");
+    if (args.HasError()) {
+        return nullptr;
+    }
+    
+    auto color = Color::parse(colorStr.c_str());
+    if (color) {
+        lightHarmony->light.setColor(*color);
+    }
+    
+    return args.Undefined();
+}
+
+napi_value LightHarmony::GetColorTransition(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
+    LightHarmony* lightHarmony = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
+    
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
     auto transition = lightHarmony->light.getColorTransition();
@@ -365,41 +389,46 @@ napi_value LightHarmony::GetColorTransition(napi_env env, napi_callback_info inf
 }
 
 napi_value LightHarmony::SetColorTransition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
-    if (!lightHarmony || argc < 2) {
-        return nullptr;
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
-    int64_t duration, delay;
-    napi_get_value_int64(env, args[0], &duration);
-    napi_get_value_int64(env, args[1], &delay);
+    int64_t duration = args.GetInt64(0, "duration");
+    int64_t delay = args.GetInt64(1, "delay");
+    if (args.HasError()) {
+        return nullptr;
+    }
     
     style::TransitionOptions options;
     options.duration.emplace(mbgl::Milliseconds(duration));
     options.delay.emplace(mbgl::Milliseconds(delay));
     lightHarmony->light.setColorTransition(options);
     
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value LightHarmony::GetIntensity(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
     }
     
     float intensity = lightHarmony->light.getIntensity().asConstant();
@@ -410,37 +439,42 @@ napi_value LightHarmony::GetIntensity(napi_env env, napi_callback_info info) {
 }
 
 napi_value LightHarmony::SetIntensity(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
-    LightHarmony* lightHarmony = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
-    
-    if (!lightHarmony || argc < 1) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
         return nullptr;
     }
-    
-    double intensity;
-    napi_get_value_double(env, args[0], &intensity);
-    
-    lightHarmony->light.setIntensity(static_cast<float>(intensity));
-    
-    return nullptr;
-}
 
-napi_value LightHarmony::GetIntensityTransition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
     if (!lightHarmony) {
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
+        return args.Undefined();
+    }
+    
+    double intensity = args.GetDouble(0, "intensity");
+    if (args.HasError()) {
+        return nullptr;
+    }
+    
+    lightHarmony->light.setIntensity(static_cast<float>(intensity));
+    
+    return args.Undefined();
+}
+
+napi_value LightHarmony::GetIntensityTransition(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
+    LightHarmony* lightHarmony = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
+    
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
     auto transition = lightHarmony->light.getIntensityTransition();
@@ -464,28 +498,32 @@ napi_value LightHarmony::GetIntensityTransition(napi_env env, napi_callback_info
 }
 
 napi_value LightHarmony::SetIntensityTransition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, &jsThis, nullptr);
-    
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value jsThis = args.This();
     LightHarmony* lightHarmony = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&lightHarmony));
     
-    if (!lightHarmony || argc < 2) {
-        return nullptr;
+    if (!lightHarmony) {
+        return args.Undefined();
     }
     
-    int64_t duration, delay;
-    napi_get_value_int64(env, args[0], &duration);
-    napi_get_value_int64(env, args[1], &delay);
+    int64_t duration = args.GetInt64(0, "duration");
+    int64_t delay = args.GetInt64(1, "delay");
+    if (args.HasError()) {
+        return nullptr;
+    }
     
     style::TransitionOptions options;
     options.duration.emplace(mbgl::Milliseconds(duration));
     options.delay.emplace(mbgl::Milliseconds(delay));
     lightHarmony->light.setIntensityTransition(options);
     
-    return nullptr;
+    return args.Undefined();
 }
 
 } // namespace harmony

@@ -1,26 +1,17 @@
 import maplibre, { NativeMapView as NativeMapViewNAPI } from 'libmaplibre.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import common from '@ohos.app.ability.common';
-import { LatLng } from './geometry/LatLng';
-import { DOMAIN } from '../constants/HiLogConstants';
-import { MapGestureDetector } from './gestures/MapGestureDetector';
-import { UiSettings } from './UiSettings';
-import {
-  OnDoubleTapListener,
-  OnMapClickListener,
-  OnMapLongClickListener,
-  OnMoveListener,
-  OnQuickZoomListener,
-  OnRotateListener,
-  OnScaleListener,
-  OnTiltListener
-} from './gestures/GestureListeners';
-import { CompassView } from './widgets/CompassView';
-import { LogoView } from './widgets/LogoView';
-import { ScaleBarView } from './widgets/ScaleBarView';
-import { OrnamentPosition, RenderingRefreshMode } from './types/NativeTypes';
-import { RenderingStats } from './renderer/RenderingStats';
-import { OnFpsChangedListener } from './listeners/OnFpsChangedListener';
+import { DOMAIN } from '../../constants/HiLogConstants';
+import { MapGestureDetector } from '../gestures/MapGestureDetector';
+import { UiSettings } from '../UiSettings';
+import type {
+  NativeViewAnnotationAnchor,
+  NativeViewAnnotationCenterOffset,
+  NativeViewAnnotationFrame,
+  NativeViewAnnotationOptions
+} from '../annotations/NativeViewAnnotationTypes';
+import { RenderingStats } from '../renderer/RenderingStats';
+import { OnFpsChangedListener } from '../listeners/OnFpsChangedListener';
 import {
   OnCameraDidChangeListener,
   OnCameraIsChangingListener,
@@ -49,17 +40,31 @@ import {
   OnWillStartLoadingMapListener,
   OnWillStartRenderingFrameListener,
   OnWillStartRenderingMapListener
-} from './listeners/MapEventListeners';
-import { InfoWindowOverlay, InfoWindowState } from './annotations/InfoWindowOverlay';
-import { InfoWindowPosition } from './annotations/InfoWindow';
-import { AnnotationViewOverlay } from './annotations/AnnotationViewOverlay';
-import { AnnotationViewData } from './annotations/AnnotationViewManager';
-import { MapLibreMap } from './MapLibreMap';
-import { MapLibreMapOptions } from './MapLibreMapOptions';
-import { Marker } from './annotations/Marker';
+} from '../listeners/MapEventListeners';
+import { AnnotationViewData } from '../annotations/AnnotationViewManager';
+import type { ViewAnnotationRenderState } from '../annotations/NativeViewAnnotationOverlay';
+import { MapLibreMap } from '../MapLibreMap';
+import { MapLibreMapOptions } from '../MapLibreMapOptions';
+import { Marker } from '../annotations/Marker';
+import { RenderingRefreshMode } from '../types/NativeTypes';
 
+export type {
+  NativeViewAnnotationAnchor,
+  NativeViewAnnotationCenterOffset,
+  NativeViewAnnotationFrame,
+  NativeViewAnnotationOptions
+} from '../annotations/NativeViewAnnotationTypes';
 // 类型别名：区分 NAPI 的 NativeMapView 和 ETS 组件
-type NativeMapView = NativeMapViewNAPI;
+type NativeMapViewNapiType = NativeMapViewNAPI;
+
+export interface NativeViewAnnotationApi {
+  addViewAnnotation(options: NativeViewAnnotationOptions): number;
+  updateViewAnnotation(annotationId: number, options: NativeViewAnnotationOptions): boolean;
+  removeViewAnnotation(annotationId: number): boolean;
+  getViewAnnotationFrames(): NativeViewAnnotationFrame[];
+}
+
+export type NativeMapView = NativeMapViewNapiType ;
 
 // MapView 组件接口（用于类型声明，避免循环引用）
 interface MapViewComponent {
@@ -69,7 +74,7 @@ interface MapViewComponent {
 // 从 NAPI 模块导入相机选项类型
 type CameraOptions = maplibre.CameraOptions;
 
-type NullableNativeMapView = NativeMapView | null
+type NullableNativeMapView = NativeMapView | null;
 
 /**
  * 全局映射：NAPI NativeMapView -> ETS NativeMapViewController
@@ -116,10 +121,6 @@ export function registerMapLibreMap(
       hilog.error(DOMAIN, 'NativeMapView', `Failed to trigger initial widget updates: ${error}`);
     }
 
-    mapLibreMap.setAnnotationViewUpdateHook(() => {
-      controller.updateAnnotationViews(false);
-    });
-
     // 如果提供了组件引用，立即设置 InfoWindow 回调
     // 否则，延迟设置（在 aboutToAppear 中已经设置了延迟逻辑）
     if (nativeMapViewComponent) {
@@ -133,10 +134,11 @@ export function registerMapLibreMap(
 /**
  * NativeMapViewController - 地图视图控制器
  */
-class NativeMapViewController extends XComponentController {
+export class NativeMapViewController extends XComponentController implements NativeViewAnnotationApi {
   private nativeMapView: NullableNativeMapView = null;
   private isInitialized: boolean = false;
   private hasTriggeredMapReady: boolean = false; // 标记是否已触发过 onMapReady 回调（用于控制 onMapReady 只触发一次）
+  private initialCameraApplied: boolean = false;
   private surfaceId: string = '';
   private surfaceWidth: number = 0;
   private surfaceHeight: number = 0;
@@ -144,8 +146,8 @@ class NativeMapViewController extends XComponentController {
   private isSurfaceRectSet: boolean = false; // 防止setXComponentSurfaceRect无限循环
   // 初始配置
   public styleUrl: string = "https://demotiles.maplibre.org/style.json";
-  public initialLatitude: number = 30.2741;
-  public initialLongitude: number = 120.1551;
+  public initialLatitude: number = 0;
+  public initialLongitude: number = 0;
   public initialZoom: number = 6;
   public initialBearing: number = 0;
   public initialPitch: number = 0;
@@ -218,20 +220,18 @@ class NativeMapViewController extends XComponentController {
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] Creating NativeMapView instance with cachePath...`);
       this.nativeMapView = new NativeMapViewNAPI(cachePath);
       hilog.warn(DOMAIN, "NativeMapView", `[DEBUG] NativeMapView instance created successfully`);
+      this.initialCameraApplied = false;
+      this.hasTriggeredMapReady = false;
 
       // 注册到全局映射
       if (this.nativeMapView) {
         globalControllerMap.set(this.nativeMapView, this);
       }
 
-      // ✅ DPI 现在由 C++ 层直接获取（使用 OH_NativeDisplayManager_GetDefaultDisplayDensityDpi）
-      // 不再需要从 ArkTS 传递
-
       // 🛡️ 延迟初始化：等待页面转换动画完成（通常需要 400-500ms）
       // ✅ 修复第二次进入崩溃：延迟增加到 800ms，确保 Native Window 完全稳定
       // 原因：页面转换动画可能需要更长时间，特别是在低性能设备上
 
-      setTimeout(() => {
         try {
           if (!this.nativeMapView) {
             hilog.warn(DOMAIN, "NativeMapView", `mapView was destroyed before initialization`);
@@ -247,26 +247,6 @@ class NativeMapViewController extends XComponentController {
         } catch (error) {
           hilog.error(DOMAIN, "NativeMapView", `Delayed initialization failed: ${error.message}`);
         }
-      }, 800); // ✅ 延迟 800ms，确保页面转换完全完成（从 500ms 增加）
-
-      // 延迟调用 jumpTo，等待地图完全初始化
-      setTimeout(() => {
-        try {
-          if (this.nativeMapView && this.isInitialized) {
-            hilog.info(DOMAIN, 'NativeMapView', `Applying initial camera: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
-            this.nativeMapView.jumpTo(this.initialBearing, this.initialLatitude, this.initialLongitude, this.initialPitch,
-              this.initialZoom);
-          } else {
-            hilog.warn(DOMAIN, 'NativeMapView', `Delayed jumpTo skipped - mapView=${this.nativeMapView ? 'exists' :
-              'null'}, initialized=${this.isInitialized}`);
-          }
-        } catch (jumpErr) {
-          hilog.error(DOMAIN, 'NativeMapView', `Delayed jumpTo failed: ${jumpErr.message}`);
-          if (jumpErr.stack) {
-            hilog.error(DOMAIN, 'NativeMapView', `Stack: ${jumpErr.stack}`);
-          }
-        }
-      }, 300); // 延迟 300ms 确保地图完全初始化
 
       this.isInitialized = true;
 
@@ -294,7 +274,6 @@ class NativeMapViewController extends XComponentController {
       // ✅ 注册 Map 生命周期回调
       // 此回调在 C++ Map 对象创建完成后触发，早于样式加载
       this.nativeMapView.setOnMapViewCreatedCallback(() => {
-        hilog.info(DOMAIN, 'NativeMapView', '📢 Received onMapViewCreated callback from C++');
         this.handleMapViewCreated();
       });
 
@@ -420,12 +399,23 @@ class NativeMapViewController extends XComponentController {
           return;
         }
 
+        if (!this.mapLibreMapInstance && this.nativeMapView) {
+          hilog.warn(
+            DOMAIN,
+            'NativeMapView',
+            '⚠️ MapLibreMap instance missing before onMapReady, invoking handleMapViewCreated directly'
+          );
+          this.handleMapViewCreated();
+        }
+
         // ========== 只在首次初始化时调用 onMapReady 回调 ==========
         // 参考 Android 和 iOS 实现：onMapReady 只在地图首次加载完成时触发一次
         // setStyleUrl 等后续样式切换不应重复触发 onMapReady
         if (!this.hasTriggeredMapReady) {
           this.hasTriggeredMapReady = true;
           hilog.warn(DOMAIN, 'NativeMapView', '🚀 First style loaded - triggering onMapReady callbacks');
+
+          this.applyInitialCameraIfNeeded('OnDidFinishLoadingStyle');
 
           // 调用 onMapReady 回调
           if (this.onMapReadyCallback) {
@@ -646,6 +636,7 @@ class NativeMapViewController extends XComponentController {
         }
 
         this.updateAnnotationViews(true);
+        this.applyInitialCameraIfNeeded('onSurfaceChanged-initialized');
       } catch (error) {
         const err = error as Error;
         hilog.error(DOMAIN, 'NativeMapView', `Failed to resize map: ${err.message}`);
@@ -664,6 +655,7 @@ class NativeMapViewController extends XComponentController {
         this.isInitialized = true;
 
         this.updateAnnotationViews(true);
+        this.applyInitialCameraIfNeeded('onSurfaceChanged-reinitialize');
       } catch (error) {
         const err = error as Error;
         hilog.error(DOMAIN, 'NativeMapView', `Failed to reinitialize map: ${err.message}`);
@@ -682,6 +674,8 @@ class NativeMapViewController extends XComponentController {
         this.cleanupMapResources();
         this.nativeMapView = null;
         this.isInitialized = false;
+        this.initialCameraApplied = false;
+        this.hasTriggeredMapReady = false;
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to destroy map: ${error.message}`);
       }
@@ -741,12 +735,20 @@ class NativeMapViewController extends XComponentController {
       }
 
       this.isInitialized = false;
+      this.initialCameraApplied = false;
+      this.hasTriggeredMapReady = false;
       this.surfaceId = '';
       this.surfaceWidth = 0;
       this.surfaceHeight = 0;
 
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapViewController', `Error during resource cleanup: ${error.message}`);
+    }
+  }
+
+  unregisterFromGlobalMap(): void {
+    if (this.nativeMapView) {
+      globalControllerMap.delete(this.nativeMapView);
     }
   }
 
@@ -772,6 +774,43 @@ class NativeMapViewController extends XComponentController {
         this.nativeMapView.jumpTo(angle, latitude, longitude, pitch, zoom);
       } catch (error) {
         hilog.error(DOMAIN, 'NativeMapView', `Failed to jump to position: ${error.message}`);
+      }
+    }
+  }
+
+  private applyInitialCameraIfNeeded(context: string): void {
+    if (this.initialCameraApplied) {
+      return;
+    }
+
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(
+        DOMAIN,
+        'NativeMapView',
+        `applyInitialCameraIfNeeded skipped (${context}) - mapView=${this.nativeMapView ? 'exists' : 'null'}, initialized=${this.isInitialized}`
+      );
+      return;
+    }
+
+    try {
+      hilog.info(
+        DOMAIN,
+        'NativeMapView',
+        `[${context}] Applying initial camera: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`
+      );
+      this.nativeMapView.jumpTo(
+        this.initialBearing,
+        this.initialLatitude,
+        this.initialLongitude,
+        this.initialPitch,
+        this.initialZoom
+      );
+      this.initialCameraApplied = true;
+    } catch (error) {
+      const err = error as Error;
+      hilog.error(DOMAIN, 'NativeMapView', `applyInitialCameraIfNeeded failed: ${err.message}`);
+      if (err.stack) {
+        hilog.error(DOMAIN, 'NativeMapView', `Stack: ${err.stack}`);
       }
     }
   }
@@ -821,6 +860,84 @@ class NativeMapViewController extends XComponentController {
       }
     }
     return [];
+  }
+
+  addViewAnnotation(options: NativeViewAnnotationOptions): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'addViewAnnotation: map is not initialized');
+      return -1;
+    }
+
+    try {
+      const rawId: number | string | boolean | undefined | null = this.nativeMapView.addViewAnnotation(options);
+      const id = typeof rawId === 'number' && Number.isFinite(rawId) ? rawId : -1;
+      if (id > 0) {
+        this.updateAnnotationViews(false);
+      }
+      return id;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `Failed to add view annotation: ${errorMsg}`);
+      return -1;
+    }
+  }
+
+  updateViewAnnotation(annotationId: number, options: NativeViewAnnotationOptions): boolean {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'updateViewAnnotation: map is not initialized');
+      return false;
+    }
+
+    try {
+      const rawResult: boolean | number | string | undefined = this.nativeMapView.updateViewAnnotation(annotationId, options);
+      const updated: boolean = typeof rawResult === 'boolean' ? rawResult : false;
+      if (updated) {
+        this.updateAnnotationViews(false);
+      }
+      return updated;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `Failed to update view annotation: ${errorMsg}`);
+      return false;
+    }
+  }
+
+  removeViewAnnotation(annotationId: number): boolean {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'removeViewAnnotation: map is not initialized');
+      return false;
+    }
+
+    try {
+      const rawResult: boolean | number | string | undefined = this.nativeMapView.removeViewAnnotation(annotationId);
+      const removed: boolean = typeof rawResult === 'boolean' ? rawResult : false;
+      if (removed) {
+        this.updateAnnotationViews(false);
+      }
+      return removed;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `Failed to remove view annotation: ${errorMsg}`);
+      return false;
+    }
+  }
+
+  getViewAnnotationFrames(): NativeViewAnnotationFrame[] {
+    if (!this.nativeMapView || !this.isInitialized) {
+      return [];
+    }
+
+    try {
+      const rawFrames = this.nativeMapView.getViewAnnotationFrames();
+      if (!Array.isArray(rawFrames)) {
+        return [];
+      }
+      return rawFrames as NativeViewAnnotationFrame[];
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'NativeMapView', `Failed to get view annotation frames: ${errorMsg}`);
+      return [];
+    }
   }
 
   /**
@@ -930,8 +1047,6 @@ class NativeMapViewController extends XComponentController {
    * 对齐 Android: 在样式加载前创建 MapLibreMap 并触发 onMapViewCreated
    */
   handleMapViewCreated(): void {
-    hilog.info(DOMAIN, 'NativeMapViewController', '📢 handleMapViewCreated: C++ Map created');
-    
     try {
       // 创建 MapLibreMap 实例（仅创建一次）
       if (!this.mapLibreMapInstance && this.nativeMapView) {
@@ -951,6 +1066,12 @@ class NativeMapViewController extends XComponentController {
         if (this.annotationViewUpdateCallback) {
           const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
           annotationViewManager.setOnViewsUpdateCallback(this.annotationViewUpdateCallback);
+        }
+
+        if (this.viewAnnotationRenderCallback) {
+          this.mapLibreMapInstance.setViewAnnotationRenderCallback(this.viewAnnotationRenderCallback);
+        } else {
+          this.mapLibreMapInstance.setViewAnnotationRenderCallback(null);
         }
         
         // 触发用户的 onMapViewCreated 回调
@@ -1027,6 +1148,7 @@ class NativeMapViewController extends XComponentController {
    * 更新 AnnotationView 位置回调
    */
   private annotationViewUpdateCallback?: (views: AnnotationViewData[]) => void;
+  private viewAnnotationRenderCallback?: (states: ViewAnnotationRenderState[]) => void;
 
   /**
    * 设置 AnnotationView 更新回调
@@ -1039,6 +1161,24 @@ class NativeMapViewController extends XComponentController {
     }
   }
 
+  setViewAnnotationRenderCallback(callback: (states: ViewAnnotationRenderState[]) => void): void {
+    console.info('[NativeMapViewController] setViewAnnotationRenderCallback: register callback');
+    this.viewAnnotationRenderCallback = callback;
+    if (this.mapLibreMapInstance) {
+      console.info('[NativeMapViewController] setViewAnnotationRenderCallback: forwarding to MapLibreMap');
+      this.mapLibreMapInstance.setViewAnnotationRenderCallback(callback);
+    }
+  }
+
+  clearViewAnnotationRenderCallback(): void {
+    console.info('[NativeMapViewController] clearViewAnnotationRenderCallback: clear callback');
+    this.viewAnnotationRenderCallback = undefined;
+    if (this.mapLibreMapInstance) {
+      console.info('[NativeMapViewController] clearViewAnnotationRenderCallback: forwarding clear to MapLibreMap');
+      this.mapLibreMapInstance.setViewAnnotationRenderCallback(null);
+    }
+  }
+
   /**
    * 更新 AnnotationView 位置
    */
@@ -1046,7 +1186,10 @@ class NativeMapViewController extends XComponentController {
     if (this.mapLibreMapInstance && this.annotationViewUpdateCallback) {
       try {
         const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
-        if (recalculate) {
+        const frames = this.getViewAnnotationFrames();
+        if (frames.length > 0) {
+          annotationViewManager.applyNativeFrames(frames);
+        } else if (recalculate) {
           annotationViewManager.batchUpdatePositions(true);
         }
         const views = annotationViewManager.getAllViews();
@@ -1855,1373 +1998,3 @@ class NativeMapViewController extends XComponentController {
 /**
  * NativeMapView - 地图视图组件
  */
-@Component
-export struct MapView {
-  private controller: NativeMapViewController = new NativeMapViewController();
-  @State private isVisible: boolean = true;
-  @State private isDestroyed: boolean = false;
-  // 组件属性
-  @Prop styleUrl: string;
-  @Prop initialLatitude: number = 30.2741;
-  @Prop initialLongitude: number = 120.1551;
-  @Prop initialZoom: number = 6;
-  @Prop initialBearing: number = 0;
-  @Prop initialPitch: number = 0;
-  @Prop debugMode: boolean = false;
-  // 回调函数
-  onMapViewCreated?: (map: MapLibreMap) => void; // 早期回调：MapLibreMap 创建后立即调用（在样式加载前）
-  onMapReady?: (map: MapLibreMap) => void | Promise<void>; // 常规回调：样式加载完成后调用
-  onMapLoaded?: () => void;
-  onMapError?: (error: string) => void;
-  // 声明式子组件支持
-  @BuilderParam children?: () => void;
-  // 提供地图实例给子组件（声明式 API）
-  @Provide('mapLibreMap') mapInstance: MapLibreMap | null = null;
-  // UI 组件状态
-  @State private compassBearing: number = 0;
-  @State private uiSettingsVersion: number = 0;
-  @State private scaleBarMetersPerPixel: number = 0;
-  // InfoWindow 状态管理
-  @State private visibleInfoWindows: InfoWindowState[] = [];
-  // AnnotationView 状态管理
-  @State private visibleAnnotationViews: AnnotationViewData[] = [];
-
-  private syncInitialCameraProps(applyToNative: boolean = false): void {
-    if (!this.controller) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'Controller not ready for syncing initial camera props');
-      return;
-    }
-
-    this.controller.styleUrl = this.styleUrl;
-    this.controller.initialLatitude = this.initialLatitude;
-    this.controller.initialLongitude = this.initialLongitude;
-    this.controller.initialZoom = this.initialZoom;
-    this.controller.initialBearing = this.initialBearing;
-    this.controller.initialPitch = this.initialPitch;
-
-    if (applyToNative && this.controller.isMapInitialized()) {
-      hilog.info(DOMAIN, 'NativeMapView', `Re-applying initial camera: lat=${this.initialLatitude}, lng=${this.initialLongitude}, zoom=${this.initialZoom}, bearing=${this.initialBearing}, pitch=${this.initialPitch}`);
-      this.controller.jumpTo(this.initialBearing, this.initialLatitude, this.initialLongitude, this.initialPitch, this.initialZoom);
-    }
-  }
-
-  /**
-   * 组件即将出现
-   */
-  aboutToAppear(): void {
-    try {
-      this.isDestroyed = false;
-
-      // 将组件的 prop 和回调传递给 controller
-      if (this.controller) {
-        this.syncInitialCameraProps(true);
-
-        // ✅ 设置 onMapViewCreated 回调（C++ Map 创建完成后触发）
-        this.controller.onMapViewCreatedCallback = (mapLibreMap: MapLibreMap) => {
-          hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapViewCreated callback');
-          if (this.onMapViewCreated) {
-            this.onMapViewCreated(mapLibreMap);
-          }
-        };
-
-        // 包装 onMapReady 回调（样式加载完成后触发）
-        this.controller.onMapReadyCallback = (mapView?: NativeMapView) => {
-          // ✅ MapLibreMap 已在 handleMapViewCreated 中创建
-          const mapLibreMap = this.controller.getMapLibreMapInstance();
-
-          if (!mapLibreMap) {
-            hilog.error(DOMAIN, 'NativeMapView', '❌ MapLibreMap not initialized in onMapReady');
-            return;
-          }
-
-          // 更新地图实例，触发声明式子组件初始化
-          this.mapInstance = mapLibreMap;
-
-          // ⚠️ 重要：先设置 InfoWindowManager 回调，再触发 onMapReady
-          // 参考 Android/iOS 实现：回调设置应该在用户代码执行前完成
-          // 避免竞态条件：如果用户在 onMapReady 中立即添加 Marker 并点击，回调必须已经设置好
-          console.info(`[NativeMapView] Setting up InfoWindow callbacks before onMapReady...`);
-          this.setupInfoWindowCallbacks();
-          console.info(`[NativeMapView] InfoWindow callbacks setup completed`);
-
-          // 样式加载完成，触发 onMapReady
-          if (this.onMapReady) {
-            hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapReady callback');
-            this.onMapReady(mapLibreMap);
-          } else {
-            hilog.warn(DOMAIN, 'NativeMapView', '⚠️ No onMapReady callback registered');
-          }
-        };
-
-        // 设置 UI 组件更新回调
-        this.controller.setCompassBearingUpdateCallback((bearing: number) => {
-          this.compassBearing = bearing;
-        });
-
-        this.controller.setUiSettingsUpdateCallback(() => {
-          this.uiSettingsVersion++;
-        });
-
-        this.controller.setScaleBarMetersPerPixelUpdateCallback((metersPerPixel: number) => {
-          this.scaleBarMetersPerPixel = metersPerPixel;
-        });
-
-        // 设置 AnnotationView 更新回调
-        this.controller.setAnnotationViewUpdateCallback((views: AnnotationViewData[]) => {
-          this.visibleAnnotationViews = views;
-        });
-
-        // 设置 UiSettings 的配置变更回调
-        const uiSettings = this.controller.getUiSettings();
-        uiSettings.onCompassConfigChanged = () => {
-          this.uiSettingsVersion++;
-        };
-        uiSettings.onLogoConfigChanged = () => {
-          this.uiSettingsVersion++;
-        };
-        uiSettings.onScaleBarConfigChanged = () => {
-          this.uiSettingsVersion++;
-        };
-
-      } else {
-        hilog.error(DOMAIN, 'NativeMapView', 'Controller is null in aboutToAppear');
-      }
-    } catch (error) {
-      hilog.error(DOMAIN, 'NativeMapView', `aboutToAppear failed: ${error.message}`);
-    }
-  }
-
-  /**
-   * 组件即将消失（参考 Android MapView.onDestroy() 和 iOS MLNMapView.dealloc）
-   *
-   * 改进：
-   * 1. 使用异步 destroy 而不是同步阻塞
-   * 2. 按照 Android/iOS 的顺序清理资源
-   * 3. 清理所有监听器和回调
-   */
-  aboutToDisappear(): void {
-
-    // 1. 设置销毁标志（参考 Android MapView.destroyed）
-    this.isDestroyed = true;
-
-    // 清理地图实例引用（用于声明式子组件）
-    this.mapInstance = null;
-
-    try {
-      // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
-      const mapView = this.controller.getMapView();
-      if (mapView) {
-        try {
-          mapView.cancelTransitions();
-        } catch (err) {
-          hilog.warn(DOMAIN, 'NativeMapView', `Error cancelling transitions: ${err}`);
-        }
-      }
-
-      // 3. ✅ 使用异步 destroy（参考 Android/iOS 模式）
-      // 这样可以避免阻塞主线程，同时确保资源正确释放
-      if (mapView) {
-
-        // 使用异步方式，传入完成回调
-        mapView.destroyAsync(() => {
-        });
-
-      } else {
-        hilog.warn(DOMAIN, 'NativeMapView', 'MapView is null, skipping destroy');
-      }
-
-      // 4. 清理 UI 组件引用（立即执行，不等待异步完成）
-      // Controller 的引用会在组件销毁时自动清理
-      // 事件监听器会在 C++ 层的 cleanupAllResourcesAsync 中清理
-
-      // 5. 清理全局映射
-      if (mapView) {
-        globalControllerMap.delete(mapView);
-      }
-
-      // 6. 清理 InfoWindow 状态
-      this.visibleInfoWindows = [];
-
-      // 7. 清理 AnnotationView 状态
-      this.visibleAnnotationViews = [];
-
-    } catch (error) {
-      hilog.error(DOMAIN, 'NativeMapView', `Error in aboutToDisappear: ${error}`);
-    }
-  }
-
-  /**
-   * 获取 Compass 的 X 位置
-   */
-  private getCompassX(): Length {
-    const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getCompassPosition();
-    const margins = uiSettings.getCompassMargins();
-
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.BottomLeft:
-        return margins.left;
-      case OrnamentPosition.TopRight:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - 组件宽度 - 右边距
-      default:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // 默认右侧（与 TopRight 一致）
-    }
-  }
-
-  /**
-   * 获取 Compass 的 Y 位置
-   */
-  private getCompassY(): Length {
-    const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getCompassPosition();
-    const margins = uiSettings.getCompassMargins();
-
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.TopRight:
-        return margins.top;
-      case OrnamentPosition.BottomLeft:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - 组件高度 - 下边距
-      default:
-        return margins.top; // 默认顶部（与 TopRight 一致）
-    }
-  }
-
-  /**
-   * 获取 Logo 的 X 位置
-   */
-  private getLogoX(): Length {
-    const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getLogoPosition();
-    const margins = uiSettings.getLogoMargins();
-
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.BottomLeft:
-        return margins.left;
-      case OrnamentPosition.TopRight:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - Logo宽度 - 右边距
-      default:
-        return margins.left; // 默认左侧（与 BottomLeft 一致）
-    }
-  }
-
-  /**
-   * 获取 Logo 的 Y 位置
-   */
-  private getLogoY(): Length {
-    const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getLogoPosition();
-    const margins = uiSettings.getLogoMargins();
-
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.TopRight:
-        return margins.top;
-      case OrnamentPosition.BottomLeft:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - Logo高度 - 下边距
-      default:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 默认底部（与 BottomLeft 一致）
-    }
-  }
-
-  /**
-   * 获取 ScaleBar 的 X 位置
-   */
-  private getScaleBarX(): Length {
-    const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getScaleBarPosition();
-    const margins = uiSettings.getScaleBarMargins();
-
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.BottomLeft:
-        return margins.left;
-      case OrnamentPosition.TopRight:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - ScaleBar最大宽度 - 右边距
-      default:
-        return margins.left; // 默认左侧（与 TopLeft 一致）
-    }
-  }
-
-  /**
-   * 获取 ScaleBar 的 Y 位置
-   */
-  private getScaleBarY(): Length {
-    const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getScaleBarPosition();
-    const margins = uiSettings.getScaleBarMargins();
-
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.TopRight:
-        return margins.top;
-      case OrnamentPosition.BottomLeft:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - ScaleBar高度 - 下边距
-      default:
-        return margins.top; // 默认顶部（与 TopLeft 一致）
-    }
-  }
-
-  /**
-   * 设置 InfoWindowManager 的UI回调
-   */
-  setupInfoWindowCallbacks(): void {
-    console.info(`[NativeMapView] setupInfoWindowCallbacks called`);
-    try {
-      const mapLibreMap = this.controller.getMapLibreMapInstance();
-      console.info(`[NativeMapView] MapLibreMap instance: ${mapLibreMap ? 'exists' : 'null'}`);
-      if (!mapLibreMap) {
-        hilog.warn(DOMAIN, 'NativeMapView', 'MapLibreMap instance not available for InfoWindow setup');
-        return;
-      }
-
-      const infoWindowManager = mapLibreMap.getInfoWindowManager();
-      console.info(`[NativeMapView] InfoWindowManager instance: ${infoWindowManager ? 'exists' : 'null'}`);
-
-      // 显示 InfoWindow
-      infoWindowManager.setOnShowUICallback((marker: Marker, position: InfoWindowPosition) => {
-        console.info(`[NativeMapView] onShowUICallback triggered for marker: ${marker.getTitle()}, position: (${position.x}, ${position.y})`);
-        console.info(`[NativeMapView] Marker details - ID: ${marker.getId()}, title: "${marker.getTitle()}", snippet: "${marker.getSnippet()}"`);
-        console.info(`[NativeMapView] Position details - x: ${position.x}, y: ${position.y}, arrowOffsetX: ${position.arrowOffsetX}`);
-        
-        const existingIndex = this.visibleInfoWindows.findIndex(
-          item => item.marker.getId() === marker.getId()
-        );
-
-        const style = mapLibreMap.getMarkerManager().getInfoWindowStyle(marker);
-        console.info(`[NativeMapView] InfoWindow style: ${style ? 'exists' : 'null'}`);
-
-        const newState: InfoWindowState = {
-          marker: marker, // 保留引用用于回调
-          markerId: marker.getId(),
-          markerTitle: marker.getTitle(),
-          markerSnippet: marker.getSnippet(),
-          position: position,
-          style: style,
-          key: `infowindow-${marker.getId()}-${Date.now()}`
-        };
-
-        if (existingIndex >= 0) {
-          console.info(`[NativeMapView] Updating existing InfoWindow at index ${existingIndex}`);
-          this.visibleInfoWindows[existingIndex] = newState;
-        } else {
-          console.info(`[NativeMapView] Adding new InfoWindow, total will be: ${this.visibleInfoWindows.length + 1}`);
-          this.visibleInfoWindows.push(newState);
-        }
-        
-        console.info(`[NativeMapView] visibleInfoWindows updated, count: ${this.visibleInfoWindows.length}`);
-        console.info(`[NativeMapView] Last added state - marker title: "${newState.marker.getTitle()}", position: (${newState.position.x}, ${newState.position.y})`);
-      });
-
-      // 隐藏 InfoWindow
-      infoWindowManager.setOnHideUICallback((marker: Marker) => {
-        const index = this.visibleInfoWindows.findIndex(
-          item => item.marker.getId() === marker.getId()
-        );
-        if (index >= 0) {
-          this.visibleInfoWindows.splice(index, 1);
-        }
-      });
-
-      // 更新 InfoWindow 位置
-      infoWindowManager.setOnUpdateUICallback((marker: Marker, position: InfoWindowPosition) => {
-        console.info(`[NativeMapView] setOnUpdateUICallback called for marker: ${marker.getTitle()}, new position: (${position.x}, ${position.y})`);
-        const index = this.visibleInfoWindows.findIndex(
-          item => item.marker.getId() === marker.getId()
-        );
-        if (index >= 0) {
-          // 🔧 关键修复：创建新数组引用以触发 @State 变化检测
-          // ArkUI 的 @State 只能检测对象/数组引用变化，不能检测内部属性变化
-          // 使用 slice() 创建数组浅拷贝，然后替换指定索引的元素
-          const newArray = this.visibleInfoWindows.slice();
-          const oldItem = newArray[index];
-          // 🔧 关键修复：更新 key 以强制 ForEach 重新渲染
-          // ForEach 使用 key 来判断是否需要更新组件
-          // 通过在 key 后面添加时间戳，确保每次 position 变化时都会触发重新渲染
-          const newKey = `${oldItem.markerId}_${Date.now()}`;
-          newArray[index] = {
-            marker: oldItem.marker,
-            markerId: oldItem.markerId,
-            markerTitle: oldItem.markerTitle,
-            markerSnippet: oldItem.markerSnippet,
-            position: { x: position.x, y: position.y, arrowOffsetX: position.arrowOffsetX },
-            style: oldItem.style,
-            key: newKey
-          };
-          this.visibleInfoWindows = newArray;
-          console.info(`[NativeMapView] InfoWindow position updated in @State array: (${position.x}, ${position.y}), new key: ${newKey}`);
-        } else {
-          console.warn(`[NativeMapView] setOnUpdateUICallback - marker not found in visibleInfoWindows: ${marker.getTitle()}`);
-        }
-      });
-
-      console.info(`[NativeMapView] InfoWindow callbacks set successfully`);
-
-      // ========== 设置 AnnotationView 回调 ==========
-      const annotationViewManager = mapLibreMap.getMarkerManager().getAnnotationViewManager();
-
-      // 监听 AnnotationView 数据变化，更新 UI
-      // 注意：由于 AnnotationViewManager 目前没有回调机制，我们需要在相机移动时更新
-      // 这将在相机监听器中实现
-
-    } catch (error) {
-      hilog.error(DOMAIN, 'NativeMapView', `Failed to setup InfoWindow/AnnotationView callbacks: ${error.message}`);
-      console.error(`[NativeMapView] Error details: ${error.stack || error}`);
-    }
-  }
-
-  /**
-   * 构建组件
-   */
-  build() {
-    Stack() {
-      // 地图 XComponent
-      XComponent({
-        type: XComponentType.SURFACE,
-        controller: this.controller,
-      })
-        .width('100%')
-        .height('100%')
-        .parallelGesture(
-          // 使用 GestureGroup 组合多个手势，允许并行识别
-          GestureGroup(GestureMode.Parallel,
-            // 平移手势 - 单指拖动
-            PanGesture({ fingers: 1, distance: 5 })
-              .onActionStart((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPanStart(event);
-              })
-              .onActionUpdate((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPanUpdate(event);
-              })
-              .onActionEnd((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPanEnd(event);
-              }),
-
-            // 缩放手势 - 双指捏合
-            PinchGesture({ fingers: 2, distance: 5 })
-              .onActionStart((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPinchStart(event);
-              })
-              .onActionUpdate((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPinchUpdate(event);
-              })
-              .onActionEnd((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPinchEnd(event);
-              }),
-
-            // 旋转手势 - 双指旋转
-            RotationGesture({ fingers: 2, angle: 1 })
-              .onActionStart((event: GestureEvent) => {
-                this.controller.getGestureDetector().onRotateStart(event);
-              })
-              .onActionUpdate((event: GestureEvent) => {
-                this.controller.getGestureDetector().onRotateUpdate(event);
-              })
-              .onActionEnd((event: GestureEvent) => {
-                this.controller.getGestureDetector().onRotateEnd(event);
-              })
-          )
-        )
-        // 双击手势 - 使用 priorityGesture 确保优先级最高
-        .priorityGesture(
-          TapGesture({ count: 2 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onDoubleTap(event);
-            }),
-          GestureMask.Normal
-        )
-        // 长按手势 - 独立绑定
-        .gesture(
-          LongPressGesture({ repeat: false, duration: 500 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onLongPress(event);
-            })
-        )
-        // 单击手势 - 独立绑定，系统会自动处理与长按的冲突
-        .gesture(
-          TapGesture({ count: 1 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onSingleTap(event);
-            })
-        )
-        .gesture(
-          // Tilt 手势 - 双指垂直拖动
-          PanGesture({ fingers: 2, distance: 10, direction: PanDirection.Vertical })
-            .onActionStart((event: GestureEvent) => {
-              this.controller.getGestureDetector().onTwoFingerPanStart(event);
-            })
-            .onActionUpdate((event: GestureEvent) => {
-              this.controller.getGestureDetector().onTwoFingerPanUpdate(event);
-            })
-            .onActionEnd((event: GestureEvent) => {
-              this.controller.getGestureDetector().onTwoFingerPanEnd(event);
-            })
-        )
-
-      // Compass 组件 - 根据 UiSettings 配置定位（绝对定位）
-      if (this.controller.getUiSettings().isCompassEnabled()) {
-        CompassView({
-          externalBearing: this.compassBearing,
-          compassEnabled: this.controller.getUiSettings().isCompassEnabled(),
-          compassVisibility: this.controller.getUiSettings().getCompassVisibility(),
-          fadeWhenFacingNorth: this.controller.getUiSettings().isCompassFadeWhenFacingNorth(),
-          onCompassClick: () => {
-            this.controller.resetNorth();
-          }
-        })
-          .width(48)
-          .height(48)
-          .position({ x: this.getCompassX(), y: this.getCompassY() })
-      }
-
-      // Logo 组件 - 根据 UiSettings 配置定位（绝对定位）
-      if (this.controller.getUiSettings().isLogoEnabled()) {
-        LogoView({
-          logoEnabled: this.controller.getUiSettings().isLogoEnabled()
-        })
-          .width(80)
-          .height(40)
-          .position({ x: this.getLogoX(), y: this.getLogoY() })
-      }
-
-      // ScaleBar 组件 - 根据 UiSettings 配置定位（绝对定位）
-      if (this.controller.getUiSettings().isScaleBarEnabled()) {
-        ScaleBarView({
-          isEnabled: this.controller.getUiSettings().isScaleBarEnabled(),
-          metersPerPixel: this.scaleBarMetersPerPixel,
-          unitSystem: this.controller.getUiSettings().getScaleBarUnit(),
-          useDarkStyles: this.controller.getUiSettings().isScaleBarUseDarkStyles()
-        })
-          .position({ x: this.getScaleBarX(), y: this.getScaleBarY() })
-      }
-
-      // AnnotationView 覆盖层 - 显示所有自定义 AnnotationView
-      AnnotationViewOverlay({
-        visibleAnnotationViews: $visibleAnnotationViews,
-        mapBearing: this.compassBearing,
-        mapPitch: this.controller.getPitch(),
-        screenWidth: this.controller.getWidth(),
-        screenHeight: this.controller.getHeight(),
-        onAnnotationSelect: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().selectMarker(marker, true);
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `AnnotationView select error: ${error.message}`);
-          }
-        },
-        onAnnotationDeselect: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().deselectMarker(marker);
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `AnnotationView deselect error: ${error.message}`);
-          }
-        },
-        onAnnotationDragStart: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().handleDragStart(marker);
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `AnnotationView drag start error: ${error.message}`);
-          }
-        },
-        onAnnotationDrag: (marker: Marker, screenX: number, screenY: number) => {
-          try {
-            // 将屏幕坐标转换为地理坐标
-            const mapView = this.controller.getMapView();
-            if (mapView) {
-              const nativeLatLng: maplibre.LatLng = mapView.latLngForPixel(screenX, screenY);
-              const mapLibreMap = this.controller.getMapLibreMapInstance();
-              if (mapLibreMap && nativeLatLng) {
-                const latLng = LatLng.fromNative(nativeLatLng);
-                mapLibreMap.getMarkerManager().handleDrag(marker, latLng);
-              }
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `AnnotationView drag error: ${error.message}`);
-          }
-        },
-        onAnnotationDragEnd: (marker: Marker, screenX: number, screenY: number) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().handleDragEnd(marker);
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `AnnotationView drag end error: ${error.message}`);
-          }
-        }
-      })
-
-      // InfoWindow 覆盖层 - 显示所有 InfoWindow
-      InfoWindowOverlay({
-        visibleInfoWindows: $visibleInfoWindows,
-        onInfoWindowClick: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getInfoWindowManager().triggerClick(marker);
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `InfoWindow click error: ${error.message}`);
-          }
-        },
-        onInfoWindowLongClick: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getInfoWindowManager().triggerLongClick(marker);
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `InfoWindow long click error: ${error.message}`);
-          }
-        },
-        onInfoWindowClose: (marker: Marker) => {
-          try {
-            marker.hideInfoWindow();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `InfoWindow close error: ${error.message}`);
-          }
-        },
-        onInfoWindowSizeChanged: (marker: Marker, width: number, height: number) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              const infoWindowManager = mapLibreMap.getInfoWindowManager();
-              const infoWindow = infoWindowManager.get(marker);
-              if (infoWindow) {
-                // 🔧 关键修复:只在尺寸真正变化时更新位置,避免死循环
-                // 死循环链条: onAreaChange -> setSize -> update -> onUpdateCallback -> 更新key -> ForEach重新渲染 -> onAreaChange ...
-                const oldWidth = infoWindow.getWidth();
-                const oldHeight = infoWindow.getHeight();
-                
-                // 比较新旧尺寸,只有真正变化时才更新
-                const EPSILON = 0.1; // 容差值,避免浮点数精度问题
-                if (Math.abs(width - oldWidth) < EPSILON && Math.abs(height - oldHeight) < EPSILON) {
-                  // 尺寸未变化,跳过更新
-                  return;
-                }
-                
-                console.info(`[NativeMapView] InfoWindow size changed: ${oldWidth}x${oldHeight} -> ${width}x${height}, updating position`);
-                infoWindow.setSize(width, height);
-                // 获取 marker 屏幕位置（逻辑像素）并重新计算 InfoWindow 位置
-                const pos = marker.getPosition();
-                const screenPoint = mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
-                console.info(`[NativeMapView] Recalculating position with actual size, marker pos: (${screenPoint.x}, ${screenPoint.y})`);
-                const viewWidth = mapLibreMap.getViewWidth();
-                const viewHeight = mapLibreMap.getViewHeight();
-                // update() 会重新计算位置并触发 onUpdateCallback
-                infoWindow.update(viewWidth, viewHeight, screenPoint);
-                console.info(`[NativeMapView] InfoWindow position updated after size change`);
-              }
-            }
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `InfoWindow size changed error: ${error.message}`);
-          }
-        }
-      })
-
-      // 声明式子组件渲染（Marker、Source、Layer 等）
-      if (this.children) {
-        this.children()
-      }
-    }
-  }
-
-  /**
-   * 添加平移手势监听器
-   */
-  addOnMoveListener(listener: OnMoveListener): void {
-    this.controller.getGestureDetector().addOnMoveListener(listener);
-  }
-
-  /**
-   * 添加缩放手势监听器
-   */
-  addOnScaleListener(listener: OnScaleListener): void {
-    this.controller.getGestureDetector().addOnScaleListener(listener);
-  }
-
-  /**
-   * 添加旋转手势监听器
-   */
-  addOnRotateListener(listener: OnRotateListener): void {
-    this.controller.getGestureDetector().addOnRotateListener(listener);
-  }
-
-  /**
-   * 添加点击监听器
-   */
-  addOnMapClickListener(listener: OnMapClickListener): void {
-    this.controller.getGestureDetector().addOnMapClickListener(listener);
-  }
-
-  /**
-   * 添加长按监听器
-   */
-  addOnMapLongClickListener(listener: OnMapLongClickListener): void {
-    this.controller.getGestureDetector().addOnMapLongClickListener(listener);
-  }
-
-  /**
-   * 添加双击监听器
-   */
-  addOnDoubleTapListener(listener: OnDoubleTapListener): void {
-    this.controller.getGestureDetector().addOnDoubleTapListener(listener);
-  }
-
-  /**
-   * 添加倾斜监听器
-   */
-  addOnTiltListener(listener: OnTiltListener): void {
-    this.controller.getGestureDetector().addOnTiltListener(listener);
-  }
-
-  /**
-   * 添加 Quick Zoom 监听器
-   */
-  addOnQuickZoomListener(listener: OnQuickZoomListener): void {
-    this.controller.getGestureDetector().addOnQuickZoomListener(listener);
-  }
-
-  /**
-   * 获取地图俯仰角度
-   * @returns 当前俯仰角度（度）
-   */
-  getPitch(): number {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'getPitch: Native map view not initialized');
-      return 0;
-    }
-    try {
-      const pitch: number | undefined = mapView.getPitch() as number | undefined;
-      return pitch !== undefined ? pitch : 0;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `getPitch failed: ${errorMsg}`);
-      return 0;
-    }
-  }
-
-  /**
-   * 设置地图俯仰角度
-   * @param pitch 俯仰角度（度，0-60）
-   * @param duration 可选的动画时长（毫秒），默认为 0（不使用动画）
-   */
-  setPitch(pitch: number, duration: number = 0): void {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'setPitch: Native map view not initialized');
-      return;
-    }
-    try {
-      mapView.setPitch(pitch, duration);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `setPitch failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * 获取 UI 设置
-   */
-  getUiSettings(): UiSettings {
-    return this.controller.getUiSettings();
-  }
-
-  /**
-   * 设置 MapLibreMap 实例（用于 InfoWindow 管理）
-   * 应在创建 MapLibreMap 后立即调用
-   */
-  setMapLibreMap(mapLibreMap: MapLibreMap): void {
-    this.controller.setMapLibreMapInstance(mapLibreMap);
-    // 立即设置 InfoWindow 回调
-    this.setupInfoWindowCallbacks();
-  }
-
-  /**
-   * 设置地图样式
-   */
-  setStyleUrl(url: string): void {
-    this.styleUrl = url;
-    this.controller.setStyleUrl(url);
-  }
-
-  /**
-   * 取消所有正在进行的相机过渡动画
-   */
-  cancelTransitions(): void {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'cancelTransitions: Native map view not initialized');
-      return;
-    }
-    try {
-      mapView.cancelTransitions();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `cancelTransitions failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * 跳转到指定位置
-   */
-  jumpTo(angle: number, latitude: number, longitude: number, pitch: number, zoom: number): void {
-    this.controller.jumpTo(angle, latitude, longitude, pitch, zoom);
-  }
-
-  /**
-   * 飞行到指定位置（带飞行动画）
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
-   */
-  flyTo(options: CameraOptions, duration: number): void {
-    this.controller.flyTo(options, duration);
-  }
-
-  /**
-   * 平滑过渡到指定位置
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
-   */
-  easeTo(options: CameraOptions, duration: number): void {
-    this.controller.easeTo(options, duration);
-  }
-
-  /**
-   * 添加标记
-   */
-  addMarkers(markers: Marker[]): number[] {
-    return this.controller.addMarkers(markers);
-  }
-
-  /**
-   * 触发重绘
-   */
-  triggerRepaint(): void {
-    this.controller.triggerRepaint();
-  }
-
-  /**
-   * 显示/隐藏地图
-   */
-  setVisible(visible: boolean): void {
-    this.isVisible = visible;
-  }
-
-  /**
-   * 获取地图控制器
-   */
-  getController(): NativeMapViewController {
-    return this.controller;
-  }
-
-  /**
-   * 获取视图宽度
-   */
-  getWidth(): number {
-    return this.controller.getWidth();
-  }
-
-  /**
-   * 获取视图高度
-   */
-  getHeight(): number {
-    return this.controller.getHeight();
-  }
-
-  // ========== 监听器方法代理 ==========
-  // 将 Controller 的监听器方法暴露给组件使用者
-
-  // ===== 相机事件监听器 =====
-
-  addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    this.controller.addOnCameraWillChangeListener(listener);
-  }
-
-  removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    this.controller.removeOnCameraWillChangeListener(listener);
-  }
-
-  addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    this.controller.addOnCameraIsChangingListener(listener);
-  }
-
-  removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    this.controller.removeOnCameraIsChangingListener(listener);
-  }
-
-  addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    this.controller.addOnCameraDidChangeListener(listener);
-  }
-
-  removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    this.controller.removeOnCameraDidChangeListener(listener);
-  }
-
-  // ===== 地图加载事件监听器 =====
-
-  addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    this.controller.addOnWillStartLoadingMapListener(listener);
-  }
-
-  removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    this.controller.removeOnWillStartLoadingMapListener(listener);
-  }
-
-  addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    this.controller.addOnDidFinishLoadingMapListener(listener);
-  }
-
-  removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    this.controller.removeOnDidFinishLoadingMapListener(listener);
-  }
-
-  addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    this.controller.addOnDidFailLoadingMapListener(listener);
-  }
-
-  removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    this.controller.removeOnDidFailLoadingMapListener(listener);
-  }
-
-  // ===== 渲染事件监听器 =====
-
-  addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    this.controller.addOnWillStartRenderingFrameListener(listener);
-  }
-
-  removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    this.controller.removeOnWillStartRenderingFrameListener(listener);
-  }
-
-  addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    this.controller.addOnDidFinishRenderingFrameListener(listener);
-  }
-
-  removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    this.controller.removeOnDidFinishRenderingFrameListener(listener);
-  }
-
-  addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
-    this.controller.addOnDidFinishRenderingFrameWithStatsListener(listener);
-  }
-
-  removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
-    this.controller.removeOnDidFinishRenderingFrameWithStatsListener(listener);
-  }
-
-  addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    this.controller.addOnWillStartRenderingMapListener(listener);
-  }
-
-  removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    this.controller.removeOnWillStartRenderingMapListener(listener);
-  }
-
-  addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    this.controller.addOnDidFinishRenderingMapListener(listener);
-  }
-
-  removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    this.controller.removeOnDidFinishRenderingMapListener(listener);
-  }
-
-  // ===== 样式事件监听器 =====
-
-  addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    this.controller.addOnDidFinishLoadingStyleListener(listener);
-  }
-
-  removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    this.controller.removeOnDidFinishLoadingStyleListener(listener);
-  }
-
-  addOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
-    this.controller.addOnStyleImageMissingListener(listener);
-  }
-
-  removeOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
-    this.controller.removeOnStyleImageMissingListener(listener);
-  }
-
-  addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    this.controller.addOnCanRemoveUnusedStyleImageListener(listener);
-  }
-
-  removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    this.controller.removeOnCanRemoveUnusedStyleImageListener(listener);
-  }
-
-  // ===== 其他事件监听器 =====
-
-  addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    this.controller.addOnDidBecomeIdleListener(listener);
-  }
-
-  removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    this.controller.removeOnDidBecomeIdleListener(listener);
-  }
-
-  addOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    this.controller.addOnSourceChangedListener(listener);
-  }
-
-  removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    this.controller.removeOnSourceChangedListener(listener);
-  }
-
-  addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    this.controller.addOnPreCompileShaderListener(listener);
-  }
-
-  removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    this.controller.removeOnPreCompileShaderListener(listener);
-  }
-
-  addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    this.controller.addOnPostCompileShaderListener(listener);
-  }
-
-  removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    this.controller.removeOnPostCompileShaderListener(listener);
-  }
-
-  addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    this.controller.addOnShaderCompileFailedListener(listener);
-  }
-
-  removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    this.controller.removeOnShaderCompileFailedListener(listener);
-  }
-
-  addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    this.controller.addOnGlyphsLoadedListener(listener);
-  }
-
-  removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    this.controller.removeOnGlyphsLoadedListener(listener);
-  }
-
-  addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    this.controller.addOnGlyphsErrorListener(listener);
-  }
-
-  removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    this.controller.removeOnGlyphsErrorListener(listener);
-  }
-
-  addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    this.controller.addOnGlyphsRequestedListener(listener);
-  }
-
-  removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    this.controller.removeOnGlyphsRequestedListener(listener);
-  }
-
-  addOnTileActionListener(listener: OnTileActionListener): void {
-    this.controller.addOnTileActionListener(listener);
-  }
-
-  removeOnTileActionListener(listener: OnTileActionListener): void {
-    this.controller.removeOnTileActionListener(listener);
-  }
-
-  addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    this.controller.addOnSpriteLoadedListener(listener);
-  }
-
-  removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    this.controller.removeOnSpriteLoadedListener(listener);
-  }
-
-  addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    this.controller.addOnSpriteErrorListener(listener);
-  }
-
-  removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    this.controller.removeOnSpriteErrorListener(listener);
-  }
-
-  addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    this.controller.addOnSpriteRequestedListener(listener);
-  }
-
-  removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    this.controller.removeOnSpriteRequestedListener(listener);
-  }
-
-  /**
-   * 获取地图异步（对齐 Android getMapAsync 模式）
-   * @param callback 地图就绪回调
-   */
-  getMapAsync(callback: OnMapReadyCallback): void {
-    this.controller.getMapAsync(callback);
-  }
-
-  // ========== 渲染控制方法 ==========
-
-  /**
-   * 在渲染线程上执行任务
-   */
-  queueEvent(runnable: () => void): void {
-    this.controller.queueEvent(runnable);
-  }
-
-  /**
-   * 设置最大帧率
-   */
-  setMaximumFps(maximumFps: number): void {
-    this.controller.setMaximumFps(maximumFps);
-  }
-
-  /**
-   * 设置渲染刷新模式
-   */
-  setRenderingRefreshMode(mode: RenderingRefreshMode): void {
-    this.controller.setRenderingRefreshMode(mode);
-  }
-
-  /**
-   * 获取渲染刷新模式
-   */
-  getRenderingRefreshMode(): RenderingRefreshMode {
-    return this.controller.getRenderingRefreshMode();
-  }
-
-  /**
-   * 设置 FPS 变化监听器
-   */
-  setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
-    this.controller.setOnFpsChangedListener(listener);
-  }
-
-  // ========== 性能和缓存配置 ==========
-
-  /**
-   * 设置是否预加载瓦片
-   */
-  setPrefetchesTiles(enabled: boolean): void {
-    this.controller.setPrefetchesTiles(enabled);
-  }
-
-  /**
-   * 设置是否启用瓦片缓存
-   */
-  setTileCacheEnabled(enabled: boolean): void {
-    this.controller.setTileCacheEnabled(enabled);
-  }
-
-  /**
-   * 设置 LOD 最小半径
-   */
-  setTileLodMinRadius(radius: number): void {
-    this.controller.setTileLodMinRadius(radius);
-  }
-
-  /**
-   * 设置 LOD 缩放因子
-   */
-  setTileLodScale(scale: number): void {
-    this.controller.setTileLodScale(scale);
-  }
-
-  /**
-   * 设置 LOD 俯仰角阈值
-   */
-  setTileLodPitchThreshold(threshold: number): void {
-    this.controller.setTileLodPitchThreshold(threshold);
-  }
-
-  /**
-   * 设置 LOD 缩放级别偏移
-   */
-  setTileLodZoomShift(shift: number): void {
-    this.controller.setTileLodZoomShift(shift);
-  }
-
-  // ========== 鸿蒙风格的生命周期方法 ==========
-
-  /**
-   * 页面显示时调用（鸿蒙生命周期）
-   * 用于恢复地图渲染
-   */
-  onPageShow(): void {
-    // 恢复渲染
-    this.controller.triggerRepaint();
-  }
-
-  /**
-   * 页面隐藏时调用（鸿蒙生命周期）
-   * 用于暂停地图渲染、暂停定位等，节省资源
-   */
-  onPageHide(): void {
-    // 当前实现不暂停渲染，仅记录日志
-    // 未来可以添加更多资源管理逻辑
-  }
-
-  /**
-   * 返回键处理（鸿蒙生命周期）
-   * @returns true 表示消费了返回事件，false 表示不消费
-   */
-  onBackPress(): boolean {
-
-    // 取消正在进行的相机动画
-    this.controller.getMapView()?.cancelTransitions();
-
-    // 不消费返回事件，让系统处理
-    return false;
-  }
-
-  /**
-   * 内存压力回调（鸿蒙风格）
-   * @param level 内存压力级别
-   */
-  onMemoryLevel(level: number): void {
-    hilog.warn(DOMAIN, 'NativeMapView', `onMemoryLevel: Memory pressure level ${level}`);
-
-    // 根据内存压力级别采取不同措施
-    if (level >= 2) {
-      // 高内存压力：清理缓存
-      this.controller.onLowMemory();
-    }
-  }
-
-  // ========== 新增方法：对齐 Android/iOS API ==========
-
-  /**
-   * 设置内容边距（对齐 Android API）
-   * @param padding 边距数组 [top, left, bottom, right]（逻辑像素）
-   */
-  setContentPadding(padding: number[]): void {
-    this.controller.setContentPadding(padding);
-  }
-
-  /**
-   * 获取内容边距（对齐 Android API）
-   * @returns 边距数组 [top, left, bottom, right]
-   */
-  getContentPadding(): number[] {
-    return this.controller.getContentPadding();
-  }
-
-  /**
-   * 获取设备像素比（对齐 Android API）
-   * @returns 像素比
-   */
-  getPixelRatio(): number {
-    return this.controller.getPixelRatio();
-  }
-
-  // ========== 调试功能（Debug Mode）==========
-
-  /**
-   * 设置调试选项
-   * 使用 MapDebugOptions 枚举值的位掩码来启用多个调试功能
-   *
-   * @param debugOptions 调试选项的位掩码
-   * @example
-  * ```typescript
-   * // 启用多个调试选项
-   * nativeMapView.setDebug(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes);
-   * ```
-   */
-  setDebug(debugOptions: number): void {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'setDebug: Native map view not initialized');
-      return;
-    }
-    try {
-      mapView.setDebug(debugOptions);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `setDebug failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * 获取当前调试选项
-   *
-   * @returns 当前启用的调试选项位掩码
-   */
-  getDebug(): number {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'getDebug: Native map view not initialized');
-      return 0;
-    }
-    try {
-      return mapView.getDebug();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `getDebug failed: ${errorMsg}`);
-      return 0;
-    }
-  }
-
-  /**
-   * 快速开关调试模式（使用默认调试选项组合）
-   * 启用时会显示：瓦片边界、瓦片信息和碰撞框
-   *
-   * @param active 是否启用调试模式
-   * @example
-  * ```typescript
-   * // 快速启用调试模式
-   * nativeMapView.setDebugActive(true);
-   *
-   * // 关闭调试模式
-   * nativeMapView.setDebugActive(false);
-   * ```
-   */
-  setDebugActive(active: boolean): void {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'setDebugActive: Native map view not initialized');
-      return;
-    }
-    try {
-      mapView.setDebugActive(active);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `setDebugActive failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * 检查是否处于调试模式
-   *
-   * @returns 是否有任何调试选项被启用
-   */
-  isDebugActive(): boolean {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'isDebugActive: Native map view not initialized');
-      return false;
-    }
-    try {
-      return mapView.isDebugActive();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `isDebugActive failed: ${errorMsg}`);
-      return false;
-    }
-  }
-}

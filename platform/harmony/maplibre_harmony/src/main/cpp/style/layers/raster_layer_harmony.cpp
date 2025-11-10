@@ -364,14 +364,21 @@ napi_value RasterLayerNAPI::GetRasterFadeDuration(napi_env env, napi_callback_in
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
     return mbgl::harmony::getProperty<mbgl::style::RasterLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::RasterLayer::getRasterFadeDuration
+        env, layer, &mbgl::style::RasterLayer::getRasterFadeDuration
     );
 }
 
@@ -400,14 +407,21 @@ napi_value RasterLayerNAPI::GetRasterResampling(napi_env env, napi_callback_info
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+    
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
     return mbgl::harmony::getProperty<mbgl::style::RasterLayer, mbgl::style::RasterResamplingType>(
-        env, layerObj->getLayer(), &mbgl::style::RasterLayer::getRasterResampling
+        env, layer, &mbgl::style::RasterLayer::getRasterResampling
     );
 }
 
@@ -475,14 +489,19 @@ napi_value RasterLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
-    
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     
     return thisVar;
@@ -495,13 +514,20 @@ napi_value RasterLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
-    
-    float minZoom = layerObj->layer->getMinZoom();
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -515,14 +541,19 @@ napi_value RasterLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
-    
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     
     return thisVar;
@@ -535,13 +566,20 @@ napi_value RasterLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
-    
-    float maxZoom = layerObj->layer->getMaxZoom();
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -559,14 +597,19 @@ napi_value RasterLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         return thisVar;
     }
-    
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     
     return thisVar;
@@ -579,13 +622,20 @@ napi_value RasterLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
-    
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -604,13 +654,18 @@ napi_value RasterLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
+    if (!layerObj || argc < 1) {
         return thisVar;
     }
-    
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        return thisVar;
+    }
+
     auto filter = mbgl::harmony::napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     
     return thisVar;
@@ -623,13 +678,20 @@ napi_value RasterLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     RasterLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;
     }
-    
-    auto filter = layerObj->layer->getFilter();
+
+    mbgl::style::RasterLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
+    auto filter = layer->getFilter();
     return mbgl::harmony::filterToNapiArray(env, filter);
 }
 

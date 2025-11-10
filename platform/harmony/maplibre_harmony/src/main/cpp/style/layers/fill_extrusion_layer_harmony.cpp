@@ -381,12 +381,15 @@ napi_value FillExtrusionLayerNAPI::SetMinZoom(napi_env env, napi_callback_info i
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
+    if (!layerObj) return thisVar;
+
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->layer->setMinZoom(minZoom);
+        layer->setMinZoom(minZoom);
     }
     return thisVar;
 }
@@ -398,13 +401,20 @@ napi_value FillExtrusionLayerNAPI::GetMinZoom(napi_env env, napi_callback_info i
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 0.0, &result);
         return result;
     }
     
-    float minZoom = layerObj->layer->getMinZoom();
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
     napi_value result;
     napi_create_double(env, minZoom, &result);
     return result;
@@ -418,12 +428,15 @@ napi_value FillExtrusionLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info i
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
+    if (!layerObj) return thisVar;
+
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->layer->setMaxZoom(maxZoom);
+        layer->setMaxZoom(maxZoom);
     }
     return thisVar;
 }
@@ -435,13 +448,20 @@ napi_value FillExtrusionLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info i
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_double(env, 24.0, &result);
         return result;
     }
-    
-    float maxZoom = layerObj->layer->getMaxZoom();
+
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 24.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
     napi_value result;
     napi_create_double(env, maxZoom, &result);
     return result;
@@ -455,12 +475,15 @@ napi_value FillExtrusionLayerNAPI::SetSourceLayer(napi_env env, napi_callback_in
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) return thisVar;
+    if (!layerObj) return thisVar;
+
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     args.RequireMinArgs(1);
     if (!args.HasError()) {
         std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->layer->setSourceLayer(sourceLayer);
+        layer->setSourceLayer(sourceLayer);
     }
     return thisVar;
 }
@@ -472,13 +495,20 @@ napi_value FillExtrusionLayerNAPI::GetSourceLayer(napi_env env, napi_callback_in
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
         return result;
     }
     
-    std::string sourceLayer = layerObj->layer->getSourceLayer();
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
     napi_value result;
     napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
     return result;
@@ -493,11 +523,14 @@ napi_value FillExtrusionLayerNAPI::SetFilter(napi_env env, napi_callback_info in
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
+    if (!layerObj || argc < 1) return thisVar;
+
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) return thisVar;
     
     auto filter = napiArrayToFilter(env, argv[0]);
     if (filter) {
-        layerObj->layer->setFilter(*filter);
+        layer->setFilter(*filter);
     }
     return thisVar;
 }
@@ -509,13 +542,20 @@ napi_value FillExtrusionLayerNAPI::GetFilter(napi_env env, napi_callback_info in
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value result;
         napi_create_array(env, &result);
         return result;
     }
-    
-    const auto& filter = layerObj->layer->getFilter();
+
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+
+    const auto& filter = layer->getFilter();
     return filterToNapiArray(env, filter);
 }
 
@@ -548,14 +588,21 @@ napi_value FillExtrusionLayerNAPI::GetFillExtrusionTranslateAnchor(napi_env env,
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::FillExtrusionLayer::getFillExtrusionTranslateAnchor
+        env, layer, &mbgl::style::FillExtrusionLayer::getFillExtrusionTranslateAnchor
     );
 }
 
@@ -584,14 +631,21 @@ napi_value FillExtrusionLayerNAPI::GetFillExtrusionVerticalGradient(napi_env env
     FillExtrusionLayerNAPI* layerObj;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->layer) {
+    if (!layerObj) {
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
     
+    mbgl::style::FillExtrusionLayer* layer = layerObj->getLayer();
+    if (!layer) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     return mbgl::harmony::getProperty<mbgl::style::FillExtrusionLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::FillExtrusionLayer::getFillExtrusionVerticalGradient
+        env, layer, &mbgl::style::FillExtrusionLayer::getFillExtrusionVerticalGradient
     );
 }
 

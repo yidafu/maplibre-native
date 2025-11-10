@@ -66,4 +66,10 @@ export class VectorSource {
    * @returns this（支持链式调用）
    */
   setTiles(tiles: string[]): this;
+
+  /** 设置最小缩放级别 */
+  setMinZoom(minZoom: number): this;
+
+  /** 设置最大缩放级别 */
+  setMaxZoom(maxZoom: number): this;
 }

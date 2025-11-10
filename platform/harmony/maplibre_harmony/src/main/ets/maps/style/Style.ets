@@ -4,7 +4,7 @@
  * 封装 NAPI Style 类，避免暴露内部类型
  */
 import maplibre from 'libmaplibre.so';
-import type { Layer } from './layers/Layer';
+import { Layer } from './layers/Layer';
 import type { Source } from './sources/Source';
 import type { Icon, LightSpecification, TransitionOptions } from 'libmaplibre.so';
 import { Image } from './images/Image';

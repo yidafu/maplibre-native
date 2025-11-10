@@ -62,4 +62,7 @@ export class RasterDemSource {
    * @returns this（支持链式调用）
    */
   setUrl(url: string): this;
+
+  /** 设置瓦片大小（像素） */
+  setTileSize(tileSize: number): this;
 }

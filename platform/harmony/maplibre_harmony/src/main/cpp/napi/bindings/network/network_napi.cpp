@@ -1,4 +1,5 @@
 #include "network_napi.hpp"
+#include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "network/http_request_config.hpp"
 #include "utils/logger.h"
@@ -7,6 +8,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::HTTPRequestConfig;
+using mbgl::harmony::napi::NapiArgs;
 
 namespace mbgl {
 namespace harmony {
@@ -30,26 +32,20 @@ napi_value NetworkNAPI::Init(napi_env env, napi_value exports) {
 }
 
 napi_value NetworkNAPI::SetCustomHttpHeaders(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "Missing argument: headers object required");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
         return nullptr;
     }
 
-    // 检查参数是否为对象
-    napi_valuetype valuetype;
-    napi_typeof(env, args[0], &valuetype);
-    if (valuetype != napi_object) {
-        napi_throw_type_error(env, nullptr, "Argument must be an object");
+    napi_value headersObj = args.GetObject(0, "headers");
+    if (args.HasError()) {
         return nullptr;
     }
 
     // 获取对象的所有属性名
     napi_value property_names;
-    napi_get_property_names(env, args[0], &property_names);
+    napi_get_property_names(env, headersObj, &property_names);
 
     uint32_t length;
     napi_get_array_length(env, property_names, &length);
@@ -68,7 +64,7 @@ napi_value NetworkNAPI::SetCustomHttpHeaders(napi_env env, napi_callback_info in
 
         // 获取值
         napi_value value_value;
-        napi_get_property(env, args[0], key_value, &value_value);
+        napi_get_property(env, headersObj, key_value, &value_value);
 
         size_t value_length;
         napi_get_value_string_utf8(env, value_value, nullptr, 0, &value_length);
@@ -83,54 +79,41 @@ napi_value NetworkNAPI::SetCustomHttpHeaders(napi_env env, napi_callback_info in
 
     Logger::info("NetworkNAPI", "Set %zu custom HTTP headers", headers.size());
 
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value NetworkNAPI::AddCustomHttpHeader(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "Missing arguments: key and value required");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
         return nullptr;
     }
 
-    // 获取键
-    size_t key_length;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &key_length);
-    std::string key(key_length, '\0');
-    napi_get_value_string_utf8(env, args[0], &key[0], key_length + 1, nullptr);
-
-    // 获取值
-    size_t value_length;
-    napi_get_value_string_utf8(env, args[1], nullptr, 0, &value_length);
-    std::string value(value_length, '\0');
-    napi_get_value_string_utf8(env, args[1], &value[0], value_length + 1, nullptr);
+    std::string key = args.GetString(0, "key");
+    std::string value = args.GetString(1, "value");
+    if (args.HasError()) {
+        return nullptr;
+    }
 
     // 添加自定义请求头
     HTTPRequestConfig::getInstance().addCustomHeader(key, value);
 
     Logger::info("NetworkNAPI", "Added custom HTTP header: %s", key.c_str());
 
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value NetworkNAPI::RemoveCustomHttpHeader(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "Missing argument: key required");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
         return nullptr;
     }
 
-    // 获取键
-    size_t key_length;
-    napi_get_value_string_utf8(env, args[0], nullptr, 0, &key_length);
-    std::string key(key_length, '\0');
-    napi_get_value_string_utf8(env, args[0], &key[0], key_length + 1, nullptr);
+    std::string key = args.GetString(0, "key");
+    if (args.HasError()) {
+        return nullptr;
+    }
 
     // 移除自定义请求头
     bool removed = HTTPRequestConfig::getInstance().removeCustomHeader(key);
@@ -144,15 +127,25 @@ napi_value NetworkNAPI::RemoveCustomHttpHeader(napi_env env, napi_callback_info 
 }
 
 napi_value NetworkNAPI::ClearCustomHttpHeaders(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
     // 清除所有自定义请求头
     HTTPRequestConfig::getInstance().clearCustomHeaders();
 
     Logger::info("NetworkNAPI", "Cleared all custom HTTP headers");
 
-    return nullptr;
+    return args.Undefined();
 }
 
 napi_value NetworkNAPI::GetCustomHttpHeaders(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
     // 获取所有自定义请求头
     auto headers = HTTPRequestConfig::getInstance().getCustomHeaders();
 
