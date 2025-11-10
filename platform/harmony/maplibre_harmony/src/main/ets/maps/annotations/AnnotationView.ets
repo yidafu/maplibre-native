@@ -163,6 +163,10 @@ export struct AnnotationView {
   @Prop preferredHeight: number | null = null;
   // 可见性
   @Prop visible: boolean = true;
+  @Prop nativeScale: number = 1;
+  @Prop nativeRotation: number = 0;
+  @Prop nativeOpacity: number = 1;
+  @Prop reuseVersion: number = 0;
   // 自定义内容构建器
   @BuilderParam customContentBuilder?: () => void;
   // 视图尺寸（用于计算位置）
@@ -195,6 +199,7 @@ export struct AnnotationView {
   private viewAlphaInternal: number = 1;
   private baseZIndexInternal: number = 1;
   private lastSelectedProp: boolean = false;
+  private lastReuseVersion: number = -1;
 
   /**
    * 准备复用（重置状态）
@@ -210,6 +215,9 @@ export struct AnnotationView {
     this.rotation = 0;
     this.lastAppliedScale = 1;
     this.lastAppliedRotation = 0;
+    this.viewAlphaInternal = 1;
+    this.baseZIndexInternal = 1;
+    this.lastSelectedProp = false;
     this.updateComputedProperties();
   }
 
@@ -315,13 +323,27 @@ export struct AnnotationView {
   }
 
   aboutToAppear() {
+    this.handleReuseSignal();
     this.syncStateWithProps(true);
     this.updateComputedProperties();
   }
 
   aboutToRender() {
+    this.handleReuseSignal();
     this.syncStateWithProps(false);
     this.updateComputedProperties();
+  }
+
+  private handleReuseSignal(): void {
+    if (this.lastReuseVersion === -1) {
+      this.lastReuseVersion = this.reuseVersion;
+      return;
+    }
+
+    if (this.reuseVersion !== this.lastReuseVersion) {
+      this.prepareForReuse();
+      this.lastReuseVersion = this.reuseVersion;
+    }
   }
 
   private syncStateWithProps(initial: boolean): void {
@@ -372,14 +394,14 @@ export struct AnnotationView {
    * 这样越靠近地平线的视图越小，模拟透视效果
    */
   private calculateScale(): number {
-    let baseScale = this.viewScale;
+    let baseScale = this.viewScale * (this.nativeScale || 1);
 
     // 如果未启用或拖拽中，不应用距离缩放
     if (!this.viewState.scalesWithViewingDistance ||
       this.viewState.dragState === DragState.Dragging ||
       this.screenHeight <= 0 ||
       this.mapPitch <= 0) {
-      return baseScale;
+    return baseScale;
     }
 
     // 计算视图中心在屏幕上的归一化 Y 位置 (0.0 = 顶部, 1.0 = 底部)
@@ -408,7 +430,7 @@ export struct AnnotationView {
    * 参考: iOS MLNAnnotationView updateRotateTransform
    */
   private calculateRotation(): number {
-    let rotation = this.marker.getRotation();
+    let rotation = this.marker.getRotation() + (this.nativeRotation || 0);
 
     // 如果启用跟随地图旋转，叠加地图方向
     if (this.viewState.rotatesToMatchCamera) {
@@ -641,7 +663,7 @@ export struct AnnotationView {
     // 位置变换
     .position({ x: this.computedPosX, y: this.computedPosY })
     // 透明度变换（组合 Marker 的 alpha 和视图状态的 opacity）
-    .opacity(this.viewOpacity * this.marker.getAlpha() * this.viewAlphaInternal)
+    .opacity(this.viewOpacity * this.marker.getAlpha() * this.viewAlphaInternal * (this.nativeOpacity || 1))
     // 缩放变换（组合距离缩放和状态缩放）
     .scale({ 
       x: this.computedScale, 

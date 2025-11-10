@@ -52,6 +52,20 @@ export { MapLibre } from './src/main/ets/MapLibre';
 // 导出所有公共 API
 export * from './src/main/ets/maps/index';
 
+// 显式导出 ViewAnnotation Overlay 相关类型，方便 IDE 类型推断
+export {
+  NativeViewAnnotationOverlay,
+  ViewAnnotationRenderState
+} from './src/main/ets/maps/annotations/NativeViewAnnotationOverlay';
+
+export type { ViewAnnotationRenderStateParams } from './src/main/ets/maps/annotations/NativeViewAnnotationOverlay';
+
+export {
+  ViewAnnotationManager,
+  ViewAnnotationAddOptions,
+  ViewAnnotationUpdateOptions
+} from './src/main/ets/maps/annotations/ViewAnnotationManager';
+
 // 导出常用辅助类型
 export type {
   ILatLng,
@@ -61,6 +75,9 @@ export type {
   Margins,
   CameraOptionsLiteral
 } from './src/main/ets/maps/types/NativeTypes';
+
+// 显式导出 EdgeInsets 接口（用于相机边距设置）
+export type { EdgeInsets } from './src/main/ets/maps/camera/CameraPosition';
 
 // ========== 声明式组件 (Declarative API) ==========
 // 由于 ArkTS 限制（属性名冲突、不支持 @Watch 等），声明式 API 暂时不可用

@@ -90,6 +90,58 @@ export interface Rect {
   bottom: number;
 }
 
+/**
+ * 原生 ViewAnnotation 锚点
+ */
+export interface NativeViewAnnotationAnchor {
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * 原生 ViewAnnotation 偏移
+ */
+export interface NativeViewAnnotationCenterOffset {
+  dx: number;
+  dy: number;
+}
+
+/**
+ * 原生 ViewAnnotation 创建/更新选项
+ */
+export interface NativeViewAnnotationOptions {
+  anchor: NativeViewAnnotationAnchor;
+  width?: number;
+  height?: number;
+  centerOffset?: NativeViewAnnotationCenterOffset;
+  visible?: boolean;
+  allowOverlap?: boolean;
+  draggable?: boolean;
+  scalesWithViewingDistance?: boolean;
+  rotatesWithCamera?: boolean;
+  minZoom?: number;
+  maxZoom?: number;
+}
+
+/**
+ * 原生 ViewAnnotation 帧信息
+ */
+export interface NativeViewAnnotationFrame {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+  rotation: number;
+  opacity: number;
+  pixelRatio: number;
+  visible: boolean;
+  draggable: boolean;
+}
+
 // ==================== NativeMapView Class ====================
 
 /**
@@ -534,6 +586,34 @@ export class NativeMapView {
    * @returns 多边形 ID 数组
    */
   addPolygons(polygons: Polygon[]): number[];
+
+  /**
+   * 添加 ViewAnnotation
+   * @param options 注记配置
+   * @returns 注记 ID，失败返回负数
+   */
+  addViewAnnotation(options: NativeViewAnnotationOptions): number;
+
+  /**
+   * 更新 ViewAnnotation
+   * @param annotationId 注记 ID
+   * @param options 注记配置
+   * @returns 是否更新成功
+   */
+  updateViewAnnotation(annotationId: number, options: NativeViewAnnotationOptions): boolean;
+
+  /**
+   * 移除 ViewAnnotation
+   * @param annotationId 注记 ID
+   * @returns 是否移除成功
+   */
+  removeViewAnnotation(annotationId: number): boolean;
+
+  /**
+   * 获取 ViewAnnotation 帧信息
+   * @returns ViewAnnotation 帧数组
+   */
+  getViewAnnotationFrames(): NativeViewAnnotationFrame[];
 
   /**
    * 更新折线

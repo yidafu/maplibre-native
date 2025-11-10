@@ -704,25 +704,16 @@ void HarmonyGLRendererBackend::updateViewPort() {
 void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
     // 必须在渲染线程调用
     assertOnCorrectThread();
-    Logger::info("HarmonyGL", "🔍 resizeFramebuffer() called: %dx%d", width, height);
-    
     if (width <= 0 || height <= 0) {
         Logger::error("HarmonyGL", "❌ Invalid framebuffer size: %dx%d", width, height);
         return;
     }
     
-    Logger::info("HarmonyGL", "   Resizing framebuffer: logical %dx%d, pixelRatio=%.2f", 
-                 width, height, pixelRatio_);
-    
     // Calculate physical pixel dimensions (DPI scaled for high-resolution rendering)
     uint32_t physicalWidth = static_cast<uint32_t>(width * pixelRatio_);
     uint32_t physicalHeight = static_cast<uint32_t>(height * pixelRatio_);
     
-    Logger::info("HarmonyGL", "   Physical size: %ux%u (logical %dx%d * pixelRatio %.2f)",
-                 physicalWidth, physicalHeight, width, height, pixelRatio_);
-    
     size = {physicalWidth, physicalHeight};
-    Logger::info("HarmonyGL", "   Internal size set to: %ux%u", size.width, size.height);
     
     // ✅ 关键修复：更新 OpenGL viewport（如果 Context 已激活）
     // 这确保 framebuffer size 和 viewport 保持同步
@@ -780,8 +771,6 @@ void HarmonyGLRendererBackend::resizeFramebuffer(int width, int height) {
             EGLint surfaceWidth = 0, surfaceHeight = 0;
             if (eglQuerySurface(display, eglSurface_, EGL_WIDTH, &surfaceWidth) &&
                 eglQuerySurface(display, eglSurface_, EGL_HEIGHT, &surfaceHeight)) {
-                Logger::info("HarmonyGL", "   Surface current size: %dx%d (should match physical: %ux%u)",
-                            surfaceWidth, surfaceHeight, physicalWidth, physicalHeight);
                 if (static_cast<uint32_t>(surfaceWidth) != physicalWidth ||
                     static_cast<uint32_t>(surfaceHeight) != physicalHeight) {
                     Logger::warn("HarmonyGL", "⚠️ Surface size mismatch! Surface=%dx%d, Expected=%ux%u",
@@ -900,13 +889,6 @@ void HarmonyGLRendererBackend::activate() {
     
     // HarmonyOS渲染线程EGL Context管理
     // 首次调用时在渲染线程创建context，之后直接激活
-    
-    // 🔍 诊断日志：activate() 状态（实例级 Display）
-    {
-        EGLDisplay dbgDisplay = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
-        Logger::error("HarmonyGL", "🔴 activate() state: contextInitialized_=%d, eglContext_=%p, display=%p, surface=%p",
-                     contextInitialized_, eglContext_, dbgDisplay, eglSurface_);
-    }
     
     // 首次调用且在渲染线程 - 延迟创建context
     {

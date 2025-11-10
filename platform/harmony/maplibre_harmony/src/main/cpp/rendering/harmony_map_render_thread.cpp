@@ -462,7 +462,6 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
         
         // ✅ 如果已有最近尺寸，窗口建立后立即应用一次尺寸同步与首帧渲染
         if (lastWidth_ > 0 && lastHeight_ > 0) {
-            Logger::info("MapRenderThread", "Applying last known size: %dx%d", lastWidth_, lastHeight_);
             auto* glBackend2 = static_cast<HarmonyGLRendererBackend*>(backend_.get());
             if (glBackend2) {
                 glBackend2->resizeFramebuffer(lastWidth_, lastHeight_);
@@ -474,7 +473,6 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
 
         // 触发首次渲染
         if (map_) {
-            Logger::info("MapRenderThread", "Triggering initial render...");
             map_->triggerRepaint();
         }
     });
@@ -513,8 +511,6 @@ gfx::RendererBackend& HarmonyMapRenderThread::getRendererBackend() {
 }
 
 void HarmonyMapRenderThread::resizeFramebuffer(int width, int height) {
-    Logger::info("MapRenderThread", "resizeFramebuffer() called: %dx%d", width, height);
-    
     // 记录最近一次的逻辑尺寸（用于窗口重建后应用）
     lastWidth_ = width;
     lastHeight_ = height;
@@ -527,7 +523,6 @@ void HarmonyMapRenderThread::resizeFramebuffer(int width, int height) {
         
         auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
         if (glBackend) {
-            Logger::info("MapRenderThread", "Calling backend->resizeFramebuffer(%d, %d)", width, height);
             glBackend->resizeFramebuffer(width, height);
         } else {
             Logger::error("MapRenderThread", "Invalid backend type");

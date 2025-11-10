@@ -97,31 +97,14 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     }
 
     // 加载样式 - 必须在 Map+Render Thread 执行
-    Logger::info("NativeMapView", "Dispatching loadURL to Map+Render Thread...");
+    Logger::info("NativeMapView", "Dispatching loadURL to map thread");
     
     instance->invokeOnMapThread([styleUrl](Map* m) {
-        auto* scheduler = Scheduler::GetCurrent();
-        auto threadId = std::this_thread::get_id();
-        
-        Logger::error("DIAGNOSTIC", "===== loadURL THREAD DIAGNOSTIC =====");
-        Logger::error("DIAGNOSTIC", "Thread ID: %lu", std::hash<std::thread::id>{}(threadId));
-        Logger::error("DIAGNOSTIC", "Scheduler: %p", scheduler);
-        Logger::error("DIAGNOSTIC", "Scheduler Type: %s", scheduler ? typeid(*scheduler).name() : "null");
-        Logger::error("DIAGNOSTIC", "Map pointer: %p", m);
-        Logger::error("DIAGNOSTIC", "About to call loadURL(%s)", styleUrl.c_str());
-        
         m->getStyle().loadURL(styleUrl);
-        
-        Logger::error("DIAGNOSTIC", "loadURL returned");
-        Logger::error("DIAGNOSTIC", "Triggering repaint...");
-        
         m->triggerRepaint();
-        
-        Logger::error("DIAGNOSTIC", "Repaint triggered");
-        Logger::error("DIAGNOSTIC", "======================================");
     });
     
-    Logger::info("NativeMapView", "setStyleUrl: Style URL load dispatched successfully");
+    Logger::info("NativeMapView", "setStyleUrl: load dispatched");
     
     return undefined;
 }

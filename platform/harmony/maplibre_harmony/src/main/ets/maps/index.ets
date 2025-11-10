@@ -9,9 +9,22 @@ import maplibre from 'libmaplibre.so';
 // export { maplibre };
 
 // ========== 核心组件 ==========
-export { MapView } from './NativeMapView';
+export { MapView } from './mapview/NativeMapView';
 
-export type NativeMapView = maplibre.NativeMapView
+export type NativeMapView = maplibre.NativeMapView;
+
+export type {
+  NativeViewAnnotationAnchor,
+  NativeViewAnnotationCenterOffset,
+  NativeViewAnnotationFrame,
+  NativeViewAnnotationOptions
+} from './annotations/NativeViewAnnotationTypes';
+
+export {
+  NativeViewAnnotationAnchorImpl,
+  NativeViewAnnotationCenterOffsetImpl,
+  NativeViewAnnotationOptionsImpl
+} from './annotations/NativeViewAnnotationTypes';
 
 export { MapLibreMap } from './MapLibreMap';
 
@@ -220,6 +233,16 @@ export { AnnotationViewManager } from './annotations/AnnotationViewManager';
 
 export type { AnnotationViewData } from './annotations/AnnotationViewManager';
 
+export { NativeViewAnnotationOverlay, ViewAnnotationRenderState } from './annotations/NativeViewAnnotationOverlay';
+
+export type { ViewAnnotationRenderStateParams } from './annotations/NativeViewAnnotationOverlay';
+
+export {
+  ViewAnnotationManager,
+  ViewAnnotationAddOptions,
+  ViewAnnotationUpdateOptions
+} from './annotations/ViewAnnotationManager';
+
 // ========== GeoJSON 类型（通过命名空间导出）==========
 export * from './geojson';
 
@@ -286,6 +309,8 @@ export {
 export type {
   Source, SourceOptions, GeoJsonData
 } from './style/sources';
+
+export { GeoJsonOptions, GeoJsonOptionsBuilder } from './style/sources/GeoJsonOptions';
 
 // ========== 地图快照 ==========
 export {

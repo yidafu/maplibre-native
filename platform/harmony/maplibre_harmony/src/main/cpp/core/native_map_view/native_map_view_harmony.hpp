@@ -6,7 +6,10 @@
 #include "core/callback_manager.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
+#include <mbgl/util/geometry.hpp>
 #include <mbgl/util/run_loop.hpp>
+#include <mbgl/util/size.hpp>
+#include <mbgl/util/constants.hpp>
 
 #include <string>
 #include <memory>
@@ -14,6 +17,9 @@
 #include <chrono>
 #include <type_traits>
 #include <js_native_api.h>
+#include <unordered_map>
+#include <mutex>
+#include <vector>
 
 namespace mbgl {
 namespace harmony {
@@ -21,6 +27,33 @@ namespace harmony {
 class FileSource;
 class MapRenderer;
 class RenderingStats;
+
+struct HarmonyViewAnnotation {
+    int64_t id = 0;
+    mbgl::LatLng anchor;
+    mbgl::Size size{0, 0};
+    mbgl::ScreenCoordinate offset{0.0, 0.0};
+    bool visible = true;
+    bool allowOverlap = false;
+    bool draggable = false;
+    bool scalesWithViewingDistance = false;
+    bool rotatesWithCamera = false;
+    double minZoom = 0.0;
+    double maxZoom = mbgl::util::DEFAULT_MAX_ZOOM;
+};
+
+struct HarmonyViewAnnotationFrame {
+    int64_t id = 0;
+    mbgl::ScreenCoordinate screen{0.0, 0.0};
+    mbgl::Size size{0, 0};
+    mbgl::ScreenCoordinate offset{0.0, 0.0};
+    double scale = 1.0;
+    double rotation = 0.0;
+    double opacity = 1.0;
+    double pixelRatio = 1.0;
+    bool visible = true;
+    bool draggable = false;
+};
 
 class NativeMapView : public MapObserver {
 public:
@@ -45,6 +78,10 @@ public:
     
     // 设置原生窗口（带尺寸参数）
     void setNativeWindowWithSize(int64_t surfaceId, int width, int height);
+
+    double getPixelRatioValue() const {
+        return static_cast<double>(pixelRatio);
+    }
 
     // mbgl::RendererBackend (mbgl::MapObserver) //
     void onCameraWillChange(MapObserver::CameraChangeMode) override;
@@ -106,6 +143,10 @@ public:
     static napi_value getCameraPosition(napi_env env, napi_callback_info info);
     static napi_value updateMarker(napi_env env, napi_callback_info info);
     static napi_value addMarkers(napi_env env, napi_callback_info info);
+    static napi_value addViewAnnotation(napi_env env, napi_callback_info info);
+    static napi_value updateViewAnnotation(napi_env env, napi_callback_info info);
+    static napi_value removeViewAnnotation(napi_env env, napi_callback_info info);
+    static napi_value getViewAnnotationFrames(napi_env env, napi_callback_info info);
     static napi_value onLowMemory(napi_env env, napi_callback_info info);
     
     // Debug methods
@@ -361,6 +402,10 @@ private:
 
     // 内容边距 [top, left, bottom, right]
     std::array<double, 4> contentPadding_ = {0.0, 0.0, 0.0, 0.0};
+
+    std::unordered_map<int64_t, HarmonyViewAnnotation> viewAnnotations_;
+    int64_t nextViewAnnotationId_ = 1;
+    mutable std::mutex viewAnnotationMutex_;
     
     // ==================== Map Thread Helper Methods ====================
     

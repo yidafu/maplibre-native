@@ -6,6 +6,7 @@
 #include "rendering/harmony_renderer.hpp"
 #include <mbgl/gfx/shader_registry.hpp>
 #include <mbgl/style/style.hpp>
+#include <tuple>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -318,9 +319,6 @@ void NativeMapView::onDidBecomeIdle() {
     }
 }
 void NativeMapView::onDidFinishLoadingStyle() {
-    // 🔍 日志：最早期的日志，确认回调被调用
-    Logger::error("NativeMapView", "🎨🎨🎨 onDidFinishLoadingStyle() ENTRY - START 🎨🎨🎨");
-    
     if (isDestroying.load(std::memory_order_acquire)) {
         Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle: Instance is destroying, skipping callback");
         return;
@@ -328,13 +326,11 @@ void NativeMapView::onDidFinishLoadingStyle() {
     
     // ✅ 架构修复：确保回调在渲染线程上执行
     if (!isOnRenderThread()) {
-        Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle called from wrong thread! Dispatching to render thread.");
+        Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle from non-render thread, dispatching");
         
         // 切换到渲染线程执行
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
-            
-            Logger::info("NativeMapView", "🎨 onDidFinishLoadingStyle [渲染线程]");
             
             // 通知 Android 风格的监听器
             if (callbackManager_) {
@@ -359,8 +355,7 @@ void NativeMapView::onDidFinishLoadingStyle() {
     }
     int instanceId = instanceIds[this];
     
-    Logger::error("NativeMapView", "🎨 [Instance #%d] [%lld ms] onDidFinishLoadingStyle", instanceId, elapsed);
-    Logger::error("NativeMapView", "🎨 [Instance #%d] this=%p, map=%p", instanceId, this, map);
+    Logger::info("NativeMapView", "onDidFinishLoadingStyle (instance=%d, +%lld ms)", instanceId, elapsed);
     
     // 通知 Android 风格的监听器
     if (callbackManager_) {
@@ -368,43 +363,31 @@ void NativeMapView::onDidFinishLoadingStyle() {
     }
     
     // 通知样式加载完成（旧的监听器）
-    Logger::error("NativeMapView", "🎨 [Instance #%d] Calling notifyStyleLoaded()...", instanceId);
     notifyStyleLoaded();
-    Logger::error("NativeMapView", "🎨 [Instance #%d] notifyStyleLoaded() completed", instanceId);
     
     if (map) {
         try {
-            // 获取样式URL和名称
-            std::string styleUrl = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getURL(); }, std::string{});
-            std::string styleName = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getName(); }, std::string{});
+            auto info = invokeOnMapThreadSync([&](mbgl::Map* m) {
+                return std::tuple<std::string, std::string, size_t, size_t>{
+                    m->getStyle().getURL(),
+                    m->getStyle().getName(),
+                    m->getStyle().getSources().size(),
+                    m->getStyle().getLayers().size()};
+            }, std::tuple<std::string, std::string, size_t, size_t>{});
             
-            Logger::info("NativeMapView", "Style loaded successfully:");
-            Logger::info("NativeMapView", "  - URL: %s", styleUrl.empty() ? "(inline JSON)" : styleUrl.c_str());
-            Logger::info("NativeMapView", "  - Name: %s", styleName.empty() ? "(unnamed)" : styleName.c_str());
-            
-            // 获取Sources列表
-            auto sources = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getSources(); }, std::vector<mbgl::style::Source*>{});
-            Logger::info("NativeMapView", "  - Sources count: %zu", sources.size());
-            for (const auto* source : sources) {
-                if (source) {
-                }
-            }
-            
-            // 获取Layers列表
-            auto layers = invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getStyle().getLayers(); }, std::vector<mbgl::style::Layer*>{});
-            Logger::info("NativeMapView", "  - Layers count: %zu", layers.size());
-            for (const auto* layer : layers) {
-                if (layer) {
-                }
-            }
+            const auto& [styleUrl, styleName, sourceCount, layerCount] = info;
+            Logger::info("NativeMapView",
+                         "Style loaded: url=%s, name=%s, sources=%zu, layers=%zu",
+                         styleUrl.empty() ? "(inline JSON)" : styleUrl.c_str(),
+                         styleName.empty() ? "(unnamed)" : styleName.c_str(),
+                         sourceCount,
+                         layerCount);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "Error inspecting loaded style: %s", e.what());
         }
     } else {
         Logger::warn("NativeMapView", "Map object is null");
     }
-    
-    Logger::info("NativeMapView", "=============================================");
     
     // MapLibre内部已自动处理渲染，不需要额外请求
     // 移除此处的 requestRender() 避免重复渲染
@@ -1073,9 +1056,6 @@ void NativeMapView::onRegisterShaders(mbgl::gfx::ShaderRegistry&) {
 }
 
 void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
-    Logger::info("NativeMapView", "onPreCompileShader: shader=%d, backend=%d, source_length=%zu", 
-                 static_cast<int>(shader), static_cast<int>(backend), source.length());
-    
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     if (callbackManager_) {
@@ -1094,20 +1074,6 @@ void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx:
 }
 
 void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx::Backend::Type backend, const std::string& source) {
-    Logger::info("NativeMapView", "onPostCompileShader: shader=%d, backend=%d, source_length=%zu", 
-                 static_cast<int>(shader), static_cast<int>(backend), source.length());
-    
-    // 详细记录shader编译信息
-    if (source.find("a_pos") != std::string::npos) {
-        Logger::info("NativeMapView", "Shader contains 'a_pos' attribute");
-    }
-    if (source.find("a_tex") != std::string::npos) {
-        Logger::info("NativeMapView", "Shader contains 'a_tex' attribute");
-    }
-    if (source.find("a_normal") != std::string::npos) {
-        Logger::info("NativeMapView", "Shader contains 'a_normal' attribute");
-    }
-    
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     if (callbackManager_) {

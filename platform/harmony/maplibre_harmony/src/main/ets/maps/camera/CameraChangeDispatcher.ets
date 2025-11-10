@@ -161,7 +161,6 @@ export class CameraChangeDispatcher {
       
       // 如果当前不是 idle 并且有待处理的结束事件，则跳过此次 MOVE_STARTED
       if (!this.isIdle && hasIdleOrCanceled) {
-        console.info('[CameraChangeDispatcher] Skip MOVE_STARTED - camera movement continues');
         return;
       }
     }
@@ -205,7 +204,6 @@ export class CameraChangeDispatcher {
    * 通知相机正在移动
    */
   notifyCameraMove(): void {
-    console.info('[CameraChangeDispatcher] notifyCameraMove called, isIdle:', this.isIdle);
     this.scheduleMessage(CameraEventType.MOVE, () => {
       this.executeOnCameraMove();
     });
@@ -260,11 +258,9 @@ export class CameraChangeDispatcher {
   private executeOnCameraMove(): void {
     // 只在移动中触发
     if (this.isIdle) {
-      console.info('[CameraChangeDispatcher] executeOnCameraMove skipped - isIdle is true');
       return;
     }
 
-    console.info('[CameraChangeDispatcher] executeOnCameraMove - notifying', this.moveListeners.length, 'listeners');
     // 通知所有监听器
     for (const listener of this.moveListeners) {
       try {

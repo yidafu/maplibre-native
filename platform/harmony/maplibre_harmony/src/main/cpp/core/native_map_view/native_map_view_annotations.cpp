@@ -10,8 +10,19 @@
 #include "geometry/projected_meters_harmony.hpp"
 #include "utils/logger.h"
 #include <mbgl/util/projection.hpp>
+#include <mbgl/map/camera.hpp>
+#include <mbgl/util/constants.hpp>
+#include <mbgl/math/angles.hpp>
+
+#include <algorithm>
+#include <cmath>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 #include <mbgl/style/style.hpp>
 #include <napi/native_api.h>
+#include <limits>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -23,6 +34,283 @@ using maplibre::harmony::IconNAPI;
 
 namespace mbgl {
 namespace harmony {
+
+namespace {
+
+bool hasNamedProperty(napi_env env, napi_value object, const char* name) {
+    if (!object || !name) {
+        return false;
+    }
+
+    bool hasProperty = false;
+    if (napi_has_named_property(env, object, name, &hasProperty) != napi_ok) {
+        return false;
+    }
+    return hasProperty;
+}
+
+bool getNamedProperty(napi_env env, napi_value object, const char* name, napi_value* result) {
+    if (!hasNamedProperty(env, object, name) || !result) {
+        return false;
+    }
+    return napi_get_named_property(env, object, name, result) == napi_ok;
+}
+
+struct HarmonyViewAnnotationUpdate {
+    std::optional<mbgl::LatLng> anchor;
+    std::optional<mbgl::Size> size;
+    std::optional<mbgl::ScreenCoordinate> offset;
+    std::optional<bool> visible;
+    std::optional<bool> allowOverlap;
+    std::optional<bool> draggable;
+    std::optional<bool> scalesWithViewingDistance;
+    std::optional<bool> rotatesWithCamera;
+    std::optional<double> minZoom;
+    std::optional<double> maxZoom;
+};
+
+double clampToDouble(double value, double fallback = 0.0) {
+    if (!std::isfinite(value)) {
+        return fallback;
+    }
+    return value;
+}
+
+std::optional<mbgl::LatLng> parseAnchorLatLng(napi_env env, NapiArgs& args, napi_value anchorObj) {
+    if (!anchorObj) {
+        return std::nullopt;
+    }
+
+    double latitude = args.GetDoubleProperty(anchorObj, "latitude", std::numeric_limits<double>::quiet_NaN());
+    double longitude = args.GetDoubleProperty(anchorObj, "longitude", std::numeric_limits<double>::quiet_NaN());
+
+    if (!std::isfinite(latitude) || !std::isfinite(longitude)) {
+        latitude = args.GetDoubleProperty(anchorObj, "lat", std::numeric_limits<double>::quiet_NaN());
+        longitude = args.GetDoubleProperty(anchorObj, "lng", std::numeric_limits<double>::quiet_NaN());
+    }
+
+    if (!std::isfinite(latitude) || !std::isfinite(longitude)) {
+        return std::nullopt;
+    }
+
+    return mbgl::LatLng{latitude, longitude};
+}
+
+std::optional<mbgl::Size> parseSize(NapiArgs& args, napi_value sizeObj) {
+    if (!sizeObj) {
+        return std::nullopt;
+    }
+
+    double width = args.GetDoubleProperty(sizeObj, "width", std::numeric_limits<double>::quiet_NaN());
+    double height = args.GetDoubleProperty(sizeObj, "height", std::numeric_limits<double>::quiet_NaN());
+
+    if (!std::isfinite(width) || !std::isfinite(height)) {
+        return std::nullopt;
+    }
+
+    width = std::max(0.0, width);
+    height = std::max(0.0, height);
+
+    return mbgl::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
+}
+
+std::optional<mbgl::ScreenCoordinate> parseOffset(NapiArgs& args, napi_value offsetObj, double pixelRatio) {
+    if (!offsetObj) {
+        return std::nullopt;
+    }
+
+    double offsetX = args.GetDoubleProperty(offsetObj, "x", std::numeric_limits<double>::quiet_NaN());
+    double offsetY = args.GetDoubleProperty(offsetObj, "y", std::numeric_limits<double>::quiet_NaN());
+
+    if (!std::isfinite(offsetX) || !std::isfinite(offsetY)) {
+        offsetX = args.GetDoubleProperty(offsetObj, "dx", std::numeric_limits<double>::quiet_NaN());
+        offsetY = args.GetDoubleProperty(offsetObj, "dy", std::numeric_limits<double>::quiet_NaN());
+    }
+
+    if (!std::isfinite(offsetX) || !std::isfinite(offsetY)) {
+        return std::nullopt;
+    }
+
+    return mbgl::ScreenCoordinate{offsetX * pixelRatio, offsetY * pixelRatio};
+}
+
+HarmonyViewAnnotation parseAnnotationDefaults(const NativeMapView& instance) {
+    HarmonyViewAnnotation annotation;
+    annotation.visible = true;
+    annotation.allowOverlap = false;
+    annotation.draggable = false;
+    annotation.scalesWithViewingDistance = false;
+    annotation.rotatesWithCamera = false;
+    annotation.minZoom = 0.0;
+    annotation.maxZoom = mbgl::util::DEFAULT_MAX_ZOOM;
+    annotation.size = mbgl::Size{0, 0};
+    annotation.offset = mbgl::ScreenCoordinate{0.0, 0.0};
+    annotation.anchor = mbgl::LatLng{};
+    return annotation;
+}
+
+std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, NapiArgs& args, napi_value optionsObj) {
+    if (!optionsObj) {
+        return std::nullopt;
+    }
+
+    HarmonyViewAnnotation annotation = parseAnnotationDefaults(instance);
+    napi_env env = args.Env();
+
+    napi_value anchorObj = nullptr;
+    if (!getNamedProperty(env, optionsObj, "anchor", &anchorObj)) {
+        // 兼容直接传入 { latitude, longitude }
+        anchorObj = optionsObj;
+    }
+
+    auto anchor = parseAnchorLatLng(env, args, anchorObj);
+    if (!anchor.has_value()) {
+        Logger::error("NativeMapView", "addViewAnnotation: anchor is required and must provide latitude/longitude");
+        return std::nullopt;
+    }
+    annotation.anchor = *anchor;
+
+    napi_value sizeObj = nullptr;
+    if (getNamedProperty(env, optionsObj, "size", &sizeObj)) {
+        if (auto size = parseSize(args, sizeObj)) {
+            annotation.size = *size;
+        }
+    } else {
+        double width = args.GetDoubleProperty(optionsObj, "width", std::numeric_limits<double>::quiet_NaN());
+        double height = args.GetDoubleProperty(optionsObj, "height", std::numeric_limits<double>::quiet_NaN());
+        if (std::isfinite(width) && std::isfinite(height)) {
+            width = std::max(0.0, width);
+            height = std::max(0.0, height);
+            annotation.size = mbgl::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
+        }
+    }
+
+    napi_value offsetObj = nullptr;
+    if (getNamedProperty(env, optionsObj, "offset", &offsetObj) || getNamedProperty(env, optionsObj, "centerOffset", &offsetObj)) {
+        if (auto offset = parseOffset(args, offsetObj, static_cast<double>(instance.getPixelRatioValue()))) {
+            annotation.offset = *offset;
+        }
+    } else {
+        double offsetX = args.GetDoubleProperty(optionsObj, "offsetX", std::numeric_limits<double>::quiet_NaN());
+        double offsetY = args.GetDoubleProperty(optionsObj, "offsetY", std::numeric_limits<double>::quiet_NaN());
+        if (std::isfinite(offsetX) && std::isfinite(offsetY)) {
+            annotation.offset = mbgl::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
+        }
+    }
+
+    annotation.visible = args.GetBoolProperty(optionsObj, "visible", true);
+    annotation.allowOverlap = args.GetBoolProperty(optionsObj, "allowOverlap", false);
+    annotation.draggable = args.GetBoolProperty(optionsObj, "draggable", false);
+    annotation.scalesWithViewingDistance = args.GetBoolProperty(optionsObj, "scalesWithViewingDistance", false);
+    annotation.rotatesWithCamera = args.GetBoolProperty(optionsObj, "rotatesWithCamera", false);
+    annotation.minZoom = args.GetDoubleProperty(optionsObj, "minZoom", 0.0);
+    annotation.maxZoom = args.GetDoubleProperty(optionsObj, "maxZoom", mbgl::util::DEFAULT_MAX_ZOOM);
+
+    return annotation;
+}
+
+std::optional<HarmonyViewAnnotationUpdate> parseUpdateOptions(NativeMapView& instance, NapiArgs& args, napi_value optionsObj) {
+    if (!optionsObj) {
+        return std::nullopt;
+    }
+
+    HarmonyViewAnnotationUpdate update;
+    napi_env env = args.Env();
+
+    napi_value anchorObj = nullptr;
+    if (getNamedProperty(env, optionsObj, "anchor", &anchorObj)) {
+        update.anchor = parseAnchorLatLng(env, args, anchorObj);
+    } else if (hasNamedProperty(env, optionsObj, "latitude") && hasNamedProperty(env, optionsObj, "longitude")) {
+        update.anchor = parseAnchorLatLng(env, args, optionsObj);
+    }
+
+    napi_value sizeObj = nullptr;
+    if (getNamedProperty(env, optionsObj, "size", &sizeObj)) {
+        update.size = parseSize(args, sizeObj);
+    } else if (hasNamedProperty(env, optionsObj, "width") || hasNamedProperty(env, optionsObj, "height")) {
+        double width = args.GetDoubleProperty(optionsObj, "width", std::numeric_limits<double>::quiet_NaN());
+        double height = args.GetDoubleProperty(optionsObj, "height", std::numeric_limits<double>::quiet_NaN());
+        if (std::isfinite(width) && std::isfinite(height)) {
+            width = std::max(0.0, width);
+            height = std::max(0.0, height);
+            update.size = mbgl::Size{static_cast<uint32_t>(std::llround(width)), static_cast<uint32_t>(std::llround(height))};
+        }
+    }
+
+    napi_value offsetObj = nullptr;
+    if (getNamedProperty(env, optionsObj, "offset", &offsetObj) || getNamedProperty(env, optionsObj, "centerOffset", &offsetObj)) {
+        update.offset = parseOffset(args, offsetObj, static_cast<double>(instance.getPixelRatioValue()));
+    } else if (hasNamedProperty(env, optionsObj, "offsetX") || hasNamedProperty(env, optionsObj, "offsetY")) {
+        double offsetX = args.GetDoubleProperty(optionsObj, "offsetX", std::numeric_limits<double>::quiet_NaN());
+        double offsetY = args.GetDoubleProperty(optionsObj, "offsetY", std::numeric_limits<double>::quiet_NaN());
+        if (std::isfinite(offsetX) && std::isfinite(offsetY)) {
+            update.offset = mbgl::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
+        }
+    }
+
+    if (hasNamedProperty(env, optionsObj, "visible")) {
+        update.visible = args.GetBoolProperty(optionsObj, "visible", true);
+    }
+    if (hasNamedProperty(env, optionsObj, "allowOverlap")) {
+        update.allowOverlap = args.GetBoolProperty(optionsObj, "allowOverlap", false);
+    }
+    if (hasNamedProperty(env, optionsObj, "draggable")) {
+        update.draggable = args.GetBoolProperty(optionsObj, "draggable", false);
+    }
+    if (hasNamedProperty(env, optionsObj, "scalesWithViewingDistance")) {
+        update.scalesWithViewingDistance = args.GetBoolProperty(optionsObj, "scalesWithViewingDistance", false);
+    }
+    if (hasNamedProperty(env, optionsObj, "rotatesWithCamera")) {
+        update.rotatesWithCamera = args.GetBoolProperty(optionsObj, "rotatesWithCamera", false);
+    }
+    if (hasNamedProperty(env, optionsObj, "minZoom")) {
+        update.minZoom = clampToDouble(args.GetDoubleProperty(optionsObj, "minZoom", 0.0), 0.0);
+    }
+    if (hasNamedProperty(env, optionsObj, "maxZoom")) {
+        update.maxZoom = clampToDouble(args.GetDoubleProperty(optionsObj, "maxZoom", mbgl::util::DEFAULT_MAX_ZOOM), mbgl::util::DEFAULT_MAX_ZOOM);
+    }
+
+    return update;
+}
+
+HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
+                                     const mbgl::Map& map,
+                                     double currentZoom,
+                                     double pixelRatio,
+                                     double currentBearing,
+                                     double currentPitch) {
+    HarmonyViewAnnotationFrame frame;
+    frame.id = annotation.id;
+    frame.size = annotation.size;
+    frame.offset = annotation.offset;
+    frame.draggable = annotation.draggable;
+    frame.pixelRatio = pixelRatio;
+    frame.scale = 1.0;
+    frame.rotation = 0.0;
+    frame.opacity = 1.0;
+    frame.visible = annotation.visible;
+
+    if (annotation.scalesWithViewingDistance) {
+        const double pitchClamped = std::clamp(currentPitch, 0.0, 60.0);
+        const double pitchFactor = std::cos(mbgl::util::deg2rad(pitchClamped));
+        frame.scale = pitchFactor <= 0.0 ? 1.0 : 1.0 / pitchFactor;
+    }
+
+    if (annotation.rotatesWithCamera) {
+        frame.rotation = currentBearing;
+    }
+
+    if (currentZoom < annotation.minZoom || currentZoom > annotation.maxZoom) {
+        frame.visible = false;
+    }
+
+    const mbgl::ScreenCoordinate screen = map.pixelForLatLng(annotation.anchor);
+    frame.screen = mbgl::ScreenCoordinate{screen.x + annotation.offset.x, screen.y + annotation.offset.y};
+
+    return frame;
+}
+
+} // namespace
 
 napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
     napi_value undefined;
@@ -831,6 +1119,267 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
     }
     
     return result;
+}
+
+napi_value NativeMapView::addViewAnnotation(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+        return nullptr;
+    }
+
+    napi_value optionsObj = args.GetObject(0, "options");
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    auto annotationOpt = parseAddOptions(*instance, args, optionsObj);
+    if (!annotationOpt.has_value()) {
+        napi_throw_error(env, nullptr, "Invalid ViewAnnotation options");
+        return nullptr;
+    }
+
+    HarmonyViewAnnotation annotation = *annotationOpt;
+    int64_t annotationId = 0;
+
+    {
+        std::lock_guard<std::mutex> lock(instance->viewAnnotationMutex_);
+        annotationId = instance->nextViewAnnotationId_++;
+        annotation.id = annotationId;
+        instance->viewAnnotations_[annotationId] = annotation;
+    }
+
+    instance->invokeOnMapThread([](mbgl::Map* map) {
+        if (map) {
+            map->triggerRepaint();
+        }
+    });
+
+    napi_value result;
+    napi_create_int64(env, annotationId, &result);
+    return result;
+}
+
+napi_value NativeMapView::updateViewAnnotation(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+        return nullptr;
+    }
+
+    const int64_t id = args.GetInt64(0, "annotationId");
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    napi_value optionsObj = args.GetObject(1, "options");
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    auto updateOpt = parseUpdateOptions(*instance, args, optionsObj);
+    if (!updateOpt.has_value()) {
+        napi_value resultValue;
+        napi_get_boolean(env, false, &resultValue);
+        return resultValue;
+    }
+
+    bool updated = false;
+    {
+        std::lock_guard<std::mutex> lock(instance->viewAnnotationMutex_);
+        auto it = instance->viewAnnotations_.find(id);
+        if (it != instance->viewAnnotations_.end()) {
+            HarmonyViewAnnotation& data = it->second;
+            const HarmonyViewAnnotationUpdate& update = *updateOpt;
+
+            if (update.anchor) {
+                data.anchor = *update.anchor;
+            }
+            if (update.size) {
+                data.size = *update.size;
+            }
+            if (update.offset) {
+                data.offset = *update.offset;
+            }
+            if (update.visible) {
+                data.visible = *update.visible;
+            }
+            if (update.allowOverlap) {
+                data.allowOverlap = *update.allowOverlap;
+            }
+            if (update.draggable) {
+                data.draggable = *update.draggable;
+            }
+            if (update.scalesWithViewingDistance) {
+                data.scalesWithViewingDistance = *update.scalesWithViewingDistance;
+            }
+            if (update.rotatesWithCamera) {
+                data.rotatesWithCamera = *update.rotatesWithCamera;
+            }
+            if (update.minZoom) {
+                data.minZoom = *update.minZoom;
+            }
+            if (update.maxZoom) {
+                data.maxZoom = *update.maxZoom;
+            }
+
+            updated = true;
+        }
+    }
+
+    if (updated) {
+        instance->invokeOnMapThread([](mbgl::Map* map) {
+            if (map) {
+                map->triggerRepaint();
+            }
+        });
+    }
+
+    napi_value resultValue;
+    napi_get_boolean(env, updated, &resultValue);
+    return resultValue;
+}
+
+napi_value NativeMapView::removeViewAnnotation(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+        return nullptr;
+    }
+
+    const int64_t id = args.GetInt64(0, "annotationId");
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    bool removed = false;
+    {
+        std::lock_guard<std::mutex> lock(instance->viewAnnotationMutex_);
+        removed = instance->viewAnnotations_.erase(id) > 0;
+    }
+
+    if (removed) {
+        instance->invokeOnMapThread([](mbgl::Map* map) {
+            if (map) {
+                map->triggerRepaint();
+            }
+        });
+    }
+
+    napi_value resultValue;
+    napi_get_boolean(env, removed, &resultValue);
+    return resultValue;
+}
+
+napi_value NativeMapView::getViewAnnotationFrames(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+
+    NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+        return nullptr;
+    }
+
+    std::vector<HarmonyViewAnnotation> annotations;
+    double pixelRatio = instance->getPixelRatioValue();
+
+    {
+        std::lock_guard<std::mutex> lock(instance->viewAnnotationMutex_);
+        annotations.reserve(instance->viewAnnotations_.size());
+        for (const auto& entry : instance->viewAnnotations_) {
+            annotations.push_back(entry.second);
+        }
+    }
+
+    auto frames = instance->invokeOnMapThreadSync(
+        [annotations, pixelRatio](mbgl::Map* map) {
+            std::vector<HarmonyViewAnnotationFrame> result;
+            if (!map) {
+                return result;
+            }
+
+            result.reserve(annotations.size());
+            const auto camera = map->getCameraOptions();
+            const double currentZoom = camera.zoom.value_or(0.0);
+            const double currentBearing = camera.bearing.value_or(0.0);
+            const double currentPitch = camera.pitch.value_or(0.0);
+
+            for (const auto& annotation : annotations) {
+                result.emplace_back(buildFrame(annotation, *map, currentZoom, pixelRatio, currentBearing, currentPitch));
+            }
+
+            return result;
+        },
+        std::vector<HarmonyViewAnnotationFrame>{});
+
+    napi_value resultArray;
+    napi_create_array_with_length(env, frames.size(), &resultArray);
+
+    for (size_t i = 0; i < frames.size(); ++i) {
+        const auto& frame = frames[i];
+        napi_value frameObj;
+        napi_create_object(env, &frameObj);
+
+        napi_value value;
+
+        napi_create_int64(env, static_cast<int64_t>(frame.id), &value);
+        napi_set_named_property(env, frameObj, "id", value);
+
+        napi_create_double(env, frame.screen.x, &value);
+        napi_set_named_property(env, frameObj, "x", value);
+        napi_create_double(env, frame.screen.y, &value);
+        napi_set_named_property(env, frameObj, "y", value);
+
+        napi_create_uint32(env, frame.size.width, &value);
+        napi_set_named_property(env, frameObj, "width", value);
+        napi_create_uint32(env, frame.size.height, &value);
+        napi_set_named_property(env, frameObj, "height", value);
+
+        napi_create_double(env, frame.offset.x, &value);
+        napi_set_named_property(env, frameObj, "offsetX", value);
+        napi_create_double(env, frame.offset.y, &value);
+        napi_set_named_property(env, frameObj, "offsetY", value);
+
+        napi_create_double(env, frame.scale, &value);
+        napi_set_named_property(env, frameObj, "scale", value);
+        napi_create_double(env, frame.rotation, &value);
+        napi_set_named_property(env, frameObj, "rotation", value);
+        napi_create_double(env, frame.opacity, &value);
+        napi_set_named_property(env, frameObj, "opacity", value);
+        napi_create_double(env, frame.pixelRatio, &value);
+        napi_set_named_property(env, frameObj, "pixelRatio", value);
+
+        napi_get_boolean(env, frame.visible, &value);
+        napi_set_named_property(env, frameObj, "visible", value);
+        napi_get_boolean(env, frame.draggable, &value);
+        napi_set_named_property(env, frameObj, "draggable", value);
+
+        napi_set_element(env, resultArray, i, frameObj);
+    }
+
+    return resultArray;
 }
 
 

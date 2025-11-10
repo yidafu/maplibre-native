@@ -459,7 +459,6 @@ void HarmonyRenderer::onRegisterShaders(gfx::ShaderRegistry& registry) {
 
 // Shader 编译事件
 void HarmonyRenderer::onPreCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) {
-    Logger::info("HarmonyRenderer", "🔧 onPreCompileShader - forwarding to NativeMapView");
     if (nativeMapView_) {
         nativeMapView_->onPreCompileShader(shader, backend, source);
     }
@@ -491,7 +490,6 @@ void HarmonyRenderer::onGlyphsError(const FontStack& stack, const GlyphRange& ra
 }
 
 void HarmonyRenderer::onGlyphsRequested(const FontStack& stack, const GlyphRange& range) {
-    Logger::info("HarmonyRenderer", "📝 onGlyphsRequested - forwarding to NativeMapView");
     if (nativeMapView_) {
         nativeMapView_->onGlyphsRequested(stack, range);
     }

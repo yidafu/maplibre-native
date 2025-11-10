@@ -84,6 +84,10 @@ export struct AnnotationViewOverlay {
         baseZIndex: viewData.zIndex,
         preferredWidth: viewData.preferredWidth,
         preferredHeight: viewData.preferredHeight,
+        nativeScale: viewData.nativeScale ?? 1,
+        nativeRotation: viewData.nativeRotation ?? 0,
+        nativeOpacity: viewData.nativeOpacity ?? 1,
+        reuseVersion: viewData.reuseVersion ?? 0,
         onSelect: (marker: Marker) => {
           if (this.onAnnotationSelect) {
             this.onAnnotationSelect(marker);
@@ -141,22 +145,22 @@ export struct AnnotationViewOverlay {
 
   build() {
     Stack() {
-      // 渲染所有可见的 AnnotationView
-      ForEach(
-        this.visibleAnnotationViews,
-        (viewData: AnnotationViewData) => {
-          this.buildAnnotationView(viewData)
-        },
-        (viewData: AnnotationViewData) => {
-          // 使用 marker ID 作为唯一键，确保视图复用正确
-          // 🔒 修复 ObservedObject 错误：添加 null 检查
-          return `annotation-view-${viewData.marker?.getId() ?? 0}`;
-        }
-      )
+        ForEach(
+          this.visibleAnnotationViews,
+          (viewData: AnnotationViewData) => {
+            Stack() {
+              this.buildAnnotationView(viewData)
+            }
+              .hitTestBehavior(HitTestMode.Transparent);
+          },
+          (viewData: AnnotationViewData) => {
+            return `annotation-view-${viewData.marker?.getId() ?? 0}`;
+          }
+        )
     }
     .width('100%')
     .height('100%')
-    .hitTestBehavior(HitTestMode.Transparent) // 透明事件，允许点击穿透到地图
+    .hitTestBehavior(this.visibleAnnotationViews.length > 0 ? HitTestMode.Transparent : HitTestMode.None)
   }
 }
 

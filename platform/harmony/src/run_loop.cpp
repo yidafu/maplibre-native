@@ -318,9 +318,6 @@ void RunLoop::run() {
     // 防御性编程：即使构造函数已设置，在事件循环开始前再次确认
     Scheduler::SetCurrent(this);
     
-    Logger::info("RunLoop", "   Thread ID: %lu", std::hash<std::thread::id>{}(std::this_thread::get_id()));
-    Logger::info("RunLoop", "   Scheduler::GetCurrent() returns: %p", Scheduler::GetCurrent());
-    
     uv_ref(impl->holderHandle());
     uv_run(impl->loop, UV_RUN_DEFAULT);
 }

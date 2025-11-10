@@ -1,10 +1,20 @@
 import { NativeMapView } from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 import { Point } from '../geometry/Point';
+import {
+  NativeViewAnnotationAnchorImpl,
+  NativeViewAnnotationCenterOffset,
+  NativeViewAnnotationCenterOffsetImpl,
+  NativeViewAnnotationFrame,
+  NativeViewAnnotationOptions,
+  NativeViewAnnotationOptionsImpl
+} from './NativeViewAnnotationTypes';
 import { CenterOffset } from './AnnotationView';
 import { AnnotationViewAdapter } from './AnnotationViewAdapter';
 import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
 import { Marker } from './Marker';
+
+const DEFAULT_VIEW_SIZE = 40;
 
 /**
  * AnnotationViewData - Annotation 视图数据
@@ -16,6 +26,13 @@ export interface AnnotationViewData {
   customBuilder: (() => void) | null;
   screenX: number;
   screenY: number;
+  annotationId?: number;
+  width?: number;
+  height?: number;
+  nativeScale?: number;
+  nativeRotation?: number;
+  nativeOpacity?: number;
+  pixelRatio?: number;
   anchorU: number;
   anchorV: number;
   visible: boolean;
@@ -30,6 +47,7 @@ export interface AnnotationViewData {
   zIndex: number;
   preferredWidth?: number;
   preferredHeight?: number;
+  reuseVersion: number;
 }
 
 /**
@@ -88,6 +106,9 @@ export class AnnotationViewManager {
   private reusePool: Map<string, AnnotationViewData[]> = new Map();
   // Native 地图视图（用于坐标转换）
   private nativeMapView: NativeMapView | null = null;
+  private markerToAnnotationId: Map<number, number> = new Map();
+  private annotationIdToMarkerId: Map<number, number> = new Map();
+  private pixelRatio: number = 1.0;
   // 选中状态管理
   private selectedAnnotations: Set<number> = new Set();
   // 拖拽管理
@@ -106,6 +127,11 @@ export class AnnotationViewManager {
    */
   setNativeMapView(mapView: NativeMapView): void {
     this.nativeMapView = mapView;
+    try {
+      this.pixelRatio = mapView.getPixelRatio?.() ?? this.pixelRatio;
+    } catch (error) {
+      console.warn('[AnnotationViewManager] Failed to read pixel ratio from NativeMapView:', error);
+    }
   }
 
   setOnViewsUpdateCallback(callback: ((views: AnnotationViewData[]) => void) | null): void {
@@ -253,11 +279,30 @@ export class AnnotationViewManager {
 
     // 创建视图数据
     const defaultCenterOffset: CenterOffset = { dx: 0, dy: 0 };
-    const viewData: AnnotationViewData = {
+    let existingViewData = this.annotationViews.get(markerId);
+    let reusedFromPool = false;
+
+    if (!existingViewData) {
+      const reused = this.dequeueReusableView(reuseIdentifier);
+      if (reused) {
+        existingViewData = reused;
+        existingViewData.reuseVersion = (existingViewData.reuseVersion ?? 0) + 1;
+        reusedFromPool = true;
+      }
+    }
+
+    const viewData: AnnotationViewData = existingViewData ?? {
       marker: marker,
       customBuilder: customBuilder,
       screenX: position.x,
       screenY: position.y,
+      annotationId: this.markerToAnnotationId.get(markerId),
+      width: DEFAULT_VIEW_SIZE,
+      height: DEFAULT_VIEW_SIZE,
+      nativeScale: 1,
+      nativeRotation: 0,
+      nativeOpacity: 1,
+      pixelRatio: this.pixelRatio,
       anchorU: anchor.u,
       anchorV: anchor.v,
       visible: marker.getVisible(),
@@ -269,8 +314,36 @@ export class AnnotationViewManager {
       enabled: true,
       selected: this.selectedAnnotations.has(markerId),
       alpha: marker.getAlpha(),
-      zIndex: marker.getZIndex() || 1
+      zIndex: marker.getZIndex() || 1,
+      reuseVersion: 0
     };
+
+    viewData.marker = marker;
+    viewData.customBuilder = customBuilder;
+    viewData.screenX = position.x;
+    viewData.screenY = position.y;
+    viewData.annotationId = this.markerToAnnotationId.get(markerId);
+    viewData.pixelRatio = this.pixelRatio;
+    viewData.reuseIdentifier = reuseIdentifier;
+    viewData.visible = marker.getVisible();
+    viewData.centerOffset = { dx: defaultCenterOffset.dx, dy: defaultCenterOffset.dy };
+    viewData.draggable = marker.getDraggable();
+    viewData.scalesWithViewingDistance = false;
+    viewData.rotatesToMatchCamera = false;
+    viewData.enabled = true;
+    viewData.alpha = marker.getAlpha();
+    viewData.zIndex = marker.getZIndex() || 1;
+
+    if (reusedFromPool) {
+      viewData.nativeScale = 1;
+      viewData.nativeRotation = 0;
+      viewData.nativeOpacity = 1;
+      viewData.preferredWidth = undefined;
+      viewData.preferredHeight = undefined;
+      viewData.width = DEFAULT_VIEW_SIZE;
+      viewData.height = DEFAULT_VIEW_SIZE;
+      viewData.selected = false;
+    }
 
     // 应用配置选项（如果有）
     if (viewConfig) {
@@ -286,7 +359,13 @@ export class AnnotationViewManager {
       if (viewConfig.size) {
         viewData.preferredWidth = viewConfig.size.width;
         viewData.preferredHeight = viewConfig.size.height;
+        viewData.width = viewConfig.size.width;
+        viewData.height = viewConfig.size.height;
+      } else {
+        viewData.width = viewData.preferredWidth ?? viewData.width ?? DEFAULT_VIEW_SIZE;
+        viewData.height = viewData.preferredHeight ?? viewData.height ?? DEFAULT_VIEW_SIZE;
       }
+
 
       // 更新可拖拽属性（同时作用于 Marker）
       marker.setDraggable(viewData.draggable);
@@ -298,6 +377,7 @@ export class AnnotationViewManager {
     }
 
     this.annotationViews.set(markerId, viewData);
+    this.syncAnnotationWithNative(marker, viewData);
 
     if (viewConfig?.selected) {
       this.selectAnnotation(marker, false);
@@ -317,6 +397,8 @@ export class AnnotationViewManager {
       // 将视图放入复用池
       this.returnToReusePool(viewData);
       this.annotationViews.delete(markerId);
+      this.removeAnnotationFromNative(markerId);
+      this.selectedAnnotations.delete(markerId);
       this.notifyViewsUpdated();
     }
   }
@@ -325,8 +407,11 @@ export class AnnotationViewManager {
    * 更新所有视图的位置（地图移动时调用）
    */
   updateAllPositions(): void {
-    this.annotationViews.forEach((viewData, markerId) => {
-      // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+    if (this.nativeMapView) {
+      this.batchUpdatePositions();
+      return;
+    }
+    this.annotationViews.forEach((viewData) => {
       if (viewData.marker !== null) {
         const position = this.calculateScreenPosition(viewData.marker);
         viewData.screenX = position.x;
@@ -339,6 +424,10 @@ export class AnnotationViewManager {
    * 更新单个视图
    */
   updateView(marker: Marker): void {
+    if (this.nativeMapView) {
+      this.batchUpdatePositions();
+      return;
+    }
     const viewData = this.annotationViews.get(marker.getId());
     if (viewData) {
       const position = this.calculateScreenPosition(marker);
@@ -437,6 +526,88 @@ export class AnnotationViewManager {
     }
   }
 
+  private buildNativeOptions(marker: Marker, viewData: AnnotationViewData): NativeViewAnnotationOptions {
+    const position = marker.getPosition();
+    const pixelRatio = this.nativeMapView?.getPixelRatio?.() ?? this.pixelRatio ?? 1;
+    const widthLogical = viewData.width ?? DEFAULT_VIEW_SIZE;
+    const heightLogical = viewData.height ?? DEFAULT_VIEW_SIZE;
+    const sourceOffset: CenterOffset = viewData.centerOffset ?? { dx: 0, dy: 0 };
+    const offset: NativeViewAnnotationCenterOffset = new NativeViewAnnotationCenterOffsetImpl(
+      sourceOffset.dx ?? 0,
+      sourceOffset.dy ?? 0
+    );
+
+    const anchor = new NativeViewAnnotationAnchorImpl(position.latitude, position.longitude);
+    const options: NativeViewAnnotationOptions = new NativeViewAnnotationOptionsImpl(anchor);
+    options.width = widthLogical * pixelRatio;
+    options.height = heightLogical * pixelRatio;
+    options.centerOffset = offset;
+    options.visible = viewData.visible;
+    options.allowOverlap = true;
+    options.draggable = viewData.draggable;
+    options.scalesWithViewingDistance = viewData.scalesWithViewingDistance;
+    options.rotatesWithCamera = viewData.rotatesToMatchCamera;
+    options.minZoom = 0;
+    options.maxZoom = 24;
+
+    return options;
+  }
+
+  private syncAnnotationWithNative(marker: Marker, viewData: AnnotationViewData): void {
+    if (!this.nativeMapView) {
+      console.warn('[AnnotationViewManager] NativeMapView is not ready, skip annotation sync');
+      return;
+    }
+
+    const markerId = marker.getId();
+    const existingId = this.markerToAnnotationId.get(markerId);
+    const options = this.buildNativeOptions(marker, viewData);
+
+    try {
+      if (existingId !== undefined) {
+        const updated = this.nativeMapView.updateViewAnnotation(existingId, options);
+        if (updated) {
+          viewData.annotationId = existingId;
+          return;
+        }
+
+        this.markerToAnnotationId.delete(markerId);
+        this.annotationIdToMarkerId.delete(existingId);
+      }
+
+      const newId = this.nativeMapView.addViewAnnotation(options);
+      if (typeof newId === 'number' && newId > 0) {
+        this.markerToAnnotationId.set(markerId, newId);
+        this.annotationIdToMarkerId.set(newId, markerId);
+        viewData.annotationId = newId;
+      } else {
+        console.error('[AnnotationViewManager] addViewAnnotation returned invalid id:', newId);
+      }
+    } catch (error) {
+      console.error('[AnnotationViewManager] Failed to sync annotation with native layer:', error);
+    }
+  }
+
+  private removeAnnotationFromNative(markerId: number): void {
+    if (!this.nativeMapView) {
+      return;
+    }
+
+    const annotationId = this.markerToAnnotationId.get(markerId);
+    if (annotationId === undefined) {
+      return;
+    }
+
+    try {
+      this.nativeMapView.removeViewAnnotation(annotationId);
+    } catch (error) {
+      console.error('[AnnotationViewManager] Failed to remove native annotation:', error);
+    }
+
+    this.markerToAnnotationId.delete(markerId);
+    this.annotationIdToMarkerId.delete(annotationId);
+  }
+
   /**
    * 将视图返回到复用池
    */
@@ -451,6 +622,23 @@ export class AnnotationViewManager {
     if (pool) {
       // 限制复用池大小（避免内存泄漏）
       if (pool.length < 10) {
+        viewData.marker = null;
+        viewData.customBuilder = null;
+        viewData.annotationId = undefined;
+        viewData.nativeScale = 1;
+        viewData.nativeRotation = 0;
+        viewData.nativeOpacity = 1;
+        viewData.visible = false;
+        viewData.selected = false;
+        viewData.centerOffset = { dx: 0, dy: 0 };
+        viewData.draggable = false;
+        viewData.scalesWithViewingDistance = false;
+        viewData.rotatesToMatchCamera = false;
+        viewData.enabled = true;
+        viewData.alpha = 1;
+        viewData.zIndex = 1;
+        viewData.preferredWidth = undefined;
+        viewData.preferredHeight = undefined;
         pool.push(viewData);
       }
     }
@@ -468,11 +656,7 @@ export class AnnotationViewManager {
     const pool: AnnotationViewData[] | undefined = this.reusePool.get(identifier);
 
     if (pool && pool.length > 0) {
-      const viewData = pool.pop() || null;
-      if (viewData) {
-        // 注意：prepareForReuse() 应该在重新关联 marker 后由上层调用
-      }
-      return viewData;
+      return pool.pop() || null;
     }
 
     return null;
@@ -733,6 +917,57 @@ export class AnnotationViewManager {
   public batchUpdateViews(markers: Marker[]): void {
     markers.forEach(marker => {
       this.updateView(marker);
+    });
+  }
+
+  public applyNativeFrames(frames: NativeViewAnnotationFrame[]): void {
+    if (!frames || frames.length === 0) {
+      return;
+    }
+
+    const safePixelRatio = this.pixelRatio === 0 ? 1 : this.pixelRatio;
+
+    frames.forEach(frame => {
+      const markerId = this.annotationIdToMarkerId.get(frame.id);
+      if (markerId === undefined) {
+        return;
+      }
+
+      const viewData = this.annotationViews.get(markerId);
+      if (!viewData || viewData.marker === null) {
+        return;
+      }
+
+      viewData.annotationId = frame.id;
+      viewData.screenX = frame.x / safePixelRatio;
+      viewData.screenY = frame.y / safePixelRatio;
+      viewData.width = Math.round(frame.width / safePixelRatio);
+      viewData.height = Math.round(frame.height / safePixelRatio);
+      viewData.centerOffset = {
+        dx: frame.offsetX / safePixelRatio,
+        dy: frame.offsetY / safePixelRatio
+      };
+      viewData.nativeScale = frame.scale > 0 ? frame.scale : 1;
+      viewData.nativeRotation = frame.rotation;
+      const opacity = frame.opacity;
+      if (opacity !== undefined) {
+        if (opacity <= 0) {
+          viewData.nativeOpacity = 0;
+        } else if (opacity >= 1) {
+          viewData.nativeOpacity = 1;
+        } else {
+          viewData.nativeOpacity = opacity;
+        }
+      } else {
+        viewData.nativeOpacity = 1;
+      }
+      viewData.pixelRatio = frame.pixelRatio;
+      viewData.visible = frame.visible;
+      viewData.draggable = frame.draggable;
+
+      if (frame.pixelRatio > 0) {
+        this.pixelRatio = frame.pixelRatio;
+      }
     });
   }
 

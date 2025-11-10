@@ -41,6 +41,18 @@ export { AnnotationViewAdapter } from './AnnotationViewAdapter';
 
 export { AnnotationViewManager, AnnotationViewData } from './AnnotationViewManager';
 
+export {
+  ViewAnnotationManager,
+  ViewAnnotationAddOptions,
+  ViewAnnotationUpdateOptions
+} from './ViewAnnotationManager';
+
+export {
+  NativeViewAnnotationOverlay,
+  ViewAnnotationRenderState,
+  ViewAnnotationRenderStateParams
+} from './NativeViewAnnotationOverlay';
+
 // 其他标注类型
 export { Polyline } from './Polyline';
 

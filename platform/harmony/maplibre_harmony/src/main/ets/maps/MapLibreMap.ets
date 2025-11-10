@@ -33,6 +33,8 @@ import { OnStyleLoadErrorListener } from './listeners/OnStyleLoadErrorListener';
 import { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
 import { AnnotationViewData, AnnotationViewManager } from './annotations/AnnotationViewManager';
 import { AnnotationViewConfig, AnnotationViewDelegate } from './annotations/AnnotationViewDelegate';
+import { ViewAnnotationManager } from './annotations/ViewAnnotationManager';
+import { ViewAnnotationRenderState } from './annotations/NativeViewAnnotationOverlay';
 import { CameraChangeDispatcher } from './camera/CameraChangeDispatcher';
 import {
   OnCameraIdleListener,
@@ -51,7 +53,7 @@ import {
 import { LocationComponent } from './location/LocationComponent';
 import { Projection } from './projection/Projection';
 import { CameraAnimationCallback } from './camera/CameraAnimationCallback';
-import { registerMapLibreMap } from './NativeMapView';
+import { registerMapLibreMap } from './mapview/NativeMapView';
 import { Marker } from './annotations/Marker';
 import { Style } from './style/Style';
 import { RenderingRefreshMode } from './types/NativeTypes';
@@ -140,6 +142,8 @@ export class MapLibreMap {
   private polylineManager: PolylineManager;
   private infoWindowManager: InfoWindowManager;
   private annotationViewManager: AnnotationViewManager;
+  private viewAnnotationManager: ViewAnnotationManager;
+  private viewAnnotationRenderCallback?: (states: ViewAnnotationRenderState[]) => void;
   private annotationViewDelegate: AnnotationViewDelegate | null = null;
   private style: Style | null = null;
   private styleLoaded: boolean = false;
@@ -167,7 +171,6 @@ export class MapLibreMap {
   private pendingAnimationCallback: CameraAnimationCallback | null = null;
   private animationTimerId: number | null = null;
   private animationCancelled: boolean = false;
-  private annotationViewUpdateHook: (() => void) | null = null;
 
   constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
@@ -177,6 +180,7 @@ export class MapLibreMap {
     // 因为 MarkerManager 构造函数中会调用 this.mapLibreMap.getInfoWindowManager()
     this.infoWindowManager = new InfoWindowManager();
     this.annotationViewManager = new AnnotationViewManager();
+    this.viewAnnotationManager = new ViewAnnotationManager();
     
     // 创建 Annotation 管理器（依赖 InfoWindowManager）
     this.markerManager = new MarkerManager(this);
@@ -187,6 +191,13 @@ export class MapLibreMap {
 
     // 设置 AnnotationViewManager 的 NativeMapView
     this.annotationViewManager.setNativeMapView(nativeMapView);
+    this.viewAnnotationManager.setNativeMapView(nativeMapView);
+    this.viewAnnotationManager.updatePixelRatio(this.readPixelRatioSafe(nativeMapView));
+    this.viewAnnotationManager.setRenderCallback((states: ViewAnnotationRenderState[]) => {
+      if (this.viewAnnotationRenderCallback) {
+        this.viewAnnotationRenderCallback(states);
+      }
+    });
 
     // 设置 Native 层的样式监听器
     this.setupNativeStyleListeners();
@@ -264,14 +275,25 @@ export class MapLibreMap {
       return this.pixelForLatLng(position.latitude, position.longitude);
     });
 
-    if (this.annotationViewUpdateHook) {
-      this.annotationViewUpdateHook();
-    }
+    this.viewAnnotationManager.refreshRenderStates();
     
     // 未来可以在这里更新其他UI元素
     // - Compass方向
     // - Scale比例尺
     // - Attribution信息
+  }
+
+  private readPixelRatioSafe(mapView: NativeMapView): number {
+    try {
+      const ratioCandidate = mapView.getPixelRatio?.();
+      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
+        return ratioCandidate;
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.warn(`[MapLibreMap] readPixelRatioSafe failed: ${reason}`);
+    }
+    return 1;
   }
 
   /**
@@ -499,7 +521,6 @@ export class MapLibreMap {
     }
 
     this.destroyed = true;
-    this.annotationViewUpdateHook = null;
 
     try {
       // 1. 清理所有监听器数组（参考 Android）
@@ -530,6 +551,9 @@ export class MapLibreMap {
 
       // 5. 清理 AnnotationViewManager
       this.annotationViewManager.clear();
+      this.viewAnnotationManager.setRenderCallback(null);
+      this.viewAnnotationManager.clear();
+      this.viewAnnotationManager.setNativeMapView(null);
 
       // 6. 销毁位置组件（参考 Android）
       this.locationComponent.onDestroy();
@@ -3109,8 +3133,27 @@ export class MapLibreMap {
     return this.annotationViewManager;
   }
 
-  public setAnnotationViewUpdateHook(hook: (() => void) | null): void {
-    this.annotationViewUpdateHook = hook;
+  /**
+   * 获取 ViewAnnotationManager 实例。
+   * @returns ViewAnnotationManager
+   */
+  public getViewAnnotationManager(): ViewAnnotationManager {
+    return this.viewAnnotationManager;
+  }
+
+  /**
+   * 设置 ViewAnnotation 渲染回调，用于获取最新的渲染状态并同步到 UI。
+   * @param callback 接收 ViewAnnotationRenderState 数组的回调
+   */
+  public setViewAnnotationRenderCallback(callback: ((states: ViewAnnotationRenderState[]) => void) | null): void {
+    const hasCallback = callback !== null;
+    console.info(`[MapLibreMap] setViewAnnotationRenderCallback: ${hasCallback ? 'register' : 'clear'} callback`);
+    this.viewAnnotationRenderCallback = callback ?? undefined;
+    if (callback) {
+      const states = this.viewAnnotationManager.getRenderStates();
+      console.info(`[MapLibreMap] setViewAnnotationRenderCallback: invoking immediately with ${states.length} states`);
+      callback(states);
+    }
   }
 
   /**
@@ -3331,6 +3374,7 @@ export class MapLibreMap {
       return;
     }
     this.annotationViewManager.batchUpdatePositions(cameraChanged);
+    this.viewAnnotationManager.refreshRenderStates();
   }
 
   // ==================== 特性查询 (Feature Query) ====================
