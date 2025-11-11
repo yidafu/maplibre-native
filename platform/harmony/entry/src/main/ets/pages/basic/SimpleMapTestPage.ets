@@ -40,7 +40,7 @@ struct SimpleMapTestPage {
     // map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
 
     // 设置初始相机位置（使用 jumpTo）
-    map.jumpTo(0, 39.9042, 116.4074, 0, 5);
+    // map.jumpTo(0, 39.9042, 116.4074, 0, 5);
 
     showToast('地图加载成功');
   };

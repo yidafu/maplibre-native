@@ -13,9 +13,25 @@
 
 import { TestPageLayout } from '../common/TestPageLayout';
 import { CameraOptions, LatLng,  NativeMapView} from 'maplibre_harmony';
-import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { MapView } from 'maplibre_harmony';
 import { MapLibreMap } from 'maplibre_harmony/src/main/ets/maps/MapLibreMap';
 import { RenderingStats } from 'maplibre_harmony/src/main/ets/maps/renderer/RenderingStats';
+import type {
+  OnCameraDidChangeListener,
+  OnCameraIsChangingListener,
+  OnCameraWillChangeListener,
+  OnCanRemoveUnusedStyleImageListener,
+  OnDidBecomeIdleListener,
+  OnDidFailLoadingMapListener,
+  OnDidFinishLoadingMapListener,
+  OnDidFinishLoadingStyleListener,
+  OnDidFinishRenderingFrameWithStatsListener,
+  OnDidFinishRenderingMapListener,
+  OnSourceChangedListener,
+  OnWillStartLoadingMapListener,
+  OnWillStartRenderingFrameListener,
+  OnWillStartRenderingMapListener
+} from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { DEFAULT_STYLE_URLS } from '../common/TestUtils';
@@ -252,105 +268,120 @@ struct EventListenersTestPage {
    * 注册所有事件监听器
    */
   private registerAllListeners(): void {
-    if (!this.mapView) {
-      hilog.error(DOMAIN, 'EventListenersTest', 'Cannot register listeners: this.mapView is null');
+    if (!this.mapView || !this.map) {
+      hilog.error(DOMAIN, 'EventListenersTest', 'Cannot register listeners: map or native view is null');
       return;
     }
-    
-    // 保存 NativeMapView 组件引用（通过全局查找）
-    // 注意：这里我们直接使用 this.mapView 的方法，因为 NativeMapView 组件已经在 onMapReady 中准备好了
-    
+    const map = this.map;
+
     // ========== 相机事件监听器 ==========
     
-    this.mapView.addOnCameraWillChangeListener((animated: boolean) => {
+    const cameraWillChangeListener: OnCameraWillChangeListener = (animated: boolean) => {
       this.logEvent('相机', `📷 相机即将改变 (动画: ${animated ? '是' : '否'})`);
-    });
+    };
+    map.addOnCameraWillChangeListener(cameraWillChangeListener);
     
-    this.mapView.addOnCameraIsChangingListener(() => {
-      // 这个事件非常频繁，只在启用渲染事件时显示
+    const cameraIsChangingListener: OnCameraIsChangingListener = () => {
       if (this.showRenderingEvents) {
         this.logEvent('相机', '📷 相机正在改变...');
       }
-    });
+    };
+    map.addOnCameraIsChangingListener(cameraIsChangingListener);
     
-    this.mapView.addOnCameraDidChangeListener((animated: boolean) => {
+    const cameraDidChangeListener: OnCameraDidChangeListener = (animated: boolean) => {
       this.logEvent('相机', `📷 相机已改变 (动画: ${animated ? '是' : '否'})`);
-    });
+    };
+    map.addOnCameraDidChangeListener(cameraDidChangeListener);
     
     // ========== 地图加载事件监听器 ==========
     
-    this.mapView.addOnWillStartLoadingMapListener(() => {
+    const willStartLoadingMapListener: OnWillStartLoadingMapListener = () => {
       this.logEvent('加载', '🔄 地图即将开始加载');
-    });
+    };
+    map.addOnWillStartLoadingMapListener(willStartLoadingMapListener);
     
-    this.mapView.addOnDidFinishLoadingMapListener(() => {
+    const didFinishLoadingMapListener: OnDidFinishLoadingMapListener = () => {
       this.logEvent('加载', '✅ 地图加载完成');
-    });
+    };
+    map.addOnDidFinishLoadingMapListener(didFinishLoadingMapListener);
     
-    this.mapView.addOnDidFailLoadingMapListener((errorMessage: string) => {
+    const didFailLoadingMapListener: OnDidFailLoadingMapListener = (errorMessage: string) => {
       this.logEvent('加载', `❌ 地图加载失败: ${errorMessage}`);
-    });
+    };
+    map.addOnDidFailLoadingMapListener(didFailLoadingMapListener);
     
     // ========== 渲染事件监听器 ==========
     
-    this.mapView.addOnWillStartRenderingFrameListener(() => {
+    const willStartRenderingFrameListener: OnWillStartRenderingFrameListener = () => {
       if (this.showRenderingEvents) {
         this.logEvent('渲染', '🎬 帧即将开始渲染');
       }
-    });
+    };
+    map.addOnWillStartRenderingFrameListener(willStartRenderingFrameListener);
     
-    // 添加帧渲染完成的监听器（OnDidFinishRenderingFrameListener）
-    // 注意：WithStats 版本需要通过 MapView 组件访问，这里使用简单版本
     let frameCount = 0;
     let lastFpsUpdateTime = Date.now();
-    this.mapView.addOnDidFinishRenderingFrameListener((fully: boolean, encodingTime: number, renderingTime: number) => {
+    const didFinishRenderingFrameWithStatsListener: OnDidFinishRenderingFrameWithStatsListener = (fully: boolean, stats: RenderingStats) => {
       if (this.showRenderingEvents) {
-        this.logEvent('渲染', `🎨 帧渲染完成 (完整: ${fully ? '是' : '否'}, 编码: ${encodingTime.toFixed(2)}ms, 渲染: ${renderingTime.toFixed(2)}ms)`);
-        
-        // 计算 FPS
-        frameCount++;
-        const now = Date.now();
-        const elapsed = now - lastFpsUpdateTime;
-        
-        // 每秒更新一次 FPS 统计
-        if (elapsed >= 1000) {
-          const actualFps = frameCount / (elapsed / 1000);
-          const totalTime = encodingTime + renderingTime;
-          const estimatedFps = totalTime > 0 ? 1000.0 / totalTime : 0;
-          this.lastRenderingStats = `FPS: ${actualFps.toFixed(1)} | 编码: ${encodingTime.toFixed(2)}ms | 渲染: ${renderingTime.toFixed(2)}ms | 总计: ${totalTime.toFixed(2)}ms | 估算FPS: ${estimatedFps.toFixed(1)}`;
-          frameCount = 0;
-          lastFpsUpdateTime = now;
-        }
+        this.logEvent(
+          '渲染',
+          `🎨 帧渲染完成 (完整: ${fully ? '是' : '否'}, 编码: ${stats.frameEncodingTime.toFixed(2)}ms, 渲染: ${stats.frameRenderingTime.toFixed(2)}ms)`
+        );
       }
-    });
+
+      frameCount++;
+      const now = Date.now();
+      const elapsed = now - lastFpsUpdateTime;
+      if (elapsed >= 1000) {
+        const actualFps = frameCount / (elapsed / 1000);
+        const totalTime = stats.frameEncodingTime + stats.frameRenderingTime;
+        const estimatedFps = totalTime > 0 ? 1000.0 / totalTime : 0;
+        this.lastRenderingStats =
+          `FPS: ${actualFps.toFixed(1)} | 编码: ${stats.frameEncodingTime.toFixed(2)}ms | 渲染: ${stats.frameRenderingTime.toFixed(2)}ms | 总计: ${totalTime.toFixed(2)}ms | 估算FPS: ${estimatedFps.toFixed(1)}`;
+        frameCount = 0;
+        lastFpsUpdateTime = now;
+      }
+    };
+    map.addOnDidFinishRenderingFrameWithStatsListener(didFinishRenderingFrameWithStatsListener);
     
-    this.mapView.addOnWillStartRenderingMapListener(() => {
+    const willStartRenderingMapListener: OnWillStartRenderingMapListener = () => {
       this.logEvent('渲染', '🗺️ 地图即将开始渲染');
-    });
+    };
+    map.addOnWillStartRenderingMapListener(willStartRenderingMapListener);
     
-    this.mapView.addOnDidFinishRenderingMapListener((fully: boolean) => {
+    const didFinishRenderingMapListener: OnDidFinishRenderingMapListener = (fully: boolean) => {
       this.logEvent('渲染', `🗺️ 地图渲染完成 (完整: ${fully ? '是' : '否'})`);
-    });
+    };
+    map.addOnDidFinishRenderingMapListener(didFinishRenderingMapListener);
     
     // ========== 样式事件监听器 ==========
     
-    this.mapView.addOnDidFinishLoadingStyleListener(() => {
+    const didFinishLoadingStyleListener: OnDidFinishLoadingStyleListener = () => {
       this.logEvent('样式', '🎨 样式加载完成');
-    });
-    
-    this.mapView.addOnStyleImageMissingListener((id: string) => {
+    };
+    map.addOnDidFinishLoadingStyleListener(didFinishLoadingStyleListener);
+
+    map.setOnStyleImageMissingListener((id: string) => {
       this.logEvent('样式', `⚠️ 样式图片缺失: ${id}`);
     });
+
+    const canRemoveUnusedStyleImageListener: OnCanRemoveUnusedStyleImageListener = (id: string): boolean => {
+      this.logEvent('样式', `♻️ 请求释放样式图片: ${id}`);
+      return true;
+    };
+    map.addOnCanRemoveUnusedStyleImageListener(canRemoveUnusedStyleImageListener);
     
     // ========== 其他事件监听器 ==========
     
-    this.mapView.addOnDidBecomeIdleListener(() => {
+    const didBecomeIdleListener: OnDidBecomeIdleListener = () => {
       this.logEvent('状态', '💤 地图进入空闲状态');
-    });
+    };
+    map.addOnDidBecomeIdleListener(didBecomeIdleListener);
     
-    this.mapView.addOnSourceChangedListener((id: string) => {
+    const sourceChangedListener: OnSourceChangedListener = (id: string) => {
       this.logEvent('状态', `🔄 数据源改变: ${id}`);
-    });
+    };
+    map.addOnSourceChangedListener(sourceChangedListener);
     
     this.logEvent('系统', '✅ 所有事件监听器已注册');
     hilog.info(DOMAIN, 'EventListenersTest', 'All event listeners registered');

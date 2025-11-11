@@ -40,9 +40,7 @@ struct MapStateTestPage {
       initialZoom: 5,
       initialBearing: 0,
       initialPitch: 0,
-      onMapReady: (map: MapLibreMap) => {
-        this.onMapReady(map);
-      }
+      onMapReady: this.onMapReady,
     })
   }
 

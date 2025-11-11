@@ -67,9 +67,7 @@ struct OSMRasterMapPage {
         initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (map: MapLibreMap) => {
-          this.onMapReady(map);
-        }
+        onMapReady: this.onMapReady,
       })
       .width('100%')
       .height('100%')

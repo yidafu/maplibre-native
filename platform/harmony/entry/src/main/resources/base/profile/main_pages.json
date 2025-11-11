@@ -14,6 +14,7 @@
     "pages/basic/LocalGlyphTestPage",
     "pages/basic/MapStateTestPage",
     "pages/basic/CoreAPITestPage",
+    "pages/tests/ProjectionConversionTestPage",
     
     "pages/annotation/BulkMarkerTestPage",
     "pages/annotation/DraggableMarkerTestPage",
@@ -22,6 +23,8 @@
     "pages/annotation/MarkerClickTestPage",
     "pages/annotation/RemoveMarkerTestPage",
     "pages/annotation/AnnotationViewTestPage",
+    "pages/annotation/AnnotationViewMarkerStaticTestPage",
+    "pages/annotation/AnnotationViewReuseTestPage",
     "pages/annotation/IconTestPage",
     "pages/annotation/PolygonTestPage",
     "pages/annotation/PolylinePolygonTestPage",
@@ -106,6 +109,7 @@
     "pages/style/LayerTestPage",
     "pages/style/LightTestPage",
     "pages/style/ExpressionTestPage",
+    "pages/style/NewAPIFeaturesTestPage",
     
     "pages/feature/PointClickQueryTestPage",
     "pages/feature/QueryRenderedFeaturesBoxCountTestPage",

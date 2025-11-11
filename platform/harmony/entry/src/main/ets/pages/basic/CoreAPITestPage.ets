@@ -1,5 +1,5 @@
 import { LatLng, MapView, Marker, Icon, MapLibreMap, NativeMapView, Rect,
-  ScreenCoordinate } from 'maplibre_harmony';
+  ScreenCoordinate, PixelCoordinate } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { TestPageLayout } from '../common/TestPageLayout';
@@ -197,12 +197,20 @@ struct CoreAPITestPage {
     try {
       // 测试 latLng -> pixel
       const latLng = LatLng.create(39.9042, 116.4074);
-      const pixel =
+      const physicalPixel =
         this.mapView.pixelForLatLng(latLng.latitude, latLng.longitude);
-      this.addTestResult(`✅ pixelForLatLng: (${pixel.x.toFixed(1)}, ${pixel.y.toFixed(1)})`);
+      const pixelRatio = this.readPixelRatioSafe();
+      const logicalPixel = PixelCoordinate.create(
+        physicalPixel.x / pixelRatio,
+        physicalPixel.y / pixelRatio
+      );
+      this.addTestResult(`✅ pixelForLatLng: (${logicalPixel.x.toFixed(1)}, ${logicalPixel.y.toFixed(1)})`);
 
       // 测试 pixel -> latLng
-      const convertedLatLng = this.mapView.latLngForPixel(pixel.x, pixel.y);
+      const convertedLatLng = this.mapView.latLngForPixel(
+        logicalPixel.x * pixelRatio,
+        logicalPixel.y * pixelRatio
+      );
       this.addTestResult(`✅ latLngForPixel: (${convertedLatLng.latitude.toFixed(4)}, ${convertedLatLng.longitude.toFixed(4)})`);
 
       // 测试投影米坐标
@@ -350,21 +358,7 @@ struct CoreAPITestPage {
         initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (map: MapLibreMap) => {
-          // TODO: MapLibreMap 类型的API与 NativeMapView 不同
-          // this.mapView = map;
-          hilog.info(DOMAIN, 'CoreAPITestPage', 'Map ready, running initial tests...');
-
-          // 获取设备像素比 - MapLibreMap 可能没有此方法
-          // if (this.mapView) {
-          //   try {
-          //     this.pixelRatio = this.mapView.getPixelRatio() as number;
-          //     this.addTestResult(`📱 设备像素比: ${this.pixelRatio.toFixed(2)}x`);
-          //   } catch (error) {
-          //     hilog.error(DOMAIN, 'CoreAPITestPage', `Failed to get pixel ratio: ${error.message}`);
-          //   }
-          // }
-        }
+      
       })
 
       // 边距可视化覆盖层
@@ -636,6 +630,22 @@ struct CoreAPITestPage {
   }
   private handleTestMapState = (): void => {
     this.testMapState();
+  }
+
+  private readPixelRatioSafe(): number {
+    if (!this.mapView) {
+      return 1;
+    }
+    try {
+      const ratioCandidate = this.mapView.getPixelRatio?.();
+      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
+        return ratioCandidate;
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      this.addTestResult(`⚠️ 读取像素比失败: ${reason}`);
+    }
+    return 1;
   }
 }
 

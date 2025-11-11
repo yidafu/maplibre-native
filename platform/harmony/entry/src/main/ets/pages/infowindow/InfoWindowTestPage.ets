@@ -35,11 +35,14 @@ struct InfoWindowTestPage {
       initialLongitude: 116.4,
       initialZoom: 5,
       onMapReady: async (map: MapLibreMap) => {
+        console.info('[InfoWindowTest] onMapReady called');
         this.mapController = map;
         map.jumpTo(0, 35, 105, 0, 4);
         
         await this.addMarkersWithInfoWindow(map);
         this.setupListeners(map);
+        
+        console.info('[InfoWindowTest] Setup complete');
       }
     })
   }
@@ -78,8 +81,9 @@ struct InfoWindowTestPage {
       }
       
       onMarkerClick(marker: Marker): boolean {
+        console.info(`[InfoWindowTest] Marker clicked: ${marker.getTitle()}`);
         this.mapController.selectMarker(marker, true);
-        showToast(`显示 InfoWindow: ${marker.getTitle()}`);
+        // showToast(`显示 InfoWindow: ${marker.getTitle()}`); // 移除 Toast，避免误导
         return false; // false 会自动显示 InfoWindow
       }
     }

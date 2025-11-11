@@ -89,7 +89,7 @@ export struct TestPageLayout {
       .padding({ left: 8, right: 8, top: 10 })
       
       // 主内容区
-      Stack() {
+      Stack({ alignContent: Alignment.TopStart }) {
         // 地图内容（全屏）
         Column() {
           this.mapContent();
@@ -99,25 +99,38 @@ export struct TestPageLayout {
         
         // 控制面板（浮动在地图上，支持滚动）
         if (this.controlPanel && this.isControlPanelVisible) {
-          Scroll() {
-            Column() {
-              this.controlPanel();
+          Column() {
+            Blank()
+              .layoutWeight(1)
+
+            Scroll() {
+              Column() {
+                this.controlPanel();
+              }
+              .width('100%')
             }
-            .width('100%')
+            .backgroundColor(Color.White)
+            .borderRadius(8)
+            .shadow({
+              radius: 8,
+              color: 'rgba(0, 0, 0, 0.2)',
+              offsetX: 0,
+              offsetY: 2
+            })
+            .padding(12)
+            .scrollBar(BarState.Auto)
+            .constraintSize({
+              maxHeight: '65%'
+            })
           }
           .width('100%')
-          .height('70%') // 限制高度，避免遮挡整个地图
-          .backgroundColor(Color.White)
-          .borderRadius(8)
-          .shadow({
-            radius: 8,
-            color: 'rgba(0, 0, 0, 0.2)',
-            offsetX: 0,
-            offsetY: 2
+          .height('100%')
+          .padding({
+            left: 16,
+            right: 16,
+            bottom: 16
           })
-          .padding(12)
-          .margin(16)
-          .scrollBar(BarState.Auto) // 有内容溢出时自动显示滚动条
+          .hitTestBehavior(HitTestMode.Transparent)
         }
       }
       .layoutWeight(1)

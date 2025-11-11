@@ -8,6 +8,8 @@
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
+import preferences from '@ohos.data.preferences';
+import common from '@ohos.app.ability.common';
 import { DOMAIN } from '../constants/HiLogConstants';
 
 /**
@@ -43,6 +45,9 @@ class TestPageGroup {
   }
 }
 
+const LAST_PAGE_PREF_FILE: string = 'maplibre_navigation';
+const LAST_PAGE_KEY: string = 'last_opened_route';
+
 @Entry
 @Component
 struct Index {
@@ -51,10 +56,16 @@ struct Index {
   ;
   // 当前选中的分组索引
   @State private selectedGroupIndex: number = 0;
+  @State private lastOpenedRoute: string = '';
+  @State private lastOpenedTitle: string = '';
+  private preferenceStore?: preferences.Preferences;
 
   aboutToAppear() {
     // 初始化测试页面数据，包含 19 个功能分类
     this.testPageGroups = this.initializeTestPages();
+    this.restoreLastOpenedPage().catch((error: Error) => {
+      hilog.warn(DOMAIN, 'Index', `Failed to restore last opened page: ${error.message}`);
+    });
   }
 
   /**
@@ -124,6 +135,58 @@ struct Index {
     ]
   }
 
+  private async ensurePreferenceStore(): Promise<void> {
+    if (this.preferenceStore) {
+      return;
+    }
+    const context = getContext(this) as common.UIAbilityContext;
+    this.preferenceStore = await preferences.getPreferences(context, LAST_PAGE_PREF_FILE);
+  }
+
+  private async restoreLastOpenedPage(): Promise<void> {
+    await this.ensurePreferenceStore();
+    if (!this.preferenceStore) {
+      return;
+    }
+    const storedRoute = await this.preferenceStore.get(LAST_PAGE_KEY, '');
+    if (typeof storedRoute === 'string' && storedRoute.length > 0) {
+      this.updateLastOpenedDisplay(storedRoute);
+    } else {
+      this.updateLastOpenedDisplay('');
+    }
+  }
+
+  private async recordLastOpenedPage(route: string): Promise<void> {
+    await this.ensurePreferenceStore();
+    if (!this.preferenceStore) {
+      return;
+    }
+    await this.preferenceStore.put(LAST_PAGE_KEY, route);
+    await this.preferenceStore.flush();
+    this.updateLastOpenedDisplay(route);
+  }
+
+  private findPageItemByRoute(route: string): TestPageItem | undefined {
+    for (const group of this.testPageGroups) {
+      const matched = group.pages.find((page: TestPageItem) => page.route === route);
+      if (matched) {
+        return matched;
+      }
+    }
+    return undefined;
+  }
+
+  private updateLastOpenedDisplay(route: string): void {
+    const matched = this.findPageItemByRoute(route);
+    if (matched) {
+      this.lastOpenedRoute = matched.route;
+      this.lastOpenedTitle = matched.title;
+    } else {
+      this.lastOpenedRoute = '';
+      this.lastOpenedTitle = '';
+    }
+  }
+
   /**
    * 1. _Basic - 基础地图功能
    */
@@ -141,6 +204,7 @@ struct Index {
       new TestPageItem('Local Glyph', '本地字体', 'pages/basic/LocalGlyphTestPage', '🔤'),
       new TestPageItem('Map State', '地图状态管理', 'pages/basic/MapStateTestPage', '🔄'),
       new TestPageItem('Core API', '核心API测试', 'pages/basic/CoreAPITestPage', '⚙️'),
+      new TestPageItem('Projection Conversion', 'Projection 坐标转换验证', 'pages/tests/ProjectionConversionTestPage', '📐'),
       new TestPageItem('Mapbox Config', 'Mapbox配置测试', 'pages/tests/MapboxConfigTestPage', '🔧'),
     ]);
   }
@@ -157,6 +221,8 @@ struct Index {
       new TestPageItem('Marker Click', '标记点击事件', 'pages/annotation/MarkerClickTestPage', '👆'),
       new TestPageItem('Remove Marker', '点击移除标记', 'pages/annotation/RemoveMarkerTestPage', '🗑️'),
       new TestPageItem('Annotation View', '标注视图', 'pages/annotation/AnnotationViewTestPage', '👁️'),
+      new TestPageItem('View Annotation · Static', '仅 Marker 静态展示', 'pages/annotation/AnnotationViewMarkerStaticTestPage', '📌'),
+      new TestPageItem('View Annotation · Reuse', '复用与拖拽调试', 'pages/annotation/AnnotationViewReuseTestPage', '♻️'),
       new TestPageItem('Icon Test', '图标测试', 'pages/annotation/IconTestPage', '🖼️'),
       new TestPageItem('Polygon', '多边形', 'pages/annotation/PolygonTestPage', '🔶'),
       new TestPageItem('Polyline & Polygon', '线面组合', 'pages/annotation/PolylinePolygonTestPage', '📐'),
@@ -303,6 +369,7 @@ struct Index {
       new TestPageItem('Heatmap Layer', '热力图', 'pages/style/HeatmapLayerTestPage', '🔥'),
       new TestPageItem('Hillshade Layer', '山体阴影', 'pages/style/HillshadeLayerTestPage', '⛰️'),
       new TestPageItem('Custom Layer', '自定义渲染图层', 'pages/customlayer/CustomLayerTestPage', '🎨'),
+      new TestPageItem('New API Features', '新增 API 测试', 'pages/style/NewAPIFeaturesTestPage', '🆕'),
     ]);
   }
 
@@ -435,6 +502,21 @@ struct Index {
       .backgroundColor('#2196F3')
       .justifyContent(FlexAlign.Center)
       .padding({ top: 20 })
+
+      Button({ type: ButtonType.Capsule }) {
+        Text(this.lastOpenedRoute.length > 0 ? `继续上次：${this.lastOpenedTitle}` : '暂无上次打开页面')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.lastOpenedRoute.length > 0 ? Color.White : '#666666')
+      }
+      .margin({ top: 12, left: 20, right: 20 })
+      .backgroundColor(this.lastOpenedRoute.length > 0 ? '#FF9800' : '#E0E0E0')
+      .enabled(this.lastOpenedRoute.length > 0)
+      .onClick(() => {
+        if (this.lastOpenedRoute.length > 0) {
+          this.navigateToPage(this.lastOpenedRoute);
+        }
+      })
 
       // 主内容区：左右分栏布局
       Row() {
@@ -647,6 +729,10 @@ struct Index {
    */
   private navigateToPage(route: string): void {
     hilog.info(DOMAIN, 'Index', `Attempting to navigate to: ${route}`);
+
+    this.recordLastOpenedPage(route).catch((error: Error) => {
+      hilog.warn(DOMAIN, 'Index', `Failed to record last opened page: ${error.message}`);
+    });
 
     // 直接使用 pushUrl，不使用命名路由
     router.pushUrl({

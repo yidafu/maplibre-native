@@ -9,6 +9,8 @@ import {
   MapLibreMap,
   MapLibreMapOptions,
   AnnotationViewAdapter,
+  AnnotationViewDelegate,
+  AnnotationViewConfig,
   IconFactory,
   CameraOptions
 } from 'maplibre_harmony';
@@ -43,7 +45,25 @@ interface TestMarkerData {
   lng: number;
   type: string;
   title: string;
+  subtitle?: string;
+  description?: string;
+  buttonLabel?: string;
+  buttonActionText?: string;
+  highlightColor?: string;
 }
+
+const STAR_ANNOTATION_POINTS: number[][] = [
+  [50, 0],
+  [62, 34],
+  [98, 38],
+  [72, 60],
+  [82, 96],
+  [50, 76],
+  [18, 96],
+  [28, 60],
+  [2, 38],
+  [38, 34]
+];
 
 /**
  * Marker 点击监听器
@@ -97,19 +117,145 @@ class MarkerSelectListenerImpl implements OnMarkerSelectListener {
 }
 
 /**
- * 自定义 AnnotationView 适配器
+ * 自定义 AnnotationView 委托
  * 
- * 注意：ComponentContent API 当前不可用，暂时返回 null 使用默认图标
- * 未来可以通过此接口提供自定义视图
+ * 使用新的 Delegate API 提供自定义视图内容
  */
-class TestAnnotationViewAdapter implements AnnotationViewAdapter {
-  getAnnotationView(marker: Marker): object | null {
-    // TODO: 等待 HarmonyOS SDK 支持 ComponentContent 和 wrapBuilder
-    // 当前返回 null 使用默认图标
-    return null;
+class TestAnnotationViewDelegate implements AnnotationViewDelegate {
+  private testPage: AnnotationViewTestPage;
+  
+  constructor(testPage: AnnotationViewTestPage) {
+    this.testPage = testPage;
   }
   
-  getReuseIdentifier(marker: Marker): string {
+  viewForAnnotation(marker: Marker): AnnotationViewConfig | null {
+    const type = marker.getSnippet();
+    
+    if (type === 'annotation-text') {
+      return this.buildTextAnnotationConfig(marker);
+    }
+
+    if (type === 'annotation-button') {
+      return this.buildButtonAnnotationConfig(marker);
+    }
+
+    if (type === 'annotation-star') {
+      return this.buildStarAnnotationConfig(marker);
+    }
+
+    if (type === 'custom-pin') {
+      // Pin 类型：配置高级特性
+      const config: AnnotationViewConfig = {
+        reuseIdentifier: 'custom-pin',
+        draggable: this.testPage.testMode === 'draggable',
+        scalesWithViewingDistance: this.testPage.scalesEnabled,
+        rotatesToMatchCamera: this.testPage.rotatesEnabled,
+        centerOffset: { dx: 0, dy: -24 },
+        zIndex: 10
+      };
+      return config;
+    } else if (type === 'custom-dot') {
+      // Dot 类型：简单配置
+      const config: AnnotationViewConfig = {
+        reuseIdentifier: 'custom-dot',
+        draggable: this.testPage.testMode === 'draggable',
+        scalesWithViewingDistance: this.testPage.scalesEnabled,
+        rotatesToMatchCamera: this.testPage.rotatesEnabled,
+        centerOffset: { dx: 0, dy: -12 },
+        zIndex: 5
+      };
+      return config;
+    }
+    
+    // 其他类型使用默认图标
+    return null;
+  }
+
+  private buildTextAnnotationConfig(marker: Marker): AnnotationViewConfig {
+    return {
+      reuseIdentifier: 'annotation-text',
+      contentBuilder: this.testPage.createTextAnnotationBuilder(marker),
+      draggable: this.testPage.testMode === 'draggable',
+      scalesWithViewingDistance: this.testPage.scalesEnabled,
+      rotatesToMatchCamera: this.testPage.rotatesEnabled,
+      centerOffset: { dx: 0, dy: -56 },
+      size: { width: 220, height: 120 },
+      alpha: 1,
+      zIndex: 18
+    };
+  }
+
+  private buildButtonAnnotationConfig(marker: Marker): AnnotationViewConfig {
+    return {
+      reuseIdentifier: 'annotation-button',
+      contentBuilder: this.testPage.createButtonAnnotationBuilder(marker),
+      draggable: this.testPage.testMode === 'draggable',
+      scalesWithViewingDistance: this.testPage.scalesEnabled,
+      rotatesToMatchCamera: this.testPage.rotatesEnabled,
+      centerOffset: { dx: 0, dy: -58 },
+      size: { width: 240, height: 112 },
+      alpha: 1,
+      zIndex: 20
+    };
+  }
+
+  private buildStarAnnotationConfig(marker: Marker): AnnotationViewConfig {
+    return {
+      reuseIdentifier: 'annotation-star',
+      contentBuilder: this.testPage.createStarAnnotationBuilder(marker),
+      draggable: this.testPage.testMode === 'draggable',
+      scalesWithViewingDistance: this.testPage.scalesEnabled,
+      rotatesToMatchCamera: this.testPage.rotatesEnabled,
+      centerOffset: { dx: 0, dy: -72 },
+      size: { width: 180, height: 160 },
+      alpha: 1,
+      zIndex: 24
+    };
+  }
+  
+  /**
+   * 处理选中事件
+   */
+  didSelectAnnotationView(marker: Marker): void {
+    const title = marker.getTitle() || 'Unknown';
+    this.testPage.statusMessage = `✅ Delegate 选中: ${title}`;
+    hilog.info(DOMAIN, 'AnnotationViewTest', `Delegate - Selected: ${title}`);
+  }
+  
+  /**
+   * 处理取消选中事件
+   */
+  didDeselectAnnotationView(marker: Marker): void {
+    const title = marker.getTitle() || 'Unknown';
+    this.testPage.statusMessage = `⭕ Delegate 取消选中: ${title}`;
+    hilog.info(DOMAIN, 'AnnotationViewTest', `Delegate - Deselected: ${title}`);
+  }
+  
+  /**
+   * 处理拖拽开始事件
+   */
+  annotationViewWillStartDragging(marker: Marker): void {
+    const title = marker.getTitle() || 'Unknown';
+    this.testPage.statusMessage = `🔄 开始拖拽: ${title}`;
+    // 可以在这里修改 Marker 样式
+    marker.setAlpha(0.7);
+  }
+  
+  /**
+   * 处理拖拽结束事件
+   */
+  annotationViewDidEndDragging(marker: Marker, finalPosition: LatLng): void {
+    const title = marker.getTitle() || 'Unknown';
+    this.testPage.statusMessage = 
+      `✓ 拖拽结束: ${title}\n新位置: (${finalPosition.latitude.toFixed(4)}, ${finalPosition.longitude.toFixed(4)})`;
+    // 恢复 Marker 样式
+    marker.setAlpha(1.0);
+  }
+  
+  /**
+   * 获取复用标识符
+   */
+  getReuseIdentifier(marker: Marker): string | undefined {
     const snippet = marker.getSnippet();
     return snippet || 'default';
   }
@@ -129,9 +275,10 @@ struct AnnotationViewTestPage {
   @State currentIconTheme: string = 'all-random'; // 当前图标主题，默认为随机模式
   
   private mapLibreMap: MapLibreMap | null = null;
-  private markerList: Marker[] = [];;
-  private markerLocations: TestMarkerData[] = [];;
-  private annotationViewAdapter: TestAnnotationViewAdapter = new TestAnnotationViewAdapter();
+  private markerList: Marker[] = [];
+  private markerLocations: TestMarkerData[] = [];
+  // 使用新的 Delegate API（替代旧的 Adapter）
+  private annotationViewDelegate: TestAnnotationViewDelegate | null = null;
   private iconFactory: IconFactory | null = null;
   // 存储所有可用的图标
   private markerIcons: Map<string, Icon> = new Map();
@@ -399,6 +546,7 @@ struct AnnotationViewTestPage {
           Text('✅ 已实现：')
             .fontSize(11)
             .fontWeight(FontWeight.Bold)
+            .fontColor('#4CAF50')
             .width('100%')
           
           Text('• 真实添加/删除 Markers')
@@ -429,21 +577,72 @@ struct AnnotationViewTestPage {
             .fontSize(10)
             .width('100%')
           
-          Text('⏳ 待实现：')
+          Text('🎉 新功能：')
             .fontSize(11)
             .fontWeight(FontWeight.Bold)
+            .fontColor('#2196F3')
             .width('100%')
             .margin({ top: 6 })
           
-          Text('• 自定义视图 Builder（需要 ComponentContent API）')
+          Text('• AnnotationViewDelegate API')
             .fontSize(10)
             .width('100%')
           
-          Text('• 距离缩放效果（需要自定义视图）')
+          Text('• 距离缩放（scalesWithViewingDistance）')
             .fontSize(10)
             .width('100%')
           
-          Text('• 跟随旋转效果（需要自定义视图）')
+          Text('• 跟随旋转（rotatesToMatchCamera）')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• 拖拽事件回调')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• 视图复用机制')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• 中心偏移配置（centerOffset）')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('💡 提示：')
+            .fontSize(11)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FF9800')
+            .width('100%')
+            .margin({ top: 6 })
+          
+          Text('• 使用 Icon 实现自定义样式')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• Delegate 自动应用配置到 Marker')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• 倾斜地图观察距离缩放')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• 旋转地图观察跟随旋转')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('⚠️ 限制：')
+            .fontSize(11)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#F44336')
+            .width('100%')
+            .margin({ top: 6 })
+          
+          Text('• contentBuilder 暂不可用（ArkTS 限制）')
+            .fontSize(10)
+            .width('100%')
+          
+          Text('• 使用 Icon 作为替代方案')
             .fontSize(10)
             .width('100%')
         }
@@ -502,21 +701,11 @@ struct AnnotationViewTestPage {
     this.mapLibreMap.setOnMarkerClickListener(markerClickListener);
     this.mapLibreMap.setOnMarkerSelectListener(markerSelectListener);
     
-    hilog.info(DOMAIN, 'AnnotationViewTest', 'Event listeners configured');
-  }
-
-  /**
-   * 设置 AnnotationView 适配器
-   */
-  private setupAnnotationViewAdapter(): void {
-    if (!this.mapLibreMap) return;
+    // 创建并设置 AnnotationView 委托（新API）
+    this.annotationViewDelegate = new TestAnnotationViewDelegate(this);
+    this.mapLibreMap.setAnnotationViewDelegate(this.annotationViewDelegate);
     
-    const markerManager = this.mapLibreMap.getMarkerManager();
-    
-    // 设置 AnnotationView 适配器
-    markerManager.setAnnotationViewAdapter(this.annotationViewAdapter);
-    
-    hilog.info(DOMAIN, 'AnnotationViewTest', 'AnnotationView adapter configured');
+    hilog.info(DOMAIN, 'AnnotationViewTest', 'Event listeners and AnnotationView delegate configured');
   }
 
   /**
@@ -974,21 +1163,79 @@ struct AnnotationViewTestPage {
     this.statusMessage = '正在添加自定义视图...';
     
     try {
-      // TODO: 实现自定义 AnnotationView 的添加
-      // 当前先使用 Marker 实现，后续可以扩展为真正的自定义视图
-      
-      // 暂时使用 addCustomMarkers 的实现
-      await this.addCustomMarkers();
-      
-      this.statusMessage = '✅ 自定义视图已添加\n' +
-                          '（当前使用 Marker 实现，后续将支持自定义 ArkTS 组件）';
-      
+      await this.clearMarkers();
+
+      const customAnnotations: TestMarkerData[] = [
+        {
+          lat: 39.9042,
+          lng: 116.4074,
+          type: 'annotation-text',
+          title: '北京 · 文本标签',
+          subtitle: '首都建筑与文化地标',
+          description: '使用 Column + Text 展示细节信息'
+        },
+        {
+          lat: 31.2304,
+          lng: 121.4737,
+          type: 'annotation-button',
+          title: '上海 · 交互按钮',
+          description: '点击按钮触发自定义事件',
+          buttonLabel: '查看详情',
+          buttonActionText: '来自按钮类型的交互'
+        },
+        {
+          lat: 30.5728,
+          lng: 104.0668,
+          type: 'annotation-star',
+          title: '成都 · 五角星徽章',
+          description: 'ArkUI Polygon 绘制五角星',
+          highlightColor: '#FFB300'
+        }
+      ];
+
+      this.markerLocations = customAnnotations;
+
+      let addedCount = 0;
+      const baseZIndex = 20;
+
+      for (let i = 0; i < customAnnotations.length; i++) {
+        const sample = customAnnotations[i];
+        const options = new MarkerOptions()
+          .position(new LatLng(sample.lat, sample.lng))
+          .title(sample.title)
+          .snippet(sample.type)
+          .draggable(this.testMode === 'draggable')
+          .alpha(1.0)
+          .zIndex(baseZIndex + i);
+
+        const marker = await this.mapLibreMap.addMarker(options);
+        this.markerList.push(marker);
+        addedCount++;
+
+        hilog.info(
+          DOMAIN,
+          'AnnotationViewTest',
+          `Added custom annotation marker: ${sample.title} (${sample.type}) id=${marker.getId()}`
+        );
+      }
+
+      this.markerCount = addedCount;
+
+      this.statusMessage = '✅ 自定义 AnnotationView 已添加\n' +
+                          '包含: 文本标签 / 按钮卡片 / 五角星徽章';
+
       promptAction.showToast({
-        message: '自定义视图已添加',
+        message: '已添加自定义 AnnotationView',
         duration: 2000
       });
-      
-      hilog.info(DOMAIN, 'AnnotationViewTest', 'Custom annotation views added (using Markers)');
+
+      if (this.autoFlyToMarkers && addedCount > 0) {
+        setTimeout(() => {
+          this.flyToAllMarkers();
+        }, 500);
+      }
+
+      hilog.info(DOMAIN, 'AnnotationViewTest', 'Custom annotation views added via customContentBuilder');
     } catch (e) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       hilog.error(DOMAIN, 'AnnotationViewTest', `Failed to add custom annotation views: ${errorMsg}`);
@@ -1031,6 +1278,190 @@ struct AnnotationViewTestPage {
       const errorMsg = e instanceof Error ? e.message : String(e);
       hilog.error(DOMAIN, 'AnnotationViewTest', `Failed to clear markers: ${errorMsg}`);
     }
+  }
+
+  /**
+   * 刷新所有自定义 AnnotationView
+   */
+  private refreshAnnotationViews(): void {
+    if (!this.mapLibreMap || this.markerList.length === 0) {
+      return;
+    }
+
+    try {
+      const annotationManager = this.mapLibreMap
+        .getMarkerManager()
+        .getAnnotationViewManager();
+
+      this.markerList.forEach(marker => {
+        annotationManager.createOrUpdateView(marker);
+      });
+
+      hilog.info(
+        DOMAIN,
+        'AnnotationViewTest',
+        `Refreshed annotation views for ${this.markerList.length} markers`
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.error(DOMAIN, 'AnnotationViewTest', `refreshAnnotationViews failed: ${errorMsg}`);
+    }
+  }
+
+  public getMarkerDataById(markerId: number): TestMarkerData | undefined {
+    const index = this.markerList.findIndex((marker: Marker) => marker.getId() === markerId);
+    if (index >= 0 && index < this.markerLocations.length) {
+      return this.markerLocations[index];
+    }
+    return undefined;
+  }
+
+  public createTextAnnotationBuilder(marker: Marker): () => void {
+    const markerData = this.getMarkerDataById(marker.getId());
+    const title = marker.getTitle() || '文本标签';
+    const subtitle = markerData?.subtitle ?? '自定义文本视图';
+    const description = markerData?.description ?? '使用 customContentBuilder 渲染文本内容。';
+    const position = marker.getPosition();
+    const coordinateText = `经纬度: ${position.latitude.toFixed(3)}, ${position.longitude.toFixed(3)}`;
+    return () => {
+      this.renderTextAnnotationContent(title, subtitle, description, coordinateText);
+    };
+  }
+
+  public createButtonAnnotationBuilder(marker: Marker): () => void {
+    const markerData = this.getMarkerDataById(marker.getId());
+    const title = marker.getTitle() || '交互按钮';
+    const description = markerData?.description ?? '点击下面的按钮触发交互。';
+    const buttonLabel = markerData?.buttonLabel ?? '立即执行';
+    const actionText = markerData?.buttonActionText ?? '按钮类型 AnnotationView 已被点击';
+    return () => {
+      this.renderButtonAnnotationContent(marker, title, description, buttonLabel, actionText);
+    };
+  }
+
+  public createStarAnnotationBuilder(marker: Marker): () => void {
+    const markerData = this.getMarkerDataById(marker.getId());
+    const title = marker.getTitle() || '五角星徽章';
+    const description = markerData?.description ?? 'Polygon 生成的五角星示例。';
+    const position = marker.getPosition();
+    const positionText = `位置: ${position.latitude.toFixed(2)}°, ${position.longitude.toFixed(2)}°`;
+    const fillColor = markerData?.highlightColor ?? '#FFC107';
+    return () => {
+      this.renderStarAnnotationContent(title, description, positionText, fillColor);
+    };
+  }
+
+  @Builder
+  private renderTextAnnotationContent(title: string, subtitle: string, description: string, coordinateText: string) {
+    Column({ space: 6 }) {
+      Text(title)
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#FFFFFF')
+        .width('100%');
+
+      Text(subtitle)
+        .fontSize(12)
+        .fontColor('rgba(255,255,255,0.85)')
+        .width('100%');
+
+      Text(description)
+        .fontSize(12)
+        .fontColor('rgba(255,255,255,0.9)')
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+        .width('100%');
+
+      Text(coordinateText)
+        .fontSize(11)
+        .fontColor('rgba(255,255,255,0.7)')
+        .width('100%');
+    }
+    .padding(14)
+    .backgroundColor('rgba(33, 150, 243, 0.92)')
+    .borderRadius(12)
+    .shadow({ radius: 8, color: 'rgba(33,150,243,0.35)', offsetX: 0, offsetY: 4 });
+  }
+
+  @Builder
+  private renderButtonAnnotationContent(marker: Marker, title: string, description: string, buttonLabel: string, actionText: string) {
+    Column({ space: 8 }) {
+      Text(title)
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#1A237E')
+        .width('100%');
+
+      Text(description)
+        .fontSize(12)
+        .fontColor('#3F51B5')
+        .opacity(0.85)
+        .width('100%');
+
+      Button(buttonLabel)
+        .type(ButtonType.Capsule)
+        .fontSize(12)
+        .onClick(() => {
+          this.statusMessage = `🟢 按钮点击: ${marker.getTitle() || '未知标记'}`;
+          promptAction.showToast({
+            message: actionText,
+            duration: 2000
+          });
+          hilog.info(DOMAIN, 'AnnotationViewTest', `Button annotation clicked: ${marker.getTitle()}`);
+        });
+    }
+    .padding(16)
+    .backgroundColor('rgba(227, 242, 253, 0.95)')
+    .borderRadius(16)
+    .shadow({ radius: 10, color: 'rgba(25,118,210,0.25)', offsetX: 0, offsetY: 6 });
+  }
+
+  @Builder
+  private renderStarAnnotationContent(title: string, description: string, positionText: string, fillColor: string) {
+    Column({ space: 8 }) {
+      Stack() {
+        Polygon()
+          .points(STAR_ANNOTATION_POINTS)
+          .fill(fillColor)
+          .width(110)
+          .height(110)
+          .shadow({ radius: 12, color: 'rgba(0,0,0,0.25)', offsetX: 0, offsetY: 6 });
+
+        Column() {
+          Text('★')
+            .fontSize(38)
+            .fontColor('#FFFFFF')
+            .fontWeight(FontWeight.Bold);
+        }
+        .width('100%')
+        .height('100%')
+        .justifyContent(FlexAlign.Center)
+        .alignItems(HorizontalAlign.Center);
+      }
+      .width(110)
+      .height(110);
+
+      Text(title)
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#4E342E')
+        .width('100%');
+
+      Text(description)
+        .fontSize(12)
+        .fontColor('#6D4C41')
+        .opacity(0.9)
+        .width('100%');
+
+      Text(positionText)
+        .fontSize(11)
+        .fontColor('#795548')
+        .width('100%');
+    }
+    .padding(14)
+    .backgroundColor('rgba(255, 248, 225, 0.95)')
+    .borderRadius(18)
+    .shadow({ radius: 14, color: 'rgba(255, 179, 0, 0.35)', offsetX: 0, offsetY: 8 });
   }
 
   /**
@@ -1185,6 +1616,8 @@ struct AnnotationViewTestPage {
         marker.setDraggable(isDraggable);
       });
     }
+
+    this.refreshAnnotationViews();
     
     this.statusMessage = `已切换到${this.getModeDescription()}`;
     
@@ -1205,12 +1638,14 @@ struct AnnotationViewTestPage {
     
     this.statusMessage = `距离缩放: ${scalesStr}\n跟随旋转: ${rotatesStr}\n` +
                         `倾斜或旋转地图查看效果`;
-    
-    // TODO: 更新 AnnotationView 的 transform 属性
-    // 当前 AnnotationView API 还未完全集成到 Marker
-    
-    hilog.info(DOMAIN, 'AnnotationViewTest', 
-      `Transform updated - scales: ${this.scalesEnabled}, rotates: ${this.rotatesEnabled}`);
+
+    this.refreshAnnotationViews();
+
+    hilog.info(
+      DOMAIN,
+      'AnnotationViewTest',
+      `Transform updated - scales: ${this.scalesEnabled}, rotates: ${this.rotatesEnabled}`
+    );
   }
 
   /**
@@ -1225,7 +1660,7 @@ struct AnnotationViewTestPage {
       this.mapLibreMap.setPitch(pitch, 500);
       
       this.statusMessage = `地图倾斜至 ${pitch}°\n` +
-                          (this.scalesEnabled ? 'Marker 会根据距离自动缩放（待实现）' : '未启用距离缩放');
+                          (this.scalesEnabled ? 'Marker 会根据距离自动缩放' : '未启用距离缩放');
       
     promptAction.showToast({
         message: `倾斜: ${pitch}°`,
@@ -1251,7 +1686,7 @@ struct AnnotationViewTestPage {
       this.mapLibreMap.setBearing(bearing, 500);
       
       this.statusMessage = `地图旋转至 ${bearing}°\n` +
-                          (this.rotatesEnabled ? 'Marker 会跟随地图旋转（待实现）' : '未启用跟随旋转');
+                          (this.rotatesEnabled ? 'Marker 会跟随地图旋转' : '未启用跟随旋转');
       
       promptAction.showToast({
         message: `旋转: ${bearing}°`,
@@ -1317,7 +1752,7 @@ struct AnnotationViewTestPage {
         showActionBar: true,
         title: 'AnnotationView 测试',
         mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildActionButtons()
+        actionButtons: (): void => this.buildActionButtons()
       })
     }
     .width('100%')

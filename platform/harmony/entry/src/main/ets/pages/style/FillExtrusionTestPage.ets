@@ -16,6 +16,7 @@ struct FillExtrusionTestPage {
   @State private currentStyleIndex: number = 0;
   @State private layerVisible: boolean = true;
   @State private translateAnchor: string = 'map'; // 'map' or 'viewport'
+  @State private verticalGradient: boolean = true; // 🆕 垂直渐变状态
   private readonly STYLES = [DEFAULT_STYLE_URLS.streets, DEFAULT_STYLE_URLS.bright];
 
   build() {
@@ -78,6 +79,8 @@ struct FillExtrusionTestPage {
       layer.setFillExtrusionOpacity(0.8);
       layer.setFillExtrusionHeight(['get', 'height']);
       layer.setFillExtrusionBase(0);
+      // 🆕 测试垂直渐变功能
+      layer.setFillExtrusionVerticalGradient(this.verticalGradient);
       map.addLayer(layer);
 
       showToast('3D 拉伸图层已添加');
@@ -161,6 +164,17 @@ struct FillExtrusionTestPage {
           .layoutWeight(1)
           .onClick(() => this.toggleTranslateAnchor())
       }
+      
+      Text('🆕 新增属性')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Button(`垂直渐变: ${this.verticalGradient ? '开启' : '关闭'}`)
+        .fontSize(14)
+        .width('100%')
+        .onClick(() => this.toggleVerticalGradient())
       
       Text('视图控制')
         .fontSize(16)
@@ -381,5 +395,29 @@ struct FillExtrusionTestPage {
     
     this.mapController.jumpTo(0, 39.9, 116.4, 45, 16);
     showToast('视图已重置');
+  }
+
+  // ========== 🆕 新增方法测试 ==========
+
+  /**
+   * 切换垂直渐变效果
+   */
+  private toggleVerticalGradient(): void {
+    if (!this.mapController) return;
+
+    try {
+      const layer = this.mapController.getLayer('extrusion-layer');
+
+      if (!layer || !(layer instanceof FillExtrusionLayer)) {
+        showToast('未找到拉伸图层');
+        return;
+      }
+
+      this.verticalGradient = !this.verticalGradient;
+      layer.setFillExtrusionVerticalGradient(this.verticalGradient);
+      showToast(`✅ 垂直渐变: ${this.verticalGradient ? '开启' : '关闭'}`);
+    } catch (error) {
+      showToast(`切换垂直渐变失败: ${error}`);
+    }
   }
 }

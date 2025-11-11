@@ -8,16 +8,15 @@
  * - 控制缩放范围
  */
 import { router } from '@kit.ArkUI';
-import { MapViewComponentController } from '@maplibre/harmony/maps/MapViewComponentController';
-import { MapLibreMap } from '@maplibre/harmony/maps/MapLibreMap';
+import { MapView, MapLibreMap, NativeMapView } from 'maplibre_harmony';
 import { CustomLayer, createCustomLayerWithColor } from '@maplibre/harmony/maps/style/layers';
 import type { RGBAColor } from '@maplibre/harmony/maps/style/layers';
 
 @Entry
 @Component
 struct CustomLayerTestPage {
-  private mapController: MapViewComponentController = new MapViewComponentController();
   private mapLibreMap: MapLibreMap | null = null;
+  private nativeMapView: NativeMapView | null = null;
   private customLayer: CustomLayer | null = null;
 
   @State currentColor: RGBAColor = { r: 0.0, g: 1.0, b: 0.0, a: 0.5 };  // 默认绿色半透明
@@ -50,10 +49,10 @@ struct CustomLayerTestPage {
       .backgroundColor('#f5f5f5')
 
       // 地图区域
-      MapViewComponentController({
-        controller: this.mapController,
+      MapView({
         onMapReady: (map: MapLibreMap) => {
           this.mapLibreMap = map;
+          this.nativeMapView = map.getNativeMapView();
           this.initMap();
         }
       })
@@ -78,10 +77,16 @@ struct CustomLayerTestPage {
 
           Button('重新添加')
             .onClick(() => {
+              if (!this.nativeMapView) {
+                return;
+              }
               this.removeCustomLayer();
-              setTimeout(() => {
+              const onMapRendered = (fully: boolean): void => {
+                this.nativeMapView?.removeOnDidFinishRenderingMapListener(onMapRendered);
                 this.addCustomLayer();
-              }, 100);
+              };
+              this.nativeMapView.addOnDidFinishRenderingMapListener(onMapRendered);
+              this.mapLibreMap?.triggerRepaint();
             })
             .width('48%')
             .enabled(this.layerAdded)

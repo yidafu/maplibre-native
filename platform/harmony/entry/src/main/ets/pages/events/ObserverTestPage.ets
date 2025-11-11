@@ -17,18 +17,33 @@
 
 import { TestPageLayout } from '../common/TestPageLayout';
 import { MapView, MapLibreMap } from 'maplibre_harmony';
-import {
+import type {
+  OnCanRemoveUnusedStyleImageListener,
+  OnGlyphsErrorListener,
+  OnGlyphsLoadedListener,
+  OnGlyphsRequestedListener,
   OnPreCompileShaderListener,
   OnPostCompileShaderListener,
   OnShaderCompileFailedListener,
-  OnGlyphsRequestedListener,
-  OnGlyphsLoadedListener,
-  OnGlyphsErrorListener,
-  OnSpriteRequestedListener,
-  OnSpriteLoadedListener,
   OnSpriteErrorListener,
-  OnTileActionListener
-} from 'maplibre_harmony/src/main/ets/maps/listeners/MapEventListeners';
+  OnSpriteLoadedListener,
+  OnSpriteRequestedListener,
+  OnTileActionListener,
+  OnWillStartLoadingMapListener,
+  OnDidFinishLoadingMapListener,
+  OnDidFailLoadingMapListener,
+  OnWillStartRenderingFrameListener,
+  OnDidFinishRenderingFrameWithStatsListener,
+  OnWillStartRenderingMapListener,
+  OnDidFinishRenderingMapListener,
+  OnDidFinishLoadingStyleListener,
+  OnStyleImageMissingListener,
+  OnDidBecomeIdleListener,
+  OnSourceChangedListener,
+  OnCameraWillChangeListener,
+  OnCameraIsChangingListener,
+  OnCameraDidChangeListener
+} from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
 
 // 事件日志接口
@@ -36,159 +51,6 @@ interface EventLogEntry {
   category: string;
   message: string;
   timestamp: string;
-}
-
-// ========== 观察者监听器实现类（对齐 Android API 风格）==========
-// 直接在监听器类中实现业务逻辑，而不是通过 callback 委托
-
-/**
- * Shader 编译前监听器实现
- */
-class OnPreCompileShaderListenerImpl implements OnPreCompileShaderListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onPreCompileShader(shaderId: number, backendType: number, defines: string): void {
-    this.page.handlePreCompileShader(shaderId, backendType, defines);
-  }
-}
-
-/**
- * Shader 编译后监听器实现
- */
-class OnPostCompileShaderListenerImpl implements OnPostCompileShaderListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onPostCompileShader(shaderId: number, backendType: number, defines: string): void {
-    this.page.handlePostCompileShader(shaderId, backendType, defines);
-  }
-}
-
-/**
- * Shader 编译失败监听器实现
- */
-class OnShaderCompileFailedListenerImpl implements OnShaderCompileFailedListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onShaderCompileFailed(shaderId: number, backendType: number, defines: string): void {
-    this.page.handleShaderCompileFailed(shaderId, backendType, defines);
-  }
-}
-
-/**
- * Glyph 请求监听器实现
- */
-class OnGlyphsRequestedListenerImpl implements OnGlyphsRequestedListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onGlyphsRequested(fontStack: string[], rangeStart: number, rangeEnd: number): void {
-    this.page.handleGlyphsRequested(fontStack, rangeStart, rangeEnd);
-  }
-}
-
-/**
- * Glyph 加载完成监听器实现
- */
-class OnGlyphsLoadedListenerImpl implements OnGlyphsLoadedListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onGlyphsLoaded(fontStack: string[], rangeStart: number, rangeEnd: number): void {
-    this.page.handleGlyphsLoaded(fontStack, rangeStart, rangeEnd);
-  }
-}
-
-/**
- * Glyph 加载错误监听器实现
- */
-class OnGlyphsErrorListenerImpl implements OnGlyphsErrorListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onGlyphsError(fontStack: string[], rangeStart: number, rangeEnd: number): void {
-    this.page.handleGlyphsError(fontStack, rangeStart, rangeEnd);
-  }
-}
-
-/**
- * Sprite 请求监听器实现
- */
-class OnSpriteRequestedListenerImpl implements OnSpriteRequestedListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onSpriteRequested(spriteId: string, url: string): void {
-    this.page.handleSpriteRequested(spriteId, url);
-  }
-}
-
-/**
- * Sprite 加载完成监听器实现
- */
-class OnSpriteLoadedListenerImpl implements OnSpriteLoadedListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onSpriteLoaded(spriteId: string, url: string): void {
-    this.page.handleSpriteLoaded(spriteId, url);
-  }
-}
-
-/**
- * Sprite 加载错误监听器实现
- */
-class OnSpriteErrorListenerImpl implements OnSpriteErrorListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onSpriteError(spriteId: string, url: string): void {
-    this.page.handleSpriteError(spriteId, url);
-  }
-}
-
-/**
- * Tile 操作监听器实现
- */
-class OnTileActionListenerImpl implements OnTileActionListener {
-  private page: ObserverTestPage;
-  
-  constructor(page: ObserverTestPage) {
-    this.page = page;
-  }
-  
-  onTileAction(operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string): void {
-    this.page.handleTileAction(operation, x, y, z, wrap, overscaledZ, sourceId);
-  }
 }
 
 @Entry
@@ -263,37 +125,65 @@ struct ObserverTestPage {
     
     try {
       // ========== Shader 编译监听器 ==========
-      const preCompileShaderListener = new OnPreCompileShaderListenerImpl(this);
+      const preCompileShaderListener: OnPreCompileShaderListener = (shaderId: number, backendType: number, defines: string) => {
+        this.handlePreCompileShader(shaderId, backendType, defines);
+      };
       this.mapController.addOnPreCompileShaderListener(preCompileShaderListener);
       
-      const postCompileShaderListener = new OnPostCompileShaderListenerImpl(this);
+      const postCompileShaderListener: OnPostCompileShaderListener = (shaderId: number, backendType: number, defines: string) => {
+        this.handlePostCompileShader(shaderId, backendType, defines);
+      };
       this.mapController.addOnPostCompileShaderListener(postCompileShaderListener);
       
-      const shaderCompileFailedListener = new OnShaderCompileFailedListenerImpl(this);
+      const shaderCompileFailedListener: OnShaderCompileFailedListener = (shaderId: number, backendType: number, defines: string) => {
+        this.handleShaderCompileFailed(shaderId, backendType, defines);
+      };
       this.mapController.addOnShaderCompileFailedListener(shaderCompileFailedListener);
       
       // ========== Glyph 加载监听器 ==========
-      const glyphsRequestedListener = new OnGlyphsRequestedListenerImpl(this);
+      const glyphsRequestedListener: OnGlyphsRequestedListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
+        this.handleGlyphsRequested(fontStack, rangeStart, rangeEnd);
+      };
       this.mapController.addOnGlyphsRequestedListener(glyphsRequestedListener);
       
-      const glyphsLoadedListener = new OnGlyphsLoadedListenerImpl(this);
+      const glyphsLoadedListener: OnGlyphsLoadedListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
+        this.handleGlyphsLoaded(fontStack, rangeStart, rangeEnd);
+      };
       this.mapController.addOnGlyphsLoadedListener(glyphsLoadedListener);
       
-      const glyphsErrorListener = new OnGlyphsErrorListenerImpl(this);
+      const glyphsErrorListener: OnGlyphsErrorListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
+        this.handleGlyphsError(fontStack, rangeStart, rangeEnd);
+      };
       this.mapController.addOnGlyphsErrorListener(glyphsErrorListener);
       
       // ========== Sprite 加载监听器 ==========
-      const spriteRequestedListener = new OnSpriteRequestedListenerImpl(this);
+      const spriteRequestedListener: OnSpriteRequestedListener = (spriteId: string, url: string) => {
+        this.handleSpriteRequested(spriteId, url);
+      };
       this.mapController.addOnSpriteRequestedListener(spriteRequestedListener);
       
-      const spriteLoadedListener = new OnSpriteLoadedListenerImpl(this);
+      const spriteLoadedListener: OnSpriteLoadedListener = (spriteId: string, url: string) => {
+        this.handleSpriteLoaded(spriteId, url);
+      };
       this.mapController.addOnSpriteLoadedListener(spriteLoadedListener);
       
-      const spriteErrorListener = new OnSpriteErrorListenerImpl(this);
+      const spriteErrorListener: OnSpriteErrorListener = (spriteId: string, url: string) => {
+        this.handleSpriteError(spriteId, url);
+      };
       this.mapController.addOnSpriteErrorListener(spriteErrorListener);
       
       // ========== Tile 操作监听器 ==========
-      const tileActionListener = new OnTileActionListenerImpl(this);
+      const tileActionListener: OnTileActionListener = (
+        operation: number,
+        x: number,
+        y: number,
+        z: number,
+        wrap: number,
+        overscaledZ: number,
+        sourceId: string
+      ) => {
+        this.handleTileAction(operation, x, y, z, wrap, overscaledZ, sourceId);
+      };
       this.mapController.addOnTileActionListener(tileActionListener);
       
       console.info('[ObserverTestPage] ✅ 所有观察者监听器已注册（使用接口实现类）');

@@ -176,9 +176,7 @@ struct StyleTestPage {
         initialZoom: 5,
         initialBearing: 0,
         initialPitch: 0,
-        onMapReady: (map: MapLibreMap) => {
-          this.initializeMap(map);
-        }
+        onMapReady: this.initializeMap,
       })
         .width('100%')
         .height('100%')
@@ -273,8 +271,8 @@ struct StyleTestPage {
         .fontSize(14)
         .backgroundColor('#2196F3')
 
-      Button('3. 杭州矢量地图 ⚠️ 内网')
-        .onClick(() => this.loadLocalStyle('styles.json', '杭州矢量地图'))
+      Button('3. OpenFreeMap Bright 样式')
+        .onClick(() => this.loadLocalStyle('style-bright.json', 'OpenFreeMap Bright'))
         .width('100%')
         .fontSize(14)
         .backgroundColor('#FF9800')
@@ -460,7 +458,7 @@ struct StyleTestPage {
   /**
    * 初始化地图
    */
-  private initializeMap(map?: MapLibreMap) {
+  private initializeMap = (map?: MapLibreMap) =>{
     if (this.isInitializing) {
       hilog.warn(DOMAIN, TAG, 'Map is already initializing');
       return;

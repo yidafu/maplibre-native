@@ -250,6 +250,60 @@ struct SymbolLayerTestPage {
           .onClick(() => this.changeIconHaloWidth())
       }
       
+      Text('🆕 新增属性')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 8, bottom: 4 })
+      
+      Row({ space: 8 }) {
+        Button('文本字母间距')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testTextLetterSpacing())
+        
+        Button('文本行高')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testTextLineHeight())
+      }
+      
+      Row({ space: 8 }) {
+        Button('文本旋转')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testTextRotate())
+        
+        Button('文本转换')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testTextTransform())
+      }
+      
+      Row({ space: 8 }) {
+        Button('文本光晕模糊')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testTextHaloBlur())
+        
+        Button('文本平移')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testTextTranslate())
+      }
+      
+      Row({ space: 8 }) {
+        Button('图标平移')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testIconTranslate())
+        
+        Button('符号间距')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => this.testSymbolSpacing())
+      }
+      
       Text('显示模式')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
@@ -920,6 +974,131 @@ struct SymbolLayerTestPage {
     
     this.mapController.jumpTo(0, 35, 112, 0, 4);  // ✅ 修复：中国中部，zoom=4
     showToast('视图已重置');
+  }
+
+  // ========== 🆕 新增方法测试 ==========
+
+  /**
+   * 测试 setTextLetterSpacing
+   */
+  private testTextLetterSpacing(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const spacing = Math.random() * 0.5; // 0-0.5
+    layer.setTextLetterSpacing(spacing);
+    showToast(`✅ 字母间距: ${spacing.toFixed(2)}`);
+  }
+
+  /**
+   * 测试 setTextLineHeight
+   */
+  private testTextLineHeight(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const height = 1.0 + Math.random() * 0.5; // 1.0-1.5
+    layer.setTextLineHeight(height);
+    showToast(`✅ 文本行高: ${height.toFixed(2)}em`);
+  }
+
+  /**
+   * 测试 setTextRotate
+   */
+  private testTextRotate(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const angle = Math.random() * 360;
+    layer.setTextRotate(angle);
+    showToast(`✅ 文本旋转: ${angle.toFixed(0)}°`);
+  }
+
+  /**
+   * 测试 setTextTransform
+   */
+  private testTextTransform(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const transforms = ['none', 'uppercase', 'lowercase'];
+    const current = Math.floor(Math.random() * transforms.length);
+    layer.setTextTransform(transforms[current]);
+    showToast(`✅ 文本转换: ${transforms[current]}`);
+  }
+
+  /**
+   * 测试 setTextHaloBlur
+   */
+  private testTextHaloBlur(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const blur = Math.random() * 3; // 0-3
+    layer.setTextHaloBlur(blur);
+    showToast(`✅ 光晕模糊: ${blur.toFixed(1)}px`);
+  }
+
+  /**
+   * 测试 setTextTranslate
+   */
+  private testTextTranslate(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const x = Math.random() * 20 - 10;
+    const y = Math.random() * 20 - 10;
+    layer.setTextTranslate([x, y]);
+    showToast(`✅ 文本平移: [${x.toFixed(1)}, ${y.toFixed(1)}]`);
+  }
+
+  /**
+   * 测试 setIconTranslate
+   */
+  private testIconTranslate(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const x = Math.random() * 20 - 10;
+    const y = Math.random() * 20 - 10;
+    layer.setIconTranslate([x, y]);
+    showToast(`✅ 图标平移: [${x.toFixed(1)}, ${y.toFixed(1)}]`);
+  }
+
+  /**
+   * 测试 setSymbolSpacing
+   */
+  private testSymbolSpacing(): void {
+    const layer = this.mapController?.getLayer('symbol-layer');
+    if (!layer || !(layer instanceof SymbolLayer)) {
+      showToast('未找到符号图层');
+      return;
+    }
+
+    const spacing = 100 + Math.random() * 300; // 100-400
+    layer.setSymbolSpacing(spacing);
+    showToast(`✅ 符号间距: ${spacing.toFixed(0)}px`);
   }
 }
 
