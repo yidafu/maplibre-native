@@ -16,7 +16,7 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
-// ==================== MapSnapshotInstance 实现 ====================
+// ==================== MapSnapshotInstance implementation ====================
 
 MapSnapshotInstance::MapSnapshotInstance(
     napi_env env,
@@ -46,7 +46,7 @@ mbgl::ScreenCoordinate MapSnapshotInstance::pixelForLatLng(const mbgl::LatLng& l
         return mbgl::ScreenCoordinate{0, 0};
     }
     
-    // 调用转换函数并应用像素比
+    // Call the conversion function and apply the pixel ratio
     mbgl::ScreenCoordinate point = pointForFn_(latLng);
     return mbgl::ScreenCoordinate{point.x * pixelRatio_, point.y * pixelRatio_};
 }
@@ -57,12 +57,12 @@ mbgl::LatLng MapSnapshotInstance::latLngForPixel(const mbgl::ScreenCoordinate& p
         return mbgl::LatLng{0, 0};
     }
     
-    // 除以像素比后再转换
+    // Divide by the pixel ratio before converting back
     mbgl::ScreenCoordinate adjustedPoint{point.x / pixelRatio_, point.y / pixelRatio_};
     return latLngForFn_(adjustedPoint);
 }
 
-// ==================== NAPI 对象创建 ====================
+// ==================== NAPI object creation ====================
 
 napi_value CreateMapSnapshotObject(
     napi_env env,
@@ -72,7 +72,7 @@ napi_value CreateMapSnapshotObject(
     mbgl::MapSnapshotter::PointForFn pointForFn,
     mbgl::MapSnapshotter::LatLngForFn latLngForFn
 ) {
-    // 创建 MapSnapshotInstance
+    // Allocate the MapSnapshotInstance
     auto* snapshotInstance = new MapSnapshotInstance(
         env,
         std::move(image),
@@ -82,25 +82,25 @@ napi_value CreateMapSnapshotObject(
         latLngForFn
     );
 
-    // 创建图像数据的 ArrayBuffer
+    // Create an ArrayBuffer for the image data
     void* data;
     napi_value arrayBuffer;
     size_t byteLength = snapshotInstance->getImage().bytes();
     napi_create_arraybuffer(env, byteLength, &data, &arrayBuffer);
     std::memcpy(data, snapshotInstance->getImage().data.get(), byteLength);
 
-    // 创建 JavaScript 对象
+    // Create the JavaScript object
     napi_value jsSnapshot;
     napi_create_object(env, &jsSnapshot);
 
-    // 包装 native 指针
+    // Wrap the native pointer
     napi_wrap(env, jsSnapshot, snapshotInstance,
               [](napi_env env, void* data, void* hint) {
                   delete static_cast<MapSnapshotInstance*>(data);
               },
               nullptr, nullptr);
 
-    // 设置属性
+    // Set object properties
     napi_value widthVal, heightVal, pixelRatioVal;
     napi_create_uint32(env, snapshotInstance->getWidth(), &widthVal);
     napi_create_uint32(env, snapshotInstance->getHeight(), &heightVal);
@@ -111,7 +111,7 @@ napi_value CreateMapSnapshotObject(
     napi_set_named_property(env, jsSnapshot, "height", heightVal);
     napi_set_named_property(env, jsSnapshot, "pixelRatio", pixelRatioVal);
 
-    // 添加 attributions 数组
+    // Add the attributions array
     if (!attributions.empty()) {
         napi_value attributionsArray;
         napi_create_array_with_length(env, attributions.size(), &attributionsArray);
@@ -125,7 +125,7 @@ napi_value CreateMapSnapshotObject(
         napi_set_named_property(env, jsSnapshot, "attributions", attributionsArray);
     }
 
-    // 绑定方法
+    // Bind methods
     napi_property_descriptor methods[] = {
         {"pixelForLatLng", nullptr, MapSnapshot_pixelForLatLng, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"latLngForPixel", nullptr, MapSnapshot_latLngForPixel, nullptr, nullptr, nullptr, napi_default, nullptr}
@@ -138,19 +138,19 @@ napi_value CreateMapSnapshotObject(
     return jsSnapshot;
 }
 
-// ==================== NAPI 方法实现 ====================
+// ==================== NAPI method implementations ====================
 
 /**
  * MapSnapshot.pixelForLatLng(latitude, longitude)
  * 
- * 参考 Android: MapSnapshot.pixelForLatLng(LatLng)
+ * Mirrors Android: MapSnapshot.pixelForLatLng(LatLng)
  */
 napi_value MapSnapshot_pixelForLatLng(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 MapSnapshotInstance
+    // Retrieve the MapSnapshotInstance
     MapSnapshotInstance* snapshotInstance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotInstance)) != napi_ok ||
         !snapshotInstance) {
@@ -158,17 +158,17 @@ napi_value MapSnapshot_pixelForLatLng(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    // 解析参数
+    // Parse arguments
     double latitude = args.GetDouble(0, "latitude");
     double longitude = args.GetDouble(1, "longitude");
     if (args.HasError()) return args.Undefined();
 
     try {
-        // 执行坐标转换
+        // Perform coordinate conversion
         mbgl::LatLng latLng(latitude, longitude);
         mbgl::ScreenCoordinate pixel = snapshotInstance->pixelForLatLng(latLng);
 
-        // 创建返回对象 {x, y}
+        // Create the return object {x, y}
         napi_value result = PointHarmony::CreatePointObject(env, pixel);
         return result;
         
@@ -181,14 +181,14 @@ napi_value MapSnapshot_pixelForLatLng(napi_env env, napi_callback_info info) {
 /**
  * MapSnapshot.latLngForPixel(x, y)
  * 
- * 参考 Android: MapSnapshot.latLngForPixel(PointF)
+ * Mirrors Android: MapSnapshot.latLngForPixel(PointF)
  */
 napi_value MapSnapshot_latLngForPixel(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 MapSnapshotInstance
+    // Retrieve the MapSnapshotInstance
     MapSnapshotInstance* snapshotInstance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotInstance)) != napi_ok ||
         !snapshotInstance) {
@@ -196,17 +196,17 @@ napi_value MapSnapshot_latLngForPixel(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    // 解析参数
+    // Parse arguments
     double x = args.GetDouble(0, "x");
     double y = args.GetDouble(1, "y");
     if (args.HasError()) return args.Undefined();
 
     try {
-        // 执行坐标转换
+        // Perform coordinate conversion
         mbgl::ScreenCoordinate point(x, y);
         mbgl::LatLng latLng = snapshotInstance->latLngForPixel(point);
 
-        // 创建返回对象 {latitude, longitude}
+        // Create the return object {latitude, longitude}
         napi_value result = LatLngHarmony::CreateLatLngObject(env, latLng);
         return result;
         

@@ -91,8 +91,8 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // RasterDEMSource 需要 urlOrTileset, tileSize 和 options 参数
-        // 使用空字符串和默认值
+        // RasterDEMSource requires urlOrTileset, tileSize, and options arguments
+        // Use an empty string and default values
         mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = std::string("");
         uint16_t tileSize = 512;
         std::optional<mbgl::style::RasterDEMOptions> options = std::nullopt;
@@ -113,7 +113,7 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         Logger::info("RasterDemSourceNAPI", "RasterDemSource created: %s", sourceId.c_str());
     
-    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    // Add the _TYPE_ property for ETS type detection
     napi_value typeValue;
     napi_create_string_utf8(env, "RasterDemSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, jsThis, "_TYPE_", typeValue);
@@ -132,7 +132,7 @@ napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::Raster
         return result;
     }
     
-    // 获取构造函数
+    // Retrieve the constructor
     napi_value cons;
     napi_status status = napi_get_reference_value(env, constructor, &cons);
     if (status != napi_ok) {
@@ -142,7 +142,7 @@ napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::Raster
         return result;
     }
     
-    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    // Create a plain object and set its prototype (avoid invoking the JS constructor)
     napi_value instance;
     status = napi_create_object(env, &instance);
     if (status != napi_ok) {
@@ -152,7 +152,7 @@ napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::Raster
         return result;
     }
     
-    // 获取构造函数的原型
+    // Retrieve the constructor prototype
     napi_value prototype;
     status = napi_get_named_property(env, cons, "prototype", &prototype);
     if (status != napi_ok) {
@@ -162,7 +162,7 @@ napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::Raster
         return result;
     }
     
-    // 设置对象的原型
+    // Set the object's prototype
     status = napi_set_named_property(env, instance, "__proto__", prototype);
     if (status != napi_ok) {
         Logger::error("CreateInstance", "Failed to set prototype");
@@ -171,10 +171,10 @@ napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::Raster
         return result;
     }
     
-    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    // Create the NAPI wrapper (using the WeakPtr constructor)
     RasterDemSourceNAPI* napiObj = new RasterDemSourceNAPI(sourcePtr);
     
-    // 包装到 JS 对象
+    // Wrap into the JS object
     status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete napiObj;
@@ -184,7 +184,7 @@ napi_value RasterDemSourceNAPI::CreateInstance(napi_env env, mbgl::style::Raster
         return result;
     }
     
-    // 添加 _TYPE_ 属性
+    // Add the _TYPE_ property
     napi_value typeValue;
     napi_create_string_utf8(env, "RasterDemSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, instance, "_TYPE_", typeValue);
@@ -253,7 +253,7 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 只有在 Source 尚未添加到 Style（仍由 unique_ptr 持有）时才能重建
+    // Rebuild only while the source has not yet been added to the style (still owned by unique_ptr)
     auto* ownedSource = sourceNapi->source.get();
     if (!ownedSource) {
         napi_throw_error(env, nullptr, "RasterDEMSource URL cannot be changed after adding to the map style");

@@ -30,7 +30,7 @@ bool CallbackManager::RegisterCallback(const std::string& name, napi_value callb
         return false;
     }
     
-    // 检查是否是有效的函数
+    // Verify the callback is a valid function
     napi_valuetype valueType;
     napi_status status = napi_typeof(env_, callback, &valueType);
     if (status != napi_ok || valueType != napi_function) {
@@ -40,23 +40,23 @@ bool CallbackManager::RegisterCallback(const std::string& name, napi_value callb
     
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 检查是否已存在相同的回调（避免重复添加）
+    // Check whether the same callback already exists (avoid duplicates)
     auto it = callbacks_.find(name);
     if (it != callbacks_.end()) {
         for (const auto& existing : it->second) {
-            // 注意：无法直接比较已包装的回调，所以我们允许重复添加
-            // 调用者需要确保不重复添加相同的回调
+            // Note: wrapped callbacks cannot be compared directly, so we allow duplicates
+            // Callers must ensure they do not register the same callback repeatedly
         }
     }
     
-    // 创建 ThreadSafeCallback
+    // Create ThreadSafeCallback
     auto tsfn = ThreadSafeCallback::Create(env_, callback, name.c_str());
     if (!tsfn) {
         Logger::error("CallbackManager", "Failed to create ThreadSafeCallback for '%s'", name.c_str());
         return false;
     }
     
-    // 添加到回调列表
+    // Add to callback list
     callbacks_[name].push_back(std::move(tsfn));
     return true;
 }
@@ -75,7 +75,7 @@ bool CallbackManager::UnregisterCallback(const std::string& name) {
         return false;
     }
     
-    // 释放所有 ThreadSafeCallback
+    // Release all ThreadSafeCallbacks
     for (auto& tsfn : it->second) {
         tsfn->Release();
     }
@@ -98,13 +98,13 @@ bool CallbackManager::UnregisterCallback(const std::string& name, napi_value cal
         return false;
     }
     
-    // 由于无法直接比较已包装的回调，我们简单地移除最后一个
-    // 这是一个简化实现，假设调用者按正确顺序管理回调
+    // Because wrapped callbacks cannot be directly compared, simply remove the last one
+    // Simplified logic assumes the caller manages callbacks in the correct order
     if (!it->second.empty()) {
         it->second.back()->Release();
         it->second.pop_back();
         
-        // 如果没有剩余监听器，移除整个条目
+        // Remove the entry if no listeners remain
         if (it->second.empty()) {
             callbacks_.erase(it);
         }
@@ -129,7 +129,7 @@ bool CallbackManager::InvokeCallback(
         return false;
     }
     
-    // 获取回调列表（需要持有锁）
+    // Obtain callback list (requires holding the lock)
     std::unique_lock<std::mutex> lock(mutex_);
     
     auto it = callbacks_.find(name);
@@ -138,21 +138,21 @@ bool CallbackManager::InvokeCallback(
         return false;
     }
     
-    // 收集所有回调的原始指针（避免在持有锁时调用）
+    // Collect raw pointers to callbacks (avoid invoking while holding the lock)
     std::vector<ThreadSafeCallback*> callbackPtrs;
     callbackPtrs.reserve(it->second.size());
     for (const auto& cb : it->second) {
         callbackPtrs.push_back(cb.get());
     }
     
-    // 释放锁
+    // Release the lock
     lock.unlock();
     
-    // 调用所有回调（不持有锁）
+    // Invoke callbacks (lock already released)
     bool allSucceeded = true;
     for (size_t i = 0; i < callbackPtrs.size(); ++i) {
-        // 为每个回调创建独立的 builder 副本
-        // 注意：这要求 builder 是可复制的，或者我们需要不同的策略
+        // Create an independent builder copy for each callback
+        // Note: requires the builder to be copyable, otherwise another strategy is needed
         if (!callbackPtrs[i]->Call(builder)) {
             Logger::error("CallbackManager", "Failed to invoke callback #%zu for: %s", i, name.c_str());
             allSucceeded = false;
@@ -233,7 +233,7 @@ size_t CallbackManager::GetCallbackCount(const std::string& name) const {
 }
 
 void CallbackManager::Clear() {
-    // 🔍 ANR监控：记录清理耗时
+    // ANR monitoring: record cleanup duration
     ANRDetector detector("CallbackManager::Clear", 50, 500);
     
     if (cleared_) {
@@ -250,17 +250,17 @@ void CallbackManager::Clear() {
     Logger::info("CallbackManager", "Clearing %zu callback names with %zu total listeners", 
                  callbacks_.size(), totalCallbacks);
     
-    // ⚡ ANR FIX: 简化实现，直接释放所有回调
-    // 原因：ThreadSafeCallback::Release() 内部已有保护机制
-    // 解决方案：通过 ANRDetector 监控整体耗时，如果单个回调耗时过长会被记录
+    // ANR fix: simplified approach, release all callbacks directly
+    // Reason: ThreadSafeCallback::Release() already includes safeguards
+    // Solution: monitor total duration with ANRDetector; excessively slow callbacks are logged
     //
-    // 注意：由于 HarmonyOS 标准库限制，无法使用 std::async 实现细粒度超时控制
-    // 如果整体清理超过500ms，ANRDetector 会发出错误警告
+    // Note: HarmonyOS standard library limitations prevent fine-grained timeouts via std::async
+    // If cleanup exceeds 500 ms, ANRDetector emits an error warning
     
     size_t releasedCount = 0;
     for (auto& pair : callbacks_) {
         for (auto& callback : pair.second) {
-            // 为每个回调添加细粒度的超时监控
+            // Add per-callback timeout monitoring
             {
                 ANRDetector releaseDetector("callback->Release", 50, 200);
                 callback->Release();
@@ -276,8 +276,8 @@ void CallbackManager::Clear() {
 }
 
 bool CallbackManager::AreCallbacksEqual(napi_value callback1, napi_value callback2) const {
-    // N-API 不提供直接比较两个 napi_value 的方法
-    // 我们使用 napi_strict_equals 来比较
+    // N-API does not provide direct comparison for two napi_value handles
+    // Use napi_strict_equals for comparison
     bool isEqual = false;
     napi_status status = napi_strict_equals(env_, callback1, callback2, &isEqual);
     return (status == napi_ok) && isEqual;

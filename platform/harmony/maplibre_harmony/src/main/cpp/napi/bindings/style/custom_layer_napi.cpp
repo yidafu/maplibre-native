@@ -10,7 +10,7 @@ namespace harmony {
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-// 静态成员初始化
+// Static member initialization
 napi_ref CustomLayerNAPI::constructor = nullptr;
 
 CustomLayerNAPI::CustomLayerNAPI(const std::string& layerId, 
@@ -89,17 +89,17 @@ napi_value CustomLayerNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 创建 ExampleCustomLayerHost 实例
-    // 使用 unique_ptr，所有权将转移给 CustomLayer
+    // Instantiate ExampleCustomLayerHost
+    // Use unique_ptr so ownership transfers to CustomLayer
     auto hostPtr = std::make_unique<ExampleCustomLayerHost>();
     
-    // 保存原始指针用于后续访问（在所有权转移之前）
+    // Preserve the raw pointer for later access (before ownership transfer)
     ExampleCustomLayerHost* hostRawPtr = hostPtr.get();
     
-    // 创建 CustomLayer 实例（获得 host 的所有权）
+    // Create the CustomLayer instance (takes ownership of the host)
     auto layer = std::make_unique<mbgl::style::CustomLayer>(layerId, std::move(hostPtr));
     
-    // 创建 NAPI 包装对象
+    // Create the NAPI wrapper object
     CustomLayerNAPI* layerObj = new CustomLayerNAPI(layerId, std::move(layer), hostRawPtr);
     
     napi_status status = napi_wrap(env, thisVar, layerObj, Destructor, nullptr, nullptr);

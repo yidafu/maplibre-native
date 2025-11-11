@@ -9,44 +9,44 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * ThreadSafeCallback - 线程安全的跨线程回调包装器
- * 
- * 封装 N-API ThreadSafeFunction，支持从任意线程安全地调用 JavaScript 回调。
- * 参考 Android 的 MapRendererRunnable 设计，但使用 N-API 的 ThreadSafeFunction。
- * 
- * 使用示例：
+ * ThreadSafeCallback - thread-safe cross-thread callback wrapper.
+ *
+ * Wraps N-API ThreadSafeFunction to allow invoking JavaScript callbacks safely from any thread.
+ * Inspired by Android's MapRendererRunnable design but implemented with N-API's ThreadSafeFunction.
+ *
+ * Usage:
  * ```cpp
- * // 在 UI 线程创建
+ * // Create on the UI thread
  * auto callback = ThreadSafeCallback::Create(env, jsCallback, "onMapLoaded");
  * 
- * // 从渲染线程调用
+ * // Call from the render thread
  * callback->Call([](napi_env env) {
  *     napi_value result;
  *     napi_create_string_utf8(env, "Map loaded", NAPI_AUTO_LENGTH, &result);
  *     return result;
  * });
  * 
- * // 销毁（自动在析构时调用）
+ * // Destroy (automatically handled in destructor)
  * callback->Release();
  * ```
  */
 class ThreadSafeCallback {
 public:
     /**
-     * 数据构造器 - 用于在回调中构造参数
-     * 
-     * @param env N-API 环境（已在 UI 线程）
-     * @return 回调参数（napi_value）
+     * Data builder invoked on the UI thread to construct callback arguments.
+     *
+     * @param env N-API environment (UI thread)
+     * @return Callback argument (napi_value)
      */
     using DataBuilder = std::function<napi_value(napi_env env)>;
     
     /**
-     * 创建线程安全的回调
-     * 
-     * @param env N-API 环境
-     * @param callback JavaScript 回调函数
-     * @param resourceName 资源名称（用于调试）
-     * @return ThreadSafeCallback 实例，失败返回 nullptr
+     * Create a thread-safe callback.
+     *
+     * @param env N-API environment
+     * @param callback JavaScript callback function
+     * @param resourceName Resource name (for debugging)
+     * @return ThreadSafeCallback instance, or nullptr on failure
      */
     static std::unique_ptr<ThreadSafeCallback> Create(
         napi_env env,
@@ -56,40 +56,40 @@ public:
     
     ~ThreadSafeCallback();
     
-    // 禁止拷贝
+    // Disable copying
     ThreadSafeCallback(const ThreadSafeCallback&) = delete;
     ThreadSafeCallback& operator=(const ThreadSafeCallback&) = delete;
     
     /**
-     * 从任意线程调用回调
-     * 
-     * @param builder 数据构造器（在 UI 线程执行）
-     * @return 是否成功调度回调
+     * Invoke the callback from any thread.
+     *
+     * @param builder Data builder executed on the UI thread
+     * @return True if dispatch succeeded
      */
     bool Call(DataBuilder builder);
     
     /**
-     * 带单个参数的便捷调用
+     * Convenience call with a single string argument.
      */
     bool CallWithString(const std::string& value);
     
     /**
-     * 带对象参数的便捷调用
+     * Convenience call with an object argument.
      */
     bool CallWithObject(const std::function<void(napi_env, napi_value)>& buildObject);
     
     /**
-     * 无参数调用
+     * Convenience call with no arguments.
      */
     bool CallEmpty();
     
     /**
-     * 释放资源（可提前调用，析构时自动调用）
+     * Release resources (may be called explicitly; destructor also releases).
      */
     void Release();
     
     /**
-     * 检查是否有效
+     * Check whether the callback remains valid.
      */
     bool IsValid() const { return tsfn_ != nullptr; }
     
@@ -97,7 +97,7 @@ private:
     ThreadSafeCallback() = default;
     
     /**
-     * 初始化 ThreadSafeFunction
+     * Initialize the underlying ThreadSafeFunction.
      */
     bool Initialize(
         napi_env env,
@@ -106,7 +106,7 @@ private:
     );
     
     /**
-     * 回调数据包装
+     * Wrapper for callback data.
      */
     struct CallbackData {
         DataBuilder builder;
@@ -115,7 +115,7 @@ private:
     };
     
     /**
-     * N-API 回调：在 UI 线程执行
+     * N-API callback executed on the UI thread.
      */
     static void CallJS(
         napi_env env,
@@ -125,7 +125,7 @@ private:
     );
     
     /**
-     * ThreadSafeFunction 终结器
+     * ThreadSafeFunction finalizer.
      */
     static void Finalize(
         napi_env env,

@@ -16,7 +16,7 @@ using mbgl::harmony::Logger;
 namespace mbgl {
 namespace harmony {
 
-// 静态实例计数器初始化
+// Static instance counter initialization
 std::atomic<uint64_t> HarmonyMapRenderThread::globalInstanceCounter_{0};
 
 HarmonyMapRenderThread::HarmonyMapRenderThread(
@@ -38,12 +38,12 @@ HarmonyMapRenderThread::HarmonyMapRenderThread(
 }
 
 HarmonyMapRenderThread::~HarmonyMapRenderThread() {
-    // 停止 VSync 管理器
+    // Stop the VSync manager
     if (vsyncManager_) {
         vsyncManager_->stop();
     }
     
-    // 确保线程已停止
+    // Ensure the thread has stopped
     if (started_) {
         Logger::error("MapRenderThread", 
             "⚠️  IMPROPER SHUTDOWN: Thread still running in destructor!");
@@ -59,15 +59,15 @@ void HarmonyMapRenderThread::start() {
         return;
     }
     
-    // 使用条件变量等待初始化完成
+    // Use a condition variable to wait for initialization to finish
     std::unique_lock<std::mutex> lock(mutex_);
     
-    // 启动线程
+    // Launch the thread
     thread_ = std::thread([this]() {
         threadLoop();
     });
     
-    // 等待初始化完成（最多 10 秒）
+    // Wait for initialization to complete (up to 10 seconds)
     auto timeout = std::chrono::seconds(10);
     if (!cv_.wait_for(lock, timeout, [this]() { return initialized_.load(); })) {
         Logger::error("MapRenderThread", "Thread initialization timeout!");
@@ -76,15 +76,15 @@ void HarmonyMapRenderThread::start() {
 }
 
 void HarmonyMapRenderThread::threadLoop() {
-    // 🎯 设置当前线程为渲染线程
+    // 🎯 Mark the current thread as the render thread
     threadId_ = std::this_thread::get_id();
     started_ = true;
     
     try {
-        // 初始化所有对象
+        // Initialize all components
         if (!initialize()) {
             Logger::error("MapRenderThread", "Initialization failed");
-            // 通知初始化失败
+            // Notify that initialization failed
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 initialized_ = false;
@@ -95,26 +95,26 @@ void HarmonyMapRenderThread::threadLoop() {
         
         Logger::warn("MapRenderThread", "⚠️  EGL Context not initialized yet - waiting for setNativeWindow()");
         
-        // ✅ 确认 Scheduler 设置
+        // ✅ Verify the scheduler is set
         auto* scheduler = Scheduler::GetCurrent();
         if (scheduler != runLoop_.get()) {
             Logger::error("MapRenderThread", "❌ SCHEDULER MISMATCH!");
         }
         
-        // 通知初始化完成（必须在 runLoop_->run() 之前！）
+        // Notify that initialization is complete (must happen before runLoop_->run()!)
         {
             std::lock_guard<std::mutex> lock(mutex_);
             initialized_ = true;
         }
         cv_.notify_one();
         
-        // 🎯 统一线程模型：RunLoop 处理所有任务
-        // - Actor 消息（FileSource 回调等）
-        // - VSync 回调（通过 renderRunLoop_->invoke()）
-        // - EGL 渲染操作
+        // 🎯 Unified threading model: the RunLoop handles every task
+        // - Actor messages (FileSource callbacks, etc.)
+        // - VSync callbacks (via renderRunLoop_->invoke())
+        // - EGL rendering operations
         runLoop_->run();
         
-        // 清理资源
+        // Clean up resources
         cleanup();
         
     } catch (const std::exception& e) {
@@ -123,14 +123,14 @@ void HarmonyMapRenderThread::threadLoop() {
 }
 
 bool HarmonyMapRenderThread::initialize() {
-    // 步骤 1: 创建 RunLoop（必须最先）
+    // Step 1: create the RunLoop (must happen first)
     runLoop_ = std::make_unique<util::RunLoop>();
     if (!runLoop_) {
         Logger::error("MapRenderThread", "Failed to create RunLoop");
         return false;
     }
     
-    // 步骤 2: 创建线程池
+    // Step 2: create the thread pool
     auto backgroundScheduler = Scheduler::GetBackground();
     if (!backgroundScheduler) {
         Logger::error("MapRenderThread", "Failed to get background scheduler");
@@ -141,7 +141,7 @@ bool HarmonyMapRenderThread::initialize() {
         util::SimpleIdentity::Empty
     );
     
-    // 步骤 3: 创建 Renderer（不需要 EGL Context 即可创建）
+    // Step 3: create the Renderer (does not require an EGL context yet)
     auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
     if (!glBackend) {
         Logger::error("MapRenderThread", "Invalid GL backend");
@@ -155,7 +155,7 @@ bool HarmonyMapRenderThread::initialize() {
         return false;
     }
     
-    // 步骤 4: 创建 Map（会自动使用当前 Scheduler）
+    // Step 4: create the Map (it automatically uses the current scheduler)
     map_ = std::make_unique<Map>(
         *this,  // RendererFrontend
         *mapObserver_,
@@ -172,8 +172,8 @@ bool HarmonyMapRenderThread::initialize() {
 }
 
 void HarmonyMapRenderThread::cleanup() {
-    // ⚠️  Map 和 Renderer 应该已在 stop() 中销毁
-    // 这里只是保险检查，正常情况下不应该执行
+    // ⚠️ Map and Renderer should already be destroyed in stop()
+    // This is just a safety check and should not normally execute
     if (map_) {
         Logger::warn("MapRenderThread", "⚠️  Map still exists in cleanup() - destroying now");
         map_.reset();
@@ -184,27 +184,27 @@ void HarmonyMapRenderThread::cleanup() {
         renderer_.reset();
     }
     
-    // 清理 EGL 资源
+    // Clean up EGL resources
     if (backend_) {
         auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
         glBackend->cleanupEGL();
         
-        // ⚡ 关键修复：手动注销实例
-        // 原因：gfx::Backend 没有虚析构函数，backend_.reset() 不会调用派生类析构
-        // 因此必须手动调用 unregisterInstance()，否则实例计数永远不减少
+        // ⚡ Critical fix: manually unregister the instance
+        // Reason: gfx::Backend lacks a virtual destructor, so backend_.reset() does not invoke the subclass destructor
+        // We must call unregisterInstance() manually to decrement the active-count
         EGLDisplayManager::getInstance().unregisterInstance();
         
         backend_.reset();
     }
     
-    // 清理线程池
+    // Clean up the thread pool
     if (threadPool_) {
         threadPool_.reset();
     }
     
-    // VSync 的 RunLoop 引用已在 stop() 中清空
+    // The VSync RunLoop reference was cleared during stop()
     
-    // 销毁 RunLoop
+    // Destroy the RunLoop
     if (runLoop_) {
         runLoop_.reset();
     }
@@ -221,35 +221,35 @@ void HarmonyMapRenderThread::stop() {
         return;
     }
     
-    // ✅ 步骤 1: 立即设置销毁标志，阻止新的渲染请求
+    // ✅ Step 1: mark destruction immediately to block new render requests
     destroying_.store(true);
     
     shouldStop_ = true;
     paused_ = true;
 
-    // ✅ 步骤 2: 停止 VSync，清理待渲染状态
+    // ✅ Step 2: stop VSync and clear any pending render state
     if (vsyncManager_) {
         vsyncManager_->stop();
     }
     pendingRender_ = false;
     pendingUpdateParams_.reset();
     
-    // ✅ 步骤 3: 在渲染线程上清理 Map 和 Renderer
-    // 确保所有 Mailbox 消息处理完后再销毁
+    // ✅ Step 3: clean up Map and Renderer on the render thread
+    // Ensure all mailbox messages are processed before destruction
     if (runLoop_ && map_) {
-        // ⚠️  使用 shared_ptr 避免 promise 生命周期问题
+        // ⚠️ Use shared_ptr to avoid promise lifetime issues
         auto cleanupPromise = std::make_shared<std::promise<void>>();
         auto cleanupFuture = cleanupPromise->get_future();
         
         try {
             runLoop_->invoke([this, cleanupPromise]() {
                 try {
-                    // 销毁 Map（这会取消所有待处理的 Actor 消息）
+                    // Destroy the Map (this cancels any pending Actor messages)
                     if (map_) {
                         map_.reset();
                     }
                     
-                    // 销毁 Renderer
+                    // Destroy the Renderer
                     if (renderer_) {
                         renderer_.reset();
                     }
@@ -261,15 +261,15 @@ void HarmonyMapRenderThread::stop() {
                 }
             });
             
-            // 等待清理完成（最多 5 秒）
+            // Wait for cleanup to finish (up to 5 seconds)
             auto status = cleanupFuture.wait_for(std::chrono::seconds(5));
             if (status == std::future_status::timeout) {
                 Logger::error("MapRenderThread", "⚠️  Cleanup timeout after 5 seconds!");
                 Logger::error("MapRenderThread", "⚠️  Will forcibly continue with RunLoop stop");
-                // ⚠️  超时后仍继续，避免永久阻塞
+                // ⚠️ Continue even after timeout to avoid a permanent stall
             } else {
                 try {
-                    cleanupFuture.get();  // 检查是否有异常
+                    cleanupFuture.get();  // Check for exceptions
                 } catch (const std::exception& e) {
                     Logger::error("MapRenderThread", "Exception during cleanup wait: %s", e.what());
                 }
@@ -279,12 +279,12 @@ void HarmonyMapRenderThread::stop() {
         }
     }
     
-    // ✅ 步骤 4: 停止 RunLoop（这会处理完所有待处理的消息）
+    // ✅ Step 4: stop the RunLoop (this drains all pending messages)
     if (runLoop_) {
         runLoop_->stop();
     }
     
-    // ✅ 步骤 5: 等待线程退出
+    // ✅ Step 5: wait for the thread to exit
     if (thread_.joinable()) {
         thread_.join();
     }
@@ -299,7 +299,7 @@ void HarmonyMapRenderThread::invoke(std::function<void()> task) {
         return;
     }
     
-    // ✅ 检查销毁标志
+    // ✅ Check the destruction flag
     if (destroying_.load()) {
         Logger::warn("MapRenderThread", "invoke() ignored: instance is being destroyed");
         return;
@@ -310,9 +310,9 @@ void HarmonyMapRenderThread::invoke(std::function<void()> task) {
         return;
     }
 
-    // 检查是否已在 Map+渲染线程
+    // Check whether we are already on the map/render thread
     if (isOnThread()) {
-        // ✅ 确保 Scheduler 正确设置
+        // ✅ Ensure the scheduler is set correctly
         Scheduler::SetCurrent(runLoop_.get());
         task();
     } else {
@@ -321,9 +321,9 @@ void HarmonyMapRenderThread::invoke(std::function<void()> task) {
             return;
         }
         
-        // ✅ 调度到 RunLoop，确保在正确线程执行
+        // ✅ Dispatch to the RunLoop so execution happens on the correct thread
         runLoop_->invoke([this, task = std::move(task)]() {
-            // 任务执行前确保 Scheduler 正确
+            // Ensure the scheduler is set before executing the task
             Scheduler::SetCurrent(runLoop_.get());
             task();
         });
@@ -335,7 +335,7 @@ bool HarmonyMapRenderThread::isOnThread() const {
 }
 
 void HarmonyMapRenderThread::update(std::shared_ptr<UpdateParameters> params) {
-    // ✅ 检查销毁标志（优先级最高）
+    // ✅ Check the destruction flag (highest priority)
     if (destroying_.load()) {
         Logger::warn("MapRenderThread", "update() ignored: instance is being destroyed");
         return;
@@ -355,21 +355,21 @@ void HarmonyMapRenderThread::update(std::shared_ptr<UpdateParameters> params) {
         return;
     }
     
-    // ✅ VSync 同步渲染：保存参数并请求 VSync，而不是立即执行
+    // ✅ VSync-synchronized rendering: store the parameters and request VSync instead of rendering immediately
     invoke([this, params]() {
-        // 如果有 VSync 管理器，使用 VSync 同步渲染
+        // If a VSync manager is available, use VSync for synchronized rendering
         if (vsyncManager_ && vsyncManager_->isAvailable()) {
-            // 保存待处理的渲染参数
+            // Save the pending render parameters
             pendingUpdateParams_ = params;
             pendingRender_ = true;
             
-            // 请求 VSync 帧，实际渲染将在 VSync 回调中执行
+            // Request a VSync frame; the actual render runs inside the VSync callback
             vsyncManager_->requestFrame([this]() {
                 onVSyncFrame();
             });
         } else {
-            // VSync 不可用时，立即执行渲染（后备方案）
-            // 直接在这里执行，而不是调用 onVSyncFrame()，避免线程调度问题
+            // If VSync is unavailable, render immediately as a fallback
+            // Execute here instead of calling onVSyncFrame() to avoid thread scheduling issues
             if (params && renderer_ && backend_) {
                 try {
                     auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
@@ -412,42 +412,42 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
         return;
     }
     
-    // ⚠️ 关键修复：所有 EGL 操作必须在渲染线程执行
-    // 包括 Display、Surface 和 Context 的初始化
+    // ⚠️ Critical fix: perform all EGL operations on the render thread
+    // This includes initializing the display, surface, and context
     invoke([this, window]() {
         nativeWindow_ = window;
         
         auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
         
-        // 若已存在 EGL/Surface，先清理再重建，避免跨会话复用
-        // 这里依赖 backend 内部的 setNativeWindow 实现具备幂等清理逻辑
-        // 步骤 1: 初始化 Display 和 Surface（在渲染线程）
+        // If EGL resources already exist, clean them up before rebuilding to avoid reusing state across sessions
+        // This relies on the backend's setNativeWindow implementation being idempotent
+        // Step 1: initialize the display and surface on the render thread
         Logger::info("MapRenderThread", "Initializing EGL Display and Surface on render thread...");
         glBackend->setNativeWindow(window);
-        // 步骤 2: 不在这里初始化 Context！
-        // 🎯 关键：invoke() 回调在线程池的任意线程执行，不是渲染线程
-        // Context 必须在真正的渲染线程（renderLoopThread）创建
-        // 将在第一次 activate() 时延迟创建
+        // Step 2: do not create the context here!
+        // 🎯 Key point: invoke() callbacks run on a thread-pool worker, not on the render thread
+        // The context must be created on the real render thread (renderLoopThread)
+        // It will be created lazily on the first activate()
         Logger::info("MapRenderThread", "⏳ EGL Context will be created lazily on first activate() in render thread");
         Logger::info("MapRenderThread", "   Current thread: %lu (this is NOT the render thread)",
                      std::hash<std::thread::id>{}(std::this_thread::get_id()));
 
-        // 标记 Renderer 上下文丢失，促使资源在新上下文重建
+        // Mark the renderer context as lost so resources will be rebuilt in the new context
         if (renderer_) {
             Logger::info("MapRenderThread", "Marking context lost and reducing memory");
             renderer_->markContextLost();
             renderer_->reduceMemoryUse();
         }
 
-        // 确保恢复渲染
+        // Ensure rendering can resume
         paused_ = false;
         
-        // 初始化 VSync 管理器
+        // Initialize the VSync manager
         try {
             vsyncManager_ = std::make_unique<HarmonyVSyncManager>();
             vsyncManager_->setOwnerInstanceId(instanceId_);
             
-            // 🎯 设置 RunLoop 引用，VSync 回调将通过 RunLoop 调度
+            // 🎯 Provide the RunLoop so VSync callbacks are scheduled through it
             vsyncManager_->setRunLoop(runLoop_.get());
             
         } catch (const std::exception& e) {
@@ -455,12 +455,12 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
             Logger::warn("MapRenderThread", "Continuing without VSync (will use immediate render)");
         }
         
-        // ✅ 关键修复：重置 VSync 相关状态
-        // 确保在重新初始化时，pendingRender_ 被正确重置
+        // ✅ Critical fix: reset VSync-related state
+        // Make sure pendingRender_ is cleared during reinitialization
         pendingRender_ = false;
         pendingUpdateParams_.reset();
         
-        // ✅ 如果已有最近尺寸，窗口建立后立即应用一次尺寸同步与首帧渲染
+        // ✅ If we have a remembered size, apply it immediately and trigger an initial render
         if (lastWidth_ > 0 && lastHeight_ > 0) {
             auto* glBackend2 = static_cast<HarmonyGLRendererBackend*>(backend_.get());
             if (glBackend2) {
@@ -471,7 +471,7 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
             }
         }
 
-        // 触发首次渲染
+        // Trigger the first render
         if (map_) {
             map_->triggerRepaint();
         }
@@ -487,7 +487,7 @@ void HarmonyMapRenderThread::resume() {
     Logger::info("MapRenderThread", "resume() called");
     paused_ = false;
     
-    // ✅ 关键修复：恢复时重置 VSync 状态，避免残留状态导致问题
+    // ✅ Critical fix: reset VSync state when resuming to avoid stale flags
     invoke([this]() {
         pendingRender_ = false;
         pendingUpdateParams_.reset();
@@ -511,7 +511,7 @@ gfx::RendererBackend& HarmonyMapRenderThread::getRendererBackend() {
 }
 
 void HarmonyMapRenderThread::resizeFramebuffer(int width, int height) {
-    // 记录最近一次的逻辑尺寸（用于窗口重建后应用）
+    // Record the most recent logical size (used when rebuilding the window)
     lastWidth_ = width;
     lastHeight_ = height;
 
@@ -584,10 +584,10 @@ void HarmonyMapRenderThread::enableFpsMeasurement(bool enable) {
     }
 }
 
-// ==================== VSync 控制 ====================
+// ==================== VSync control ====================
 
 void HarmonyMapRenderThread::onVSyncFrame() {
-    // ✅ 检查销毁标志（必须在断言之前！）
+    // ✅ Check the destruction flag (must happen before assertions!)
     if (destroying_.load()) {
         return;
     }
@@ -596,12 +596,12 @@ void HarmonyMapRenderThread::onVSyncFrame() {
         return;
     }
     
-    // 🎯 双线程模型：VSync 现在通过条件变量直接唤醒渲染线程
-    // 断言检查：确保始终在渲染线程执行
-    // ⚠️  这个检查在 destroying_ 之后，因为销毁时可能会有延迟的回调
+    // 🎯 Two-thread model: VSync now wakes the render thread via a condition variable
+    // Assert to guarantee we are always on the render thread
+    // ⚠️ Perform this assertion after the destroying_ check because callbacks may arrive late during teardown
     assert(isOnThread() && "VSync must execute on render thread");
     
-    // 获取待处理的渲染参数
+    // Fetch the pending render parameters
     if (!pendingRender_.load()) {
         return;
     }
@@ -610,10 +610,10 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     auto params = pendingUpdateParams_;
     pendingUpdateParams_.reset();
     
-    // 执行实际渲染
+    // Execute the actual render
     if (params && renderer_ && backend_) {
         try {
-            // 开始帧时间测量
+            // Begin frame timing
             auto frameStartTime = std::chrono::steady_clock::now();
             
             auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
@@ -621,14 +621,14 @@ void HarmonyMapRenderThread::onVSyncFrame() {
             
             renderer_->render(params);
             
-            // FPS 测量（参考 Android MapRenderer::updateFps）
+            // FPS measurement (mirrors Android MapRenderer::updateFps)
             if (measureFps_.load() && fpsCallback_) {
                 auto currentTime = std::chrono::steady_clock::now();
                 auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     currentTime - lastFrameTime_).count();
                 
                 if (elapsedNanos > 0) {
-                    // 计算 FPS：fps = 1E9 / elapsed_nanoseconds
+                    // Compute FPS: fps = 1E9 / elapsed_nanoseconds
                     double fps = 1.0e9 / static_cast<double>(elapsedNanos);
                     fpsCallback_(fps);
                 }
@@ -640,13 +640,13 @@ void HarmonyMapRenderThread::onVSyncFrame() {
             Logger::error("MapRenderThread", "Render failed on VSync: %s", e.what());
         }
     } else if (map_) {
-        // 如果没有待处理的参数，触发重新绘制（由 Map 决定是否需要）
+        // If no parameters are pending, request another repaint (Map decides whether it is necessary)
         
         map_->triggerRepaint();
     }
     
-    // 注意：如果需要继续渲染，Map 会在 onDidFinishRenderingFrame 中再次调用 update()
-    // 这会再次请求 VSync，形成正确的同步渲染循环
+    // Note: if further rendering is needed, Map will call update() again inside onDidFinishRenderingFrame
+    // This re-requests VSync and maintains the synchronized render loop
 }
 
 } // namespace harmony

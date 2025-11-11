@@ -17,20 +17,20 @@ napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const
         return undefined;
     }
     
-    // 创建 target (LatLng)
+    // Create target (LatLng)
     if (options.center) {
         auto center = options.center.value();
-        center.wrap();  // 包裹经纬度到有效范围
+        center.wrap();  // Wrap latitude/longitude into valid range
         napi_value targetValue = LatLngHarmony::CreateLatLngObject(env, center);
         napi_set_named_property(env, obj, "target", targetValue);
     }
     
-    // 创建 zoom
+    // Create zoom
     napi_value zoomValue;
     napi_create_double(env, options.zoom.value_or(0.0), &zoomValue);
     napi_set_named_property(env, obj, "zoom", zoomValue);
     
-    // 创建 bearing (转换为 0-360 度)
+    // Create bearing (normalize to 0-360 degrees)
     double bearing = options.bearing.value_or(0.0);
     while (bearing > 360.0) bearing -= 360.0;
     while (bearing < 0.0) bearing += 360.0;
@@ -38,12 +38,12 @@ napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const
     napi_create_double(env, bearing, &bearingValue);
     napi_set_named_property(env, obj, "bearing", bearingValue);
     
-    // 创建 tilt (即 pitch)
+    // Create tilt (aka pitch)
     napi_value tiltValue;
     napi_create_double(env, options.pitch.value_or(0.0), &tiltValue);
     napi_set_named_property(env, obj, "tilt", tiltValue);
     
-    // 创建 padding (EdgeInsets)
+    // Create padding (EdgeInsets)
     auto insets = options.padding.value_or(mbgl::EdgeInsets{0, 0, 0, 0});
     napi_value paddingObj;
     napi_create_object(env, &paddingObj);
@@ -65,7 +65,7 @@ napi_value CameraPositionHarmony::CreateCameraPositionObject(napi_env env, const
 }
 
 bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, float pixelRatio, mbgl::CameraOptions& outOptions) {
-    // 检查是否为对象
+    // Ensure value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
     if (status != napi_ok || type != napi_object) {
@@ -73,7 +73,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
         return false;
     }
     
-    // 解析 target (LatLng)
+    // Parse target (LatLng)
     napi_value targetValue;
     status = napi_get_named_property(env, value, "target", &targetValue);
     if (status == napi_ok) {
@@ -83,7 +83,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
         }
     }
     
-    // 解析 zoom
+    // Parse zoom
     napi_value zoomValue;
     status = napi_get_named_property(env, value, "zoom", &zoomValue);
     if (status == napi_ok) {
@@ -93,7 +93,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
         }
     }
     
-    // 解析 bearing
+    // Parse bearing
     napi_value bearingValue;
     status = napi_get_named_property(env, value, "bearing", &bearingValue);
     if (status == napi_ok) {
@@ -103,7 +103,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
         }
     }
     
-    // 解析 tilt (对应 pitch)
+    // Parse tilt (maps to pitch)
     napi_value tiltValue;
     status = napi_get_named_property(env, value, "tilt", &tiltValue);
     if (status == napi_ok) {
@@ -113,7 +113,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
         }
     }
     
-    // 解析 padding (EdgeInsets)
+    // Parse padding (EdgeInsets)
     napi_value paddingValue;
     status = napi_get_named_property(env, value, "padding", &paddingValue);
     if (status == napi_ok) {
@@ -133,7 +133,7 @@ bool CameraPositionHarmony::ParseCameraOptions(napi_env env, napi_value value, f
                     napi_get_value_double(env, rightVal, &right) == napi_ok &&
                     napi_get_value_double(env, bottomVal, &bottom) == napi_ok) {
                     
-                    // 除以 pixelRatio 转换回逻辑像素
+                    // Divide by pixelRatio to convert back to logical pixels
                     outOptions.padding = mbgl::EdgeInsets{
                         top / pixelRatio,
                         left / pixelRatio,

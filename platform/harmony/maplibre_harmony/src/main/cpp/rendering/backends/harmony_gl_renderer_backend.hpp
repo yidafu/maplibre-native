@@ -32,7 +32,7 @@ public:
     PremultipliedImage readFramebuffer() override;
     void swapBuffers();  // Call eglSwapBuffers to display frame
     
-    // 新增：获取和更新 pixelRatio
+    // Added: retrieve and update pixelRatio
     float getPixelRatio() const { return pixelRatio_; }
     void updatePixelRatioFromDevice();
 
@@ -43,20 +43,20 @@ public:
     void updateAssumedState() override;
     mbgl::gl::ProcAddress getExtensionFunctionPointer(const char*) override;
 
-    // 新增：停止和恢复渲染（防止页面切换时崩溃）
+    // Added: pause/resume rendering (prevents crashes when switching pages)
     void pauseRendering() override;
     void resumeRendering() override;
     bool isRenderingStopped() const override { return isStopped_; }
     
-    // 🔒 线程安全检查
+    // 🔒 Thread-safety checks
     bool isOnCorrectThread() const;
     std::thread::id getOwnerThreadId() const { return ownerThreadId_; }
-    void assertOnCorrectThread() const;  // 调试断言
+    void assertOnCorrectThread() const;  // Debug assertion
     
-    // 🎯 新架构：公开 EGL Context 初始化（在渲染线程调用）
-    bool initializeEGLContext();  // 渲染线程：创建context
+    // 🎯 New architecture: expose EGL context initialization (invoked on render thread)
+    bool initializeEGLContext();  // Render thread: create context
     
-    // ✅ 公开 EGL 清理方法（需要在 cleanup() 中显式调用）
+    // ✅ Expose EGL cleanup routine (must be called explicitly in cleanup())
     void cleanupEGL();
 
 protected:
@@ -65,34 +65,34 @@ protected:
     std::unique_ptr<gfx::Context> createContext() override;
 
 private:
-    // EGL初始化拆分为两阶段（共享 Display，实例独立 Surface/Context）
-    bool initializeEGLDisplay();  // 获取共享 display 并创建 surface
+    // Split EGL initialization into two phases (shared display, per-instance surface/context)
+    bool initializeEGLDisplay();  // Acquire shared display and create surface
     
-    // 新增：检查Surface有效性
+    // Added: check surface validity
     bool isSurfaceValid() const;
     
-    // 🛡️ EGL 状态诊断和自动恢复（修复第二次进入崩溃）
-    bool isEGLHealthy() const;  // 检查 EGL 健康状态
-    bool tryRecoverEGL();       // 尝试恢复 EGL 状态
+    // 🛡️ EGL diagnostics and auto-recovery (fixes crash on subsequent entry)
+    bool isEGLHealthy() const;  // Check EGL health
+    bool tryRecoverEGL();       // Attempt to recover EGL state
     
     // HarmonyOS OpenGL quirk handling
     void validateShaderAttributes();
     GLint bindAttributeWithFallback(GLuint program, GLuint index, const char* name);
     void logShaderInfo(GLuint program);
 
-    // EGL references - 共享 Display，实例独立 Context/Surface
+    // EGL references - shared display, per-instance context/surface
     EGLConfig eglConfig_ = EGL_NO_CONFIG_KHR;
     EGLSurface eglSurface_ = EGL_NO_SURFACE;
     EGLContext eglContext_ = EGL_NO_CONTEXT;
     EGLNativeWindowType eglWindow_ = 0;  // unsigned long on HarmonyOS, use 0 instead of nullptr
-    bool contextInitialized_ = false;  // 标记context是否已在渲染线程创建
-    bool displayAcquired_ = false;  // 标记是否已获取共享 Display
-    float pixelRatio_ = 1.0f;  // 设备像素比
-    bool isStopped_ = false;  // 标记渲染是否已停止（防止崩溃）
+    bool contextInitialized_ = false;  // Tracks whether context was created on render thread
+    bool displayAcquired_ = false;  // Tracks whether shared display is acquired
+    float pixelRatio_ = 1.0f;  // Device pixel ratio
+    bool isStopped_ = false;  // Tracks whether rendering is paused (prevents crashes)
     
-    // 🔒 线程所有权和安全
-    std::thread::id ownerThreadId_;  // EGL Context 所属线程（用于验证）
-    std::thread::id renderThreadId_;  // 渲染线程 ID（用于 eglMakeCurrent 验证）
+    // 🔒 Thread ownership & safety
+    std::thread::id ownerThreadId_;  // Thread owning the EGL context (for validation)
+    std::thread::id renderThreadId_;  // Render thread ID (for eglMakeCurrent validation)
 };
 
 } // namespace harmony

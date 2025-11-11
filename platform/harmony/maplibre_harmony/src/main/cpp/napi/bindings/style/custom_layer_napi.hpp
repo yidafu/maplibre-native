@@ -8,7 +8,7 @@
 namespace mbgl {
 namespace harmony {
 
-// 前向声明
+// Forward declaration
 class ExampleCustomLayerHost;
 
 /**
@@ -82,7 +82,7 @@ private:
     std::string layerId;
     std::unique_ptr<mbgl::style::CustomLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
-    ExampleCustomLayerHost* host;  // 保持对 host 的引用以便调用方法（由 CustomLayer 管理生命周期）
+    ExampleCustomLayerHost* host;  // Holds a reference to the host for method calls (CustomLayer owns lifecycle)
 };
 
 } // namespace harmony

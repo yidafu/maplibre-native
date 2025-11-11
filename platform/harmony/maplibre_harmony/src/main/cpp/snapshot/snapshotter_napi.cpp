@@ -25,7 +25,7 @@ namespace harmony {
 
 using mbgl::harmony::napi::NapiArgs;
 
-// 前向声明
+// Forward declarations
 napi_value SnapshotterStart(napi_env env, napi_callback_info info);
 napi_value SnapshotterCancel(napi_env env, napi_callback_info info);
 napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info);
@@ -39,7 +39,7 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info);
 napi_value SnapshotterAddImage(napi_env env, napi_callback_info info);
 
 /**
- * MapSnapshotter 内部实例类
+ * Internal MapSnapshotter instance wrapper.
  */
 class MapSnapshotterInstance {
 public:
@@ -48,7 +48,7 @@ public:
     napi_ref callbackRef = nullptr;
     napi_ref errorCallbackRef = nullptr;
     
-    // 使用 ThreadSafeCallback 替代 observerRef
+    // Replace observerRef with ThreadSafeCallback
     std::unique_ptr<ThreadSafeCallback> onDidFinishLoadingStyleCallback;
     std::unique_ptr<ThreadSafeCallback> onStyleImageMissingCallback;
 
@@ -61,11 +61,11 @@ public:
         if (errorCallbackRef) {
             napi_delete_reference(env, errorCallbackRef);
         }
-        // ThreadSafeCallback 会在析构时自动释放
+        // ThreadSafeCallback releases automatically on destruction
     }
     
     /**
-     * 触发 onDidFinishLoadingStyle 回调（线程安全）
+     * Trigger the onDidFinishLoadingStyle callback (thread-safe).
      */
     void triggerOnDidFinishLoadingStyle() {
         if (onDidFinishLoadingStyleCallback && onDidFinishLoadingStyleCallback->IsValid()) {
@@ -74,7 +74,7 @@ public:
     }
     
     /**
-     * 触发 onStyleImageMissing 回调（线程安全）
+     * Trigger the onStyleImageMissing callback (thread-safe).
      */
     void triggerOnStyleImageMissing(const std::string& imageName) {
         if (onStyleImageMissingCallback && onStyleImageMissingCallback->IsValid()) {
@@ -84,9 +84,9 @@ public:
 };
 
 /**
- * 创建 MapSnapshotter 实例
- * 
- * JavaScript 调用：
+ * Create a MapSnapshotter instance.
+ *
+ * JavaScript usage:
  * const snapshotter = maplibre.createMapSnapshotter(options);
  */
 napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
@@ -94,27 +94,27 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 解析选项对象
+    // Parse the options object
     napi_value optionsObj = args.GetObject(0, "options");
     if (args.HasError()) return args.Undefined();
     
     MapSnapshotterHarmony::SnapshotOptions options;
     
-    // 解析必需的参数
+    // Parse required parameters
     options.width = static_cast<uint32_t>(args.GetInt64Property(optionsObj, "width", 0));
     options.height = static_cast<uint32_t>(args.GetInt64Property(optionsObj, "height", 0));
     options.pixelRatio = static_cast<float>(args.GetDoubleProperty(optionsObj, "pixelRatio", 1.0));
     options.styleURL = args.GetStringProperty(optionsObj, "styleUrl", "");
     options.showLogo = args.GetBoolProperty(optionsObj, "showLogo", true);
     
-    // 解析 styleJSON（可选）
+    // Parse optional styleJSON
     std::string styleJSON = args.GetStringProperty(optionsObj, "styleJSON", "");
     if (!styleJSON.empty()) {
         options.styleJSON = styleJSON;
         Logger::info("SnapshotterNAPI", "Using styleJSON: %zu bytes", styleJSON.size());
     }
     
-    // 解析 camera（可选）
+    // Parse optional camera settings
     napi_value cameraVal;
     napi_status status = napi_get_named_property(env, optionsObj, "camera", &cameraVal);
     if (status == napi_ok) {
@@ -123,7 +123,7 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         if (cameraType == napi_object) {
             mbgl::CameraOptions camera;
             
-            // 解析 target (LatLng)
+            // Parse target (LatLng)
             napi_value targetVal;
             if (napi_get_named_property(env, cameraVal, "target", &targetVal) == napi_ok) {
                 double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
@@ -131,7 +131,7 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
                 camera.center = mbgl::LatLng(lat, lng);
             }
             
-            // 解析 zoom, bearing, tilt
+            // Parse zoom, bearing, tilt
             camera.zoom = args.GetDoubleProperty(cameraVal, "zoom", 0.0);
             camera.bearing = args.GetDoubleProperty(cameraVal, "bearing", 0.0);
             camera.pitch = args.GetDoubleProperty(cameraVal, "tilt", 0.0);
@@ -140,7 +140,7 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 解析 region（LatLngBounds，可选）
+    // Parse optional region (LatLngBounds)
     napi_value regionVal;
     status = napi_get_named_property(env, optionsObj, "region", &regionVal);
     if (status == napi_ok) {
@@ -160,14 +160,14 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 创建资源选项
-    // 注意：这里简化处理，实际应该从context获取正确的缓存路径
+    // Create resource options.
+    // Note: simplified; ideally fetch cache path from the surrounding context.
     mbgl::ResourceOptions resourceOptions;
     resourceOptions.withCachePath("/data/storage/el2/base/haps/entry/cache/maplibre");
     
     mbgl::ClientOptions clientOptions;
     
-    // 创建 MapSnapshotterInstance 实例
+    // Instantiate MapSnapshotterInstance
     auto* snapshotterInstance = new MapSnapshotterInstance(env);
     snapshotterInstance->snapshotter = std::make_unique<MapSnapshotterHarmony>(
         options,
@@ -175,7 +175,7 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         clientOptions
     );
     
-    // 设置 observer 回调，使 C++ 层能够触发 TypeScript 的 observer
+    // Register observer callbacks so C++ can trigger TypeScript observers
     snapshotterInstance->snapshotter->setObserverCallback(
         [snapshotterInstance](const std::string& event, const std::string& data) {
             if (event == "onDidFinishLoadingStyle") {
@@ -186,18 +186,18 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
         }
     );
     
-    // 创建 JavaScript 对象并关联 native 指针
+    // Create the JavaScript object and attach the native pointer
     napi_value jsSnapshotter;
     napi_create_object(env, &jsSnapshotter);
     
-    // 将 native 指针包装到 JavaScript 对象
+    // Wrap the native pointer with the JavaScript object
     napi_wrap(env, jsSnapshotter, snapshotterInstance,
               [](napi_env env, void* data, void* hint) {
                   delete static_cast<MapSnapshotterInstance*>(data);
               },
               nullptr, nullptr);
     
-    // 为对象绑定方法
+    // Bind methods to the object
     napi_property_descriptor methods[] = {
         {"start", nullptr, SnapshotterStart, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"cancel", nullptr, SnapshotterCancel, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -221,9 +221,9 @@ napi_value CreateMapSnapshotter(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 开始生成快照
- * 
- * JavaScript 调用：
+ * Start generating a snapshot.
+ *
+ * JavaScript usage:
  * snapshotter.start((error, imageData) => { ... });
  */
 napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
@@ -231,7 +231,7 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -240,7 +240,7 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 创建线程安全回调
+    // Create a thread-safe callback
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) return args.Undefined();
     
@@ -252,14 +252,14 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
 
     Logger::info("SnapshotterNAPI", "Starting snapshot");
 
-    // 使用 shared_ptr 确保回调在异步操作完成前不被释放
+    // Use shared_ptr so the callback survives until the async work completes
     auto sharedCallback = std::shared_ptr<ThreadSafeCallback>(std::move(threadSafeCallback));
 
-    // 获取 pixelRatio（从 snapshotter 的选项中）
-    float pixelRatio = 1.0f; // 默认值，实际应该从 snapshotter 获取
-    // TODO: 从 snapshotterInstance 的选项中获取 pixelRatio
+    // Obtain pixelRatio from the snapshotter options
+    float pixelRatio = 1.0f; // Default; ideally read from the snapshotter
+    // TODO: Pull pixelRatio from snapshotterInstance configuration
     
-    // 调用 C++ snapshot 方法
+    // Invoke the C++ snapshot method
     snapshotterInstance->snapshotter->snapshot(
         [sharedCallback, pixelRatio](
             std::exception_ptr err,
@@ -268,34 +268,34 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
             mbgl::MapSnapshotter::PointForFn pointForFn,
             mbgl::MapSnapshotter::LatLngForFn latLngForFn
         ) {
-            // 使用 ThreadSafeCallback 安全地调用到主线程
+            // Use ThreadSafeCallback to marshal safely onto the main thread
             Logger::info("SnapshotterNAPI", "Snapshot callback triggered");
             
             if (err) {
-                // 发生错误
+                // Error case
                 try {
                     std::rethrow_exception(err);
                 } catch (const std::exception& e) {
                     Logger::error("SnapshotterNAPI", "Snapshot error: %s", e.what());
                     
                     std::string errorMsg = e.what();
-                    // 使用 ThreadSafeCallback，在 lambda 中获取实际回调并调用
-                    // ThreadSafeCallback 只是用来调度到主线程，实际调用由我们控制
+                    // Use ThreadSafeCallback to schedule onto the main thread and invoke the real callback.
+                    // ThreadSafeCallback only handles scheduling; we control the invocation.
                     sharedCallback->CallWithString(errorMsg);
                 }
             } else {
-                // 成功 - 移动数据到堆上以便在线程安全回调中使用
+                // Success path — move data to the heap for use inside the thread-safe callback
                 Logger::info("SnapshotterNAPI", "Snapshot success: %dx%d, %zu bytes",
                              image.size.width, image.size.height, image.bytes());
                 
-                // 移动所有数据到 shared_ptr（自动管理内存）
+                // Move all data into shared_ptr for automatic lifetime management
                 auto imageData = std::make_shared<mbgl::PremultipliedImage>(std::move(image));
                 auto attrs = std::make_shared<std::vector<std::string>>(std::move(attributions));
                 
-                // 使用 ThreadSafeCallback 在主线程创建 MapSnapshot 对象
+                // Use ThreadSafeCallback to create the MapSnapshot object on the main thread
                 sharedCallback->Call([imageData, attrs, pixelRatio, pointForFn, latLngForFn](napi_env env) -> napi_value {
-                    // 使用新的 CreateMapSnapshotObject 函数创建完整的 MapSnapshot 对象
-                    // 注意：需要移动 imageData 的数据
+                    // Use CreateMapSnapshotObject to build the MapSnapshot.
+                    // Note: move imageData into the returned object.
                     mbgl::PremultipliedImage imageCopy = std::move(*imageData);
                     napi_value mapSnapshotObj = CreateMapSnapshotObject(
                         env,
@@ -306,7 +306,7 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
                         latLngForFn
                     );
                     
-                    // 返回 MapSnapshot 对象（会作为回调的单个参数传入）
+                    // Return the MapSnapshot object (passed as the callback argument)
                     return mapSnapshotObj;
                 });
             }
@@ -317,15 +317,15 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 取消快照生成
- * 
- * JavaScript 调用：
+ * Cancel snapshot generation.
+ *
+ * JavaScript usage:
  * snapshotter.cancel();
  */
 napi_value SnapshotterCancel(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -341,14 +341,14 @@ napi_value SnapshotterCancel(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 设置样式 URL
+ * Set the style URL.
  */
 napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -357,7 +357,7 @@ napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 解析 styleUrl
+    // Parse styleUrl
     std::string styleUrl = args.GetString(0, "styleUrl");
     if (args.HasError()) return args.Undefined();
     
@@ -367,14 +367,14 @@ napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 设置相机位置
+ * Set the camera position.
  */
 napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -383,13 +383,13 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 解析 CameraPosition
+    // Parse CameraPosition
     napi_value cameraObj = args.GetObject(0, "cameraPosition");
     if (args.HasError()) return args.Undefined();
     
     mbgl::CameraOptions camera;
     
-    // 解析 target (LatLng)
+    // Parse target (LatLng)
     napi_value targetVal;
     if (napi_get_named_property(env, cameraObj, "target", &targetVal) == napi_ok) {
         double lat = args.GetDoubleProperty(targetVal, "latitude", 0.0);
@@ -397,7 +397,7 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
         camera.center = mbgl::LatLng(lat, lng);
     }
     
-    // 解析 zoom, bearing, tilt
+    // Parse zoom, bearing, tilt
     camera.zoom = args.GetDoubleProperty(cameraObj, "zoom", 0.0);
     camera.bearing = args.GetDoubleProperty(cameraObj, "bearing", 0.0);
     camera.pitch = args.GetDoubleProperty(cameraObj, "tilt", 0.0);
@@ -409,14 +409,14 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 设置样式 JSON
+ * Set the style JSON.
  */
 napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -425,7 +425,7 @@ napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 解析 styleJson
+    // Parse styleJson
     std::string styleJson = args.GetString(0, "styleJson");
     if (args.HasError()) return args.Undefined();
     
@@ -436,14 +436,14 @@ napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 设置区域边界
+ * Set the region bounds.
  */
 napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -452,7 +452,7 @@ napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 解析 LatLngBounds
+    // Parse LatLngBounds
     napi_value regionObj = args.GetObject(0, "region");
     if (args.HasError()) return args.Undefined();
     
@@ -473,14 +473,14 @@ napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 设置快照尺寸
+ * Set the snapshot size.
  */
 napi_value SnapshotterSetSize(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -489,7 +489,7 @@ napi_value SnapshotterSetSize(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 解析 width 和 height
+    // Parse width and height
     uint32_t width = static_cast<uint32_t>(args.GetInt64(0, "width"));
     uint32_t height = static_cast<uint32_t>(args.GetInt64(1, "height"));
     if (args.HasError()) return args.Undefined();
@@ -501,14 +501,14 @@ napi_value SnapshotterSetSize(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 设置观察者
+ * Set the observer callbacks.
  */
 napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -517,22 +517,22 @@ napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 清除旧的 callbacks
+    // Clear any previous callbacks
     snapshotterInstance->onDidFinishLoadingStyleCallback.reset();
     snapshotterInstance->onStyleImageMissingCallback.reset();
 
-    // 获取 observer 对象
+    // Retrieve the observer object
     napi_value argv[1];
     size_t argc = 1;
     napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
     napi_value observer = argv[0];
     
-    // 检查是否为 null（允许传 null 来清除 observer）
+    // Allow null to remove the observer
     napi_valuetype valueType;
     napi_typeof(env, observer, &valueType);
     
     if (valueType != napi_null && valueType != napi_undefined) {
-        // 从 observer 对象中提取两个方法
+        // Extract the two observer methods
         napi_value onDidFinishLoadingStyleMethod;
         napi_value onStyleImageMissingMethod;
         
@@ -555,9 +555,9 @@ napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 获取图层
- * 
- * JavaScript 调用：
+ * Retrieve a layer.
+ *
+ * JavaScript usage:
  * const layer = snapshotter.getLayer(layerId);
  */
 napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
@@ -565,7 +565,7 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -574,22 +574,22 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    // 解析 layerId
+    // Parse layerId
     std::string layerId = args.GetString(0, "layerId");
     if (args.HasError()) return args.Undefined();
 
-    // TODO: 实现图层获取
-    // 需要访问 snapshotter->getStyle().getLayer(layerId)
-    // 并将结果转换为 NAPI Layer 对象
+    // TODO: Implement layer retrieval.
+    // Should access snapshotter->getStyle().getLayer(layerId)
+    // and convert the result into a NAPI Layer object.
     Logger::warn("SnapshotterNAPI", "getLayer: Not fully implemented yet");
     
     return args.Undefined();
 }
 
 /**
- * 获取数据源
- * 
- * JavaScript 调用：
+ * Retrieve a source.
+ *
+ * JavaScript usage:
  * const source = snapshotter.getSource(sourceId);
  */
 napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
@@ -597,7 +597,7 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -606,22 +606,22 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    // 解析 sourceId
+    // Parse sourceId
     std::string sourceId = args.GetString(0, "sourceId");
     if (args.HasError()) return args.Undefined();
 
-    // TODO: 实现数据源获取
-    // 需要访问 snapshotter->getStyle().getSource(sourceId)
-    // 并将结果转换为 NAPI Source 对象
+    // TODO: Implement source retrieval.
+    // Should access snapshotter->getStyle().getSource(sourceId)
+    // and convert the result into a NAPI Source object.
     Logger::warn("SnapshotterNAPI", "getSource: Not fully implemented yet");
     
     return args.Undefined();
 }
 
 /**
- * 添加图片
- * 
- * JavaScript 调用：
+ * Add an image.
+ *
+ * JavaScript usage:
  * snapshotter.addImage(name, imageData, sdf);
  */
 napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
@@ -629,7 +629,7 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(3);
     if (args.HasError()) return args.Undefined();
 
-    // 获取 native 实例
+    // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
     
@@ -638,17 +638,16 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    // 解析参数
+    // Parse arguments
     std::string name = args.GetString(0, "name");
-    // napi_value imageData = args.GetValue(1); // ImageBitmap 或 ArrayBuffer
+    // napi_value imageData = args.GetValue(1); // ImageBitmap or ArrayBuffer
     bool sdf = args.GetBool(2, "sdf");
     
     if (args.HasError()) return args.Undefined();
 
-    // TODO: 实现图片添加
-    // 需要：
-    // 1. 解析 ImageBitmap/ArrayBuffer 为 mbgl::PremultipliedImage
-    // 2. 调用 snapshotter->getStyle().addImage(name, std::move(image), sdf)
+    // TODO: Implement image addition:
+    // 1. Convert ImageBitmap/ArrayBuffer into mbgl::PremultipliedImage
+    // 2. Call snapshotter->getStyle().addImage(name, std::move(image), sdf)
     Logger::warn("SnapshotterNAPI", "addImage: Not fully implemented yet - name=%s, sdf=%d", 
                  name.c_str(), sdf);
     
@@ -659,13 +658,13 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
 } // namespace mbgl
 
 /**
- * MapSnapshotterNAPI::Init 实现
+ * MapSnapshotterNAPI::Init implementation.
  */
 namespace mbgl {
 namespace harmony {
 
 void MapSnapshotterNAPI::Init(napi_env env, napi_value exports) {
-    // 注册创建函数
+    // Register the creation function
     napi_property_descriptor descriptors[] = {
         {"createMapSnapshotter", nullptr, CreateMapSnapshotter, nullptr, nullptr, nullptr, napi_default, nullptr}
     };

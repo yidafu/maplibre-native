@@ -16,22 +16,22 @@ napi_value LatLngBoundsHarmony::CreateLatLngBoundsObject(napi_env env, const mbg
         return undefined;
     }
     
-    // 创建 north 属性
+    // Create north property
     napi_value northValue;
     napi_create_double(env, bounds.north(), &northValue);
     napi_set_named_property(env, obj, "north", northValue);
     
-    // 创建 east 属性
+    // Create east property
     napi_value eastValue;
     napi_create_double(env, bounds.east(), &eastValue);
     napi_set_named_property(env, obj, "east", eastValue);
     
-    // 创建 south 属性
+    // Create south property
     napi_value southValue;
     napi_create_double(env, bounds.south(), &southValue);
     napi_set_named_property(env, obj, "south", southValue);
     
-    // 创建 west 属性
+    // Create west property
     napi_value westValue;
     napi_create_double(env, bounds.west(), &westValue);
     napi_set_named_property(env, obj, "west", westValue);
@@ -40,7 +40,7 @@ napi_value LatLngBoundsHarmony::CreateLatLngBoundsObject(napi_env env, const mbg
 }
 
 bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl::LatLngBounds& outBounds) {
-    // 检查是否为对象
+    // Ensure the value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
     if (status != napi_ok || type != napi_object) {
@@ -48,7 +48,7 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         return false;
     }
     
-    // 获取 north 属性
+    // Retrieve north property
     napi_value northValue;
     double north;
     status = napi_get_named_property(env, value, "north", &northValue);
@@ -57,7 +57,7 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         return false;
     }
     
-    // 获取 east 属性
+    // Retrieve east property
     napi_value eastValue;
     double east;
     status = napi_get_named_property(env, value, "east", &eastValue);
@@ -66,7 +66,7 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         return false;
     }
     
-    // 获取 south 属性
+    // Retrieve south property
     napi_value southValue;
     double south;
     status = napi_get_named_property(env, value, "south", &southValue);
@@ -75,7 +75,7 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         return false;
     }
     
-    // 获取 west 属性
+    // Retrieve west property
     napi_value westValue;
     double west;
     status = napi_get_named_property(env, value, "west", &westValue);
@@ -84,7 +84,7 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         return false;
     }
     
-    // 验证范围
+    // Validate range
     if (north < -90.0 || north > 90.0 || south < -90.0 || south > 90.0) {
         Logger::error("LatLngBoundsHarmony", "Latitude out of range");
         return false;
@@ -98,10 +98,10 @@ bool LatLngBoundsHarmony::ParseLatLngBounds(napi_env env, napi_value value, mbgl
         return false;
     }
     
-    // 创建边界（使用东北角和西南角）
+    // Build bounds (using northeast and southwest corners)
     outBounds = mbgl::LatLngBounds::hull(
-        mbgl::LatLng(north, east),  // 东北角
-        mbgl::LatLng(south, west)   // 西南角
+        mbgl::LatLng(north, east),  // Northeast corner
+        mbgl::LatLng(south, west)   // Southwest corner
     );
     
     return true;

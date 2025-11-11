@@ -9,10 +9,10 @@ namespace harmony {
 using Logger = mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
 
-// ==================== LatLngHarmony 辅助类实现 ====================
+// ==================== LatLngHarmony Helper Implementation ====================
 
 napi_value LatLngHarmony::CreateLatLngObject(napi_env env, const mbgl::LatLng& latLng) {
-    // 创建对象字面量 {latitude, longitude}
+    // Create object literal {latitude, longitude}
     napi_value obj;
     napi_status status = napi_create_object(env, &obj);
     if (status != napi_ok) {
@@ -22,12 +22,12 @@ napi_value LatLngHarmony::CreateLatLngObject(napi_env env, const mbgl::LatLng& l
         return undefined;
     }
     
-    // 设置 latitude 属性
+    // Set latitude property
     napi_value latValue;
     napi_create_double(env, latLng.latitude(), &latValue);
     napi_set_named_property(env, obj, "latitude", latValue);
     
-    // 设置 longitude 属性
+    // Set longitude property
     napi_value lngValue;
     napi_create_double(env, latLng.longitude(), &lngValue);
     napi_set_named_property(env, obj, "longitude", lngValue);
@@ -36,7 +36,7 @@ napi_value LatLngHarmony::CreateLatLngObject(napi_env env, const mbgl::LatLng& l
 }
 
 bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& outLatLng) {
-    // 检查是否为对象
+    // Ensure the value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
     if (status != napi_ok || type != napi_object) {
@@ -44,7 +44,7 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
         return false;
     }
     
-    // 获取 latitude 属性
+    // Retrieve latitude property
     napi_value latValue;
     status = napi_get_named_property(env, value, "latitude", &latValue);
     if (status != napi_ok) {
@@ -59,7 +59,7 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
         return false;
     }
     
-    // 获取 longitude 属性
+    // Retrieve longitude property
     napi_value lngValue;
     status = napi_get_named_property(env, value, "longitude", &lngValue);
     if (status != napi_ok) {
@@ -74,7 +74,7 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
         return false;
     }
     
-    // 验证范围
+    // Validate range
     if (latitude < -90.0 || latitude > 90.0) {
         Logger::error("LatLngHarmony", "Latitude out of range: %f", latitude);
         return false;
@@ -89,7 +89,7 @@ bool LatLngHarmony::ParseLatLng(napi_env env, napi_value value, mbgl::LatLng& ou
 }
 
 bool LatLngHarmony::ParseLatLngWithArgs(mbgl::harmony::napi::NapiArgs& args, napi_value obj, mbgl::LatLng& outLatLng) {
-    // 使用 NapiArgs 的辅助方法解析对象属性
+    // Use NapiArgs helper methods to parse object properties
     double latitude = args.GetDoubleProperty(obj, "latitude", 0.0);
     double longitude = args.GetDoubleProperty(obj, "longitude", 0.0);
     
@@ -98,7 +98,7 @@ bool LatLngHarmony::ParseLatLngWithArgs(mbgl::harmony::napi::NapiArgs& args, nap
         return false;
     }
     
-    // 验证范围
+    // Validate range
     if (latitude < -90.0 || latitude > 90.0) {
         Logger::error("LatLngHarmony", "Latitude out of range: %f", latitude);
         return false;

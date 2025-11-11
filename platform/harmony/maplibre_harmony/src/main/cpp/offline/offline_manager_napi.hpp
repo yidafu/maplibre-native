@@ -9,18 +9,18 @@ namespace maplibre {
 namespace harmony {
 
 /**
- * OfflineManagerNAPI - 鸿蒙离线地图管理器
- * 
- * 提供离线地图区域的创建、列表、删除等管理功能
+ * OfflineManagerNAPI - Harmony offline map manager.
+ *
+ * Provides creation, listing, deletion, and other management utilities for offline regions.
  */
 class OfflineManagerNAPI {
 public:
     static napi_value Init(napi_env env, napi_value exports);
     
-    // NAPI 构造函数
+    // NAPI constructor
     static napi_value Constructor(napi_env env, napi_callback_info info);
     
-    // 实例方法
+    // Instance methods
     static napi_value ListOfflineRegions(napi_env env, napi_callback_info info);
     static napi_value CreateOfflineRegion(napi_env env, napi_callback_info info);
     static napi_value GetOfflineRegion(napi_env env, napi_callback_info info);
@@ -33,7 +33,7 @@ public:
     static napi_value SetOfflineMapboxTileCountLimit(napi_env env, napi_callback_info info);
     static napi_value RunPackDatabaseAutomatically(napi_env env, napi_callback_info info);
     
-    // 析构函数
+    // Destructor
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
 private:

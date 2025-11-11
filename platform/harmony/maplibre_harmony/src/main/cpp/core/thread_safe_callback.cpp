@@ -17,7 +17,7 @@ std::unique_ptr<ThreadSafeCallback> ThreadSafeCallback::Create(
         return nullptr;
     }
     
-    // 检查是否是函数
+    // Verify the value is a function
     napi_valuetype valueType;
     napi_status status = napi_typeof(env, callback, &valueType);
     if (status != napi_ok || valueType != napi_function) {
@@ -40,7 +40,7 @@ bool ThreadSafeCallback::Initialize(
 ) {
     resourceName_ = resourceName;
     
-    // 创建资源名称
+    // Create resource name
     napi_value resourceNameValue;
     napi_status status = napi_create_string_utf8(
         env,
@@ -54,7 +54,7 @@ bool ThreadSafeCallback::Initialize(
         return false;
     }
     
-    // 创建 ThreadSafeFunction
+    // Create ThreadSafeFunction
     status = napi_create_threadsafe_function(
         env,
         callback,
@@ -93,10 +93,10 @@ bool ThreadSafeCallback::Call(DataBuilder builder) {
         return false;
     }
     
-    // 创建数据副本（在堆上）
+    // Create a heap-allocated copy of the data
     auto* data = new CallbackData(std::move(builder));
     
-    // 调用 ThreadSafeFunction（非阻塞）
+    // Invoke ThreadSafeFunction (non-blocking)
     napi_status status = napi_call_threadsafe_function(
         tsfn_,
         data,
@@ -105,7 +105,7 @@ bool ThreadSafeCallback::Call(DataBuilder builder) {
     
     if (status != napi_ok) {
         Logger::error("ThreadSafeCallback", "Failed to call threadsafe function: %d", status);
-        delete data;  // 清理数据
+        delete data;  // Clean up data
         return false;
     }
     
@@ -157,7 +157,7 @@ bool ThreadSafeCallback::CallEmpty() {
 
 void ThreadSafeCallback::Release() {
     if (tsfn_ != nullptr) {
-        // 释放 ThreadSafeFunction
+        // Release ThreadSafeFunction
         napi_status status = napi_release_threadsafe_function(
             tsfn_,
             napi_tsfn_release
@@ -177,7 +177,7 @@ void ThreadSafeCallback::CallJS(
     void* context,
     void* data
 ) {
-    // 获取数据
+    // Retrieve data
     auto* callbackData = static_cast<CallbackData*>(data);
     
     if (callbackData == nullptr) {
@@ -185,18 +185,18 @@ void ThreadSafeCallback::CallJS(
         return;
     }
     
-    // 构造参数
+    // Build arguments
     napi_value arg = nullptr;
     if (callbackData->builder) {
         arg = callbackData->builder(env);
     }
     
-    // 如果没有构造器或构造失败，使用 undefined
+    // Use undefined if there is no constructor or construction fails
     if (arg == nullptr) {
         napi_get_undefined(env, &arg);
     }
     
-    // 调用 JavaScript 回调
+    // Invoke JavaScript callback
     if (js_callback != nullptr) {
         napi_value global;
         napi_status status = napi_get_global(env, &global);
@@ -215,14 +215,14 @@ void ThreadSafeCallback::CallJS(
             if (status != napi_ok) {
                 Logger::error("ThreadSafeCallback", "Failed to call JS function: %d", status);
                 
-                // 检查是否有异常
+                // Check for exceptions
                 bool isPending = false;
                 napi_is_exception_pending(env, &isPending);
                 if (isPending) {
                     napi_value error;
                     napi_get_and_clear_last_exception(env, &error);
                     
-                    // 记录异常信息
+                    // Log exception details
                     napi_value message;
                     if (napi_coerce_to_string(env, error, &message) == napi_ok) {
                         char errorMsg[256];
@@ -236,7 +236,7 @@ void ThreadSafeCallback::CallJS(
         }
     }
     
-    // 清理数据
+    // Clean up data
     delete callbackData;
 }
 
@@ -245,9 +245,9 @@ void ThreadSafeCallback::Finalize(
     void* finalize_data,
     void* finalize_hint
 ) {
-    // ✅ 修复 SIGSEGV：不访问 instance 成员
-    // 原因：Finalize 可能在对象析构后调用，访问成员变量会导致崩溃
-    // 解决：只记录 Finalize 被调用，不访问对象状态
+    // SIGSEGV fix: do not access instance members here
+    // Reason: Finalize may run after the object is destroyed; touching members would crash
+    // Solution: only log that Finalize was invoked, avoid accessing object state
 }
 
 } // namespace harmony

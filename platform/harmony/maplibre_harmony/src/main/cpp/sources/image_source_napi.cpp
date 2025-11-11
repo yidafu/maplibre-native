@@ -95,7 +95,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 解析 coordinates 参数 (4个 LatLng 坐标，按顺时针顺序: 左上, 右上, 右下, 左下)
+        // Parse coordinates argument (four LatLng values, clockwise: top-left, top-right, bottom-right, bottom-left)
         std::array<mbgl::LatLng, 4> coords;
         
         if (napiArgs.Count() >= 2) {
@@ -112,7 +112,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
                         napi_value coordValue;
                         napi_get_element(env, coordsValue, i, &coordValue);
                         
-                        // 每个 coord 应该是 [lng, lat] 数组
+                        // Each coord should be a [lng, lat] array
                         bool isCoordArray = false;
                         napi_is_array(env, coordValue, &isCoordArray);
                         
@@ -143,7 +143,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
                 }};
             }
         } else {
-            // 使用默认坐标创建
+            // Fallback to default coordinates
             coords = {{
                 mbgl::LatLng{0, 0}, mbgl::LatLng{0, 1},
                 mbgl::LatLng{1, 1}, mbgl::LatLng{1, 0}
@@ -162,7 +162,7 @@ napi_value ImageSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         Logger::info("ImageSourceNAPI", "ImageSource created: %s", sourceId.c_str());
     
-    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    // Add a _TYPE_ property for ETS-side type checks
     napi_value typeValue;
     napi_create_string_utf8(env, "ImageSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, jsThis, "_TYPE_", typeValue);
@@ -181,7 +181,7 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
         return result;
     }
     
-    // 获取构造函数
+    // Retrieve the constructor reference
     napi_value cons;
     napi_status status = napi_get_reference_value(env, constructor, &cons);
     if (status != napi_ok) {
@@ -191,7 +191,7 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
         return result;
     }
     
-    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    // Create an empty object and assign its prototype (avoid invoking the JS constructor)
     napi_value instance;
     status = napi_create_object(env, &instance);
     if (status != napi_ok) {
@@ -201,7 +201,7 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
         return result;
     }
     
-    // 获取构造函数的原型
+    // Retrieve the constructor prototype
     napi_value prototype;
     status = napi_get_named_property(env, cons, "prototype", &prototype);
     if (status != napi_ok) {
@@ -211,7 +211,7 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
         return result;
     }
     
-    // 设置对象的原型
+    // Assign the object's prototype
     status = napi_set_named_property(env, instance, "__proto__", prototype);
     if (status != napi_ok) {
         Logger::error("CreateInstance", "Failed to set prototype");
@@ -220,10 +220,10 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
         return result;
     }
     
-    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    // Create the NAPI wrapper using the WeakPtr constructor
     ImageSourceNAPI* napiObj = new ImageSourceNAPI(sourcePtr);
     
-    // 包装到 JS 对象
+    // Wrap the native pointer in the JS object
     status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete napiObj;
@@ -233,7 +233,7 @@ napi_value ImageSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSourc
         return result;
     }
     
-    // 添加 _TYPE_ 属性
+    // Add the _TYPE_ property
     napi_value typeValue;
     napi_create_string_utf8(env, "ImageSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, instance, "_TYPE_", typeValue);
@@ -392,7 +392,7 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
         return nullptr;
     }
     
-    // 解析 coordinates 参数 (4个 LatLng 坐标)
+    // Parse the coordinates argument (four LatLng values)
     std::array<mbgl::LatLng, 4> coords;
     
     napi_value coordsValue = args[0];
@@ -416,7 +416,7 @@ napi_value ImageSourceNAPI::SetCoordinates(napi_env env, napi_callback_info info
         napi_value coordValue;
         napi_get_element(env, coordsValue, i, &coordValue);
         
-        // 每个 coord 应该是 [lng, lat] 数组
+        // Each coord should be a [lng, lat] array
         bool isCoordArray = false;
         napi_is_array(env, coordValue, &isCoordArray);
         

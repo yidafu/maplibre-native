@@ -6,7 +6,7 @@ namespace harmony {
 
 using mbgl::harmony::Logger;
 
-// 类型别名，简化代码
+// Type alias for brevity
 using Value = mapbox::feature::value;
 
 Value napiValueToMbglValue(napi_env env, napi_value value) {

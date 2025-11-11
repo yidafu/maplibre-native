@@ -10,98 +10,98 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * MapLibreSettings - 全局配置管理单例
- * 
- * 负责管理全局的瓦片服务器配置和 API Key。
- * 所有地图实例在创建时会自动使用这里配置的设置。
- * 
- * 线程安全：所有公共方法都使用互斥锁保护。
- * 
- * 使用方式：
+ * MapLibreSettings - global configuration singleton.
+ *
+ * Manages global tile server configuration and API keys.
+ * Every map instance uses the configuration defined here when created.
+ *
+ * Thread-safety: all public methods are protected by a mutex.
+ *
+ * Usage:
  * ```cpp
- * // 在应用启动时配置
+ * // Configure during application startup
  * MapLibreSettings::getInstance().useMapboxConfiguration();
  * MapLibreSettings::getInstance().setApiKey("your_token");
  * 
- * // 在创建地图时应用配置
+ * // Apply configuration when creating a map
  * ResourceOptions options = MapLibreSettings::getInstance().applyToResourceOptions(resourceOptions);
  * ```
  */
 class MapLibreSettings {
 public:
     /**
-     * 获取单例实例
+     * Retrieve the singleton instance.
      */
     static MapLibreSettings& getInstance();
     
     /**
-     * 设置瓦片服务器配置
-     * @param options TileServerOptions 配置
+     * Set the tile server options.
+     * @param options TileServerOptions configuration
      */
     void setTileServerOptions(const mbgl::TileServerOptions& options);
     
     /**
-     * 获取当前瓦片服务器配置
-     * @return TileServerOptions 的副本
+     * Obtain the current tile server options.
+     * @return A copy of TileServerOptions
      */
     mbgl::TileServerOptions getTileServerOptions() const;
     
     /**
-     * 使用 Mapbox 配置（需要 Access Token）
-     * - 支持 mapbox:// 协议 URL
+     * Apply Mapbox configuration (requires an access token).
+     * - Supports mapbox:// URLs
      * - baseURL: https://api.mapbox.com
-     * - 需要设置 API Key
+     * - Requires setting an API key
      */
     void useMapboxConfiguration();
     
     /**
-     * 使用 MapTiler 配置（需要 API Key）
-     * - 支持 maptiler:// 协议 URL
+     * Apply MapTiler configuration (requires an API key).
+     * - Supports maptiler:// URLs
      * - baseURL: https://api.maptiler.com
-     * - 需要设置 API Key
+     * - Requires setting an API key
      */
     void useMapTilerConfiguration();
     
     /**
-     * 使用 MapLibre 默认配置（开源，无需 token）
-     * - 支持 maplibre:// 协议 URL
+     * Apply MapLibre default configuration (open source, no token required).
+     * - Supports maplibre:// URLs
      * - baseURL: https://demotiles.maplibre.org
-     * - 不需要 API Key
+     * - Does not require an API key
      */
     void useMapLibreConfiguration();
     
     /**
-     * 设置 API Key / Access Token
-     * @param apiKey API Key 字符串
+     * Set the API key / access token.
+     * @param apiKey API key string
      */
     void setApiKey(const std::string& apiKey);
     
     /**
-     * 获取当前 API Key
-     * @return API Key 字符串
+     * Get the current API key.
+     * @return API key string
      */
     std::string getApiKey() const;
     
     /**
-     * 设置自定义 Base URL
-     * @param baseURL 基础 URL（如 https://api.example.com）
+     * Set a custom base URL.
+     * @param baseURL Base URL (e.g., https://api.example.com)
      */
     void setBaseURL(const std::string& baseURL);
     
     /**
-     * 获取当前 Base URL
-     * @return Base URL 字符串
+     * Get the current base URL.
+     * @return Base URL string
      */
     std::string getBaseURL() const;
     
     /**
-     * 将全局配置应用到 ResourceOptions
-     * 
-     * 这个方法会将当前的 TileServerOptions 和 API Key 配置
-     * 应用到传入的 ResourceOptions 对象。
-     * 
-     * @param options 要应用配置的 ResourceOptions
-     * @return 应用配置后的 ResourceOptions
+     * Apply the global configuration to ResourceOptions.
+     *
+     * This method copies the current TileServerOptions and API key
+     * into the provided ResourceOptions object.
+     *
+     * @param options ResourceOptions to update
+     * @return Updated ResourceOptions
      */
     mbgl::ResourceOptions applyToResourceOptions(mbgl::ResourceOptions options) const;
 
@@ -109,7 +109,7 @@ private:
     MapLibreSettings();
     ~MapLibreSettings() = default;
     
-    // 禁止拷贝和赋值
+    // Disable copy and assignment
     MapLibreSettings(const MapLibreSettings&) = delete;
     MapLibreSettings& operator=(const MapLibreSettings&) = delete;
     

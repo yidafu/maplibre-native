@@ -11,7 +11,7 @@ namespace harmony {
 using mbgl::harmony::napi::NapiArgs;
 
 void MapLibreSettingsNAPI::Init(napi_env env, napi_value exports) {
-    // 定义要导出的方法
+    // Define the methods to export
     napi_property_descriptor descriptors[] = {
         {"setAccessToken", nullptr, SetAccessToken, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getAccessToken", nullptr, GetAccessToken, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -22,7 +22,7 @@ void MapLibreSettingsNAPI::Init(napi_env env, napi_value exports) {
         {"getApiBaseURL", nullptr, GetApiBaseURL, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
-    // 注册方法到 exports 对象
+    // Register the methods on the exports object
     napi_status status = napi_define_properties(env, exports, 
         sizeof(descriptors) / sizeof(descriptors[0]), descriptors);
     
@@ -43,7 +43,7 @@ napi_value MapLibreSettingsNAPI::SetAccessToken(napi_env env, napi_callback_info
         return nullptr;
     }
     
-    // 设置 API Key
+    // Set the API key
     MapLibreSettings::getInstance().setApiKey(token);
     
     return args.Undefined();
@@ -55,10 +55,10 @@ napi_value MapLibreSettingsNAPI::GetAccessToken(napi_env env, napi_callback_info
         return nullptr;
     }
 
-    // 获取 API Key
+    // Get the API key
     std::string token = MapLibreSettings::getInstance().getApiKey();
     
-    // 转换为 NAPI 字符串
+    // Convert to a NAPI string
     napi_value result;
     napi_create_string_utf8(env, token.c_str(), token.length(), &result);
     
@@ -107,7 +107,7 @@ napi_value MapLibreSettingsNAPI::SetApiBaseURL(napi_env env, napi_callback_info 
         return nullptr;
     }
     
-    // 设置 Base URL
+    // Set the base URL
     MapLibreSettings::getInstance().setBaseURL(url);
     
     return args.Undefined();
@@ -119,10 +119,10 @@ napi_value MapLibreSettingsNAPI::GetApiBaseURL(napi_env env, napi_callback_info 
         return nullptr;
     }
 
-    // 获取 Base URL
+    // Get the base URL
     std::string url = MapLibreSettings::getInstance().getBaseURL();
     
-    // 转换为 NAPI 字符串
+    // Convert to a NAPI string
     napi_value result;
     napi_create_string_utf8(env, url.c_str(), url.length(), &result);
     

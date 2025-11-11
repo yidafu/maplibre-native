@@ -20,10 +20,10 @@ public:
     
     // Constructor callback
     static napi_value New(napi_env env, napi_callback_info info);
-    // 从现有 Layer 创建（使用 WeakPtr，不拥有所有权）
+    // Construct from an existing layer (uses WeakPtr, does not take ownership)
     HeatmapLayerNAPI(mbgl::style::HeatmapLayer* layerPtr);
 
-    // 从现有 native 对象创建 NAPI 实例
+    // Create a NAPI instance from an existing native object
     static napi_value CreateInstance(napi_env env, mbgl::style::HeatmapLayer* layerPtr);
 
     

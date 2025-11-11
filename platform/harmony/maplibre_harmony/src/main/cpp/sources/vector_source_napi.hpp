@@ -10,21 +10,21 @@ namespace harmony {
 
 /**
  * VectorSourceNAPI - NAPI wrapper for Vector Source
- * 
- * 封装 mbgl::style::VectorSource，提供面向对象的矢量瓦片数据源接口
+ *
+ * Wraps mbgl::style::VectorSource to provide an object-oriented vector tile interface.
  */
 class VectorSourceNAPI {
 public:
     VectorSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::VectorSource> source);
-    // 从现有 Source 创建（使用 WeakPtr，不拥有所有权）
+    // Construct from an existing Source (uses WeakPtr, does not take ownership)
     VectorSourceNAPI(mbgl::style::VectorSource* sourcePtr);
     
     ~VectorSourceNAPI();
     
-    // NAPI 注册
+    // Register NAPI bindings
     static napi_value Init(napi_env env, napi_value exports);
 static napi_value New(napi_env env, napi_callback_info info);
-    // 从现有 native 对象创建 NAPI 实例
+    // Create a NAPI instance from an existing native object
     static napi_value CreateInstance(napi_env env, mbgl::style::VectorSource* sourcePtr);
     
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
@@ -37,7 +37,7 @@ static napi_value New(napi_env env, napi_callback_info info);
     static napi_value SetUrl(napi_env env, napi_callback_info info);
     static napi_value SetTiles(napi_env env, napi_callback_info info);
     
-    // 内部方法
+    // Internal helpers
     std::string getId() const { return id; }
     mbgl::style::VectorSource* getSource() const { 
         if (!source && weakSource) {
@@ -46,13 +46,13 @@ static napi_value New(napi_env env, napi_callback_info info);
         return source.get(); 
     }
     
-    // 释放所有权
+    // Release ownership
     std::unique_ptr<mbgl::style::Source> releaseSource() {
         ownsSource = false;
         return std::move(source);
     }
     
-    // 在 addSource 后调用，创建 WeakPtr
+    // After addSource, create a WeakPtr
     void attachToStyle(mbgl::style::VectorSource* sourcePtr) {
         if (sourcePtr) {
             weakSource = sourcePtr->makeWeakPtr();

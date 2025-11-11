@@ -11,14 +11,14 @@
 namespace mbgl {
 namespace harmony {
 
-// mbgl::Value 类型别名
+// Alias for mbgl::Value
 using Value = mapbox::feature::value;
 
 /**
- * Value 转换工具
- * 
- * 提供 NAPI Value 和 mbgl::Value 之间的双向转换
- * 支持所有 JavaScript 类型的递归转换
+ * Value conversion utilities.
+ *
+ * Provides bidirectional conversion between NAPI values and mbgl::Value,
+ * supporting recursive transformation of all JavaScript types.
  */
 
 /**

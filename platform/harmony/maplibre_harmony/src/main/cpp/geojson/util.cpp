@@ -46,7 +46,7 @@ std::vector<mbgl::Point<double>> NapiArrayToPointVector(napi_env env, napi_value
         napi_value element;
         napi_get_element(env, array, i, &element);
         
-        // 每个元素应该是 [lng, lat] 数组
+        // Each element should be a [lng, lat] array
         auto coords = NapiArrayToDoubleVector(env, element);
         if (coords.size() >= 2) {
             result.push_back(mbgl::Point<double>{coords[0], coords[1]});
@@ -71,7 +71,7 @@ std::vector<mbgl::LineString<double>> NapiArrayToLineStringVector(napi_env env, 
         napi_value element;
         napi_get_element(env, array, i, &element);
         
-        // 每个元素是坐标数组
+        // Each element is a coordinate array
         result.push_back(NapiArrayToPointVector(env, element));
     }
     
@@ -93,7 +93,7 @@ std::vector<mbgl::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, 
         napi_value element;
         napi_get_element(env, array, i, &element);
         
-        // 每个元素是坐标数组 (LinearRing is a vector<Point>)
+        // Each element is a coordinate array (LinearRing is a vector<Point>)
         mbgl::LinearRing<double> ring = NapiArrayToPointVector(env, element);
         result.push_back(std::move(ring));
     }
@@ -116,7 +116,7 @@ std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_v
         napi_value element;
         napi_get_element(env, array, i, &element);
         
-        // 每个元素是 LinearRing 数组 (Polygon is a vector<LinearRing>)
+        // Each element is a LinearRing array (Polygon is a vector<LinearRing>)
         result.push_back(NapiArrayToLinearRingVector(env, element));
     }
     

@@ -5,7 +5,7 @@ namespace mbgl {
 namespace harmony {
 
 MapLibreSettings::MapLibreSettings() {
-    // 默认使用 MapLibre 开源配置
+    // Default to the MapLibre open-source configuration
     tileServerOptions_ = mbgl::TileServerOptions::MapLibreConfiguration();
     apiKey_ = "";
 }
@@ -54,7 +54,7 @@ void MapLibreSettings::setApiKey(const std::string& apiKey) {
     std::lock_guard<std::mutex> lock(mutex_);
     apiKey_ = apiKey;
     
-    // 仅记录是否设置了 token，不记录具体值（安全考虑）
+    // Log only whether a token is set—never the value (security)
     if (!apiKey_.empty()) {
         Log::Info(mbgl::Event::General, 
             "MapLibreSettings: API Key set (length: " + std::to_string(apiKey_.length()) + ")");
@@ -84,10 +84,10 @@ std::string MapLibreSettings::getBaseURL() const {
 mbgl::ResourceOptions MapLibreSettings::applyToResourceOptions(mbgl::ResourceOptions options) const {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 应用 TileServerOptions
+    // Apply the TileServerOptions
     options.withTileServerOptions(tileServerOptions_.clone());
     
-    // 应用 API Key
+    // Apply the API key
     if (!apiKey_.empty()) {
         options.withApiKey(apiKey_);
     }

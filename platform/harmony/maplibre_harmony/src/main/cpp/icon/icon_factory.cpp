@@ -91,14 +91,14 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
     
     uint8_t* data = image->data.get();
     
-    // Generate pin-shaped marker (类似 Google Maps 定位针)
-    // Pin 由圆形头部 + 尖端组成
+    // Generate pin-shaped marker (similar to the Google Maps location pin)
+    // Pin consists of a circular head plus a pointed tail
     const float centerX = size / 2.0f;
-    const float headCenterY = size * 0.35f;  // 头部圆心位置 (上部)
-    const float headRadius = size * 0.25f;   // 头部圆形半径
-    const float tipY = size * 0.9f;          // 尖端 Y 坐标 (下部)
+    const float headCenterY = size * 0.35f;  // Head center position (upper portion)
+    const float headRadius = size * 0.25f;   // Head circular radius
+    const float tipY = size * 0.9f;          // Tip Y coordinate (lower portion)
     
-    // 颜色: RED (#FF0000) - 标准地图标记颜色
+    // Color: RED (#FF0000) - standard map marker color
     const uint8_t red = 255;
     const uint8_t green = 0;
     const uint8_t blue = 0;
@@ -114,13 +114,13 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
             
             bool isInside = false;
             
-            // 1. 圆形头部
+            // 1. Circular head
             if (distance <= headRadius) {
                 isInside = true;
             }
-            // 2. 三角形尖端 (从圆心向下到尖端)
+            // 2. Triangular tip (from head center downward to the point)
             else if (y > headCenterY) {
-                // 计算三角形边界 (从圆形底部到尖端的等腰三角形)
+                // Compute triangle boundaries (isosceles triangle between head base and tip)
                 const float triangleY = y - headCenterY;
                 const float maxWidth = headRadius * (1.0f - (triangleY / (tipY - headCenterY)));
                 if (std::abs(dx) <= maxWidth) {
@@ -129,13 +129,13 @@ std::shared_ptr<mbgl::PremultipliedImage> IconFactory::createDefaultMarker(
             }
             
             if (isInside) {
-                // Pin 内部 - 红色
+                // Pin interior - red
                 data[offset + 0] = red;
                 data[offset + 1] = green;
                 data[offset + 2] = blue;
                 data[offset + 3] = alpha;
             } else {
-                // Pin 外部 - 完全透明
+                // Pin exterior - fully transparent
                 data[offset + 0] = 0;
                 data[offset + 1] = 0;
                 data[offset + 2] = 0;

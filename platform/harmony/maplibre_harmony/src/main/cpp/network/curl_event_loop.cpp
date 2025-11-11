@@ -30,7 +30,7 @@ CURLEventLoop::CURLEventLoop(Mode mode)
     , polling_timer_(nullptr)
     , holder_(nullptr) {
     
-    // 创建独立的libuv事件循环
+    // Create a dedicated libuv event loop
     loop_ = new uv_loop_t;
     if (int err = uv_loop_init(loop_); err != 0) {
         Logger::error("Network", "Failed to initialize libuv loop: %s", uv_strerror(err));
@@ -39,7 +39,7 @@ CURLEventLoop::CURLEventLoop(Mode mode)
         throw std::runtime_error("Failed to initialize libuv loop: " + std::string(uv_strerror(err)));
     }
     
-    // 创建holder async handle以保持loop运行
+    // Create a holder async handle to keep the loop alive
     holder_ = new uv_async_t;
     if (int err = uv_async_init(loop_, holder_, [](uv_async_t*) {}); err != 0) {
         Logger::error("Network", "Failed to initialize holder async: %s", uv_strerror(err));
@@ -51,7 +51,7 @@ CURLEventLoop::CURLEventLoop(Mode mode)
         throw std::runtime_error("Failed to initialize holder async: " + std::string(uv_strerror(err)));
     }
     
-    // 创建CURL multi handle
+    // Create the CURL multi handle
     multi_ = curl_multi_init();
     if (!multi_) {
         Logger::error("Network", "Failed to initialize CURL multi handle");
@@ -64,7 +64,7 @@ CURLEventLoop::CURLEventLoop(Mode mode)
         throw std::runtime_error("Failed to initialize CURL multi handle");
     }
     
-    // 根据模式设置CURL回调
+    // Configure CURL callbacks based on the mode
     if (mode_ == Mode::EventDriven) {
         curl_multi_setopt(multi_, CURLMOPT_SOCKETFUNCTION, handleSocket);
         curl_multi_setopt(multi_, CURLMOPT_SOCKETDATA, this);
@@ -74,30 +74,30 @@ CURLEventLoop::CURLEventLoop(Mode mode)
 }
 
 CURLEventLoop::~CURLEventLoop() {
-    // 确保事件循环已停止
+    // Ensure the event loop has stopped
     if (running_.load()) {
         stop();
     }
     
-    // 清理CURL multi handle
+    // Clean up the CURL multi handle
     if (multi_) {
         curl_multi_cleanup(multi_);
         multi_ = nullptr;
     }
     
-    // 清理轮询定时器（如果有）
+    // Release the polling timer if present
     if (polling_timer_) {
         delete polling_timer_;
         polling_timer_ = nullptr;
     }
     
-    // 清理holder（如果还没被清理）
+    // Release the holder handle if necessary
     if (holder_) {
         delete holder_;
         holder_ = nullptr;
     }
     
-    // 清理libuv事件循环
+    // Tear down the libuv event loop
     if (loop_) {
         uv_loop_close(loop_);
         delete loop_;
@@ -121,7 +121,7 @@ void CURLEventLoop::start() {
     running_.store(true);
     stopping_.store(false);
     
-    // 如果是简单轮询模式，启动轮询定时器
+    // Start the polling timer when running in SimplePolling mode
     if (mode_ == Mode::SimplePolling) {
         polling_timer_ = new uv_timer_t;
         polling_timer_->data = this;
@@ -141,7 +141,7 @@ void CURLEventLoop::start() {
         }
     }
     
-    // 启动事件循环线程
+    // Launch the event loop thread
     thread_ = std::make_unique<std::thread>(&CURLEventLoop::eventLoopThread, this);
 }
 
@@ -155,7 +155,7 @@ void CURLEventLoop::stop() {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         
-        // 停止并清理轮询定时器
+        // Stop and clean up the polling timer
         if (polling_timer_) {
             uv_timer_stop(polling_timer_);
             uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
@@ -164,7 +164,7 @@ void CURLEventLoop::stop() {
             polling_timer_ = nullptr;
         }
         
-        // 停止并清理timer
+        // Stop and clean up the timeout timer
         if (timeout_timer_) {
             uv_timer_stop(timeout_timer_);
             uv_close(reinterpret_cast<uv_handle_t*>(timeout_timer_), [](uv_handle_t* h) {
@@ -173,7 +173,7 @@ void CURLEventLoop::stop() {
             timeout_timer_ = nullptr;
         }
         
-        // 关闭所有active handles
+        // Close all active handles
         for (auto it = active_handles_.begin(); it != active_handles_.end(); ++it) {
             uv_poll_t* poll = it->second;
             if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(poll))) {
@@ -183,7 +183,7 @@ void CURLEventLoop::stop() {
         active_handles_.clear();
     }
     
-    // 关闭holder handle以停止loop
+    // Close the holder handle to stop the loop
     if (holder_) {
         uv_close(reinterpret_cast<uv_handle_t*>(holder_), [](uv_handle_t* h) {
             delete reinterpret_cast<uv_async_t*>(h);
@@ -191,7 +191,7 @@ void CURLEventLoop::stop() {
         holder_ = nullptr;
     }
     
-    // 等待线程结束
+    // Wait for the thread to finish
     if (thread_ && thread_->joinable()) {
         thread_->join();
     }
@@ -214,7 +214,7 @@ bool CURLEventLoop::addHandle(CURL* handle) {
         return false;
     }
     
-    // 在事件驱动模式下，触发CURL开始处理这个句柄
+    // In event-driven mode, prompt CURL to process this handle
     if (mode_ == Mode::EventDriven) {
         int running_handles = 0;
         result = curl_multi_socket_action(multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
@@ -235,7 +235,7 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
     
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 移除libuv poll handle
+    // Remove the libuv poll handle
     auto it = active_handles_.find(handle);
     if (it != active_handles_.end()) {
         uv_poll_t* poll = it->second;
@@ -245,7 +245,7 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
         active_handles_.erase(it);
     }
     
-    // 移除CURL handle
+    // Remove the CURL handle
     CURLMcode result = curl_multi_remove_handle(multi_, handle);
     if (result != CURLM_OK) {
         Logger::error("Network", "Failed to remove CURL handle: %s", curl_multi_strerror(result));
@@ -255,13 +255,13 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
     return true;
 }
 
-// getActiveHandleCount方法已移除，不再需要
+// getActiveHandleCount removed; no longer required
 
 void CURLEventLoop::eventLoopThread() {
     uv_run(loop_, UV_RUN_DEFAULT);
 }
 
-// libuv回调函数
+// libuv callback function
 void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
     auto* eventLoop = static_cast<CURLEventLoop*>(poll->data);
     
@@ -270,18 +270,18 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
         return;
     }
     
-    // 🔒 线程安全：锁保护 multi_ 的访问
+    // 🔒 Thread-safety: guard access to multi_ with a lock
     std::lock_guard<std::mutex> lock(eventLoop->mutex_);
     
     if (!eventLoop->multi_) {
         return;
     }
     
-    // 获取socket文件描述符
+    // Obtain the socket file descriptor
     uv_os_fd_t fd;
     uv_fileno(reinterpret_cast<uv_handle_t*>(poll), &fd);
     
-    // 转换事件类型
+    // Map libuv events to CURL events
     int curl_events = 0;
     if (events & UV_READABLE) {
         curl_events |= CURL_CSELECT_IN;
@@ -290,7 +290,7 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
         curl_events |= CURL_CSELECT_OUT;
     }
     
-    // 通知CURL
+    // Notify CURL
     int running_handles = 0;
     CURLMcode result = curl_multi_socket_action(eventLoop->multi_, fd, curl_events, &running_handles);
     if (result != CURLM_OK) {
@@ -298,21 +298,21 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
         return;
     }
     
-    // 处理CURL消息（注意：这里已经持有锁）
+    // Handle CURL messages (lock already held)
     eventLoop->processCURLMessages();
 }
 
 void CURLEventLoop::onTimeout(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
     
-    // 🔒 线程安全：锁保护 multi_ 的访问
+    // 🔒 Thread-safety: guard access to multi_ with a lock
     std::lock_guard<std::mutex> lock(eventLoop->mutex_);
     
     if (!eventLoop->multi_) {
         return;
     }
     
-    // 通知CURL超时
+    // Notify CURL about a timeout
     int running_handles = 0;
     CURLMcode result = curl_multi_socket_action(eventLoop->multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
     if (result != CURLM_OK) {
@@ -320,11 +320,11 @@ void CURLEventLoop::onTimeout(uv_timer_t* timer) {
         return;
     }
     
-    // 处理CURL消息（注意：这里已经持有锁）
+    // Handle CURL messages (lock already held)
     eventLoop->processCURLMessages();
 }
 
-// 简单轮询回调（SimplePolling 模式）
+// Simple polling callback (SimplePolling mode)
 void CURLEventLoop::onPolling(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
     
@@ -332,14 +332,14 @@ void CURLEventLoop::onPolling(uv_timer_t* timer) {
         return;
     }
     
-    // 🔒 线程安全：锁保护 multi_ 的访问
+    // 🔒 Thread-safety: guard access to multi_ with a lock
     std::lock_guard<std::mutex> lock(eventLoop->mutex_);
     
     if (!eventLoop->multi_) {
         return;
     }
     
-    // 执行 CURL 处理
+    // Execute CURL processing
     int running_handles = 0;
     CURLMcode result = curl_multi_perform(eventLoop->multi_, &running_handles);
     
@@ -348,7 +348,7 @@ void CURLEventLoop::onPolling(uv_timer_t* timer) {
         return;
     }
     
-    // 处理完成的请求（注意：这里已经持有锁）
+    // Process completed requests (lock already held)
     eventLoop->processCURLMessages();
 }
 
@@ -356,7 +356,7 @@ void CURLEventLoop::onClose(uv_handle_t* handle) {
     // Poll handle closed - no logging needed
 }
 
-// CURL回调函数
+// CURL callback helpers
 int CURLEventLoop::handleSocket(CURL* handle, curl_socket_t s, int action, void* userp, void* /*socketp*/) {
     auto* eventLoop = static_cast<CURLEventLoop*>(userp);
     
@@ -369,15 +369,15 @@ int CURLEventLoop::handleSocket(CURL* handle, curl_socket_t s, int action, void*
         case CURL_POLL_IN:
         case CURL_POLL_OUT:
         case CURL_POLL_INOUT: {
-            // 创建或更新poll handle
+            // Create or update the poll handle
             uv_poll_t* poll = nullptr;
             
-            // 检查是否已存在
+            // Check whether it already exists
             auto it = eventLoop->active_handles_.find(handle);
             if (it != eventLoop->active_handles_.end()) {
                 poll = it->second;
             } else {
-                // 创建新的poll handle
+                // Create a new poll handle
                 poll = new uv_poll_t;
                 int err = uv_poll_init(eventLoop->loop_, poll, static_cast<int>(s));
                 if (err != 0) {
@@ -389,7 +389,7 @@ int CURLEventLoop::handleSocket(CURL* handle, curl_socket_t s, int action, void*
                 eventLoop->active_handles_[handle] = poll;
             }
             
-            // 设置事件监听
+            // Configure event monitoring
             int events = 0;
             if (action == CURL_POLL_IN || action == CURL_POLL_INOUT) {
                 events |= UV_READABLE;
@@ -407,7 +407,7 @@ int CURLEventLoop::handleSocket(CURL* handle, curl_socket_t s, int action, void*
             break;
         }
         case CURL_POLL_REMOVE: {
-            // 移除poll handle
+            // Remove the poll handle
             auto it = eventLoop->active_handles_.find(handle);
             if (it != eventLoop->active_handles_.end()) {
                 uv_poll_t* poll = it->second;
@@ -437,7 +437,7 @@ int CURLEventLoop::handleTimer(CURLM* /*multi*/, long timeout_ms, void* userp) {
     return 0;
 }
 
-// 外部函数声明（在 http_file_source_harmony.cpp 中实现）
+// External function declaration (implemented in http_file_source_harmony.cpp)
 extern "C" void handleHTTPRequestResult(void* request, CURLcode code);
 
 void CURLEventLoop::processCURLMessages() {
@@ -449,11 +449,11 @@ void CURLEventLoop::processCURLMessages() {
             CURL* handle = msg->easy_handle;
             CURLcode result = msg->data.result;
             
-            // 🔍 诊断：获取请求的 URL
+            // 🔍 Diagnostics: fetch the request URL
             char* url = nullptr;
             curl_easy_getinfo(handle, CURLINFO_EFFECTIVE_URL, &url);
             
-            // 🔍 诊断：获取响应信息
+            // 🔍 Diagnostics: gather response info
             long response_code = 0;
             curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
             
@@ -467,21 +467,21 @@ void CURLEventLoop::processCURLMessages() {
                 Logger::warn("Network", "  Time: %.2f seconds", total_time);
             }
             
-            // 获取HTTPRequest并通知结果
+            // Retrieve the HTTPRequest and propagate the result
             void* privateData = nullptr;
             curl_easy_getinfo(handle, CURLINFO_PRIVATE, &privateData);
             
-            // 🔒 CRASH FIX: 增强 privateData 有效性检查
+            // 🔒 CRASH FIX: strengthen privateData validation
             if (privateData) {
-                // 再次检查：确保在调用前句柄仍然有效
-                // 注意：这不能完全防止 use-after-free，但可以减少概率
+                // Double-check that the handle is still valid before invoking the callback.
+                // Note: not a perfect guard against use-after-free, but lowers the risk.
                 
-                // 尝试重新获取，确认指针仍然一致
+                // Attempt to retrieve it again and ensure the pointer matches
                 void* verify = nullptr;
                 CURLcode info_result = curl_easy_getinfo(handle, CURLINFO_PRIVATE, &verify);
                 
                 if (info_result == CURLE_OK && verify == privateData) {
-                    // 调用外部函数处理结果
+                    // Invoke the external function to process the result
                     handleHTTPRequestResult(privateData, result);
                 } else {
                     Logger::error("Network", "❌ privateData validity check failed (URL: %s, expected=%p, actual=%p)", 
@@ -502,7 +502,7 @@ void CURLEventLoop::updateTimeout(long timeout_ms) {
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (timeout_ms < 0) {
-        // 停止定时器
+        // Stop the timer
         if (timeout_timer_) {
             int err = uv_timer_stop(timeout_timer_);
             if (err != 0) {
@@ -510,7 +510,7 @@ void CURLEventLoop::updateTimeout(long timeout_ms) {
             }
         }
     } else {
-        // 设置定时器
+        // Configure the timer
         if (!timeout_timer_) {
             timeout_timer_ = new uv_timer_t;
             timeout_timer_->data = this;

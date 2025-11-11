@@ -7,27 +7,27 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * ProjectedMeters NAPI 转换辅助类
- * 
- * 用于在 mbgl::ProjectedMeters (C++) 和 ETS ProjectedMeters 对象之间进行转换
- * ETS 定义: { northing: number, easting: number }
+ * ProjectedMeters NAPI conversion helper
+ *
+ * Bridges mbgl::ProjectedMeters (C++) with ETS ProjectedMeters objects.
+ * ETS definition: { northing: number, easting: number }
  */
 class ProjectedMetersHarmony {
 public:
     /**
-     * 创建 NAPI ProjectedMeters 对象
-     * @param env NAPI 环境
-     * @param projectedMeters mbgl::ProjectedMeters C++ 对象
-     * @return NAPI 对象 { northing: number, easting: number }
+     * Create a ProjectedMeters NAPI object.
+     * @param env NAPI environment
+     * @param projectedMeters mbgl::ProjectedMeters C++ object
+     * @return NAPI object { northing: number, easting: number }
      */
     static napi_value CreateProjectedMetersObject(napi_env env, const mbgl::ProjectedMeters& projectedMeters);
     
     /**
-     * 从 NAPI 值解析 ProjectedMeters
-     * @param env NAPI 环境
-     * @param value NAPI 对象
-     * @param outProjectedMeters 输出的 mbgl::ProjectedMeters
-     * @return 解析是否成功
+     * Parse ProjectedMeters from a NAPI value.
+     * @param env NAPI environment
+     * @param value NAPI object
+     * @param outProjectedMeters Output mbgl::ProjectedMeters
+     * @return Whether parsing succeeded
      */
     static bool ParseProjectedMeters(napi_env env, napi_value value, mbgl::ProjectedMeters& outProjectedMeters);
 };

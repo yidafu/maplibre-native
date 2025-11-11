@@ -87,23 +87,23 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 读取 options 参数
+        // Parse the options argument
         std::string url = "";
         std::vector<std::string> tiles;
-        uint16_t tileSize = 512; // 默认值
+        uint16_t tileSize = 512; // default value
         uint8_t minzoom = 0;
         uint8_t maxzoom = 22;
         
         if (args.Count() >= 2) {
             napi_value optionsObj = args.GetObject(1, "options");
             if (!args.HasError() && optionsObj) {
-                // 读取 url
+                // Read url
                 url = args.GetStringProperty(optionsObj, "url", "");
                 if (!url.empty()) {
                     Logger::info("RasterSourceNAPI", "RasterSource URL: %s", url.c_str());
                 }
                 
-                // 读取 tiles 数组
+                // Read the tiles array
                 napi_value tilesValue;
                 napi_status status = napi_get_named_property(env, optionsObj, "tiles", &tilesValue);
                 if (status == napi_ok) {
@@ -135,33 +135,33 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
                     }
                 }
                 
-                // 读取 tileSize
+                // Read tileSize
                 int32_t tileSizeInt = args.GetInt32Property(optionsObj, "tileSize", 512);
                 if (tileSizeInt > 0) {
                     tileSize = static_cast<uint16_t>(tileSizeInt);
                     Logger::info("RasterSourceNAPI", "RasterSource tileSize: %d", tileSize);
                 }
                 
-                // 读取 minzoom
+                // Read minzoom
                 minzoom = static_cast<uint8_t>(args.GetInt32Property(optionsObj, "minzoom", 0));
                 
-                // 读取 maxzoom
+                // Read maxzoom
                 maxzoom = static_cast<uint8_t>(args.GetInt32Property(optionsObj, "maxzoom", 22));
             }
         }
         
-        // 创建 RasterSource
-        // 优先使用 tiles 数组，如果没有再使用 url
+        // Create the RasterSource
+        // Prefer the tiles array; fall back to the URL when tiles are absent
         mbgl::variant<std::string, mbgl::Tileset> urlOrTileset;
         if (!tiles.empty()) {
-            // 使用 tiles 数组创建 Tileset
+            // Create a Tileset from the tiles array
             mbgl::Tileset tileset;
             tileset.tiles = tiles;
             tileset.zoomRange = mbgl::Range<uint8_t>(minzoom, maxzoom);
             urlOrTileset = std::move(tileset);
             Logger::info("RasterSourceNAPI", "RasterSource using Tileset with %zu tiles", tiles.size());
         } else {
-            // 使用 url 字符串
+            // Use the URL string
             urlOrTileset = url;
             Logger::info("RasterSourceNAPI", "RasterSource using URL: %s", url.c_str());
         }
@@ -183,7 +183,7 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         Logger::info("RasterSourceNAPI", "RasterSource created: %s", sourceId.c_str());
     
-    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    // Add the _TYPE_ property for ETS type detection
     napi_value typeValue;
     napi_create_string_utf8(env, "RasterSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, args.This(), "_TYPE_", typeValue);
@@ -202,7 +202,7 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
         return result;
     }
     
-    // 获取构造函数
+    // Retrieve the constructor
     napi_value cons;
     napi_status status = napi_get_reference_value(env, constructor, &cons);
     if (status != napi_ok) {
@@ -212,7 +212,7 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
         return result;
     }
     
-    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    // Create a plain object and set its prototype (avoid invoking the JS constructor)
     napi_value instance;
     status = napi_create_object(env, &instance);
     if (status != napi_ok) {
@@ -222,7 +222,7 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
         return result;
     }
     
-    // 获取构造函数的原型
+    // Retrieve the constructor prototype
     napi_value prototype;
     status = napi_get_named_property(env, cons, "prototype", &prototype);
     if (status != napi_ok) {
@@ -232,7 +232,7 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
         return result;
     }
     
-    // 设置对象的原型
+    // Set the object's prototype
     status = napi_set_named_property(env, instance, "__proto__", prototype);
     if (status != napi_ok) {
         Logger::error("CreateInstance", "Failed to set prototype");
@@ -241,10 +241,10 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
         return result;
     }
     
-    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    // Create the NAPI wrapper (using the WeakPtr constructor)
     RasterSourceNAPI* napiObj = new RasterSourceNAPI(sourcePtr);
     
-    // 包装到 JS 对象
+    // Wrap into the JS object
     status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete napiObj;
@@ -254,7 +254,7 @@ napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSou
         return result;
     }
     
-    // 添加 _TYPE_ 属性
+    // Add the _TYPE_ property
     napi_value typeValue;
     napi_create_string_utf8(env, "RasterSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, instance, "_TYPE_", typeValue);

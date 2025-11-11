@@ -16,7 +16,7 @@ namespace harmony {
 using Logger = mbgl::harmony::Logger;
 using NapiArgs = mbgl::harmony::napi::NapiArgs;
 
-// ========== 构造函数和析构函数 ==========
+// ========== Constructors and Destructors ==========
 
 OfflineManagerNAPI::OfflineManagerNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource)
     : fileSource_(fileSource), env_(nullptr), wrapper_(nullptr) {}
@@ -33,7 +33,7 @@ void OfflineManagerNAPI::Destructor(napi_env env, void* nativeObject, void* /* f
     delete obj;
 }
 
-// ========== NAPI 初始化 ==========
+// ========== NAPI Initialization ==========
 
 napi_value OfflineManagerNAPI::Init(napi_env env, napi_value exports) {
     napi_status status;
@@ -71,24 +71,24 @@ napi_value OfflineManagerNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-// ========== 构造函数 ==========
+// ========== Constructor ==========
 
 napi_value OfflineManagerNAPI::Constructor(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1);
     if (args.HasError()) return nullptr;
     
-    // 获取参数：数据库路径、可选的 ResourceOptions
+    // Retrieve parameters: database path and optional ResourceOptions
     std::string cachePath = args.GetString(0, "cachePath");
     if (args.HasError()) return nullptr;
     
-    // 创建 ResourceOptions 和 ClientOptions
+    // Create ResourceOptions and ClientOptions
     mbgl::ResourceOptions resourceOptions;
     resourceOptions.withCachePath(cachePath);
     
     mbgl::ClientOptions clientOptions;
     
-    // 获取 DatabaseFileSource 实例
+    // Acquire DatabaseFileSource instance
     auto fileSource = std::static_pointer_cast<mbgl::DatabaseFileSource>(
         mbgl::FileSourceManager::get()->getFileSource(
             mbgl::FileSourceType::Database,
@@ -102,15 +102,15 @@ napi_value OfflineManagerNAPI::Constructor(napi_env env, napi_callback_info info
         return nullptr;
     }
     
-    // 创建 C++ 对象
+    // Create C++ object
     OfflineManagerNAPI* obj = new OfflineManagerNAPI(fileSource);
     obj->env_ = env;
     
-    // 获取 this 对象
+    // Get this object
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    // 包装 C++ 对象
+    // Wrap C++ object
     napi_status status = napi_wrap(
         env, jsThis, obj,
         OfflineManagerNAPI::Destructor,
@@ -133,11 +133,11 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
     args.RequireMinArgs(1);
     if (args.HasError()) return nullptr;
     
-    // 获取回调函数
+    // Retrieve callback function
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) return nullptr;
     
-    // 获取 this
+    // Get this
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
@@ -149,7 +149,7 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
         return nullptr;
     }
     
-    // 创建线程安全回调
+    // Create thread-safe callback
     auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
         mbgl::harmony::ThreadSafeCallback::Create(env, callback, "ListOfflineRegions").release()
     );
@@ -158,16 +158,16 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
         return nullptr;
     }
     
-    // 调用核心库方法
+    // Call into the core library
     auto fileSource = obj->fileSource_;
-    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
+    auto tsfCallback = threadSafeCallback;  // copy shared_ptr
     fileSource->listOfflineRegions([tsfCallback, fileSource](
         mbgl::expected<mbgl::OfflineRegions, std::exception_ptr> regions) {
         
-        // 使用线程安全回调在主线程执行
+        // Execute on main thread via thread-safe callback
         tsfCallback->Call([regions = std::move(regions), fileSource](napi_env env) mutable -> napi_value {
             if (regions) {
-                // 成功 - 创建区域数组
+                // Success - create region array
                 napi_value regionsArray;
                 napi_create_array_with_length(env, regions->size(), &regionsArray);
                 
@@ -178,7 +178,7 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
                 
                 return regionsArray;
             } else {
-                // 错误
+                // Error case
                 std::string errorMsg = mbgl::util::toString(regions.error());
                 napi_value errorValue;
                 napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
@@ -186,7 +186,7 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
             }
         });
         
-        // ThreadSafeCallback 会在这里自动释放
+        // ThreadSafeCallback releases automatically here
     });
     
     napi_value undefined;
@@ -201,21 +201,21 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
     args.RequireMinArgs(3);
     if (args.HasError()) return nullptr;
     
-    // 获取参数：definition, metadata, callback
+    // Retrieve parameters: definition, metadata, callback
     napi_value definitionObj = args.GetObject(0, "definition");
     napi_value callback = args.GetFunction(2, "callback");
     if (args.HasError()) return nullptr;
     
-    // 获取 metadata 参数
+    // Retrieve metadata parameter
     size_t argc = 3;
     napi_value argv[3];
     napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
     napi_value metadataValue = argv[1];
     
-    // 解析 definition
+    // Parse definition
     mbgl::OfflineRegionDefinition definition = OfflineRegionDefinitionNAPI::FromNapiObject(env, definitionObj);
     
-    // 解析 metadata (ArrayBuffer)
+    // Parse metadata (ArrayBuffer)
     mbgl::OfflineRegionMetadata metadata;
     napi_valuetype metadataType;
     napi_typeof(env, metadataValue, &metadataType);
@@ -223,7 +223,7 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
         metadata = OfflineRegionNAPI::ArrayBufferToMetadata(env, metadataValue);
     }
     
-    // 获取 this
+    // Get this
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
@@ -235,7 +235,7 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
         return nullptr;
     }
     
-    // 创建线程安全回调
+    // Create thread-safe callback
     auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
         mbgl::harmony::ThreadSafeCallback::Create(env, callback, "CreateOfflineRegion").release()
     );
@@ -244,22 +244,22 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
         return nullptr;
     }
     
-    // 调用核心库方法
+    // Call into the core library
     auto fileSource = obj->fileSource_;
-    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
+    auto tsfCallback = threadSafeCallback;  // copy shared_ptr
     fileSource->createOfflineRegion(
         definition,
         metadata,
         [tsfCallback, fileSource](mbgl::expected<mbgl::OfflineRegion, std::exception_ptr> region) {
             
-            // 使用线程安全回调在主线程执行
+            // Execute on main thread via thread-safe callback
             tsfCallback->Call([region = std::move(region), fileSource](napi_env env) mutable -> napi_value {
                 if (region) {
-                    // 成功 - 创建 OfflineRegion 对象
+                    // Success - create OfflineRegion object
                     napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move(*region));
                     return regionObj;
                 } else {
-                    // 错误
+                    // Error case
                     std::string errorMsg = mbgl::util::toString(region.error());
                     napi_value errorValue;
                     napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
@@ -274,7 +274,7 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
     return undefined;
 }
 
-// ========== 其他方法 ==========
+// ========== Other Methods ==========
 
 napi_value OfflineManagerNAPI::GetOfflineRegion(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -296,7 +296,7 @@ napi_value OfflineManagerNAPI::GetOfflineRegion(napi_env env, napi_callback_info
         return nullptr;
     }
     
-    // 创建线程安全回调
+    // Create thread-safe callback
     auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
         mbgl::harmony::ThreadSafeCallback::Create(env, callback, "GetOfflineRegion").release()
     );
@@ -306,14 +306,14 @@ napi_value OfflineManagerNAPI::GetOfflineRegion(napi_env env, napi_callback_info
     }
     
     auto fileSource = obj->fileSource_;
-    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
+    auto tsfCallback = threadSafeCallback;  // copy shared_ptr
     fileSource->getOfflineRegion(regionId, [tsfCallback, fileSource](
         mbgl::expected<std::optional<mbgl::OfflineRegion>, std::exception_ptr> result) {
         
-        // 使用线程安全回调在主线程执行
+        // Execute on main thread via thread-safe callback
         tsfCallback->Call([result = std::move(result), fileSource](napi_env env) mutable -> napi_value {
             if (result && result->has_value()) {
-                // 找到区域
+                // Region found
                 napi_value regionObj = OfflineRegionNAPI::New(env, fileSource, std::move(**result));
                 return regionObj;
             } else if (result) {
@@ -356,7 +356,7 @@ napi_value OfflineManagerNAPI::MergeOfflineRegions(napi_env env, napi_callback_i
         return nullptr;
     }
     
-    // 创建线程安全回调
+    // Create thread-safe callback
     auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
         mbgl::harmony::ThreadSafeCallback::Create(env, callback, "MergeOfflineRegions").release()
     );
@@ -366,11 +366,11 @@ napi_value OfflineManagerNAPI::MergeOfflineRegions(napi_env env, napi_callback_i
     }
     
     auto fileSource = obj->fileSource_;
-    auto tsfCallback = threadSafeCallback;  // 复制 shared_ptr
+    auto tsfCallback = threadSafeCallback;  // copy shared_ptr
     fileSource->mergeOfflineRegions(path, [tsfCallback, fileSource](
         mbgl::expected<mbgl::OfflineRegions, std::exception_ptr> regions) {
         
-        // 使用线程安全回调在主线程执行
+        // Execute on main thread via thread-safe callback
         tsfCallback->Call([regions = std::move(regions), fileSource](napi_env env) mutable -> napi_value {
             if (regions) {
                 napi_value regionsArray;
@@ -556,7 +556,7 @@ napi_value OfflineManagerNAPI::ClearAmbientCache(napi_env env, napi_callback_inf
         return nullptr;
     }
     
-    // 创建线程安全回调
+    // Create thread-safe callback
     auto threadSafeCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
         mbgl::harmony::ThreadSafeCallback::Create(env, callback, "ClearAmbientCache").release()
     );

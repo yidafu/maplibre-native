@@ -1,8 +1,8 @@
 /**
  * MapSnapshot NAPI Bindings for HarmonyOS
  * 
- * 封装 MapSnapshot 对象并提供坐标转换功能
- * 参考 Android: platform/android/MapLibreAndroid/src/cpp/snapshotter/map_snapshot.hpp
+ * Wraps MapSnapshot objects and exposes coordinate conversion helpers.
+ * Reference: platform/android/MapLibreAndroid/src/cpp/snapshotter/map_snapshot.hpp
  */
 
 #pragma once
@@ -21,14 +21,14 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * MapSnapshotInstance - MapSnapshot 的 NAPI 实例
- * 
- * 保存快照图像数据和坐标转换函数
+ * MapSnapshotInstance - NAPI wrapper around MapSnapshot
+ *
+ * Stores snapshot image data and coordinate conversion helpers.
  */
 class MapSnapshotInstance {
 public:
     /**
-     * 构造函数
+     * Constructor.
      */
     MapSnapshotInstance(
         napi_env env,
@@ -42,37 +42,37 @@ public:
     ~MapSnapshotInstance();
 
     /**
-     * 获取图像数据
+     * Retrieve the image data.
      */
     const mbgl::PremultipliedImage& getImage() const { return image_; }
 
     /**
-     * 获取图像宽度
+     * Retrieve the image width.
      */
     uint32_t getWidth() const { return image_.size.width; }
 
     /**
-     * 获取图像高度
+     * Retrieve the image height.
      */
     uint32_t getHeight() const { return image_.size.height; }
 
     /**
-     * 获取归属信息
+     * Retrieve attribution strings.
      */
     const std::vector<std::string>& getAttributions() const { return attributions_; }
 
     /**
-     * 获取像素比
+     * Retrieve the pixel ratio.
      */
     float getPixelRatio() const { return pixelRatio_; }
 
     /**
-     * 地理坐标转换为图像像素坐标
+     * Convert geographic coordinates to image pixel coordinates.
      */
     mbgl::ScreenCoordinate pixelForLatLng(const mbgl::LatLng& latLng) const;
 
     /**
-     * 图像像素坐标转换为地理坐标
+     * Convert image pixel coordinates to geographic coordinates.
      */
     mbgl::LatLng latLngForPixel(const mbgl::ScreenCoordinate& point) const;
 
@@ -86,15 +86,15 @@ private:
 };
 
 /**
- * 创建 MapSnapshot NAPI 对象
- * 
- * @param env NAPI 环境
- * @param image 图像数据
- * @param attributions 归属信息
- * @param pixelRatio 像素比
- * @param pointForFn 坐标转换函数（地理→屏幕）
- * @param latLngForFn 坐标转换函数（屏幕→地理）
- * @return NAPI 对象
+ * Create a MapSnapshot NAPI object.
+ *
+ * @param env NAPI environment
+ * @param image Snapshot image data
+ * @param attributions Attribution strings
+ * @param pixelRatio Image pixel ratio
+ * @param pointForFn Coordinate conversion function (geographic → screen)
+ * @param latLngForFn Coordinate conversion function (screen → geographic)
+ * @return Created NAPI object
  */
 napi_value CreateMapSnapshotObject(
     napi_env env,
@@ -106,12 +106,12 @@ napi_value CreateMapSnapshotObject(
 );
 
 /**
- * MapSnapshot NAPI 方法：地理坐标→图像像素坐标
+ * MapSnapshot NAPI helper: geographic coordinates → image pixels.
  */
 napi_value MapSnapshot_pixelForLatLng(napi_env env, napi_callback_info info);
 
 /**
- * MapSnapshot NAPI 方法：图像像素坐标→地理坐标
+ * MapSnapshot NAPI helper: image pixels → geographic coordinates.
  */
 napi_value MapSnapshot_latLngForPixel(napi_env env, napi_callback_info info);
 

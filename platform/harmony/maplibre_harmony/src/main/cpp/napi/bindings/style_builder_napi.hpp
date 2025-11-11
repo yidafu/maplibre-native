@@ -8,26 +8,26 @@ namespace maplibre {
 namespace harmony {
 
 /**
- * StyleBuilderNAPI - NAPI wrapper for Style Builder
- * 
- * 提供 Builder 模式来构建和配置地图样式
- * 类似于 Android 的 Style.Builder 类
+ * StyleBuilderNAPI - NAPI wrapper for the Style Builder.
+ *
+ * Provides a builder pattern for constructing and configuring map styles,
+ * similar to Android's Style.Builder class.
  */
 class StyleBuilderNAPI {
 public:
     StyleBuilderNAPI();
     ~StyleBuilderNAPI();
     
-    // NAPI 注册
+    // Register NAPI bindings
     static napi_value Init(napi_env env, napi_value exports);
     
-    // 构造函数回调
+    // Constructor callback
     static napi_value New(napi_env env, napi_callback_info info);
     
-    // 析构函数回调
+    // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
-    // Builder 方法（链式调用）
+    // Builder methods (chainable)
     static napi_value FromUri(napi_env env, napi_callback_info info);
     static napi_value FromJson(napi_env env, napi_callback_info info);
     static napi_value WithSource(napi_env env, napi_callback_info info);
@@ -35,18 +35,18 @@ public:
     static napi_value WithImage(napi_env env, napi_callback_info info);
     static napi_value WithTransitionOptions(napi_env env, napi_callback_info info);
     
-    // Getters (内部使用)
+    // Getters (internal use)
     std::string getStyleUri() const { return styleUri; }
     std::string getStyleJson() const { return styleJson; }
     
-    // 构造函数引用
+    // Reference to the constructor
     static napi_ref constructor;
     
 private:
     std::string styleUri;
     std::string styleJson;
     
-    // 预加载的资源
+    // Preloaded resources
     struct ImageData {
         std::string id;
         std::vector<uint8_t> data;
@@ -61,7 +61,7 @@ private:
         bool enablePlacementTransitions = true;
     };
     
-    // 预加载的资源（存储 JSON 字符串或对象序列化）
+    // Preloaded resources (stored as JSON strings or serialized objects)
     std::vector<std::string> preloadedSourcesJson;
     std::vector<std::string> preloadedLayersJson;
     std::vector<ImageData> preloadedImages;

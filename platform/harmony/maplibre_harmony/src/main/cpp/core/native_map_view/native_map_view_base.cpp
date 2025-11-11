@@ -19,7 +19,7 @@
 #include <mbgl/util/geometry.hpp>
 #include <napi/native_api.h>
 
-// 添加Harmony渲染器头文件
+// Include Harmony renderer headers
 #include "rendering/harmony_renderer.hpp"
 #include "rendering/backends/harmony_renderer_backend.hpp"
 #include "rendering/backends/harmony_gl_renderer_backend.hpp"
@@ -29,17 +29,17 @@
 #include "utils/anr_detector.hpp"
 #include "core/thread_safe_callback.hpp"
 
-// 几何类型转换
+// Geometry conversion helpers
 #include "geometry/lat_lng_harmony.hpp"
 #include "geometry/point_harmony.hpp"
 #include "geometry/projected_meters_harmony.hpp"
 #include "geometry/lat_lng_bounds_harmony.hpp"
 #include "geometry/rect_harmony.hpp"
 
-// 相机类型转换
+// Camera type conversion
 #include "camera/camera_position_harmony.hpp"
 
-// 样式类型转换
+// Style type conversion
 #include "style/transition_options_harmony.hpp"
 
 
@@ -61,63 +61,63 @@ using mbgl::harmony::ANRDetector;
 namespace mbgl {
 namespace harmony {
 
-// ✅ 使用 atomic 计数器准确跟踪活跃实例数
+// ✅ Use atomic counters to accurately track active instances
 namespace {
     std::atomic<int> g_activeInstanceCount{0};
-    std::atomic<int> g_totalInstanceCount{0};  // 总创建数（用于ID）
+    std::atomic<int> g_totalInstanceCount{0};  // Total instances created (used for IDs)
 }
 
 NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath) 
     : env_(env), cachePath_(cachePath) {
-    // 实例标识（全局计数器，用于多实例调试）
+    // Instance identifier (global counter used for multi-instance debugging)
     static std::map<void*, int> globalInstanceIds;
     int instanceId = ++g_totalInstanceCount;
     globalInstanceIds[this] = instanceId;
     
-    // ✅ 递增活跃实例计数
+    // ✅ Increment the active instance count
     int activeCount = ++g_activeInstanceCount;
     
-    // 创建包装器引用
+    // Create the wrapper reference
     napi_create_reference(env, wrapper, 1, &wrapper_);
     
-    // 初始化成员变量
+    // Initialize member fields
     mapRenderer = nullptr;
     map = nullptr;
     pixelRatio = 1.0f;
     nativeWindow = nullptr;
     
-    // 初始化回调管理器
+    // Initialize the callback manager
     callbackManager_ = std::make_unique<mbgl::harmony::CallbackManager>(env);
 }
 
 NativeMapView::~NativeMapView() {
-    // 立即标记对象正在析构，防止回调访问
+    // Immediately mark destruction to prevent callbacks from touching the object
     isDestroying.store(true, std::memory_order_release);
     
-    // 确保资源按正确顺序清理
+    // Ensure resources are released in order
     cleanupAllResources();
 }
 
 void NativeMapView::cleanupAllResources() {
-    // 同步销毁：阻塞直到渲染线程与资源完全释放
+    // Synchronous teardown: block until the render thread and resources are fully released
     ANRDetector detector("cleanupAllResources_sync", 100, 2000);
 
-    // 防止重复清理
+    // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
         Logger::warn("NativeMapView", "Resources already cleaned (sync), skipping");
         return;
     }
 
-    // 0. 清理回调
+    // 0. Clear callbacks
     if (callbackManager_) {
         ANRDetector callbackDetector("callbackManager->Clear_sync", 50, 500);
         callbackManager_->Clear();
     }
 
-    // 1. 停止渲染并同步退出渲染线程
+    // 1. Stop rendering and join the render thread synchronously
     if (harmonyRenderer) {
         try {
-            harmonyRenderer->cleanup(); // 同步：内部调用 mapRenderThread_->stop() 并 join
+            harmonyRenderer->cleanup(); // Synchronous: internally calls mapRenderThread_->stop() and join
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "[sync] Error during HarmonyRenderer cleanup: %s", e.what());
         } catch (...) {
@@ -126,16 +126,16 @@ void NativeMapView::cleanupAllResources() {
         harmonyRenderer.reset();
     }
 
-    // 2. 清理 Map 引用
+    // 2. Clear the Map reference
     if (map) {
         map = nullptr;
     }
 
-    // 3. 其他原生资源
+    // 3. Other native resources
     mapRenderer = nullptr;
     nativeWindow = nullptr;
 
-    // 4. 释放 NAPI 引用
+    // 4. Release NAPI references
     if (styleRef_) {
         napi_delete_reference(env_, styleRef_);
         styleRef_ = nullptr;
@@ -145,15 +145,15 @@ void NativeMapView::cleanupAllResources() {
         wrapper_ = nullptr;
     }
 
-    // 5. 更新计数
+    // 5. Update counters
     --g_activeInstanceCount;
 }
 
 void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
-    // 🔍 ANR监控：记录整个清理过程的耗时
+    // 🔍 ANR monitoring: record elapsed time for the full cleanup path
     ANRDetector detector("cleanupAllResourcesAsync", 100, 1000);
     
-    // 防止重复清理
+    // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
         Logger::warn("NativeMapView", "Resources already cleaned, skipping");
         if (onComplete) onComplete();
@@ -161,24 +161,24 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
     }
     
     try {
-        // 0. 清理所有回调（带ANR监控）
+        // 0. Clear all callbacks (with ANR monitoring)
         if (callbackManager_) {
             ANRDetector callbackDetector("callbackManager->Clear", 50, 500);
             callbackManager_->Clear();
         }
         
-        // 1. ✅ 立即停止渲染（参考 iOS destroyDisplayLink 和 Android MapRenderer.onStop()）
-        // 关键修复：在异步等待之前先停止渲染，防止 OpenGL attribute location 断言失败
+        // 1. ✅ Stop rendering immediately (mirrors iOS destroyDisplayLink and Android MapRenderer.onStop())
+        // Critical fix: halt rendering before waiting asynchronously to avoid OpenGL attribute assertions
         if (harmonyRenderer) {
             harmonyRenderer->pause();
             
-            // ✅ 等待正在执行的渲染帧完成（参考 Android GLSurfaceView.onPause()）
-            // 原因：pause() 只设置标志，正在执行的渲染可能还在访问资源
-            // 解决：等待当前帧完成（通常 1-2帧 = 16-33ms）
+            // ✅ Wait for the in-flight frame to finish (see Android GLSurfaceView.onPause())
+            // Reason: pause() only flips a flag; the active frame may still touch resources
+            // Fix: give the current frame time to finish (typically 1-2 frames = 16-33 ms)
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
         
-        // 2. 立即取消所有动画（参考 Android cancelTransitions）——必须在渲染线程执行
+        // 2. Cancel all animations immediately (mirrors Android cancelTransitions) — must run on the render thread
         if (harmonyRenderer && map) {
             harmonyRenderer->runOnRenderThread([this]() {
                 if (map) {
@@ -191,28 +191,28 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             });
         }
         
-        // 3. 使用异步方式等待所有后台线程完成（参考 Android/iOS）
+        // 3. Wait for background work asynchronously (aligned with Android/iOS)
         if (harmonyRenderer) {
-            // 使用异步回调而不是硬编码等待
+            // Use an asynchronous callback rather than a hard-coded wait
             harmonyRenderer->stopAllRequestsAsync([this, onComplete = std::move(onComplete)]() {
                 try {
-                    // 4. 清理Map对象（参考 iOS destroyCoreObjects 顺序）
+                    // 4. Clean up Map objects (following the iOS destroyCoreObjects order)
                     if (map) {
-                        // Note: In new architecture, Map is owned by HarmonyMapRenderThread
-                        // NativeMapView just holds a reference
+                        // Note: In the current architecture, HarmonyMapRenderThread owns Map
+                        // NativeMapView simply holds a reference
                         map = nullptr;
                     }
                     
-                    // 5. 清理HarmonyRenderer（参考 iOS destroyCoreObjects）
+                    // 5. Clean up HarmonyRenderer (mirrors iOS destroyCoreObjects)
                     if (harmonyRenderer) {
                         harmonyRenderer.reset();
                     }
                     
-                    // 6. 清理其他资源
+                    // 6. Clean up remaining resources
                     mapRenderer = nullptr;
                     nativeWindow = nullptr;
                     
-                    // 7. 释放NAPI引用
+                    // 7. Release NAPI references
                     if (styleRef_) {
                         napi_delete_reference(env_, styleRef_);
                         styleRef_ = nullptr;
@@ -222,31 +222,31 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
                         wrapper_ = nullptr;
                     }
                     
-                    // ✅ 递减活跃实例计数
+                    // ✅ Decrement the active instance count
                     --g_activeInstanceCount;
                     
-                    // 8. 调用完成回调
+                    // 8. Invoke the completion callback
                     if (onComplete) {
                         onComplete();
                     }
                     
                 } catch (const std::exception& e) {
                     Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
-                    // ✅ 即使出错也要递减计数
+                    // ✅ Even on errors, decrement the counter
                     --g_activeInstanceCount;
                     if (onComplete) onComplete();
                 } catch (...) {
                     Logger::error("NativeMapView", "Unknown error during resource cleanup");
-                    // ✅ 即使出错也要递减计数
+                    // ✅ Even on errors, decrement the counter
                     --g_activeInstanceCount;
                     if (onComplete) onComplete();
                 }
             });
             
-            return; // 异步执行，立即返回
+            return; // Kick off asynchronously and return immediately
         }
         
-        // 如果没有 harmonyRenderer，直接清理其他资源
+        // If harmonyRenderer is missing, clean up the remaining resources immediately
         Logger::warn("NativeMapView", "No harmonyRenderer, cleaning up immediately");
         
         mapRenderer = nullptr;
@@ -262,18 +262,18 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             wrapper_ = nullptr;
         }
         
-        // ✅ 递减活跃实例计数
+        // ✅ Decrement the active instance count
         --g_activeInstanceCount;
         if (onComplete) onComplete();
         
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
-        // ✅ 即使出错也要递减计数
+        // ✅ Decrement the counter even if an error occurs
         --g_activeInstanceCount;
         if (onComplete) onComplete();
     } catch (...) {
         Logger::error("NativeMapView", "Unknown error during resource cleanup");
-        // ✅ 即使出错也要递减计数
+        // ✅ Decrement the counter even if an error occurs
         --g_activeInstanceCount;
         if (onComplete) onComplete();
     }
@@ -281,18 +281,18 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
 
 
 void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int height) {
-    // 更新尺寸
+    // Update stored dimensions
     this->width = width;
     this->height = height;
     
-    // 创建原生窗口
+    // Create the native window
     OHNativeWindow *nativeWindow;
     OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
     
     if (nativeWindow) {
         this->nativeWindow = nativeWindow;
         
-        // 初始化渲染器（如果尚未初始化）
+        // Initialize the renderer if it has not been set up yet
         this->initializeRenderer();
     } else {
         Logger::error("NativeMapView", "Failed to create native window from surface ID");
@@ -308,7 +308,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
     napi_status status;
     napi_value cons;
     
-    // 定义所有实例方法
+    // Define all instance methods
     std::vector<napi_property_descriptor> properties = {
         {"resizeView", nullptr, resizeView, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getStyleUrl", nullptr, getStyleUrl, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -429,17 +429,17 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"destroy", nullptr, destroy, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"destroyAsync", nullptr, destroyAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // ========== 新增方法：对齐 Android/iOS API ==========
+        // ========== Additional methods aligned with Android/iOS APIs ==========
         {"setContentPadding", nullptr, setContentPadding, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getContentPadding", nullptr, getContentPadding, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getPixelRatio", nullptr, getPixelRatio, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getDensityDependantRectangle", nullptr, getDensityDependantRectangle, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 本地字体配置
+        // Local font configuration
         {"setLocalIdeographFontFamily", nullptr, setLocalIdeographFontFamily, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getLocalIdeographFontFamily", nullptr, getLocalIdeographFontFamily, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 相机监听器方法（旧的）
+        // Legacy camera listener methods
         {"addOnCameraIdleListener", nullptr, addOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraIdleListener", nullptr, removeOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnCameraMoveStartedListener", nullptr, addOnCameraMoveStartedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -449,16 +449,16 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnCameraMoveCanceledListener", nullptr, addOnCameraMoveCanceledListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraMoveCanceledListener", nullptr, removeOnCameraMoveCanceledListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // Map 生命周期监听器方法
+        // Map lifecycle listener methods
         {"setOnMapViewCreatedCallback", nullptr, setOnMapViewCreatedCallback, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 样式监听器方法（旧的）
+        // Legacy style listener methods
         {"setOnStyleLoadedListener", nullptr, setOnStyleLoadedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setOnStyleLoadErrorListener", nullptr, setOnStyleLoadErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // ========== Android/iOS 风格监听器方法 ==========
+        // ========== Android/iOS-style listener methods ==========
         
-        // 相机事件监听器
+        // Camera event listeners
         {"addOnCameraWillChangeListener", nullptr, addOnCameraWillChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraWillChangeListener", nullptr, removeOnCameraWillChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnCameraIsChangingListener", nullptr, addOnCameraIsChangingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -466,7 +466,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnCameraDidChangeListener", nullptr, addOnCameraDidChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraDidChangeListener", nullptr, removeOnCameraDidChangeListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 地图加载事件监听器
+        // Map loading event listeners
         {"addOnWillStartLoadingMapListener", nullptr, addOnWillStartLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnWillStartLoadingMapListener", nullptr, removeOnWillStartLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnDidFinishLoadingMapListener", nullptr, addOnDidFinishLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -474,7 +474,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnDidFailLoadingMapListener", nullptr, addOnDidFailLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnDidFailLoadingMapListener", nullptr, removeOnDidFailLoadingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 渲染事件监听器
+        // Rendering event listeners
         {"addOnWillStartRenderingFrameListener", nullptr, addOnWillStartRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnWillStartRenderingFrameListener", nullptr, removeOnWillStartRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnDidFinishRenderingFrameListener", nullptr, addOnDidFinishRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -484,19 +484,19 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"addOnDidFinishRenderingMapListener", nullptr, addOnDidFinishRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnDidFinishRenderingMapListener", nullptr, removeOnDidFinishRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 样式事件监听器
+        // Style event listeners
         {"addOnDidFinishLoadingStyleListener", nullptr, addOnDidFinishLoadingStyleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnDidFinishLoadingStyleListener", nullptr, removeOnDidFinishLoadingStyleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnStyleImageMissingListener", nullptr, addOnStyleImageMissingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnStyleImageMissingListener", nullptr, removeOnStyleImageMissingListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 其他事件监听器
+        // Miscellaneous event listeners
         {"addOnDidBecomeIdleListener", nullptr, addOnDidBecomeIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnDidBecomeIdleListener", nullptr, removeOnDidBecomeIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnSourceChangedListener", nullptr, addOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnSourceChangedListener", nullptr, removeOnSourceChangedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         
-        // 观察者事件监听器 (Shader, Glyph, Sprite, Tile)
+        // Observer event listeners (Shader, Glyph, Sprite, Tile)
         {"addOnPreCompileShaderListener", nullptr, addOnPreCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnPreCompileShaderListener", nullptr, removeOnPreCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnPostCompileShaderListener", nullptr, addOnPostCompileShaderListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -522,7 +522,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"removeOnTileActionListener", nullptr, removeOnTileActionListener, nullptr, nullptr, nullptr, napi_default, nullptr}
     };
     
-    // 定义类构造函数，并传入所有属性描述符
+    // Define the class constructor and supply all property descriptors
     status = napi_define_class(
         env,
         "NativeMapView",
@@ -539,7 +539,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    // 设置构造函数的引用 - 使用静态变量存储
+    // Store a reference to the constructor using a static variable
     static napi_ref static_wrapper;
     status = napi_create_reference(env, cons, 1, &static_wrapper);
     if (status != napi_ok) {
@@ -547,7 +547,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    // 设置导出对象
+    // Set up the exports object
     status = napi_set_named_property(env, exports, "NativeMapView", cons);
     if (status != napi_ok) {
         Logger::error("NativeMapView", "Failed to export NativeMapView");
@@ -559,7 +559,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
 napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     napi_value thisVar;
     size_t argc = 0;
@@ -569,7 +569,7 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
 
-    // 1) 清理现有渲染器与线程
+    // 1) Clean up the existing renderer and thread
     if (instance->harmonyRenderer) {
         try {
             instance->harmonyRenderer->cleanup();
@@ -581,23 +581,23 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     instance->map = nullptr;
     instance->mapRenderer = nullptr;
 
-    // 2) 清理磁盘缓存
+    // 2) Clear disk cache
     if (!instance->cachePath_.empty()) {
         std::error_code ec;
         std::filesystem::remove_all(instance->cachePath_, ec);
         if (ec) {
             Logger::warn("NativeMapView", "hardReset: remove_all failed: %s", ec.message().c_str());
         }
-        // 重新创建目录，避免后续落盘失败
+        // Recreate the directory to avoid later persistence failures
         std::filesystem::create_directories(instance->cachePath_, ec);
     }
 
-    // 3) 重新创建渲染器并初始化
+    // 3) Recreate and initialize the renderer
     instance->harmonyRenderer = std::make_unique<HarmonyRenderer>();
     instance->harmonyRenderer->initialize(instance->width, instance->height, instance->pixelRatio, instance->cachePath_,
                                          instance->localIdeographFontFamily_);
 
-    // 4) 重新设置窗口与尺寸
+    // 4) Reapply window and dimensions
     if (instance->nativeWindow) {
         instance->harmonyRenderer->setNativeWindow(instance->nativeWindow);
         if (instance->width > 0 && instance->height > 0) {
@@ -605,13 +605,13 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
         }
     }
 
-    // 5) 重新获取 Map 引用
+    // 5) Refresh the Map reference
     instance->map = instance->harmonyRenderer->getMap();
     if (!instance->map) {
         Logger::warn("NativeMapView", "hardReset: getMap() returned null");
     }
 
-    // 6) 触发首帧
+    // 6) Trigger the first frame
     if (instance->harmonyRenderer) {
         instance->harmonyRenderer->requestRender();
     }
@@ -626,21 +626,21 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     
-    // 获取this对象和参数
+    // Retrieve the this object and arguments
     status = napi_get_cb_info(env, info, &argc, args, &thisVar, nullptr);
     if (status != napi_ok) {
         Logger::error("NativeMapView", "New: Failed to get callback info");
         return nullptr;
     }
     
-    // 解析 cachePath 参数（必需）
+    // Parse the required cachePath parameter
     if (argc < 1) {
         Logger::error("NativeMapView", "New: Missing required cachePath parameter");
         napi_throw_error(env, nullptr, "NativeMapView constructor requires cachePath parameter");
         return nullptr;
     }
     
-    // 获取字符串长度
+    // Get the string length
     size_t strLen = 0;
     status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &strLen);
     if (status != napi_ok || strLen == 0) {
@@ -649,7 +649,7 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 读取字符串内容
+    // Read the string contents
     std::string cachePath(strLen, '\0');
     status = napi_get_value_string_utf8(env, args[0], &cachePath[0], strLen + 1, &strLen);
     if (status != napi_ok) {
@@ -659,10 +659,10 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     }
     cachePath.resize(strLen);
     
-    // 创建NativeMapView实例
+    // Create the NativeMapView instance
     NativeMapView* nativeMapView = new NativeMapView(env, thisVar, cachePath);
     
-    // 设置NativeMapView实例为外部数据
+    // Attach the NativeMapView instance as external data
     status = napi_wrap(
         env,
         thisVar,
@@ -681,7 +681,7 @@ napi_value NativeMapView::New(napi_env env, napi_callback_info info) {
     return thisVar;
 }
 
-// MapObserver 方法实现已全部移至 native_map_view_observers.cpp
+// MapObserver method implementations are defined in native_map_view_observers.cpp
 
 void NativeMapView::initializeRenderer() {
     // Set SQLite temp path for database operations (must be done before any database access)
@@ -715,20 +715,20 @@ void NativeMapView::initializeRenderer() {
     
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
     
-    // ✅ 设置 NativeMapView 引用，以便 HarmonyRenderer 可以转发 MapObserver 事件
+    // ✅ Provide the NativeMapView reference so HarmonyRenderer can forward MapObserver events
     harmonyRenderer->setNativeMapView(this);
     Logger::info("NativeMapView", "NativeMapView registered to HarmonyRenderer for event forwarding");
     
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
     
-    // 2. 如果有窗口，设置窗口
+    // 2. Bind the window if one is available
     if (nativeWindow && harmonyRenderer) {
         harmonyRenderer->setNativeWindow(nativeWindow);
     } else {
         Logger::warn("NativeMapView", "Cannot set native window");
     }
     
-    // 3. 获取新的 Map 引用（Map 由新的 HarmonyMapRenderThread 所拥有）
+    // 3. Obtain the new Map reference (owned by the new HarmonyMapRenderThread)
     if (harmonyRenderer) {
         map = harmonyRenderer->getMap();
         if (!map) {
@@ -736,9 +736,9 @@ void NativeMapView::initializeRenderer() {
             return;
         }
         
-        // ✅ 新增: Map 对象创建完成，触发 onMapViewCreated 回调
-        // 此时 C++ Map 对象已创建，可以通知 ArkTS 层创建 MapLibreMap 并注册观察者
-        // 对齐 Android: 在样式加载前触发，允许用户注册监听器
+        // ✅ New behavior: once the Map is constructed, fire the onMapViewCreated callback
+        // At this point the C++ Map exists, allowing ArkTS to create MapLibreMap and register observers
+        // Matches Android behavior: trigger before style loading so listeners can be registered
         if (callbackManager_) {
             callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
             Logger::info("NativeMapView", "✅ Triggered onMapViewCreated callback");
@@ -757,11 +757,11 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         return;
     }
     
-    // 等待就绪
+    // Wait for readiness
     const auto start = std::chrono::steady_clock::now();
     const auto deadline = start + std::chrono::milliseconds(timeoutMs);
     
-    // 自愈重建
+    // Self-healing reconstruction
     Logger::warn("NativeMapView", "ensureResourcesReadyOrRecover: resources NOT ready, attempting self-heal reinitialize");
     try {
         harmonyRenderer->cleanup();
@@ -772,7 +772,7 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     map = nullptr;
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
     
-    // ✅ 设置 NativeMapView 引用
+    // ✅ Provide the NativeMapView reference
     harmonyRenderer->setNativeMapView(this);
     
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
@@ -784,58 +784,58 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     }
     map = harmonyRenderer->getMap();
     
-    // ✅ 自愈重建后也需要触发 onMapViewCreated 回调
+    // ✅ After self-healing, also trigger the onMapViewCreated callback
     if (map && callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
         Logger::info("NativeMapView", "✅ Triggered onMapViewCreated callback (after recovery)");
     }
 }
 
-// ========== 本地字体配置方法（鸿蒙版本）==========
+// ========== Local font configuration (Harmony-specific) ==========
 
 /**
- * 设置本地表意文字字体族
- * 
- * 鸿蒙实现说明：
- * - 使用 OH_Drawing_TextBlob API 进行字形渲染
- * - 支持自动字体回退机制（TextBlob 特性）
- * - 字体配置在 LocalGlyphRasterizer 中，需要重新初始化 Renderer
- * 
- * 参考官方文档：
+ * Configure the local ideograph font family.
+ *
+ * Harmony implementation details:
+ * - Uses the OH_Drawing_TextBlob API for glyph rendering.
+ * - Supports automatic fallback (TextBlob feature).
+ * - LocalGlyphRasterizer receives the font family, so the renderer must be reinitialized.
+ *
+ * Reference:
  * https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/textblock-drawing-c
- * 
- * @param fontFamily 字体族名称（如 "HarmonyOS Sans"），null 表示禁用本地渲染
+ *
+ * @param fontFamily Font family (e.g., "HarmonyOS Sans"); null disables local rendering.
  */
 napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取 NativeMapView 实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "setLocalIdeographFontFamily: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 解析参数：fontFamily (string | null)
+    // Parse the fontFamily argument (string | null)
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 检查参数类型
+    // Validate the argument type
     napi_valuetype valueType;
     napi_typeof(env, args.GetValue(0), &valueType);
     
     if (valueType == napi_null || valueType == napi_undefined) {
-        // null 表示禁用本地字体渲染
+        // A null value disables local glyph rendering
         instance->localIdeographFontFamily_ = std::nullopt;
         Logger::info("NativeMapView", "setLocalIdeographFontFamily: Local glyph rendering disabled");
     } else if (valueType == napi_string) {
-        // 获取字体族名称
+        // Extract the font family name
         std::string fontFamily = args.GetString(0, "fontFamily");
         if (args.HasError()) {
             return args.Undefined();
         }
         
-        // 验证字体族名称不为空
+        // Ensure the font family name is not empty
         if (fontFamily.empty()) {
             Logger::info("NativeMapView", "setLocalIdeographFontFamily: Empty font family, treating as disabled");
             instance->localIdeographFontFamily_ = std::nullopt;
@@ -850,26 +850,25 @@ napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callbac
         return args.Undefined();
     }
     
-    // 重新初始化 Renderer 以应用新的字体配置
-    // 
-    // 原理：
-    // 1. LocalGlyphRasterizer 在 RenderOrchestrator 构造时创建
-    // 2. 字体族传递给 LocalGlyphRasterizer 构造函数
-    // 3. LocalGlyphRasterizer 使用 OH_Drawing_TextBlob API 渲染字形
-    // 4. GlyphManager 缓存已渲染的字形，因此需要重建
+    // Reinitialize the renderer so the new font configuration takes effect.
     //
-    // 此方法与 Android/iOS 实现一致，都需要重新初始化 Renderer
+    // Rationale:
+    // 1. LocalGlyphRasterizer is instantiated when RenderOrchestrator is constructed.
+    // 2. The font family is passed into the LocalGlyphRasterizer constructor.
+    // 3. LocalGlyphRasterizer renders glyphs via the OH_Drawing_TextBlob API.
+    // 4. GlyphManager caches rendered glyphs, so we must rebuild.
+    //
+    // This mirrors the Android/iOS implementations, which also recreate the renderer.
     try {
         Logger::info("NativeMapView", "setLocalIdeographFontFamily: Reinitializing renderer with new font config...");
         
-        // 保存当前地图状态
+        // Save the current map state
         std::string currentStyleUrl = instance->styleUrl;
         
-        // 重新初始化渲染器
-        // 这会创建新的 RenderOrchestrator -> GlyphManager -> LocalGlyphRasterizer
+        // Reinitialize the renderer, creating a new RenderOrchestrator -> GlyphManager -> LocalGlyphRasterizer
         instance->initializeRenderer();
         
-        // 恢复样式（会自动触发字形重新渲染）
+        // Restore the style (glyphs are re-rasterized automatically)
         if (!currentStyleUrl.empty() && instance->map) {
             instance->map->getStyle().loadURL(currentStyleUrl);
             Logger::info("NativeMapView", "setLocalIdeographFontFamily: Style reloaded, glyphs will be re-rasterized");
@@ -886,21 +885,21 @@ napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callbac
 }
 
 /**
- * 获取当前配置的本地表意文字字体族
- * 
- * @returns 当前配置的字体族名称（如 "HarmonyOS Sans"），null 表示已禁用
+ * Retrieve the configured local ideograph font family.
+ *
+ * @returns Font family (e.g., "HarmonyOS Sans"); null means disabled.
  */
 napi_value NativeMapView::getLocalIdeographFontFamily(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取 NativeMapView 实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "getLocalIdeographFontFamily: Failed to unwrap instance");
         return args.Null();
     }
     
-    // 返回当前配置的字体族
+    // Return the current font family
     if (instance->localIdeographFontFamily_) {
         napi_value result;
         napi_create_string_utf8(env, instance->localIdeographFontFamily_->c_str(), 
@@ -918,7 +917,7 @@ napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
     
     if (nativeMapView) {
-        // 防止重复销毁（使用静态集合跟踪已销毁的实例）
+        // Prevent double destruction (tracked via a static set)
         static std::mutex destroyMutex;
         static std::set<void*> destroyedInstances;
         
@@ -941,14 +940,14 @@ napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
 
 napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
-    args.RequireMinArgs(1); // 需要回调函数参数
+    args.RequireMinArgs(1); // Require a callback argument
     
     if (args.HasError()) {
         Logger::error("NativeMapView", "destroyAsync: Missing callback parameter");
         return args.Undefined();
     }
     
-    // 获取回调函数
+    // Retrieve the callback
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) {
         Logger::error("NativeMapView", "destroyAsync: Invalid callback parameter");
@@ -959,7 +958,7 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
     
     if (nativeMapView) {
-        // 防止重复销毁
+        // Prevent double destruction
         static std::mutex destroyMutex;
         static std::set<void*> destroyedInstances;
         
@@ -968,7 +967,7 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
             if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
                 Logger::warn("NativeMapView", "Instance already destroyed, skipping");
                 
-                // ✅ 使用 ThreadSafeCallback 确保线程安全
+                // ✅ Use ThreadSafeCallback to ensure thread-safety
                 auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_skip");
                 if (tsfn) {
                     tsfn->CallEmpty();
@@ -979,20 +978,20 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
             destroyedInstances.insert(nativeMapView);
         }
         
-        // ✅ 创建 ThreadSafeCallback（线程安全的跨线程回调）
+        // ✅ Create a ThreadSafeCallback for cross-thread invocation
         auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_complete");
         if (!tsfn) {
             Logger::error("NativeMapView", "Failed to create ThreadSafeCallback");
             return args.Undefined();
         }
         
-        // 调用异步清理，传入回调
-        // 使用 shared_ptr 确保回调在异步操作完成前不被释放
+        // Launch asynchronous cleanup with the callback.
+        // Use shared_ptr to keep the callback alive until cleanup completes.
         auto sharedTsfn = std::shared_ptr<ThreadSafeCallback>(std::move(tsfn));
         
         nativeMapView->cleanupAllResourcesAsync([sharedTsfn]() {
-            // ✅ ThreadSafeCallback 会自动调度到主线程执行
-            // 不需要手动调用 napi_call_function
+            // ✅ ThreadSafeCallback dispatches on the main thread automatically
+            // No manual napi_call_function invocation is required
             if (sharedTsfn && sharedTsfn->IsValid()) {
                 sharedTsfn->CallEmpty();
             } else {
@@ -1006,11 +1005,11 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
     return args.Undefined();
 }
 
-// ========== 新增方法：对齐 Android/iOS API ==========
+// ========== Additional methods aligned with Android/iOS APIs ==========
 
 /**
- * 设置内容边距
- * 对齐 Android: setContentPadding(double[] padding)
+ * Set content padding.
+ * Matches Android: setContentPadding(double[] padding)
  */
 napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -1020,14 +1019,14 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
     napi_value paddingArray = args.GetArray(0, "padding");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setContentPadding: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 解析数组 [left, top, right, bottom]
+    // Parse the array [left, top, right, bottom]
     uint32_t length = 0;
     napi_status status = napi_get_array_length(env, paddingArray, &length);
     if (status != napi_ok || length != 4) {
@@ -1052,17 +1051,17 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
         newPadding[i] = value;
     }
     
-    // 存储新的 padding 值 [left, top, right, bottom]
+    // Store the new padding values [left, top, right, bottom]
     instance->contentPadding_ = newPadding;
     
     Logger::info("NativeMapView", "setContentPadding: [%.1f, %.1f, %.1f, %.1f]",
                  newPadding[0], newPadding[1], newPadding[2], newPadding[3]);
     
-    // Android 风格：padding 存储后在下一次相机操作时生效
-    // 但为了即时反馈，我们立即触发一次相机更新
+    // Android behavior: padding normally takes effect on the next camera operation.
+    // For immediate feedback, trigger a camera update now.
     if (instance->map) {
-        // 构建 EdgeInsets (构造函数顺序: top, left, bottom, right)
-        // contentPadding_ 存储顺序: [0]=left, [1]=top, [2]=right, [3]=bottom
+        // Build EdgeInsets (constructor order: top, left, bottom, right)
+        // contentPadding_ storage order: [0]=left, [1]=top, [2]=right, [3]=bottom
         mbgl::EdgeInsets paddingInsets{
             newPadding[1] * instance->pixelRatio, // top = newPadding[1]
             newPadding[0] * instance->pixelRatio, // left = newPadding[0]
@@ -1077,16 +1076,16 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
                      paddingInsets.top(), paddingInsets.left(),
                      paddingInsets.bottom(), paddingInsets.right());
         
-        // 获取当前相机状态（在设置padding之前）
+        // Capture the current camera state before applying padding
         auto currentCamera = instance->map->getCameraOptions();
         Logger::info("NativeMapView", "setContentPadding: Current camera - lat=%.6f, lng=%.6f, zoom=%.2f",
                      currentCamera.center ? currentCamera.center->latitude() : 0,
                      currentCamera.center ? currentCamera.center->longitude() : 0,
                      currentCamera.zoom ? *currentCamera.zoom : 0);
         
-        // 构建新的相机选项
-        // 关键：保持相机中心（经纬度）不变，但应用新的 padding
-        // MapLibre 内部会调整视图，使得该经纬度保持在"逻辑视口"的中心
+        // Build new camera options.
+        // Key point: keep the camera center (lat/lon) unchanged while applying padding.
+        // MapLibre adjusts the view so that the coordinate remains at the logical center.
         CameraOptions newCamera;
         newCamera.center = currentCamera.center;
         newCamera.zoom = currentCamera.zoom;
@@ -1094,8 +1093,8 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
         newCamera.pitch = currentCamera.pitch;
         newCamera.padding = paddingInsets;
         
-        // 在渲染线程应用
-        // 使用 jumpTo 立即生效（不使用动画）
+        // Apply on the render thread.
+        // Use jumpTo for immediate effect (no animation).
         instance->invokeOnMapThread([newCamera](mbgl::Map* m) {
             Logger::info("NativeMapView", "setContentPadding: Executing jumpTo on render thread");
             m->jumpTo(newCamera);
@@ -1112,20 +1111,20 @@ napi_value NativeMapView::setContentPadding(napi_env env, napi_callback_info inf
 }
 
 /**
- * 获取内容边距
- * 对齐 Android: getContentPadding()
+ * Retrieve the current content padding.
+ * Aligns with Android: getContentPadding()
  */
 napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getContentPadding: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 创建返回数组 [left, top, right, bottom]
+    // Build the return array [left, top, right, bottom]
     napi_value result;
     napi_create_array_with_length(env, 4, &result);
     
@@ -1139,14 +1138,14 @@ napi_value NativeMapView::getContentPadding(napi_env env, napi_callback_info inf
 }
 
 /**
- * 获取设备像素比
- * 对齐 Android: getPixelRatio()
- * 对齐 iOS: contentScaleFactor
+ * Retrieve the device pixel ratio.
+ * Aligns with Android: getPixelRatio()
+ * Aligns with iOS: contentScaleFactor
  */
 napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getPixelRatio: Failed to unwrap instance");
@@ -1160,8 +1159,8 @@ napi_value NativeMapView::getPixelRatio(napi_env env, napi_callback_info info) {
 }
 
 /**
- * 根据设备像素比调整矩形尺寸
- * 对齐 Android: getDensityDependantRectangle(RectF rectangle)
+ * Adjust a rectangle according to the device pixel ratio.
+ * Aligns with Android: getDensityDependantRectangle(RectF rectangle)
  */
 napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -1171,23 +1170,23 @@ napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callba
     napi_value rectObj = args.GetObject(0, "rectangle");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getDensityDependantRectangle: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 读取矩形的属性
+    // Read rectangle properties
     double left = args.GetDoubleProperty(rectObj, "left", 0.0);
     double top = args.GetDoubleProperty(rectObj, "top", 0.0);
     double right = args.GetDoubleProperty(rectObj, "right", 0.0);
     double bottom = args.GetDoubleProperty(rectObj, "bottom", 0.0);
     
-    // 根据像素比调整
+    // Apply the pixel ratio adjustment
     double pixelRatio = instance->pixelRatio;
     
-    // 创建返回对象
+    // Create the return object
     napi_value result;
     napi_create_object(env, &result);
     

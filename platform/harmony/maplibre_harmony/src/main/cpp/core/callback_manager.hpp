@@ -12,90 +12,90 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * CallbackManager - 统一管理所有跨线程 JavaScript 回调
- * 
- * 负责管理 NativeMapView 中所有需要从 Map RunLoop 线程回调到 UI 线程的 JavaScript 函数。
- * 使用 ThreadSafeCallback 包装每个回调，确保线程安全。
- * 
- * 设计原则：
- * 1. 集中管理：所有 JS 回调通过统一接口注册和调用
- * 2. 线程安全：使用互斥锁保护回调容器
- * 3. 生命周期管理：提供清晰的注册、注销、清理接口
- * 4. 错误处理：处理回调不存在、重复注册等异常情况
- * 
- * 使用示例：
+ * CallbackManager - centralizes cross-thread JavaScript callbacks.
+ *
+ * Manages all JavaScript functions that must be invoked on the UI thread from the map runloop thread.
+ * Each callback is wrapped by ThreadSafeCallback to guarantee thread safety.
+ *
+ * Design principles:
+ * 1. Centralized management: callbacks registered/invoked through a unified interface
+ * 2. Thread-safe: mutex-protected callback storage
+ * 3. Lifecycle clarity: explicit registration, deregistration, and cleanup APIs
+ * 4. Robust error handling: covers missing callbacks, duplicate registrations, etc.
+ *
+ * Usage:
  * ```cpp
- * // 在 NativeMapView 构造函数中创建
+ * // Create within the NativeMapView constructor
  * callbackManager_ = std::make_unique<CallbackManager>(env);
  * 
- * // 注册回调（UI 线程）
+ * // Register a callback (UI thread)
  * callbackManager_->RegisterCallback("onMapLoaded", jsCallback);
  * 
- * // 调用回调（Map RunLoop 线程）
+ * // Invoke the callback (Map RunLoop thread)
  * callbackManager_->InvokeCallback("onMapLoaded", [](napi_env env) {
  *     napi_value result;
  *     napi_create_string_utf8(env, "Map loaded!", NAPI_AUTO_LENGTH, &result);
  *     return result;
  * });
  * 
- * // 注销回调
+ * // Unregister the callback
  * callbackManager_->UnregisterCallback("onMapLoaded");
  * 
- * // 清理所有回调（析构时）
+ * // Clear all callbacks (during destruction)
  * callbackManager_->Clear();
  * ```
  */
 class CallbackManager {
 public:
     /**
-     * 构造函数
-     * 
-     * @param env N-API 环境（UI 线程）
+     * Constructor.
+     *
+     * @param env N-API environment (UI thread)
      */
     explicit CallbackManager(napi_env env);
     
     ~CallbackManager();
     
-    // 禁止拷贝和移动
+    // Disable copy & move
     CallbackManager(const CallbackManager&) = delete;
     CallbackManager& operator=(const CallbackManager&) = delete;
     CallbackManager(CallbackManager&&) = delete;
     CallbackManager& operator=(CallbackManager&&) = delete;
     
     /**
-     * 注册回调
-     * 
-     * @param name 回调名称（唯一标识）
-     * @param callback JavaScript 回调函数
-     * @return 是否成功注册
-     * 
-     * 注意：支持多监听器，可以为同一个名称注册多个回调
+     * Register a callback.
+     *
+     * @param name Callback name (unique identifier)
+     * @param callback JavaScript callback function
+     * @return True if registration succeeded
+     *
+     * Note: multiple listeners per name are supported.
      */
     bool RegisterCallback(const std::string& name, napi_value callback);
     
     /**
-     * 注销回调（注销指定名称的所有回调）
-     * 
-     * @param name 回调名称
-     * @return 是否成功注销
+     * Unregister all callbacks under a name.
+     *
+     * @param name Callback name
+     * @return True if callbacks were removed
      */
     bool UnregisterCallback(const std::string& name);
     
     /**
-     * 注销指定的回调函数
-     * 
-     * @param name 回调名称
-     * @param callback 要移除的回调函数
-     * @return 是否成功注销
+     * Unregister a specific callback.
+     *
+     * @param name Callback name
+     * @param callback Callback to remove
+     * @return True if the callback was removed
      */
     bool UnregisterCallback(const std::string& name, napi_value callback);
     
     /**
-     * 调用回调（从任意线程）
-     * 
-     * @param name 回调名称
-     * @param builder 数据构造器（在 UI 线程执行）
-     * @return 是否成功调度回调
+     * Invoke a callback from any thread.
+     *
+     * @param name Callback name
+     * @param builder Data builder executed on the UI thread
+     * @return True if dispatch succeeded
      */
     bool InvokeCallback(
         const std::string& name,
@@ -103,17 +103,17 @@ public:
     );
     
     /**
-     * 便捷方法：调用无参数回调
+     * Convenience: invoke a callback without arguments.
      */
     bool InvokeCallbackEmpty(const std::string& name);
     
     /**
-     * 便捷方法：调用带字符串参数的回调
+     * Convenience: invoke a callback with a string argument.
      */
     bool InvokeCallbackWithString(const std::string& name, const std::string& value);
     
     /**
-     * 便捷方法：调用带对象参数的回调
+     * Convenience: invoke a callback with an object argument.
      */
     bool InvokeCallbackWithObject(
         const std::string& name,
@@ -121,40 +121,40 @@ public:
     );
     
     /**
-     * 检查回调是否存在
+     * Check whether a callback exists.
      */
     bool HasCallback(const std::string& name) const;
     
     /**
-     * 获取已注册的回调数量（所有回调名称的总数）
+     * Get the total number of registered callbacks across all names.
      */
     size_t GetCallbackCount() const;
     
     /**
-     * 获取指定名称的回调监听器数量
+     * Get the listener count for a specific name.
      */
     size_t GetCallbackCount(const std::string& name) const;
     
     /**
-     * 清理所有回调
-     * 
-     * 注意：会释放所有 ThreadSafeFunction，之后无法再调用任何回调
+     * Clear all callbacks.
+     *
+     * Note: releases all ThreadSafeFunctions; callbacks cannot be invoked afterward.
      */
     void Clear();
     
 private:
     napi_env env_;
     
-    // 回调容器（线程安全）- 支持多监听器
+    // Thread-safe callback container supporting multiple listeners
     std::unordered_map<std::string, std::vector<std::unique_ptr<ThreadSafeCallback>>> callbacks_;
     
-    // 保护回调容器的互斥锁
+    // Mutex guarding the callback container
     mutable std::mutex mutex_;
     
-    // 标记是否已清理
+    // Indicates whether callbacks have been cleared
     bool cleared_ = false;
     
-    // 辅助方法：比较两个 napi_value 回调是否相等
+    // Helper: compare two napi_value callbacks for equality
     bool AreCallbacksEqual(napi_value callback1, napi_value callback2) const;
 };
 

@@ -33,13 +33,13 @@ static const char *sourceTypeToString(mbgl::style::SourceType type) {
         return "unknown";
     }
 }
-// Source NAPI 类
+// Source NAPI classes
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
 #include "sources/raster_source_napi.hpp"
 #include "sources/raster_dem_source_napi.hpp"
 #include "sources/image_source_napi.hpp"
-// Layer NAPI 类
+// Layer NAPI classes
 #include "style/layers/fill_layer_harmony.hpp"
 #include "style/layers/line_layer_harmony.hpp"
 #include "style/layers/circle_layer_harmony.hpp"
@@ -63,7 +63,7 @@ namespace harmony {
 // This file contains Layer-related functions for StyleNAPI
 
 // Placeholder for AddSource - actual implementation is in style_napi_sources.cpp or style_napi_base.cpp
-// ==================== Layer 管理 ====================
+// ==================== Layer management ====================
 
 napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
@@ -102,7 +102,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
     std::string layerId;
     napi_status status;
 
-    // 首先检查 _TYPE_ 属性以确定真实类型
+    // First check the _TYPE_ property to determine the actual type
     napi_value typeValue;
     std::string layerType;
     status = napi_get_named_property(env, layerValue, "_TYPE_", &typeValue);
@@ -134,7 +134,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *fillStyleLayer = dynamic_cast<mbgl::style::FillLayer *>(styleLayer)) {
                     fillLayer->attachToStyle(fillStyleLayer);
@@ -165,7 +165,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *lineStyleLayer = dynamic_cast<mbgl::style::LineLayer *>(styleLayer)) {
                     lineLayer->attachToStyle(lineStyleLayer);
@@ -196,7 +196,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *circleStyleLayer = dynamic_cast<mbgl::style::CircleLayer *>(styleLayer)) {
                     circleLayer->attachToStyle(circleStyleLayer);
@@ -227,7 +227,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *symbolStyleLayer = dynamic_cast<mbgl::style::SymbolLayer *>(styleLayer)) {
                     symbolLayer->attachToStyle(symbolStyleLayer);
@@ -258,7 +258,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *backgroundStyleLayer = dynamic_cast<mbgl::style::BackgroundLayer *>(styleLayer)) {
                     backgroundLayer->attachToStyle(backgroundStyleLayer);
@@ -313,7 +313,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *customStyleLayer = dynamic_cast<mbgl::style::CustomLayer *>(styleLayer)) {
                     customLayer->attachToStyle(customStyleLayer);
@@ -344,7 +344,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *fillExtrusionStyleLayer = dynamic_cast<mbgl::style::FillExtrusionLayer *>(styleLayer)) {
                     fillExtrusionLayer->attachToStyle(fillExtrusionStyleLayer);
@@ -375,7 +375,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *heatmapStyleLayer = dynamic_cast<mbgl::style::HeatmapLayer *>(styleLayer)) {
                     heatmapLayer->attachToStyle(heatmapStyleLayer);
@@ -406,7 +406,7 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
                 style->layers[layerId] = true;
                 layerAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleLayer = style->map->getStyle().getLayer(layerId);
                 if (auto *hillshadeStyleLayer = dynamic_cast<mbgl::style::HillshadeLayer *>(styleLayer)) {
                     hillshadeLayer->attachToStyle(hillshadeStyleLayer);
@@ -665,7 +665,7 @@ napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
 
         Logger::info("StyleNAPI", "GetLayer: %s (type: %s)", layerId.c_str(), layer->getTypeInfo()->type);
 
-        // 根据 layer type 创建对应的 NAPI 实例
+        // Create the corresponding NAPI instance based on the layer type
         std::string layerType = layer->getTypeInfo()->type;
 
         if (layerType == "symbol") {
@@ -734,7 +734,7 @@ napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
             std::string layerType = layer->getTypeInfo()->type;
             napi_value layerInstance = nullptr;
 
-            // 根据 layer type 创建对应的 NAPI 实例（与 GetLayer 保持一致）
+            // Create the corresponding NAPI instance based on the layer type (consistent with GetLayer)
             if (layerType == "symbol") {
                 auto *symbolLayer = static_cast<mbgl::style::SymbolLayer *>(layer);
                 layerInstance = mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, symbolLayer);
@@ -764,7 +764,7 @@ napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
                 layerInstance = mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env, backgroundLayer);
             } else {
                 Logger::warn("StyleNAPI", "GetLayers: Unknown layer type: %s", layerType.c_str());
-                continue; // 跳过未知类型的图层
+                continue; // Skip unknown layer types
             }
 
             if (layerInstance) {
@@ -809,7 +809,7 @@ napi_value StyleNAPI::RemoveLayerAt(napi_env env, napi_callback_info info) {
         return CreateBoolValue(env, false);
     }
 
-    // 获取索引
+    // Retrieve the index
     uint32_t index = 0;
     napi_get_value_uint32(env, args[0], &index);
 
@@ -864,8 +864,8 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
 
     std::string aboveLayerId = GetStringFromValue(env, args[1]);
 
-    // MapLibre Core 没有直接的 addLayerAbove API
-    // 我们需要找到 aboveLayerId 的下一个图层，然后使用 addLayer(layer, belowLayerId)
+    // MapLibre Core does not expose addLayerAbove directly
+    // We need to locate the layer immediately after aboveLayerId and call addLayer(layer, belowLayerId)
     try {
         const auto &layers = style->map->getStyle().getLayers();
         bool foundAboveLayer = false;
@@ -883,18 +883,18 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
 
         if (!foundAboveLayer) {
             Logger::warn("StyleNAPI", "AddLayerAbove: layer %s not found", aboveLayerId.c_str());
-            // 如果找不到目标图层，添加到最上层
+            // If the target layer is not found, insert at the top
             return AddLayer(env, info);
         }
 
-        // 现在添加图层（belowLayerId 可能为空，表示添加到最上层）
-        // 这里需要重复 AddLayer 的逻辑，但使用 addLayer(layer, belowLayerId)
+        // Add the layer now (belowLayerId may be empty, meaning insert at the top)
+        // This repeats AddLayer logic but uses addLayer(layer, belowLayerId)
         napi_value layerValue = args[0];
         bool layerAdded = false;
         std::string layerId;
         napi_status status;
 
-        // 尝试各种图层类型
+        // Try each layer type
         mbgl::harmony::FillLayerNAPI *fillLayer = nullptr;
         status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillLayer));
         if (status == napi_ok && fillLayer) {
@@ -1033,19 +1033,19 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
         const auto &layers = style->map->getStyle().getLayers();
         std::optional<std::string> belowLayerId;
 
-        // 如果索引有效，获取该位置的图层 ID 作为 below
+        // If the index is valid, retrieve the layer ID at that position as below
         if (index < layers.size()) {
             belowLayerId = layers[index]->getID();
         }
-        // 如果索引超出范围，将添加到最上层（belowLayerId 为空）
+        // If the index is out of range, add to the top (belowLayerId remains empty)
 
-        // 添加图层逻辑（与 AddLayerAbove 类似）
+        // Layer insertion logic (similar to AddLayerAbove)
         napi_value layerValue = args[0];
         bool layerAdded = false;
         std::string layerId;
         napi_status status;
 
-        // 尝试各种图层类型（简化版本，实际可以抽取为辅助函数）
+        // Try each layer type (simplified version; could be refactored into a helper)
         mbgl::harmony::FillLayerNAPI *fillLayer = nullptr;
         status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillLayer));
         if (status == napi_ok && fillLayer) {
@@ -1059,11 +1059,11 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
             }
         }
 
-        // 其他图层类型...（为简洁起见，这里省略，实际实现需要包含所有类型）
-        // 实际代码应该像 AddLayerAbove 一样包含所有图层类型
+        // Other layer types... (omitted for brevity; real implementation should include every type)
+        // The actual code should mirror AddLayerAbove and cover every layer type
 
         if (!layerAdded) {
-            // 尝试其他图层类型
+            // Try additional layer types
             Logger::warn("StyleNAPI", "AddLayerAt: trying to add to top as fallback");
             return AddLayer(env, info);
         }

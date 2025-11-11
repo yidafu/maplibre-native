@@ -5,7 +5,7 @@
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/layer.hpp>
-// Source NAPI 类
+// Source NAPI classes
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
 #include "sources/raster_source_napi.hpp"
@@ -41,13 +41,13 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
         {"getJson", nullptr, GetJson, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"isFullyLoaded", nullptr, IsFullyLoaded, nullptr, nullptr, nullptr, napi_default, nullptr},
 
-        // Source 管理
+        // Source management
         {"addSource", nullptr, AddSource, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeSource", nullptr, RemoveSource, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getSource", nullptr, GetSource, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getSources", nullptr, GetSources, nullptr, nullptr, nullptr, napi_default, nullptr},
 
-        // Layer 管理
+        // Layer management
         {"addLayer", nullptr, AddLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addLayerBelow", nullptr, AddLayerBelow, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addLayerAbove", nullptr, AddLayerAbove, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -57,7 +57,7 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
         {"getLayer", nullptr, GetLayer, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getLayers", nullptr, GetLayers, nullptr, nullptr, nullptr, napi_default, nullptr},
 
-        // Image 管理
+        // Image management
         {"addImage", nullptr, AddImage, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addImageAsync", nullptr, AddImageAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addImagesAsync", nullptr, AddImagesAsync, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -83,7 +83,7 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
     }
     Logger::info("StyleNAPI", "Style class defined successfully");
 
-    // 创建构造函数引用
+    // Create the constructor reference
     status = napi_create_reference(env, cons, 1, &constructor);
     if (status != napi_ok) {
         Logger::error("StyleNAPI", "Failed to create constructor reference, status=%d", status);
@@ -91,7 +91,7 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
     }
     Logger::info("StyleNAPI", "Constructor reference created: %p", constructor);
 
-    // 将构造函数添加到 exports
+    // Add the constructor to exports
     status = napi_set_named_property(env, exports, "Style", cons);
     if (status != napi_ok) {
         Logger::error("StyleNAPI", "Failed to set Style property, status=%d", status);
@@ -145,10 +145,10 @@ napi_value StyleNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    // 创建 C++ 对象
+    // Create the C++ object
     StyleNAPI *style = new StyleNAPI(map);
 
-    // Wrap 到 JS 对象
+    // Wrap into the JS object
     status = napi_wrap(env, jsThis, style, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete style;
@@ -224,7 +224,7 @@ napi_value StyleNAPI::IsFullyLoaded(napi_env env, napi_callback_info info) {
     return CreateBoolValue(env, style->fullyLoaded);
 }
 
-// ==================== Source 管理 ====================
+// ==================== Source management ====================
 
 napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
@@ -252,7 +252,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     bool sourceAdded = false;
     napi_status status;
 
-    // 首先检查 _TYPE_ 属性以确定真实类型
+    // First check the _TYPE_ property to determine the actual type
     napi_value typeValue;
     std::string sourceType;
     status = napi_get_named_property(env, sourceValue, "_TYPE_", &typeValue);
@@ -284,7 +284,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->sources[sourceId] = true;
                 sourceAdded = true;
 
-                // 重要：在添加到 style 后，让 GeoJsonSourceNAPI 保存从 style 获取的 source 指针
+                // Important: after adding to the style, allow GeoJsonSourceNAPI to store the source pointer retrieved from the style
                 auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::GeoJSON) {
                     geoJsonSource->attachToStyle(static_cast<mbgl::style::GeoJSONSource *>(styleSource));
@@ -316,7 +316,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->sources[sourceId] = true;
                 sourceAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::Vector) {
                     vectorSource->attachToStyle(static_cast<mbgl::style::VectorSource *>(styleSource));
@@ -348,7 +348,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->sources[sourceId] = true;
                 sourceAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::Raster) {
                     rasterSource->attachToStyle(static_cast<mbgl::style::RasterSource *>(styleSource));
@@ -380,7 +380,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->sources[sourceId] = true;
                 sourceAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::RasterDEM) {
                     rasterDemSource->attachToStyle(static_cast<mbgl::style::RasterDEMSource *>(styleSource));
@@ -412,7 +412,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                 style->sources[sourceId] = true;
                 sourceAdded = true;
 
-                // 创建 WeakPtr
+                // Create a WeakPtr
                 auto *styleSource = style->map->getStyle().getSource(sourceId);
                 if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
                     imageSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
@@ -428,7 +428,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
         }
     }
 
-    // 如果没有成功添加任何source类型
+    // If no source type succeeded in being added
     if (!sourceAdded) {
         Logger::error("StyleNAPI", "AddSource: Unknown source type or source is null");
         napi_throw_error(env, nullptr, "Unknown source type or source object");

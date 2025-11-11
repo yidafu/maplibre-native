@@ -12,22 +12,22 @@ namespace harmony {
 
 /**
  * StyleNAPI - NAPI wrapper for Style
- * 
- * 封装 mbgl::style::Style，提供面向对象的样式管理接口
- * 类似于 Android 的 Style 类
+ *
+ * Wraps mbgl::style::Style to provide an object-oriented style management API.
+ * Mirrors the Android Style class.
  */
 class StyleNAPI {
 public:
     StyleNAPI(mbgl::Map* map);
     ~StyleNAPI();
     
-    // NAPI 注册
+    // Register NAPI bindings
     static napi_value Init(napi_env env, napi_value exports);
     
-    // 构造函数回调
+    // Constructor callback
     static napi_value New(napi_env env, napi_callback_info info);
     
-    // 析构函数回调
+    // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     // Getters
@@ -35,13 +35,13 @@ public:
     static napi_value GetJson(napi_env env, napi_callback_info info);
     static napi_value IsFullyLoaded(napi_env env, napi_callback_info info);
     
-    // Source 管理
+    // Source management
     static napi_value AddSource(napi_env env, napi_callback_info info);
     static napi_value RemoveSource(napi_env env, napi_callback_info info);
     static napi_value GetSource(napi_env env, napi_callback_info info);
     static napi_value GetSources(napi_env env, napi_callback_info info);
     
-    // Layer 管理
+    // Layer management
     static napi_value AddLayer(napi_env env, napi_callback_info info);
     static napi_value AddLayerBelow(napi_env env, napi_callback_info info);
     static napi_value AddLayerAbove(napi_env env, napi_callback_info info);
@@ -51,7 +51,7 @@ public:
     static napi_value GetLayer(napi_env env, napi_callback_info info);
     static napi_value GetLayers(napi_env env, napi_callback_info info);
     
-    // Image 管理
+    // Image management
     static napi_value AddImage(napi_env env, napi_callback_info info);
     static napi_value AddImageAsync(napi_env env, napi_callback_info info);
     static napi_value AddImagesAsync(napi_env env, napi_callback_info info);
@@ -64,20 +64,20 @@ public:
     static napi_value GetTransition(napi_env env, napi_callback_info info);
     static napi_value SetTransition(napi_env env, napi_callback_info info);
     
-    // 内部方法
+    // Internal helpers
     void setFullyLoaded(bool loaded) { fullyLoaded = loaded; }
     bool isFullyLoaded() const { return fullyLoaded; }
     mbgl::Map* getMap() const { return map; }
     
-    // 构造函数引用（用于创建实例）
+    // Constructor reference (used to create instances)
     static napi_ref constructor;
     
 private:
-    mbgl::Map* map;  // 持有 Map 指针（不负责释放）
+    mbgl::Map* map;  // Holds a Map pointer (not owned)
     bool fullyLoaded;
     
-    // 缓存（与 Android 一致）
-    // 注意：这里只缓存 ID，实际对象由 mbgl::style::Style 管理
+    // Caches (mirroring Android)
+    // Only IDs are cached here; actual objects are owned by mbgl::style::Style
     std::unordered_map<std::string, bool> sources;  // sourceId -> exists
     std::unordered_map<std::string, bool> layers;   // layerId -> exists
 

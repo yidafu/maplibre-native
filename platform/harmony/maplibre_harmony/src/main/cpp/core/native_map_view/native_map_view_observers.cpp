@@ -14,7 +14,7 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
-// ✅ 架构修复：线程安全辅助方法实现
+// ✅ Architecture fix: helper methods to ensure thread safety
 bool NativeMapView::isOnRenderThread() const {
     if (!harmonyRenderer) {
         return false;
@@ -33,7 +33,7 @@ void NativeMapView::runOnRenderThread(std::function<void()>&& fn) {
 void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
-    // ✅ 架构修复：确保回调在渲染线程上执行
+    // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this, mode]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
@@ -45,11 +45,11 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
                     return argv[0];
                 });
                 
-                // TODO: 将 Android 风格回调映射移到 ETS 层实现
-                // 临时方案：在 C++ 层同时触发 Android 风格回调
-                // 长期方案：在 NativeMapView.ets 中监听 onCameraWillChange 并转换为 onCameraMoveStarted
-                // 🔧 触发 Android 风格的 onCameraMoveStarted 回调
-                // reason: 3=DEVELOPER_ANIMATION（动画）, 1=GESTURE（手势）
+                // TODO: Move the Android-style callback mapping to the ETS layer
+                // Temporary approach: trigger Android-style callbacks directly in C++
+                // Long-term approach: listen to onCameraWillChange in NativeMapView.ets and translate it to onCameraMoveStarted
+                // 🔧 Trigger the Android-style onCameraMoveStarted callback
+                // reason: 3=DEVELOPER_ANIMATION (animation), 1=GESTURE (gesture)
                 int reason = animated ? 3 : 1;
                 callbackManager_->InvokeCallback("onCameraMoveStarted", [reason](napi_env env) {
                     napi_value argv[1];
@@ -61,7 +61,7 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
         return;
     }
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         bool animated = (mode == MapObserver::CameraChangeMode::Animated);
         callbackManager_->InvokeCallback("onCameraWillChange", [animated](napi_env env) {
@@ -70,11 +70,11 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
             return argv[0];
         });
         
-        // TODO: 将 Android 风格回调映射移到 ETS 层实现
-        // 临时方案：在 C++ 层同时触发 Android 风格回调
-        // 长期方案：在 NativeMapView.ets 中监听 onCameraWillChange 并转换为 onCameraMoveStarted
-        // 🔧 触发 Android 风格的 onCameraMoveStarted 回调
-        // reason: 3=DEVELOPER_ANIMATION（动画）, 1=GESTURE（手势）
+        // TODO: Move the Android-style callback mapping to the ETS layer
+        // Temporary approach: trigger Android-style callbacks directly in C++
+        // Long-term approach: listen to onCameraWillChange in NativeMapView.ets and translate it to onCameraMoveStarted
+        // 🔧 Trigger the Android-style onCameraMoveStarted callback
+        // reason: 3=DEVELOPER_ANIMATION (animation), 1=GESTURE (gesture)
         int reason = animated ? 3 : 1;
         callbackManager_->InvokeCallback("onCameraMoveStarted", [reason](napi_env env) {
             napi_value argv[1];
@@ -87,35 +87,31 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
-    Logger::info("NativeMapView", "🔵 onCameraIsChanging called");
-    
-    // ✅ 架构修复：确保回调在渲染线程上执行
+    // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
             if (callbackManager_) {
-                Logger::info("NativeMapView", "🔵 onCameraIsChanging - invoking callbacks on render thread");
                 callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
                 
-                // TODO: 将 Android 风格回调映射移到 ETS 层实现
-                // 临时方案：在 C++ 层同时触发 Android 风格回调
-                // 长期方案：在 NativeMapView.ets 中监听 onCameraIsChanging 并转换为 onCameraMove
-                // 🔧 触发 Android 风格的 onCameraMove 回调
+                // TODO: Move the Android-style callback mapping to the ETS layer
+                // Temporary approach: trigger Android-style callbacks directly in C++
+                // Long-term approach: listen to onCameraIsChanging in NativeMapView.ets and translate it to onCameraMove
+                // 🔧 Trigger the Android-style onCameraMove callback
                 callbackManager_->InvokeCallbackEmpty("onCameraMove");
             }
         });
         return;
     }
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
-        Logger::info("NativeMapView", "🔵 onCameraIsChanging - invoking callbacks on same thread");
         callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
         
-        // TODO: 将 Android 风格回调映射移到 ETS 层实现
-        // 临时方案：在 C++ 层同时触发 Android 风格回调
-        // 长期方案：在 NativeMapView.ets 中监听 onCameraIsChanging 并转换为 onCameraMove
-        // 🔧 触发 Android 风格的 onCameraMove 回调
+        // TODO: Move the Android-style callback mapping to the ETS layer
+        // Temporary approach: trigger Android-style callbacks directly in C++
+        // Long-term approach: listen to onCameraIsChanging in NativeMapView.ets and translate it to onCameraMove
+        // 🔧 Trigger the Android-style onCameraMove callback
         callbackManager_->InvokeCallbackEmpty("onCameraMove");
     }
 }
@@ -123,7 +119,7 @@ void NativeMapView::onCameraIsChanging() {
 void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
-    // ✅ 架构修复：确保回调在渲染线程上执行
+    // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this, mode]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
@@ -135,17 +131,17 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
                     return argv[0];
                 });
                 
-                // TODO: 将 Android 风格回调映射移到 ETS 层实现
-                // 临时方案：在 C++ 层同时触发 Android 风格回调
-                // 长期方案：在 NativeMapView.ets 中监听 onCameraDidChange 并转换为 onCameraIdle
-                // 🔧 触发 Android 风格的 onCameraIdle 回调
+                // TODO: Move the Android-style callback mapping to the ETS layer
+                // Temporary approach: trigger Android-style callbacks directly in C++
+                // Long-term approach: listen to onCameraDidChange in NativeMapView.ets and translate it to onCameraIdle
+                // 🔧 Trigger the Android-style onCameraIdle callback
                 callbackManager_->InvokeCallbackEmpty("onCameraIdle");
             }
         });
         return;
     }
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         bool animated = (mode == MapObserver::CameraChangeMode::Animated);
         callbackManager_->InvokeCallback("onCameraDidChange", [animated](napi_env env) {
@@ -154,15 +150,15 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
             return argv[0];
         });
         
-        // TODO: 将 Android 风格回调映射移到 ETS 层实现
-        // 临时方案：在 C++ 层同时触发 Android 风格回调
-        // 长期方案：在 NativeMapView.ets 中监听 onCameraDidChange 并转换为 onCameraIdle
-        // 🔧 触发 Android 风格的 onCameraIdle 回调
+        // TODO: Move the Android-style callback mapping to the ETS layer
+        // Temporary approach: trigger Android-style callbacks directly in C++
+        // Long-term approach: listen to onCameraDidChange in NativeMapView.ets and translate it to onCameraIdle
+        // 🔧 Trigger the Android-style onCameraIdle callback
         callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
     
-    // MapLibre 内部已经处理渲染时机（通过 triggerRepaint）
-    // 不需要在这里额外请求渲染，否则会造成过度渲染
+    // MapLibre already handles render timing internally (via triggerRepaint)
+    // No additional render request is required here; otherwise it leads to over-rendering
 }
 void NativeMapView::onWillStartLoadingMap() {
     Logger::info("NativeMapView", "========== onWillStartLoadingMap ==========");
@@ -172,7 +168,7 @@ void NativeMapView::onWillStartLoadingMap() {
     Logger::info("NativeMapView", "  - Map starts loading resources");
     Logger::info("NativeMapView", "===========================================");
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onWillStartLoadingMap");
     }
@@ -186,18 +182,18 @@ void NativeMapView::onDidFinishLoadingMap() {
     
     Logger::warn("NativeMapView", "🗺️ [%lld ms] onDidFinishLoadingMap", elapsed);
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingMap");
     }
     
-    // MapLibre内部已自动处理渲染，不需要额外请求
-    // 移除此处的 requestRender() 避免重复渲染
+    // MapLibre already handles rendering internally, no additional request is required
+    // Remove requestRender() here to avoid redundant rendering
 }
 void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& errorMsg) {
     Logger::error("NativeMapView", "========== onDidFailLoadingMap ==========");
     
-    // 根据错误类型输出不同的信息
+    // Log specific information based on the error type
     const char* errorType = "Unknown";
     const char* suggestion = "";
     
@@ -226,19 +222,19 @@ void NativeMapView::onDidFailLoadingMap(MapLoadError error, const std::string& e
     Logger::info("NativeMapView", "  Suggestion: %s", suggestion);
     Logger::error("NativeMapView", "=========================================");
     
-    // 通知监听器
+    // Notify listeners
     std::string fullError = std::string(errorType) + ": " + errorMsg;
     if (callbackManager_) {
         callbackManager_->InvokeCallbackWithString("onDidFailLoadingMap", fullError);
     }
     
-    // 通知样式加载错误（保留旧的监听器）
+    // Notify the style load failure (preserve the legacy listener)
     notifyStyleLoadError(fullError);
 }
 void NativeMapView::onWillStartRenderingFrame() {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onWillStartRenderingFrame");
     }
@@ -249,16 +245,16 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
         return;
     }
     
-    // ⚠️ 重要：onDidFinishRenderingFrame 本身就在渲染线程被 Renderer 调用
-    // 不应该被分发！分发会导致白屏（渲染无法完成）
+    // ⚠️ Important: onDidFinishRenderingFrame is already invoked by the renderer on the render thread
+    // It must not be dispatched again, otherwise the render cannot finish and a blank screen appears
     
-    // 通知监听器（带渲染统计信息）
+    // Notify listeners with render statistics
     if (callbackManager_) {
         bool fully = (status.mode == MapObserver::RenderMode::Full);
-        // 使用 renderingStats 中的实际数据
-        // 从 renderingStats 获取实际的编码和渲染时间
+        // Use the actual data from renderingStats
+        // Retrieve encoding and rendering time from renderingStats
         const auto& stats = status.renderingStats;
-        // encodingTime 和 renderingTime 已经是秒为单位，转换为毫秒
+        // encodingTime and renderingTime are in seconds; convert them to milliseconds
         double encodingTime = stats.encodingTime * 1000.0;
         double renderingTime = stats.renderingTime * 1000.0;
         
@@ -270,7 +266,7 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
             napi_get_boolean(env, fully, &argv[0]);
             napi_create_double(env, encodingTime, &argv[1]);
             napi_create_double(env, renderingTime, &argv[2]);
-            return argv[0]; // DataBuilder 需要返回值，这里返回第一个参数
+            return argv[0]; // DataBuilder requires a return value; return the first argument here
         });
     }
     
@@ -278,23 +274,23 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
 }
 void NativeMapView::onWillStartRenderingMap() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onWillStartRenderingMap");
     }
 }
 
 void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
-    // 立即检查对象是否正在析构
+    // Immediately check whether the object is being destroyed
     if (isDestroying.load(std::memory_order_acquire)) {
         return;
     }
     
     try {
-        // ⚠️ 重要：onDidFinishRenderingMap 本身就在渲染线程被 Renderer 调用
-        // 不应该被分发！分发会导致渲染流程中断
+        // ⚠️ Important: onDidFinishRenderingMap is already invoked by the renderer on the render thread
+        // It must not be dispatched again, or the rendering pipeline will be interrupted
         
-        // 通知监听器
+        // Notify listeners
         if (callbackManager_) {
             bool fully = (mode == MapObserver::RenderMode::Full);
             callbackManager_->InvokeCallback("onDidFinishRenderingMap", [fully](napi_env env) {
@@ -304,16 +300,16 @@ void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
             });
         }
         
-        // 渲染已完成，不需要再次请求渲染
-        // onCameraDidChange 已经处理了渲染请求
+        // Rendering is complete; there is no need to request rendering again
+        // onCameraDidChange already handled the render request
     } catch (...) {
-        // 忽略所有异常，避免崩溃
+        // Ignore every exception to avoid crashing
     }
 }
 
 void NativeMapView::onDidBecomeIdle() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onDidBecomeIdle");
     }
@@ -324,20 +320,20 @@ void NativeMapView::onDidFinishLoadingStyle() {
         return;
     }
     
-    // ✅ 架构修复：确保回调在渲染线程上执行
+    // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle from non-render thread, dispatching");
-        
-        // 切换到渲染线程执行
+
+        // Switch execution to the render thread
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
             
-            // 通知 Android 风格的监听器
+            // Notify the Android-style listeners
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingStyle");
             }
             
-            // 通知样式加载完成（旧的监听器）
+            // Notify that style loading completed (legacy listener)
             notifyStyleLoaded();
         });
         return;
@@ -347,7 +343,7 @@ void NativeMapView::onDidFinishLoadingStyle() {
     static auto startTime = now;
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
     
-    // 实例标识
+    // Instance identifier
     static int instanceCounter = 0;
     static std::map<void*, int> instanceIds;
     if (instanceIds.find(this) == instanceIds.end()) {
@@ -357,12 +353,12 @@ void NativeMapView::onDidFinishLoadingStyle() {
     
     Logger::info("NativeMapView", "onDidFinishLoadingStyle (instance=%d, +%lld ms)", instanceId, elapsed);
     
-    // 通知 Android 风格的监听器
+    // Notify the Android-style listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingStyle");
     }
     
-    // 通知样式加载完成（旧的监听器）
+    // Notify that style loading completed (legacy listener)
     notifyStyleLoaded();
     
     if (map) {
@@ -389,32 +385,32 @@ void NativeMapView::onDidFinishLoadingStyle() {
         Logger::warn("NativeMapView", "Map object is null");
     }
     
-    // MapLibre内部已自动处理渲染，不需要额外请求
-    // 移除此处的 requestRender() 避免重复渲染
+    // MapLibre already handles rendering internally, no additional request is required
+    // Remove requestRender() here to avoid redundant rendering
 }
 void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
     if (isDestroying.load(std::memory_order_acquire)) return;
     
-    // ✅ 架构修复：确保回调在渲染线程上执行
+    // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         Logger::warn("NativeMapView", "⚠️ onSourceChanged called from wrong thread! Dispatching to render thread.");
         
-        // 复制 source ID 避免引用失效
+        // Copy the source ID to avoid dangling references
         std::string sourceId = source.getID();
         auto sourceType = source.getType();
         
-        // 切换到渲染线程执行
+        // Switch execution to the render thread
         runOnRenderThread([this, sourceId, sourceType]() {
-            // 在渲染线程上安全执行
+            // Execute safely on the render thread
             int count = ++sourceChangedCount;
             auto now = std::chrono::steady_clock::now();
             static auto startTime = now;
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
             
-            Logger::info("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d) [渲染线程]", 
+            Logger::info("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d) [render thread]", 
                          elapsed, count, sourceId.c_str(), static_cast<int>(sourceType));
             
-            // 通知监听器
+            // Notify listeners
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackWithString("onSourceChanged", sourceId);
             }
@@ -422,7 +418,7 @@ void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
         return;
     }
     
-    // 已经在渲染线程，直接执行
+    // Already on the render thread; execute directly
     int count = ++sourceChangedCount;
     auto now = std::chrono::steady_clock::now();
     static auto startTime = now;
@@ -431,14 +427,14 @@ void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
     Logger::warn("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d)", 
                  elapsed, count, source.getID().c_str(), static_cast<int>(source.getType()));
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         std::string sourceId = source.getID();
         callbackManager_->InvokeCallbackWithString("onSourceChanged", sourceId);
     }
     
-    // MapLibre内部已自动处理渲染，不需要额外请求
-    // 移除此处的 requestRender() 避免重复渲染导致无限循环
+    // MapLibre already handles rendering internally; no additional request is required
+    // Remove requestRender() here to avoid duplicate rendering that leads to an infinite loop
 }
 void NativeMapView::onStyleImageMissing(const std::string& id) {
     Logger::warn("NativeMapView", "========== onStyleImageMissing ==========");
@@ -457,7 +453,7 @@ void NativeMapView::onStyleImageMissing(const std::string& id) {
     }
     Logger::warn("NativeMapView", "=========================================");
     
-    // 通知监听器
+    // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackWithString("onStyleImageMissing", id);
     }
@@ -474,14 +470,14 @@ napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getImage: Map not initialized");
         return args.Undefined();
     }
     
-    // 获取图像ID
+    // Retrieve the image ID
     std::string imageId = args.GetString(0, "imageId");
     if (args.HasError()) return args.Undefined();
     
@@ -512,7 +508,7 @@ napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+        // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -534,7 +530,7 @@ napi_value NativeMapView::setPrefetchTiles(napi_env env, napi_callback_info info
     }
     
     try {
-        // 参考 Android: 如果启用则设置默认 zoom delta，否则设为 0
+        // Align with Android: set the default zoom delta when enabled; otherwise set it to 0
         instance->invokeOnMapThread([enable](mbgl::Map* m){ m->setPrefetchZoomDelta(enable ? mbgl::util::DEFAULT_PREFETCH_ZOOM_DELTA : uint8_t(0)); });
         Logger::info("NativeMapView", "setPrefetchTiles: Set to %s", enable ? "enabled" : "disabled");
     } catch (const std::exception& e) {
@@ -548,7 +544,7 @@ napi_value NativeMapView::getPrefetchTiles(napi_env env, napi_callback_info info
     napi_value result;
     napi_get_boolean(env, false, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -571,7 +567,7 @@ napi_value NativeMapView::setPrefetchZoomDelta(napi_env env, napi_callback_info 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -606,7 +602,7 @@ napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info 
     napi_value result;
     napi_create_int32(env, 0, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -626,7 +622,7 @@ napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info info) {
-    // Tile 缓存控制需要渲染器前端支持
+    // Tile cache control requires renderer frontend support
     // Tile cache control requires renderer frontend support
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -634,7 +630,7 @@ napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info info) {
-    // Tile 缓存控制需要渲染器前端支持
+    // Tile cache control requires renderer frontend support
     // Tile cache control requires renderer frontend support
     napi_value result;
     napi_get_boolean(env, false, &result);
@@ -642,12 +638,12 @@ napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::setTileLodMinRadius(napi_env env, napi_callback_info info) {
-    // Tile LOD 参数控制已实现
+    // Tile LOD parameter control is implemented
     // Tile LOD parameter control is implemented
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -682,7 +678,7 @@ napi_value NativeMapView::getTileLodMinRadius(napi_env env, napi_callback_info i
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -705,7 +701,7 @@ napi_value NativeMapView::setTileLodScale(napi_env env, napi_callback_info info)
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -740,7 +736,7 @@ napi_value NativeMapView::getTileLodScale(napi_env env, napi_callback_info info)
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -763,7 +759,7 @@ napi_value NativeMapView::setTileLodPitchThreshold(napi_env env, napi_callback_i
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -798,7 +794,7 @@ napi_value NativeMapView::getTileLodPitchThreshold(napi_env env, napi_callback_i
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -821,7 +817,7 @@ napi_value NativeMapView::setTileLodZoomShift(napi_env env, napi_callback_info i
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -856,7 +852,7 @@ napi_value NativeMapView::getTileLodZoomShift(napi_env env, napi_callback_info i
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -879,21 +875,21 @@ napi_value NativeMapView::triggerRepaint(napi_env env, napi_callback_info info) 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象
+    // Retrieve the this object
     napi_value thisObj;
     if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
         Logger::error("NativeMapView", "Failed to get this object");
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "Failed to unwrap instance");
         return undefined;
     }
     
-    // 请求渲染
+    // Request rendering
     if (instance->harmonyRenderer) {
         instance->harmonyRenderer->requestRender();
     }
@@ -901,12 +897,12 @@ napi_value NativeMapView::triggerRepaint(napi_env env, napi_callback_info info) 
     return undefined;
 }
 
-// 设置NativeWindow的NAPI方法
+// NAPI method to set the native window
 napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取参数
+    // Retrieve arguments
     size_t argc = 1;
     napi_value args[1];
     
@@ -920,7 +916,7 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
         return undefined;
     }
     
-    // 获取this对象
+    // Retrieve the this object
     napi_value thisObj;
     if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
         Logger::error("NativeMapView", "Failed to get this object");
@@ -930,7 +926,7 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
     int64_t surfaceId = mbgl::harmony::napi::ParseSurfaceId(env, info);
     Logger::info("NativeMapView", "Surface ID: %ld", (long)surfaceId);
 
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* nativeMapView;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&nativeMapView)) != napi_ok) {
         Logger::error("NativeMapView", "Failed to unwrap NativeMapView");
@@ -947,12 +943,12 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
         return undefined;
     }
     
-    // 保存窗口指针
+    // Store the window pointer
     nativeMapView->nativeWindow = nativeWindow;
     // pixelRatio will be determined during renderer initialization from device
     Logger::info("NativeMapView", "pixelRatio will be determined from device DPI");
     
-    // 初始化渲染器（如果尚未初始化）
+    // Initialize the renderer if it has not been set up
     try {
         Logger::info("NativeMapView", "Initializing renderer...");
         nativeMapView->initializeRenderer();
@@ -971,7 +967,7 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callback_info info) {
-    // Rendering stats view 未在 Harmony 平台实现
+    // Rendering stats view is not implemented on the Harmony platform
     // Rendering stats view not implemented for Harmony
     napi_value result;
     napi_get_boolean(env, false, &result);
@@ -979,19 +975,19 @@ napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callbac
 }
 
 napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_info info) {
-    // Rendering stats view 未在 Harmony 平台实现
+    // Rendering stats view is not implemented on the Harmony platform
     // Rendering stats view not implemented for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
 }
 
-// 设置NativeWindow的NAPI方法（带尺寸参数）
+// NAPI method to set the native window with size
 napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取参数
+    // Retrieve arguments
     size_t argc = 3;
     napi_value args[3];
     
@@ -1005,14 +1001,14 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
         return undefined;
     }
     
-    // 获取this对象
+    // Retrieve the this object
     napi_value thisObj;
     if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
         Logger::error("NativeMapView", "Failed to get this object");
         return undefined;
     }
 
-    // 解析参数
+    // Parse arguments
     int64_t surfaceId = mbgl::harmony::napi::ParseSurfaceId(env, info);
     int32_t width, height;
     
@@ -1024,14 +1020,14 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
     
     Logger::info("NativeMapView", "Surface ID: %ld, Width: %d, Height: %d", (long)surfaceId, width, height);
 
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* nativeMapView;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&nativeMapView)) != napi_ok) {
         Logger::error("NativeMapView", "Failed to unwrap NativeMapView");
         return undefined;
     }
     
-    // 调用新的方法
+    // Invoke the new method
     nativeMapView->setNativeWindowWithSize(surfaceId, width, height);
     
     Logger::info("NativeMapView", "========== setNativeWindowWithSize() END - SUCCESS ==========");
@@ -1039,9 +1035,9 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
     return undefined;
 }
 
-// 其他方法实现
+// Other method implementations
 mbgl::Map& NativeMapView::getMap() {
-    // 返回实际的地图对象，如果map为null则抛出异常
+    // Return the actual map object; throw if map is null
     if (map) {
         return *map;
     } else {
@@ -1061,7 +1057,7 @@ void NativeMapView::onPreCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx:
     if (callbackManager_) {
         int shaderId = static_cast<int>(shader);
         int backendType = static_cast<int>(backend);
-        std::string defines = source; // 复制避免引用失效
+        std::string defines = source; // Copy to avoid dangling references
         
         callbackManager_->InvokeCallback("onPreCompileShader", [shaderId, backendType, defines](napi_env env) {
             napi_value argv[3];
@@ -1079,7 +1075,7 @@ void NativeMapView::onPostCompileShader(mbgl::shaders::BuiltIn shader, mbgl::gfx
     if (callbackManager_) {
         int shaderId = static_cast<int>(shader);
         int backendType = static_cast<int>(backend);
-        std::string defines = source; // 复制避免引用失效
+        std::string defines = source; // Copy to avoid dangling references
         
         callbackManager_->InvokeCallback("onPostCompileShader", [shaderId, backendType, defines](napi_env env) {
             napi_value argv[3];
@@ -1100,7 +1096,7 @@ void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::g
     if (callbackManager_) {
         int shaderId = static_cast<int>(shader);
         int backendType = static_cast<int>(backend);
-        std::string defines = source; // 复制避免引用失效
+        std::string defines = source; // Copy to avoid dangling references
         
         callbackManager_->InvokeCallback("onShaderCompileFailed", [shaderId, backendType, defines](napi_env env) {
             napi_value argv[3];
@@ -1117,7 +1113,7 @@ void NativeMapView::onGlyphsLoaded(const mbgl::FontStack& stack, const mbgl::Gly
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     if (callbackManager_) {
-        // 复制数据避免引用失效
+        // Copy the data to avoid dangling references
         std::vector<std::string> fontStack(stack.begin(), stack.end());
         int rangeStart = range.first;
         int rangeEnd = range.second;
@@ -1125,7 +1121,7 @@ void NativeMapView::onGlyphsLoaded(const mbgl::FontStack& stack, const mbgl::Gly
         callbackManager_->InvokeCallback("onGlyphsLoaded", [fontStack, rangeStart, rangeEnd](napi_env env) {
             napi_value argv[3];
             
-            // 创建字体数组
+            // Create the font array
             napi_create_array(env, &argv[0]);
             for (size_t i = 0; i < fontStack.size(); i++) {
                 napi_value fontName;
@@ -1144,7 +1140,7 @@ void NativeMapView::onGlyphsError(const mbgl::FontStack& stack, const mbgl::Glyp
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     if (callbackManager_) {
-        // 复制数据避免引用失效
+        // Copy the data to avoid dangling references
         std::vector<std::string> fontStack(stack.begin(), stack.end());
         int rangeStart = range.first;
         int rangeEnd = range.second;
@@ -1152,7 +1148,7 @@ void NativeMapView::onGlyphsError(const mbgl::FontStack& stack, const mbgl::Glyp
         callbackManager_->InvokeCallback("onGlyphsError", [fontStack, rangeStart, rangeEnd](napi_env env) {
             napi_value argv[3];
             
-            // 创建字体数组
+            // Create the font array
             napi_create_array(env, &argv[0]);
             for (size_t i = 0; i < fontStack.size(); i++) {
                 napi_value fontName;
@@ -1171,7 +1167,7 @@ void NativeMapView::onGlyphsRequested(const mbgl::FontStack& stack, const mbgl::
     if (isDestroying.load(std::memory_order_acquire)) return;
     
     if (callbackManager_) {
-        // 复制数据避免引用失效
+        // Copy the data to avoid dangling references
         std::vector<std::string> fontStack(stack.begin(), stack.end());
         int rangeStart = range.first;
         int rangeEnd = range.second;
@@ -1179,7 +1175,7 @@ void NativeMapView::onGlyphsRequested(const mbgl::FontStack& stack, const mbgl::
         callbackManager_->InvokeCallback("onGlyphsRequested", [fontStack, rangeStart, rangeEnd](napi_env env) {
             napi_value argv[3];
             
-            // 创建字体数组
+            // Create the font array
             napi_create_array(env, &argv[0]);
             for (size_t i = 0; i < fontStack.size(); i++) {
                 napi_value fontName;
@@ -1205,7 +1201,7 @@ void NativeMapView::onTileAction(mbgl::TileOperation op, const mbgl::OverscaledT
         int z = tileID.canonical.z;
         int wrap = tileID.wrap;
         int overscaledZ = tileID.overscaledZ;
-        std::string source = sourceID; // 复制避免引用失效
+        std::string source = sourceID; // Copy to avoid dangling references
         
         callbackManager_->InvokeCallback("onTileAction", [operation, x, y, z, wrap, overscaledZ, source](napi_env env) {
             napi_value argv[7];
@@ -1270,13 +1266,13 @@ void NativeMapView::onSpriteRequested(const std::optional<mbgl::style::Sprite>& 
     }
 }
 
-// ========== 相机监听器方法实现 ==========
+// ========== Camera listener implementations ==========
 
 napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象和参数
+    // Retrieve the this object and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -1285,7 +1281,7 @@ napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_in
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to unwrap instance");
@@ -1297,7 +1293,7 @@ napi_value NativeMapView::addOnCameraIdleListener(napi_env env, napi_callback_in
         return undefined;
     }
     
-    // 添加监听器
+    // Add the listener
     if (instance->callbackManager_->RegisterCallback("onCameraIdle", args[0])) {
     } else {
         Logger::error("NativeMapView", "addOnCameraIdleListener: Failed to register callback");
@@ -1523,24 +1519,24 @@ napi_value NativeMapView::removeOnCameraMoveCanceledListener(napi_env env, napi_
     return undefined;
 }
 
-// ========== Map 生命周期监听器方法实现 ==========
+// ========== Map lifecycle listener implementations ==========
 
 /**
- * setOnMapViewCreatedCallback - 设置 Map 创建完成回调
- * 
- * 用途：在 C++ Map 对象创建完成后立即通知 ArkTS 层
- * 时机：样式加载之前，允许用户注册观察者监听器
- * 对齐：Android 的 onMapViewReady 回调
- * 
- * @param env N-API 环境
- * @param info 回调信息，参数为 JavaScript 回调函数
+ * setOnMapViewCreatedCallback - Register the callback invoked when the map is created
+ *
+ * Purpose: notify the ArkTS layer right after the C++ map object finishes initialization
+ * Timing: before the style loads so observers can be attached in advance
+ * Alignment: mirrors the Android onMapViewReady callback
+ *
+ * @param env N-API environment
+ * @param info Callback info; argument must be a JavaScript function
  * @return undefined
  */
 napi_value NativeMapView::setOnMapViewCreatedCallback(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象和参数
+    // Retrieve the this object and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -1549,7 +1545,7 @@ napi_value NativeMapView::setOnMapViewCreatedCallback(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "setOnMapViewCreatedCallback: Failed to unwrap instance");
@@ -1561,7 +1557,7 @@ napi_value NativeMapView::setOnMapViewCreatedCallback(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 检查是否为null（移除监听器）
+    // Check for null to remove the listener
     napi_valuetype valueType;
     napi_typeof(env, args[0], &valueType);
     
@@ -1576,10 +1572,10 @@ napi_value NativeMapView::setOnMapViewCreatedCallback(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 先移除旧的监听器，再注册新的（单例模式）
+    // Remove the previous listener before registering a new one (singleton pattern)
     instance->callbackManager_->UnregisterCallback("onMapViewCreated");
     
-    // 注册回调
+    // Register the callback
     if (instance->callbackManager_->RegisterCallback("onMapViewCreated", args[0])) {
         Logger::info("NativeMapView", "✅ Registered onMapViewCreated callback");
     } else {
@@ -1589,13 +1585,13 @@ napi_value NativeMapView::setOnMapViewCreatedCallback(napi_env env, napi_callbac
     return undefined;
 }
 
-// ========== 样式监听器方法实现 ==========
+// ========== Style listener implementations ==========
 
 napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象和参数
+    // Retrieve the this object and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -1604,7 +1600,7 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to unwrap instance");
@@ -1616,7 +1612,7 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
         return undefined;
     }
     
-    // 检查是否为null（移除监听器）
+    // Check for null to remove the listener
     napi_valuetype valueType;
     napi_typeof(env, args[0], &valueType);
     
@@ -1630,10 +1626,10 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
         return undefined;
     }
     
-    // 先移除旧的监听器，再注册新的（Style 监听器是单例模式）
+    // Remove the previous listener before registering a new one (style listener is singleton)
     instance->callbackManager_->UnregisterCallback("onStyleLoaded");
     
-    // 注册回调
+    // Register the callback
     if (instance->callbackManager_->RegisterCallback("onStyleLoaded", args[0])) {
     } else {
         Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to register callback");
@@ -1646,7 +1642,7 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象和参数
+    // Retrieve the this object and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -1655,7 +1651,7 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to unwrap instance");
@@ -1667,7 +1663,7 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 检查是否为null（移除监听器）
+    // Check for null to remove the listener
     napi_valuetype valueType;
     napi_typeof(env, args[0], &valueType);
     
@@ -1681,10 +1677,10 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
         return undefined;
     }
     
-    // 先移除旧的监听器，再注册新的（Style 监听器是单例模式）
+    // Remove the previous listener before registering a new one (style listener is singleton)
     instance->callbackManager_->UnregisterCallback("onStyleLoadError");
     
-    // 注册回调
+    // Register the callback
     if (instance->callbackManager_->RegisterCallback("onStyleLoadError", args[0])) {
     } else {
         Logger::error("NativeMapView", "setOnStyleLoadErrorListener: Failed to register callback");
@@ -1733,9 +1729,9 @@ void NativeMapView::notifyStyleLoadError(const std::string& error) {
     }
 }
 
-// ========== Android/iOS 风格监听器的 NAPI 方法实现 ==========
+// ========== Android/iOS style listener NAPI implementations ==========
 
-// 辅助宏：简化监听器注册代码
+// Helper macro: simplify listener registration code
 #define IMPLEMENT_ADD_LISTENER(MethodName, CallbackName) \
 napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
     napi_value undefined; \
@@ -1790,7 +1786,7 @@ napi_value NativeMapView::MethodName(napi_env env, napi_callback_info info) { \
     return undefined; \
 }
 
-// ===== 相机事件监听器 =====
+// ===== Camera event listeners =====
 IMPLEMENT_ADD_LISTENER(addOnCameraWillChangeListener, "onCameraWillChange")
 IMPLEMENT_REMOVE_LISTENER(removeOnCameraWillChangeListener, "onCameraWillChange")
 IMPLEMENT_ADD_LISTENER(addOnCameraIsChangingListener, "onCameraIsChanging")
@@ -1798,7 +1794,7 @@ IMPLEMENT_REMOVE_LISTENER(removeOnCameraIsChangingListener, "onCameraIsChanging"
 IMPLEMENT_ADD_LISTENER(addOnCameraDidChangeListener, "onCameraDidChange")
 IMPLEMENT_REMOVE_LISTENER(removeOnCameraDidChangeListener, "onCameraDidChange")
 
-// ===== 地图加载事件监听器 =====
+// ===== Map load event listeners =====
 IMPLEMENT_ADD_LISTENER(addOnWillStartLoadingMapListener, "onWillStartLoadingMap")
 IMPLEMENT_REMOVE_LISTENER(removeOnWillStartLoadingMapListener, "onWillStartLoadingMap")
 IMPLEMENT_ADD_LISTENER(addOnDidFinishLoadingMapListener, "onDidFinishLoadingMap")
@@ -1806,7 +1802,7 @@ IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishLoadingMapListener, "onDidFinishLoadi
 IMPLEMENT_ADD_LISTENER(addOnDidFailLoadingMapListener, "onDidFailLoadingMap")
 IMPLEMENT_REMOVE_LISTENER(removeOnDidFailLoadingMapListener, "onDidFailLoadingMap")
 
-// ===== 渲染事件监听器 =====
+// ===== Render event listeners =====
 IMPLEMENT_ADD_LISTENER(addOnWillStartRenderingFrameListener, "onWillStartRenderingFrame")
 IMPLEMENT_REMOVE_LISTENER(removeOnWillStartRenderingFrameListener, "onWillStartRenderingFrame")
 IMPLEMENT_ADD_LISTENER(addOnDidFinishRenderingFrameListener, "onDidFinishRenderingFrame")
@@ -1816,19 +1812,19 @@ IMPLEMENT_REMOVE_LISTENER(removeOnWillStartRenderingMapListener, "onWillStartRen
 IMPLEMENT_ADD_LISTENER(addOnDidFinishRenderingMapListener, "onDidFinishRenderingMap")
 IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishRenderingMapListener, "onDidFinishRenderingMap")
 
-// ===== 样式事件监听器 =====
+// ===== Style event listeners =====
 IMPLEMENT_ADD_LISTENER(addOnDidFinishLoadingStyleListener, "onDidFinishLoadingStyle")
 IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishLoadingStyleListener, "onDidFinishLoadingStyle")
 IMPLEMENT_ADD_LISTENER(addOnStyleImageMissingListener, "onStyleImageMissing")
 IMPLEMENT_REMOVE_LISTENER(removeOnStyleImageMissingListener, "onStyleImageMissing")
 
-// ===== 其他事件监听器 =====
+// ===== Other event listeners =====
 IMPLEMENT_ADD_LISTENER(addOnDidBecomeIdleListener, "onDidBecomeIdle")
 IMPLEMENT_REMOVE_LISTENER(removeOnDidBecomeIdleListener, "onDidBecomeIdle")
 IMPLEMENT_ADD_LISTENER(addOnSourceChangedListener, "onSourceChanged")
 IMPLEMENT_REMOVE_LISTENER(removeOnSourceChangedListener, "onSourceChanged")
 
-// ===== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) =====
+// ===== Observer event listeners (Shader, Glyph, Sprite, Tile) =====
 IMPLEMENT_ADD_LISTENER(addOnPreCompileShaderListener, "onPreCompileShader")
 IMPLEMENT_REMOVE_LISTENER(removeOnPreCompileShaderListener, "onPreCompileShader")
 IMPLEMENT_ADD_LISTENER(addOnPostCompileShaderListener, "onPostCompileShader")

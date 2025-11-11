@@ -28,7 +28,7 @@
 #include <thread>
 #include <condition_variable>
 
-// HarmonyOS独立CURL事件循环
+// HarmonyOS standalone CURL event loop
 #include "curl_event_loop.hpp"
 #include "http_request_config.hpp"
 #include "url_transform_manager.hpp"
@@ -41,7 +41,7 @@ using mbgl::harmony::HTTPRequestConfig;
 using mbgl::harmony::URLTransformManager;
 
 namespace {
-// handleError(CURLMcode)已移除，现在由CURLEventLoop处理
+// handleError(CURLMcode) removed; handled by CURLEventLoop now
 
 void handleError(CURLcode code) {
     if (code != CURLE_OK) {
@@ -49,7 +49,7 @@ void handleError(CURLcode code) {
     }
 }
 
-// 🔒 CURL 全局状态管理（支持多实例）
+// 🔒 Manage CURL global state (supports multiple instances)
 std::once_flag curlGlobalInitFlag;
 std::atomic<int> curlInstanceCount{0};
 std::mutex curlGlobalMutex;
@@ -70,7 +70,7 @@ void cleanupCURLGlobal() {
     
     if (count == 0) {
         std::lock_guard<std::mutex> lock(curlGlobalMutex);
-        // 再次检查计数（双重检查锁定）
+        // Double-check the count (double-checked locking)
         if (curlInstanceCount.load() == 0) {
             curl_global_cleanup();
         }
@@ -85,7 +85,7 @@ public:
     Impl(const ResourceOptions &resourceOptions_, const ClientOptions &clientOptions_);
     ~Impl();
 
-    // 移除原有的RunLoop相关方法，使用独立的CURLEventLoop
+    // Legacy RunLoop helpers removed; now use the standalone CURLEventLoop
     // static int handleSocket(CURL *handle, curl_socket_t s, int action, void *userp, void *socketp);
     // static int startTimeout(CURLM *multi, long timeout_ms, void *userp);
     // static void onTimeout(HTTPFileSource::Impl *context);
@@ -95,10 +95,10 @@ public:
     void returnHandle(CURL *handle);
     void checkMultiInfo();
 
-    // 使用独立的CURL事件循环
+    // Use the dedicated CURL event loop
     std::unique_ptr<harmony::CURLEventLoop> curlEventLoop;
 
-    // CURL multi handle - 现在由CURLEventLoop管理
+    // CURL multi handle — now managed by CURLEventLoop
     CURLM *multi = nullptr;
 
     // CURL share handles are used for sharing session state (e.g.)
@@ -157,8 +157,8 @@ private:
     }};
 };
 
-// 外部函数供 CURLEventLoop 调用
-// 这个函数桥接 CURLEventLoop 和 HTTPRequest::handleResult
+// External function invoked by CURLEventLoop.
+// Bridges CURLEventLoop and HTTPRequest::handleResult.
 extern "C" void handleHTTPRequestResult(void* request, CURLcode code) {
     if (request) {
         HTTPRequest* httpRequest = static_cast<HTTPRequest*>(request);
@@ -170,7 +170,7 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
     : resourceOptions(resourceOptions_.clone()),
       clientOptions(clientOptions_.clone()) {
     
-    // 🔒 初始化 CURL 全局状态（支持多实例）
+    // 🔒 Initialize CURL global state (supports multiple instances)
     try {
         initCURLGlobal();
     } catch (const std::exception& e) {
@@ -180,9 +180,9 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 
     share = curl_share_init();
 
-    // 创建独立的CURL事件循环
+    // Create the standalone CURLEventLoop
     try {
-        // 默认使用简单轮询模式（稳定可靠）
+        // Default to simple polling mode for stability
         auto mode = harmony::CURLEventLoop::Mode::SimplePolling;
         
         const char* curl_mode_env = getenv("CURL_MODE");
@@ -193,7 +193,7 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
         curlEventLoop = std::make_unique<harmony::CURLEventLoop>(mode);
         curlEventLoop->start();
         
-        // 获取multi handle（由CURLEventLoop管理）
+        // Obtain the multi handle (owned by CURLEventLoop)
         multi = curlEventLoop->getMultiHandle();
         
     } catch (const std::exception& e) {
@@ -208,34 +208,34 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 }
 
 HTTPFileSource::Impl::~Impl() {
-    // 🔍 ANR监控：记录HTTP清理耗时
+    // 🔍 ANR monitoring: record HTTP teardown duration
     ANRDetector detector("HTTPFileSource::Impl destructor", 100, 500);
     
-    // ⚡ ANR FIX: 为 CURL 事件循环停止添加监控
-    // 原因：stop() 可能需要等待所有活跃请求完成，如果有大量请求可能耗时很长
-    // 解决方案：使用 ANRDetector 监控耗时（最多200ms阈值），超时会记录警告
+    // ⚡ ANR FIX: monitor CURL event loop shutdown.
+    // Reason: stop() may wait for active requests to complete and can take time.
+    // Solution: use ANRDetector (200 ms threshold) to log slow operations.
     //
-    // 注意：由于 HarmonyOS 标准库限制，无法使用 std::async 实现真正的超时中断
-    // 但通过 ANRDetector 可以及时发现并记录慢速操作
+    // Note: HarmonyOS standard library lacks a true std::async timeout,
+    // but ANRDetector helps surface long-running operations.
     if (curlEventLoop) {
         ANRDetector stopDetector("curlEventLoop->stop", 50, 200);
         curlEventLoop->stop();
         curlEventLoop.reset();
     }
     
-    // 清理CURL句柄队列（通常很快）
+    // Clean up the CURL handle queue (typically quick)
     while (!handles.empty()) {
         curl_easy_cleanup(handles.front());
         handles.pop();
     }
     
-    // 清理CURL share handle
+    // Clean up the CURL share handle
     if (share) {
         curl_share_cleanup(share);
         share = nullptr;
     }
     
-    // 🔒 清理CURL全局状态（支持多实例）
+    // 🔒 Release CURL global state (supports multiple instances)
     cleanupCURLGlobal();
 }
 
@@ -275,13 +275,13 @@ void HTTPFileSource::Impl::checkMultiInfo() {
     }
 }
 
-// perform方法已移除，现在由CURLEventLoop处理socket事件
+// perform removed; CURLEventLoop now handles socket events
 
-// handleSocket方法已移除，现在由CURLEventLoop处理
+// handleSocket removed; handled by CURLEventLoop
 
-// onTimeout方法已移除，现在由CURLEventLoop处理
+// onTimeout removed; handled by CURLEventLoop
 
-// startTimeout方法已移除，现在由CURLEventLoop处理
+// startTimeout removed; handled by CURLEventLoop
 
 void HTTPFileSource::Impl::setResourceOptions(ResourceOptions options) {
     std::lock_guard lock(resourceOptionsMutex);
@@ -309,9 +309,9 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
       callback(std::move(callback_)),
       handle(context->getHandle()) {
     
-    // 应用URL转换（如果设置了转换回调）
-    // 参考Android实现：platform/android/.../file_source.cpp:122-124
-    // 参考iOS实现：platform/darwin/src/MLNOfflineStorage.mm:138-141
+    // Apply URL transforms when a callback is provided.
+    // Reference Android: platform/android/.../file_source.cpp:122-124
+    // Reference iOS: platform/darwin/src/MLNOfflineStorage.mm:138-141
     auto& transformManager = URLTransformManager::getInstance();
     if (transformManager.hasCallback()) {
         std::string originalUrl = resource.url;
@@ -336,14 +336,14 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
         headers = curl_slist_append(headers, time.c_str());
     }
 
-    // 应用自定义HTTP请求头
-    // 参考iOS实现：platform/darwin/core/http_file_source.mm:89-96
-    // 参考Android实现：platform/android/.../HttpRequestImpl.java:115-117
+    // Apply custom HTTP headers.
+    // Reference iOS: platform/darwin/core/http_file_source.mm:89-96
+    // Reference Android: platform/android/.../HttpRequestImpl.java:115-117
     auto& config = HTTPRequestConfig::getInstance();
     auto customHeaders = config.getCustomHeaders();
     if (!customHeaders.empty()) {
         for (const auto& [key, value] : customHeaders) {
-            // 跳过User-Agent（已经在下面单独设置）
+            // Skip User-Agent (configured separately below)
             std::string lowerKey = key;
             std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
             if (lowerKey == "user-agent") {
@@ -395,39 +395,40 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
 }
 
 HTTPRequest::~HTTPRequest() {
-    // 🔒 CRASH FIX: 修改析构顺序，先停止回调，再清理资源
-    // 
-    // 问题：原来的顺序是先清空 userp，再移除句柄
-    // 这导致 CURLEventLoop 的回调（writeCallback/headerCallback）可能访问空指针
+    // 🔒 CRASH FIX: adjust destruction order to stop callbacks before cleaning resources
     //
-    // 解决方案：
-    // 1. 先从 CURLEventLoop 移除句柄（停止新的回调）
-    // 2. 添加短暂等待，确保进行中的回调完成
-    // 3. 再清空 userp 和清理资源
+    // Issue:
+    // Clearing userp before removing the handle allowed CURLEventLoop callbacks
+    // (writeCallback/headerCallback) to dereference null pointers.
+    //
+    // Solution:
+    // 1. Remove the handle from CURLEventLoop first (halts new callbacks).
+    // 2. Wait briefly so in-flight callbacks complete.
+    // 3. Clear userp and release resources.
     
-    // Step 1: 从 CURLEventLoop 移除 CURL 句柄（停止新的回调）
+    // Step 1: remove the CURL handle from CURLEventLoop (stop new callbacks)
     if (context && context->curlEventLoop && handle) {
         bool success = context->curlEventLoop->removeHandle(handle);
         
-        // Step 2: 短暂等待，确保进行中的回调完成
-        // 注意：这个等待时间应该足够短，避免ANR，但足够长让回调完成
+        // Step 2: short wait to ensure in-flight callbacks finish
+        // Note: keep it brief to avoid ANR while still accommodating callbacks
         std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
     
-    // Step 3: 现在可以安全地清空 userp 指针
+    // Step 3: safe to clear the userp pointer now
     if (handle) {
         curl_easy_setopt(handle, CURLOPT_WRITEDATA, nullptr);
         curl_easy_setopt(handle, CURLOPT_HEADERDATA, nullptr);
         curl_easy_setopt(handle, CURLOPT_PRIVATE, nullptr);
     }
     
-    // Step 4: 返回句柄到池中
+    // Step 4: return the handle to the pool
     if (context && handle) {
         context->returnHandle(handle);
         handle = nullptr;
     }
     
-    // Step 5: 清理 HTTP 头
+    // Step 5: release HTTP headers
     if (headers) {
         curl_slist_free_all(headers);
         headers = nullptr;
@@ -435,7 +436,7 @@ HTTPRequest::~HTTPRequest() {
 }
 
 size_t HTTPRequest::writeCallback(void *const contents, const size_t size, const size_t nmemb, void *userp) {
-    // 🔒 CRASH FIX: 增强空指针检查
+    // 🔒 CRASH FIX: strengthen null-pointer checks
     if (!userp || !contents) {
         Logger::warn("Network", "writeCallback: null pointer (userp=%p, contents=%p)", userp, contents);
         return 0;
@@ -444,8 +445,8 @@ size_t HTTPRequest::writeCallback(void *const contents, const size_t size, const
     auto impl = reinterpret_cast<HTTPRequest *>(userp);
     
     try {
-        // 额外的有效性检查：确保 impl 指向有效内存
-        // 注意：这不是完美的检查，但可以捕获一些明显的问题
+        // Extra validation to ensure impl points to valid memory.
+        // Note: not foolproof, but catches obvious issues.
         if (!impl->data) {
             impl->data = std::make_shared<std::string>();
         }
@@ -481,7 +482,7 @@ size_t headerMatches(const char *const header, const char *const buffer, const s
 } // namespace
 
 size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const size_t nmemb, void *userp) {
-    // 🔒 CRASH FIX: 增强空指针检查
+    // 🔒 CRASH FIX: enhanced null-pointer validation
     if (!userp || !buffer) {
         Logger::warn("Network", "headerCallback: null pointer (userp=%p, buffer=%p)", userp, buffer);
         return 0;
@@ -523,8 +524,8 @@ size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const 
 }
 
 void HTTPRequest::handleResult(CURLcode code) {
-    // 🔒 CRASH FIX: 确保 handleResult 执行期间对象不被析构
-    // 注意：这个方法可能在 CURLEventLoop 线程中被调用
+    // 🔒 CRASH FIX: ensure the object survives while handleResult runs
+    // Note: this method may be invoked on the CURLEventLoop thread
     
     // Make sure a response object exists
     if (!response) {
@@ -578,7 +579,7 @@ void HTTPRequest::handleResult(CURLcode code) {
         }
     }
     
-    // 🔍 诊断：记录响应状态
+    // 🔍 Diagnostics: log the response status
     if (response->error) {
         Logger::warn("HTTP", "  Error: %s", response->error->message.c_str());
     } else if (response->noContent) {

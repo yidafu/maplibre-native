@@ -73,7 +73,7 @@ void EGLDisplayManager::unregisterInstance() {
 EGLDisplay EGLDisplayManager::acquireDisplay() {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 如果已经初始化，增加引用计数并返回
+    // If already initialized, increment reference count and return
     if (displayInitialized_ && sharedDisplay_ != EGL_NO_DISPLAY) {
         displayRefCount_++;
         Logger::info("EGLDisplayManager", 
@@ -82,7 +82,7 @@ EGLDisplay EGLDisplayManager::acquireDisplay() {
         return sharedDisplay_;
     }
     
-    // 首次初始化
+    // First-time initialization
     if (!initializeDisplay()) {
         Logger::error("EGLDisplayManager", "Failed to initialize EGL Display");
         return EGL_NO_DISPLAY;
@@ -97,7 +97,7 @@ EGLDisplay EGLDisplayManager::acquireDisplay() {
 }
 
 EGLDisplay EGLDisplayManager::getDisplay() const {
-    // 不需要锁，因为只是读取（sharedDisplay_ 在初始化后不会改变，直到清理）
+    // No lock required: read-only access (sharedDisplay_ remains stable until cleanup)
     return sharedDisplay_;
 }
 
@@ -135,7 +135,7 @@ void EGLDisplayManager::releaseDisplay() {
     
     displayRefCount_--;
     
-    // 当引用计数降为 0 时，清理 Display
+    // Clean up the display when reference count drops to 0
     if (displayRefCount_ == 0) {
         Logger::info("EGLDisplayManager", "No more references, cleaning up EGL Display");
         cleanupDisplay();
@@ -143,9 +143,9 @@ void EGLDisplayManager::releaseDisplay() {
 }
 
 bool EGLDisplayManager::initializeDisplay() {
-    // 注意：此函数调用时已持有锁
+    // Note: function is invoked with lock already held
     
-    // 获取默认 Display
+    // Acquire default Display
     sharedDisplay_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (sharedDisplay_ == EGL_NO_DISPLAY) {
         EGLint error = eglGetError();
@@ -155,7 +155,7 @@ bool EGLDisplayManager::initializeDisplay() {
         return false;
     }
     
-    // 初始化 EGL
+    // Initialize EGL
     if (!eglInitialize(sharedDisplay_, &majorVersion_, &minorVersion_)) {
         EGLint error = eglGetError();
         Logger::error("EGLDisplayManager", 
@@ -169,7 +169,7 @@ bool EGLDisplayManager::initializeDisplay() {
                 "EGL initialized successfully: version %d.%d",
                 majorVersion_, minorVersion_);
     
-    // 绑定 OpenGL ES API
+    // Bind OpenGL ES API
     if (!eglBindAPI(EGL_OPENGL_ES_API)) {
         EGLint error = eglGetError();
         Logger::error("EGLDisplayManager", 
@@ -182,7 +182,7 @@ bool EGLDisplayManager::initializeDisplay() {
     
     displayInitialized_ = true;
     
-    // 输出 EGL 信息
+    // Output EGL information
     const char* vendor = eglQueryString(sharedDisplay_, EGL_VENDOR);
     const char* version = eglQueryString(sharedDisplay_, EGL_VERSION);
     const char* extensions = eglQueryString(sharedDisplay_, EGL_EXTENSIONS);
@@ -193,7 +193,7 @@ bool EGLDisplayManager::initializeDisplay() {
 }
 
 void EGLDisplayManager::cleanupDisplay() {
-    // 注意：此函数调用时已持有锁
+    // Note: function is invoked with lock already held
     
     if (!displayInitialized_) {
         return;
@@ -202,7 +202,7 @@ void EGLDisplayManager::cleanupDisplay() {
     if (sharedDisplay_ != EGL_NO_DISPLAY) {
         Logger::info("EGLDisplayManager", "Terminating EGL Display: %p", sharedDisplay_);
         
-        // 确保没有当前上下文
+        // Ensure there is no current context
         EGLContext currentContext = eglGetCurrentContext();
         if (currentContext != EGL_NO_CONTEXT) {
             Logger::warn("EGLDisplayManager", 

@@ -34,7 +34,7 @@ public:
     gfx::Renderable::SwapBehaviour getSwapBehavior() const { return swapBehaviour; }
     virtual void setSwapBehavior(gfx::Renderable::SwapBehaviour swapBehaviour);
     
-    // 🛡️ 黑屏修复：渲染控制方法
+    // 🛡️ Black screen mitigation: rendering control hooks
     virtual void pauseRendering();
     virtual void resumeRendering();
     virtual bool isRenderingStopped() const { return false; }

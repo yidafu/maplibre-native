@@ -16,7 +16,7 @@ using mbgl::harmony::Logger;
 namespace maplibre {
 namespace harmony {
 
-// ==================== Image 管理 ====================
+// ==================== Image management ====================
 
 napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
@@ -734,16 +734,16 @@ napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
             return napiArgs.Null();
         }
         
-        // 创建返回对象
+        // Create the return object
         napi_value result;
         napi_create_object(env, &result);
         
-        // 注意：Light 对象的属性获取比较复杂，需要使用 conversion API
-        // 这里提供一个简化版本，返回基本信息
+        // Note: retrieving Light properties is involved and should use the conversion API
+        // This implementation returns only basic information for now
         Logger::info("StyleNAPI", "GetLight called");
         
-        // TODO: 完整实现需要转换 Light 属性
-        // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
+        // TODO: fully convert Light properties
+        // Reference Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
         
         return result;
     } catch (const std::exception& e) {
@@ -774,9 +774,9 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 创建新的 Light 对象
-        // TODO: 完整实现需要解析 light options 对象并设置各个属性
-        // 参考 Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
+        // Create a new Light object
+        // TODO: parse the light options object and apply every property
+        // Reference Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
         
         Logger::info("StyleNAPI", "SetLight called (implementation incomplete)");
         Logger::warn("StyleNAPI", "SetLight: Full light property parsing not yet implemented");
@@ -812,9 +812,9 @@ napi_value StyleNAPI::GetTransition(napi_env env, napi_callback_info info) {
     napi_value result;
     napi_create_object(env, &result);
     
-    // 返回默认值
+    // Return the default values
     napi_value durationValue;
-    napi_create_int64(env, 300, &durationValue);  // 默认 300ms
+    napi_create_int64(env, 300, &durationValue);  // default 300 ms
     napi_set_named_property(env, result, "duration", durationValue);
     
     napi_value delayValue;
@@ -849,10 +849,10 @@ napi_value StyleNAPI::SetTransition(napi_env env, napi_callback_info info) {
     // Logging the attempted transition but not applying it
     Logger::warn("StyleNAPI", "SetTransition: Not implemented - transition settings not applied");
     
-    // 解析参数以记录日志
+    // Parse arguments to record logging details
     napi_value durationValue;
     napi_status status = napi_get_named_property(env, transitionOptions, "duration", &durationValue);
-    int64_t duration = 300;  // 默认值
+    int64_t duration = 300;  // default value
     if (status == napi_ok) {
         napi_valuetype valueType;
         napi_typeof(env, durationValue, &valueType);

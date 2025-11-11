@@ -85,8 +85,8 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // VectorSource 需要 urlOrTileset 参数
-        // 使用空字符串作为默认值，后续通过 setURL 设置
+        // VectorSource requires a urlOrTileset parameter.
+        // Use an empty string by default; setURL can update it later.
         mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = std::string("");
         auto source = std::make_unique<mbgl::style::VectorSource>(
             sourceId,
@@ -104,7 +104,7 @@ napi_value VectorSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         Logger::info("VectorSourceNAPI", "VectorSource created: %s", sourceId.c_str());
     
-    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    // Add a _TYPE_ property to help ETS perform type checks
     napi_value typeValue;
     napi_create_string_utf8(env, "VectorSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, args.This(), "_TYPE_", typeValue);
@@ -123,7 +123,7 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
         return result;
     }
     
-    // 获取构造函数
+    // Obtain the constructor reference
     napi_value cons;
     napi_status status = napi_get_reference_value(env, constructor, &cons);
     if (status != napi_ok) {
@@ -133,7 +133,7 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
         return result;
     }
     
-    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    // Create an empty object and set its prototype (without invoking JS constructor)
     napi_value instance;
     status = napi_create_object(env, &instance);
     if (status != napi_ok) {
@@ -143,7 +143,7 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
         return result;
     }
     
-    // 获取构造函数的原型
+    // Retrieve the constructor prototype
     napi_value prototype;
     status = napi_get_named_property(env, cons, "prototype", &prototype);
     if (status != napi_ok) {
@@ -153,7 +153,7 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
         return result;
     }
     
-    // 设置对象的原型
+    // Assign the prototype
     status = napi_set_named_property(env, instance, "__proto__", prototype);
     if (status != napi_ok) {
         Logger::error("CreateInstance", "Failed to set prototype");
@@ -162,10 +162,10 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
         return result;
     }
     
-    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    // Create the NAPI wrapper using the WeakPtr constructor
     VectorSourceNAPI* napiObj = new VectorSourceNAPI(sourcePtr);
     
-    // 包装到 JS 对象
+    // Wrap the native pointer in the JS object
     status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete napiObj;
@@ -175,7 +175,7 @@ napi_value VectorSourceNAPI::CreateInstance(napi_env env, mbgl::style::VectorSou
         return result;
     }
     
-    // 添加 _TYPE_ 属性
+    // Add the _TYPE_ property
     napi_value typeValue;
     napi_create_string_utf8(env, "VectorSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, instance, "_TYPE_", typeValue);
@@ -245,7 +245,7 @@ napi_value VectorSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
     std::string url = args.GetString(0, "url");
     if (args.HasError()) return nullptr;
     
-    // VectorSource 支持 setTiles 方法
+    // VectorSource exposes setTiles
     try {
         source->setTiles({url});
         Logger::info("VectorSourceNAPI", "SetUrl: %s -> %s", sourceNapi->id.c_str(), url.c_str());
@@ -276,7 +276,7 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 解析 tiles 数组
+    // Parse the tiles array
     napi_value tilesArray = args.GetArray(0, "tiles");
     if (args.HasError()) return nullptr;
     
@@ -300,7 +300,7 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 更新 tiles
+        // Update tiles
         source->setTiles(tiles);
         Logger::info("VectorSourceNAPI", "SetTiles: %s (%zu tiles)", sourceNapi->id.c_str(), tiles.size());
     } catch (const std::exception& e) {

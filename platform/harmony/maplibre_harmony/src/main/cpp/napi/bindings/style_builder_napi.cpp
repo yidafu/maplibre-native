@@ -33,7 +33,7 @@ napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("StyleBuilderNAPI", "Initializing StyleBuilder NAPI class");
     
     napi_property_descriptor properties[] = {
-        // Builder 方法
+        // Builder methods
         { "fromUri", nullptr, FromUri, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "fromJson", nullptr, FromJson, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "withSource", nullptr, WithSource, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -51,14 +51,14 @@ napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    // 创建构造函数引用
+    // Create constructor reference
     status = napi_create_reference(env, cons, 1, &constructor);
     if (status != napi_ok) {
         Logger::error("StyleBuilderNAPI", "Failed to create constructor reference");
         return nullptr;
     }
     
-    // 将构造函数添加到 exports
+    // Add constructor to exports
     status = napi_set_named_property(env, exports, "StyleBuilder", cons);
     if (status != napi_ok) {
         Logger::error("StyleBuilderNAPI", "Failed to set StyleBuilder property");
@@ -72,10 +72,10 @@ napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
 napi_value StyleBuilderNAPI::New(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 创建 C++ 对象
+    // Create C++ object
     StyleBuilderNAPI* builder = new StyleBuilderNAPI();
     
-    // Wrap 到 JS 对象
+    // Wrap into JS object
     napi_status status = napi_wrap(env, args.This(), builder, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete builder;
@@ -86,7 +86,7 @@ napi_value StyleBuilderNAPI::New(napi_env env, napi_callback_info info) {
     return args.This();
 }
 
-// ==================== Builder 方法 ====================
+// ==================== Builder Methods ====================
 
 napi_value StyleBuilderNAPI::FromUri(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -105,7 +105,7 @@ napi_value StyleBuilderNAPI::FromUri(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     Logger::info("StyleBuilderNAPI", "fromUri: %s", builder->styleUri.c_str());
     
-    // 返回 this 支持链式调用
+    // Return this to support chaining
     return args.This();
 }
 
@@ -126,7 +126,7 @@ napi_value StyleBuilderNAPI::FromJson(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     Logger::info("StyleBuilderNAPI", "fromJson: %zu bytes", builder->styleJson.length());
     
-    // 返回 this 支持链式调用
+    // Return this to support chaining
     return args.This();
 }
 
@@ -150,16 +150,16 @@ napi_value StyleBuilderNAPI::WithSource(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 将 Source 对象序列化为 JSON 字符串以供后续使用
-        // 注意：这里简化处理，实际应该从 Source 对象中提取所需信息
+        // Serialize Source object as JSON for later use
+        // Note: Simplified handling; ideally extract required data from Source object
         napi_value sourceObj = args[0];
         
-        // 获取 Source ID
+        // Retrieve Source ID
         napi_value idValue;
         napi_get_named_property(env, sourceObj, "id", &idValue);
         std::string sourceId = GetStringFromValue(env, idValue);
         
-        // 简单地存储 source ID，实际使用时需要完整的 source 配置
+        // Store only the source ID; real usage requires complete source configuration
         builder->preloadedSourcesJson.push_back(sourceId);
         
         Logger::info("StyleBuilderNAPI", "withSource: added source '%s' to preload list", sourceId.c_str());
@@ -170,7 +170,7 @@ napi_value StyleBuilderNAPI::WithSource(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 返回 this 支持链式调用
+    // Return this to support chaining
     return jsThis;
 }
 
@@ -194,15 +194,15 @@ napi_value StyleBuilderNAPI::WithLayer(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 将 Layer 对象序列化为 JSON 字符串以供后续使用
+        // Serialize Layer object as JSON for later use
         napi_value layerObj = args[0];
         
-        // 获取 Layer ID
+        // Retrieve Layer ID
         napi_value idValue;
         napi_get_named_property(env, layerObj, "id", &idValue);
         std::string layerId = GetStringFromValue(env, idValue);
         
-        // 简单地存储 layer ID，实际使用时需要完整的 layer 配置
+        // Store only the layer ID; real usage requires full layer configuration
         builder->preloadedLayersJson.push_back(layerId);
         
         Logger::info("StyleBuilderNAPI", "withLayer: added layer '%s' to preload list", layerId.c_str());
@@ -213,7 +213,7 @@ napi_value StyleBuilderNAPI::WithLayer(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 返回 this 支持链式调用
+    // Return this to support chaining
     return jsThis;
 }
 
@@ -238,20 +238,20 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
     
     try {
         ImageData imageData;
-        imageData.pixelRatio = 1.0f;  // 默认值
+        imageData.pixelRatio = 1.0f;  // Default value
         
-        // 检查第一个参数类型，判断是哪个重载
+        // Inspect first argument type to determine overload
         napi_valuetype firstArgType;
         napi_typeof(env, args[0], &firstArgType);
         
         if (argc == 2 && firstArgType == napi_string) {
-            // 形式 2: withImage(name: string, pixelMap: PixelMap)
+            // Overload 2: withImage(name: string, pixelMap: PixelMap)
             imageData.id = GetStringFromValue(env, args[0]);
             
-            // 获取 PixelMap 对象
+            // Retrieve PixelMap object
             napi_value pixelMapValue = args[1];
             
-            // 获取原生 PixelMap 句柄
+            // Obtain native PixelMap handle
             NativePixelMap* nativePixelMap = OH_PixelMap_InitNativePixelMap(env, pixelMapValue);
             if (!nativePixelMap) {
                 Logger::error("StyleBuilderNAPI", "Failed to get native PixelMap");
@@ -259,7 +259,7 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
                 return nullptr;
             }
             
-            // 获取图像信息
+            // Get image info
             OhosPixelMapInfos imageInfo;
             int32_t result = OH_PixelMap_GetImageInfo(nativePixelMap, &imageInfo);
             if (result != 0) {
@@ -273,7 +273,7 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
             
             Logger::info("StyleBuilderNAPI", "Converting PixelMap to image data: %dx%d", imageData.width, imageData.height);
             
-            // 访问像素数据
+            // Access pixel data
             void* pixelDataPtr = nullptr;
             result = OH_PixelMap_AccessPixels(nativePixelMap, &pixelDataPtr);
             if (result != 0 || !pixelDataPtr) {
@@ -282,22 +282,22 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
                 return nullptr;
             }
             
-            // 复制像素数据
+            // Copy pixel data
             size_t dataSize = imageData.width * imageData.height * 4; // RGBA
             imageData.data.resize(dataSize);
             std::memcpy(imageData.data.data(), pixelDataPtr, dataSize);
             
-            // 释放像素数据访问
+            // Release pixel data access
             OH_PixelMap_UnAccessPixels(nativePixelMap);
             
         } else if (argc == 1 && firstArgType == napi_object) {
-            // 形式 1: withImage(image: Image)
+            // Overload 1: withImage(image: Image)
             napi_value imageObj = args[0];
             
-            // 从 Image 对象提取属性
+            // Extract properties from Image object
             napi_value nameValue, widthValue, heightValue, dataValue, pixelRatioValue;
             
-            // 获取图像名称（必需）
+            // Get image name (required)
             if (napi_get_named_property(env, imageObj, "name", &nameValue) == napi_ok) {
                 imageData.id = GetStringFromValue(env, nameValue);
             } else {
@@ -305,28 +305,28 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
                 return nullptr;
             }
             
-            // 获取宽度（必需）
+            // Get width (required)
             if (napi_get_named_property(env, imageObj, "width", &widthValue) == napi_ok) {
                 int32_t width;
                 napi_get_value_int32(env, widthValue, &width);
                 imageData.width = static_cast<uint32_t>(width);
             }
             
-            // 获取高度（必需）
+            // Get height (required)
             if (napi_get_named_property(env, imageObj, "height", &heightValue) == napi_ok) {
                 int32_t height;
                 napi_get_value_int32(env, heightValue, &height);
                 imageData.height = static_cast<uint32_t>(height);
             }
             
-            // 获取像素比率（可选）
+            // Get pixel ratio (optional)
             if (napi_get_named_property(env, imageObj, "pixelRatio", &pixelRatioValue) == napi_ok) {
                 double pixelRatio;
                 napi_get_value_double(env, pixelRatioValue, &pixelRatio);
                 imageData.pixelRatio = static_cast<float>(pixelRatio);
             }
             
-            // 获取图像数据（必需）
+            // Get image data (required)
             if (napi_get_named_property(env, imageObj, "data", &dataValue) == napi_ok) {
                 bool isDataArrayBuffer;
                 napi_is_arraybuffer(env, dataValue, &isDataArrayBuffer);
@@ -359,7 +359,7 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 返回 this 支持链式调用
+    // Return this to support chaining
     return jsThis;
 }
 
@@ -388,7 +388,7 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
         napi_typeof(env, optionsObj, &type);
         
         if (type == napi_object) {
-            // 解析 duration
+            // Parse duration
             napi_value durationValue;
             if (napi_get_named_property(env, optionsObj, "duration", &durationValue) == napi_ok) {
                 int64_t duration;
@@ -396,7 +396,7 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
                 builder->transitionOptions.duration = static_cast<uint64_t>(duration);
             }
             
-            // 解析 delay
+            // Parse delay
             napi_value delayValue;
             if (napi_get_named_property(env, optionsObj, "delay", &delayValue) == napi_ok) {
                 int64_t delay;
@@ -404,7 +404,7 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
                 builder->transitionOptions.delay = static_cast<uint64_t>(delay);
             }
             
-            // 解析 enablePlacementTransitions
+            // Parse enablePlacementTransitions
             napi_value enableValue;
             if (napi_get_named_property(env, optionsObj, "enablePlacementTransitions", &enableValue) == napi_ok) {
                 bool enable;
@@ -421,7 +421,7 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
         return nullptr;
     }
     
-    // 返回 this 支持链式调用
+    // Return this to support chaining
     return jsThis;
 }
 

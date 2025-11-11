@@ -204,8 +204,10 @@ bool setPaintProperty(
     auto propertyValue = napiValueToPropertyValueWithData<T>(env, value, propertyName);
     if (propertyValue) {
         (layer->*setter)(*propertyValue);
+        Logger::info("LayerPropertyUtils", "✅ Paint property '%s' set successfully", propertyName);
         return true;
     }
+    Logger::warn("LayerPropertyUtils", "⚠️ Paint property '%s' not applied due to conversion failure", propertyName);
     return false;
 }
 

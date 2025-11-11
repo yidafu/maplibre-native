@@ -1,7 +1,7 @@
 /**
  * MapSnapshotter for HarmonyOS
  * 
- * 封装 mbgl::MapSnapshotter 为 Harmony 平台提供地图快照功能
+ * Wraps mbgl::MapSnapshotter to provide snapshot functionality on HarmonyOS.
  */
 
 #pragma once
@@ -23,14 +23,14 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * MapSnapshotterHarmony - Harmony 平台的地图快照器
- * 
- * 对应 Android 的 MapSnapshotter 和 iOS 的 MLNMapSnapshotter
+ * MapSnapshotterHarmony - Harmony platform snapshotter
+ *
+ * Matches Android's MapSnapshotter and iOS's MLNMapSnapshotter.
  */
 class MapSnapshotterHarmony final : public mbgl::MapSnapshotterObserver {
 public:
     /**
-     * 快照选项
+     * Snapshot options.
      */
     struct SnapshotOptions {
         uint32_t width;
@@ -45,14 +45,14 @@ public:
     };
 
     /**
-     * 快照回调类型
-     * 
-     * 参数：
-     * - exception_ptr: 错误（如果有）
-     * - PremultipliedImage: 图像数据
-     * - vector<string>: 归属信息
-     * - PointForFn: 地理坐标→屏幕坐标转换函数
-     * - LatLngForFn: 屏幕坐标→地理坐标转换函数
+     * Snapshot callback signature.
+     *
+     * Parameters:
+     * - exception_ptr: error information (if any)
+     * - PremultipliedImage: image data
+     * - vector<string>: attribution strings
+     * - PointForFn: geographic → screen coordinate conversion
+     * - LatLngForFn: screen → geographic coordinate conversion
      */
     using SnapshotCallback = std::function<void(
         std::exception_ptr,
@@ -63,11 +63,11 @@ public:
     )>;
 
     /**
-     * 构造函数
-     * 
-     * @param options 快照选项
-     * @param resourceOptions 资源选项
-     * @param clientOptions 客户端选项
+     * Constructor.
+     *
+     * @param options Snapshot options
+     * @param resourceOptions Resource options
+     * @param clientOptions Client options
      */
     MapSnapshotterHarmony(
         const SnapshotOptions& options,
@@ -78,80 +78,80 @@ public:
     ~MapSnapshotterHarmony();
 
     /**
-     * 设置样式 URL
+     * Set the style URL.
      */
     void setStyleURL(const std::string& styleURL);
     
     /**
-     * 获取样式 URL
+     * Get the style URL.
      */
     std::string getStyleURL() const;
 
     /**
-     * 设置样式 JSON
+     * Set the style JSON.
      */
     void setStyleJSON(const std::string& styleJSON);
     
     /**
-     * 获取样式 JSON
+     * Get the style JSON.
      */
     std::string getStyleJSON() const;
 
     /**
-     * 设置尺寸
+     * Set the snapshot size.
      */
     void setSize(const mbgl::Size& size);
     
     /**
-     * 获取尺寸
+     * Get the snapshot size.
      */
     mbgl::Size getSize() const;
 
     /**
-     * 设置相机选项
+     * Set camera options.
      */
     void setCameraOptions(const mbgl::CameraOptions& camera);
     
     /**
-     * 获取相机选项
+     * Get camera options.
      */
     mbgl::CameraOptions getCameraOptions() const;
 
     /**
-     * 设置区域边界
+     * Set the geographic bounds.
      */
     void setRegion(const mbgl::LatLngBounds& bounds);
     
     /**
-     * 获取区域边界
+     * Get the geographic bounds.
      */
     mbgl::LatLngBounds getRegion() const;
 
     /**
-     * 获取样式对象
+     * Access the underlying style object.
      */
     mbgl::style::Style& getStyle();
     const mbgl::style::Style& getStyle() const;
 
     /**
-     * 开始生成快照
-     * 
-     * @param callback 完成回调
+     * Start snapshot generation.
+     *
+     * @param callback Completion callback
      */
     void snapshot(SnapshotCallback callback);
 
     /**
-     * 取消快照生成
+     * Cancel snapshot generation.
      */
     void cancel();
 
-    // MapSnapshotterObserver 接口实现
+    // MapSnapshotterObserver implementation
     void onDidFailLoadingStyle(const std::string& error) override;
     void onDidFinishLoadingStyle() override;
     void onStyleImageMissing(const std::string& imageName) override;
 
     /**
-     * 设置 observer 回调
+     * Set the observer callback.
      */
     using ObserverCallback = std::function<void(const std::string& event, const std::string& data)>;
     void setObserverCallback(ObserverCallback callback);

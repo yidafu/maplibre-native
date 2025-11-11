@@ -104,24 +104,24 @@ napi_value MarkerNAPI::Remove(napi_env env, napi_callback_info info) {
     
     Logger::info("MarkerNAPI", "[MarkerDebug] Marker.remove() called for ID=%ld", marker->annotationId);
     
-    // 如果 Marker 已关联 MapLibreMap，调用其 removeMarker 方法
+    // If the Marker is already associated with MapLibreMap, call its removeMarker method
     if (marker->mapLibreMapRef) {
         napi_value mapLibreMapValue;
         napi_status status = napi_get_reference_value(env, marker->mapLibreMapRef, &mapLibreMapValue);
         
         if (status == napi_ok && mapLibreMapValue != nullptr) {
-            // 获取 removeMarker 方法
+            // Retrieve removeMarker method
             napi_value removeMarkerFunc;
             status = napi_get_named_property(env, mapLibreMapValue, "removeMarker", &removeMarkerFunc);
             
             if (status == napi_ok) {
-                // 调用 mapLibreMap.removeMarker(this)
+                // Invoke mapLibreMap.removeMarker(this)
                 napi_value argv[] = { thisVar };
                 napi_value result;
                 napi_call_function(env, mapLibreMapValue, removeMarkerFunc, 1, argv, &result);
             } else {
                 Logger::warn("MarkerNAPI", "Remove: removeMarker method not found on MapLibreMap");
-                // 如果方法不存在，至少重置 ID
+                // If the method is missing, at least reset the ID
                 marker->annotationId = -1;
             }
         } else {
@@ -174,7 +174,7 @@ napi_value MarkerNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 MapLibreMap 对象
+    // Fetch MapLibreMap object
     napi_value mapLibreMapValue = args.GetObject(0, "mapLibreMap");
     if (args.HasError()) {
         Logger::error("MarkerNAPI", "SetMapLibreMap: Failed to get mapLibreMap argument");
@@ -183,13 +183,13 @@ napi_value MarkerNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 删除旧的引用（如果存在）
+    // Delete existing reference if present
     if (marker->mapLibreMapRef) {
         napi_delete_reference(env, marker->mapLibreMapRef);
         marker->mapLibreMapRef = nullptr;
     }
     
-    // 创建新的引用
+    // Create new reference
     napi_status status = napi_create_reference(env, mapLibreMapValue, 1, &marker->mapLibreMapRef);
     if (status != napi_ok) {
         Logger::error("MarkerNAPI", "SetMapLibreMap: Failed to create reference");
@@ -314,7 +314,7 @@ napi_value MarkerNAPI::SetDragState(napi_env env, napi_callback_info info) {
     return undefined;
 }
 
-// Animation methods - 在 ETS 层实现动画逻辑，这里只更新目标值
+// Animation methods - Animation logic lives in the ETS layer; only target values updated here
 napi_value MarkerNAPI::AnimateToPosition(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(2);
@@ -327,7 +327,7 @@ napi_value MarkerNAPI::AnimateToPosition(napi_env env, napi_callback_info info) 
     
     if (!marker) return nullptr;
     
-    // 解析目标位置
+    // Parse target position
     napi_value targetPosValue = args.GetObject(0, "targetPosition");
     if (!args.HasError()) {
         mbgl::LatLng latLng;
@@ -339,7 +339,7 @@ napi_value MarkerNAPI::AnimateToPosition(napi_env env, napi_callback_info info) 
         }
     }
     
-    // duration 和 callback 由 ETS 层处理
+    // duration and callback handled by the ETS layer
     
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -358,12 +358,12 @@ napi_value MarkerNAPI::AnimateAlpha(napi_env env, napi_callback_info info) {
     
     if (!marker) return nullptr;
     
-    // 获取目标透明度
+    // Fetch target opacity
     double targetAlpha = args.GetDouble(0, "targetAlpha");
     
-    // duration 和 callback 参数被忽略
-    // 动画逻辑应该在 ETS 层实现（使用 animateTo 或定时器）
-    // NAPI 层只负责设置最终值
+    // duration and callback parameters are ignored
+    // Animation logic should be implemented in ETS (using animateTo or timers)
+    // NAPI layer only sets the final value
     
     marker->alpha = targetAlpha;
     Logger::info("MarkerNAPI", "[Animation] animateAlpha: set target=%f (animation should be handled in ETS layer)", 
@@ -404,7 +404,7 @@ napi_value MarkerNAPI::GetAnchor(napi_env env, napi_callback_info info) {
     
     if (!marker) return nullptr;
     
-    // 创建 anchor 对象 { u: number, v: number }
+    // Create anchor object { u: number, v: number }
     napi_value result;
     napi_create_object(env, &result);
     

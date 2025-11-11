@@ -29,7 +29,7 @@ MarkerNAPI::MarkerNAPI()
       selected(false),
       dragState(0),
       mapLibreMapRef(nullptr),
-      anchorU(0.5),  // 默认底部中心
+      anchorU(0.5),  // Default bottom-center
       anchorV(1.0) {
 }
 
@@ -39,13 +39,13 @@ MarkerNAPI::~MarkerNAPI() {
 void MarkerNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
     MarkerNAPI* marker = static_cast<MarkerNAPI*>(nativeObject);
     
-    // 清理 Icon 引用
+    // Clear Icon reference
     if (marker->iconRef) {
         napi_delete_reference(env, marker->iconRef);
         marker->iconRef = nullptr;
     }
     
-    // 清理 MapLibreMap 引用
+    // Clear MapLibreMap reference
     if (marker->mapLibreMapRef) {
         napi_delete_reference(env, marker->mapLibreMapRef);
         marker->mapLibreMapRef = nullptr;
@@ -156,7 +156,7 @@ napi_value MarkerNAPI::New(napi_env env, napi_callback_info info) {
         if (napi_get_named_property(env, optionsObj, "position", &posValue) == napi_ok) {
             mbgl::LatLng latLng;
             if (mbgl::harmony::LatLngHarmony::ParseLatLng(env, posValue, latLng)) {
-                // LatLng解析成功，转换为Point (注意: Point是(x, y) = (lon, lat))
+                // LatLng parsed successfully; convert to Point (note: Point uses (x, y) = (lon, lat))
                 marker->position = mbgl::Point<double>(latLng.longitude(), latLng.latitude());
             } else {
                 Logger::error("MarkerNAPI", "[MarkerDebug] Failed to parse position from options");

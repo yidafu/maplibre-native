@@ -31,99 +31,99 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * 独立的CURL事件循环管理器
- * 
- * 这个类专门处理CURL的网络请求，使用独立的libuv事件循环，
- * 与mbgl::RunLoop完全解耦，避免生命周期冲突。
- * 
- * 设计原则：
- * 1. 独立的线程和事件循环
- * 2. 原子操作确保线程安全
- * 3. 优雅的关闭机制
- * 4. 与HTTPFileSource松耦合
- * 
- * 支持两种工作模式：
- * - 简单模式：使用 100ms 定时器轮询（默认，稳定）
- * - 事件驱动模式：使用 socket 事件驱动（高性能）
+ * Dedicated CURL event-loop manager.
+ *
+ * Handles CURL network requests using an independent libuv loop, fully decoupled
+ * from mbgl::RunLoop to avoid lifecycle conflicts.
+ *
+ * Design principles:
+ * 1. Independent thread and event loop
+ * 2. Atomic operations ensure thread safety
+ * 3. Graceful shutdown mechanism
+ * 4. Loosely coupled to HTTPFileSource
+ *
+ * Supports two modes:
+ * - Simple polling: 100 ms timer polling (default, stable)
+ * - Event-driven: socket-driven events (higher performance)
  */
 class CURLEventLoop {
 public:
     enum class Mode {
-        SimplePolling,   // 简单的 100ms 定时器轮询（默认）
-        EventDriven      // Socket 事件驱动（高性能）
+        SimplePolling,   // 100 ms timer polling (default)
+        EventDriven      // Socket-driven events (high performance)
     };
     
     CURLEventLoop(Mode mode = Mode::SimplePolling);
     ~CURLEventLoop();
 
-    // 启动事件循环
+    // Start the event loop
     void start();
     
-    // 停止事件循环（阻塞直到完全停止）
+    // Stop the event loop (blocks until fully stopped)
     void stop();
     
-    // 添加CURL句柄到事件循环
+    // Add a CURL handle to the event loop
     bool addHandle(CURL* handle);
     
-    // 从事件循环移除CURL句柄
+    // Remove a CURL handle from the event loop
     bool removeHandle(CURL* handle);
     
-    // 检查是否正在运行
+    // Check whether the loop is running
     bool isRunning() const { return running_.load(); }
     
-    // 添加获取multi handle的方法
+    // Expose the multi handle accessor
     CURLM* getMultiHandle() const { return multi_; }
 
 private:
-    // libuv事件循环
+    // libuv event loop
     uv_loop_t* loop_;
     std::unique_ptr<std::thread> thread_;
     
-    // 运行状态
+    // Run state
     std::atomic<bool> running_;
     std::atomic<bool> stopping_;
     
-    // 工作模式
+    // Operating mode
     Mode mode_;
     
     // CURL multi handle
     CURLM* multi_;
     
-    // 定时器用于CURL超时处理（使用指针避免不完整类型问题）
+    // Timer for CURL timeouts (pointer avoids incomplete-type issues)
     uv_timer_t* timeout_timer_;
     
-    // 简单轮询定时器（SimplePolling 模式使用）
+    // Polling timer for SimplePolling mode
     uv_timer_t* polling_timer_;
     
-    // Holder async handle用于保持loop运行
+    // Holder async handle keeps the loop alive
     uv_async_t* holder_;
     
-    // 同步原语
+    // Synchronization primitives
     mutable std::mutex mutex_;
     std::condition_variable cv_;
     
-    // 活跃的CURL句柄
+    // Active CURL handles
     std::unordered_map<CURL*, uv_poll_t*> active_handles_;
     
-    // 事件循环线程主函数
+    // Event-loop thread entry point
     void eventLoopThread();
     
-    // libuv回调函数
+    // libuv callbacks
     static void onSocketEvent(uv_poll_t* poll, int status, int events);
     static void onTimeout(uv_timer_t* timer);
-    static void onPolling(uv_timer_t* timer);  // 简单轮询回调
+    static void onPolling(uv_timer_t* timer);  // Simple polling callback
     static void onClose(uv_handle_t* handle);
     
-    // CURL回调函数
+    // CURL callbacks
     static int handleSocket(CURL* handle, curl_socket_t s, int action, void* userp, void* socketp);
     static int handleTimer(CURLM* multi, long timeout_ms, void* userp);
     
-    // 内部辅助方法
+    // Internal helpers
     void processCURLMessages();
     void updateTimeout(long timeout_ms);
     void cleanupHandles();
     
-    // 错误处理
+    // Error handling
     void logError(const char* function, const char* error);
 };
 

@@ -18,13 +18,13 @@ void HarmonyRendererBackend::setSwapBehavior(gfx::Renderable::SwapBehaviour swap
     swapBehaviour = swapBehaviour_;
 }
 
-// 🛡️ 黑屏修复：渲染控制方法的默认实现
+// Black-screen mitigation: default implementations of rendering control methods
 void HarmonyRendererBackend::pauseRendering() {
-    // 默认实现：子类应该覆盖此方法
+    // Default implementation: subclasses should override
 }
 
 void HarmonyRendererBackend::resumeRendering() {
-    // 默认实现：子类应该覆盖此方法
+    // Default implementation: subclasses should override
 }
 
 } // namespace harmony

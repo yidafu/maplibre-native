@@ -16,12 +16,12 @@ napi_value PointHarmony::CreatePointObject(napi_env env, double x, double y) {
         return undefined;
     }
     
-    // 创建 x 属性
+    // Create x property
     napi_value xValue;
     napi_create_double(env, x, &xValue);
     napi_set_named_property(env, obj, "x", xValue);
     
-    // 创建 y 属性
+    // Create y property
     napi_value yValue;
     napi_create_double(env, y, &yValue);
     napi_set_named_property(env, obj, "y", yValue);
@@ -34,7 +34,7 @@ napi_value PointHarmony::CreatePointObject(napi_env env, const mbgl::ScreenCoord
 }
 
 bool PointHarmony::ParsePoint(napi_env env, napi_value value, double& outX, double& outY) {
-    // 检查是否为对象
+// Ensure value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
     if (status != napi_ok || type != napi_object) {
@@ -42,7 +42,7 @@ bool PointHarmony::ParsePoint(napi_env env, napi_value value, double& outX, doub
         return false;
     }
     
-    // 获取 x 属性
+    // Retrieve x property
     napi_value xValue;
     status = napi_get_named_property(env, value, "x", &xValue);
     if (status != napi_ok) {
@@ -56,7 +56,7 @@ bool PointHarmony::ParsePoint(napi_env env, napi_value value, double& outX, doub
         return false;
     }
     
-    // 获取 y 属性
+    // Retrieve y property
     napi_value yValue;
     status = napi_get_named_property(env, value, "y", &yValue);
     if (status != napi_ok) {

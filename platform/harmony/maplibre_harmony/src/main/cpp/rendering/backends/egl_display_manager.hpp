@@ -9,76 +9,76 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * @brief 全局 EGL Display 管理器（单例模式）
- * 
- * 职责：
- * - 管理共享的 EGL Display（所有地图实例共用一个 Display）
- * - 线程安全的初始化和清理
- * - 引用计数管理（最后一个实例销毁时才清理 Display）
- * - 资源限制（防止创建过多实例导致系统资源耗尽）
- * 
- * 设计原理：
- * - EGL Display 代表与显示系统的连接，可以在多个 Context 之间共享
- * - 每个地图实例拥有独立的 EGLContext 和 EGLSurface，但共享同一个 EGLDisplay
- * - 这样既保证了实例独立性，又避免了多次初始化 Display 导致的冲突
+ * @brief Global EGL Display manager (singleton).
+ *
+ * Responsibilities:
+ * - Manage a shared EGL Display (all map instances share one display)
+ * - Provide thread-safe initialization and cleanup
+ * - Maintain reference counting (cleanup occurs only when the last instance is destroyed)
+ * - Enforce resource limits to prevent exhausting system resources
+ *
+ * Design principles:
+ * - The EGL Display represents the connection to the display system and can be shared between contexts
+ * - Each map instance owns its own EGLContext and EGLSurface while sharing a single EGLDisplay
+ * - This preserves instance isolation while avoiding conflicts from repeated display initialization
  */
 class EGLDisplayManager {
 public:
     /**
-     * @brief 获取单例实例
+     * @brief Retrieve the singleton instance.
      */
     static EGLDisplayManager& getInstance();
 
     /**
-     * @brief 获取共享的 EGL Display（如果未初始化则自动创建）
-     * 增加引用计数，每个实例只应调用一次（在初始化时）
-     * @return EGLDisplay 共享的 Display，失败返回 EGL_NO_DISPLAY
+     * @brief Acquire the shared EGL Display (initializes if needed).
+     * Increments the reference count; each instance should call this once during initialization.
+     * @return Shared EGLDisplay, or EGL_NO_DISPLAY on failure.
      */
     EGLDisplay acquireDisplay();
 
     /**
-     * @brief 获取共享的 EGL Display（不增加引用计数）
-     * 仅用于已经 acquire 过的实例内部使用
-     * @return EGLDisplay 共享的 Display，如果未初始化返回 EGL_NO_DISPLAY
+     * @brief Access the shared EGL Display without incrementing the reference count.
+     * Intended for internal use after acquire().
+     * @return Shared EGLDisplay, or EGL_NO_DISPLAY if uninitialized.
      */
     EGLDisplay getDisplay() const;
 
     /**
-     * @brief 选择 EGL 配置
-     * @param attribs 配置属性数组
-     * @param config 输出的配置
-     * @return true 成功，false 失败
+     * @brief Choose an EGL configuration.
+     * @param attribs Attribute array
+     * @param config Output configuration
+     * @return true on success, false otherwise
      */
     bool chooseConfig(const EGLint* attribs, EGLConfig& config);
 
     /**
-     * @brief 释放 Display 引用（减少引用计数）
-     * 当引用计数降为 0 时，自动清理 EGL Display
+     * @brief Release the display reference (decrements the reference count).
+     * Automatically cleans up the EGL Display when the count reaches zero.
      */
     void releaseDisplay();
 
     /**
-     * @brief 获取当前活跃的实例数量
+     * @brief Get the number of active instances.
      */
     int getActiveInstanceCount() const { return activeInstanceCount_.load(); }
 
     /**
-     * @brief 注册新实例（增加活跃计数）
-     * @return true 成功，false 超过最大实例限制
+     * @brief Register a new instance (increments active count).
+     * @return true on success, false if the maximum instance limit is exceeded.
      */
     bool registerInstance();
 
     /**
-     * @brief 注销实例（减少活跃计数）
+     * @brief Unregister an instance (decrements active count).
      */
     void unregisterInstance();
 
     /**
-     * @brief 获取最大支持的并发实例数
+     * @brief Return the maximum supported concurrent instances.
      */
     static constexpr int getMaxConcurrentInstances() { return MAX_CONCURRENT_INSTANCES; }
 
-    // 删除拷贝构造和赋值操作（单例模式）
+    // Delete copy and assignment operations (singleton)
     EGLDisplayManager(const EGLDisplayManager&) = delete;
     EGLDisplayManager& operator=(const EGLDisplayManager&) = delete;
 
@@ -87,35 +87,35 @@ private:
     ~EGLDisplayManager();
 
     /**
-     * @brief 初始化 EGL Display（内部使用，需持有锁）
-     * @return true 成功，false 失败
+     * @brief Initialize the EGL Display (internal, requires lock).
+     * @return true on success, false otherwise.
      */
     bool initializeDisplay();
 
     /**
-     * @brief 清理 EGL Display（内部使用，需持有锁）
+     * @brief Clean up the EGL Display (internal, requires lock).
      */
     void cleanupDisplay();
 
-    // 最大并发地图实例数（根据 HarmonyOS 系统限制设置）
+    // Maximum concurrent map instances (based on HarmonyOS system limits)
     static constexpr int MAX_CONCURRENT_INSTANCES = 4;
 
-    // 线程安全保护
+    // Thread-safety guard
     std::mutex mutex_;
 
-    // 共享的 EGL Display
+    // Shared EGL Display
     EGLDisplay sharedDisplay_ = EGL_NO_DISPLAY;
 
-    // Display 初始化状态
+    // Display initialization state
     bool displayInitialized_ = false;
 
-    // Display 引用计数（有多少个 Backend 实例在使用）
+    // Display reference count (number of backend instances using it)
     int displayRefCount_ = 0;
 
-    // 活跃的实例数量（用于资源限制）
+    // Active instance count (for resource limiting)
     std::atomic<int> activeInstanceCount_{0};
 
-    // EGL 版本信息
+    // EGL version information
     EGLint majorVersion_ = 0;
     EGLint minorVersion_ = 0;
 };

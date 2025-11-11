@@ -7,40 +7,40 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * URLTransformNAPI - URL转换功能的NAPI绑定
- * 
- * 暴露URL转换配置接口给ArkTS层，处理跨线程回调
+ * URLTransformNAPI - NAPI bindings for URL transformation.
+ *
+ * Exposes URL transformation configuration to the ArkTS layer and manages cross-thread callbacks.
  */
 class URLTransformNAPI {
 public:
     /**
-     * 初始化URL转换NAPI模块
+     * Initialize the URL transformation NAPI module.
      */
     static napi_value Init(napi_env env, napi_value exports);
 
 private:
     /**
-     * 设置URL转换回调
-     * 
-     * ArkTS调用: setResourceTransformCallback(callback: (kind: number, url: string) => string): void
+     * Set the URL transformation callback.
+     *
+     * ArkTS call: setResourceTransformCallback(callback: (kind: number, url: string) => string): void
      */
     static napi_value SetResourceTransformCallback(napi_env env, napi_callback_info info);
 
     /**
-     * 清除URL转换回调
-     * 
-     * ArkTS调用: clearResourceTransformCallback(): void
+     * Clear the URL transformation callback.
+     *
+     * ArkTS call: clearResourceTransformCallback(): void
      */
     static napi_value ClearResourceTransformCallback(napi_env env, napi_callback_info info);
 
     /**
-     * 检查是否设置了转换回调
-     * 
-     * ArkTS调用: hasResourceTransformCallback(): boolean
+     * Check whether a transformation callback is set.
+     *
+     * ArkTS call: hasResourceTransformCallback(): boolean
      */
     static napi_value HasResourceTransformCallback(napi_env env, napi_callback_info info);
 
-    // 用于存储跨线程回调的静态变量
+    // Static context used to store the cross-thread callback
     struct CallbackContext {
         napi_env env;
         napi_ref callbackRef;

@@ -24,35 +24,35 @@ namespace harmony {
 class HarmonyGLRendererBackend;
 
 /**
- * HarmonyMapRenderThread - Map 和渲染的统一线程
- * 
- * 架构设计：
- * - Map 对象和 Renderer 对象在同一线程
- * - 线程拥有 RunLoop 处理异步消息
- * - EGL Context 绑定到此线程
- * 
- * 关键特性：
- * - 无跨线程并发问题
- * - FileSource 回调正常工作
- * - 线程安全的 EGL 操作
- * 
- * 参考 iOS 架构实现
+ * HarmonyMapRenderThread - unified map and render thread.
+ *
+ * Architecture:
+ * - Map and Renderer live on the same thread.
+ * - Thread owns a RunLoop to process asynchronous messages.
+ * - EGL context is bound to this thread.
+ *
+ * Key characteristics:
+ * - Eliminates cross-thread concurrency issues.
+ * - FileSource callbacks operate normally.
+ * - Thread-safe EGL operations.
+ *
+ * Inspired by the iOS architecture.
  */
 class HarmonyMapRenderThread : public RendererFrontend {
 public:
-    // 唯一实例标识（用于日志与隔离验证）
+    // Unique instance identifier (for logging and isolation)
     static std::atomic<uint64_t> globalInstanceCounter_;
     const uint64_t instanceId_;
     /**
-     * 构造函数
-     * 
-     * @param backend GL 后端（管理 EGL）
-     * @param pixelRatio 像素比率
-     * @param observer Map 观察者
-     * @param mapOptions Map 配置（移动）
-     * @param resourceOptions 资源配置（移动）
-     * @param clientOptions 客户端配置（移动）
-     * @param localIdeographFontFamily 本地表意文字字体族（可选）
+     * Constructor.
+     *
+     * @param backend GL backend (manages EGL)
+     * @param pixelRatio Pixel density ratio
+     * @param observer Map observer
+     * @param mapOptions Map options (moved in)
+     * @param resourceOptions Resource options (moved in)
+     * @param clientOptions Client options (moved in)
+     * @param localIdeographFontFamily Optional local ideograph font family
      */
     HarmonyMapRenderThread(
         std::unique_ptr<gfx::Backend> backend,
@@ -65,185 +65,184 @@ public:
     );
     
     /**
-     * 析构函数 - 确保线程安全清理
+     * Destructor - ensures thread-safe cleanup.
      */
     ~HarmonyMapRenderThread() override;
 
-    // 禁止拷贝和移动
+    // Disable copy and move
     HarmonyMapRenderThread(const HarmonyMapRenderThread&) = delete;
     HarmonyMapRenderThread& operator=(const HarmonyMapRenderThread&) = delete;
 
-    // ==================== 线程管理 ====================
+    // ==================== Thread management ====================
     
     /**
-     * 启动 Map+渲染线程
-     * 阻塞直到线程初始化完成
+     * Start the combined map/render thread.
+     * Blocks until initialization completes.
      */
     void start();
     
     /**
-     * 停止线程并等待退出
+     * Stop the thread and wait for it to exit.
      */
     void stop();
     
     /**
-     * 检查当前是否在 Map+渲染线程
+     * Determine whether the current thread is the map/render thread.
      */
     bool isOnThread() const;
     
     /**
-     * 获取线程 ID
+     * Retrieve the thread ID.
      */
     std::thread::id getThreadId() const { return threadId_; }
 
-    // ==================== Map 访问 ====================
+    // ==================== Map access ====================
     
     /**
-     * 获取 Map 引用（线程安全）
-     * 注意：必须通过 invoke() 调用 Map 方法
+     * Obtain a reference to the map (thread-safe).
+     * Note: Map methods must be invoked via invoke().
      */
     Map& getMap();
     
     /**
-     * 在 Map+渲染线程执行任务
-     * 如果已在线程内，直接执行
-     * 否则调度到线程执行
+     * Execute a task on the map/render thread.
+     * If already on the thread, run immediately; otherwise dispatch.
      */
     void invoke(std::function<void()> task);
 
-    // ==================== RendererFrontend 接口 ====================
+    // ==================== RendererFrontend interface ====================
     
     /**
-     * Map 通知需要渲染
-     * 因为在同一线程，直接调用 Renderer
+     * Map notifies that a render is required.
+     * Because we share the thread, invoke the Renderer directly.
      */
     void update(std::shared_ptr<UpdateParameters> params) override;
     
     /**
-     * 设置渲染观察者
+     * Set the renderer observer.
      */
     void setObserver(RendererObserver& observer) override;
     
     /**
-     * 重置渲染器
+     * Reset the renderer.
      */
     void reset() override;
     
     /**
-     * 获取线程池
+     * Access the thread pool.
      */
     const TaggedScheduler& getThreadPool() const override;
 
-    // ==================== 渲染控制 ====================
+    // ==================== Rendering control ====================
     
     /**
-     * 设置原生窗口（XComponent Surface）
+     * Set the native window (XComponent Surface).
      */
     void setNativeWindow(void* window);
     
     /**
-     * 暂停渲染
+     * Pause rendering.
      */
     void pause();
     
     /**
-     * 恢复渲染
+     * Resume rendering.
      */
     void resume();
     
     /**
-     * 获取渲染后端
+     * Retrieve the renderer backend.
      */
     gfx::RendererBackend& getRendererBackend();
     
     /**
-     * 调整 framebuffer 大小
+     * Resize the framebuffer.
      */
     void resizeFramebuffer(int width, int height);
     
     
-    // ==================== 查询功能 ====================
+    // ==================== Query utilities ====================
     
     /**
-     * 查询渲染的特征（点）
+     * Query rendered features at a point.
      */
     std::vector<Feature> queryRenderedFeatures(const ScreenCoordinate& point,
                                                const RenderedQueryOptions& options = {}) const;
     
     /**
-     * 查询渲染的特征（框）
+     * Query rendered features within a box.
      */
     std::vector<Feature> queryRenderedFeatures(const ScreenBox& box,
                                                const RenderedQueryOptions& options = {}) const;
     
     /**
-     * 查询数据源特征
+     * Query features from a source.
      */
     std::vector<Feature> querySourceFeatures(const std::string& sourceId,
                                             const SourceQueryOptions& options = {}) const;
     
     /**
-     * 设置 FPS 回调（参考 Android MapRenderer::setOnFpsChangedListener）
+     * Set the FPS callback (mirrors Android MapRenderer::setOnFpsChangedListener).
      */
     void setOnFpsChangedCallback(std::function<void(double)> callback);
     
     /**
-     * 启用或禁用 FPS 测量
+     * Enable or disable FPS measurement.
      */
     void enableFpsMeasurement(bool enable);
 
 private:
-    // ==================== 线程函数 ====================
+    // ==================== Thread functions ====================
     
     /**
-     * 线程主循环
-     * 1. 创建 RunLoop
-     * 2. 初始化 EGL
-     * 3. 创建 Renderer
-     * 4. 创建 Map
-     * 5. 运行 RunLoop
+     * Main thread loop.
+     * 1. Create the RunLoop
+     * 2. Initialize EGL
+     * 3. Create the Renderer
+     * 4. Create the Map
+     * 5. Run the RunLoop
      */
     void threadLoop();
     
     /**
-     * 初始化序列（在线程内）
+     * Initialization sequence (executed on the thread).
      */
     bool initialize();
     
     /**
-     * 清理资源（在线程内）
+     * Clean up resources (executed on the thread).
      */
     void cleanup();
     
-    // ==================== VSync 控制 ====================
+    // ==================== VSync control ====================
     
     /**
-     * VSync 回调处理函数（在 VSync 时触发渲染）
+     * VSync callback handler (renders when VSync fires).
      */
     void onVSyncFrame();
 
-    // ==================== 成员变量 ====================
+    // ==================== Member variables ====================
     
-    // 线程对象
+    // Thread objects
     std::thread thread_;
     std::thread::id threadId_;
     
-    // 同步原语
+    // Synchronization primitives
     std::mutex mutex_;
     std::condition_variable cv_;
     std::atomic<bool> started_{false};
     std::atomic<bool> shouldStop_{false};
     std::atomic<bool> initialized_{false};
-    std::atomic<bool> destroying_{false};  // ✅ 销毁标志，防止竞态条件
+    std::atomic<bool> destroying_{false};  // ✅ Destruction flag to avoid race conditions
     
-    // 核心对象（在线程内创建和销毁）
+    // Core objects (created and destroyed on the thread)
     std::unique_ptr<util::RunLoop> runLoop_;
     std::unique_ptr<Map> map_;
     std::unique_ptr<Renderer> renderer_;
     std::unique_ptr<gfx::Backend> backend_;
     std::unique_ptr<TaggedScheduler> threadPool_;
     
-    // 初始化参数（从构造函数保存）
+    // Initialization parameters (captured from constructor)
     float pixelRatio_;
     MapObserver* mapObserver_;
     MapOptions mapOptions_;
@@ -251,21 +250,21 @@ private:
     ClientOptions clientOptions_;
     std::optional<std::string> localIdeographFontFamily_;
     
-    // 渲染状态
+    // Rendering state
     std::atomic<bool> paused_{false};
     
-    // FPS 测量（参考 Android MapRenderer）
+    // FPS measurement (aligned with Android MapRenderer)
     std::chrono::steady_clock::time_point lastFrameTime_;
     std::atomic<bool> measureFps_{false};
     std::function<void(double)> fpsCallback_;
     void* nativeWindow_{nullptr};
     
-    // VSync 管理
+    // VSync management
     std::unique_ptr<HarmonyVSyncManager> vsyncManager_;
     std::shared_ptr<UpdateParameters> pendingUpdateParams_{nullptr};
     std::atomic<bool> pendingRender_{false};
 
-    // 最近一次的逻辑尺寸（用于窗口重建后立即应用）
+    // Most recent logical size (used immediately after window recreation)
     int lastWidth_{0};
     int lastHeight_{0};
 };

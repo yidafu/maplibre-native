@@ -10,14 +10,14 @@ namespace maplibre {
 namespace harmony {
 namespace geojson {
 
-// ==================== JS 对象 -> C++ ====================
+// ==================== JS Object -> C++ ====================
 
 mbgl::Geometry<double> GeoJsonConverter::JsObjectToGeometry(napi_env env, napi_value jsObj) {
     if (!IsObject(env, jsObj)) {
         throw std::runtime_error("Geometry must be an object");
     }
 
-    // 获取 type 字段
+    // Fetch the type field
     if (!HasProperty(env, jsObj, "type")) {
         throw std::runtime_error("Geometry must have a 'type' property");
     }
@@ -33,7 +33,7 @@ mbgl::Feature GeoJsonConverter::JsObjectToFeature(napi_env env, napi_value jsObj
 
     mbgl::Feature feature;
 
-    // 解析 geometry
+    // Parse geometry
     if (HasProperty(env, jsObj, "geometry")) {
         napi_value geometryValue = GetObjectProperty(env, jsObj, "geometry");
         if (!IsNull(env, geometryValue) && !IsUndefined(env, geometryValue)) {
@@ -41,7 +41,7 @@ mbgl::Feature GeoJsonConverter::JsObjectToFeature(napi_env env, napi_value jsObj
         }
     }
 
-    // 解析 properties
+    // Parse properties
     if (HasProperty(env, jsObj, "properties")) {
         napi_value propertiesValue = GetObjectProperty(env, jsObj, "properties");
         if (!IsNull(env, propertiesValue) && !IsUndefined(env, propertiesValue)) {
@@ -49,7 +49,7 @@ mbgl::Feature GeoJsonConverter::JsObjectToFeature(napi_env env, napi_value jsObj
         }
     }
 
-    // 解析 id（可选）
+    // Parse id (optional)
     if (HasProperty(env, jsObj, "id")) {
         napi_value idValue = GetObjectProperty(env, jsObj, "id");
         if (!IsNull(env, idValue) && !IsUndefined(env, idValue)) {
@@ -76,7 +76,7 @@ mbgl::FeatureCollection GeoJsonConverter::JsObjectToFeatureCollection(napi_env e
 
     mbgl::FeatureCollection collection;
 
-    // 检查是否有 features 数组
+    // Verify that a features array exists
     if (!HasProperty(env, jsObj, "features")) {
         throw std::runtime_error("FeatureCollection must have a 'features' property");
     }
@@ -110,7 +110,7 @@ mbgl::GeoJSON GeoJsonConverter::JsObjectToGeoJSON(napi_env env, napi_value jsObj
         throw std::runtime_error("GeoJSON must be an object");
     }
 
-    // 获取 type 字段判断类型
+    // Read the type field to determine category
     std::string type;
     if (HasProperty(env, jsObj, "type")) {
         type = GetStringProperty(env, jsObj, "type");
@@ -123,20 +123,20 @@ mbgl::GeoJSON GeoJsonConverter::JsObjectToGeoJSON(napi_env env, napi_value jsObj
         return mbgl::GeoJSON(std::move(collection));
     } else if (type == "Feature") {
         mbgl::Feature feature = JsObjectToFeature(env, jsObj);
-        // 需要转换为 GeoJSONFeature (mapbox::feature::feature<double>)
+        // Needs to convert into GeoJSONFeature (mapbox::feature::feature<double>)
         mbgl::GeoJSONFeature geoJsonFeature;
         geoJsonFeature.geometry = feature.geometry;
         geoJsonFeature.properties = feature.properties;
         geoJsonFeature.id = feature.id;
         return mbgl::GeoJSON(std::move(geoJsonFeature));
     } else {
-        // Geometry 类型
+        // Geometry type payload
         mbgl::Geometry<double> geometry = JsObjectToGeometry(env, jsObj);
         return mbgl::GeoJSON(std::move(geometry));
     }
 }
 
-// ==================== C++ -> JS 对象 ====================
+// ==================== C++ -> JS Object ====================
 
 napi_value GeoJsonConverter::GeometryToJsObject(napi_env env, const mbgl::Geometry<double> &geometry) {
     return geometry.match(
@@ -184,18 +184,18 @@ napi_value GeoJsonConverter::FeatureToJsObject(napi_env env, const mbgl::Feature
     }
 
     // source (optional)
-    // 注意：在 queryRenderedFeatures 的上下文中，feature.source 实际上存储的是 style layer ID！
-    // 参考 MapLibre 的实现，feature.source 字段在查询结果中被复用来存储 layer ID
+    // Note: Within queryRenderedFeatures, feature.source actually stores the style layer ID!
+    // Per MapLibre's implementation, the feature.source field is reused to store the layer ID in query results
     if (!feature.source.empty()) {
         napi_value source;
         napi_create_string_utf8(env, feature.source.c_str(), NAPI_AUTO_LENGTH, &source);
-        // 设置为 layer 属性（这是 style layer ID）
+        // Assign to the layer property (this is the style layer ID)
         napi_set_named_property(env, result, "layer", source);
-        // 同时保留 source 属性
+        // Also keep the source property
         napi_set_named_property(env, result, "source", source);
     }
 
-    // sourceLayer (optional) - 这是 vector tile 的 source layer
+    // sourceLayer (optional) - the vector tile source layer
     if (!feature.sourceLayer.empty()) {
         napi_value sourceLayer;
         napi_create_string_utf8(env, feature.sourceLayer.c_str(), NAPI_AUTO_LENGTH, &sourceLayer);
@@ -229,8 +229,8 @@ napi_value GeoJsonConverter::FeatureCollectionToJsObject(napi_env env,
     napi_create_string_utf8(env, "FeatureCollection", NAPI_AUTO_LENGTH, &type);
     napi_set_named_property(env, result, "type", type);
 
-    // features array - FeatureCollection 继承自 vector<feature<double>>
-    // 需要转换为 vector<mbgl::Feature>
+    // features array - FeatureCollection inherits from vector<feature<double>>
+    // Needs to be converted to vector<mbgl::Feature>
     std::vector<mbgl::Feature> features;
     features.reserve(featureCollection.size());
     for (const auto &f : featureCollection) {
@@ -258,10 +258,10 @@ napi_value GeoJsonConverter::FeatureArrayToJsArray(napi_env env, const std::vect
     return array;
 }
 
-// ==================== Private 辅助方法 ====================
+// ==================== Private helper methods ====================
 
 mbgl::Geometry<double> GeoJsonConverter::ParseGeometryByType(napi_env env, napi_value jsObj, const std::string &type) {
-    // 获取 coordinates 或 geometries 字段
+    // Retrieve coordinates or geometries field
     napi_value coordinatesOrGeometries;
 
     if (type == "GeometryCollection") {
@@ -294,7 +294,7 @@ mbgl::Geometry<double> GeoJsonConverter::ParseGeometryByType(napi_env env, napi_
     }
 }
 
-// Geometry 解析实现
+// Geometry parsing implementation
 
 mbgl::Point<double> GeoJsonConverter::ParsePoint(napi_env env, napi_value coordinates) {
     auto coords = NapiArrayToDoubleVector(env, coordinates);
@@ -347,7 +347,7 @@ mapbox::geometry::geometry_collection<double> GeoJsonConverter::ParseGeometryCol
     return collection;
 }
 
-// Geometry 转换为 JS 对象实现
+// Geometry-to-JS conversion implementation
 
 napi_value GeoJsonConverter::PointToJsObject(napi_env env, const mbgl::Point<double> &point) {
     napi_value coordinates;

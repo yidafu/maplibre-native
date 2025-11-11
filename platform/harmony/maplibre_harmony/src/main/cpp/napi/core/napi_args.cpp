@@ -17,7 +17,7 @@ NapiArgs::NapiArgs(napi_env env, napi_callback_info info, size_t maxArgs)
     
     args_.resize(maxArgs);
     
-    // 获取 this 对象和参数
+    // Retrieve this object and parameters
     napi_status status = napi_get_cb_info(env, info, &argc_, args_.data(), &thisObj_, nullptr);
     
     if (status != napi_ok) {
@@ -27,20 +27,20 @@ NapiArgs::NapiArgs(napi_env env, napi_callback_info info, size_t maxArgs)
         return;
     }
     
-    // 调整 vector 大小为实际参数数量
+    // Resize vector to actual argument count
     args_.resize(argc_);
 }
 
 void NapiArgs::SetError(const std::string& message) {
     if (hasError_) {
-        // 已经有错误了，不覆盖第一个错误
+        // An error already exists; keep the first one
         return;
     }
     
     hasError_ = true;
     errorMessage_ = message;
     
-    // 抛出 JS 异常
+    // Throw JS exception
     napi_throw_type_error(env_, nullptr, message.c_str());
     
     Logger::error("NapiArgs", "Error: %s", message.c_str());
@@ -95,7 +95,7 @@ napi_value NapiArgs::GetValue(size_t index) {
     return args_[index];
 }
 
-// ========== 基础类型实现 ==========
+// ========== Primitive Type Implementations ==========
 
 std::string NapiArgs::GetString(size_t index, const char* name) {
     if (!CheckIndex(index, name)) {
@@ -297,7 +297,7 @@ int64_t NapiArgs::GetBigInt(size_t index, const char* name) {
     return result;
 }
 
-// ========== 复杂类型实现 ==========
+// ========== Complex Type Implementations ==========
 
 napi_value NapiArgs::GetObject(size_t index, const char* name) {
     if (!CheckIndex(index, name)) {
@@ -314,7 +314,7 @@ napi_value NapiArgs::GetObject(size_t index, const char* name) {
         return nullptr;
     }
     
-    // 确保不是数组
+    // Ensure value is not an array
     bool isArray = false;
     status = napi_is_array(env_, args_[index], &isArray);
     
@@ -398,7 +398,7 @@ void* NapiArgs::GetBuffer(size_t index, size_t* length, const char* name) {
     return data;
 }
 
-// ========== 可选参数实现 ==========
+// ========== Optional Parameter Implementations ==========
 
 std::string NapiArgs::GetStringOr(size_t index, const std::string& defaultValue) {
     if (!Has(index)) {
@@ -409,13 +409,13 @@ std::string NapiArgs::GetStringOr(size_t index, const std::string& defaultValue)
         return defaultValue;
     }
     
-    // 暂时保存当前错误状态
+    // Temporarily preserve current error state
     bool hadError = hasError_;
     std::string prevError = errorMessage_;
     
     std::string result = GetString(index, nullptr);
     
-    // 如果获取失败，恢复错误状态并返回默认值
+    // If retrieval fails, restore prior error state and return default value
     if (hasError_ && !hadError) {
         hasError_ = hadError;
         errorMessage_ = prevError;
@@ -520,7 +520,7 @@ bool NapiArgs::GetBoolOr(size_t index, bool defaultValue) {
     return result;
 }
 
-// ========== 对象属性访问辅助方法 ==========
+// ========== Object Property Helper Methods ==========
 
 int32_t NapiArgs::GetInt32Property(napi_value obj, const char* key, int32_t defaultValue) {
     if (!obj || !key) {
@@ -703,7 +703,7 @@ bool NapiArgs::GetBoolProperty(napi_value obj, const char* key, bool defaultValu
     return result;
 }
 
-// ========== 便利方法实现 ==========
+// ========== Convenience Method Implementations ==========
 
 napi_value NapiArgs::Undefined() const {
     napi_value undefined;

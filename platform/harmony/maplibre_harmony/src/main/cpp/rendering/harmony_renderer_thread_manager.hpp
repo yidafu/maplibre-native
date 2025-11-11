@@ -15,25 +15,26 @@ namespace harmony {
 
 /**
  * HarmonyRendererThreadManager
- * 
- * 统一管理所有渲染线程，提供线程查询、注册和跨线程调用能力。
- * 
- * 设计原则：
- * 1. 单例模式 - 全局唯一实例
- * 2. 线程安全 - 使用 mutex 保护所有操作
- * 3. 支持多实例 - 每个渲染器实例独立注册
- * 4. 便于调试 - 提供完整的线程信息查询
+ *
+ * Centralizes management of all rendering threads, providing lookup, registration,
+ * and cross-thread invocation.
+ *
+ * Design principles:
+ * 1. Singleton - single global instance
+ * 2. Thread-safe - mutex-protected operations
+ * 3. Multi-instance support - each renderer registers independently
+ * 4. Debug-friendly - exposes detailed thread information
  */
 class HarmonyRendererThreadManager {
 public:
     /**
-     * 线程信息结构
+     * Metadata describing a render thread.
      */
     struct ThreadInfo {
-        util::RunLoop* runLoop;                              // RunLoop 指针
-        std::thread::id threadId;                            // 线程 ID
-        std::chrono::steady_clock::time_point createdAt;     // 创建时间
-        bool active;                                         // 是否活跃
+        util::RunLoop* runLoop;                              // RunLoop pointer
+        std::thread::id threadId;                            // Thread ID
+        std::chrono::steady_clock::time_point createdAt;     // Creation time
+        bool active;                                         // Active flag
         
         ThreadInfo()
             : runLoop(nullptr)
@@ -49,85 +50,85 @@ public:
     };
     
     /**
-     * 获取单例实例
+     * Retrieve the singleton instance.
      */
     static HarmonyRendererThreadManager& getInstance();
     
     /**
-     * 注册渲染线程
-     * 
-     * @param instanceId 实例唯一标识符
-     * @param runLoop RunLoop 指针
-     * @param threadId 线程 ID
+     * Register a render thread.
+     *
+     * @param instanceId Unique instance identifier
+     * @param runLoop Pointer to the RunLoop
+     * @param threadId Thread ID
      */
     void registerRendererThread(const std::string& instanceId,
                                 util::RunLoop* runLoop,
                                 std::thread::id threadId);
     
     /**
-     * 注销渲染线程
-     * 
-     * @param instanceId 实例唯一标识符
+     * Unregister a render thread.
+     *
+     * @param instanceId Unique instance identifier
      */
     void unregisterRendererThread(const std::string& instanceId);
     
     /**
-     * 在指定渲染线程执行任务
-     * 
-     * @param instanceId 目标线程的实例 ID
-     * @param fn 要执行的函数
-     * @return 是否成功调度（线程存在返回 true）
+     * Execute a task on the specified render thread.
+     *
+     * @param instanceId Target instance ID
+     * @param fn Function to execute
+     * @return True if dispatch succeeded (thread exists)
      */
     bool invokeOnThread(const std::string& instanceId, std::function<void()>&& fn);
     
     /**
-     * 检查当前线程是否是指定实例的渲染线程
-     * 
-     * @param instanceId 实例 ID
-     * @return 如果当前线程是该实例的渲染线程返回 true
+     * Check whether the current thread is the render thread for the given instance.
+     *
+     * @param instanceId Instance ID
+     * @return True if the current thread matches that instance's render thread
      */
     bool isOnRendererThread(const std::string& instanceId) const;
     
     /**
-     * 获取当前线程对应的实例 ID（如果是渲染线程）
-     * 
-     * @return 实例 ID，如果当前线程不是任何渲染线程返回 nullopt
+     * Obtain the instance ID for the current thread (if it is a render thread).
+     *
+     * @return Instance ID, or nullopt if the current thread is not a render thread
      */
     std::optional<std::string> getCurrentInstanceId() const;
     
     /**
-     * 获取线程信息
-     * 
-     * @param instanceId 实例 ID
-     * @return 线程信息，如果不存在返回 nullopt
+     * Fetch thread information for a given instance.
+     *
+     * @param instanceId Instance ID
+     * @return Thread info, or nullopt if not found
      */
     std::optional<ThreadInfo> getThreadInfo(const std::string& instanceId) const;
     
     /**
-     * 获取活跃线程数量
+     * Return the number of active render threads.
      */
     size_t getThreadCount() const;
     
     /**
-     * 获取所有实例 ID 列表
+     * Retrieve a list of all registered instance IDs.
      */
     std::vector<std::string> getAllInstanceIds() const;
     
     /**
-     * 调试：打印所有线程状态
+     * Debug helper: print the status of all threads.
      */
     void dumpAllThreads() const;
     
 private:
-    // 私有构造函数（单例模式）
+    // Private constructor (singleton)
     HarmonyRendererThreadManager() = default;
     ~HarmonyRendererThreadManager() = default;
     
-    // 禁止拷贝和赋值
+    // Disallow copy and assignment
     HarmonyRendererThreadManager(const HarmonyRendererThreadManager&) = delete;
     HarmonyRendererThreadManager& operator=(const HarmonyRendererThreadManager&) = delete;
     
-    // 线程信息映射表
+    // Thread info map
     mutable std::mutex mutex_;
     std::map<std::string, ThreadInfo> threads_;
 };

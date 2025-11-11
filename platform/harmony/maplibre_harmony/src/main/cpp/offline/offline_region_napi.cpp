@@ -13,10 +13,10 @@ namespace harmony {
 using Logger = mbgl::harmony::Logger;
 using NapiArgs = mbgl::harmony::napi::NapiArgs;
 
-// 静态构造函数引用初始化
+// Static constructor reference initialization
 napi_ref OfflineRegionNAPI::constructor_ = nullptr;
 
-// ========== 构造函数和析构函数 ==========
+// ========== Constructors and Destructors ==========
 
 OfflineRegionNAPI::OfflineRegionNAPI(std::shared_ptr<mbgl::DatabaseFileSource> fileSource,
                                      std::unique_ptr<mbgl::OfflineRegion> region)
@@ -42,7 +42,7 @@ void OfflineRegionNAPI::Destructor(napi_env env, void* nativeObject, void* /* fi
     delete obj;
 }
 
-// ========== NAPI 初始化 ==========
+// ========== NAPI Initialization ==========
 
 napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
     napi_status status;
@@ -69,7 +69,7 @@ napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    // 保存构造函数引用
+    // Store constructor reference
     status = napi_create_reference(env, cons, 1, &constructor_);
     if (status != napi_ok) {
         Logger::error("OfflineRegionNAPI", "Failed to create constructor reference");
@@ -85,20 +85,20 @@ napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-// ========== 创建 NAPI 对象 ==========
+// ========== Create NAPI Objects ==========
 
 napi_value OfflineRegionNAPI::New(napi_env env, 
                                   std::shared_ptr<mbgl::DatabaseFileSource> fileSource,
                                   mbgl::OfflineRegion&& region) {
     napi_status status;
     
-    // 检查构造函数引用是否已初始化
+    // Check whether constructor reference is initialized
     if (constructor_ == nullptr) {
         Logger::error("OfflineRegionNAPI", "Constructor reference is null. Make sure Init() was called.");
         return nullptr;
     }
     
-    // 从引用获取构造函数
+    // Obtain constructor from reference
     napi_value cons = nullptr;
     status = napi_get_reference_value(env, constructor_, &cons);
     if (status != napi_ok || cons == nullptr) {
@@ -106,7 +106,7 @@ napi_value OfflineRegionNAPI::New(napi_env env,
         return nullptr;
     }
     
-    // 创建实例
+    // Create instance
     napi_value instance = nullptr;
     status = napi_new_instance(env, cons, 0, nullptr, &instance);
     if (status != napi_ok || instance == nullptr) {
@@ -114,12 +114,12 @@ napi_value OfflineRegionNAPI::New(napi_env env,
         return nullptr;
     }
     
-    // 创建 C++ 对象
+    // Create C++ object
     auto regionPtr = std::make_unique<mbgl::OfflineRegion>(std::move(region));
     OfflineRegionNAPI* obj = new OfflineRegionNAPI(fileSource, std::move(regionPtr));
     obj->env_ = env;
     
-    // 包装对象
+    // Wrap object
     status = napi_wrap(env, instance, obj, OfflineRegionNAPI::Destructor, nullptr, &obj->wrapper_);
     
     if (status != napi_ok) {
@@ -128,33 +128,33 @@ napi_value OfflineRegionNAPI::New(napi_env env,
         return nullptr;
     }
     
-    // 设置属性
+    // Set properties
     napi_value idValue;
     napi_create_int64(env, obj->region_->getID(), &idValue);
     napi_set_named_property(env, instance, "id", idValue);
     
-    // 设置 definition
+    // Set definition
     napi_value definitionValue = OfflineRegionDefinitionNAPI::ToNapiObject(env, obj->region_->getDefinition());
     napi_set_named_property(env, instance, "definition", definitionValue);
     
-    // 设置 metadata
+    // Set metadata
     napi_value metadataValue = MetadataToArrayBuffer(env, obj->region_->getMetadata());
     napi_set_named_property(env, instance, "metadata", metadataValue);
     
     return instance;
 }
 
-// ========== 构造函数 ==========
+// ========== Constructor ==========
 
 napi_value OfflineRegionNAPI::Constructor(napi_env env, napi_callback_info info) {
-    // 此构造函数不应该直接从 JS 调用
-    // 只能通过 New 方法创建实例
+    // This constructor should not be invoked directly from JS
+    // Instances must be created via the New method
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     return jsThis;
 }
 
-// ========== 实例方法 ==========
+// ========== Instance Methods ==========
 
 napi_value OfflineRegionNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value jsThis;
@@ -258,13 +258,13 @@ napi_value OfflineRegionNAPI::SetObserver(napi_env env, napi_callback_info info)
         return nullptr;
     }
     
-    // 保存观察者引用
+    // Store observer reference
     if (obj->observerRef_ != nullptr) {
         napi_delete_reference(env, obj->observerRef_);
     }
     napi_create_reference(env, observer, 1, &obj->observerRef_);
     
-    // 创建观察者对象
+    // Create observer object
     class Observer : public mbgl::OfflineRegionObserver {
     public:
         Observer(napi_env env, napi_ref observerRef)
@@ -294,11 +294,11 @@ napi_value OfflineRegionNAPI::SetObserver(napi_env env, napi_callback_info info)
             napi_value onError;
             napi_get_named_property(env_, observerObj, "onError", &onError);
             
-            // 创建错误对象
+            // Create error object
             napi_value errorObj;
             napi_create_object(env_, &errorObj);
             
-            // error.reason 是枚举类型，转换为字符串
+            // error.reason is an enum; convert to string
             std::string reasonStr;
             switch (error.reason) {
                 case mbgl::Response::Error::Reason::Success:
@@ -538,7 +538,7 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
     args.RequireMinArgs(2);
     if (args.HasError()) return nullptr;
     
-    // 获取原始参数
+    // Retrieve raw argument list
     size_t argc = 2;
     napi_value argv[2];
     napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
@@ -596,7 +596,7 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
     return undefined;
 }
 
-// ========== 辅助函数 ==========
+// ========== Helper Functions ==========
 
 napi_value OfflineRegionNAPI::MetadataToArrayBuffer(napi_env env, const mbgl::OfflineRegionMetadata& metadata) {
     napi_value arrayBuffer;

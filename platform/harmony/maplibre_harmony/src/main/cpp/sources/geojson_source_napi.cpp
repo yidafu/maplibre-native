@@ -20,16 +20,49 @@ namespace harmony {
 napi_ref GeoJsonSourceNAPI::constructor = nullptr;
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source)
-    : id(id), source(std::move(source)), ownsSource(true) {
+    : id(id), source(std::move(source)), ownsSource(true), rawSourceFallback(nullptr) {
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource instance created: %s", id.c_str());
 }
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
-    : ownsSource(false) {
+    : ownsSource(false), rawSourceFallback(nullptr) {
     if (sourcePtr) {
         id = sourcePtr->getID();
-        weakSource = sourcePtr->makeWeakPtr();
-        Logger::info("GeoJsonSourceNAPI", "GeoJsonSource created from existing source (WeakPtr): %s", id.c_str());
+        auto weak = sourcePtr->makeWeakPtr();
+        if (weak) {
+            weakSource = std::move(weak);
+            Logger::info("GeoJsonSourceNAPI", "GeoJsonSource created from existing source (WeakPtr): %s", id.c_str());
+        } else {
+            rawSourceFallback = sourcePtr;
+            Logger::warn("GeoJsonSourceNAPI", "GeoJsonSource created from existing source but WeakPtr initialization failed: %s", id.c_str());
+        }
+    }
+}
+
+mbgl::style::GeoJSONSource* GeoJsonSourceNAPI::getSource() const {
+    if (source) {
+        return source.get();
+    }
+    if (weakSource) {
+        return static_cast<mbgl::style::GeoJSONSource*>(weakSource.get());
+    }
+    return rawSourceFallback;
+}
+
+void GeoJsonSourceNAPI::attachToStyle(mbgl::style::GeoJSONSource* sourcePtr) {
+    if (!sourcePtr) {
+        Logger::warn("GeoJsonSourceNAPI", "attachToStyle called with null source pointer");
+        return;
+    }
+
+    auto weak = sourcePtr->makeWeakPtr();
+    if (weak) {
+        weakSource = std::move(weak);
+        rawSourceFallback = nullptr;
+        Logger::info("GeoJsonSourceNAPI", "attachToStyle: WeakPtr initialized successfully for source %s", id.c_str());
+    } else {
+        rawSourceFallback = sourcePtr;
+        Logger::warn("GeoJsonSourceNAPI", "attachToStyle: WeakPtr initialization failed, storing raw pointer temporarily for source %s", id.c_str());
     }
 }
 
@@ -50,16 +83,16 @@ napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
         // Getters
         { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // 数据管理
+        // Data management
         { "setGeoJson", nullptr, SetGeoJson, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setGeoJsonSync", nullptr, SetGeoJsonSync, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setUrl", nullptr, SetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getUrl", nullptr, GetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // 查询功能
+        // Query features
         { "querySourceFeatures", nullptr, QuerySourceFeatures, nullptr, nullptr, nullptr, napi_default, nullptr },
         
-        // 聚类功能
+        // Clustering utilities
         { "getClusterChildren", nullptr, GetClusterChildren, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getClusterLeaves", nullptr, GetClusterLeaves, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getClusterExpansionZoom", nullptr, GetClusterExpansionZoom, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -74,14 +107,14 @@ napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    // 创建构造函数引用
+    // Create the constructor reference
     status = napi_create_reference(env, cons, 1, &constructor);
     if (status != napi_ok) {
         Logger::error("GeoJsonSourceNAPI", "Failed to create constructor reference");
         return nullptr;
     }
     
-    // 将构造函数添加到 exports
+    // Add the constructor to exports
     status = napi_set_named_property(env, exports, "GeoJsonSource", cons);
     if (status != napi_ok) {
         Logger::error("GeoJsonSourceNAPI", "Failed to set GeoJsonSource property");
@@ -103,7 +136,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    // 解析参数
+    // Parse arguments
     NapiArgs napiArgs(env, info);
     std::string sourceId = napiArgs.GetString(0, "sourceId");
     
@@ -113,17 +146,17 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 解析选项
+        // Parse options
         mbgl::style::GeoJSONOptions options;
         
         if (argc >= 2) {
-            // 解析 options 对象
+            // Parse the options object
             napi_value optionsObj = args[1];
             napi_valuetype type;
             napi_typeof(env, optionsObj, &type);
             
             if (type == napi_object) {
-                // 解析 cluster 选项
+                // Parse cluster option
                 if (HasProperty(env, optionsObj, "cluster")) {
                     bool cluster = false;
                     napi_value clusterValue;
@@ -132,7 +165,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.cluster = cluster;
                 }
                 
-                // 解析 clusterRadius
+                // Parse clusterRadius
                 if (HasProperty(env, optionsObj, "clusterRadius")) {
                     int32_t radius = 50;
                     napi_value radiusValue;
@@ -141,7 +174,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.clusterRadius = static_cast<uint16_t>(radius);
                 }
                 
-                // 解析 clusterMaxZoom
+                // Parse clusterMaxZoom
                 if (HasProperty(env, optionsObj, "clusterMaxZoom")) {
                     int32_t maxZoom = 16;
                     napi_value maxZoomValue;
@@ -150,7 +183,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.clusterMaxZoom = static_cast<uint8_t>(maxZoom);
                 }
                 
-                // 解析 minzoom
+                // Parse minzoom
                 if (HasProperty(env, optionsObj, "minzoom")) {
                     int32_t minzoom = 0;
                     napi_value minzoomValue;
@@ -159,7 +192,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.minzoom = static_cast<uint8_t>(minzoom);
                 }
                 
-                // 解析 maxzoom
+                // Parse maxzoom
                 if (HasProperty(env, optionsObj, "maxzoom")) {
                     int32_t maxzoom = 18;
                     napi_value maxzoomValue;
@@ -168,7 +201,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.maxzoom = static_cast<uint8_t>(maxzoom);
                 }
                 
-                // 解析 buffer
+                // Parse buffer
                 if (HasProperty(env, optionsObj, "buffer")) {
                     int32_t buffer = 128;
                     napi_value bufferValue;
@@ -177,7 +210,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.buffer = static_cast<uint16_t>(buffer);
                 }
                 
-                // 解析 tolerance
+                // Parse tolerance
                 if (HasProperty(env, optionsObj, "tolerance")) {
                     double tolerance = 0.375;
                     napi_value toleranceValue;
@@ -186,7 +219,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.tolerance = tolerance;
                 }
                 
-                // 解析 lineMetrics
+                // Parse lineMetrics
                 if (HasProperty(env, optionsObj, "lineMetrics")) {
                     bool lineMetrics = false;
                     napi_value lineMetricsValue;
@@ -195,7 +228,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     options.lineMetrics = lineMetrics;
                 }
                 
-                // 解析 clusterProperties
+                // Parse clusterProperties
                 if (HasProperty(env, optionsObj, "clusterProperties")) {
                     napi_value clusterPropsValue;
                     napi_get_named_property(env, optionsObj, "clusterProperties", &clusterPropsValue);
@@ -204,7 +237,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                     napi_typeof(env, clusterPropsValue, &clusterPropsType);
                     
                     if (clusterPropsType == napi_object) {
-                        // clusterProperties 是一个对象，格式为:
+                        // clusterProperties is an object with the shape:
                         // { propertyName: [mapExpr, reduceExpr], ... }
                         napi_value propertyNames;
                         napi_get_property_names(env, clusterPropsValue, &propertyNames);
@@ -222,7 +255,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                             propertyName.resize(nameLen);
                             napi_get_value_string_utf8(env, propertyNameValue, &propertyName[0], nameLen + 1, &nameLen);
                             
-                            // 获取该属性的表达式数组 [mapExpr, reduceExpr]
+                            // Retrieve the expression array [mapExpr, reduceExpr] for this property
                             napi_value expressionArray;
                             napi_get_property(env, clusterPropsValue, propertyNameValue, &expressionArray);
                             
@@ -234,15 +267,15 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                                 napi_get_array_length(env, expressionArray, &arrayLength);
                                 
                                 if (arrayLength >= 2) {
-                                    // 获取 map 表达式和 reduce 表达式
+                                    // Retrieve the map and reduce expressions
                                     napi_value mapExprValue, reduceExprValue;
                                     napi_get_element(env, expressionArray, 0, &mapExprValue);
                                     napi_get_element(env, expressionArray, 1, &reduceExprValue);
                                     
-                                    // 转换为 mbgl Expression
-                                    // TODO: clusterProperties需要特殊的Expression转换
-                                    // 当前暂时跳过clusterProperties的解析
-                                    // 在未来版本中可以通过JSON字符串方式传递
+                                    // Convert to mbgl Expression
+                                    // TODO: clusterProperties require specialized expression conversion
+                                    // Currently we skip parsing clusterProperties
+                                    // A future version could transmit them as JSON strings
                                     Logger::warn("GeoJsonSourceNAPI", 
                                                 "clusterProperties[\"%s\"]: Expression conversion not yet implemented", 
                                                 propertyName.c_str());
@@ -255,14 +288,14 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
             }
         }
         
-        // 创建 GeoJSONSource
+        // Create the GeoJSONSource
         auto immutableOptions = mbgl::makeMutable<mbgl::style::GeoJSONOptions>(std::move(options));
         auto source = std::make_unique<mbgl::style::GeoJSONSource>(sourceId, std::move(immutableOptions));
         
-        // 创建 C++ NAPI 对象
+        // Create the C++ NAPI object
         GeoJsonSourceNAPI* sourceNapi = new GeoJsonSourceNAPI(sourceId, std::move(source));
         
-        // Wrap 到 JS 对象
+        // Wrap into the JS object
         napi_status status = napi_wrap(env, jsThis, sourceNapi, Destructor, nullptr, nullptr);
         if (status != napi_ok) {
             delete sourceNapi;
@@ -272,7 +305,7 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
         
         Logger::info("GeoJsonSourceNAPI", "GeoJsonSource created: %s", sourceId.c_str());
     
-    // 添加 _TYPE_ 属性用于 ETS 层的类型判断
+    // Add the _TYPE_ property for ETS type detection
     napi_value typeValue;
     napi_create_string_utf8(env, "GeoJsonSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, jsThis, "_TYPE_", typeValue);
@@ -291,7 +324,7 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
         return result;
     }
     
-    // 获取构造函数
+    // Retrieve the constructor
     napi_value cons;
     napi_status status = napi_get_reference_value(env, constructor, &cons);
     if (status != napi_ok) {
@@ -301,7 +334,7 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
         return result;
     }
     
-    // 创建空对象并设置原型（避免调用 JS 构造函数）
+    // Create a plain object and set its prototype (avoid invoking the JS constructor)
     napi_value instance;
     status = napi_create_object(env, &instance);
     if (status != napi_ok) {
@@ -311,7 +344,7 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
         return result;
     }
     
-    // 获取构造函数的原型
+    // Retrieve the constructor prototype
     napi_value prototype;
     status = napi_get_named_property(env, cons, "prototype", &prototype);
     if (status != napi_ok) {
@@ -321,7 +354,7 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
         return result;
     }
     
-    // 设置对象的原型
+    // Set the object's prototype
     status = napi_set_named_property(env, instance, "__proto__", prototype);
     if (status != napi_ok) {
         Logger::error("CreateInstance", "Failed to set prototype");
@@ -330,10 +363,10 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
         return result;
     }
     
-    // 创建 NAPI wrapper（使用 WeakPtr 构造函数）
+    // Create the NAPI wrapper (using the WeakPtr constructor)
     GeoJsonSourceNAPI* napiObj = new GeoJsonSourceNAPI(sourcePtr);
     
-    // 包装到 JS 对象
+    // Wrap into the JS object
     status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
         delete napiObj;
@@ -343,7 +376,7 @@ napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONS
         return result;
     }
     
-    // 添加 _TYPE_ 属性
+    // Add the _TYPE_ property
     napi_value typeValue;
     napi_create_string_utf8(env, "GeoJsonSource", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, instance, "_TYPE_", typeValue);
@@ -367,7 +400,7 @@ napi_value GeoJsonSourceNAPI::GetId(napi_env env, napi_callback_info info) {
     return CreateStringValue(env, sourceNapi->id);
 }
 
-// ==================== 数据管理 ====================
+// ==================== Data management ====================
 
 napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) {
     napi_value jsThis;
@@ -395,9 +428,9 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
     }
     
     try {
-        // 检测参数类型
+        // Detect the argument type
         if (IsString(env, args[0])) {
-            // 字符串类型：解析 JSON
+            // String type: parse JSON
             NapiArgs napiArgs(env, info);
             std::string geoJsonString = napiArgs.GetString(0, "geoJson");
             
@@ -415,21 +448,21 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
                 napi_throw_error(env, nullptr, error.message.c_str());
             }
         } else if (IsObject(env, args[0])) {
-            // 对象类型：根据 type 属性判断
+            // Object type: inspect the type property
             std::string type;
             if (HasProperty(env, args[0], "type")) {
                 type = GetStringProperty(env, args[0], "type");
             }
             
             if (type == "FeatureCollection") {
-                // FeatureCollection 对象
+                // FeatureCollection object
                 auto collection = GeoJsonConverter::JsObjectToFeatureCollection(env, args[0]);
                 source->setGeoJSON(mbgl::GeoJSON(std::move(collection)));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (FeatureCollection): %s", sourceNapi->id.c_str());
             } else if (type == "Feature") {
-                // Feature 对象
+                // Feature object
                 auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
-                // 转换为 GeoJSONFeature
+                // Convert to GeoJSONFeature
                 mbgl::GeoJSONFeature geoJsonFeature;
                 geoJsonFeature.geometry = feature.geometry;
                 geoJsonFeature.properties = feature.properties;
@@ -437,7 +470,7 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
                 source->setGeoJSON(mbgl::GeoJSON(std::move(geoJsonFeature)));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Feature): %s", sourceNapi->id.c_str());
             } else {
-                // Geometry 对象
+                // Geometry object
                 auto geometry = GeoJsonConverter::JsObjectToGeometry(env, args[0]);
                 source->setGeoJSON(mbgl::GeoJSON(std::move(geometry)));
                 Logger::info("GeoJsonSourceNAPI", "SetGeoJson (Geometry): %s, type: %s", 
@@ -455,7 +488,7 @@ napi_value GeoJsonSourceNAPI::SetGeoJson(napi_env env, napi_callback_info info) 
 }
 
 napi_value GeoJsonSourceNAPI::SetGeoJsonSync(napi_env env, napi_callback_info info) {
-    // 同步版本与异步版本相同
+    // The synchronous version mirrors the asynchronous implementation
     return SetGeoJson(env, info);
 }
 
@@ -523,7 +556,7 @@ napi_value GeoJsonSourceNAPI::GetUrl(napi_env env, napi_callback_info info) {
     return CreateStringValue(env, "");
 }
 
-// ==================== 查询功能 ====================
+// ==================== Query features ====================
 
 napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_info info) {
     napi_value jsThis;
@@ -548,17 +581,17 @@ napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_in
     }
     
     try {
-        // TODO: 需要访问 rendererFrontend 来查询要素
-        // 类似 Android 实现：
+        // TODO: requires accessing the rendererFrontend to query features
+        // Similar to the Android implementation:
         // features = rendererFrontend->querySourceFeatures(source.getID(), {{}, filter});
         
-        // 暂时返回空数组
+        // Return an empty array for now
         Logger::warn("GeoJsonSourceNAPI", "QuerySourceFeatures: rendererFrontend access not yet implemented");
         
         std::vector<mbgl::Feature> features;
-        // 这里需要从 rendererFrontend 获取 features
+        // Here we should obtain features from the rendererFrontend
         
-        // 将结果转换为 NAPI 数组
+        // Convert the results into a NAPI array
         return GeoJsonConverter::FeatureArrayToJsArray(env, features);
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "QuerySourceFeatures failed: %s", e.what());
@@ -569,7 +602,7 @@ napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_in
     }
 }
 
-// ==================== 聚类功能 ====================
+// ==================== Clustering utilities ====================
 
 napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_info info) {
     napi_value jsThis;
@@ -601,7 +634,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
     }
     
     try {
-        // 解析 clusterId（可以是数字或 Feature 对象）
+        // Parse clusterId (it can be a number or a Feature object)
         uint64_t clusterId = 0;
         
         if (IsNumber(env, args[0])) {
@@ -609,7 +642,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
             napi_get_value_double(env, args[0], &value);
             clusterId = static_cast<uint64_t>(value);
         } else if (IsObject(env, args[0])) {
-            // Feature 对象，从 properties 中提取 cluster_id
+            // Feature object: extract cluster_id from properties
             auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
             if (feature.properties.count("cluster_id")) {
                 auto& idValue = feature.properties["cluster_id"];
@@ -621,8 +654,8 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
             }
         }
         
-        // TODO: 需要访问 rendererFrontend 来查询聚类子项
-        // 类似 Android 实现：
+        // TODO: query cluster children via rendererFrontend
+        // Similar to the Android implementation:
         // featureExtension = rendererFrontend->queryFeatureExtensions(
         //     source.getID(), feature, "supercluster", "children", {});
         
@@ -670,7 +703,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
     }
     
     try {
-        // 解析参数
+        // Parse arguments
         uint64_t clusterId = 0;
         if (IsNumber(env, args[0])) {
             double value = 0;
@@ -695,8 +728,8 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
         uint64_t limit = static_cast<uint64_t>(limitValue);
         uint64_t offset = static_cast<uint64_t>(offsetValue);
         
-        // TODO: 需要访问 rendererFrontend 来查询聚类叶子节点
-        // 类似 Android 实现：
+        // TODO: query cluster leaves via rendererFrontend
+        // Similar to the Android implementation:
         // options = {{"limit", limit}, {"offset", offset}};
         // featureExtension = rendererFrontend->queryFeatureExtensions(
         //     source.getID(), feature, "supercluster", "leaves", options);
@@ -740,7 +773,7 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
     }
     
     try {
-        // 解析 clusterId
+        // Parse clusterId
         uint64_t clusterId = 0;
         if (IsNumber(env, args[0])) {
             double value = 0;
@@ -758,8 +791,8 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
             }
         }
         
-        // TODO: 需要访问 rendererFrontend 来查询聚类展开缩放级别
-        // 类似 Android 实现：
+        // TODO: query the cluster expansion zoom via rendererFrontend
+        // Similar to the Android implementation:
         // featureExtension = rendererFrontend->queryFeatureExtensions(
         //     source.getID(), feature, "supercluster", "expansion-zoom", {});
         

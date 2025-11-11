@@ -159,7 +159,7 @@ std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, Na
 
     napi_value anchorObj = nullptr;
     if (!getNamedProperty(env, optionsObj, "anchor", &anchorObj)) {
-        // 兼容直接传入 { latitude, longitude }
+        // Support direct input { latitude, longitude }
         anchorObj = optionsObj;
     }
 
@@ -316,7 +316,7 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -330,7 +330,7 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "updateMarker: Failed to unwrap NativeMapView instance");
@@ -342,14 +342,14 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // Unwrap Marker NAPI 对象
+    // Unwrap the Marker NAPI object
     maplibre::harmony::MarkerNAPI* marker = nullptr;
     if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
         Logger::error("NativeMapView", "updateMarker: Failed to unwrap Marker object");
         return undefined;
     }
     
-    // 从 Marker 获取数据
+    // Extract data from the Marker
     auto annotationId = marker->getAnnotationId();
     if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
         Logger::error("NativeMapView", "updateMarker: Marker has invalid ID (not added to map yet)");
@@ -363,7 +363,7 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
                   annotationId, position.y, position.x, iconId.c_str());
     
     try {
-        // 更新 Marker (使用 SymbolAnnotation)
+        // Update the marker using SymbolAnnotation
         mbgl::SymbolAnnotation annotation(position, iconId);
         instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
             m->updateAnnotation(annotationId, annotation);
@@ -382,7 +382,7 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -396,7 +396,7 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "addMarkers: Failed to unwrap instance");
@@ -408,14 +408,14 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 检查参数是否是数组
+    // Verify that the argument is an array
     bool isArray = false;
     if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
         Logger::error("NativeMapView", "addMarkers: First argument must be an array");
         return undefined;
     }
     
-    // 获取数组长度
+    // Retrieve the array length
     uint32_t length = 0;
     if (napi_get_array_length(env, args[0], &length) != napi_ok) {
         Logger::error("NativeMapView", "addMarkers: Failed to get array length");
@@ -424,11 +424,11 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
     
     Logger::info("NativeMapView", "addMarkers: Processing %u markers", length);
     
-    // 存储生成的 annotation IDs
+    // Store the generated annotation IDs
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
     
-    // 遍历 Marker 数组（现在是 MarkerNAPI 对象）
+    // Iterate over the marker array (now MarkerNAPI objects)
     for (uint32_t i = 0; i < length; i++) {
         napi_value markerObj;
         if (napi_get_element(env, args[0], i, &markerObj) != napi_ok) {
@@ -436,18 +436,18 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
             continue;
         }
         
-        // Unwrap MarkerNAPI 对象
+        // Unwrap the MarkerNAPI object
         maplibre::harmony::MarkerNAPI* marker = nullptr;
         if (napi_unwrap(env, markerObj, reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
             Logger::error("NativeMapView", "[MarkerDebug] NAPI-Error: Failed to unwrap Marker at index %u", i);
             continue;
         }
         
-        // 直接从 MarkerNAPI 对象获取数据
+        // Pull data directly from the MarkerNAPI object
         auto position = marker->getPositionPoint();
         auto iconId = marker->getIconId();
         
-        // [MarkerDebug] 记录输入
+        // [MarkerDebug] Log the incoming data
         if (iconId.empty()) {
             Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Input: marker[%u] has EMPTY icon, may not be visible!", i);
             Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Warning: Use addAnnotationIcon() to add custom icon or ensure style has default marker icon");
@@ -457,14 +457,14 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
                      i, position.y, position.x, iconId.empty() ? "(empty)" : iconId.c_str());
         
         try {
-            // 创建 SymbolAnnotation
+            // Create a SymbolAnnotation
             mbgl::SymbolAnnotation annotation(position, iconId);
             
-            // 添加到地图并获取 ID
+            // Add it to the map and obtain the ID
             mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
             ids.push_back(annotationId);
             
-            // 设置 annotation ID 回 Marker
+            // Write the annotation ID back to the marker
             marker->setAnnotationId(annotationId);
             
             Logger::info("NativeMapView", "[MarkerDebug] NAPI-Result: marker[%u] created with ID=%lu", i, annotationId);
@@ -473,13 +473,13 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
         }
     }
     
-    // [MarkerDebug] 统计添加结果
+    // [MarkerDebug] Summarize the add results
     Logger::info("NativeMapView", "[MarkerDebug] NAPI-Summary: Added %zu/%u markers successfully", ids.size(), length);
     if (ids.size() < length) {
         Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Summary: ⚠️ %u markers failed to add", length - static_cast<uint32_t>(ids.size()));
     }
     
-    // 触发重绘
+    // Trigger a repaint
     if (!ids.empty()) {
         instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
         Logger::info("NativeMapView", "[MarkerDebug] NAPI-Repaint: Repaint triggered for %zu markers", ids.size());
@@ -487,14 +487,14 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
         Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Repaint: ⚠️ No markers added, skipping repaint");
     }
     
-    // 创建返回的 ID 数组
+    // Create the array of returned IDs
     napi_value resultArray;
     if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
         Logger::error("NativeMapView", "addMarkers: Failed to create result array");
         return undefined;
     }
     
-    // 填充 ID 数组
+    // Populate the ID array
     for (size_t i = 0; i < ids.size(); i++) {
         napi_value idValue;
         if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
@@ -507,8 +507,7 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::onLowMemory(napi_env env, napi_callback_info info) {
-    // 低内存处理由 Harmony 系统管理
-    // Low memory handling delegated to Harmony system
+    // Low memory handling is managed by the Harmony system
     NapiArgs args(env, info);
     return args.Undefined();
 }
@@ -517,7 +516,7 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -531,7 +530,7 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "addPolylines: Failed to unwrap instance");
@@ -543,25 +542,25 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 检查参数是否是数组
+    // Verify that the argument is an array
     bool isArray = false;
     if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
         Logger::error("NativeMapView", "addPolylines: First argument must be an array");
         return undefined;
     }
     
-    // 获取数组长度
+    // Retrieve the array length
     uint32_t length = 0;
     if (napi_get_array_length(env, args[0], &length) != napi_ok) {
         Logger::error("NativeMapView", "addPolylines: Failed to get array length");
         return undefined;
     }
     
-    // 存储生成的 annotation IDs
+    // Store the generated annotation IDs
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
     
-    // 遍历 Polyline 数组
+    // Iterate over the polyline array
     for (uint32_t i = 0; i < length; i++) {
         napi_value polylineObj;
         if (napi_get_element(env, args[0], i, &polylineObj) != napi_ok) {
@@ -569,7 +568,7 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
             continue;
         }
         
-        // Unwrap PolylineNAPI 对象
+        // Unwrap the PolylineNAPI object
         PolylineNAPI* polyline = nullptr;
         if (napi_unwrap(env, polylineObj, reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
             Logger::error("NativeMapView", "addPolylines: Failed to unwrap Polyline at index %u", i);
@@ -577,33 +576,33 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
         }
         
         try {
-            // 转换为 LineAnnotation
+            // Convert to a LineAnnotation
             mbgl::LineAnnotation annotation = polyline->toAnnotation();
             
-            // 添加到地图并获取 ID
+            // Add it to the map and obtain the ID
             mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
             ids.push_back(annotationId);
             
-            // 设置 annotation ID 回 Polyline
+            // Write the annotation ID back to the polyline
             polyline->setAnnotationId(annotationId);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "addPolylines: polyline[%u] failed to add - %s", i, e.what());
         }
     }
     
-    // 触发重绘
+    // Trigger a repaint
     if (!ids.empty()) {
         instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
     }
     
-    // 创建返回的 ID 数组
+    // Create the array of returned IDs
     napi_value resultArray;
     if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
         Logger::error("NativeMapView", "addPolylines: Failed to create result array");
         return undefined;
     }
     
-    // 填充 ID 数组
+    // Populate the ID array
     for (size_t i = 0; i < ids.size(); i++) {
         napi_value idValue;
         if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
@@ -618,7 +617,7 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -632,7 +631,7 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "addPolygons: Failed to unwrap instance");
@@ -644,25 +643,25 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 检查参数是否是数组
+    // Verify that the argument is an array
     bool isArray = false;
     if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
         Logger::error("NativeMapView", "addPolygons: First argument must be an array");
         return undefined;
     }
     
-    // 获取数组长度
+    // Retrieve the array length
     uint32_t length = 0;
     if (napi_get_array_length(env, args[0], &length) != napi_ok) {
         Logger::error("NativeMapView", "addPolygons: Failed to get array length");
         return undefined;
     }
     
-    // 存储生成的 annotation IDs
+    // Store the generated annotation IDs
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
     
-    // 遍历 Polygon 数组
+    // Iterate over the polygon array
     for (uint32_t i = 0; i < length; i++) {
         napi_value polygonObj;
         if (napi_get_element(env, args[0], i, &polygonObj) != napi_ok) {
@@ -670,7 +669,7 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
             continue;
         }
         
-        // Unwrap PolygonNAPI 对象
+        // Unwrap the PolygonNAPI object
         PolygonNAPI* polygon = nullptr;
         if (napi_unwrap(env, polygonObj, reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
             Logger::error("NativeMapView", "addPolygons: Failed to unwrap Polygon at index %u", i);
@@ -678,33 +677,33 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
         }
         
         try {
-            // 转换为 FillAnnotation
+            // Convert to a FillAnnotation
             mbgl::FillAnnotation annotation = polygon->toAnnotation();
             
-            // 添加到地图并获取 ID
+            // Add it to the map and obtain the ID
             mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
             ids.push_back(annotationId);
             
-            // 设置 annotation ID 回 Polygon
+            // Write the annotation ID back to the polygon
             polygon->setAnnotationId(annotationId);
         } catch (const std::exception& e) {
             Logger::error("NativeMapView", "addPolygons: polygon[%u] failed to add - %s", i, e.what());
         }
     }
     
-    // 触发重绘
+    // Trigger a repaint
     if (!ids.empty()) {
         instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
     }
     
-    // 创建返回的 ID 数组
+    // Create the array of returned IDs
     napi_value resultArray;
     if (napi_create_array_with_length(env, ids.size(), &resultArray) != napi_ok) {
         Logger::error("NativeMapView", "addPolygons: Failed to create result array");
         return undefined;
     }
     
-    // 填充 ID 数组
+    // Populate the ID array
     for (size_t i = 0; i < ids.size(); i++) {
         napi_value idValue;
         if (napi_create_int64(env, static_cast<int64_t>(ids[i]), &idValue) == napi_ok) {
@@ -719,7 +718,7 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -733,7 +732,7 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "updatePolyline: Failed to unwrap NativeMapView instance");
@@ -745,14 +744,14 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
         return undefined;
     }
     
-    // Unwrap Polyline NAPI 对象
+    // Unwrap the Polyline NAPI object
     PolylineNAPI* polyline = nullptr;
     if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
         Logger::error("NativeMapView", "updatePolyline: Failed to unwrap Polyline object");
         return undefined;
     }
     
-    // 从 Polyline 获取数据
+    // Extract data from the polyline
     auto annotationId = polyline->getAnnotationId();
     if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
         Logger::error("NativeMapView", "updatePolyline: Polyline has invalid ID (not added to map yet)");
@@ -760,7 +759,7 @@ napi_value NativeMapView::updatePolyline(napi_env env, napi_callback_info info) 
     }
     
     try {
-        // 更新 Polyline (使用 LineAnnotation)
+        // Update the polyline using LineAnnotation
         mbgl::LineAnnotation annotation = polyline->toAnnotation();
         instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
             m->updateAnnotation(annotationId, annotation);
@@ -777,7 +776,7 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -791,7 +790,7 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "updatePolygon: Failed to unwrap NativeMapView instance");
@@ -803,14 +802,14 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // Unwrap Polygon NAPI 对象
+    // Unwrap the Polygon NAPI object
     PolygonNAPI* polygon = nullptr;
     if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
         Logger::error("NativeMapView", "updatePolygon: Failed to unwrap Polygon object");
         return undefined;
     }
     
-    // 从 Polygon 获取数据
+    // Extract data from the polygon
     auto annotationId = polygon->getAnnotationId();
     if (annotationId == static_cast<mbgl::AnnotationID>(-1)) {
         Logger::error("NativeMapView", "updatePolygon: Polygon has invalid ID (not added to map yet)");
@@ -818,7 +817,7 @@ napi_value NativeMapView::updatePolygon(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 更新 Polygon (使用 FillAnnotation)
+        // Update the polygon using FillAnnotation
         mbgl::FillAnnotation annotation = polygon->toAnnotation();
         
         instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
@@ -836,7 +835,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -850,7 +849,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "removeAnnotations: Failed to unwrap instance");
@@ -862,14 +861,14 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         return undefined;
     }
     
-    // 检查参数是否是数组
+    // Verify that the argument is an array
     bool isArray = false;
     if (napi_is_array(env, args[0], &isArray) != napi_ok || !isArray) {
         Logger::error("NativeMapView", "removeAnnotations: First argument must be an array");
         return undefined;
     }
     
-    // 获取数组长度
+    // Retrieve the array length
     uint32_t length = 0;
     if (napi_get_array_length(env, args[0], &length) != napi_ok) {
         Logger::error("NativeMapView", "removeAnnotations: Failed to get array length");
@@ -878,7 +877,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
     
     Logger::info("NativeMapView", "removeAnnotations: Removing %u annotations", length);
     
-    // 遍历 ID 数组并删除
+    // Iterate through the ID array and delete each entry
     for (uint32_t i = 0; i < length; i++) {
         napi_value idValue;
         if (napi_get_element(env, args[0], i, &idValue) != napi_ok) {
@@ -893,7 +892,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         }
         
         if (annotationId == -1) {
-            continue; // 跳过无效 ID
+            continue; // Skip invalid IDs
         }
         
         try {
@@ -903,7 +902,7 @@ napi_value NativeMapView::removeAnnotations(napi_env env, napi_callback_info inf
         }
     }
     
-    // 触发重绘
+    // Trigger a repaint
     if (length > 0) {
         instance->invokeOnMapThread([](mbgl::Map* m){ m->triggerRepaint(); });
     }
@@ -1008,7 +1007,7 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
     Logger::info("NativeMapView", "addAnnotationIcon: symbol=%s, width=%d, height=%d, scale=%f, pixelLength=%zu", 
                   symbol.c_str(), width, height, scale, pixelLength);
     
-    // 在渲染线程构造并添加图片，避免跨线程移动 unique_ptr
+    // Construct and add the image on the render thread to avoid moving a unique_ptr across threads
     {
         size_t expectedSize = static_cast<size_t>(width) * static_cast<size_t>(height) * 4; // RGBA
         if (pixelLength >= expectedSize && pixelData) {
@@ -1038,7 +1037,7 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取 this 对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -1052,7 +1051,7 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "removeAnnotationIcon: Failed to unwrap instance");
@@ -1064,7 +1063,7 @@ napi_value NativeMapView::removeAnnotationIcon(napi_env env, napi_callback_info 
         return undefined;
     }
     
-    // 获取 symbol 字符串
+    // Fetch the symbol string
     size_t symbolLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &symbolLength);
     std::string symbol;
@@ -1089,7 +1088,7 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
     napi_value result;
     napi_create_double(env, 0.0, &result);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -1104,7 +1103,7 @@ napi_value NativeMapView::getTopOffsetPixelsForAnnotationSymbol(napi_env env, na
         return result;
     }
     
-    // 获取 symbol 名称
+    // Fetch the symbol name
     size_t symbolLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &symbolLength);
     std::string symbolName(symbolLength, '\0');

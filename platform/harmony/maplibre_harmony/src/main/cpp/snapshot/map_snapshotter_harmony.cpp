@@ -20,7 +20,7 @@ MapSnapshotterHarmony::MapSnapshotterHarmony(
     pixelRatio_(options.pixelRatio),
     showLogo_(options.showLogo) {
     
-    // 创建核心 MapSnapshotter
+    // Create the core MapSnapshotter
     mbgl::Size size{options.width, options.height};
     
     std::optional<std::string> localFont = options.localFontFamily.empty() 
@@ -39,17 +39,17 @@ MapSnapshotterHarmony::MapSnapshotterHarmony(
     Logger::info("MapSnapshotterHarmony", "Created with size: %dx%d, pixelRatio: %.2f",
                  options.width, options.height, pixelRatio_);
 
-    // 设置相机（如果提供）
+    // Configure the camera if provided
     if (options.camera) {
         snapshotter_->setCameraOptions(*options.camera);
     }
 
-    // 设置区域（如果提供）
+    // Configure the region if provided
     if (options.region) {
         snapshotter_->setRegion(*options.region);
     }
 
-    // 设置样式
+    // Configure the style
     if (options.styleJSON && !options.styleJSON->empty()) {
         snapshotter_->setStyleJSON(*options.styleJSON);
     } else if (!options.styleURL.empty()) {
@@ -142,7 +142,7 @@ void MapSnapshotterHarmony::snapshot(SnapshotCallback callback) {
                                      std::vector<std::string> attributions,
                                      mbgl::MapSnapshotter::PointForFn pointForFn,
                                      mbgl::MapSnapshotter::LatLngForFn latLngForFn) {
-        // 传递完整回调参数，包含坐标转换函数
+        // Forward all callback arguments, including coordinate conversion functions
         callback(err, std::move(image), std::move(attributions), pointForFn, latLngForFn);
     });
 }
@@ -153,7 +153,7 @@ void MapSnapshotterHarmony::cancel() {
     snapshotter_->cancel();
 }
 
-// MapSnapshotterObserver 实现
+// MapSnapshotterObserver implementation
 
 void MapSnapshotterHarmony::onDidFailLoadingStyle(const std::string& error) {
     Logger::error("MapSnapshotterHarmony", "Failed loading style: %s", error.c_str());

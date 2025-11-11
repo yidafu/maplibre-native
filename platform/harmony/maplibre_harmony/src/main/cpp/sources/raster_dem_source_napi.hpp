@@ -10,21 +10,21 @@ namespace harmony {
 
 /**
  * RasterDemSourceNAPI - NAPI wrapper for Raster DEM Source
- * 
- * 封装 mbgl::style::RasterDEMSource，提供面向对象的数字高程模型数据源接口
+ *
+ * Wraps mbgl::style::RasterDEMSource to expose an object-oriented DEM interface.
  */
 class RasterDemSourceNAPI {
 public:
     RasterDemSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterDEMSource> source);
-    // 从现有 Source 创建（使用 WeakPtr，不拥有所有权）
+    // Construct from an existing Source (uses WeakPtr, does not take ownership)
     RasterDemSourceNAPI(mbgl::style::RasterDEMSource* sourcePtr);
     
     ~RasterDemSourceNAPI();
     
-    // NAPI 注册
+    // Register NAPI bindings
     static napi_value Init(napi_env env, napi_value exports);
 static napi_value New(napi_env env, napi_callback_info info);
-    // 从现有 native 对象创建 NAPI 实例
+    // Create a NAPI instance from an existing native object
     static napi_value CreateInstance(napi_env env, mbgl::style::RasterDEMSource* sourcePtr);
     
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
@@ -36,7 +36,7 @@ static napi_value New(napi_env env, napi_callback_info info);
     // Setters
     static napi_value SetUrl(napi_env env, napi_callback_info info);
     
-    // 内部方法
+    // Internal helpers
     std::string getId() const { return id; }
     mbgl::style::RasterDEMSource* getSource() const { 
         if (!source && weakSource) {
@@ -45,13 +45,13 @@ static napi_value New(napi_env env, napi_callback_info info);
         return source.get(); 
     }
     
-    // 释放所有权
+    // Release ownership
     std::unique_ptr<mbgl::style::Source> releaseSource() {
         ownsSource = false;
         return std::move(source);
     }
     
-    // 在 addSource 后调用，创建 WeakPtr
+    // After addSource, create a WeakPtr
     void attachToStyle(mbgl::style::RasterDEMSource* sourcePtr) {
         if (sourcePtr) {
             weakSource = sourcePtr->makeWeakPtr();

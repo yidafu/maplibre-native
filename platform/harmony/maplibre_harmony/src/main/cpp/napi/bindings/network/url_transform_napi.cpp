@@ -15,20 +15,20 @@ using mbgl::harmony::napi::NapiArgs;
 namespace mbgl {
 namespace harmony {
 
-// 静态成员初始化
+// Static member initialization
 URLTransformNAPI::CallbackContext* URLTransformNAPI::callbackContext_ = nullptr;
 
-// 线程安全函数调用的数据结构
+// Data structure for invoking the threadsafe function
 struct TransformCallData {
     int kind;
     std::string url;
-    std::string* result;  // 指向结果字符串的指针
-    std::mutex* mutex;    // 用于同步的互斥锁
-    std::condition_variable* cv;  // 用于同步的条件变量
-    bool* done;           // 完成标志
+    std::string* result;  // Pointer to the result string
+    std::mutex* mutex;    // Mutex used for synchronization
+    std::condition_variable* cv;  // Condition variable used for synchronization
+    bool* done;           // Completion flag
 };
 
-// 线程安全函数的回调（在JS线程中执行）
+// Threadsafe function callback (runs on the JS thread)
 static void CallJS(napi_env env, napi_value js_callback, void* context, void* data) {
     if (env == nullptr || js_callback == nullptr || data == nullptr) {
         return;
@@ -37,17 +37,17 @@ static void CallJS(napi_env env, napi_value js_callback, void* context, void* da
     TransformCallData* callData = static_cast<TransformCallData*>(data);
 
     try {
-        // 准备参数
+        // Prepare arguments
         napi_value args[2];
         napi_create_int32(env, callData->kind, &args[0]);
         napi_create_string_utf8(env, callData->url.c_str(), NAPI_AUTO_LENGTH, &args[1]);
 
-        // 调用JS回调
+        // Invoke the JS callback
         napi_value result_value;
         napi_status status = napi_call_function(env, nullptr, js_callback, 2, args, &result_value);
 
         if (status == napi_ok) {
-            // 获取返回值
+            // Retrieve the return value
             size_t result_length;
             napi_get_value_string_utf8(env, result_value, nullptr, 0, &result_length);
             
@@ -56,7 +56,7 @@ static void CallJS(napi_env env, napi_value js_callback, void* context, void* da
                 napi_get_value_string_utf8(env, result_value, &result_str[0], result_length + 1, nullptr);
                 *callData->result = result_str;
             } else {
-                // 回调返回空字符串或undefined，使用原URL
+                // Callback returned an empty string or undefined; use the original URL
                 *callData->result = callData->url;
             }
         } else {
@@ -72,7 +72,7 @@ static void CallJS(napi_env env, napi_value js_callback, void* context, void* da
         *callData->result = callData->url;
     }
 
-    // 通知C++线程回调已完成
+    // Notify the C++ thread that the callback completed
     {
         std::lock_guard<std::mutex> lock(*callData->mutex);
         *callData->done = true;
@@ -107,7 +107,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         return nullptr;
     }
 
-    // 清理旧的回调上下文
+    // Clean up the previous callback context
     if (callbackContext_ != nullptr) {
         if (callbackContext_->tsfn != nullptr) {
             napi_release_threadsafe_function(callbackContext_->tsfn, napi_tsfn_abort);
@@ -119,14 +119,14 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         callbackContext_ = nullptr;
     }
 
-    // 创建新的回调上下文
+    // Create a new callback context
     callbackContext_ = new CallbackContext();
     callbackContext_->env = env;
 
-    // 创建持久引用
+    // Create a persistent reference
     napi_create_reference(env, callbackValue, 1, &callbackContext_->callbackRef);
 
-    // 创建线程安全函数
+    // Create the threadsafe function
     napi_value async_resource_name;
     napi_create_string_utf8(env, "URLTransformCallback", NAPI_AUTO_LENGTH, &async_resource_name);
 
@@ -135,8 +135,8 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         callbackValue,
         nullptr,
         async_resource_name,
-        0,  // 无限队列大小
-        1,  // 初始线程计数
+        0,  // Unlimited queue size
+        1,  // Initial thread count
         nullptr,
         nullptr,
         nullptr,
@@ -151,7 +151,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         return nullptr;
     }
 
-    // 设置C++层的转换回调
+    // Install the C++ conversion callback
     URLTransformManager::getInstance().setTransformCallback(
         [](mbgl::Resource::Kind kind, const std::string& url) -> std::string {
             if (callbackContext_ == nullptr || callbackContext_->tsfn == nullptr) {
@@ -159,7 +159,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
             }
 
             try {
-                // 准备调用数据
+                // Prepare the call data
                 std::string result;
                 std::mutex mutex;
                 std::condition_variable cv;
@@ -174,7 +174,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
                     &done
                 };
 
-                // 调用线程安全函数
+                // Invoke the threadsafe function
                 napi_status status = napi_call_threadsafe_function(
                     callbackContext_->tsfn,
                     &callData,
@@ -185,7 +185,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
                     return url;
                 }
 
-                // 等待回调完成（超时保护）
+                // Wait for the callback to finish (with timeout protection)
                 std::unique_lock<std::mutex> lock(mutex);
                 if (!cv.wait_for(lock, std::chrono::seconds(5), [&done] { return done; })) {
                     Logger::error("URLTransformNAPI", "Timeout waiting for JS callback");
@@ -214,7 +214,7 @@ napi_value URLTransformNAPI::ClearResourceTransformCallback(napi_env env, napi_c
         return nullptr;
     }
 
-    // 清理回调上下文
+    // Clean up the callback context
     if (callbackContext_ != nullptr) {
         if (callbackContext_->tsfn != nullptr) {
             napi_release_threadsafe_function(callbackContext_->tsfn, napi_tsfn_abort);
@@ -228,7 +228,7 @@ napi_value URLTransformNAPI::ClearResourceTransformCallback(napi_env env, napi_c
         callbackContext_ = nullptr;
     }
 
-    // 清除C++层的回调
+    // Clear the C++ callback
     URLTransformManager::getInstance().clearTransformCallback();
 
     Logger::info("URLTransformNAPI", "Resource transform callback cleared");

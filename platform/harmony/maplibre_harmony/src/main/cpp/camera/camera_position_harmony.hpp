@@ -7,30 +7,30 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * CameraPosition NAPI 转换辅助类
- * 
- * 用于在 mbgl::CameraOptions (C++) 和 ETS CameraPosition 对象之间进行转换
- * ETS 定义: { target: LatLng, zoom: number, bearing: number, tilt: number, padding: EdgeInsets }
+ * CameraPosition NAPI conversion helper
+ *
+ * Bridges mbgl::CameraOptions (C++) with ETS CameraPosition objects.
+ * ETS definition: { target: LatLng, zoom: number, bearing: number, tilt: number, padding: EdgeInsets }
  * EdgeInsets: { left: number, top: number, right: number, bottom: number }
  */
 class CameraPositionHarmony {
 public:
     /**
-     * 创建 NAPI CameraPosition 对象
-     * @param env NAPI 环境
-     * @param options mbgl::CameraOptions C++ 对象
-     * @param pixelRatio 像素比例（用于转换 padding）
-     * @return NAPI 对象
+     * Create a CameraPosition NAPI object.
+     * @param env NAPI environment
+     * @param options mbgl::CameraOptions C++ object
+     * @param pixelRatio Pixel ratio (used to scale padding)
+     * @return NAPI object
      */
     static napi_value CreateCameraPositionObject(napi_env env, const mbgl::CameraOptions& options, float pixelRatio);
     
     /**
-     * 从 NAPI 值解析 CameraOptions
-     * @param env NAPI 环境
-     * @param value NAPI 对象
-     * @param pixelRatio 像素比例（用于转换 padding）
-     * @param outOptions 输出的 mbgl::CameraOptions
-     * @return 解析是否成功
+     * Parse CameraOptions from a NAPI value.
+     * @param env NAPI environment
+     * @param value NAPI object
+     * @param pixelRatio Pixel ratio (used to scale padding)
+     * @param outOptions Output mbgl::CameraOptions
+     * @return Whether parsing succeeded
      */
     static bool ParseCameraOptions(napi_env env, napi_value value, float pixelRatio, mbgl::CameraOptions& outOptions);
 };

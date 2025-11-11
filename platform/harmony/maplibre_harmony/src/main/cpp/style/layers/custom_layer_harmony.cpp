@@ -8,7 +8,7 @@ using mbgl::harmony::Logger;
 namespace mbgl {
 namespace harmony {
 
-// 顶点着色器源码 - OpenGL ES 3.0
+// Vertex shader source - OpenGL ES 3.0
 const char* ExampleCustomLayerHost::vertexShaderSource_ = R"(
 #version 300 es
 layout (location = 0) in vec2 a_pos;
@@ -17,7 +17,7 @@ void main() {
 }
 )";
 
-// 片段着色器源码 - OpenGL ES 3.0
+// Fragment shader source - OpenGL ES 3.0
 const char* ExampleCustomLayerHost::fragmentShaderSource_ = R"(
 #version 300 es
 precision highp float;
@@ -36,7 +36,7 @@ ExampleCustomLayerHost::ExampleCustomLayerHost()
     , positionAttrib_(0)
     , colorUniform_(0)
     , initialized_(false) {
-    // 默认颜色：绿色，半透明
+    // Default color: semi-transparent green
     color_[0] = 0.0f;
     color_[1] = 1.0f;
     color_[2] = 0.0f;
@@ -117,13 +117,13 @@ bool ExampleCustomLayerHost::linkProgram(GLuint program) {
 }
 
 GLuint ExampleCustomLayerHost::createShaderProgram() {
-    // 编译顶点着色器
+    // Compile the vertex shader
     vertexShader_ = compileShader(GL_VERTEX_SHADER, vertexShaderSource_);
     if (vertexShader_ == 0) {
         return 0;
     }
 
-    // 编译片段着色器
+    // Compile the fragment shader
     fragmentShader_ = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource_);
     if (fragmentShader_ == 0) {
         glDeleteShader(vertexShader_);
@@ -131,7 +131,7 @@ GLuint ExampleCustomLayerHost::createShaderProgram() {
         return 0;
     }
 
-    // 创建程序
+    // Create the program
     GLuint program = glCreateProgram();
     if (program == 0) {
         Logger::error("ExampleCustomLayerHost", "Failed to create program");
@@ -142,11 +142,11 @@ GLuint ExampleCustomLayerHost::createShaderProgram() {
         return 0;
     }
 
-    // 附加着色器
+    // Attach shaders
     glAttachShader(program, vertexShader_);
     glAttachShader(program, fragmentShader_);
 
-    // 链接程序
+    // Link the program
     if (!linkProgram(program)) {
         glDeleteProgram(program);
         glDeleteShader(vertexShader_);
@@ -167,14 +167,14 @@ void ExampleCustomLayerHost::initialize() {
         return;
     }
 
-    // 创建着色器程序
+    // Create the shader program
     program_ = createShaderProgram();
     if (program_ == 0) {
         Logger::error("ExampleCustomLayerHost", "Failed to create shader program");
         return;
     }
 
-    // 获取属性和uniform位置
+    // Retrieve attribute and uniform locations
     positionAttrib_ = glGetAttribLocation(program_, "a_pos");
     colorUniform_ = glGetUniformLocation(program_, "u_color");
 
@@ -182,12 +182,12 @@ void ExampleCustomLayerHost::initialize() {
                 "Position attrib: %d, Color uniform: %d", 
                 positionAttrib_, colorUniform_);
 
-    // 创建顶点缓冲 - 全屏矩形
+    // Create the vertex buffer for a full-screen quad
     GLfloat vertices[] = {
-        -1.0f, -1.0f,  // 左下
-         1.0f, -1.0f,  // 右下
-        -1.0f,  1.0f,  // 左上
-         1.0f,  1.0f   // 右上
+        -1.0f, -1.0f,  // bottom-left
+         1.0f, -1.0f,  // bottom-right
+        -1.0f,  1.0f,  // top-left
+         1.0f,  1.0f   // top-right
     };
 
     glGenBuffers(1, &buffer_);
@@ -206,32 +206,32 @@ void ExampleCustomLayerHost::render(const mbgl::style::CustomLayerRenderParamete
         return;
     }
 
-    // 使用着色器程序
+    // Use the shader program
     glUseProgram(program_);
 
-    // 绑定顶点缓冲
+    // Bind the vertex buffer
     glBindBuffer(GL_ARRAY_BUFFER, buffer_);
     glEnableVertexAttribArray(positionAttrib_);
     glVertexAttribPointer(positionAttrib_, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-    // 设置颜色uniform（线程安全）
+    // Set the color uniform (thread-safe)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         glUniform4fv(colorUniform_, 1, color_);
     }
 
-    // 禁用深度和模板测试
+    // Disable depth and stencil tests
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
 
-    // 启用混合
+    // Enable blending
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // 绘制
+    // Draw
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-    // 清理
+    // Cleanup
     glDisableVertexAttribArray(positionAttrib_);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glUseProgram(0);
@@ -242,7 +242,7 @@ void ExampleCustomLayerHost::render(const mbgl::style::CustomLayerRenderParamete
 void ExampleCustomLayerHost::contextLost() {
     Logger::info("ExampleCustomLayerHost", "Context lost");
     
-    // OpenGL 上下文丢失，重置所有句柄
+    // OpenGL context lost; reset all handles
     program_ = 0;
     vertexShader_ = 0;
     fragmentShader_ = 0;
@@ -257,13 +257,13 @@ void ExampleCustomLayerHost::deinitialize() {
         return;
     }
 
-    // 删除缓冲
+    // Delete the buffer
     if (buffer_ != 0) {
         glDeleteBuffers(1, &buffer_);
         buffer_ = 0;
     }
 
-    // 分离和删除着色器
+    // Detach and delete shaders
     if (program_ != 0) {
         if (vertexShader_ != 0) {
             glDetachShader(program_, vertexShader_);

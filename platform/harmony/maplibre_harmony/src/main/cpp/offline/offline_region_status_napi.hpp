@@ -7,11 +7,11 @@ namespace maplibre {
 namespace harmony {
 
 /**
- * 离线区域状态相关的 NAPI 辅助函数
+ * NAPI helpers for offline region status conversion.
  */
 class OfflineRegionStatusNAPI {
 public:
-    // 从 C++ 状态转换为 NAPI 对象
+    // Convert a C++ status struct into a NAPI object
     static napi_value ToNapiObject(napi_env env, const mbgl::OfflineRegionStatus& status);
 };
 

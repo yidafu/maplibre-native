@@ -7,39 +7,39 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * MapLibreSettingsNAPI - NAPI 绑定类
- * 
- * 将 MapLibreSettings 的功能暴露给 ArkTS 层
+ * MapLibreSettingsNAPI - NAPI binding class
+ *
+ * Exposes MapLibreSettings functionality to the ArkTS layer.
  */
 class MapLibreSettingsNAPI {
 public:
     /**
-     * 初始化并注册 NAPI 方法
-     * @param env NAPI 环境
-     * @param exports 导出对象
+     * Initialize and register NAPI methods.
+     * @param env NAPI environment
+     * @param exports Exports object
      */
     static void Init(napi_env env, napi_value exports);
 
 private:
-    // 设置 Access Token
+    // Set the access token
     static napi_value SetAccessToken(napi_env env, napi_callback_info info);
     
-    // 获取 Access Token
+    // Get the access token
     static napi_value GetAccessToken(napi_env env, napi_callback_info info);
     
-    // 使用 Mapbox 配置
+    // Apply Mapbox configuration
     static napi_value UseMapboxConfiguration(napi_env env, napi_callback_info info);
     
-    // 使用 MapTiler 配置
+    // Apply MapTiler configuration
     static napi_value UseMapTilerConfiguration(napi_env env, napi_callback_info info);
     
-    // 使用 MapLibre 配置
+    // Apply MapLibre configuration
     static napi_value UseMapLibreConfiguration(napi_env env, napi_callback_info info);
     
-    // 设置 Base URL
+    // Set the base URL
     static napi_value SetApiBaseURL(napi_env env, napi_callback_info info);
     
-    // 获取 Base URL
+    // Get the base URL
     static napi_value GetApiBaseURL(napi_env env, napi_callback_info info);
 };
 

@@ -9,7 +9,7 @@
 #include <mbgl/style/sources/raster_source.hpp>
 #include <mbgl/style/sources/raster_dem_source.hpp>
 #include <mbgl/style/sources/image_source.hpp>
-// Source NAPI 类
+// Source NAPI classes
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
 #include "sources/raster_source_napi.hpp"
@@ -22,7 +22,7 @@ using mbgl::harmony::Logger;
 namespace maplibre {
 namespace harmony {
 
-// ==================== Source 管理 ====================
+// ==================== Source management ====================
 
 napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
@@ -51,7 +51,7 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 从样式中移除 source
+        // Remove the source from the style
         mbgl::style::Source* source = style->map->getStyle().getSource(sourceId);
         if (!source) {
             Logger::error("StyleNAPI", "RemoveSource: Source not found: %s", sourceId.c_str());
@@ -98,7 +98,7 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 从样式获取 source
+        // Retrieve the source from the style
         mbgl::style::Source* source = style->map->getStyle().getSource(sourceId);
         if (!source) {
             Logger::info("StyleNAPI", "GetSource: Source not found: %s", sourceId.c_str());
@@ -107,7 +107,7 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
             return result;
         }
         
-        // 根据 source type 创建对应的 NAPI 实例
+        // Create the corresponding NAPI instance based on the source type
         Logger::info("StyleNAPI", "GetSource: %s (type: %d)", sourceId.c_str(), static_cast<int>(source->getType()));
         
         switch (source->getType()) {
@@ -159,10 +159,10 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 获取所有 sources
+        // Retrieve all sources
         const auto& sources = style->map->getStyle().getSources();
         
-        // 创建结果数组
+        // Create the result array
         napi_value result;
         napi_create_array_with_length(env, sources.size(), &result);
         
@@ -170,14 +170,14 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
         for (const auto& source : sources) {
             if (!source) continue;
             
-            // 创建 source 信息对象
+            // Create the source info object
             napi_value sourceObj;
             napi_create_object(env, &sourceObj);
             
             napi_value idValue = CreateStringValue(env, source->getID());
             napi_set_named_property(env, sourceObj, "id", idValue);
             
-            // 获取 source 类型
+            // Determine the source type
             std::string typeStr;
             switch (source->getType()) {
                 case mbgl::style::SourceType::Vector:

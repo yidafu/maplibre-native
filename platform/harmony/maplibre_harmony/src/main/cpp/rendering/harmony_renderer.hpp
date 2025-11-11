@@ -31,10 +31,10 @@ public:
     HarmonyRenderer();
     ~HarmonyRenderer();
     
-    // ✅ 设置 NativeMapView（用于转发 MapObserver 事件）
+    // ✅ Attach NativeMapView (used to forward MapObserver events)
     void setNativeMapView(NativeMapView* nativeMapView) { nativeMapView_ = nativeMapView; }
     
-    // ✅ MapObserver 方法 - 转发给 NativeMapView
+    // ✅ MapObserver methods forwarded to NativeMapView
     void onCameraWillChange(CameraChangeMode mode) override;
     void onCameraIsChanging() override;
     void onCameraDidChange(CameraChangeMode mode) override;
@@ -52,80 +52,80 @@ public:
     bool onCanRemoveUnusedStyleImage(const std::string& id) override;
     void onRegisterShaders(gfx::ShaderRegistry& registry) override;
     
-    // Shader 编译事件
+    // Shader compilation events
     void onPreCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) override;
     void onPostCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) override;
     void onShaderCompileFailed(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) override;
     
-    // Glyph 加载事件
+    // Glyph loading events
     void onGlyphsLoaded(const FontStack& stack, const GlyphRange& range) override;
     void onGlyphsError(const FontStack& stack, const GlyphRange& range, std::exception_ptr error) override;
     void onGlyphsRequested(const FontStack& stack, const GlyphRange& range) override;
     
-    // Sprite 加载事件
+    // Sprite loading events
     void onSpriteLoaded(const std::optional<style::Sprite>& sprite) override;
     void onSpriteError(const std::optional<style::Sprite>& sprite, std::exception_ptr error) override;
     void onSpriteRequested(const std::optional<style::Sprite>& sprite) override;
     
-    // Tile 操作事件
+    // Tile operation events
     void onTileAction(TileOperation operation, const OverscaledTileID& tileID, const std::string& sourceID) override;
     
-    // 初始化渲染器
+    // Initialize the renderer
     void initialize(int width, int height, float pixelRatio = 1.0f, const std::string& cachePath = "", 
                    const std::optional<std::string>& localIdeographFontFamily = std::nullopt);
     
-    // 设置OHNativeWindow
+    // Set the OHNativeWindow
     void setNativeWindow(OHNativeWindow* window);
     
-    // 获取 Map 引用（用于外部访问）
+    // Retrieve the Map reference (external access)
     Map* getMap();
     
-    // 调整大小
+    // Resize the renderer
     void resize(int width, int height);
     
-    // 请求渲染
+    // Request a render
     void requestRender();
     
-    // 设置渲染模式
+    // Configure the render mode
     void setRenderingMode(MapObserver::RenderMode mode);
     
-    // 暂停渲染
+    // Pause rendering
     void pause();
     
-    // 恢复渲染
+    // Resume rendering
     void resume();
     
-    // 停止所有网络请求
+    // Stop all network requests
     void stopAllRequests();
     
-    // 异步停止所有请求（参考 Android/iOS，使用回调而不是硬编码等待）
-    // onComplete: 所有异步操作停止后的回调
+    // Asynchronously stop all requests (mirrors Android/iOS, uses callback rather than blocking)
+    // onComplete: callback invoked when every asynchronous operation has stopped
     void stopAllRequestsAsync(std::function<void()> onComplete);
     
-    // 清理资源
+    // Clean up resources
     void cleanup();
     
-    // 获取渲染后端
+    // Access the renderer backend
     HarmonyRendererBackendImpl* getRendererBackend() const;
     
-    // 查询渲染特征
+    // Query rendered features
     std::vector<Feature> queryRenderedFeatures(const ScreenCoordinate& point,
                                                const RenderedQueryOptions& options = {}) const;
     std::vector<Feature> queryRenderedFeatures(const ScreenBox& box,
                                                const RenderedQueryOptions& options = {}) const;
     
-    // 查询数据源特征
+    // Query source features
     std::vector<Feature> querySourceFeatures(const std::string& sourceId,
                                             const SourceQueryOptions& options = {}) const;
     
-    // FPS 测量（参考 Android MapRenderer）
+    // FPS measurement (aligned with Android MapRenderer)
     void setOnFpsChangedCallback(std::function<void(double)> callback);
     void enableFpsMeasurement(bool enable);
     
-    // 📝 实例标识
+    // 📝 Instance identifier
     std::string getInstanceId() const { return instanceId_; }
     
-    // 🔀 便利的线程切换方法（不需要 tag 参数）
+    // 🔀 Convenience thread helper (no tag parameter required)
     void runOnRenderThread(std::function<void()>&& fn);
     bool isOnRenderThread() const;
 
@@ -138,8 +138,8 @@ public:
     void waitForEmpty(const util::SimpleIdentity = util::SimpleIdentity::Empty) override;
 
 private:
-    std::string instanceId_;  // 唯一标识符
-    std::unique_ptr<HarmonyMapRenderThread> mapRenderThread_;  // Map+渲染线程
+    std::string instanceId_;  // Unique identifier
+    std::unique_ptr<HarmonyMapRenderThread> mapRenderThread_;  // Combined Map + render thread
     int width = 0;
     int height = 0;
     float pixelRatio = 1.0f;
@@ -149,7 +149,7 @@ private:
     util::SimpleIdentity uniqueID;
     std::shared_ptr<mapbox::base::WeakPtrFactory<Scheduler>> weakFactory;
     
-    // ✅ NativeMapView 引用（用于转发 MapObserver 事件）
+    // ✅ NativeMapView reference (for forwarding MapObserver events)
     NativeMapView* nativeMapView_ = nullptr;
 };
 

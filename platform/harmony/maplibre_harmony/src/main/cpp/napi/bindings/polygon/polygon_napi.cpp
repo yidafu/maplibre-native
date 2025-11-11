@@ -255,7 +255,7 @@ mbgl::FillAnnotation PolygonNAPI::toAnnotation() const {
     annotation.opacity = fillAlpha;
     annotation.color = fillColor;
     annotation.outlineColor = strokeColor;
-    // 注意：FillAnnotation 不支持 outlineWidth，strokeWidth 属性暂时无法在核心层使用
+    // Note: FillAnnotation does not support outlineWidth; strokeWidth is currently unavailable in core
     
     return annotation;
 }

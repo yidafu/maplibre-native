@@ -9,79 +9,70 @@ namespace maplibre {
 namespace harmony {
 
 /**
- * GeoJsonSourceNAPI - NAPI wrapper for GeoJSON Source
- * 
- * 封装 mbgl::style::GeoJSONSource，提供面向对象的 GeoJSON 数据源接口
- * 类似于 Android 的 GeoJsonSource 类
+ * GeoJsonSourceNAPI - NAPI wrapper for GeoJSON sources.
+ *
+ * Wraps mbgl::style::GeoJSONSource to provide an object-oriented interface,
+ * similar to the Android GeoJsonSource class.
  */
 class GeoJsonSourceNAPI {
 public:
     GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source);
-    // 从现有 Source 创建（使用 WeakPtr，不拥有所有权）
+    // Construct from an existing source (uses WeakPtr, does not take ownership)
     GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr);
     
     ~GeoJsonSourceNAPI();
     
-    // NAPI 注册
+    // Register NAPI bindings
     static napi_value Init(napi_env env, napi_value exports);
     
-    // 构造函数回调
+    // Constructor callback
     static napi_value New(napi_env env, napi_callback_info info);
     
-    // 从现有 native 对象创建 NAPI 实例
+    // Create a NAPI instance from an existing native object
     static napi_value CreateInstance(napi_env env, mbgl::style::GeoJSONSource* sourcePtr);
     
-    // 析构函数回调
+    // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     // Getters
     static napi_value GetId(napi_env env, napi_callback_info info);
     
-    // 数据管理
+    // Data management
     static napi_value SetGeoJson(napi_env env, napi_callback_info info);
     static napi_value SetGeoJsonSync(napi_env env, napi_callback_info info);
     static napi_value SetUrl(napi_env env, napi_callback_info info);
     static napi_value GetUrl(napi_env env, napi_callback_info info);
     
-    // 查询功能
+    // Query helpers
     static napi_value QuerySourceFeatures(napi_env env, napi_callback_info info);
     
-    // 聚类功能
+    // Clustering helpers
     static napi_value GetClusterChildren(napi_env env, napi_callback_info info);
     static napi_value GetClusterLeaves(napi_env env, napi_callback_info info);
     static napi_value GetClusterExpansionZoom(napi_env env, napi_callback_info info);
     
-    // 内部方法
+    // Internal helpers
     std::string getId() const { return id; }
-    mbgl::style::GeoJSONSource* getSource() const { 
-        // 如果所有权已转移，使用 WeakPtr
-        if (!source && weakSource) {
-            return static_cast<mbgl::style::GeoJSONSource*>(weakSource.get());
-        }
-        return source.get(); 
-    }
+    mbgl::style::GeoJSONSource* getSource() const;
     
-    // 释放所有权（用于 Style.addSource）
+    // Release ownership (used when Style.addSource takes over)
     std::unique_ptr<mbgl::style::Source> releaseSource() {
         ownsSource = false;
         return std::move(source);
     }
     
-    // 在 addSource 后调用，创建 WeakPtr（类似 iOS 方案）
-    void attachToStyle(mbgl::style::GeoJSONSource* sourcePtr) {
-        if (sourcePtr) {
-            weakSource = sourcePtr->makeWeakPtr();
-        }
-    }
+    // Create the WeakPtr after addSource (mirrors the iOS approach)
+    void attachToStyle(mbgl::style::GeoJSONSource* sourcePtr);
     
-    // 构造函数引用
+    // Constructor reference
     static napi_ref constructor;
     
 private:
     std::string id;
     std::unique_ptr<mbgl::style::GeoJSONSource> source;
-    bool ownsSource;  // 标记是否拥有 source 所有权
-    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;  // WeakPtr，在所有权转移后使用
+    bool ownsSource;  // Indicates whether this wrapper owns the source
+    mapbox::base::WeakPtr<mbgl::style::Source> weakSource;  // WeakPtr used after ownership transfer
+    mbgl::style::GeoJSONSource* rawSourceFallback = nullptr; // Temporary raw pointer when WeakPtr creation fails
 };
 
 } // namespace harmony

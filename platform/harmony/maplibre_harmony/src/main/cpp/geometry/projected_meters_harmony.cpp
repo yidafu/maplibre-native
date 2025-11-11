@@ -16,12 +16,12 @@ napi_value ProjectedMetersHarmony::CreateProjectedMetersObject(napi_env env, con
         return undefined;
     }
     
-    // 创建 northing 属性
+    // Create northing property
     napi_value northingValue;
     napi_create_double(env, projectedMeters.northing(), &northingValue);
     napi_set_named_property(env, obj, "northing", northingValue);
     
-    // 创建 easting 属性
+    // Create easting property
     napi_value eastingValue;
     napi_create_double(env, projectedMeters.easting(), &eastingValue);
     napi_set_named_property(env, obj, "easting", eastingValue);
@@ -30,7 +30,7 @@ napi_value ProjectedMetersHarmony::CreateProjectedMetersObject(napi_env env, con
 }
 
 bool ProjectedMetersHarmony::ParseProjectedMeters(napi_env env, napi_value value, mbgl::ProjectedMeters& outProjectedMeters) {
-    // 检查是否为对象
+    // Ensure value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
     if (status != napi_ok || type != napi_object) {
@@ -38,7 +38,7 @@ bool ProjectedMetersHarmony::ParseProjectedMeters(napi_env env, napi_value value
         return false;
     }
     
-    // 获取 northing 属性
+    // Retrieve northing property
     napi_value northingValue;
     status = napi_get_named_property(env, value, "northing", &northingValue);
     if (status != napi_ok) {
@@ -53,7 +53,7 @@ bool ProjectedMetersHarmony::ParseProjectedMeters(napi_env env, napi_value value
         return false;
     }
     
-    // 获取 easting 属性
+    // Retrieve easting property
     napi_value eastingValue;
     status = napi_get_named_property(env, value, "easting", &eastingValue);
     if (status != napi_ok) {

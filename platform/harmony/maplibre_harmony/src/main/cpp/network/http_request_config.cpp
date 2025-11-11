@@ -17,7 +17,7 @@ void HTTPRequestConfig::setCustomHeaders(const std::map<std::string, std::string
     
     Logger::info("HTTPRequestConfig", "Set custom headers: %zu headers configured", headers.size());
     for (const auto& [key, value] : headers) {
-        // 不记录敏感信息的完整值，只记录键名
+        // Do not log sensitive values—record the key only
         Logger::debug("HTTPRequestConfig", "  Header: %s", key.c_str());
     }
 }
@@ -25,7 +25,7 @@ void HTTPRequestConfig::setCustomHeaders(const std::map<std::string, std::string
 void HTTPRequestConfig::addCustomHeader(const std::string& key, const std::string& value) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 检查是否为保留的请求头
+    // Check for reserved headers
     std::string lowerKey = key;
     std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
     

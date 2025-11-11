@@ -12,8 +12,8 @@ HarmonyVSyncManager::HarmonyVSyncManager() {
                  static_cast<unsigned long long>(ownerInstanceId_));
     
     try {
-        // 创建 VSync 实例
-        // 参数：name - VSync 实例名称，用于标识
+        // Create VSync instance
+        // Parameter: name - identifier for VSync instance
         vsync_ = OH_NativeVSync_Create("MapLibreVSync", 0);
         
         if (!vsync_) {
@@ -51,55 +51,55 @@ void HarmonyVSyncManager::setRunLoop(util::RunLoop* runLoop) {
 
 void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
     if (stopped_.load()) {
-        Logger::warn("HarmonyVSyncManager", "requestFrame() - VSync已停止，忽略请求");
+        Logger::warn("HarmonyVSyncManager", "requestFrame() - VSync already stopped, ignoring request");
         return;
     }
     
     if (!vsync_) {
-        Logger::error("HarmonyVSyncManager", "requestFrame() - VSync 未初始化");
+        Logger::error("HarmonyVSyncManager", "requestFrame() - VSync not initialized");
         return;
     }
     
-    // ✅ 检查 RunLoop 是否已设置（防止在初始化完成前请求帧）
-    // 注意：快速检查，无需锁（在存储回调时会再次检查）
+    // Check whether RunLoop is set (prevents requests before initialization completes)
+    // Fast path: no lock required (will be rechecked when storing the callback)
     {
         std::lock_guard<std::mutex> lock(callbackMutex_);
         if (!renderRunLoop_) {
-            Logger::warn("HarmonyVSyncManager", 
-                "⚠️  requestFrame() - RunLoop 未设置，忽略请求（防止线程安全问题）");
+            Logger::warn("HarmonyVSyncManager",
+                "requestFrame() - RunLoop not set, ignoring request to avoid threading issue");
             return;
         }
         
-        // 防抖：如果已经有待处理的回调，忽略新请求
+        // Debounce: if a callback is already pending, ignore the new request
         if (pendingCallback_) {
             return;
         }
         
-        // 存储回调函数
+        // Store callback function
         pendingCallback_ = std::move(callback);
     }
     
-    // 防抖：如果已经有待处理的帧请求，忽略新请求
+    // Debounce: if a frame request is pending, ignore the new request
     bool expected = false;
     if (!frameRequested_.compare_exchange_strong(expected, true)) {
-        // 已有帧请求，清空刚存储的回调
+        // A request already exists; discard the newly stored callback
         std::lock_guard<std::mutex> lock(callbackMutex_);
         pendingCallback_ = nullptr;
         return;
     }
     
-    // 请求下一帧 VSync 回调
-    // 参数：
-    // - vsync_: VSync 实例
-    // - onVSync: 回调函数
-    // - this: 用户数据（传递给回调）
+    // Request the next frame VSync callback
+    // Parameters:
+    // - vsync_: VSync instance
+    // - onVSync: callback function
+    // - this: user data passed to callback
     int ret = OH_NativeVSync_RequestFrame(vsync_, onVSync, this);
     
     if (ret != 0) {
         Logger::error("HarmonyVSyncManager", "OH_NativeVSync_RequestFrame failed: %d", ret);
-        frameRequested_ = false;  // 重置标志
+        frameRequested_ = false;  // Reset flag
         
-        // 清空回调
+        // Clear callback
         std::lock_guard<std::mutex> lock(callbackMutex_);
         pendingCallback_ = nullptr;
         return;
@@ -109,14 +109,14 @@ void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
 void HarmonyVSyncManager::stop() {
     Logger::info("HarmonyVSyncManager", "stop() called");
     
-    // ✅ 先设置停止标志，阻止新的请求
+    // Set stop flag first to block new requests
     stopped_.store(true);
     
-    // ✅ 清空待处理的回调和 RunLoop 引用（线程安全）
+    // Clear pending callback and RunLoop reference (thread safe)
     {
         std::lock_guard<std::mutex> lock(callbackMutex_);
         pendingCallback_ = nullptr;
-        renderRunLoop_ = nullptr;  // 清空 RunLoop 引用，防止悬空指针
+        renderRunLoop_ = nullptr;  // Clear RunLoop pointer to prevent dangling reference
     }
     
     frameRequested_ = false;
@@ -130,18 +130,18 @@ void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
         return;
     }
     
-    // 重置帧请求标志
+    // Reset frame-request flag
     manager->frameRequested_ = false;
     
-    // 执行回调
+    // Execute callback
     manager->executeCallback();
 }
 
 void HarmonyVSyncManager::executeCallback() {
-    // 🎯 通过 RunLoop 调度回调到渲染线程
-    // 确保回调在正确的渲染线程执行，与其他 Actor 消息统一调度
+    // Dispatch callback to render thread via RunLoop
+    // Ensures callback executes on the proper render thread, aligned with other actor messages
     
-    // ✅ 双重检查：stopped 和 RunLoop 有效性
+    // Double-check stopped flag and RunLoop validity
     if (stopped_.load()) {
         return;
     }
@@ -149,12 +149,12 @@ void HarmonyVSyncManager::executeCallback() {
     FrameCallback callback;
     util::RunLoop* runLoop = nullptr;
     
-    // ✅ 在互斥锁保护下获取回调和 RunLoop 引用
+    // Acquire callback and RunLoop pointers under mutex protection
     {
         std::lock_guard<std::mutex> lock(callbackMutex_);
         callback = std::move(pendingCallback_);
         pendingCallback_ = nullptr;
-        runLoop = renderRunLoop_;  // 获取 RunLoop 的副本（指针）
+        runLoop = renderRunLoop_;  // Copy RunLoop pointer locally
     }
     
     if (!callback) {
@@ -162,7 +162,7 @@ void HarmonyVSyncManager::executeCallback() {
         return;
     }
     
-    // ✅ 检查 RunLoop 有效性（防止访问已销毁的 RunLoop）
+    // Verify RunLoop validity (avoid touching a destroyed RunLoop)
     if (!runLoop) {
         Logger::warn("HarmonyVSyncManager", 
             "⚠️  RunLoop not set, skipping VSync callback (would cause thread safety violation)");
@@ -173,8 +173,8 @@ void HarmonyVSyncManager::executeCallback() {
         return;
     }
     
-    // 🎯 通过 RunLoop 调度到渲染线程（确保线程安全）
-    // 注意：这里使用局部变量 runLoop，避免在 lambda 中访问成员变量
+    // Dispatch through RunLoop to render thread (ensures thread safety)
+    // Note: use local runLoop variable inside lambda to avoid accessing members
     runLoop->invoke([callback]() {
         try {
             callback();

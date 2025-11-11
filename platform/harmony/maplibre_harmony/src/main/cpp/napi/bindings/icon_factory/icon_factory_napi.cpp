@@ -257,7 +257,7 @@ napi_value IconFactoryNAPI::CreateDefaultMarker(napi_env env, napi_callback_info
                  iconId.c_str(), size);
     
     try {
-        // 生成程序化的红色 Pin 形状图标
+        // Generate a programmatic red pin-shaped icon
         auto image = mbgl::harmony::IconFactory::createDefaultMarker(size);
         
         // Create Icon NAPI object with scale 1.0

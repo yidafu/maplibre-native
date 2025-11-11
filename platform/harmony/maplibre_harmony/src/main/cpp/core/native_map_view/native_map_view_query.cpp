@@ -78,7 +78,7 @@ napi_value NativeMapView::pixelForLatLng(napi_env env, napi_callback_info info) 
         return args.Undefined();
     }
 
-    // 获取NativeMapView实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -117,7 +117,7 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
         return undefined;
     }
 
-    // 获取 NativeMapView 实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -127,7 +127,7 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
     }
 
     try {
-        // 解析输入数组 [lat1, lng1, lat2, lng2, ...]
+        // Parse input array [lat1, lng1, lat2, lng2, ...]
         napi_value inputArray = args.GetValue(0);
         bool isArray;
         napi_is_array(env, inputArray, &isArray);
@@ -145,7 +145,7 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
             return undefined;
         }
 
-        // 构建 LatLng 向量
+        // Build LatLng vector
         std::vector<mbgl::LatLng> latLngs;
         latLngs.reserve(length / 2);
 
@@ -161,15 +161,15 @@ napi_value NativeMapView::pixelsForLatLngs(napi_env env, napi_callback_info info
             latLngs.emplace_back(lat, lng);
         }
 
-        // 调用 Map API 进行批量转换
+        // Invoke Map API for batch conversion
         std::vector<mbgl::ScreenCoordinate> coordinates = instance->invokeOnMapThreadSync(
             [&](mbgl::Map *m) { return m->pixelsForLatLngs(latLngs); }, std::vector<mbgl::ScreenCoordinate>{});
 
-        // 创建输出数组
+        // Create output array
         napi_value outputArray;
         napi_create_array_with_length(env, length, &outputArray);
 
-        // 填充输出数组 [x1, y1, x2, y2, ...]
+        // Populate output array [x1, y1, x2, y2, ...]
         for (size_t i = 0; i < coordinates.size(); i++) {
             napi_value xValue, yValue;
             napi_create_double(env, coordinates[i].x, &xValue);
@@ -219,7 +219,7 @@ napi_value NativeMapView::latLngForPixel(napi_env env, napi_callback_info info) 
         return args.Undefined();
     }
 
-    // 获取NativeMapView实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -257,7 +257,7 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
         return undefined;
     }
 
-    // 获取 NativeMapView 实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -267,7 +267,7 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
     }
 
     try {
-        // 解析输入数组 [x1, y1, x2, y2, ...]
+        // Parse input array [x1, y1, x2, y2, ...]
         napi_value inputArray = args.GetValue(0);
         bool isArray;
         napi_is_array(env, inputArray, &isArray);
@@ -285,7 +285,7 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
             return undefined;
         }
 
-        // 构建 ScreenCoordinate 向量
+        // Build ScreenCoordinate vector
         std::vector<mbgl::ScreenCoordinate> coordinates;
         coordinates.reserve(length / 2);
 
@@ -301,15 +301,15 @@ napi_value NativeMapView::latLngsForPixels(napi_env env, napi_callback_info info
             coordinates.emplace_back(x, y);
         }
 
-        // 调用 Map API 进行批量转换
+        // Invoke Map API for batch conversion
         std::vector<mbgl::LatLng> latLngs = instance->invokeOnMapThreadSync(
             [&](mbgl::Map *m) { return m->latLngsForPixels(coordinates); }, std::vector<mbgl::LatLng>{});
 
-        // 创建输出数组
+        // Create output array
         napi_value outputArray;
         napi_create_array_with_length(env, length, &outputArray);
 
-        // 填充输出数组 [lat1, lng1, lat2, lng2, ...]
+        // Populate output array [lat1, lng1, lat2, lng2, ...]
         for (size_t i = 0; i < latLngs.size(); i++) {
             napi_value latValue, lngValue;
             napi_create_double(env, latLngs[i].latitude(), &latValue);
@@ -340,7 +340,7 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
         return undefined;
     }
 
-    // 获取 NativeMapView 实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -349,20 +349,20 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
         return undefined;
     }
 
-    // 检查是否正在销毁
+    // Check whether destruction is in progress
     if (instance->isDestroying.load()) {
         Logger::warn("NativeMapView", "queryRenderedFeaturesForPoint: Instance is being destroyed");
         return undefined;
     }
 
-    // 检查渲染器是否存在
+    // Verify renderer existence
     if (!instance->harmonyRenderer) {
         Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: HarmonyRenderer not initialized");
         return undefined;
     }
 
     try {
-        // 1. 解析参数：x, y
+        // 1. Parse parameters: x, y
         double x = args.GetDouble(0, "x");
         double y = args.GetDouble(1, "y");
 
@@ -371,13 +371,13 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
             return undefined;
         }
 
-        // 2. 构造 ScreenCoordinate
+        // 2. Build ScreenCoordinate
         mbgl::ScreenCoordinate point(x, y);
 
-        // 3. 构造查询选项
+        // 3. Build query options
         mbgl::RenderedQueryOptions options;
 
-        // 4. 解析可选的 layerIds 参数
+        // 4. Parse optional layerIds parameter
         if (args.Count() >= 3) {
             napi_value layerIdsValue = args.GetValue(2);
             napi_valuetype type;
@@ -411,7 +411,7 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
             }
         }
 
-        // 5. 解析可选的 filter 参数
+        // 5. Parse optional filter parameter
         if (args.Count() >= 4) {
             napi_value filterValue = args.GetValue(3);
             napi_valuetype type;
@@ -430,7 +430,7 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
             }
         }
 
-        // 6. 调用 HarmonyRenderer 查询功能
+        // 6. Invoke HarmonyRenderer query functionality
         if (!instance->harmonyRenderer) {
             Logger::error("NativeMapView", "queryRenderedFeaturesForPoint: HarmonyRenderer is null");
             return undefined;
@@ -440,7 +440,7 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
 
         Logger::info("NativeMapView", "queryRenderedFeaturesForPoint: Found %zu features", features.size());
 
-        // 7. 转换结果为 NAPI 数组
+        // 7. Convert result to NAPI array
         napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
@@ -463,7 +463,7 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
         return undefined;
     }
 
-    // 获取 NativeMapView 实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -472,20 +472,20 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
         return undefined;
     }
 
-    // 检查是否正在销毁
+    // Check whether destruction is in progress
     if (instance->isDestroying.load()) {
         Logger::warn("NativeMapView", "queryRenderedFeaturesForBox: Instance is being destroyed");
         return undefined;
     }
 
-    // 检查渲染器是否存在
+    // Verify renderer existence
     if (!instance->harmonyRenderer) {
         Logger::error("NativeMapView", "queryRenderedFeaturesForBox: HarmonyRenderer not initialized");
         return undefined;
     }
 
     try {
-        // 1. 解析参数：left, top, right, bottom
+        // 1. Parse parameters: left, top, right, bottom
         double left = args.GetDouble(0, "left");
         double top = args.GetDouble(1, "top");
         double right = args.GetDouble(2, "right");
@@ -496,13 +496,13 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
             return undefined;
         }
 
-        // 2. 构造 ScreenBox
+        // 2. Build ScreenBox
         mbgl::ScreenBox box{mbgl::ScreenCoordinate{left, top}, mbgl::ScreenCoordinate{right, bottom}};
 
-        // 3. 构造查询选项
+        // 3. Build query options
         mbgl::RenderedQueryOptions options;
 
-        // 4. 解析可选的 layerIds 参数
+        // 4. Parse optional layerIds parameter
         if (args.Count() >= 5) {
             napi_value layerIdsValue = args.GetValue(4);
             napi_valuetype type;
@@ -536,7 +536,7 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
             }
         }
 
-        // 5. 解析可选的 filter 参数
+        // 5. Parse optional filter parameter
         if (args.Count() >= 6) {
             napi_value filterValue = args.GetValue(5);
             napi_valuetype type;
@@ -555,7 +555,7 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
             }
         }
 
-        // 6. 调用 HarmonyRenderer 查询功能
+        // 6. Invoke HarmonyRenderer query functionality
         if (!instance->harmonyRenderer) {
             Logger::error("NativeMapView", "queryRenderedFeaturesForBox: HarmonyRenderer is null");
             return undefined;
@@ -565,7 +565,7 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
 
         Logger::info("NativeMapView", "queryRenderedFeaturesForBox: Found %zu features", features.size());
 
-        // 7. 转换结果为 NAPI 数组
+        // 7. Convert result to NAPI array
         napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
@@ -588,7 +588,7 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
         return undefined;
     }
 
-    // 获取 NativeMapView 实例
+    // Get NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView *instance = nullptr;
@@ -597,20 +597,20 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
         return undefined;
     }
 
-    // 检查是否正在销毁
+    // Check whether destruction is in progress
     if (instance->isDestroying.load()) {
         Logger::warn("NativeMapView", "querySourceFeatures: Instance is being destroyed");
         return undefined;
     }
 
-    // 检查渲染器是否存在
+    // Verify renderer existence
     if (!instance->harmonyRenderer) {
         Logger::error("NativeMapView", "querySourceFeatures: HarmonyRenderer not initialized");
         return undefined;
     }
 
     try {
-        // 1. 解析参数：sourceId
+        // 1. Parse parameter: sourceId
         std::string sourceId = args.GetString(0, "sourceId");
 
         if (args.HasError()) {
@@ -618,10 +618,10 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
             return undefined;
         }
 
-        // 2. 构造查询选项
+        // 2. Build query options
         mbgl::SourceQueryOptions options;
 
-        // 3. 解析可选的 sourceLayerIds 参数
+        // 3. Parse optional sourceLayerIds parameter
         if (args.Count() >= 2) {
             napi_value sourceLayerIdsValue = args.GetValue(1);
             napi_valuetype type;
@@ -655,14 +655,14 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
             }
         }
 
-        // 4. 解析可选的 filter 参数
+        // 4. Parse optional filter parameter
         if (args.Count() >= 3) {
             napi_value filterValue = args.GetValue(2);
             napi_valuetype type;
             napi_typeof(env, filterValue, &type);
 
             if (type == napi_object) {
-                // 解析 filter 表达式
+                // Parse filter expression
                 auto filterOpt = napiArrayToFilter(env, filterValue);
                 if (filterOpt.has_value()) {
                     options.filter = std::move(filterOpt.value());
@@ -673,7 +673,7 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
             }
         }
 
-        // 5. 调用 HarmonyRenderer 查询功能
+        // 5. Invoke HarmonyRenderer query functionality
         if (!instance->harmonyRenderer) {
             Logger::error("NativeMapView", "querySourceFeatures: HarmonyRenderer is null");
             return undefined;
@@ -684,7 +684,7 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
         Logger::info("NativeMapView", "querySourceFeatures: Found %zu features from source '%s'", 
                     features.size(), sourceId.c_str());
 
-        // 6. 转换结果为 NAPI 数组
+        // 6. Convert result to NAPI array
         napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;

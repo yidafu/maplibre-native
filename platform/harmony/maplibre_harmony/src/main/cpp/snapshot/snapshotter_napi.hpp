@@ -10,12 +10,12 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * MapSnapshotterNAPI - NAPI 注册类
+ * MapSnapshotterNAPI - NAPI registration entry point.
  */
 class MapSnapshotterNAPI {
 public:
     /**
-     * 初始化并注册 MapSnapshotter NAPI 方法
+     * Initialize and register MapSnapshotter NAPI methods.
      */
     static void Init(napi_env env, napi_value exports);
 };

@@ -8,9 +8,9 @@ namespace mbgl {
 namespace harmony {
 
 /**
- * Filter 转换工具
- * 
- * 提供 NAPI 数组和 mbgl::style::Filter 之间的双向转换
+ * Filter conversion utilities.
+ *
+ * Provides bidirectional conversion between NAPI arrays and mbgl::style::Filter.
  */
 
 /**

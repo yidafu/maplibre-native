@@ -30,21 +30,21 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
     
-    // 解析宽度和高度
+    // Parse width and height
     int32_t newWidth = args.GetInt32(0, "width");
     int32_t newHeight = args.GetInt32(1, "height");
     if (args.HasError()) return args.Undefined();
     
     Logger::info("NativeMapView", "🔍 [DPI] resizeView called: %dx%d (logical)", newWidth, newHeight);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 更新尺寸
+    // Update stored dimensions
     instance->width = newWidth;
     instance->height = newHeight;
     
@@ -52,7 +52,7 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "  - New size: %dx%d (logical pixels)", instance->width, instance->height);
     Logger::info("NativeMapView", "  - PixelRatio: %.2f", instance->pixelRatio);
     
-    // 如果渲染器已初始化，调整尺寸
+    // Resize if the renderer is already initialized
     if (instance->harmonyRenderer) {
         instance->harmonyRenderer->resize(instance->width, instance->height);
     }
@@ -67,27 +67,27 @@ napi_value NativeMapView::resizeView(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::cancelTransitions(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "cancelTransitions: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "cancelTransitions: Map not initialized");
         return args.Undefined();
     }
     
-    // 在渲染线程执行 Map 操作
+    // Execute the map operation on the render thread
     instance->invokeOnMapThread([&](mbgl::Map* m) {
         Logger::info("NativeMapView", "🔵 map->cancelTransitions() on render thread");
         m->cancelTransitions();
         m->triggerRepaint();
     });
 
-    // 回调在当前线程触发
+    // Fire callbacks on the current thread
     if (instance->callbackManager_) {
         instance->callbackManager_->InvokeCallbackEmpty("onCameraMoveCanceled");
         instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
@@ -101,18 +101,18 @@ napi_value NativeMapView::setGestureInProgress(napi_env env, napi_callback_info 
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取布尔参数
+    // Read the boolean argument
     bool inProgress = args.GetBool(0, "inProgress");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setGestureInProgress: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "setGestureInProgress: Map not initialized");
         return args.Undefined();
@@ -130,30 +130,30 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
     
-    // 获取移动距离
+    // Read the move distance
     double dx = args.GetDouble(0, "dx");
     double dy = args.GetDouble(1, "dy");
-    // 获取动画时长（可选，默认 0 表示立即执行）
+    // Optional animation duration (default 0 for immediate)
     uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(2, 0.0));
     if (args.HasError()) return args.Undefined();
     
     if (duration > 0) {
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "moveBy: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "moveBy: Map not initialized");
         return args.Undefined();
     }
     
-    // 触发相机移动开始事件（UI线程）
+    // Emit camera move-start event (UI thread)
     if (instance->callbackManager_) {
         int reason = duration > 0 ? CameraMoveReason::REASON_DEVELOPER_ANIMATION
                                   : CameraMoveReason::REASON_API_ANIMATION;
@@ -163,7 +163,7 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
             });
     }
 
-    // 在渲染线程执行实际移动
+    // Perform the actual move on the render thread
     instance->invokeOnMapThread([dx, dy, duration, instance](mbgl::Map* m) {
         if (duration > 0) {
             m->moveBy(mbgl::ScreenCoordinate{dx, dy}, mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
@@ -173,7 +173,7 @@ napi_value NativeMapView::moveBy(napi_env env, napi_callback_info info) {
         m->triggerRepaint();
     });
 
-    // 立即移动完成后触发 idle（仅无动画时）
+    // Trigger idle immediately when no animation is used
     if (duration == 0 && instance->callbackManager_) {
         instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
@@ -186,7 +186,7 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(5);
     if (args.HasError()) return args.Undefined();
     
-    // 解析参数：angle, latitude, longitude, pitch, zoom
+    // Parse parameters: angle, latitude, longitude, pitch, zoom
     double angle = args.GetDouble(0, "angle");
     double latitude = args.GetDouble(1, "latitude");
     double longitude = args.GetDouble(2, "longitude");
@@ -197,28 +197,28 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "jumpTo: angle=%f, lat=%f, lng=%f, pitch=%f, zoom=%f", 
                   angle, latitude, longitude, pitch, zoom);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
         Logger::error("NativeMapView", "jumpTo: Failed to unwrap instance or instance is null");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "jumpTo: Map not initialized yet, will skip jumpTo");
         return args.Undefined();
     }
     
-    // 构建 CameraOptions
+    // Build CameraOptions
     CameraOptions cameraOptions;
     cameraOptions.center = LatLng{latitude, longitude};
     cameraOptions.zoom = zoom;
     cameraOptions.bearing = angle;
     cameraOptions.pitch = pitch;
     
-    // 解析可选的 padding 参数（如果提供）
-    // padding 格式: [left, top, right, bottom]
+    // Parse optional padding argument when provided
+    // padding format: [left, top, right, bottom]
     if (args.Count() >= 6) {
         napi_value paddingValue = args.GetValue(5);
         bool isArray = false;
@@ -242,7 +242,7 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
                     napi_get_value_double(env, rightVal, &right);
                     napi_get_value_double(env, bottomVal, &bottom);
                     
-                    // 应用pixelRatio缩放
+                    // Apply pixelRatio scaling
                     cameraOptions.padding = EdgeInsets{
                         top * instance->pixelRatio,
                         left * instance->pixelRatio,
@@ -256,9 +256,9 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
             }
         }
     } else {
-        // 如果没有提供 padding 参数，使用存储的 contentPadding_
-        // contentPadding_ 存储顺序: [0]=left, [1]=top, [2]=right, [3]=bottom
-        // EdgeInsets 构造函数顺序: (top, left, bottom, right)
+        // If padding is omitted, fall back to stored contentPadding_.
+        // contentPadding_ order: [0]=left, [1]=top, [2]=right, [3]=bottom
+        // EdgeInsets constructor order: (top, left, bottom, right)
         if (instance->contentPadding_[0] != 0 || instance->contentPadding_[1] != 0 ||
             instance->contentPadding_[2] != 0 || instance->contentPadding_[3] != 0) {
             cameraOptions.padding = EdgeInsets{
@@ -274,20 +274,20 @@ napi_value NativeMapView::jumpTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 执行相机跳转
-    // 触发开始事件（UI线程）
+    // Perform the camera jump
+    // Fire start events (UI thread)
     if (instance->callbackManager_) {
         instance->callbackManager_->InvokeCallback("onCameraMoveStarted",
             [](napi_env env) -> napi_value { napi_value v; napi_create_int32(env, CameraMoveReason::REASON_API_ANIMATION, &v); return v; });
     }
 
-    // 在渲染线程执行
+    // Execute on the render thread
     instance->invokeOnMapThread([cameraOptions](mbgl::Map* m) {
         m->jumpTo(cameraOptions);
         m->triggerRepaint();
     });
 
-    // 立即完成（jumpTo），触发 idle
+    // jumpTo completes immediately; trigger idle
     if (instance->callbackManager_) {
         instance->callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
@@ -300,18 +300,18 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取相机选项对象
+    // Retrieve the camera options object
     napi_value cameraObj = args.GetObject(0, "cameraOptions");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "easeTo: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::error("NativeMapView", "easeTo: Map not initialized");
         return args.Undefined();
@@ -319,7 +319,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
     
     CameraOptions cameraOptions;
     
-    // 获取 center (LatLng)
+    // Retrieve the center (LatLng)
     napi_value centerValue;
     if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
         napi_value latValue, lngValue;
@@ -333,7 +333,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 zoom
+    // Retrieve zoom
     napi_value zoomValue;
     if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
         double zoom;
@@ -342,7 +342,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 bearing
+    // Retrieve bearing
     napi_value bearingValue;
     if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
         double bearing;
@@ -351,7 +351,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 pitch
+    // Retrieve pitch
     napi_value pitchValue;
     if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
         double pitch;
@@ -360,8 +360,8 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 padding (可选)
-    // padding 格式: [left, top, right, bottom] 或 {left, top, right, bottom}
+    // Retrieve padding (optional)
+    // padding format: [left, top, right, bottom] or {left, top, right, bottom}
     napi_value paddingValue;
     if (napi_get_named_property(env, cameraObj, "padding", &paddingValue) == napi_ok) {
         bool isArray = false;
@@ -385,7 +385,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
                     napi_get_value_double(env, rightVal, &right);
                     napi_get_value_double(env, bottomVal, &bottom);
                     
-                    // 应用pixelRatio缩放
+                    // Apply pixelRatio scaling
                     cameraOptions.padding = EdgeInsets{
                         top * instance->pixelRatio,
                         left * instance->pixelRatio,
@@ -400,7 +400,7 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 anchor (可选)
+    // Retrieve anchor (optional)
     napi_value anchorValue;
     if (napi_get_named_property(env, cameraObj, "anchor", &anchorValue) == napi_ok) {
         napi_value anchorX, anchorY;
@@ -414,15 +414,15 @@ napi_value NativeMapView::easeTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取动画时长（可选，默认 300ms）
+    // Optional animation duration (defaults to 300 ms)
     uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 300.0));
-    // 执行 easeTo 相机动画
-    // 开始事件（UI线程）
+    // Run the easeTo camera animation
+    // Fire start event (UI thread)
     if (instance->callbackManager_) {
         instance->callbackManager_->InvokeCallback("onCameraMoveStarted",
             [](napi_env env) -> napi_value { napi_value v; napi_create_int32(env, CameraMoveReason::REASON_DEVELOPER_ANIMATION, &v); return v; });
     }
-    // 渲染线程执行
+    // Execute on the render thread
     instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m) {
         m->easeTo(cameraOptions, mbgl::AnimationOptions(std::chrono::milliseconds(duration)));
         m->triggerRepaint();
@@ -436,11 +436,11 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取相机选项对象
+    // Retrieve the camera options object
     napi_value cameraObj = args.GetObject(0, "cameraOptions");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "flyTo: Failed to get instance or map not initialized");
@@ -449,7 +449,7 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
     
     CameraOptions cameraOptions;
     
-    // 获取 center (LatLng)
+    // Retrieve the center (LatLng)
     napi_value centerValue;
     if (napi_get_named_property(env, cameraObj, "center", &centerValue) == napi_ok) {
         napi_value latValue, lngValue;
@@ -463,7 +463,7 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 zoom
+    // Retrieve zoom
     napi_value zoomValue;
     if (napi_get_named_property(env, cameraObj, "zoom", &zoomValue) == napi_ok) {
         double zoom;
@@ -472,7 +472,7 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 bearing
+    // Retrieve bearing
     napi_value bearingValue;
     if (napi_get_named_property(env, cameraObj, "bearing", &bearingValue) == napi_ok) {
         double bearing;
@@ -481,7 +481,7 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取 pitch
+    // Retrieve pitch
     napi_value pitchValue;
     if (napi_get_named_property(env, cameraObj, "pitch", &pitchValue) == napi_ok) {
         double pitch;
@@ -490,13 +490,13 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
         }
     }
     
-    // 获取动画时长（可选，默认使用 flyTo 自动时长）
+    // Optional animation duration (defaults to flyTo automatic duration)
     uint64_t duration = static_cast<uint64_t>(args.GetDoubleOr(1, 0.0));
     if (duration > 0) {
     }
     
-    // 执行 flyTo 相机动画
-    // 渲染线程执行
+    // Run the flyTo camera animation
+    // Execute on the render thread
     instance->invokeOnMapThread([cameraOptions, duration](mbgl::Map* m) {
         mbgl::AnimationOptions anim;
         if (duration > 0) anim.duration.emplace(mbgl::Milliseconds(duration));
@@ -510,7 +510,7 @@ napi_value NativeMapView::flyTo(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getLatLng: Failed to get instance or map not initialized");
@@ -522,7 +522,7 @@ napi_value NativeMapView::getLatLng(napi_env env, napi_callback_info info) {
         if (cameraOptions.center) {
             const auto& center = *cameraOptions.center;
             
-            // 创建返回对象 { latitude: number, longitude: number }
+            // Create the return object { latitude, longitude }
             napi_value result;
             napi_create_object(env, &result);
             
@@ -547,14 +547,14 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setLatLng: Failed to get instance or map not initialized");
         return args.Undefined();
     }
     
-    // 获取参数：latitude, longitude, padding (可选), duration (可选)
+    // Read parameters: latitude, longitude, optional padding, optional duration
     double latitude = args.GetDouble(0, "latitude");
     double longitude = args.GetDouble(1, "longitude");
     double duration = args.GetDoubleOr(3, 0.0);
@@ -567,8 +567,8 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
         mbgl::CameraOptions cameraOptions;
         cameraOptions.center = mbgl::LatLng(latitude, longitude);
         
-        // 处理 padding 参数（args[2]）
-        // padding 格式: [left, top, right, bottom]
+        // Handle padding argument (args[2])
+        // padding format: [left, top, right, bottom]
         if (args.Count() >= 3) {
             napi_value paddingValue = args.GetValue(2);
             bool isArray = false;
@@ -592,7 +592,7 @@ napi_value NativeMapView::setLatLng(napi_env env, napi_callback_info info) {
                         napi_get_value_double(env, rightVal, &right);
                         napi_get_value_double(env, bottomVal, &bottom);
                         
-                        // 应用pixelRatio缩放
+                        // Apply pixelRatio scaling
                         cameraOptions.padding = mbgl::EdgeInsets{
                             top * instance->pixelRatio,
                             left * instance->pixelRatio,
@@ -626,14 +626,14 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getCameraForLatLngBounds: Map not initialized");
         return args.Undefined();
     }
     
-    // 解析 LatLngBounds
+    // Parse LatLngBounds
     napi_value boundsObj = args.GetObject(0, "bounds");
     if (args.HasError()) {
         return args.Undefined();
@@ -645,14 +645,14 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
         return args.Undefined();
     }
     
-    // 解析 padding (top, left, bottom, right)
+    // Parse padding (top, left, bottom, right)
     double top = args.GetDoubleOr(1, 0.0);
     double left = args.GetDoubleOr(2, 0.0);
     double bottom = args.GetDoubleOr(3, 0.0);
     double right = args.GetDoubleOr(4, 0.0);
     mbgl::EdgeInsets padding{top, left, bottom, right};
     
-    // 解析 bearing 和 tilt（可选）
+    // Parse optional bearing and tilt
     double bearing = args.GetDoubleOr(5, 0.0);
     double tilt = args.GetDoubleOr(6, 0.0);
     
@@ -670,16 +670,17 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
 napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // TODO: 需要实现 Geometry 和 CameraPosition 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/geojson/geometry.cpp
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/map/camera_position.cpp
+    // TODO: Implement Geometry and CameraPosition NAPI wrappers.
+    // Refer to Android sources:
+    // platform/android/MapLibreAndroid/src/cpp/geojson/geometry.cpp
+    // platform/android/MapLibreAndroid/src/cpp/map/camera_position.cpp
     Logger::warn("NativeMapView", "getCameraForGeometry: Not implemented - requires Geometry and CameraPosition wrapper classes");
     
     return args.Undefined();
 }
 
 napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info) {
-    // 网络可达性由 Harmony 网络管理器处理，不需要手动设置
+    // Network reachability is handled by Harmony's network manager; no manual control needed
     // Network reachability handled by Harmony network manager
     NapiArgs args(env, info);
     return args.Undefined();
@@ -688,7 +689,7 @@ napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info)
 napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "resetPosition: Failed to get instance or map not initialized");
@@ -715,14 +716,14 @@ napi_value NativeMapView::resetPosition(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getPitch(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getPitch: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "getPitch: Map not initialized");
         return args.Undefined();
@@ -747,19 +748,19 @@ napi_value NativeMapView::setPitch(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取 pitch 值和可选的动画时长
+    // Retrieve pitch and optional animation duration
     double pitch = args.GetDouble(0, "pitch");
     uint32_t duration = args.GetUint32Or(1, 0);
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setPitch: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "setPitch: Map not initialized");
         return args.Undefined();
@@ -790,14 +791,14 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setZoom: Failed to get instance or map not initialized");
         return args.Undefined();
     }
     
-    // 获取参数：zoom, cx (可选), cy (可选), duration (可选)
+    // Read parameters: zoom, optional cx/cy, optional duration
     double zoom = args.GetDouble(0, "zoom");
     if (args.HasError()) {
         return args.Undefined();
@@ -831,14 +832,14 @@ napi_value NativeMapView::setZoom(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "getZoom: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "getZoom: Map not initialized");
         return args.Undefined();
@@ -859,7 +860,7 @@ napi_value NativeMapView::getZoom(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::resetZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "resetZoom: Failed to get instance or map not initialized");
@@ -884,7 +885,7 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
     double zoom = args.GetDouble(0, "zoom");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setMinZoom: Failed to get instance or map not initialized");
@@ -904,7 +905,7 @@ napi_value NativeMapView::setMinZoom(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getMinZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMinZoom: Failed to get instance or map not initialized");
@@ -933,7 +934,7 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
     double zoom = args.GetDouble(0, "zoom");
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setMaxZoom: Failed to get instance or map not initialized");
@@ -953,7 +954,7 @@ napi_value NativeMapView::setMaxZoom(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getMaxZoom(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMaxZoom: Failed to get instance or map not initialized");
@@ -981,7 +982,7 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setMinPitch: Failed to get instance or map not initialized");
@@ -1006,7 +1007,7 @@ napi_value NativeMapView::setMinPitch(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getMinPitch(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMinPitch: Failed to get instance or map not initialized");
@@ -1034,7 +1035,7 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setMaxPitch: Failed to get instance or map not initialized");
@@ -1059,7 +1060,7 @@ napi_value NativeMapView::setMaxPitch(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getMaxPitch(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getMaxPitch: Failed to get instance or map not initialized");
@@ -1087,14 +1088,14 @@ napi_value NativeMapView::rotateBy(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "rotateBy: Failed to get instance or map not initialized");
         return args.Undefined();
     }
     
-    // 获取参数：sx, sy, ex, ey, duration (可选)
+    // Read parameters: sx, sy, ex, ey, optional duration
     double sx = args.GetDouble(0, "sx");
     double sy = args.GetDouble(1, "sy");
     double ex = args.GetDouble(2, "ex");
@@ -1122,19 +1123,19 @@ napi_value NativeMapView::setBearing(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取bearing值和可选的duration
+    // Retrieve bearing and optional duration
     double bearing = args.GetDouble(0, "bearing");
     uint32_t duration = args.GetUint32Or(1, 0);
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setBearing: Failed to unwrap instance");
         return args.Undefined();
     }
     
-    // 检查 Map 对象是否已初始化
+    // Ensure the Map object is initialized
     if (!instance->map) {
         Logger::warn("NativeMapView", "setBearing: Map not initialized");
         return args.Undefined();
@@ -1161,14 +1162,14 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
         return args.Undefined();
     }
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setBearingXY: Failed to get instance or map not initialized");
         return args.Undefined();
     }
     
-    // 获取参数：degrees, cx, cy, duration (可选)
+    // Read parameters: degrees, optional cx/cy, optional duration
     double degrees = args.GetDouble(0, "degrees");
     double cx = args.GetDouble(1, "cx");
     double cy = args.GetDouble(2, "cy");
@@ -1193,7 +1194,7 @@ napi_value NativeMapView::setBearingXY(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getBearing: Failed to get instance or map not initialized");
@@ -1217,7 +1218,7 @@ napi_value NativeMapView::getBearing(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "resetNorth: Failed to get instance or map not initialized");
@@ -1225,7 +1226,7 @@ napi_value NativeMapView::resetNorth(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 使用 easeTo 将 bearing 设为 0，动画时长 500ms
+        // Use easeTo to set bearing to 0 with a 500 ms animation
         instance->invokeOnMapThread([](mbgl::Map* m){ m->easeTo(mbgl::CameraOptions().withBearing(0.0), mbgl::AnimationOptions{mbgl::Milliseconds(500)}); m->triggerRepaint(); });
         Logger::info("NativeMapView", "resetNorth: Reset bearing to 0 with 500ms animation");
     } catch (const std::exception& e) {
@@ -1244,7 +1245,7 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
         return args.Undefined();
     }
     
-    // 获取 NativeMapView 实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setVisibleCoordinateBounds: Map not initialized");
@@ -1252,10 +1253,10 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
     }
     
     try {
-        // 1. 解析 LatLng 数组 (参数0)
+        // 1. Parse the LatLng array (argument 0)
         napi_value coordsArray = args.Get(0);
         
-        // 检查是否为数组
+        // Ensure the value is an array
         bool isArray = false;
         napi_status status = napi_is_array(env, coordsArray, &isArray);
         if (status != napi_ok || !isArray) {
@@ -1291,7 +1292,7 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
             return args.Undefined();
         }
         
-        // 2. 解析 padding (参数1: Rect 对象)
+        // 2. Parse padding (argument 1: Rect object)
         napi_value paddingObj = args.Get(1);
         mbgl::EdgeInsets padding;
         if (!RectHarmony::ParseAsEdgeInsets(env, paddingObj, padding)) {
@@ -1299,31 +1300,31 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
             return args.Undefined();
         }
         
-        // 3. 解析 direction/bearing (参数2)
+        // 3. Parse direction/bearing (argument 2)
         double direction = args.GetDoubleOr(2, -1.0);
         
-        // 4. 解析 duration (参数3)
+        // 4. Parse duration (argument 3)
         int64_t duration = args.GetInt64Or(3, 0);
         
-        // 5. 在地图线程上执行相机计算和动画
+        // 5. Execute camera calculations and animation on the map thread
         instance->invokeOnMapThread([latLngs, padding, direction, duration](mbgl::Map* m) {
-            // 计算适配所有坐标的相机位置
+            // Compute a camera that fits all coordinates
             mbgl::CameraOptions cameraOptions = m->cameraForLatLngs(latLngs, padding);
             
-            // 如果指定了 direction，设置 bearing
+            // Apply bearing if direction was specified
             if (direction >= 0) {
                 cameraOptions.bearing = direction;
             }
             
-            // 构建动画选项
+            // Build animation options
             mbgl::AnimationOptions animOptions;
             if (duration > 0) {
                 animOptions.duration.emplace(mbgl::Milliseconds(duration));
-                // 使用与 iOS 相同的缓动函数
+                // Use the same easing curve as iOS
                 animOptions.easing.emplace(mbgl::util::UnitBezier{0.25, 0.1, 0.25, 0.1});
             }
             
-            // 执行相机动画
+            // Run the camera animation
             m->easeTo(cameraOptions, animOptions);
         });
         
@@ -1339,7 +1340,7 @@ napi_value NativeMapView::setVisibleCoordinateBounds(napi_env env, napi_callback
 napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getVisibleCoordinateBounds: Map not initialized");
@@ -1359,7 +1360,7 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
 }
 
 napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info) {
-    // 快照功能需要渲染器回调支持
+    // Snapshot functionality requires renderer callback support
     // Snapshot functionality requires renderer callback support
     NapiArgs args(env, info);
     return args.Undefined();
@@ -1368,7 +1369,7 @@ napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info
 napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Retrieve the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getCameraPosition: Failed to get instance or map not initialized");
@@ -1378,32 +1379,32 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
     try {
         auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->getCameraOptions(); }, mbgl::CameraOptions{});
         
-        // 创建返回对象
+        // Create the return object
         napi_value result;
         napi_create_object(env, &result);
         
-        // 添加 zoom
+        // Add zoom
         if (cameraOptions.zoom) {
             napi_value zoomValue;
             napi_create_double(env, *cameraOptions.zoom, &zoomValue);
             napi_set_named_property(env, result, "zoom", zoomValue);
         }
         
-        // 添加 bearing
+        // Add bearing
         if (cameraOptions.bearing) {
             napi_value bearingValue;
             napi_create_double(env, *cameraOptions.bearing, &bearingValue);
             napi_set_named_property(env, result, "bearing", bearingValue);
         }
         
-        // 添加 pitch (tilt)
+        // Add pitch (tilt)
         if (cameraOptions.pitch) {
             napi_value pitchValue;
             napi_create_double(env, *cameraOptions.pitch, &pitchValue);
             napi_set_named_property(env, result, "tilt", pitchValue);
         }
         
-        // 添加 center (target)
+        // Add center (target)
         if (cameraOptions.center) {
             napi_value targetObj;
             napi_create_object(env, &targetObj);

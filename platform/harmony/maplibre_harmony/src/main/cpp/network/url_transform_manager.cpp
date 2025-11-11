@@ -36,22 +36,22 @@ bool URLTransformManager::hasCallback() const {
 std::string URLTransformManager::transform(mbgl::Resource::Kind kind, const std::string& url) {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 如果没有设置回调，直接返回原URL
+    // If no callback is set, return the original URL
     if (!callback_) {
         return url;
     }
     
     try {
-        // 调用回调函数进行URL转换
+        // Invoke the callback to transform the URL
         std::string transformedUrl = callback_(kind, url);
         
-        // 如果回调返回空字符串，使用原URL
+        // If the callback returns an empty string, fall back to the original URL
         if (transformedUrl.empty()) {
             Logger::warn("URLTransformManager", "Transform callback returned empty string, using original URL");
             return url;
         }
         
-        // 记录转换（仅在URL确实改变时）
+        // Log the transformation only when the URL actually changes
         if (transformedUrl != url) {
             Logger::debug("URLTransformManager", "URL transformed:");
             Logger::debug("URLTransformManager", "  Kind: %d", static_cast<int>(kind));
@@ -62,13 +62,13 @@ std::string URLTransformManager::transform(mbgl::Resource::Kind kind, const std:
         return transformedUrl;
         
     } catch (const std::exception& e) {
-        // 捕获异常，记录错误，返回原URL
+        // Catch exceptions, log the error, and return the original URL
         Logger::error("URLTransformManager", "Exception in transform callback: %s", e.what());
         Logger::error("URLTransformManager", "Using original URL: %s", url.c_str());
         return url;
         
     } catch (...) {
-        // 捕获所有其他异常
+        // Catch any other exceptions
         Logger::error("URLTransformManager", "Unknown exception in transform callback");
         Logger::error("URLTransformManager", "Using original URL: %s", url.c_str());
         return url;

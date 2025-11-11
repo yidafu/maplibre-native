@@ -14,7 +14,7 @@ namespace mbgl {
 namespace harmony {
 
 napi_value NetworkNAPI::Init(napi_env env, napi_value exports) {
-    // 导出静态方法
+    // Export static methods
     napi_property_descriptor descriptors[] = {
         {"setCustomHttpHeaders", nullptr, SetCustomHttpHeaders, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addCustomHttpHeader", nullptr, AddCustomHttpHeader, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -43,26 +43,26 @@ napi_value NetworkNAPI::SetCustomHttpHeaders(napi_env env, napi_callback_info in
         return nullptr;
     }
 
-    // 获取对象的所有属性名
+    // Retrieve all property names from the object
     napi_value property_names;
     napi_get_property_names(env, headersObj, &property_names);
 
     uint32_t length;
     napi_get_array_length(env, property_names, &length);
 
-    // 构建请求头映射
+    // Build the header map
     std::map<std::string, std::string> headers;
     for (uint32_t i = 0; i < length; i++) {
         napi_value key_value;
         napi_get_element(env, property_names, i, &key_value);
 
-        // 获取键名
+        // Get the key name
         size_t key_length;
         napi_get_value_string_utf8(env, key_value, nullptr, 0, &key_length);
         std::string key(key_length, '\0');
         napi_get_value_string_utf8(env, key_value, &key[0], key_length + 1, nullptr);
 
-        // 获取值
+        // Get the value
         napi_value value_value;
         napi_get_property(env, headersObj, key_value, &value_value);
 
@@ -74,7 +74,7 @@ napi_value NetworkNAPI::SetCustomHttpHeaders(napi_env env, napi_callback_info in
         headers[key] = value;
     }
 
-    // 设置自定义请求头
+    // Apply the custom headers
     HTTPRequestConfig::getInstance().setCustomHeaders(headers);
 
     Logger::info("NetworkNAPI", "Set %zu custom HTTP headers", headers.size());
@@ -95,7 +95,7 @@ napi_value NetworkNAPI::AddCustomHttpHeader(napi_env env, napi_callback_info inf
         return nullptr;
     }
 
-    // 添加自定义请求头
+    // Add a custom header
     HTTPRequestConfig::getInstance().addCustomHeader(key, value);
 
     Logger::info("NetworkNAPI", "Added custom HTTP header: %s", key.c_str());
@@ -115,12 +115,12 @@ napi_value NetworkNAPI::RemoveCustomHttpHeader(napi_env env, napi_callback_info 
         return nullptr;
     }
 
-    // 移除自定义请求头
+    // Remove a custom header
     bool removed = HTTPRequestConfig::getInstance().removeCustomHeader(key);
 
     Logger::info("NetworkNAPI", "Removed custom HTTP header: %s (success: %d)", key.c_str(), removed);
 
-    // 返回布尔值
+    // Return a boolean
     napi_value result;
     napi_get_boolean(env, removed, &result);
     return result;
@@ -132,7 +132,7 @@ napi_value NetworkNAPI::ClearCustomHttpHeaders(napi_env env, napi_callback_info 
         return nullptr;
     }
 
-    // 清除所有自定义请求头
+    // Clear all custom headers
     HTTPRequestConfig::getInstance().clearCustomHeaders();
 
     Logger::info("NetworkNAPI", "Cleared all custom HTTP headers");
@@ -146,14 +146,14 @@ napi_value NetworkNAPI::GetCustomHttpHeaders(napi_env env, napi_callback_info in
         return nullptr;
     }
 
-    // 获取所有自定义请求头
+    // Fetch all custom headers
     auto headers = HTTPRequestConfig::getInstance().getCustomHeaders();
 
-    // 创建返回对象
+    // Create the return object
     napi_value result;
     napi_create_object(env, &result);
 
-    // 将C++映射转换为NAPI对象
+    // Convert the C++ map into a NAPI object
     for (const auto& [key, value] : headers) {
         napi_value key_value;
         napi_create_string_utf8(env, key.c_str(), NAPI_AUTO_LENGTH, &key_value);

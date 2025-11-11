@@ -11,7 +11,7 @@
 #include <mbgl/style/layer.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/light.hpp>
-// 用于资源就绪 gating 的等待
+// Support waiting for resource readiness gating
 #include <chrono>
 #include <thread>
 
@@ -32,27 +32,27 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象
+    // Retrieve the this object
     napi_value thisObj;
     if (napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr) != napi_ok) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to get this object");
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to unwrap instance");
         return undefined;
     }
     
-    // 检查 Map 对象是否已初始化
+    // Verify that the map object has been initialized
     if (!instance->map) {
         Logger::error("NativeMapView", "setStyleUrl: Map not initialized! Please call setNativeWindow first.");
         return undefined;
     }
     
-    // 获取样式URL参数
+    // Retrieve the style URL argument
     size_t argc = 1;
     napi_value args[1];
     if (napi_get_cb_info(env, info, &argc, args, nullptr, nullptr) != napi_ok) {
@@ -65,7 +65,7 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 提取样式URL字符串
+    // Extract the style URL string
     size_t strSize;
     if (napi_get_value_string_utf8(env, args[0], nullptr, 0, &strSize) != napi_ok) {
         Logger::error("NativeMapView", "setStyleUrl: Failed to get style URL string size");
@@ -81,9 +81,9 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
     
     Logger::info("NativeMapView", "Setting style URL: %s", styleUrl.c_str());
 
-    // 资源就绪 gating：等待渲染线程与窗口/上下文和后台资源子系统完成重建
+    // Resource readiness gating: wait for the render thread, surface/context, and background subsystems to finish rebuilding
     if (instance->harmonyRenderer) {
-        // 等待 500ms；未就绪则尝试自愈重建
+        // Wait 500 ms; attempt self-healing recovery if still not ready
         const auto start = std::chrono::steady_clock::now();
         const auto timeout = std::chrono::milliseconds(500);
 //        while (!instance->harmonyRenderer->isResourcesReady() &&
@@ -96,7 +96,7 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
 //        }
     }
 
-    // 加载样式 - 必须在 Map+Render Thread 执行
+    // Load the style; must run on the map/render thread
     Logger::info("NativeMapView", "Dispatching loadURL to map thread");
     
     instance->invokeOnMapThread([styleUrl](Map* m) {
@@ -113,7 +113,7 @@ napi_value NativeMapView::getStyleJson(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -138,7 +138,7 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取this对象
+    // Retrieve the this object
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -152,14 +152,14 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setStyleJson: Failed to get instance or map not initialized");
         return undefined;
     }
     
-    // 获取JSON字符串
+    // Retrieve the JSON string
     size_t jsonLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &jsonLength);
     std::string json(jsonLength, '\0');
@@ -181,22 +181,22 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "setLatLngBounds: Map not initialized");
         return args.Undefined();
     }
     
-    // 检查参数是否为 null（允许清除边界限制）
+    // Check whether the argument is null (allows clearing the bound constraint)
     if (!args.Has(0)) {
-        // 清除边界限制
+        // Clear the boundary constraint
         instance->invokeOnMapThread([](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions()); });
         Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (no argument)");
         return args.Undefined();
     }
     
-    // TODO: 实现解析 LatLngBounds 参数并设置边界
+    // TODO: Implement LatLngBounds argument parsing and apply the bounds
     Logger::warn("NativeMapView", "setLatLngBounds: LatLngBounds parameter parsing not yet implemented");
     
     return args.Undefined();
@@ -205,7 +205,7 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
 // Note: setDebug, getDebug, setDebugActive, and isDebugActive are now implemented in native_map_view_debug.cpp
 
 napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_info info) {
-    // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
+    // Action journal requires ActionJournal support, which is not configured on Harmony
     // Action journal requires ActionJournal support, not configured for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -213,7 +213,7 @@ napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_i
 }
 
 napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info info) {
-    // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
+    // Action journal requires ActionJournal support, which is not configured on Harmony
     // Action journal requires ActionJournal support, not configured for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -221,7 +221,7 @@ napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info i
 }
 
 napi_value NativeMapView::clearActionJournalLog(napi_env env, napi_callback_info info) {
-    // Action journal 需要 ActionJournal 支持，未在 Harmony 配置
+    // Action journal requires ActionJournal support, which is not configured on Harmony
     // Action journal requires ActionJournal support, not configured for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
@@ -232,7 +232,7 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
     napi_value result;
     napi_get_boolean(env, false, &result);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -252,7 +252,7 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -271,7 +271,7 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    // 检查是否已有缓存的 Style 实例
+    // Check whether a cached Style instance already exists
     if (instance->styleRef_ != nullptr) {
         napi_value cachedStyle;
         napi_status status = napi_get_reference_value(env, instance->styleRef_, &cachedStyle);
@@ -284,7 +284,7 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         instance->styleRef_ = nullptr;
     }
 
-    // 检查 Style 构造函数引用是否已初始化
+    // Verify that the Style constructor reference has been initialized
     if (maplibre::harmony::StyleNAPI::constructor == nullptr) {
         Logger::error("NativeMapView", "getStyle: StyleNAPI::constructor is nullptr - Style class not initialized");
         napi_value result;
@@ -292,7 +292,7 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    // 获取 Style 构造函数
+    // Obtain the Style constructor
     napi_value styleConstructor;
     napi_status status = napi_get_reference_value(env, maplibre::harmony::StyleNAPI::constructor, &styleConstructor);
     if (status != napi_ok) {
@@ -302,7 +302,7 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    // 检查构造函数是否有效
+    // Validate that the constructor is available
     napi_valuetype constructorType;
     napi_typeof(env, styleConstructor, &constructorType);
     if (constructorType != napi_function) {
@@ -312,11 +312,11 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    // 创建参数：mapPtr
+    // Create the parameter: mapPtr
     napi_value args[1];
     int64_t mapPtr = reinterpret_cast<int64_t>(instance->map);
     napi_create_int64(env, mapPtr, &args[0]);
-    // 创建 StyleNAPI 实例
+    // Create the StyleNAPI instance
     napi_value styleInstance;
     status = napi_new_instance(env, styleConstructor, 1, args, &styleInstance);
     if (status != napi_ok) {
@@ -339,7 +339,7 @@ napi_value NativeMapView::getTransitionOptions(napi_env env, napi_callback_info 
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -368,7 +368,7 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
         return undefined;
     }
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     napi_value thisObj;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
     NativeMapView* instance = nullptr;
@@ -379,7 +379,7 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
         return undefined;
     }
     
-    // 解析 TransitionOptions
+    // Parse the TransitionOptions
     napi_value optionsObj = args.GetObject(0, "options");
     if (args.HasError()) {
         napi_value undefined;
@@ -410,7 +410,7 @@ napi_value NativeMapView::setTransitionOptions(napi_env env, napi_callback_info 
 napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getLight: Map not initialized");
@@ -447,7 +447,7 @@ napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getLayers: Map not initialized");
@@ -481,14 +481,14 @@ napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getLayer: Map not initialized");
         return args.Undefined();
     }
     
-    // 获取layerId参数
+    // Retrieve the layerId argument
     std::string layerId = args.GetString(0, "layerId");
     if (args.HasError()) return args.Undefined();
     
@@ -512,8 +512,8 @@ napi_value NativeMapView::addLayer(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1052-1064
+    // TODO: Implement the Layer NAPI wrapper
+    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1052-1064
     Logger::warn("NativeMapView", "addLayer: Not implemented - requires Layer wrapper classes");
     
     return undefined;
@@ -523,8 +523,8 @@ napi_value NativeMapView::addLayerAbove(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1066-1103
+    // TODO: Implement the Layer NAPI wrapper
+    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1066-1103
     Logger::warn("NativeMapView", "addLayerAbove: Not implemented - requires Layer wrapper classes");
     
     return undefined;
@@ -534,8 +534,8 @@ napi_value NativeMapView::addLayerAt(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1105-1128
+    // TODO: Implement the Layer NAPI wrapper
+    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1105-1128
     Logger::warn("NativeMapView", "addLayerAt: Not implemented - requires Layer wrapper classes");
     
     return undefined;
@@ -545,8 +545,8 @@ napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
     napi_value result;
     napi_get_boolean(env, false, &result);
     
-    // TODO: 需要实现 Layer 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1133-1150
+    // TODO: Implement the Layer NAPI wrapper
+    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1133-1150
     Logger::warn("NativeMapView", "removeLayerAt: Not implemented - requires Layer wrapper classes");
     
     return result;
@@ -561,14 +561,14 @@ napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
     
     if (args.HasError()) return result;
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "removeLayer: Map not initialized");
         return result;
     }
     
-    // 获取layerId参数
+    // Retrieve the layerId argument
     std::string layerId = args.GetString(0, "layerId");
     if (args.HasError()) return result;
     
@@ -589,7 +589,7 @@ napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
 napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getSources: Map not initialized");
@@ -623,14 +623,14 @@ napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
     args.RequireMinArgs(1);
     if (args.HasError()) return args.Undefined();
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "getSource: Map not initialized");
         return args.Undefined();
     }
     
-    // 获取sourceId参数
+    // Retrieve the sourceId argument
     std::string sourceId = args.GetString(0, "sourceId");
     if (args.HasError()) return args.Undefined();
     
@@ -654,8 +654,8 @@ napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // TODO: 需要实现 Source 的 NAPI 包装类
-    // 参考 Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1194-1204
+    // TODO: Implement the Source NAPI wrapper
+    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1194-1204
     Logger::warn("NativeMapView", "addSource: Not implemented - requires Source wrapper classes");
     
     return undefined;
@@ -670,14 +670,14 @@ napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
     
     if (args.HasError()) return result;
     
-    // 获取NativeMapView实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "removeSource: Map not initialized");
         return result;
     }
     
-    // 获取sourceId参数
+    // Retrieve the sourceId argument
     std::string sourceId = args.GetString(0, "sourceId");
     if (args.HasError()) return result;
     
@@ -707,7 +707,7 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "addImage: Map not initialized");
@@ -715,9 +715,9 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // TODO: 实现从 PixelMap 创建图像
-        // 参考 Android bitmap.cpp 和 iOS UIImage+MLNAdditions.mm
-        // 需要实现 PixelMap -> PremultipliedImage 的转换
+        // TODO: Implement image creation from PixelMap
+        // Reference Android bitmap.cpp and iOS UIImage+MLNAdditions.mm
+        // Need to implement PixelMap -> PremultipliedImage conversion
         Logger::warn("NativeMapView", "addImage: PixelMap conversion not implemented yet");
         Logger::info("NativeMapView", "addImage: Please use Image class or Style.addImage() instead");
         
@@ -740,7 +740,7 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取 NativeMapView 实例
+    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
     if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
         Logger::error("NativeMapView", "addImages: Map not initialized");
@@ -748,7 +748,7 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // 获取 Image 数组参数
+        // Retrieve the Image array argument
         napi_value imagesArray = args.GetValue(0);
         bool isArray = false;
         napi_is_array(env, imagesArray, &isArray);
@@ -766,7 +766,7 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
             return undefined;
         }
         
-        // 遍历数组，逐个添加图像
+        // Iterate through the array and add images one by one
         for (uint32_t i = 0; i < length; i++) {
             napi_value imageValue;
             napi_get_element(env, imagesArray, i, &imageValue);
@@ -808,7 +808,7 @@ napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     
-    // 获取NativeMapView实例和参数
+    // Obtain the NativeMapView instance and arguments
     napi_value thisObj;
     size_t argc = 1;
     napi_value args[1];
@@ -823,7 +823,7 @@ napi_value NativeMapView::removeImage(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    // 获取图片名称
+    // Retrieve the image name
     size_t nameLength = 0;
     napi_get_value_string_utf8(env, args[0], nullptr, 0, &nameLength);
     std::string name(nameLength, '\0');

@@ -10,7 +10,7 @@ namespace mbgl {
 namespace harmony {
 
 namespace {
-// 格式化线程 ID 为可读字符串
+// Format thread ID into a readable string
 std::string formatThreadId(std::thread::id id) {
     std::ostringstream oss;
     oss << "T-" << std::setfill('0') << std::setw(5) 
@@ -18,7 +18,7 @@ std::string formatThreadId(std::thread::id id) {
     return oss.str();
 }
 
-// 格式化时间间隔
+// Format time duration
 std::string formatDuration(std::chrono::steady_clock::duration duration) {
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
     if (seconds < 60) {
@@ -43,12 +43,12 @@ void HarmonyRendererThreadManager::registerRendererThread(
     
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 检查是否已存在
+    // Check if the thread is already registered
     if (threads_.find(instanceId) != threads_.end()) {
         Logger::warn("ThreadMgr", "Thread already registered: %s, replacing...", instanceId.c_str());
     }
     
-    // 注册线程
+    // Register thread
     threads_[instanceId] = ThreadInfo(runLoop, threadId);
     
     Logger::info("ThreadMgr", "➕ Register thread: %s (%s)", 
@@ -65,10 +65,10 @@ void HarmonyRendererThreadManager::unregisterRendererThread(const std::string& i
         return;
     }
     
-    // 标记为非活跃
+    // Mark as inactive
     it->second.active = false;
     
-    // 移除线程
+    // Remove thread
     threads_.erase(it);
     
     Logger::info("ThreadMgr", "➖ Unregister thread: %s", instanceId.c_str());
@@ -92,7 +92,7 @@ bool HarmonyRendererThreadManager::invokeOnThread(
         return false;
     }
     
-    // 通过 RunLoop 调度任务
+    // Dispatch task via RunLoop
     threadInfo.runLoop->invoke(std::move(fn));
     
     return true;
@@ -138,7 +138,7 @@ HarmonyRendererThreadManager::getThreadInfo(const std::string& instanceId) const
 size_t HarmonyRendererThreadManager::getThreadCount() const {
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // 只计数活跃线程
+    // Count only active threads
     size_t count = 0;
     for (const auto& [_, threadInfo] : threads_) {
         if (threadInfo.active) {

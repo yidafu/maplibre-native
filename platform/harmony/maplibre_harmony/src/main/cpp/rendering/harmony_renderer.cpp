@@ -9,8 +9,8 @@
 
 #include "harmony_map_render_thread.hpp"
 #include "utils/logger.h"
-#include "core/native_map_view/native_map_view_harmony.hpp"  // ✅ 用于转发 MapObserver 事件
-#include "config/maplibre_settings.hpp"  // ✅ 全局配置管理
+#include "core/native_map_view/native_map_view_harmony.hpp"  // ✅ Used to forward MapObserver events
+#include "config/maplibre_settings.hpp"  // ✅ Global configuration management
 
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/logging.hpp>
@@ -33,7 +33,7 @@ namespace mbgl {
 namespace harmony {
 
 namespace {
-// 生成唯一实例 ID
+// Generate a unique instance ID
 std::string generateRendererInstanceId() {
     static std::atomic<uint64_t> counter{0};
     auto count = counter.fetch_add(1);
@@ -89,7 +89,7 @@ void HarmonyRenderer::initialize(int width_, int height_, float pixelRatio_, con
         resourceOptions.withCachePath(cachePath);
     }
     
-    // ✅ 应用全局配置（TileServerOptions 和 API Key）
+    // ✅ Apply global configuration (TileServerOptions and API key)
     resourceOptions = MapLibreSettings::getInstance().applyToResourceOptions(std::move(resourceOptions));
     
     // Create Client options
@@ -122,9 +122,9 @@ void HarmonyRenderer::setNativeWindow(OHNativeWindow* window) {
     if (mapRenderThread_) {
         mapRenderThread_->setNativeWindow(window);
         
-        // ✅ 关键修复：设置 Native Window 后，初始化 framebuffer 大小
-        // 这确保在第一次渲染前 framebuffer 大小正确
-        // 因为在 initialize() 时 size 已设置，但 backend 的 framebuffer 还没有调整大小
+        // ✅ Critical fix: initialize the framebuffer size after setting the native window
+        // This ensures the framebuffer size is correct before the first render
+        // Because initialize() sets the size while the backend framebuffer has not yet been resized
         if (width > 0 && height > 0) {
             mapRenderThread_->resizeFramebuffer(width, height);
         } else {
@@ -152,12 +152,12 @@ void HarmonyRenderer::resize(int width_, int height_) {
     Logger::info("HarmonyRenderer", "🔍 resize() called: %dx%d", width_, height_);
     
     if (mapRenderThread_) {
-        // ✅ 关键修复：同时更新 backend framebuffer size 和 Map size
-        // 参考 Android MapRenderer::onSurfaceChanged() 的实现
-        // 先调用 resizeFramebuffer（这会通过 invoke 在渲染线程执行）
+        // ✅ Critical fix: update both the backend framebuffer size and the map size
+        // Reference Android MapRenderer::onSurfaceChanged()
+        // Call resizeFramebuffer first (invoked on the render thread)
         mapRenderThread_->resizeFramebuffer(width_, height_);
         
-        // 然后更新 Map size（也在渲染线程执行）
+        // Then update the map size (also executed on the render thread)
         mapRenderThread_->invoke([this, width_, height_]() {
             auto& map = mapRenderThread_->getMap();
             map.setSize(Size{static_cast<uint32_t>(width_), static_cast<uint32_t>(height_)});
@@ -271,31 +271,31 @@ void HarmonyRenderer::stopAllRequests() {
 
 void HarmonyRenderer::stopAllRequestsAsync(std::function<void()> onComplete) {
     try {
-        // 1. 立即停止所有请求（同步部分）
+        // 1. Stop all requests immediately (synchronous part)
         stopAllRequests();
         
-        // 2. 使用异步任务等待所有线程完成（参考 Android/iOS 模式）
-        // 在独立线程中执行等待逻辑，避免阻塞主线程
+        // 2. Use an asynchronous task to wait for every thread to finish (align with Android/iOS patterns)
+        // Run the wait logic on a dedicated thread to avoid blocking the main thread
         std::thread([this, onComplete = std::move(onComplete), instanceId = instanceId_]() {
             try {
-                // 等待渲染线程完成当前任务（使用条件变量而不是硬编码等待）
-                // 参考 Android MapRenderer 的 waitForEmpty()
+                // Wait for the render thread to complete its current work (prefer condition variables over hard-coded waits)
+                // Reference Android MapRenderer::waitForEmpty()
                 if (mapRenderThread_) {
-                    // 给渲染线程时间完成当前帧
+                    // Give the render thread time to finish the current frame
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
                 
-                // 等待 RunLoop 完成当前任务
-                // 参考 iOS 的 RunLoop 清理模式
+                // Wait for the RunLoop to finish its pending tasks
+                // Reference the iOS RunLoop cleanup pattern
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 
-                // 等待 ResourceLoader 线程停止
-                // 这是防止 SIGSEGV 的关键（见 CRASH_FIXES_2025_10_29.md）
+                // Wait for the ResourceLoader thread to stop
+                // This is critical to prevent SIGSEGV (see CRASH_FIXES_2025_10_29.md)
                 std::this_thread::sleep_for(std::chrono::milliseconds(150));
                 
                 Logger::info("HarmonyRenderer", "[%s] All async operations completed", instanceId.c_str());
                 
-                // 3. 调用完成回调
+                // 3. Invoke the completion callback
                 if (onComplete) {
                     onComplete();
                 }
@@ -303,14 +303,14 @@ void HarmonyRenderer::stopAllRequestsAsync(std::function<void()> onComplete) {
             } catch (const std::exception& e) {
                 Logger::error("HarmonyRenderer", "[%s] Error in async wait: %s", instanceId.c_str(), e.what());
                 if (onComplete) {
-                    onComplete(); // 即使出错也要调用回调
+                    onComplete(); // Call the callback even if an error occurs
                 }
             }
-        }).detach(); // detach 允许线程独立运行
+        }).detach(); // detach allows the thread to run independently
         
     } catch (const std::exception& e) {
         Logger::error("HarmonyRenderer", "[%s] Error in stopAllRequestsAsync: %s", instanceId_.c_str(), e.what());
-        // 出错时立即调用回调
+        // Immediately invoke the callback when an error occurs
         if (onComplete) {
             onComplete();
         }
@@ -329,7 +329,7 @@ void HarmonyRenderer::cleanup() {
         weakFactory->invalidateWeakPtrs();
     }
     
-    // 首先停止所有网络请求（pause all file sources）
+    // First stop all network requests (pause all file sources)
     stopAllRequests();
     
     // 🔑 Critical: Wait for active network callbacks to complete
@@ -339,7 +339,7 @@ void HarmonyRenderer::cleanup() {
     Logger::info("HarmonyRenderer", "[%s] Waiting for active network callbacks to complete...", instanceId_.c_str());
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     
-    // 停止 Map+Render 线程
+    // Stop the Map+Render thread
     if (mapRenderThread_) {
         Logger::info("HarmonyRenderer", "[%s] Stopping Map+Render thread...", instanceId_.c_str());
         mapRenderThread_->stop();
@@ -355,7 +355,7 @@ void HarmonyRenderer::cleanup() {
     Logger::info("HarmonyRenderer", "[%s] Cleanup completed successfully", instanceId_.c_str());
 }
 
-// ✅ MapObserver 方法实现 - 转发给 NativeMapView
+// ✅ MapObserver implementations - forward to NativeMapView
 
 void HarmonyRenderer::onCameraWillChange(CameraChangeMode mode) {
     if (nativeMapView_) {
@@ -457,7 +457,7 @@ void HarmonyRenderer::onRegisterShaders(gfx::ShaderRegistry& registry) {
     }
 }
 
-// Shader 编译事件
+// Shader compile events
 void HarmonyRenderer::onPreCompileShader(shaders::BuiltIn shader, gfx::Backend::Type backend, const std::string& source) {
     if (nativeMapView_) {
         nativeMapView_->onPreCompileShader(shader, backend, source);
@@ -476,7 +476,7 @@ void HarmonyRenderer::onShaderCompileFailed(shaders::BuiltIn shader, gfx::Backen
     }
 }
 
-// Glyph 加载事件
+// Glyph load events
 void HarmonyRenderer::onGlyphsLoaded(const FontStack& stack, const GlyphRange& range) {
     if (nativeMapView_) {
         nativeMapView_->onGlyphsLoaded(stack, range);
@@ -495,7 +495,7 @@ void HarmonyRenderer::onGlyphsRequested(const FontStack& stack, const GlyphRange
     }
 }
 
-// Sprite 加载事件
+// Sprite load events
 void HarmonyRenderer::onSpriteLoaded(const std::optional<style::Sprite>& sprite) {
     if (nativeMapView_) {
         nativeMapView_->onSpriteLoaded(sprite);
@@ -515,7 +515,7 @@ void HarmonyRenderer::onSpriteRequested(const std::optional<style::Sprite>& spri
     }
 }
 
-// Tile 操作事件
+// Tile operation events
 void HarmonyRenderer::onTileAction(TileOperation operation, const OverscaledTileID& tileID, const std::string& sourceID) {
     if (nativeMapView_) {
         nativeMapView_->onTileAction(operation, tileID, sourceID);
@@ -574,7 +574,7 @@ void HarmonyRenderer::setOnFpsChangedCallback(std::function<void(double)> callba
         return;
     }
     
-    // 参考 Android MapRenderer::setOnFpsChangedListener
+    // Reference Android MapRenderer::setOnFpsChangedListener
     mapRenderThread_->setOnFpsChangedCallback(std::move(callback));
 }
 
@@ -626,7 +626,7 @@ void HarmonyRenderer::waitForEmpty(const util::SimpleIdentity tag) {
     // In a real implementation, this would wait for all queued tasks to complete
 }
 
-// 🔀 便利的线程切换方法（不需要 tag 参数）
+// 🔀 Convenience thread-switch helper (no tag parameter required)
 void HarmonyRenderer::runOnRenderThread(std::function<void()>&& fn) {
     if (!mapRenderThread_) {
         Logger::error("Renderer", "[%s] Cannot runOnRenderThread: thread is null", instanceId_.c_str());

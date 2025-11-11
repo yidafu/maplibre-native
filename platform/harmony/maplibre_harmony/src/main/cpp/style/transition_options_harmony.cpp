@@ -17,7 +17,7 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
         return undefined;
     }
     
-    // 创建 duration 属性（转换为毫秒）
+    // Create duration property (converted to milliseconds)
     const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         options.duration.value_or(mbgl::Duration::zero())
     ).count();
@@ -25,7 +25,7 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
     napi_create_double(env, static_cast<double>(durationMs), &durationValue);
     napi_set_named_property(env, obj, "duration", durationValue);
     
-    // 创建 delay 属性（转换为毫秒）
+    // Create delay property (converted to milliseconds)
     const auto delayMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         options.delay.value_or(mbgl::Duration::zero())
     ).count();
@@ -37,7 +37,7 @@ napi_value TransitionOptionsHarmony::CreateTransitionOptionsObject(napi_env env,
 }
 
 bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value value, mbgl::style::TransitionOptions& outOptions) {
-    // 检查是否为对象
+    // Ensure the value is an object
     napi_valuetype type;
     napi_status status = napi_typeof(env, value, &type);
     if (status != napi_ok || type != napi_object) {
@@ -45,7 +45,7 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
         return false;
     }
     
-    // 解析 duration
+    // Parse duration
     napi_value durationValue;
     status = napi_get_named_property(env, value, "duration", &durationValue);
     if (status == napi_ok) {
@@ -55,7 +55,7 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
         }
     }
     
-    // 解析 delay
+    // Parse delay
     napi_value delayValue;
     status = napi_get_named_property(env, value, "delay", &delayValue);
     if (status == napi_ok) {
@@ -65,7 +65,7 @@ bool TransitionOptionsHarmony::ParseTransitionOptions(napi_env env, napi_value v
         }
     }
     
-    // 解析 enablePlacementTransitions (可选，默认为 true)
+    // Parse enablePlacementTransitions (optional, defaults to true)
     napi_value enableValue;
     status = napi_get_named_property(env, value, "enablePlacementTransitions", &enableValue);
     if (status == napi_ok) {

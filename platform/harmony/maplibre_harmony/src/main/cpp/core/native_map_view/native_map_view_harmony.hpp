@@ -63,20 +63,20 @@ public:
     NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath);
     virtual ~NativeMapView();
     
-    // 资源清理方法
+    // Resource cleanup helpers
     void cleanupAllResources();
     
-    // 异步资源清理方法（参考 Android/iOS 销毁模式）
-    // onComplete: 清理完成后的回调函数
+    // Asynchronous resource cleanup (mirrors Android/iOS destruction flow)
+    // onComplete: callback invoked when cleanup finishes
     void cleanupAllResourcesAsync(std::function<void()> onComplete);
     
-    // 主动销毁资源（供 TS 层调用）
+    // Explicit resource destruction (invoked from TS layer)
     static napi_value destroy(napi_env env, napi_callback_info info);
     
-    // 异步销毁资源（供 TS 层调用，支持回调）
+    // Asynchronous destruction (invoked from TS layer, supports callback)
     static napi_value destroyAsync(napi_env env, napi_callback_info info);
     
-    // 设置原生窗口（带尺寸参数）
+    // Set the native window along with size parameters
     void setNativeWindowWithSize(int64_t surfaceId, int width, int height);
 
     double getPixelRatioValue() const {
@@ -181,7 +181,7 @@ public:
     static napi_value queryRenderedFeaturesForBox(napi_env env, napi_callback_info info);
     static napi_value querySourceFeatures(napi_env env, napi_callback_info info);
     
-    // 性能配置 API（参考 Android MapRenderer）
+    // Performance configuration APIs (aligned with Android MapRenderer)
     static napi_value setMaximumFps(napi_env env, napi_callback_info info);
     static napi_value setRenderingRefreshMode(napi_env env, napi_callback_info info);
     static napi_value getRenderingRefreshMode(napi_env env, napi_callback_info info);
@@ -259,9 +259,9 @@ public:
     static napi_value setOnStyleLoadedListener(napi_env env, napi_callback_info info);
     static napi_value setOnStyleLoadErrorListener(napi_env env, napi_callback_info info);
     
-    // ========== 新增的 Android/iOS 风格监听器 ==========
+    // ========== Additional Android/iOS-style listeners ==========
     
-    // 相机事件监听器（Android 风格）
+    // Camera event listeners (Android-style)
     static napi_value addOnCameraWillChangeListener(napi_env env, napi_callback_info info);
     static napi_value removeOnCameraWillChangeListener(napi_env env, napi_callback_info info);
     static napi_value addOnCameraIsChangingListener(napi_env env, napi_callback_info info);
@@ -269,7 +269,7 @@ public:
     static napi_value addOnCameraDidChangeListener(napi_env env, napi_callback_info info);
     static napi_value removeOnCameraDidChangeListener(napi_env env, napi_callback_info info);
     
-    // 地图加载事件监听器
+    // Map loading event listeners
     static napi_value addOnWillStartLoadingMapListener(napi_env env, napi_callback_info info);
     static napi_value removeOnWillStartLoadingMapListener(napi_env env, napi_callback_info info);
     static napi_value addOnDidFinishLoadingMapListener(napi_env env, napi_callback_info info);
@@ -277,7 +277,7 @@ public:
     static napi_value addOnDidFailLoadingMapListener(napi_env env, napi_callback_info info);
     static napi_value removeOnDidFailLoadingMapListener(napi_env env, napi_callback_info info);
     
-    // 渲染事件监听器
+    // Rendering event listeners
     static napi_value addOnWillStartRenderingFrameListener(napi_env env, napi_callback_info info);
     static napi_value removeOnWillStartRenderingFrameListener(napi_env env, napi_callback_info info);
     static napi_value addOnDidFinishRenderingFrameListener(napi_env env, napi_callback_info info);
@@ -287,19 +287,19 @@ public:
     static napi_value addOnDidFinishRenderingMapListener(napi_env env, napi_callback_info info);
     static napi_value removeOnDidFinishRenderingMapListener(napi_env env, napi_callback_info info);
     
-    // 样式事件监听器（Android 风格）
+    // Style event listeners (Android-style)
     static napi_value addOnDidFinishLoadingStyleListener(napi_env env, napi_callback_info info);
     static napi_value removeOnDidFinishLoadingStyleListener(napi_env env, napi_callback_info info);
     static napi_value addOnStyleImageMissingListener(napi_env env, napi_callback_info info);
     static napi_value removeOnStyleImageMissingListener(napi_env env, napi_callback_info info);
     
-    // 其他事件监听器
+    // Other event listeners
     static napi_value addOnDidBecomeIdleListener(napi_env env, napi_callback_info info);
     static napi_value removeOnDidBecomeIdleListener(napi_env env, napi_callback_info info);
     static napi_value addOnSourceChangedListener(napi_env env, napi_callback_info info);
     static napi_value removeOnSourceChangedListener(napi_env env, napi_callback_info info);
     
-    // 观察者事件监听器 (Shader, Glyph, Sprite, Tile)
+    // Observer event listeners (Shader, Glyph, Sprite, Tile)
     static napi_value addOnPreCompileShaderListener(napi_env env, napi_callback_info info);
     static napi_value removeOnPreCompileShaderListener(napi_env env, napi_callback_info info);
     static napi_value addOnPostCompileShaderListener(napi_env env, napi_callback_info info);
@@ -324,17 +324,17 @@ public:
     static napi_value addOnTileActionListener(napi_env env, napi_callback_info info);
     static napi_value removeOnTileActionListener(napi_env env, napi_callback_info info);
     
-    // ========== 新增方法：对齐 Android/iOS API ==========
+    // ========== Additional methods to align with Android/iOS APIs ==========
     
-    // 内容边距 (Content Padding)
+    // Content padding
     static napi_value setContentPadding(napi_env env, napi_callback_info info);
     static napi_value getContentPadding(napi_env env, napi_callback_info info);
     
-    // 像素比例 (Pixel Ratio)
+    // Pixel ratio
     static napi_value getPixelRatio(napi_env env, napi_callback_info info);
     static napi_value getDensityDependantRectangle(napi_env env, napi_callback_info info);
     
-    // 本地字体配置 (Local Glyph)
+    // Local glyph configuration
     static napi_value setLocalIdeographFontFamily(napi_env env, napi_callback_info info);
     static napi_value getLocalIdeographFontFamily(napi_env env, napi_callback_info info);
     
@@ -342,7 +342,7 @@ public:
     void notifyStyleLoaded();
     void notifyStyleLoadError(const std::string& error);
     
-    // ✅ 线程安全辅助方法
+    // ✅ Thread-safety helpers
     bool isOnRenderThread() const;
     void runOnRenderThread(std::function<void()>&& fn);
 
@@ -351,9 +351,9 @@ private:
     
     mbgl::Map& getMap();
     
-    // 初始化渲染器
+    // Initialize the renderer
     void initializeRenderer();
-    // 确保资源子系统就绪，如未就绪则尝试自愈重建
+    // Ensure resource subsystems are ready; attempt self-recovery if not
     void ensureResourcesReadyOrRecover(int timeoutMs = 500);
     
     napi_env env_;
@@ -372,48 +372,48 @@ private:
     int width = 64;
     int height = 64;
     
-    // 窗口指针
+    // Native window pointer
     OHNativeWindow* nativeWindow = nullptr;
     
-    // 析构标志 - 用于防止析构期间的回调崩溃
+    // Destruction flag used to prevent callbacks during teardown from crashing
     std::atomic<bool> isDestroying{false};
     
-    // 资源清理标志 - 防止重复清理
+    // Resource cleanup flag to prevent repeated cleanup
     std::atomic<bool> resourcesCleaned_{false};
     
-    // 调试计数器 - 追踪渲染触发频率
+    // Debug counters tracking render trigger frequency
     std::atomic<int> renderRequestCount{0};
     std::atomic<int> sourceChangedCount{0};
     std::atomic<int> cameraChangedCount{0};
     
-    // 性能配置（参考 Android MapRenderer）
-    int maximumFps_ = 60;  // 默认最大 60 FPS
-    int renderingRefreshMode_ = 1;  // 默认 WHEN_DIRTY 模式（0=CONTINUOUS, 1=WHEN_DIRTY）
-    std::unique_ptr<ThreadSafeCallback> fpsChangedCallback_;  // FPS 变化回调
+    // Performance configuration (aligned with Android MapRenderer)
+    int maximumFps_ = 60;  // Default maximum 60 FPS
+    int renderingRefreshMode_ = 1;  // Default WHEN_DIRTY mode (0=CONTINUOUS, 1=WHEN_DIRTY)
+    std::unique_ptr<ThreadSafeCallback> fpsChangedCallback_;  // Callback invoked when FPS changes
     
-    // 统一的回调管理器
+    // Unified callback manager
     std::unique_ptr<mbgl::harmony::CallbackManager> callbackManager_;
     
-    // 应用缓存目录路径
+    // Application cache directory path
     std::string cachePath_;
     
-    // Local glyph 字体族配置
+    // Local glyph font family configuration
     std::optional<std::string> localIdeographFontFamily_ = std::string("HarmonyOS_Sans");
 
-    // 内容边距 [top, left, bottom, right]
+    // Content padding [top, left, bottom, right]
     std::array<double, 4> contentPadding_ = {0.0, 0.0, 0.0, 0.0};
 
     std::unordered_map<int64_t, HarmonyViewAnnotation> viewAnnotations_;
     int64_t nextViewAnnotationId_ = 1;
     mutable std::mutex viewAnnotationMutex_;
     
-    // ==================== Map Thread Helper Methods ====================
+    // ==================== Map thread helper methods ====================
     
     /**
-     * 在 Map+Render Thread 执行 Map 操作（异步）
-     * 自动处理线程调度和错误检查
-     * 
-     * @param func 要执行的操作，接收 Map* 参数
+     * Execute a map operation on the Map+Render thread asynchronously.
+     * Thread scheduling and error handling are managed automatically.
+     *
+     * @param func Operation to perform; receives a Map* argument.
      */
     template<typename Func>
     void invokeOnMapThread(Func&& func) {
@@ -433,10 +433,10 @@ private:
     }
     
     /**
-     * 在 Map+Render Thread 执行 Map 操作（同步，等待结果）
-     * 
-     * @param func 要执行的操作，接收 Map* 参数并返回结果
-     * @return 操作的结果，失败时返回默认值
+     * Execute a map operation on the Map+Render thread synchronously, waiting for the result.
+     *
+     * @param func Operation to perform; receives a Map* argument and returns a result.
+     * @return The result of the operation, or the default value if it fails.
      */
     template<typename Func, typename Result = std::invoke_result_t<Func, mbgl::Map*>>
     Result invokeOnMapThreadSync(Func&& func, Result defaultValue = Result{}) {
@@ -444,7 +444,7 @@ private:
             return defaultValue;
         }
         
-        // 使用 promise/future 实现同步调用
+        // Use a promise/future pair to perform the synchronous call
         std::promise<Result> promise;
         auto future = promise.get_future();
         
@@ -465,7 +465,7 @@ private:
             }
         });
         
-        // 等待结果（最多 5 秒）
+        // Wait for the result (up to 5 seconds)
         auto status = future.wait_for(std::chrono::seconds(5));
         if (status == std::future_status::timeout) {
             return defaultValue;

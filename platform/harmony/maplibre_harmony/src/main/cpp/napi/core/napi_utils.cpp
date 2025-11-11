@@ -13,7 +13,7 @@ using mbgl::harmony::Logger;
 namespace mbgl {
 namespace harmony {
 namespace napi {
-    // 旧版本：保留用于兼容性
+    // Legacy version kept for compatibility
     int64_t ParseSurfaceId(napi_env env, napi_callback_info info) {
         if ((env == nullptr) || (info == nullptr)) {
             Logger::error("ParseId", "env or info is null");
@@ -34,7 +34,7 @@ namespace napi {
         return value;
     }
 
-    // 新版本：使用 NapiArgs（推荐使用）
+    // New version: uses NapiArgs (preferred)
     int64_t ParseSurfaceIdV2(napi_env env, napi_callback_info info) {
         NapiArgs args(env, info);
         args.RequireMinArgs(1);

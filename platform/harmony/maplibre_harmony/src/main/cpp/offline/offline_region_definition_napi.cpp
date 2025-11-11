@@ -10,10 +10,10 @@ namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
 
-// ========== 从 NAPI 对象转换为 C++ 定义 ==========
+// ========== Convert from NAPI object to C++ definition ==========
 
 mbgl::OfflineRegionDefinition OfflineRegionDefinitionNAPI::FromNapiObject(napi_env env, napi_value obj) {
-    // 检查对象类型
+    // Check object type
     napi_value typeValue;
     napi_get_named_property(env, obj, "type", &typeValue);
     
@@ -33,7 +33,7 @@ mbgl::OfflineRegionDefinition OfflineRegionDefinitionNAPI::FromNapiObject(napi_e
     }
 }
 
-// ========== 从 C++ 定义转换为 NAPI 对象 ==========
+// ========== Convert from C++ definition to NAPI object ==========
 
 napi_value OfflineRegionDefinitionNAPI::ToNapiObject(napi_env env, const mbgl::OfflineRegionDefinition& definition) {
     return std::visit([env](const auto& def) {
@@ -47,10 +47,10 @@ napi_value OfflineRegionDefinitionNAPI::ToNapiObject(napi_env env, const mbgl::O
     }, definition);
 }
 
-// ========== TilePyramid 定义转换 ==========
+// ========== TilePyramid definition conversion ==========
 
 mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyramidFromNapi(napi_env env, napi_value obj) {
-    // 获取 styleURL
+    // Get styleURL
     napi_value styleURLValue;
     napi_get_named_property(env, obj, "styleURL", &styleURLValue);
     
@@ -58,7 +58,7 @@ mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyrami
     size_t styleURLLen;
     napi_get_value_string_utf8(env, styleURLValue, styleURL, sizeof(styleURL), &styleURLLen);
     
-    // 获取 bounds
+    // Get bounds
     napi_value boundsValue;
     napi_get_named_property(env, obj, "bounds", &boundsValue);
     
@@ -67,25 +67,25 @@ mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyrami
         throw std::runtime_error("Failed to parse bounds");
     }
     
-    // 获取 minZoom
+    // Get minZoom
     napi_value minZoomValue;
     napi_get_named_property(env, obj, "minZoom", &minZoomValue);
     double minZoom;
     napi_get_value_double(env, minZoomValue, &minZoom);
     
-    // 获取 maxZoom
+    // Get maxZoom
     napi_value maxZoomValue;
     napi_get_named_property(env, obj, "maxZoom", &maxZoomValue);
     double maxZoom;
     napi_get_value_double(env, maxZoomValue, &maxZoom);
     
-    // 获取 pixelRatio
+    // Get pixelRatio
     napi_value pixelRatioValue;
     napi_get_named_property(env, obj, "pixelRatio", &pixelRatioValue);
     double pixelRatio;
     napi_get_value_double(env, pixelRatioValue, &pixelRatio);
     
-    // 获取 includeIdeographs
+    // Get includeIdeographs
     napi_value includeIdeographsValue;
     napi_get_named_property(env, obj, "includeIdeographs", &includeIdeographsValue);
     bool includeIdeographs;
@@ -105,36 +105,36 @@ napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mb
     napi_value obj;
     napi_create_object(env, &obj);
     
-    // 设置 type
+    // Set type
     napi_value typeValue;
     napi_create_string_utf8(env, "tilePyramid", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, obj, "type", typeValue);
     
-    // 设置 styleURL
+    // Set styleURL
     napi_value styleURLValue;
     napi_create_string_utf8(env, def.styleURL.c_str(), NAPI_AUTO_LENGTH, &styleURLValue);
     napi_set_named_property(env, obj, "styleURL", styleURLValue);
     
-    // 设置 bounds
+    // Set bounds
     napi_value boundsValue = mbgl::harmony::LatLngBoundsHarmony::CreateLatLngBoundsObject(env, def.bounds);
     napi_set_named_property(env, obj, "bounds", boundsValue);
     
-    // 设置 minZoom
+    // Set minZoom
     napi_value minZoomValue;
     napi_create_double(env, def.minZoom, &minZoomValue);
     napi_set_named_property(env, obj, "minZoom", minZoomValue);
     
-    // 设置 maxZoom
+    // Set maxZoom
     napi_value maxZoomValue;
     napi_create_double(env, def.maxZoom, &maxZoomValue);
     napi_set_named_property(env, obj, "maxZoom", maxZoomValue);
     
-    // 设置 pixelRatio
+    // Set pixelRatio
     napi_value pixelRatioValue;
     napi_create_double(env, def.pixelRatio, &pixelRatioValue);
     napi_set_named_property(env, obj, "pixelRatio", pixelRatioValue);
     
-    // 设置 includeIdeographs
+    // Set includeIdeographs
     napi_value includeIdeographsValue;
     napi_get_boolean(env, def.includeIdeographs, &includeIdeographsValue);
     napi_set_named_property(env, obj, "includeIdeographs", includeIdeographsValue);
@@ -142,10 +142,10 @@ napi_value OfflineRegionDefinitionNAPI::TilePyramidToNapi(napi_env env, const mb
     return obj;
 }
 
-// ========== Geometry 定义转换 ==========
+// ========== Geometry definition conversion ==========
 
 mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromNapi(napi_env env, napi_value obj) {
-    // 获取 styleURL
+    // Get styleURL
     napi_value styleURLValue;
     napi_get_named_property(env, obj, "styleURL", &styleURLValue);
     
@@ -153,31 +153,31 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
     size_t styleURLLen;
     napi_get_value_string_utf8(env, styleURLValue, styleURL, sizeof(styleURL), &styleURLLen);
     
-    // 获取 geometry
+    // Get geometry
     napi_value geometryValue;
     napi_get_named_property(env, obj, "geometry", &geometryValue);
     
     mbgl::Geometry<double> geometry = maplibre::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
     
-    // 获取 minZoom
+    // Get minZoom
     napi_value minZoomValue;
     napi_get_named_property(env, obj, "minZoom", &minZoomValue);
     double minZoom;
     napi_get_value_double(env, minZoomValue, &minZoom);
     
-    // 获取 maxZoom
+    // Get maxZoom
     napi_value maxZoomValue;
     napi_get_named_property(env, obj, "maxZoom", &maxZoomValue);
     double maxZoom;
     napi_get_value_double(env, maxZoomValue, &maxZoom);
     
-    // 获取 pixelRatio
+    // Get pixelRatio
     napi_value pixelRatioValue;
     napi_get_named_property(env, obj, "pixelRatio", &pixelRatioValue);
     double pixelRatio;
     napi_get_value_double(env, pixelRatioValue, &pixelRatio);
     
-    // 获取 includeIdeographs
+    // Get includeIdeographs
     napi_value includeIdeographsValue;
     napi_get_named_property(env, obj, "includeIdeographs", &includeIdeographsValue);
     bool includeIdeographs;
@@ -197,36 +197,36 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
     napi_value obj;
     napi_create_object(env, &obj);
     
-    // 设置 type
+    // Set type
     napi_value typeValue;
     napi_create_string_utf8(env, "geometry", NAPI_AUTO_LENGTH, &typeValue);
     napi_set_named_property(env, obj, "type", typeValue);
     
-    // 设置 styleURL
+    // Set styleURL
     napi_value styleURLValue;
     napi_create_string_utf8(env, def.styleURL.c_str(), NAPI_AUTO_LENGTH, &styleURLValue);
     napi_set_named_property(env, obj, "styleURL", styleURLValue);
     
-    // 设置 geometry
+    // Set geometry
     napi_value geometryValue = maplibre::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
     napi_set_named_property(env, obj, "geometry", geometryValue);
     
-    // 设置 minZoom
+    // Set minZoom
     napi_value minZoomValue;
     napi_create_double(env, def.minZoom, &minZoomValue);
     napi_set_named_property(env, obj, "minZoom", minZoomValue);
     
-    // 设置 maxZoom
+    // Set maxZoom
     napi_value maxZoomValue;
     napi_create_double(env, def.maxZoom, &maxZoomValue);
     napi_set_named_property(env, obj, "maxZoom", maxZoomValue);
     
-    // 设置 pixelRatio
+    // Set pixelRatio
     napi_value pixelRatioValue;
     napi_create_double(env, def.pixelRatio, &pixelRatioValue);
     napi_set_named_property(env, obj, "pixelRatio", pixelRatioValue);
     
-    // 设置 includeIdeographs
+    // Set includeIdeographs
     napi_value includeIdeographsValue;
     napi_get_boolean(env, def.includeIdeographs, &includeIdeographsValue);
     napi_set_named_property(env, obj, "includeIdeographs", includeIdeographsValue);
