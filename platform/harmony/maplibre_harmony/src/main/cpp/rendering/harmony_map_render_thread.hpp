@@ -251,7 +251,7 @@ private:
     std::optional<std::string> localIdeographFontFamily_;
     
     // Rendering state
-    std::atomic<bool> paused_{false};
+    std::atomic<bool> paused_{true};
     
     // FPS measurement (aligned with Android MapRenderer)
     std::chrono::steady_clock::time_point lastFrameTime_;

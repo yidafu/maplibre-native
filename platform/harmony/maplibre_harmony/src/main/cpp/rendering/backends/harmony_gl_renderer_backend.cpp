@@ -1143,6 +1143,10 @@ void HarmonyGLRendererBackend::resumeRendering() {
     isStopped_ = false;
 }
 
+bool HarmonyGLRendererBackend::hasValidSurface() const {
+    return isSurfaceValid();
+}
+
 } // namespace harmony
 } // namespace mbgl
 

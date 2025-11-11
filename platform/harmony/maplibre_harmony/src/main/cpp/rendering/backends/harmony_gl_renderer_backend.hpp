@@ -47,6 +47,7 @@ public:
     void pauseRendering() override;
     void resumeRendering() override;
     bool isRenderingStopped() const override { return isStopped_; }
+    bool hasValidSurface() const;
     
     // 🔒 Thread-safety checks
     bool isOnCorrectThread() const;

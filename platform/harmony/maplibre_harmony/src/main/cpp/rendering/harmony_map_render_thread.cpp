@@ -424,6 +424,11 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
         // Step 1: initialize the display and surface on the render thread
         Logger::info("MapRenderThread", "Initializing EGL Display and Surface on render thread...");
         glBackend->setNativeWindow(window);
+        if (!glBackend->hasValidSurface()) {
+            Logger::error("MapRenderThread", "Failed to initialize EGL surface; rendering remains paused");
+            paused_ = true;
+            return;
+        }
         // Step 2: do not create the context here!
         // 🎯 Key point: invoke() callbacks run on a thread-pool worker, not on the render thread
         // The context must be created on the real render thread (renderLoopThread)
@@ -599,7 +604,18 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     // 🎯 Two-thread model: VSync now wakes the render thread via a condition variable
     // Assert to guarantee we are always on the render thread
     // ⚠️ Perform this assertion after the destroying_ check because callbacks may arrive late during teardown
-    assert(isOnThread() && "VSync must execute on render thread");
+    if (!isOnThread()) {
+        Logger::warn("MapRenderThread", "onVSyncFrame invoked off render thread, redispatching");
+        if (runLoop_) {
+            runLoop_->invoke([self = this]() {
+                if (self->destroying_.load()) {
+                    return;
+                }
+                self->onVSyncFrame();
+            });
+        }
+        return;
+    }
     
     // Fetch the pending render parameters
     if (!pendingRender_.load()) {

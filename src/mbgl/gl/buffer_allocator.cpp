@@ -3,6 +3,8 @@
 #include <mbgl/gl/context.hpp>
 #include <mbgl/gl/uniform_buffer_gl.hpp>
 #include <mbgl/util/instrumentation.hpp>
+#include <mbgl/util/string.hpp>
+#include <mbgl/util/logging.hpp>
 
 #include <utility>
 
@@ -273,13 +275,15 @@ public:
         if (buf) {
             std::memcpy(buf, data, size);
             MBGL_CHECK_ERROR(glUnmapBuffer(type));
-
-            residentBuffer = buffer->addRef(nullptr, writtenIndex, size);
-            buffer->pointer += alignedSize;
         } else {
-            assert(0);
-            return false;
+            std::string warningMsg = std::string("glMapBufferRange failed at offset ") + util::toString(buffer->pointer) +
+                                     " size " + util::toString(alignedSize) + ", falling back to glBufferSubData";
+            Log::Warning(Event::OpenGL, warningMsg);
+            MBGL_CHECK_ERROR(glBufferSubData(type, buffer->pointer, size, data));
         }
+
+        residentBuffer = buffer->addRef(nullptr, writtenIndex, size);
+        buffer->pointer += alignedSize;
 
 #ifndef NDEBUG
         MBGL_CHECK_ERROR(glBindBuffer(type, 0));
@@ -445,11 +449,14 @@ private:
         if (buf) {
             std::memcpy(buf, ref.getOwner()->getManagedBuffer().getContents().data(), ref.getOwner()->getSize());
             MBGL_CHECK_ERROR(glUnmapBuffer(type));
-            destBuffer.pointer += alignedSize;
         } else {
-            assert(0);
-            return false;
+            std::string warningMsg = std::string("glMapBufferRange failed during defragmentation at offset ") +
+                                     util::toString(destBuffer.pointer) + " size " + util::toString(alignedSize) +
+                                     ", using glBufferSubData";
+            Log::Warning(Event::OpenGL, warningMsg);
+            MBGL_CHECK_ERROR(glBufferSubData(type, destBuffer.pointer, ref.getOwner()->getSize(), ref.getOwner()->getManagedBuffer().getContents().data()));
         }
+        destBuffer.pointer += alignedSize;
 
         // 2.c: Now the ref must be made aware of the relocation of its contents.
         // Note that this means defragmentation can never run on refs that are
