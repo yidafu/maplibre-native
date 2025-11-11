@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <optional>
+#include <memory>
 #include <mutex>
 #include <atomic>
 #include <thread>
@@ -96,7 +97,7 @@ public:
     void checkMultiInfo();
 
     // Use the dedicated CURL event loop
-    std::unique_ptr<harmony::CURLEventLoop> curlEventLoop;
+    std::shared_ptr<harmony::CURLEventLoop> curlEventLoop;
 
     // CURL multi handle — now managed by CURLEventLoop
     CURLM *multi = nullptr;
@@ -113,6 +114,10 @@ public:
 
     void setClientOptions(ClientOptions options);
     ClientOptions getClientOptions();
+
+    std::shared_ptr<harmony::CURLEventLoop> getEventLoop() const {
+        return curlEventLoop;
+    }
 
 private:
     mutable std::mutex resourceOptionsMutex;
@@ -133,6 +138,7 @@ private:
     static size_t writeCallback(void *contents, size_t nmemb, size_t size, void *userp);
 
     HTTPFileSource::Impl *context = nullptr;
+    std::shared_ptr<harmony::CURLEventLoop> eventLoop;
     Resource resource;
     FileSource::Callback callback;
 
@@ -190,7 +196,7 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
             mode = harmony::CURLEventLoop::Mode::EventDriven;
         }
         
-        curlEventLoop = std::make_unique<harmony::CURLEventLoop>(mode);
+        curlEventLoop = std::make_shared<harmony::CURLEventLoop>(mode);
         curlEventLoop->start();
         
         // Obtain the multi handle (owned by CURLEventLoop)
@@ -219,8 +225,8 @@ HTTPFileSource::Impl::~Impl() {
     // but ANRDetector helps surface long-running operations.
     if (curlEventLoop) {
         ANRDetector stopDetector("curlEventLoop->stop", 50, 200);
-        curlEventLoop->stop();
-        curlEventLoop.reset();
+        auto loopRef = std::move(curlEventLoop);
+        loopRef->stop();
     }
     
     // Clean up the CURL handle queue (typically quick)
@@ -305,10 +311,18 @@ ClientOptions HTTPFileSource::Impl::getClientOptions() {
 
 HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, FileSource::Callback callback_)
     : context(context_),
+      eventLoop(context_ ? context_->getEventLoop() : nullptr),
       resource(std::move(resource_)),
       callback(std::move(callback_)),
-      handle(context->getHandle()) {
-    
+      handle(context_ ? context_->getHandle() : nullptr) {
+    if (!context) {
+        throw std::runtime_error("HTTPFileSource context is null");
+    }
+
+    if (!handle) {
+        throw std::runtime_error("Failed to acquire CURL easy handle");
+    }
+
     // Apply URL transforms when a callback is provided.
     // Reference Android: platform/android/.../file_source.cpp:122-124
     // Reference iOS: platform/darwin/src/MLNOfflineStorage.mm:138-141
@@ -377,8 +391,8 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
         handleError(curl_easy_setopt(handle, CURLOPT_SHARE, context->share));
 
         // Start requesting the information using CURLEventLoop
-        if (context->curlEventLoop) {
-            bool success = context->curlEventLoop->addHandle(handle);
+        if (eventLoop) {
+            bool success = eventLoop->addHandle(handle);
             if (!success) {
                 Logger::error("Network", "❌ Failed to add handle to CURLEventLoop");
                 throw std::runtime_error("Failed to add handle to CURLEventLoop");
@@ -407,8 +421,8 @@ HTTPRequest::~HTTPRequest() {
     // 3. Clear userp and release resources.
     
     // Step 1: remove the CURL handle from CURLEventLoop (stop new callbacks)
-    if (context && context->curlEventLoop && handle) {
-        bool success = context->curlEventLoop->removeHandle(handle);
+    if (eventLoop && handle) {
+        bool success = eventLoop->removeHandle(handle);
         
         // Step 2: short wait to ensure in-flight callbacks finish
         // Note: keep it brief to avoid ANR while still accommodating callbacks
@@ -433,6 +447,8 @@ HTTPRequest::~HTTPRequest() {
         curl_slist_free_all(headers);
         headers = nullptr;
     }
+
+    eventLoop.reset();
 }
 
 size_t HTTPRequest::writeCallback(void *const contents, const size_t size, const size_t nmemb, void *userp) {
