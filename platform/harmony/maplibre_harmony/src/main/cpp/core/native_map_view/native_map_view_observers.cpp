@@ -1631,6 +1631,12 @@ napi_value NativeMapView::setOnStyleLoadedListener(napi_env env, napi_callback_i
     
     // Register the callback
     if (instance->callbackManager_->RegisterCallback("onStyleLoaded", args[0])) {
+        // 如果样式已经加载完成，则立即通知监听器，保持与 Android API 一致的行为
+        if (instance->styleLoadedOnce.load(std::memory_order_acquire)) {
+            if (!instance->callbackManager_->InvokeCallbackEmpty("onStyleLoaded")) {
+                Logger::warn("NativeMapView", "setOnStyleLoadedListener: Immediate invoke failed");
+            }
+        }
     } else {
         Logger::error("NativeMapView", "setOnStyleLoadedListener: Failed to register callback");
     }
@@ -1694,6 +1700,9 @@ void NativeMapView::notifyStyleLoaded() {
         Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: Instance is destroying, skipping callback");
         return;
     }
+    
+    // 标记当前样式已加载完成，供后续注册的监听器立即回放
+    styleLoadedOnce.store(true, std::memory_order_release);
     
     if (!callbackManager_) {
         Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: CallbackManager not initialized");

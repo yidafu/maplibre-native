@@ -16,6 +16,7 @@
 #include <future>
 #include <chrono>
 #include <type_traits>
+#include <atomic>
 #include <js_native_api.h>
 #include <unordered_map>
 #include <mutex>
@@ -377,6 +378,9 @@ private:
     
     // Destruction flag used to prevent callbacks during teardown from crashing
     std::atomic<bool> isDestroying{false};
+    
+    // Indicates whether the current style has completed loading at least once
+    std::atomic<bool> styleLoadedOnce{false};
     
     // Resource cleanup flag to prevent repeated cleanup
     std::atomic<bool> resourcesCleaned_{false};

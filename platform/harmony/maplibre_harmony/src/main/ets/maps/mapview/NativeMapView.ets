@@ -71,7 +71,7 @@ export struct MapView {
   private controller: NativeMapViewController = new NativeMapViewController();
   @State private isVisible: boolean = true;
   @State private isDestroyed: boolean = false;
-  // 组件属性
+  // Component properties
   @Prop styleUrl: string;
   @Prop initialLatitude: number = 30.2741;
   @Prop initialLongitude: number = 120.1551;
@@ -80,24 +80,40 @@ export struct MapView {
   @Prop initialPitch: number = 0;
   @Prop debugMode: boolean = false;
   @State private viewAnnotationFrames: ViewAnnotationRenderState[] = [];
-  // 回调函数
-  onMapViewCreated?: (map: MapLibreMap) => void; // 早期回调：MapLibreMap 创建后立即调用（在样式加载前）
-  onMapReady?: (map: MapLibreMap) => void | Promise<void>; // 常规回调：样式加载完成后调用
+  // Callbacks
+  onMapViewCreated?: (map: MapLibreMap) => void; // Early callback: invoked right after MapLibreMap is created (before style load)
+  onMapReady?: (map: MapLibreMap) => void | Promise<void>; // Standard callback: called after style finishes loading
   onMapLoaded?: () => void;
   onMapError?: (error: string) => void;
-  // 声明式子组件支持
+  // Declarative child support
   @BuilderParam children?: () => void;
-  // 提供地图实例给子组件（声明式 API）
+  // Provide map instance to child components (declarative API)
   @Provide('mapLibreMap') mapInstance: MapLibreMap | null = null;
-  // UI 组件状态
+  // UI component state
   @State private compassBearing: number = 0;
   @State private uiSettingsVersion: number = 0;
   @State private scaleBarMetersPerPixel: number = 0;
-  // InfoWindow 状态管理
+  // InfoWindow state management
   @State private visibleInfoWindows: InfoWindowState[] = [];
-  // AnnotationView 状态管理
+  // AnnotationView state management
   @State private visibleAnnotationViews: AnnotationViewData[] = [];
   private lastViewAnnotationSnapshot: Map<number, string> = new Map();
+
+  private getOnMapViewCreatedCallback(): ((map: MapLibreMap) => void) | undefined {
+    return typeof this.onMapViewCreated === 'function' ? this.onMapViewCreated : undefined;
+  }
+
+  private getOnMapReadyCallback(): ((map: MapLibreMap) => void | Promise<void>) | undefined {
+    return typeof this.onMapReady === 'function' ? this.onMapReady : undefined;
+  }
+
+  private getOnMapLoadedCallback(): (() => void) | undefined {
+    return typeof this.onMapLoaded === 'function' ? this.onMapLoaded : undefined;
+  }
+
+  private getOnMapErrorCallback(): ((error: string) => void) | undefined {
+    return typeof this.onMapError === 'function' ? this.onMapError : undefined;
+  }
 
   private getErrorMessage(error: NativeMapViewErrorInput): string {
     if (error instanceof Error && error.message) {
@@ -185,27 +201,28 @@ export struct MapView {
   }
 
   /**
-   * 组件即将出现
+   * Component is about to appear
    */
   aboutToAppear(): void {
     try {
       this.isDestroyed = false;
 
-      // 将组件的 prop 和回调传递给 controller
+      // Propagate component props and callbacks to the controller
       if (this.controller) {
         this.syncInitialCameraProps(true);
 
-        // ✅ 设置 onMapViewCreated 回调（C++ Map 创建完成后触发）
+        // ✅ Set the onMapViewCreated callback (fires after the C++ map is created)
         this.controller.onMapViewCreatedCallback = (mapLibreMap: MapLibreMap) => {
           hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapViewCreated callback');
-          if (this.onMapViewCreated) {
-            this.onMapViewCreated(mapLibreMap);
+          const callback = this.getOnMapViewCreatedCallback();
+          if (callback) {
+            callback(mapLibreMap);
           }
         };
 
-        // 包装 onMapReady 回调（样式加载完成后触发）
+        // Wrap the onMapReady callback (fires once the style finishes loading)
         this.controller.onMapReadyCallback = (mapView?: NativeMapView) => {
-          // ✅ MapLibreMap 已在 handleMapViewCreated 中创建
+          // ✅ MapLibreMap has already been created in handleMapViewCreated
           const mapLibreMap = this.controller.getMapLibreMapInstance();
 
           if (!mapLibreMap) {
@@ -213,26 +230,27 @@ export struct MapView {
             return;
           }
 
-          // 更新地图实例，触发声明式子组件初始化
+          // Update the map instance to trigger declarative child initialization
           this.mapInstance = mapLibreMap;
 
-          // ⚠️ 重要：先设置 InfoWindowManager 回调，再触发 onMapReady
-          // 参考 Android/iOS 实现：回调设置应该在用户代码执行前完成
-          // 避免竞态条件：如果用户在 onMapReady 中立即添加 Marker 并点击，回调必须已经设置好
+          // ⚠️ Important: configure InfoWindowManager callbacks before onMapReady
+          // Mirrors Android/iOS: user callbacks should run after internal setup
+          // Prevent race conditions: if the user adds and taps markers in onMapReady, callbacks must already exist
           console.info(`[NativeMapView] Setting up InfoWindow callbacks before onMapReady...`);
           this.setupInfoWindowCallbacks();
           console.info(`[NativeMapView] InfoWindow callbacks setup completed`);
 
-          // 样式加载完成，触发 onMapReady
-          if (this.onMapReady) {
+          // Style finished loading, fire onMapReady
+          const callback = this.getOnMapReadyCallback();
+          if (callback) {
             hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapReady callback');
-            this.onMapReady(mapLibreMap);
+            callback(mapLibreMap);
           } else {
             hilog.warn(DOMAIN, 'NativeMapView', '⚠️ No onMapReady callback registered');
           }
         };
 
-        // 设置 UI 组件更新回调
+        // Register UI component update callbacks
         this.controller.setCompassBearingUpdateCallback((bearing: number) => {
           this.compassBearing = bearing;
         });
@@ -245,7 +263,7 @@ export struct MapView {
           this.scaleBarMetersPerPixel = metersPerPixel;
         });
 
-        // 设置 AnnotationView 更新回调
+        // Register AnnotationView update callback
         this.controller.setAnnotationViewUpdateCallback((views: AnnotationViewData[]) => {
           this.visibleAnnotationViews = views;
         });
@@ -256,7 +274,7 @@ export struct MapView {
           this.viewAnnotationFrames = [...states];
         });
 
-        // 设置 UiSettings 的配置变更回调
+        // Register UiSettings configuration change callbacks
         const uiSettings = this.controller.getUiSettings();
         uiSettings.onCompassConfigChanged = () => {
           this.uiSettingsVersion++;
@@ -277,23 +295,23 @@ export struct MapView {
   }
 
   /**
-   * 组件即将消失（参考 Android MapView.onDestroy() 和 iOS MLNMapView.dealloc）
+   * Component is about to disappear (mirrors Android MapView.onDestroy() and iOS MLNMapView.dealloc)
    *
-   * 改进：
-   * 1. 使用异步 destroy 而不是同步阻塞
-   * 2. 按照 Android/iOS 的顺序清理资源
-   * 3. 清理所有监听器和回调
+   * Improvements:
+   * 1. Use async destroy instead of blocking synchronously
+   * 2. Clean resources following the Android/iOS order
+   * 3. Clear all listeners and callbacks
    */
   aboutToDisappear(): void {
 
-    // 1. 设置销毁标志（参考 Android MapView.destroyed）
+    // 1. Mark as destroyed (mirrors Android MapView.destroyed)
     this.isDestroyed = true;
 
-    // 清理地图实例引用（用于声明式子组件）
+    // Clear map instance reference (for declarative children)
     this.mapInstance = null;
 
     try {
-      // 2. 取消所有动画和手势（参考 Android cancelAnimators()）
+      // 2. Cancel animations and gestures (mirrors Android cancelAnimators())
       const mapView = this.controller.getMapView();
       if (mapView) {
         try {
@@ -303,11 +321,11 @@ export struct MapView {
         }
       }
 
-      // 3. ✅ 使用异步 destroy（参考 Android/iOS 模式）
-      // 这样可以避免阻塞主线程，同时确保资源正确释放
+      // 3. ✅ Use asynchronous destroy (mirrors Android/iOS)
+      // Keeps the main thread responsive while releasing resources
       if (mapView) {
 
-        // 使用异步方式，传入完成回调
+        // Invoke asynchronous destroy with a completion callback
         mapView.destroyAsync(() => {
         });
 
@@ -315,20 +333,20 @@ export struct MapView {
         hilog.warn(DOMAIN, 'NativeMapView', 'MapView is null, skipping destroy');
       }
 
-      // 4. 清理 UI 组件引用（立即执行，不等待异步完成）
-      // Controller 的引用会在组件销毁时自动清理
-      // 事件监听器会在 C++ 层的 cleanupAllResourcesAsync 中清理
+      // 4. Clear UI component references immediately (no need to await)
+      // Controller references are cleared when the component is destroyed
+      // Event listeners are cleared in C++ cleanupAllResourcesAsync
 
-      // 5. 清理全局映射
+      // 5. Remove from global registry
       if (mapView) {
         const controllerWithUnregister = this.controller;
         controllerWithUnregister.unregisterFromGlobalMap?.();
       }
 
-      // 6. 清理 InfoWindow 状态
+      // 6. Reset InfoWindow state
       this.visibleInfoWindows = [];
 
-      // 7. 清理 AnnotationView 状态
+      // 7. Reset AnnotationView state
       this.visibleAnnotationViews = [];
       this.controller.clearViewAnnotationRenderCallback();
       this.logViewAnnotationStateChanges([]);
@@ -353,9 +371,9 @@ export struct MapView {
         return margins.left;
       case OrnamentPosition.TopRight:
       case OrnamentPosition.BottomRight:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - 组件宽度 - 右边距
+        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - component width - right margin
       default:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // 默认右侧（与 TopRight 一致）
+        return `calc(100% - 48vp - ${margins.right}vp)`; // Default right alignment (same as TopRight)
     }
   }
 
@@ -373,14 +391,14 @@ export struct MapView {
         return margins.top;
       case OrnamentPosition.BottomLeft:
       case OrnamentPosition.BottomRight:
-        return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - 组件高度 - 下边距
+        return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - component height - bottom margin
       default:
-        return margins.top; // 默认顶部（与 TopRight 一致）
+        return margins.top; // Default top alignment (same as TopRight)
     }
   }
 
   /**
-   * 获取 Logo 的 X 位置
+   * Get the logo X position
    */
   private getLogoX(): Length {
     const uiSettings = this.controller.getUiSettings();
@@ -393,14 +411,14 @@ export struct MapView {
         return margins.left;
       case OrnamentPosition.TopRight:
       case OrnamentPosition.BottomRight:
-        return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - Logo宽度 - 右边距
+        return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - logo width - right margin
       default:
-        return margins.left; // 默认左侧（与 BottomLeft 一致）
+        return margins.left; // Default left alignment (same as BottomLeft)
     }
   }
 
   /**
-   * 获取 Logo 的 Y 位置
+   * Get the logo Y position
    */
   private getLogoY(): Length {
     const uiSettings = this.controller.getUiSettings();
@@ -413,14 +431,14 @@ export struct MapView {
         return margins.top;
       case OrnamentPosition.BottomLeft:
       case OrnamentPosition.BottomRight:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - Logo高度 - 下边距
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - logo height - bottom margin
       default:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 默认底部（与 BottomLeft 一致）
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // Default bottom alignment (same as BottomLeft)
     }
   }
 
   /**
-   * 获取 ScaleBar 的 X 位置
+   * Get the scale bar X position
    */
   private getScaleBarX(): Length {
     const uiSettings = this.controller.getUiSettings();
@@ -433,14 +451,14 @@ export struct MapView {
         return margins.left;
       case OrnamentPosition.TopRight:
       case OrnamentPosition.BottomRight:
-        return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - ScaleBar最大宽度 - 右边距
+        return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - scale bar max width - right margin
       default:
-        return margins.left; // 默认左侧（与 TopLeft 一致）
+        return margins.left; // Default left alignment (same as TopLeft)
     }
   }
 
   /**
-   * 获取 ScaleBar 的 Y 位置
+   * Get the scale bar Y position
    */
   private getScaleBarY(): Length {
     const uiSettings = this.controller.getUiSettings();
@@ -453,14 +471,14 @@ export struct MapView {
         return margins.top;
       case OrnamentPosition.BottomLeft:
       case OrnamentPosition.BottomRight:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - ScaleBar高度 - 下边距
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - scale bar height - bottom margin
       default:
-        return margins.top; // 默认顶部（与 TopLeft 一致）
+        return margins.top; // Default top alignment (same as TopLeft)
     }
   }
 
   /**
-   * 设置 InfoWindowManager 的UI回调
+   * Configure InfoWindowManager UI callbacks
    */
   setupInfoWindowCallbacks(): void {
     console.info(`[NativeMapView] setupInfoWindowCallbacks called`);
@@ -475,7 +493,7 @@ export struct MapView {
       const infoWindowManager = mapLibreMap.getInfoWindowManager();
       console.info(`[NativeMapView] InfoWindowManager instance: ${infoWindowManager ? 'exists' : 'null'}`);
 
-      // 显示 InfoWindow
+      // Show InfoWindow
       infoWindowManager.setOnShowUICallback((marker: Marker, position: InfoWindowPosition) => {
         console.info(`[NativeMapView] onShowUICallback triggered for marker: ${marker.getTitle()}, position: (${position.x}, ${position.y})`);
         console.info(`[NativeMapView] Marker details - ID: ${marker.getId()}, title: "${marker.getTitle()}", snippet: "${marker.getSnippet()}"`);
@@ -489,7 +507,7 @@ export struct MapView {
         console.info(`[NativeMapView] InfoWindow style: ${style ? 'exists' : 'null'}`);
 
         const newState: InfoWindowState = {
-          marker: marker, // 保留引用用于回调
+          marker: marker, // Keep reference for callbacks
           markerId: marker.getId(),
           markerTitle: marker.getTitle(),
           markerSnippet: marker.getSnippet(),
@@ -510,7 +528,7 @@ export struct MapView {
         console.info(`[NativeMapView] Last added state - marker title: "${newState.marker.getTitle()}", position: (${newState.position.x}, ${newState.position.y})`);
       });
 
-      // 隐藏 InfoWindow
+      // Hide InfoWindow
       infoWindowManager.setOnHideUICallback((marker: Marker) => {
         const index = this.visibleInfoWindows.findIndex(
           item => item.marker.getId() === marker.getId()
@@ -520,21 +538,21 @@ export struct MapView {
         }
       });
 
-      // 更新 InfoWindow 位置
+      // Update InfoWindow position
       infoWindowManager.setOnUpdateUICallback((marker: Marker, position: InfoWindowPosition) => {
         console.info(`[NativeMapView] setOnUpdateUICallback called for marker: ${marker.getTitle()}, new position: (${position.x}, ${position.y})`);
         const index = this.visibleInfoWindows.findIndex(
           item => item.marker.getId() === marker.getId()
         );
         if (index >= 0) {
-          // 🔧 关键修复：创建新数组引用以触发 @State 变化检测
-          // ArkUI 的 @State 只能检测对象/数组引用变化，不能检测内部属性变化
-          // 使用 slice() 创建数组浅拷贝，然后替换指定索引的元素
+          // 🔧 Key fix: create a new array reference to trigger @State change detection
+          // ArkUI @State detects reference changes, not internal property changes
+          // Use slice() to create a shallow copy and replace the specific element
           const newArray = this.visibleInfoWindows.slice();
           const oldItem = newArray[index];
-          // 🔧 关键修复：更新 key 以强制 ForEach 重新渲染
-          // ForEach 使用 key 来判断是否需要更新组件
-          // 通过在 key 后面添加时间戳，确保每次 position 变化时都会触发重新渲染
+          // 🔧 Key fix: update the key to force ForEach re-render
+          // ForEach relies on keys to decide whether to update components
+          // Append a timestamp so each position change triggers re-rendering
           const newKey = `${oldItem.markerId}_${Date.now()}`;
           newArray[index] = {
             marker: oldItem.marker,
@@ -554,7 +572,7 @@ export struct MapView {
 
       console.info(`[NativeMapView] InfoWindow callbacks set successfully`);
 
-      // ========== 设置 AnnotationView 回调 ==========
+      // ========== Configure AnnotationView callbacks ==========
       const annotationViewManager = mapLibreMap.getMarkerManager().getAnnotationViewManager();
 
       // 监听 AnnotationView 数据变化，更新 UI

@@ -80,6 +80,44 @@ export interface CameraOptions {
   padding?: EdgeInsets;
 }
 
+// ========== Listener interface definitions ==========
+
+export type OnCameraWillChangeListener = (animated: boolean) => void;
+
+export type OnCameraIsChangingListener = () => void;
+
+export type OnCameraDidChangeListener = (animated: boolean) => void;
+
+export type OnWillStartLoadingMapListener = () => void;
+
+export type OnDidFinishLoadingMapListener = () => void;
+
+export type OnDidFailLoadingMapListener = (errorMessage: string) => void;
+
+export type OnWillStartRenderingFrameListener = () => void;
+
+export type OnDidFinishRenderingFrameListener = (fully: boolean, frameEncodingTime: number, frameRenderingTime: number) => void;
+
+export interface RenderingStats {
+  fully: boolean;
+  frameEncodingTime: number;
+  frameRenderingTime: number;
+}
+
+export type OnDidFinishRenderingFrameWithStatsListener = (fully: boolean, stats: RenderingStats) => void;
+
+export type OnWillStartRenderingMapListener = () => void;
+
+export type OnDidFinishRenderingMapListener = (fully: boolean) => void;
+
+export type OnDidFinishLoadingStyleListener = () => void;
+
+export type OnCanRemoveUnusedStyleImageListener = (id: string) => boolean;
+
+export type OnDidBecomeIdleListener = () => void;
+
+export type OnSourceChangedListener = (id: string) => void;
+
 /**
  * 矩形接口（用于查询等操作）
  */
@@ -1176,94 +1214,96 @@ export class NativeMapView {
    * 添加相机即将改变监听器
    * @param callback 回调函数，参数为是否使用动画
    */
-  addOnCameraWillChangeListener(callback: (animated: boolean) => void): void;
+  addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void;
 
-  removeOnCameraWillChangeListener(callback: (animated: boolean) => void): void;
+  removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void;
 
   /**
    * 添加相机正在改变监听器
    * @param callback 回调函数
    */
-  addOnCameraIsChangingListener(callback: () => void): void;
+  addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void;
 
-  removeOnCameraIsChangingListener(callback: () => void): void;
+  removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void;
 
   /**
    * 添加相机已改变监听器
    * @param callback 回调函数，参数为是否使用动画
    */
-  addOnCameraDidChangeListener(callback: (animated: boolean) => void): void;
+  addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void;
 
-  removeOnCameraDidChangeListener(callback: (animated: boolean) => void): void;
+  removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void;
 
   // 地图加载事件监听器
   /**
    * 添加地图即将开始加载监听器
    * @param callback 回调函数
    */
-  addOnWillStartLoadingMapListener(callback: () => void): void;
+  addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void;
 
-  removeOnWillStartLoadingMapListener(callback: () => void): void;
+  removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void;
 
   /**
    * 添加地图加载完成监听器
    * @param callback 回调函数
    */
-  addOnDidFinishLoadingMapListener(callback: () => void): void;
+  addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void;
 
-  removeOnDidFinishLoadingMapListener(callback: () => void): void;
+  removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void;
 
   /**
    * 添加地图加载失败监听器
    * @param callback 回调函数，参数为错误信息
    */
-  addOnDidFailLoadingMapListener(callback: (errorMessage: string) => void): void;
+  addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void;
 
-  removeOnDidFailLoadingMapListener(callback: (errorMessage: string) => void): void;
+  removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void;
 
   // 渲染事件监听器
   /**
    * 添加帧即将开始渲染监听器
    * @param callback 回调函数
    */
-  addOnWillStartRenderingFrameListener(callback: () => void): void;
+  addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void;
 
-  removeOnWillStartRenderingFrameListener(callback: () => void): void;
+  removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void;
 
   /**
    * 添加帧渲染完成监听器
    * @param callback 回调函数，参数为是否完全渲染、编码时间、渲染时间
    */
-  addOnDidFinishRenderingFrameListener(callback: (fully: boolean, frameEncodingTime: number,
-    frameRenderingTime: number) => void): void;
+  addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void;
 
-  removeOnDidFinishRenderingFrameListener(callback: (fully: boolean, frameEncodingTime: number,
-    frameRenderingTime: number) => void): void;
+  removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void;
+
+  addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void;
+
+  removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void;
 
   /**
    * 添加地图即将开始渲染监听器
    * @param callback 回调函数
    */
-  addOnWillStartRenderingMapListener(callback: () => void): void;
+  addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void;
 
-  removeOnWillStartRenderingMapListener(callback: () => void): void;
+  removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void;
 
   /**
    * 添加地图渲染完成监听器
    * @param callback 回调函数，参数为是否完全渲染
    */
-  addOnDidFinishRenderingMapListener(callback: (fully: boolean) => void): void;
+  addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void;
 
-  removeOnDidFinishRenderingMapListener(callback: (fully: boolean) => void): void;
+  removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void;
 
   // 样式事件监听器
   /**
    * 添加样式加载完成监听器
    * @param callback 回调函数
    */
-  addOnDidFinishLoadingStyleListener(callback: () => void): void;
+  addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void;
 
-  removeOnDidFinishLoadingStyleListener(callback: () => void): void;
+  removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void;
 
   /**
    * 添加样式图片缺失监听器
@@ -1273,22 +1313,26 @@ export class NativeMapView {
 
   removeOnStyleImageMissingListener(callback: (id: string) => void): void;
 
+  addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void;
+
+  removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void;
+
   // 其他事件监听器
   /**
    * 添加地图进入空闲状态监听器
    * @param callback 回调函数
    */
-  addOnDidBecomeIdleListener(callback: () => void): void;
+  addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void;
 
-  removeOnDidBecomeIdleListener(callback: () => void): void;
+  removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void;
 
   /**
    * 添加数据源改变监听器
    * @param callback 回调函数，参数为数据源 ID
    */
-  addOnSourceChangedListener(callback: (id: string) => void): void;
+  addOnSourceChangedListener(listener: OnSourceChangedListener): void;
 
-  removeOnSourceChangedListener(callback: (id: string) => void): void;
+  removeOnSourceChangedListener(listener: OnSourceChangedListener): void;
 
   // ========== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) ==========
   

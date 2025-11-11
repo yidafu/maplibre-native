@@ -870,6 +870,7 @@ napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callbac
         
         // Restore the style (glyphs are re-rasterized automatically)
         if (!currentStyleUrl.empty() && instance->map) {
+            instance->styleLoadedOnce.store(false, std::memory_order_release);
             instance->map->getStyle().loadURL(currentStyleUrl);
             Logger::info("NativeMapView", "setLocalIdeographFontFamily: Style reloaded, glyphs will be re-rasterized");
         }

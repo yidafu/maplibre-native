@@ -4,35 +4,35 @@ import type { LightSpecification } from 'libmaplibre.so';
 import type { Size } from './types/NativeTypes';
 
 /**
- * MapLibreMapOptions - 地图选项配置类
+ * MapLibreMapOptions - map configuration options
  */
 export class MapLibreMapOptions {
-  // 基础配置
+  // Basic configuration
   public pixelRatio: number = 1.0;
   public contextMode: string = 'unique';
   public crossSourceCollisions: boolean = true;
   public size: Size = { width: 256, height: 256 };
-  // 相机配置
+  // Camera configuration
   public cameraPosition: CameraPosition | null = null;
   public bounds: LatLngBounds | null = null;
   public minZoom: number = 0;
   public maxZoom: number = 22;
   public minPitch: number = 0;
   public maxPitch: number = 60;
-  // 样式配置
+  // Style configuration
   public styleUrl: string = '';
   public styleJson: string = '';
-  // 渲染配置
+  // Rendering configuration
   public renderWorldCopies: boolean = true;
   public renderMode: string = 'normal';
   public constrainMode: string = 'heightOnly';
   public viewportMode: string = 'default';
-  // 调试配置
+  // Debug configuration
   public debug: boolean = false;
   public attributionEnabled: boolean = true;
   public logoEnabled: boolean = true;
   public compassEnabled: boolean = true;
-  // 交互配置
+  // Interaction configuration
   public scrollEnabled: boolean = true;
   public zoomEnabled: boolean = true;
   public rotateEnabled: boolean = true;
@@ -41,39 +41,39 @@ export class MapLibreMapOptions {
   public quickZoomEnabled: boolean = true;
   public twoFingerTouchRotationEnabled: boolean = true;
   public twoFingerTouchPitchEnabled: boolean = true;
-  // 性能配置
+  // Performance configuration
   public prefetchTiles: boolean = true;
   public prefetchZoomDelta: number = 4;
   public tileCacheEnabled: boolean = true;
-  // 图层细节级别配置
+  // Tile LOD configuration
   public tileLodMinRadius: number = 0;
   public tileLodScale: number = 1.0;
-  // Local glyph 配置
-  // 鸿蒙系统字体（按优先级排序）：
-  // 1. HarmonyOS Sans 系列（官方字体，可变字体支持所有字重）
-  //    - HarmonyOS_Sans.ttf (默认，支持多语言)
-  //    - HarmonyOS_Sans_SC.ttf (简体中文优化)
-  //    - HarmonyOS_Sans_TC.ttf (繁体中文)
-  //    - HarmonyOS_Sans_Digit.ttf (数字专用)
-  //    - HarmonyOS_Sans_Condensed.ttf (紧凑版)
-  // 2. Noto Sans 系列（Google 开源字体备选）
-  //    - NotoSansCJK-Regular.ttc (CJK 统一字体)
-  //    - NotoSans-Regular.ttf (基础字体)
-  //    - NotoSans[wdth,wght].ttf (可变字体)
-  // 3. DroidSansFallback.ttf (最终备选)
+  // Local glyph configuration
+  // HarmonyOS font families (priority order):
+  // 1. HarmonyOS Sans series (official font, variable font covers all weights)
+  //    - HarmonyOS_Sans.ttf (default, multilingual support)
+  //    - HarmonyOS_Sans_SC.ttf (Simplified Chinese optimized)
+  //    - HarmonyOS_Sans_TC.ttf (Traditional Chinese)
+  //    - HarmonyOS_Sans_Digit.ttf (numeric glyphs)
+  //    - HarmonyOS_Sans_Condensed.ttf (condensed variant)
+  // 2. Noto Sans series (Google open-source fallback)
+  //    - NotoSansCJK-Regular.ttc (CJK unified font)
+  //    - NotoSans-Regular.ttf (base font)
+  //    - NotoSans[wdth,wght].ttf (variable font)
+  // 3. DroidSansFallback.ttf (final fallback)
   public localIdeographFontFamily: string | null = 'HarmonyOS_Sans';
   public localIdeographEnabled: boolean = true;
   public tileLodPitchThreshold: number = 0;
   public tileLodZoomShift: number = 0;
-  // 光照配置
+  // Lighting
   public light: LightSpecification | null = null;
-  // 过渡动画配置
+  // Transition animation
   public transitionDuration: number = 300;
   public transitionDelay: number = 0;
 
   constructor(options?: Partial<MapLibreMapOptions>) {
     if (options) {
-      // 手动复制属性，避免使用 Object.assign
+      // Manually copy properties, avoiding Object.assign
       if (options.pixelRatio !== undefined) {
         this.pixelRatio = options.pixelRatio;
       }

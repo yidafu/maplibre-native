@@ -1,12 +1,12 @@
 /**
- * CameraChangeDispatcher - 相机变化事件调度器
+ * CameraChangeDispatcher - camera change event dispatcher
  *
- * 管理相机事件监听器并分发事件
- * 参考 Android 的 CameraChangeDispatcher 设计
- * 
- * 🔧 修复：添加消息队列机制，解决相机事件时序问题
- * - 使用延迟处理避免快速连续事件导致的状态混乱
- * - 实现事件去重逻辑，参考 Android Handler 机制
+ * Manages camera event listeners and distributes events.
+ * Mirrors Android's CameraChangeDispatcher design.
+ *
+ * 🔧 Fix: Add message queue mechanism to resolve camera event ordering issues
+ * - Use deferred handling to avoid inconsistent state from rapid consecutive events
+ * - Implement event deduplication, inspired by the Android Handler mechanism
  */
 
 import {
@@ -18,7 +18,7 @@ import {
 import { CameraMoveReason } from './CameraMoveReason';
 
 /**
- * 相机事件类型枚举
+ * Camera event type enumeration
  */
 enum CameraEventType {
   MOVE_STARTED = 'MOVE_STARTED',
@@ -33,18 +33,18 @@ export class CameraChangeDispatcher {
   private moveListeners: OnCameraMoveListener[] = [];
   private canceledListeners: OnCameraMoveCanceledListener[] = [];
   
-  // 状态追踪
+  // State tracking
   private isIdle: boolean = true;
   private moveStartedReason: CameraMoveReason = CameraMoveReason.UNKNOWN;
   
-  // 消息队列机制（参考 Android Handler）
+  // Message queue mechanism (mirrors Android Handler)
   private pendingMessages: Map<CameraEventType, number> = new Map();
-  private readonly MESSAGE_DELAY = 0; // 使用 0 延迟，允许事件在同一事件循环中合并
-
-  // ========== 添加监听器 ==========
+  private readonly MESSAGE_DELAY = 0; // Use zero delay to coalesce within the same event loop
+  
+  // ========== Add listeners ==========
 
   /**
-   * 添加相机空闲监听器
+   * Add camera idle listener
    */
   addOnCameraIdleListener(listener: OnCameraIdleListener): void {
     if (listener && !this.idleListeners.includes(listener)) {
@@ -53,7 +53,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 移除相机空闲监听器
+   * Remove camera idle listener
    */
   removeOnCameraIdleListener(listener: OnCameraIdleListener): void {
     const index = this.idleListeners.indexOf(listener);
@@ -63,7 +63,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 添加相机开始移动监听器
+   * Add camera move-started listener
    */
   addOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     if (listener && !this.moveStartedListeners.includes(listener)) {
@@ -72,7 +72,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 移除相机开始移动监听器
+   * Remove camera move-started listener
    */
   removeOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     const index = this.moveStartedListeners.indexOf(listener);
@@ -82,7 +82,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 添加相机移动中监听器
+   * Add camera move listener
    */
   addOnCameraMoveListener(listener: OnCameraMoveListener): void {
     if (listener && !this.moveListeners.includes(listener)) {
@@ -91,7 +91,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 移除相机移动中监听器
+   * Remove camera move listener
    */
   removeOnCameraMoveListener(listener: OnCameraMoveListener): void {
     const index = this.moveListeners.indexOf(listener);
@@ -101,7 +101,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 添加相机移动取消监听器
+   * Add camera move-canceled listener
    */
   addOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     if (listener && !this.canceledListeners.includes(listener)) {
@@ -110,7 +110,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 移除相机移动取消监听器
+   * Remove camera move-canceled listener
    */
   removeOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     const index = this.canceledListeners.indexOf(listener);
@@ -119,20 +119,20 @@ export class CameraChangeDispatcher {
     }
   }
 
-  // ========== 消息队列辅助方法 ==========
+  // ========== Message queue helpers ==========
 
   /**
-   * 检查是否有待处理的消息
-   * @param eventType 事件类型
-   * @returns 是否有待处理的消息
+   * Determine whether a message is pending
+   * @param eventType Event type
+   * @returns true if a message is pending
    */
   private hasMessage(eventType: CameraEventType): boolean {
     return this.pendingMessages.has(eventType);
   }
 
   /**
-   * 取消待处理的消息
-   * @param eventType 事件类型
+   * Cancel a pending message
+   * @param eventType Event type
    */
   private cancelMessage(eventType: CameraEventType): void {
     const timerId = this.pendingMessages.get(eventType);
@@ -143,40 +143,40 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 调度消息（参考 Android Handler.scheduleMessage）
-   * @param eventType 事件类型
-   * @param executor 执行函数
+   * Schedule a message (mirrors Android Handler.scheduleMessage)
+   * @param eventType Event type
+   * @param executor Execution callback
    */
   private scheduleMessage(eventType: CameraEventType, executor: () => void): void {
-    // 特殊处理：MOVE_STARTED 事件（参考 Android 实现）
+    // Special handling: MOVE_STARTED events (mirrors Android implementation)
     if (eventType === CameraEventType.MOVE_STARTED) {
-      // 如果有待处理的 IDLE 或 CANCELED 消息，并且当前不是 idle 状态
-      // 说明相机还在移动，不需要触发新的 MOVE_STARTED
+      // If there are pending IDLE or CANCELED messages and we're not idle,
+      // the camera is still moving—no need to emit another MOVE_STARTED
       const hasIdleOrCanceled = this.hasMessage(CameraEventType.IDLE) || 
                                 this.hasMessage(CameraEventType.MOVE_CANCELED);
       
-      // 移除待处理的 IDLE 和 CANCELED 消息
+      // Remove pending IDLE and CANCELED messages
       this.cancelMessage(CameraEventType.IDLE);
       this.cancelMessage(CameraEventType.MOVE_CANCELED);
       
-      // 如果当前不是 idle 并且有待处理的结束事件，则跳过此次 MOVE_STARTED
+      // Skip MOVE_STARTED when not idle and completion events are pending
       if (!this.isIdle && hasIdleOrCanceled) {
         return;
       }
     }
 
-    // 对于 MOVE 事件，如果已经有待处理的消息，跳过（避免队列堆积）
-    // 参考 Android 实现，MOVE 事件应该被节流处理
+    // Throttle MOVE events: skip if a pending MOVE already exists (avoid queue buildup)
+    // Mirrors Android behavior where MOVE events are rate-limited
     if (eventType === CameraEventType.MOVE) {
       if (this.hasMessage(CameraEventType.MOVE)) {
         return;
       }
     } else {
-      // 对于其他事件类型，取消之前的同类消息（避免重复）
+      // For other events, cancel previous of the same type to avoid duplicates
       this.cancelMessage(eventType);
     }
 
-    // 调度新消息
+    // Schedule the new message
     const timerId = setTimeout(() => {
       this.pendingMessages.delete(eventType);
       executor();
@@ -185,11 +185,11 @@ export class CameraChangeDispatcher {
     this.pendingMessages.set(eventType, timerId);
   }
 
-  // ========== 事件通知方法（由 NAPI 回调或内部调用）==========
+  // ========== Event notification methods (from NAPI callbacks or internal calls) ==========
 
   /**
-   * 通知相机开始移动
-   * @param reason 移动原因
+   * Notify that the camera started moving
+   * @param reason Movement reason
    */
   notifyCameraMoveStarted(reason: CameraMoveReason): void {
     console.info('[CameraChangeDispatcher] notifyCameraMoveStarted called, isIdle:', this.isIdle);
@@ -201,7 +201,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 通知相机正在移动
+   * Notify that the camera is moving
    */
   notifyCameraMove(): void {
     this.scheduleMessage(CameraEventType.MOVE, () => {
@@ -210,7 +210,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 通知相机停止移动（空闲）
+   * Notify that the camera became idle
    */
   notifyCameraIdle(): void {
     this.scheduleMessage(CameraEventType.IDLE, () => {
@@ -219,7 +219,7 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 通知相机移动取消
+   * Notify that the camera movement was canceled
    */
   notifyCameraMoveCanceled(): void {
     this.scheduleMessage(CameraEventType.MOVE_CANCELED, () => {
@@ -227,21 +227,21 @@ export class CameraChangeDispatcher {
     });
   }
 
-  // ========== 实际执行方法（私有）==========
+  // ========== Execution helpers (private) ==========
 
   /**
-   * 执行相机开始移动回调
+   * Execute camera move-started callbacks
    * @private
    */
   private executeOnCameraMoveStarted(): void {
-    // 如果已经在移动中，不重复触发
+    // Avoid firing when already moving
     if (!this.isIdle) {
       return;
     }
 
     this.isIdle = false;
 
-    // 通知所有监听器
+    // Notify listeners
     for (const listener of this.moveStartedListeners) {
       try {
         listener.onCameraMoveStarted(this.moveStartedReason);
@@ -252,16 +252,16 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 执行相机移动中回调
+   * Execute camera move callbacks
    * @private
    */
   private executeOnCameraMove(): void {
-    // 只在移动中触发
+    // Only fire while moving
     if (this.isIdle) {
       return;
     }
 
-    // 通知所有监听器
+    // Notify listeners
     for (const listener of this.moveListeners) {
       try {
         listener.onCameraMove();
@@ -272,18 +272,18 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 执行相机停止移动（空闲）回调
+   * Execute camera idle callbacks
    * @private
    */
   private executeOnCameraIdle(): void {
-    // 如果已经 idle，不重复触发
+    // Avoid re-firing if already idle
     if (this.isIdle) {
       return;
     }
 
     this.isIdle = true;
 
-    // 通知所有监听器
+    // Notify listeners
     for (const listener of this.idleListeners) {
       try {
         listener.onCameraIdle();
@@ -294,16 +294,16 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 执行相机移动取消回调
+   * Execute camera move-canceled callbacks
    * @private
    */
   private executeOnCameraMoveCanceled(): void {
-    // 只在移动中触发取消事件
+    // Only fire cancel event when moving
     if (this.isIdle) {
       return;
     }
 
-    // 通知所有监听器
+    // Notify listeners
     for (const listener of this.canceledListeners) {
       try {
         listener.onCameraMoveCanceled();
@@ -314,16 +314,16 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 清除所有监听器和待处理消息
+   * Clear all listeners and pending messages
    */
   clear(): void {
-    // 取消所有待处理的消息
+    // Cancel pending messages
     for (const timerId of this.pendingMessages.values()) {
       clearTimeout(timerId);
     }
     this.pendingMessages.clear();
     
-    // 清除监听器
+    // Reset listener arrays
     this.idleListeners = [];
     this.moveStartedListeners = [];
     this.moveListeners = [];
@@ -332,14 +332,14 @@ export class CameraChangeDispatcher {
   }
 
   /**
-   * 清除所有监听器（别名方法）
+   * Alias for clearing all listeners
    */
   clearAllListeners(): void {
     this.clear();
   }
 
   /**
-   * 获取当前状态
+   * Get current idle state
    */
   isCurrentlyIdle(): boolean {
     return this.isIdle;

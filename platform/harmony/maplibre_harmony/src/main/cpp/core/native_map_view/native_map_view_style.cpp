@@ -96,6 +96,9 @@ napi_value NativeMapView::setStyleUrl(napi_env env, napi_callback_info info) {
 //        }
     }
 
+    // 样式即将重新加载，重置已加载标记
+    instance->styleLoadedOnce.store(false, std::memory_order_release);
+
     // Load the style; must run on the map/render thread
     Logger::info("NativeMapView", "Dispatching loadURL to map thread");
     
@@ -169,6 +172,7 @@ napi_value NativeMapView::setStyleJson(napi_env env, napi_callback_info info) {
     Logger::info("NativeMapView", "setStyleJson: Loading style JSON (%zu bytes)", json.length());
     
     try {
+        instance->styleLoadedOnce.store(false, std::memory_order_release);
         instance->invokeOnMapThread([json](mbgl::Map* m){ m->getStyle().loadJSON(json); m->triggerRepaint(); });
         Logger::info("NativeMapView", "setStyleJson: Style JSON loaded successfully");
     } catch (const std::exception& e) {

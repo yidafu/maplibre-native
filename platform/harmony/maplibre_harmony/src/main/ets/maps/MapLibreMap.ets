@@ -7,7 +7,7 @@ import { LatLngBounds } from './geometry/LatLngBounds';
 import { IPixelCoordinate, PixelCoordinate, Point } from './geometry/Point';
 import { Rect } from './geometry/Rect';
 import { IProjectedMeters, ProjectedMeters } from './geometry/ProjectedMeters';
-// Layer 和 Source 类型导入，用于类型安全的图层和数据源操作
+// Layer and Source type imports for type-safe layer and data source operations
 import type { Layer } from './style/layers/Layer';
 import type { Source } from './style/sources/Source';
 import { Image } from './style/images/Image';
@@ -57,81 +57,103 @@ import { registerMapLibreMap } from './mapview/NativeMapView';
 import { Marker } from './annotations/Marker';
 import { Style } from './style/Style';
 import { RenderingRefreshMode } from './types/NativeTypes';
+import { RenderingStats } from './renderer/RenderingStats';
 import { OnFpsChangedListener } from './listeners/OnFpsChangedListener';
 import {
-  OnPreCompileShaderListener,
-  OnPostCompileShaderListener,
-  OnShaderCompileFailedListener,
-  OnGlyphsRequestedListener,
-  OnGlyphsLoadedListener,
+  OnCameraDidChangeListener,
+  OnCameraIsChangingListener,
+  OnCameraWillChangeListener,
+  OnCanRemoveUnusedStyleImageListener,
+  OnDidBecomeIdleListener,
+  OnDidFailLoadingMapListener,
+  OnDidFinishLoadingMapListener,
+  OnDidFinishLoadingStyleListener,
+  OnDidFinishRenderingFrameListener,
+  OnDidFinishRenderingFrameWithStatsListener,
+  OnDidFinishRenderingMapListener,
   OnGlyphsErrorListener,
-  OnSpriteRequestedListener,
-  OnSpriteLoadedListener,
+  OnGlyphsLoadedListener,
+  OnGlyphsRequestedListener,
+  OnPostCompileShaderListener,
+  OnPreCompileShaderListener,
+  OnShaderCompileFailedListener,
+  OnSourceChangedListener,
   OnSpriteErrorListener,
-  OnTileActionListener
+  OnSpriteLoadedListener,
+  OnSpriteRequestedListener,
+  OnTileActionListener,
+  OnWillStartLoadingMapListener,
+  OnWillStartRenderingFrameListener,
+  OnWillStartRenderingMapListener
 } from './listeners/MapEventListeners';
 
+function logListenerError(eventName: string, message: string): void {
+  console.error('MapLibreMap', `${eventName}: ${message}`);
+}
+
+
+
 /**
- * 操作队列项类型
+ * Pending operation type
  */
 type PendingOperation = () => void;
 
 /**
- * MapLibreMap - 地图核心控制类
- * 
- * 提供完整的地图控制功能，包括：
- * - 地图显示和样式管理
- * - 相机位置和动画控制
- * - 图层和数据源管理
- * - 标注（Marker、Polygon、Polyline）管理
- * - 手势交互和UI组件配置
- * - 位置跟踪和定位功能
- * 
- * **生命周期管理**：
- * - 在页面 `aboutToAppear()` 中创建和初始化
- * - 在页面 `aboutToDisappear()` 中调用 `destroy()` 释放资源
- * 
- * **样式加载**：
- * - 样式加载是异步的，需要等待 `onStyleLoaded` 回调
- * - 在样式加载完成前添加图层/数据源会自动加入队列，样式加载后执行
- * 
+ * MapLibreMap - the core controller class for the map
+ *
+ * Provides comprehensive map control capabilities, including:
+ * - Map display and style management
+ * - Camera position and animation control
+ * - Layer and data source management
+ * - Annotation management (Marker, Polygon, Polyline)
+ * - Gesture interaction and UI component configuration
+ * - Location tracking and positioning features
+ *
+ * **Lifecycle management**:
+ * - Create and initialize in the page `aboutToAppear()`
+ * - Call `destroy()` in the page `aboutToDisappear()` to release resources
+ *
+ * **Style loading**:
+ * - Style loading is asynchronous, wait for the `onStyleLoaded` callback
+ * - Adding layers/sources before the style finishes loading queues the operations and replays them once the style is ready
+ *
  * @example
  * ```typescript
- * // 基本用法
+ * // Basic usage
  * const options = new MapLibreMapOptions({
  *   styleUrl: DEFAULT_STYLE_URLS.streets,
  *   size: { width: 800, height: 600 }
  * });
- * 
+ *
  * const map = new MapLibreMap(nativeMapView, options);
- * 
- * // 设置相机位置
+ *
+ * // Set the camera position
  * map.setLatLng(39.9, 116.4);
  * map.setZoom(15);
- * 
- * // 添加 Marker
+ *
+ * // Add a marker
  * const marker = await map.addMarker(
  *   new MarkerOptions()
  *     .position(39.9, 116.4)
- *     .title("北京")
+ *     .title("Beijing")
  * );
- * 
- * // 监听地图事件
+ *
+ * // Listen for map events
  * map.addOnMapClickListener({
  *   onMapClick: (x, y) => {
  *     console.log(`Map clicked at: ${x}, ${y}`);
  *     return false;
  *   }
  * });
- * 
- * // 页面销毁时清理
+ *
+ * // Clean up when the page is destroyed
  * aboutToDisappear() {
  *   this.map?.destroy();
  * }
  * ```
- * 
- * @see {@link MapLibreMapOptions} 地图配置选项
- * @see {@link NativeMapView} 底层地图视图组件
+ *
+ * @see {@link MapLibreMapOptions} Map configuration options
+ * @see {@link NativeMapView} The underlying map view component
  */
 export class MapLibreMap {
   private nativeMapView: NativeMapView;
@@ -148,26 +170,55 @@ export class MapLibreMap {
   private style: Style | null = null;
   private styleLoaded: boolean = false;
   private cameraChangeDispatcher: CameraChangeDispatcher = new CameraChangeDispatcher();
-  // UI 设置
+  // UI settings
   private uiSettings: UiSettings = new UiSettings();
-  // 位置组件
+  // Location component
   private locationComponent: LocationComponent;
-  // 投影工具
+  // Projection utilities
   private projection: Projection;
-  // 视图尺寸（用于 InfoWindow 等功能）
+  // View dimensions (used by InfoWindow and other features)
   private viewWidth: number = 0;
   private viewHeight: number = 0;
-  // Style 监听器
+  // Style listeners
   private styleLoadedListeners: OnStyleLoadedListener[] = [];
   private styleLoadErrorListeners: OnStyleLoadErrorListener[] = [];
   private styleImageMissingListener?: (imageId: string) => void;
-  // 操作队列 - 在样式加载前缓存操作
+  private nativeStyleLoadedCallback?: () => void;
+  private nativeStyleLoadErrorCallback?: (error: string) => void;
+  private nativeStyleImageMissingCallback?: (imageId: string) => void;
+  // Listener wrapper registries (native layer expects interface objects)
+  private cameraWillChangeWrappers: Map<OnCameraWillChangeListener, OnCameraWillChangeListener> = new Map();
+  private cameraIsChangingWrappers: Map<OnCameraIsChangingListener, OnCameraIsChangingListener> = new Map();
+  private cameraDidChangeWrappers: Map<OnCameraDidChangeListener, OnCameraDidChangeListener> = new Map();
+  private willStartLoadingMapWrappers: Map<OnWillStartLoadingMapListener, OnWillStartLoadingMapListener> = new Map();
+  private didFinishLoadingMapWrappers: Map<OnDidFinishLoadingMapListener, OnDidFinishLoadingMapListener> = new Map();
+  private didFailLoadingMapWrappers: Map<OnDidFailLoadingMapListener, OnDidFailLoadingMapListener> = new Map();
+  private willStartRenderingFrameWrappers: Map<OnWillStartRenderingFrameListener, OnWillStartRenderingFrameListener> = new Map();
+  private didFinishRenderingFrameWrappers: Map<OnDidFinishRenderingFrameListener, OnDidFinishRenderingFrameListener> = new Map();
+  private didFinishRenderingFrameWithStatsWrappers: Map<OnDidFinishRenderingFrameWithStatsListener, OnDidFinishRenderingFrameWithStatsListener> = new Map();
+  private willStartRenderingMapWrappers: Map<OnWillStartRenderingMapListener, OnWillStartRenderingMapListener> = new Map();
+  private didFinishRenderingMapWrappers: Map<OnDidFinishRenderingMapListener, OnDidFinishRenderingMapListener> = new Map();
+  private didFinishLoadingStyleWrappers: Map<OnDidFinishLoadingStyleListener, OnDidFinishLoadingStyleListener> = new Map();
+  private canRemoveUnusedStyleImageWrappers: Map<OnCanRemoveUnusedStyleImageListener, OnCanRemoveUnusedStyleImageListener> = new Map();
+  private didBecomeIdleWrappers: Map<OnDidBecomeIdleListener, OnDidBecomeIdleListener> = new Map();
+  private sourceChangedWrappers: Map<OnSourceChangedListener, OnSourceChangedListener> = new Map();
+  private preCompileShaderWrappers: Map<OnPreCompileShaderListener, OnPreCompileShaderListener> = new Map();
+  private postCompileShaderWrappers: Map<OnPostCompileShaderListener, OnPostCompileShaderListener> = new Map();
+  private shaderCompileFailedWrappers: Map<OnShaderCompileFailedListener, OnShaderCompileFailedListener> = new Map();
+  private glyphsRequestedWrappers: Map<OnGlyphsRequestedListener, OnGlyphsRequestedListener> = new Map();
+  private glyphsLoadedWrappers: Map<OnGlyphsLoadedListener, OnGlyphsLoadedListener> = new Map();
+  private glyphsErrorWrappers: Map<OnGlyphsErrorListener, OnGlyphsErrorListener> = new Map();
+  private spriteRequestedWrappers: Map<OnSpriteRequestedListener, OnSpriteRequestedListener> = new Map();
+  private spriteLoadedWrappers: Map<OnSpriteLoadedListener, OnSpriteLoadedListener> = new Map();
+  private spriteErrorWrappers: Map<OnSpriteErrorListener, OnSpriteErrorListener> = new Map();
+  private tileActionWrappers: Map<OnTileActionListener, OnTileActionListener> = new Map();
+  // Operation queue - cache operations before the style is ready
   private pendingOperations: PendingOperation[] = [];
-  // Compass 更新回调（由外部 UI 层注入）
+  // Compass update callback (injected by the outer UI layer)
   public onCompassUpdate?: (bearing: number) => void;
-  // ScaleBar 更新回调（由外部 UI 层注入）
+  // ScaleBar update callback (injected by the outer UI layer)
   public onScaleBarUpdate?: (metersPerPixel: number) => void;
-  // 动画回调管理
+  // Animation callback management
   private pendingAnimationCallback: CameraAnimationCallback | null = null;
   private animationTimerId: number | null = null;
   private animationCancelled: boolean = false;
@@ -176,20 +227,20 @@ export class MapLibreMap {
     this.nativeMapView = nativeMapView;
     this.options = options;
     
-    // ⚠️ 重要：InfoWindowManager 必须先于 MarkerManager 创建
-    // 因为 MarkerManager 构造函数中会调用 this.mapLibreMap.getInfoWindowManager()
+    // ⚠️ Important: InfoWindowManager must be created before MarkerManager
+    // Because the MarkerManager constructor calls this.mapLibreMap.getInfoWindowManager()
     this.infoWindowManager = new InfoWindowManager();
     this.annotationViewManager = new AnnotationViewManager();
     this.viewAnnotationManager = new ViewAnnotationManager();
     
-    // 创建 Annotation 管理器（依赖 InfoWindowManager）
+    // Create annotation managers (depend on InfoWindowManager)
     this.markerManager = new MarkerManager(this);
     this.polygonManager = new PolygonManager(this);
     this.polylineManager = new PolylineManager(this);
     this.locationComponent = new LocationComponent(this);
-    this.projection = new Projection(nativeMapView, 0, 0); // 初始尺寸为 0，稍后更新
+    this.projection = new Projection(nativeMapView, 0, 0); // Start with zero size and update later
 
-    // 设置 AnnotationViewManager 的 NativeMapView
+    // Set the NativeMapView for AnnotationViewManager
     this.annotationViewManager.setNativeMapView(nativeMapView);
     this.viewAnnotationManager.setNativeMapView(nativeMapView);
     this.viewAnnotationManager.updatePixelRatio(this.readPixelRatioSafe(nativeMapView));
@@ -199,47 +250,52 @@ export class MapLibreMap {
       }
     });
 
-    // 设置 Native 层的样式监听器
+    // Set up native style listeners
     this.setupNativeStyleListeners();
 
-    // InfoWindow 位置更新现在通过 onUpdateRegionChange() 自动处理（参考 Android）
-    // 不再需要单独的 CameraMoveListener
+    // InfoWindow positioning is now handled automatically via onUpdateRegionChange() (mirrors Android)
+    // A separate CameraMoveListener is no longer required
 
-    // 设置相机移动监听器，自动更新 AnnotationView 位置
+    // Register the camera listener that updates AnnotationView positions
     this.setupAnnotationViewCameraListener();
 
-    // 设置相机移动监听器，自动更新 Compass
+    // Register the camera listener that updates the compass
     this.setupCompassCameraListener();
 
-    // 设置相机移动监听器，自动更新 ScaleBar
+    // Register the camera listener that updates the scale bar
     this.setupScaleBarCameraListener();
 
-    // 🔧 注册 NAPI 层的相机事件回调
-    // 这些回调会触发 cameraChangeDispatcher，进而通知所有内部监听器
+    // 🔧 Register camera callbacks from the NAPI layer
+    // These callbacks trigger cameraChangeDispatcher and notify all internal listeners
     this.setupNativeCameraCallbacks();
 
-    // 注册到 NativeMapView 以启用 InfoWindow 功能
+    // Register with NativeMapView to enable InfoWindow features
     registerMapLibreMap(nativeMapView, this);
   }
 
   /**
-   * 设置 Native 层的样式监听器
+   * Configure style listeners on the native layer
    * @private
    */
   private setupNativeStyleListeners(): void {
-    // 设置样式加载完成的回调
-    this.nativeMapView.setOnStyleLoadedListener(() => {
-      this.onStyleLoaded();
-    });
+    // Avoid duplicate registration when invoked multiple times
+    this.teardownNativeStyleListeners();
 
-    // 设置样式加载错误的回调
-    this.nativeMapView.setOnStyleLoadErrorListener((error: string) => {
+    // Register the style loaded callback
+    this.nativeStyleLoadedCallback = () => {
+      this.onStyleLoaded();
+    };
+    this.nativeMapView.setOnStyleLoadedListener(this.nativeStyleLoadedCallback);
+
+    // Register the style load error callback
+    this.nativeStyleLoadErrorCallback = (error: string) => {
       console.error(`MapLibreMap: Native style load error callback triggered: ${error}`);
       this.onStyleLoadError(error);
-    });
+    };
+    this.nativeMapView.setOnStyleLoadErrorListener(this.nativeStyleLoadErrorCallback);
 
-    // 设置样式图片缺失的回调
-    this.nativeMapView.addOnStyleImageMissingListener((imageId: string) => {
+    // Register the style image missing callback
+    this.nativeStyleImageMissingCallback = (imageId: string) => {
       if (this.styleImageMissingListener) {
         try {
           this.styleImageMissingListener(imageId);
@@ -247,18 +303,40 @@ export class MapLibreMap {
           console.error(`MapLibreMap: Error in onStyleImageMissing listener: ${error}`);
         }
       }
-    });
+    };
+    this.nativeMapView.addOnStyleImageMissingListener(this.nativeStyleImageMissingCallback);
   }
 
   /**
-   * 当地图区域改变时调用（参考 Android MapLibreMap.onUpdateRegionChange）
-   * 在相机移动、动画等任何视口变化时更新UI元素
+   * Remove native style listeners (used during teardown and re-registration)
+   * @private
+   */
+  private teardownNativeStyleListeners(): void {
+    if (this.nativeStyleLoadedCallback) {
+      this.nativeMapView.setOnStyleLoadedListener(null);
+      this.nativeStyleLoadedCallback = undefined;
+    }
+
+    if (this.nativeStyleLoadErrorCallback) {
+      this.nativeMapView.setOnStyleLoadErrorListener(null);
+      this.nativeStyleLoadErrorCallback = undefined;
+    }
+
+    if (this.nativeStyleImageMissingCallback) {
+      this.nativeMapView.removeOnStyleImageMissingListener(this.nativeStyleImageMissingCallback);
+      this.nativeStyleImageMissingCallback = undefined;
+    }
+  }
+
+  /**
+   * Called when the visible map region changes (mirrors Android MapLibreMap.onUpdateRegionChange)
+   * Updates UI elements whenever the viewport changes due to camera moves or animations
    * @private
    */
   private onUpdateRegionChange(): void {
     console.info('[MapLibreMap] onUpdateRegionChange - updating UI elements');
     
-    // 更新 InfoWindow 位置
+    // Update InfoWindow positions
     this.infoWindowManager.updatePositions(
       this.viewWidth,
       this.viewHeight,
@@ -277,10 +355,10 @@ export class MapLibreMap {
 
     this.viewAnnotationManager.refreshRenderStates();
     
-    // 未来可以在这里更新其他UI元素
-    // - Compass方向
-    // - Scale比例尺
-    // - Attribution信息
+    // Additional UI elements can be updated here in the future
+    // - Compass direction
+    // - Scale bar
+    // - Attribution text
   }
 
   private readPixelRatioSafe(mapView: NativeMapView): number {
@@ -297,8 +375,8 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 Compass 相机移动监听器
-   * 当地图旋转时，自动更新指南针方向
+   * Set up the compass camera move listener
+   * Automatically updates the compass heading when the map rotates
    * @private
    */
   private setupCompassCameraListener(): void {
@@ -310,7 +388,7 @@ export class MapLibreMap {
       }
 
       onCameraMove(): void {
-        // 地图相机移动时，更新指南针
+        // Update the compass when the camera moves
         if (this.parent.onCompassUpdate) {
           const bearing = this.parent.getBearing();
           this.parent.onCompassUpdate(bearing);
@@ -322,8 +400,8 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 ScaleBar 相机移动监听器
-   * 当地图缩放或移动时，自动更新比例尺
+   * Set up the scale bar camera move listener
+   * Automatically updates the scale bar when the map zooms or moves
    * @private
    */
   private setupScaleBarCameraListener(): void {
@@ -335,13 +413,13 @@ export class MapLibreMap {
       }
 
       onCameraMove(): void {
-        // 地图相机移动时，更新比例尺
+        // Update the scale bar when the camera moves
         if (this.parent.onScaleBarUpdate) {
           const metersPerPixel = this.parent.getMetersPerPixelAtLatitude(this.parent.getLatLng().latitude);
           this.parent.onScaleBarUpdate(metersPerPixel);
         }
 
-        // 同时更新 AnnotationView 位置
+        // Update AnnotationView positions at the same time
         this.parent.updateAnnotationViewPositions(false);
       }
     }
@@ -350,57 +428,50 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 NAPI 层的相机事件回调
-   * 
-   * 这个方法注册 native 层的相机事件回调，当 native 地图触发相机事件时，
-   * 会调用 cameraChangeDispatcher 的相应方法，进而通知所有内部监听器
-   * （InfoWindow、AnnotationView、Compass、ScaleBar 等）
-   * 
-   * TODO: 后续优化 - 在 ETS 层实现 Android 风格回调映射
-   * 当前实现：C++ 层在 MapObserver 回调中同时触发 Android 风格回调（临时方案）
-   * 建议实现：
-   *   1. C++ 层仅保留 MapLibre 原生回调（onCameraWillChange, onCameraIsChanging, onCameraDidChange）
-   *   2. ETS 层监听这些原生回调，在此方法中转换为 Android 风格回调
-   *   3. 示例：监听 onCameraWillChange -> 触发 cameraChangeDispatcher.notifyCameraMoveStarted()
-   *   4. 好处：解耦 C++ 和 ETS 层，更清晰的架构，更容易维护
-   * 
+   * Register camera event callbacks from the NAPI layer
+   *
+   * This method wires up native camera callbacks. When the native map emits camera events,
+   * cameraChangeDispatcher is invoked to propagate the events to all internal listeners
+   * (InfoWindow, AnnotationView, Compass, ScaleBar, etc.).
+   *
+   * TODO: Future optimization — implement Android-style callback mapping in the ETS layer.
+   * Current approach: the C++ layer triggers Android-style callbacks inside MapObserver (temporary solution).
+   * Suggested approach:
+   *   1. Keep only the MapLibre native callbacks on the C++ side (onCameraWillChange, onCameraIsChanging, onCameraDidChange).
+   *   2. Listen to those native callbacks in ETS and convert them to Android-style callbacks here.
+   *   3. Example: listen for onCameraWillChange -> trigger cameraChangeDispatcher.notifyCameraMoveStarted().
+   *   4. Benefits: better separation between C++ and ETS layers, clearer architecture, easier maintenance.
+   *
    * @private
    */
   private setupNativeCameraCallbacks(): void {
-    console.info('[MapLibreMap] Setting up native camera callbacks...');
-
-    // 相机开始移动回调（Android 风格）
-    // TODO: 改为监听 onCameraWillChange 并在 ETS 层转换
+    // Camera move started callback (Android style)
+    // TODO: Switch to listening for onCameraWillChange and convert in ETS
     this.nativeMapView.addOnCameraMoveStartedListener((reason: number) => {
-      console.info(`[MapLibreMap] Native camera move started, reason: ${reason}`);
       this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
     });
 
-    // 相机移动中回调（Android 风格）
-    // TODO: 改为监听 onCameraIsChanging 并在 ETS 层转换
+    // Camera moving callback (Android style)
+    // TODO: Switch to listening for onCameraIsChanging and convert in ETS
     this.nativeMapView.addOnCameraMoveListener(() => {
-      console.info('[MapLibreMap] Native camera move');
       this.cameraChangeDispatcher.notifyCameraMove();
     });
 
-    // 相机停止移动回调（Android 风格）
-    // TODO: 改为监听 onCameraDidChange 并在 ETS 层转换
+    // Camera idle callback (Android style)
+    // TODO: Switch to listening for onCameraDidChange and convert in ETS
     this.nativeMapView.addOnCameraIdleListener(() => {
-      console.info('[MapLibreMap] Native camera idle');
       this.cameraChangeDispatcher.notifyCameraIdle();
     });
-
-    console.info('[MapLibreMap] Native camera callbacks setup complete');
   }
 
   /**
-   * 设置 AnnotationView 相机监听器
-   * 当地图相机变化时，更新所有 AnnotationView 的位置和变换
+   * Set up camera listeners for AnnotationView
+   * Updates positions and transforms for all AnnotationViews when the camera changes
    * @private
    */
   private setupAnnotationViewCameraListener(): void {
 
-    // 相机移动监听：更新视图位置
+    // Camera move listener: update view positions
     class AnnotationViewMoveListenerImpl implements OnCameraMoveListener {
       parent: MapLibreMap;
 
@@ -409,12 +480,12 @@ export class MapLibreMap {
       }
 
       onCameraMove(): void {
-        // 相机移动时更新位置（bearing/pitch 没变）
+        // Update positions while the camera moves (bearing/pitch unchanged)
         this.parent.updateAnnotationViewPositions(false);
       }
     }
 
-    // 相机空闲监听：确保最终状态正确
+    // Camera idle listener: ensure the final state is correct
     class AnnotationViewIdleListenerImpl implements OnCameraIdleListener {
       parent: MapLibreMap;
 
@@ -423,7 +494,7 @@ export class MapLibreMap {
       }
 
       onCameraIdle(): void {
-        // 相机停止时更新，包括 bearing/pitch 的变化
+        // Update when the camera stops, including bearing/pitch changes
         this.parent.updateAnnotationViewPositions(true);
       }
     }
@@ -433,17 +504,17 @@ export class MapLibreMap {
   }
 
   /**
-   * 计算指定纬度下每像素代表的米数（使用当前缩放级别）
-   * @param latitude 纬度
-   * @returns 每像素米数
+   * Calculate meters-per-pixel at the given latitude (using the current zoom level)
+   * @param latitude Latitude
+   * @returns Meters per pixel
    */
   public getMetersPerPixelAtLatitude(latitude: number): number;
 
   /**
-   * 计算指定纬度和缩放级别下每像素代表的米数
-   * @param latitude 纬度
-   * @param zoom 缩放级别
-   * @returns 每像素米数
+   * Calculate meters-per-pixel at the given latitude and zoom level
+   * @param latitude Latitude
+   * @param zoom Zoom level
+   * @returns Meters per pixel
    */
   public getMetersPerPixelAtLatitude(latitude: number, zoom: number): number;
 
@@ -456,12 +527,12 @@ export class MapLibreMap {
   }
 
   /**
-   * 标记样式已加载（由外部调用，通常在样式加载完成回调中）
+   * Mark the style as loaded (called externally, typically from the style loaded callback)
    */
   public onStyleLoaded(): void {
     this.styleLoaded = true;
 
-    // 执行队列中的操作
+    // Execute pending operations
     if (this.pendingOperations.length > 0) {
       this.pendingOperations.forEach(operation => {
         try {
@@ -473,12 +544,12 @@ export class MapLibreMap {
       this.pendingOperations = [];
     }
 
-    // 触发监听器
+    // Notify listeners
     if (this.styleLoadedListeners.length > 0) {
       this.styleLoadedListeners.forEach(listener => {
         try {
-          // 注意: Style 对象暂时传 null，因为 NativeMapView 没有 getStyle() 方法
-          // 监听器可以直接使用 NativeMapView 的 layer/source 方法
+          // Note: Pass null for the Style object because NativeMapView has no getStyle() method yet
+          // Listeners can interact with layers/sources directly via NativeMapView
           listener.onStyleLoaded(null);
         } catch (error) {
           console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
@@ -488,19 +559,19 @@ export class MapLibreMap {
   }
 
   /**
-   * 标记样式加载失败（由外部调用）
+   * Mark the style as failed to load (called externally)
    */
   public onStyleLoadError(error: string): void {
     this.styleLoaded = false;
     this.style = null;
 
-    // 清空队列中的操作
+    // Clear pending operations
     if (this.pendingOperations.length > 0) {
       console.warn(`MapLibreMap: Clearing ${this.pendingOperations.length} pending operations due to style load error`);
       this.pendingOperations = [];
     }
 
-    // 触发错误监听器
+    // Notify error listeners
     if (this.styleLoadErrorListeners.length > 0) {
       this.styleLoadErrorListeners.forEach(listener => {
         try {
@@ -513,7 +584,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 销毁地图（参考 Android MapLibreMap.onDestroy()）
+   * Destroy the map (mirrors Android MapLibreMap.onDestroy())
    */
   public destroy(): void {
     if (this.destroyed) {
@@ -521,9 +592,12 @@ export class MapLibreMap {
     }
 
     this.destroyed = true;
+    this.styleLoaded = false;
+    this.style = null;
+    this.teardownNativeStyleListeners();
 
     try {
-      // 1. 清理所有监听器数组（参考 Android）
+      // 1. Clear all listener arrays (mirrors Android)
       this.styleLoadedListeners = [];
       this.styleLoadErrorListeners = [];
       this.styleImageMissingListener = undefined;
@@ -531,7 +605,7 @@ export class MapLibreMap {
       this.mapClickListeners = [];
       this.mapLongClickListeners = [];
 
-      // 2. 取消所有动画
+      // 2. Cancel all animations
       if (this.animationTimerId !== null) {
         clearTimeout(this.animationTimerId);
         this.animationTimerId = null;
@@ -539,34 +613,34 @@ export class MapLibreMap {
       this.pendingAnimationCallback = null;
       this.animationCancelled = false;
 
-      // 3. 清理 MarkerManager（参考 Android）
+      // 3. Clear the MarkerManager (mirrors Android)
       this.markerManager.clear();
 
-      // 3.1 清理 PolygonManager 和 PolylineManager
+      // 3.1 Clear the PolygonManager and PolylineManager
       this.polygonManager.clear();
       this.polylineManager.clear();
 
-      // 4. 清理 InfoWindowManager
+      // 4. Clear the InfoWindowManager
       this.infoWindowManager.closeAll();
 
-      // 5. 清理 AnnotationViewManager
+      // 5. Clear the AnnotationViewManager
       this.annotationViewManager.clear();
       this.viewAnnotationManager.setRenderCallback(null);
       this.viewAnnotationManager.clear();
       this.viewAnnotationManager.setNativeMapView(null);
 
-      // 6. 销毁位置组件（参考 Android）
+      // 6. Destroy the location component (mirrors Android)
       this.locationComponent.onDestroy();
 
-      // 7. 清理相机调度器
-      // CameraChangeDispatcher 会在下面的 NativeMapView destroy 中清理监听器
+      // 7. Clear the camera dispatcher
+      // CameraChangeDispatcher cleans up its listeners during NativeMapView.destroy below
 
-      // 8. 清理样式引用
+      // 8. Reset style references
       this.style = null;
       this.styleLoaded = false;
 
-      // 9. 清理 NativeMapView 引用（实际销毁在 NativeMapView 层）
-      // Native 资源会在 NativeMapView.aboutToDisappear() 中异步清理
+      // 9. Clear the NativeMapView reference (actual destruction happens in NativeMapView)
+      // Native resources are released asynchronously in NativeMapView.aboutToDisappear()
 
     } catch (error) {
       console.error('MapLibreMap: Error during destroy:', error);
@@ -574,55 +648,55 @@ export class MapLibreMap {
   }
 
   /**
-   * 检查是否已销毁
+   * Check whether the map has been destroyed
    */
   public isDestroyed(): boolean {
     return this.destroyed;
   }
 
   /**
-   * 获取 UI 设置
+   * Get the UI settings
    */
   public getUiSettings(): UiSettings {
     return this.uiSettings;
   }
 
   /**
-   * 获取位置组件
-   * 用于显示和跟踪用户位置
+   * Get the location component
+   * Used to display and track the user's location
    */
   public getLocationComponent(): LocationComponent {
     return this.locationComponent;
   }
 
   /**
-   * 获取坐标投影工具
-   * 用于地图坐标和屏幕坐标之间的转换
+   * Get the projection helper
+   * Converts between map coordinates and screen coordinates
    *
-   * @returns Projection 实例
+   * @returns Projection instance
    */
   public getProjection(): Projection {
     return this.projection;
   }
 
   /**
-   * 调整视图大小
+   * Resize the map view
    */
   public resizeView(width: number, height: number): void {
     if (this.destroyed) {
       return;
     }
-    // 保存尺寸
+    // Store the dimensions
     this.viewWidth = width;
     this.viewHeight = height;
     console.info(`[MapLibreMap] resizeView called: ${width}x${height}`);
 
-    // 更新 Projection 的视图尺寸
+    // Update the Projection view size
     this.projection.updateViewSize(width, height);
 
     this.nativeMapView.resizeView(width, height);
 
-    // 视图大小改变后，触发 ScaleBar 更新（确保有初始值）
+    // After the view size changes, trigger a ScaleBar update (ensures initial value)
     if (this.onScaleBarUpdate) {
       try {
         const latLng = this.getLatLng();
@@ -635,36 +709,35 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取视图宽度
+   * Get the view width
    */
   public getViewWidth(): number {
     return this.viewWidth;
   }
 
   /**
-   * 获取视图高度
+   * Get the view height
    */
   public getViewHeight(): number {
     return this.viewHeight;
   }
 
-  // 样式管理
+  // Style management
   public setStyleUrl(url: string): void {
     if (this.destroyed) {
       return;
     }
     this.nativeMapView.setStyleUrl(url);
     this.styleLoaded = false;
-    this.style = null; // 重置 style 缓存
+    this.style = null; // Reset cached style reference
   }
 
   /**
-   * 设置样式并在加载完成后执行回调
-   * 这个方法结合了 setStyleUrl 和 addOnStyleLoadedListener 的功能
-   * 参考 Android Style.Builder 模式，提供更流畅的 API
-   * 
-   * @param url 样式 URL
-   * @param callback 样式加载完成后的回调函数
+   * Set the style and execute a callback when loading completes
+   * Combines setStyleUrl and addOnStyleLoadedListener into one fluent API (mirrors Android Style.Builder pattern)
+   *
+   * @param url Style URL
+   * @param callback Callback executed after the style finishes loading
    * @example
    * ```typescript
    * map.setStyleWithCallback(DEFAULT_STYLE_URLS.streets, (style) => {
@@ -683,7 +756,7 @@ export class MapLibreMap {
       return;
     }
 
-    // 创建一次性监听器
+    // Create a one-time listener
     const self = this;
     class OneTimeStyleLoadedListener implements OnStyleLoadedListener {
       onStyleLoaded(style: Style | null): void {
@@ -692,16 +765,16 @@ export class MapLibreMap {
         } catch (error) {
           console.error(`MapLibreMap: Error in setStyleWithCallback callback: ${error}`);
         }
-        // 回调执行后移除监听器
+        // Remove the listener after the callback executes
         self.removeOnStyleLoadedListener(this);
       }
     }
     const oneTimeListener = new OneTimeStyleLoadedListener();
 
-    // 添加监听器
+    // Register the listener
     this.addOnStyleLoadedListener(oneTimeListener);
 
-    // 设置样式 URL
+    // Apply the style URL
     this.setStyleUrl(url);
   }
 
@@ -713,47 +786,47 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置本地表意文字字体族
+   * Configure the local ideograph font family
    *
-   * 用于本地渲染 CJK 字符，避免从网络加载大量字形数据。
-   * 注意：此操作会重新初始化 Renderer 并重新加载样式。
+   * Enables local rendering for CJK glyphs to avoid downloading large glyph data.
+   * Note: this reinitializes the renderer and reloads the style.
    *
-   * @param fontFamily 字体族名称，如 "HarmonyOS_Sans"，null 表示禁用本地渲染
+   * @param fontFamily Font family name such as "HarmonyOS_Sans"; null disables local rendering
    */
   public setLocalIdeographFontFamily(fontFamily: string | null): void {
     if (this.destroyed) {
       return;
     }
 
-    // 更新内部状态
+    // Update cached state
     this.options.localIdeographFontFamily = fontFamily;
 
-    // 调用 C++ 接口更新字体配置并重新初始化 Renderer
-    // 参考 Android/iOS：本地字体是在 Renderer 创建时固定的，运行时更改需要重新创建
+    // Call into C++ to update the font configuration and reinitialize the renderer
+    // Mirrors Android/iOS where local fonts are fixed when the renderer is created
     try {
       this.nativeMapView.setLocalIdeographFontFamily(fontFamily);
-      console.info('[MapLibreMap] setLocalIdeographFontFamily: 本地字体已更新为 ' + 
-                   (fontFamily || '(禁用)'));
+      console.info('[MapLibreMap] setLocalIdeographFontFamily: Local font updated to ' +
+                   (fontFamily || '(disabled)'));
     } catch (error) {
-      console.error('[MapLibreMap] setLocalIdeographFontFamily: 更新失败', error);
+      console.error('[MapLibreMap] setLocalIdeographFontFamily: Update failed', error);
     }
   }
 
   /**
-   * 获取当前配置的本地表意文字字体族
+   * Get the currently configured local ideograph font family
    *
-   * @returns 当前配置的字体族名称，null 表示已禁用
+   * @returns Configured font family name, null if disabled
    */
   public getLocalIdeographFontFamily(): string | null {
     if (this.destroyed) {
       return null;
     }
     
-    // 从 C++ 层获取实际配置的字体
+    // Fetch the actual configuration from C++
     try {
       return this.nativeMapView.getLocalIdeographFontFamily();
     } catch (error) {
-      console.error('[MapLibreMap] getLocalIdeographFontFamily: 获取失败', error);
+      console.error('[MapLibreMap] getLocalIdeographFontFamily: Failed to query value', error);
       return this.options.localIdeographFontFamily;
     }
   }
@@ -764,7 +837,7 @@ export class MapLibreMap {
     }
     this.nativeMapView.setStyleJson(json);
     this.styleLoaded = false;
-    this.style = null; // 重置 style 缓存
+    this.style = null; // Reset cached style reference
   }
 
   public getStyleJson(): string {
@@ -775,9 +848,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取样式对象
+   * Get the style object
    *
-   * @returns Style 封装类对象，如果地图未初始化或样式未加载则返回 null
+   * @returns Wrapped Style instance, or null if the map is uninitialized or the style is not loaded
    */
   public getStyle(): Style | null {
     if (this.destroyed) {
@@ -800,7 +873,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 样式是否已加载
+   * Check whether the style has finished loading
    */
   public isStyleLoaded(): boolean {
     return this.styleLoaded;
@@ -813,7 +886,7 @@ export class MapLibreMap {
     this.nativeMapView.setLatLngBounds(bounds);
   }
 
-  // 相机控制
+  // Camera control
   public cancelTransitions(): void {
     if (this.destroyed) {
       return;
@@ -822,22 +895,22 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置地图内边距
-   * 影响地图中心点的计算，使地图逻辑中心偏移
+   * Configure map padding
+   * Shifts the logical center used for camera calculations
    *
-   * 参考 Android: MapLibreMap.setPadding()
+   * Mirrors Android: MapLibreMap.setPadding()
    *
-   * @param left 左边距（像素）
-   * @param top 上边距（像素）
-   * @param right 右边距（像素）
-   * @param bottom 下边距（像素）
+   * @param left Left padding in pixels
+   * @param top Top padding in pixels
+   * @param right Right padding in pixels
+   * @param bottom Bottom padding in pixels
    *
    * @example
-  * ```typescript
-   * // 设置上边距 200px
+   * ```typescript
+   * // Set top padding to 200px
    * map.setPadding(0, 200, 0, 0);
    *
-   * // 设置全边距各 100px
+   * // Set 100px padding on every side
    * map.setPadding(100, 100, 100, 100);
    * ```
    */
@@ -849,11 +922,11 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取当前地图内边距
+   * Retrieve the current map padding
    *
-   * 参考 Android: MapLibreMap.getPadding()
+   * Mirrors Android: MapLibreMap.getPadding()
    *
-   * @returns [left, top, right, bottom] 边距数组
+   * @returns Padding array [left, top, right, bottom]
    */
   public getPadding(): number[] {
     if (this.destroyed) {
@@ -885,27 +958,27 @@ export class MapLibreMap {
   }
 
   /**
-   * 平滑过渡到指定相机位置（easeTo）- 参数形式
+   * Smoothly transition to the specified camera target (easeTo) — parameter overload
    *
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @param bearing 方位角
-   * @param zoom 缩放级别
-   * @param duration 动画持续时间（毫秒）
+   * @param latitude Latitude
+   * @param longitude Longitude
+   * @param bearing Bearing
+   * @param zoom Zoom level
+   * @param duration Animation duration in milliseconds
    */
   public easeTo(latitude: number, longitude: number, bearing: number, zoom: number, duration: number): void;
 
   /**
-   * 平滑过渡到指定相机位置（easeTo）- 对象形式
+   * Smoothly transition to the specified camera target (easeTo) — options overload
    *
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
-   * @param callback 可选的动画回调
+   * @param options Camera options
+   * @param duration Animation duration in milliseconds
+   * @param callback Optional animation callback
    */
   public easeTo(options: maplibre.CameraOptions, duration: number, callback?: CameraAnimationCallback): void;
 
   /**
-   * easeTo 实现
+   * Implementation for easeTo
    */
   public easeTo(
     latitudeOrOptions: number | maplibre.CameraOptions,
@@ -918,9 +991,9 @@ export class MapLibreMap {
       return;
     }
 
-    // 判断调用形式
+    // Determine which overload is used
     if (typeof latitudeOrOptions === 'number' && typeof zoom === 'number' && typeof duration === 'number') {
-      // 参数形式: easeTo(latitude, longitude, bearing, zoom, duration)
+      // Parameter overload: easeTo(latitude, longitude, bearing, zoom, duration)
       const centerObj: LatLng = new LatLng(latitudeOrOptions, longitudeOrDuration);
       const options: maplibre.CameraOptions = {
         center: centerObj.toObject(),
@@ -929,12 +1002,12 @@ export class MapLibreMap {
       };
       this.nativeMapView.easeTo(options, duration);
     } else if (typeof latitudeOrOptions === 'object') {
-      // 对象形式: easeTo(options, duration, callback?)
+      // Options overload: easeTo(options, duration, callback?)
       const options: maplibre.CameraOptions = latitudeOrOptions;
       const durationMs = longitudeOrDuration;
       const callback = bearingOrCallback as CameraAnimationCallback | undefined;
 
-      // 如果有回调，设置动画监听
+      // Register animation callback if provided
       if (callback) {
         this.setupAnimationCallback(callback, durationMs);
       }
@@ -944,18 +1017,18 @@ export class MapLibreMap {
   }
 
   /**
-   * 飞行动画到指定相机位置（flyTo）
+   * Fly animation to the specified camera target (flyTo)
    *
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
-   * @param callback 可选的动画回调
+   * @param options Camera options
+   * @param duration Animation duration in milliseconds
+   * @param callback Optional animation callback
    */
   public flyTo(options: maplibre.CameraOptions, duration: number, callback?: CameraAnimationCallback): void {
     if (this.destroyed) {
       return;
     }
 
-    // 如果有回调，设置动画监听
+    // Register animation callback if provided
     if (callback) {
       this.setupAnimationCallback(callback, duration);
     }
@@ -964,16 +1037,16 @@ export class MapLibreMap {
   }
 
   /**
-   * 相机动画（Android 风格的 animateCamera）
-   * 使用 CameraPosition 对象动画到新的相机位置
+   * Camera animation (Android-style animateCamera)
+   * Animates to a new position using a CameraPosition object
    *
-   * @param position CameraPosition 对象
-   * @param durationMs 动画时长（毫秒），可选，默认 300ms
-   * @param callback 动画回调，可选
+   * @param position CameraPosition instance
+   * @param durationMs Animation duration in milliseconds (optional, defaults to 300ms)
+   * @param callback Optional animation callback
    *
-   * 示例：
+   * Example:
    * ```typescript
-   * // 基本用法
+   * // Basic usage
    * map.animateCamera(new CameraPosition(
    *   new LatLng(lat, lng),
    *   15,
@@ -981,7 +1054,7 @@ export class MapLibreMap {
    *   0
    * ), 1000);
    *
-   * // 使用回调
+   * // With callback
    * map.animateCamera(cameraPosition, 1000, {
    * });
    * ```
@@ -991,9 +1064,9 @@ export class MapLibreMap {
       return;
     }
 
-    const duration = durationMs ?? 300; // 默认 300ms
+    const duration = durationMs ?? 300; // Default 300ms
 
-    // 构建相机选项
+    // Build camera options
     const options: maplibre.CameraOptions = {
       center: position.target ? position.target.toObject() : undefined,
       zoom: position.zoom,
@@ -1001,24 +1074,24 @@ export class MapLibreMap {
       pitch: position.tilt
     };
 
-    // 使用 easeTo 执行动画
+    // Perform the animation via easeTo
     this.easeTo(options, duration, callback);
   }
 
   /**
-   * 设置动画回调
+   * Configure the animation callback
    *
-   * @param callback 回调函数
-   * @param duration 动画持续时间
+   * @param callback Callback handler
+   * @param duration Animation duration
    */
   private setupAnimationCallback(callback: CameraAnimationCallback, duration: number): void {
-    // 清除之前的动画回调
+    // Clear previous animation callbacks
     this.clearAnimationCallback();
 
     this.pendingAnimationCallback = callback;
     this.animationCancelled = false;
 
-    // 监听相机移动取消事件
+    // Listen for camera movement cancellation
     class CancelListenerImpl implements OnCameraMoveCanceledListener {
       private parent: MapLibreMap;
 
@@ -1035,8 +1108,8 @@ export class MapLibreMap {
 
     this.cameraChangeDispatcher.addOnCameraMoveCanceledListener(cancelListener);
 
-    // 设置定时器，在动画结束时触发完成回调
-    // 增加一个小的缓冲时间（50ms）以确保动画完全完成
+    // Schedule the completion callback when the animation ends
+    // Adds a 50ms buffer to ensure the animation fully completes
     this.animationTimerId = setTimeout(() => {
       if (!this.animationCancelled && this.pendingAnimationCallback) {
         try {
@@ -1046,14 +1119,14 @@ export class MapLibreMap {
         }
       }
 
-      // 清理
+      // Clean up
       this.cameraChangeDispatcher.removeOnCameraMoveCanceledListener(cancelListener);
       this.clearAnimationCallback();
-    }, duration + 50); // 加 50ms 缓冲
+    }, duration + 50); // Add 50ms buffer
   }
 
   /**
-   * 动画取消时调用
+   * Called when an animation is cancelled
    */
   private onAnimationCancelled(): void {
     if (this.pendingAnimationCallback && !this.animationCancelled) {
@@ -1072,7 +1145,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 清除动画回调
+   * Clear the animation callback state
    */
   private clearAnimationCallback(): void {
     if (this.animationTimerId !== null) {
@@ -1083,7 +1156,7 @@ export class MapLibreMap {
     this.animationCancelled = false;
   }
 
-  // 位置和相机
+  // Position and camera helpers
   public getLatLng(): LatLng {
     if (this.destroyed) {
       return LatLng.create(0, 0);
@@ -1105,76 +1178,76 @@ export class MapLibreMap {
       return null;
     }
     const result = this.nativeMapView.getCameraForLatLngBounds(bounds, top, left, bottom, right, bearing, tilt);
-    // Native 返回的对象已经符合 CameraPosition 接口
+    // Native layer already returns an object matching the CameraPosition interface
     return result as CameraPosition;
   }
 
   /**
-   * 获取适配指定坐标边界的相机位置（使用当前 bearing 和 tilt）
-   * 参考 Android 的 getCameraForLatLngBounds(LatLngBounds) 方法
-   * 
-   * @param bounds 要适配的坐标边界
-   * @return 适配边界的相机位置，如果地图已销毁则返回 null
+   * Get a camera position that fits the provided bounds (using current bearing/tilt)
+   * Mirrors Android getCameraForLatLngBounds(LatLngBounds)
+   *
+   * @param bounds Bounds to fit
+   * @return Camera position that fits the bounds, or null if the map is destroyed
    */
   public getCameraForBounds(bounds: LatLngBounds): CameraPosition | null {
     if (this.destroyed) {
       return null;
     }
-    // 获取当前相机位置以使用当前的 bearing 和 tilt
+    // Use the current camera to carry over bearing and tilt
     const currentCamera = this.getCameraPosition();
     const bearing = currentCamera ? currentCamera.bearing : 0;
     const tilt = currentCamera ? currentCamera.tilt : 0;
     
-    // 使用零 padding
+    // Use zero padding
     return this.getCameraForLatLngBounds(bounds, 0, 0, 0, 0, bearing, tilt);
   }
 
   /**
-   * 获取适配指定坐标边界和内边距的相机位置（使用当前 bearing 和 tilt）
-   * 参考 Android 的 getCameraForLatLngBounds(LatLngBounds, int[] padding) 方法
-   * 
-   * @param bounds 要适配的坐标边界
-   * @param padding 内边距（EdgeInsets 对象）
-   * @return 适配边界和内边距的相机位置，如果地图已销毁则返回 null
+   * Get a camera position that fits the provided bounds and padding (using current bearing/tilt)
+   * Mirrors Android getCameraForLatLngBounds(LatLngBounds, int[] padding)
+   *
+   * @param bounds Bounds to fit
+   * @param padding EdgeInsets padding
+   * @return Camera position that fits the bounds/padding, or null if the map is destroyed
    */
   public getCameraForBoundsWithPadding(bounds: LatLngBounds, padding: EdgeInsets): CameraPosition | null {
     if (this.destroyed) {
       return null;
     }
-    // 获取当前相机位置以使用当前的 bearing 和 tilt
+    // Use the current camera to carry over bearing and tilt
     const currentCamera = this.getCameraPosition();
     const bearing = currentCamera ? currentCamera.bearing : 0;
     const tilt = currentCamera ? currentCamera.tilt : 0;
     
-    // 将 EdgeInsets 解构为独立的 padding 参数
+    // Deconstruct EdgeInsets into individual padding values
     return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, bearing, tilt);
   }
 
   /**
-   * 获取适配指定坐标边界、内边距、bearing 和 tilt 的相机位置
-   * 参考 Android 的 getCameraForLatLngBounds(LatLngBounds, int[] padding, double bearing, double tilt) 方法
-   * 
-   * @param bounds 要适配的坐标边界
-   * @param padding 内边距（EdgeInsets 对象）
-   * @param bearing 方位角（0-360度，0表示正北）
-   * @param tilt 倾斜角（0-60度，0表示垂直俯视）
-   * @return 适配所有参数的相机位置，如果地图已销毁则返回 null
+   * Get a camera position that fits bounds, padding, bearing, and tilt
+   * Mirrors Android getCameraForLatLngBounds(LatLngBounds, int[] padding, double bearing, double tilt)
+   *
+   * @param bounds Bounds to fit
+   * @param padding EdgeInsets padding
+   * @param bearing Bearing in degrees (0–360, 0 is north)
+   * @param tilt Tilt in degrees (0–60, 0 is top-down)
+   * @return Camera position that satisfies all parameters, or null if the map is destroyed
    */
   public getCameraForBoundsWithOptions(bounds: LatLngBounds, padding: EdgeInsets, bearing: number, tilt: number): CameraPosition | null {
     if (this.destroyed) {
       return null;
     }
-    // 将 EdgeInsets 解构为独立的 padding 参数
+    // Deconstruct EdgeInsets into individual padding values
     return this.getCameraForLatLngBounds(bounds, padding.top, padding.left, padding.bottom, padding.right, bearing, tilt);
   }
 
   /**
-   * 设置相机以适配指定的坐标边界
-   * 参考 iOS 的 setVisibleCoordinateBounds:animated: 方法
-   * 
-   * @param bounds 要适配的坐标边界
-   * @param animated 是否使用动画，默认 true
-   * @param duration 动画持续时间（毫秒），默认 300ms
+   * Fit the camera to the specified bounds
+   * Mirrors iOS setVisibleCoordinateBounds:animated:
+   *
+   * @param bounds Bounds to fit
+   * @param animated Whether to animate, default true
+   * @param duration Animation duration in milliseconds, default 300ms
    */
   public setCameraForBounds(bounds: LatLngBounds, animated: boolean = true, duration: number = 300): void {
     if (this.destroyed) {
@@ -1194,13 +1267,13 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置相机以适配指定的坐标边界和内边距
-   * 参考 iOS 的 setVisibleCoordinateBounds:edgePadding:animated: 方法
-   * 
-   * @param bounds 要适配的坐标边界
-   * @param padding 内边距（EdgeInsets 对象）
-   * @param animated 是否使用动画，默认 true
-   * @param duration 动画持续时间（毫秒），默认 300ms
+   * Fit the camera to the specified bounds and padding
+   * Mirrors iOS setVisibleCoordinateBounds:edgePadding:animated:
+   *
+   * @param bounds Bounds to fit
+   * @param padding EdgeInsets padding
+   * @param animated Whether to animate, default true
+   * @param duration Animation duration in milliseconds, default 300ms
    */
   public setCameraForBoundsWithPadding(bounds: LatLngBounds, padding: EdgeInsets, animated: boolean = true, duration: number = 300): void {
     if (this.destroyed) {
@@ -1220,14 +1293,14 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置相机以适配指定的坐标边界、内边距、bearing 和 tilt
-   * 
-   * @param bounds 要适配的坐标边界
-   * @param padding 内边距（EdgeInsets 对象）
-   * @param bearing 方位角（0-360度，0表示正北）
-   * @param tilt 倾斜角（0-60度，0表示垂直俯视）
-   * @param animated 是否使用动画，默认 true
-   * @param duration 动画持续时间（毫秒），默认 300ms
+   * Fit the camera to bounds with padding, bearing, and tilt
+   *
+   * @param bounds Bounds to fit
+   * @param padding EdgeInsets padding
+   * @param bearing Bearing in degrees (0–360, 0 is north)
+   * @param tilt Tilt in degrees (0–60, 0 is top-down)
+   * @param animated Whether to animate, default true
+   * @param duration Animation duration in milliseconds, default 300ms
    */
   public setCameraForBoundsWithOptions(bounds: LatLngBounds, padding: EdgeInsets, bearing: number, tilt: number, animated: boolean = true, duration: number = 300): void {
     if (this.destroyed) {
@@ -1252,7 +1325,7 @@ export class MapLibreMap {
       return null;
     }
     const result = this.nativeMapView.getCameraForGeometry(geometry, top, left, bottom, right, bearing, tilt);
-    // Native 返回的对象已经符合 CameraPosition 接口
+    // Native layer already returns an object matching the CameraPosition interface
     return result as CameraPosition;
   }
 
@@ -1270,7 +1343,7 @@ export class MapLibreMap {
     this.nativeMapView.resetPosition();
   }
 
-  // 倾斜控制
+  // Tilt control
   public getPitch(): number {
     if (this.destroyed) {
       return 0;
@@ -1285,7 +1358,7 @@ export class MapLibreMap {
     this.nativeMapView.setPitch(pitch, duration);
   }
 
-  // 缩放控制
+  // Zoom control
   public setZoom(zoom: number, cx?: number, cy?: number, duration?: number): void {
     if (this.destroyed) {
       return;
@@ -1335,7 +1408,7 @@ export class MapLibreMap {
     return this.nativeMapView.getMaxZoom();
   }
 
-  // 倾斜限制
+  // Tilt limits
   public setMinPitch(pitch: number): void {
     if (this.destroyed) {
       return;
@@ -1364,7 +1437,7 @@ export class MapLibreMap {
     return this.nativeMapView.getMaxPitch();
   }
 
-  // 旋转
+  // Rotation
   public rotateBy(sx: number, sy: number, ex: number, ey: number, duration?: number): void {
     if (this.destroyed) {
       return;
@@ -1372,7 +1445,7 @@ export class MapLibreMap {
     this.nativeMapView.rotateBy(sx, sy, ex, ey, duration);
   }
 
-  // 方位控制
+  // Bearing control
   public setBearing(degrees: number, duration?: number): void {
     if (this.destroyed) {
       return;
@@ -1398,11 +1471,11 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
-    // 使用动画方式归正北（参考 Android TIME_MAP_NORTH_ANIMATION = 150ms）
+    // Animate back to north (mirrors Android TIME_MAP_NORTH_ANIMATION = 150ms)
     this.nativeMapView.setBearing(0, duration);
   }
 
-  // 坐标边界
+  // Coordinate bounds
   public setVisibleCoordinateBounds(coordinates: LatLng[], padding: Rect, direction: number, duration: number): void {
     if (this.destroyed) {
       return;
@@ -1418,7 +1491,7 @@ export class MapLibreMap {
     return nativeLatLngs.map(native => LatLng.fromNative(native));
   }
 
-  // 快照
+  // Snapshot
   public scheduleSnapshot(): void {
     if (this.destroyed) {
       return;
@@ -1426,7 +1499,7 @@ export class MapLibreMap {
     this.nativeMapView.scheduleSnapshot();
   }
 
-  // 相机位置
+  // Camera position
   public getCameraPosition(): CameraPosition | null {
     if (this.destroyed) {
       return null;
@@ -1436,24 +1509,24 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置相机位置（立即跳转，无动画）
-   * 参考 Android 的简化相机设置方法
-   * 
-   * @param position 目标相机位置
+   * Set the camera position (instant jump without animation)
+   * Mirrors the simplified Android camera helper
+   *
+   * @param position Target camera position
    */
   public setCameraPosition(position: CameraPosition): void;
   
   /**
-   * 设置相机位置（带动画）
-   * 参考 Android 的简化相机设置方法
-   * 
-   * @param position 目标相机位置
-   * @param duration 动画持续时间（毫秒）
+   * Set the camera position (with animation)
+   * Mirrors the simplified Android camera helper
+   *
+   * @param position Target camera position
+   * @param duration Animation duration in milliseconds
    */
   public setCameraPosition(position: CameraPosition, duration: number): void;
   
   /**
-   * setCameraPosition 实现
+   * Implementation for setCameraPosition
    */
   public setCameraPosition(position: CameraPosition, duration?: number): void {
     if (this.destroyed) {
@@ -1461,10 +1534,10 @@ export class MapLibreMap {
     }
     
     if (duration !== undefined && duration > 0) {
-      // 使用动画
+      // Animate
       this.animateCamera(position, duration);
     } else {
-      // 立即跳转
+      // Jump immediately
       this.jumpTo(
         position.bearing,
         position.target.latitude,
@@ -1475,14 +1548,14 @@ export class MapLibreMap {
     }
   }
 
-  // 注解
+  // Annotations
   /**
-   * 更新 Marker
+   * Update a marker
    *
-   * 注意：使用 MarkerManager 的 GeoJSON 更新，支持所有属性（alpha, rotation, zIndex 等）
-   * 不再使用 Native 的 updateMarker（它只支持位置和图标）
+   * Uses the MarkerManager GeoJSON update path to support all properties (alpha, rotation, zIndex, etc.)
+   * Replaces the native updateMarker (which only handled position and icon)
    *
-   * @param marker 要更新的 Marker
+   * @param marker Marker to update
    */
   public updateMarker(marker: Marker): void {
     if (this.destroyed) {
@@ -1490,8 +1563,7 @@ export class MapLibreMap {
     }
 
     try {
-      // 使用 MarkerManager 的公共方法更新
-      // 这样可以更新所有属性：position, icon, alpha, rotation, zIndex 等
+      // Leverage MarkerManager public APIs so all properties can be updated: position, icon, alpha, rotation, zIndex, etc.
       this.markerManager.updateMarker(marker);
 
     } catch (error) {
@@ -1505,17 +1577,17 @@ export class MapLibreMap {
       return [];
     }
 
-    // [MarkerDebug] 记录调用 NAPI 前的状态
+    // [MarkerDebug] Log state before calling into NAPI
     for (let i = 0; i < markers.length; i++) {
       const pos = markers[i].getPosition();
       const icon = markers[i].getIcon();
     }
 
-    // 将封装的 Marker 转换为 NAPI Marker 对象数组
+    // Convert wrapped markers into native marker objects
     const nativeMarkers: maplibre.Marker[] = markers.map((m: Marker): maplibre.Marker => m.getNative());
     const ids: number[] = this.nativeMapView.addMarkers(nativeMarkers);
 
-    // [MarkerDebug] 记录 NAPI 返回结果
+    // [MarkerDebug] Log NAPI result
 
     return ids;
   }
@@ -1524,7 +1596,7 @@ export class MapLibreMap {
     if (this.destroyed) {
       return [];
     }
-    // 提取原生对象
+    // Extract native objects
     const nativePolylines = polylines.map(p => p.getNative());
     return this.nativeMapView.addPolylines(nativePolylines);
   }
@@ -1533,7 +1605,7 @@ export class MapLibreMap {
     if (this.destroyed) {
       return [];
     }
-    // 提取原生对象
+    // Extract native objects
     const nativePolygons = polygons.map(p => p.getNative());
     return this.nativeMapView.addPolygons(nativePolygons);
   }
@@ -1554,7 +1626,7 @@ export class MapLibreMap {
         return;
       }
 
-      // 传递原生 NAPI 对象供 C++ unwrap（C++ 层会从对象获取 ID）
+      // Pass the native NAPI object so C++ can unwrap (the C++ layer reads the ID from the object)
       this.nativeMapView.updatePolyline(nativePolyline);
     } catch (error) {
       console.error(`MapLibreMap.updatePolyline: Exception - ${error}`);
@@ -1578,7 +1650,7 @@ export class MapLibreMap {
         return;
       }
 
-      // 传递原生 NAPI 对象供 C++ unwrap（C++ 层会从对象获取 ID）
+      // Pass the native NAPI object so C++ can unwrap it (C++ layer reads the ID from the object)
       this.nativeMapView.updatePolygon(nativePolygon);
     } catch (error) {
       console.error(`MapLibreMap.updatePolygon: Exception - ${error}`);
@@ -1614,7 +1686,7 @@ export class MapLibreMap {
     return this.nativeMapView.getTopOffsetPixelsForAnnotationSymbol(symbolName);
   }
 
-  // 内存管理
+  // Memory management
   public onLowMemory(): void {
     if (this.destroyed) {
       return;
@@ -1622,8 +1694,8 @@ export class MapLibreMap {
     this.nativeMapView.onLowMemory();
   }
 
-  // 调试 (已废弃，使用 setDebugActive 或 setDebugOptions 代替)
-  // 保留此方法以保持向后兼容，但内部调用新的 API
+  // Debug (deprecated, use setDebugActive or setDebugOptions instead)
+  // Retained for backward compatibility but delegates to the new API
   public setDebug(debug: boolean): void {
     if (this.destroyed) {
       return;
@@ -1638,7 +1710,7 @@ export class MapLibreMap {
     return this.isDebugActive();
   }
 
-  // 动作日志
+  // Action journal
   public getActionJournalLogFiles(): string[] {
     if (this.destroyed) {
       return [];
@@ -1660,7 +1732,7 @@ export class MapLibreMap {
     this.nativeMapView.clearActionJournalLog();
   }
 
-  // 加载状态
+  // Load status
   public isFullyLoaded(): boolean {
     if (this.destroyed) {
       return false;
@@ -1668,7 +1740,7 @@ export class MapLibreMap {
     return this.nativeMapView.isFullyLoaded();
   }
 
-  // 坐标转换
+  // Coordinate transformations
   public projectedMetersForLatLng(latitude: number, longitude: number): ProjectedMeters {
     if (this.destroyed) {
       return new ProjectedMeters(0, 0);
@@ -1678,14 +1750,14 @@ export class MapLibreMap {
   }
 
   /**
-   * 将地理坐标转换为物理像素屏幕坐标（地图内部坐标系）
-   * 
-   * ⚠️ 用于地图内部计算（如点击检测、Feature 查询等）
-   * 如果需要用于 ArkUI 组件定位，请使用 pixelForLatLng()
-   * 
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @returns 物理像素屏幕坐标
+   * Convert geographic coordinates to physical pixel coordinates (map internal coordinate system)
+   *
+   * ⚠️ Intended for internal map calculations (hit testing, feature queries, etc.)
+   * For ArkUI positioning use pixelForLatLng()
+   *
+   * @param latitude Latitude
+   * @param longitude Longitude
+   * @returns Physical pixel coordinates
    */
   public pixelForLatLngPhysical(latitude: number, longitude: number): Point {
     if (this.destroyed) {
@@ -1696,13 +1768,13 @@ export class MapLibreMap {
   }
 
   /**
-   * 将地理坐标转换为逻辑像素屏幕坐标
-   * 
-   * 用于 ArkUI 组件定位（InfoWindow、自定义覆盖层等）
-   * 
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @returns 逻辑像素屏幕坐标
+   * Convert geographic coordinates to logical pixel coordinates
+   *
+   * Used for ArkUI component positioning (InfoWindow, custom overlays, etc.)
+   *
+   * @param latitude Latitude
+   * @param longitude Longitude
+   * @returns Logical pixel coordinates
    */
   public pixelForLatLng(latitude: number, longitude: number): Point {
     const physicalPixel = this.pixelForLatLngPhysical(latitude, longitude);
@@ -1735,14 +1807,14 @@ export class MapLibreMap {
   }
 
   /**
-   * 将物理像素屏幕坐标转换为地理坐标（地图内部坐标系）
-   * 
-   * ⚠️ 用于地图内部计算
-   * 如果输入的是逻辑像素坐标，请使用 latLngForPixel()
-   * 
-   * @param x 物理像素 X 坐标
-   * @param y 物理像素 Y 坐标
-   * @returns 地理坐标
+   * Convert physical pixel coordinates back to geographic coordinates (map internal coordinate system)
+   *
+   * ⚠️ Intended for internal map calculations.
+   * For logical pixels use latLngForPixel()
+   *
+   * @param x Physical pixel X coordinate
+   * @param y Physical pixel Y coordinate
+   * @returns Geographic coordinates
    */
   public latLngForPixelPhysical(x: number, y: number): LatLng {
     if (this.destroyed) {
@@ -1753,13 +1825,13 @@ export class MapLibreMap {
   }
 
   /**
-   * 将逻辑像素屏幕坐标转换为地理坐标
-   * 
-   * 用于 ArkUI 组件坐标转换
-   * 
-   * @param x 逻辑像素 X 坐标
-   * @param y 逻辑像素 Y 坐标
-   * @returns 地理坐标
+   * Convert logical pixel coordinates to geographic coordinates
+   *
+   * Used for ArkUI component coordinate conversion
+   *
+   * @param x Logical pixel X coordinate
+   * @param y Logical pixel Y coordinate
+   * @returns Geographic coordinates
    */
   public latLngForPixel(x: number, y: number): LatLng {
     const pixelRatio = this.nativeMapView.getPixelRatio();
@@ -1782,7 +1854,7 @@ export class MapLibreMap {
     this.nativeMapView.latLngsForPixels(physicalInput, output);
   }
 
-  // 过渡
+  // Transitions
   public getTransitionOptions(): TransitionOptions {
     if (this.destroyed) {
       return new TransitionOptions(0, 0);
@@ -1795,12 +1867,12 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
-    // 转换为对象字面量传递给 NAPI
+    // Convert to a plain object for NAPI
     this.nativeMapView.setTransitionOptions(options.toObject());
   }
 
 
-  // 光照
+  // Lighting
   public getLight(): Light | null {
     if (this.destroyed) {
       return null;
@@ -1808,17 +1880,17 @@ export class MapLibreMap {
     return this.nativeMapView.getLight();
   }
 
-  // 图层方法 - 使用强类型 Layer
+  // Layer helpers — strong typed Layer
   public getLayers(): Layer[] {
     if (this.destroyed) {
       return [];
     }
-    // 使用 Style 的 getLayers 方法，确保返回正确封装的 Layer 对象
+    // Use Style.getLayers to return properly wrapped Layer objects
     const style = this.getStyle();
     if (style) {
       return style.getLayers();
     }
-    // 如果 style 未加载，返回空数组
+    // Return empty array if the style is not yet loaded
     return [];
   }
 
@@ -1826,12 +1898,12 @@ export class MapLibreMap {
     if (this.destroyed) {
       return null;
     }
-    // 使用 Style 的 getLayer 方法，确保返回正确封装的 Layer 对象
+    // Use Style.getLayer to ensure we return a properly wrapped Layer instance
     const style = this.getStyle();
     if (style) {
       return style.getLayer(layerId);
     }
-    // 如果 style 未加载，返回 null
+    // Return null if the style is not yet loaded
     return null;
   }
 
@@ -1888,7 +1960,7 @@ export class MapLibreMap {
     return false;
   }
 
-  // 数据源方法 - 使用强类型 Source
+  // Source helpers — strong typed Source
   public getSources(): Source[] {
     if (this.destroyed) {
       return [];
@@ -1933,7 +2005,7 @@ export class MapLibreMap {
     return false;
   }
 
-  // 图片
+  // Images
   public addImages(images: Image[]): void {
     if (this.destroyed) {
       return;
@@ -1943,9 +2015,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 异步批量添加图像（不阻塞UI线程）
-   * @param images 图像对象数组
-   * @returns Promise<void> 完成时resolve
+   * Add images asynchronously in bulk (non-blocking for the UI thread)
+   * @param images Array of image objects
+   * @returns Promise<void> resolved when complete
    */
   public addImagesAsync(images: Image[]): Promise<void> {
     if (this.destroyed) {
@@ -1973,7 +2045,7 @@ export class MapLibreMap {
     return result as Icon | null;
   }
 
-  // 瓦片管理
+  // Tile management
   public setPrefetchTiles(enable: boolean): void {
     if (this.destroyed) {
       return;
@@ -2016,7 +2088,7 @@ export class MapLibreMap {
     return this.nativeMapView.getTileCacheEnabled();
   }
 
-  // 瓦片LOD
+  // Tile LOD
   public setTileLodMinRadius(radius: number): void {
     if (this.destroyed) {
       return;
@@ -2073,7 +2145,7 @@ export class MapLibreMap {
     return this.nativeMapView.getTileLodZoomShift();
   }
 
-  // 渲染
+  // Rendering
   public triggerRepaint(): void {
     if (this.destroyed) {
       return;
@@ -2095,18 +2167,18 @@ export class MapLibreMap {
     this.nativeMapView.enableRenderingStatsView(enabled);
   }
 
-  // 获取原生地图视图
+  // Retrieve the native map view
   public getNativeMapView(): NativeMapView {
     return this.nativeMapView;
   }
 
-  // ========== Marker 管理方法（新增）==========
+  // ========== Marker management helpers ==========
 
   /**
-   * 添加单个 Marker
+   * Add a single marker
    *
-   * @param options MarkerOptions 实例
-   * @returns Promise<Marker> 创建的 Marker
+   * @param options MarkerOptions instance
+   * @returns Promise<Marker> The created marker
    */
   public async addMarker(options: MarkerOptions): Promise<Marker> {
     if (this.destroyed) {
@@ -2116,10 +2188,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 批量添加 Marker
+   * Add multiple markers
    *
-   * @param optionsList MarkerOptions 数组
-   * @returns Promise<Marker[]> 创建的 Marker 数组
+   * @param optionsList Array of MarkerOptions
+   * @returns Promise<Marker[]> Array of created markers
    */
   public async addMarkersBatch(optionsList: MarkerOptions[]): Promise<Marker[]> {
     if (this.destroyed) {
@@ -2129,9 +2201,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除单个 Marker
+   * Remove a single marker
    *
-   * @param marker 要移除的 Marker
+   * @param marker Marker to remove
    */
   public removeMarker(marker: Marker): void {
     if (this.destroyed) {
@@ -2141,26 +2213,26 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除 Annotation（通用方法）
+   * Remove an annotation (generic helper)
    *
-   * @param annotation 要移除的 Annotation
+   * @param annotation Annotation to remove
    */
   public removeAnnotation(annotation: Annotation | Marker): void {
     if (this.destroyed) {
       return;
     }
 
-    // 尝试类型检查：Marker 有 getPosition 方法
+    // Attempt a type check: Marker provides getPosition
     try {
       const marker = annotation as Marker;
-      marker.getPosition(); // 调用方法尝试验证
+      marker.getPosition(); // Invoke method to validate
       this.markerManager.removeMarker(marker);
       return;
     } catch (e) {
-      // 不是 Marker，继续处理其他类型
+      // Not a Marker, fall through to other types
     }
 
-    // 对于其他类型的 Annotation（Polyline, Polygon），调用原有方法
+    // For other annotation types (Polyline, Polygon) use the original path
     const id = (annotation as Annotation).getId();
     if (id !== -1) {
       this.removeAnnotations([id]);
@@ -2168,9 +2240,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 批量移除 Annotation
+   * Remove multiple annotations
    *
-   * @param annotations Annotation 数组
+   * @param annotations Array of annotations
    */
   public removeAnnotationsBatch(annotations: (Annotation | Marker)[]): void {
     if (this.destroyed) {
@@ -2181,14 +2253,14 @@ export class MapLibreMap {
     const otherIds: number[] = [];
 
     for (const annotation of annotations) {
-      // 尝试类型检查：Marker 有 getPosition 方法
+      // Attempt a type check: Marker exposes getPosition
       try {
         const marker = annotation as Marker;
-        marker.getPosition(); // 调用方法尝试验证
+        marker.getPosition(); // Invoke method to validate
         markers.push(marker);
         continue;
       } catch (e) {
-        // 不是 Marker，继续处理其他类型
+        // Not a Marker, continue handling other types
       }
 
       const id = (annotation as Annotation).getId();
@@ -2197,19 +2269,19 @@ export class MapLibreMap {
       }
     }
 
-    // 移除 Markers
+    // Remove markers
     if (markers.length > 0) {
       this.markerManager.removeMarkers(markers);
     }
 
-    // 移除其他类型的 Annotations
+    // Remove other annotation types
     if (otherIds.length > 0) {
       this.removeAnnotations(otherIds);
     }
   }
 
   /**
-   * 清除所有 Marker
+   * Clear all markers
    */
   public clearMarkers(): void {
     if (this.destroyed) {
@@ -2219,28 +2291,28 @@ export class MapLibreMap {
   }
 
   /**
-   * 清空所有标注（Android 风格的 clear() 方法）
-   * 清除所有标记、折线、多边形等
+   * Clear all annotations (Android-style clear())
+   * Removes all markers, polylines, polygons, etc.
    */
   public clear(): void {
     if (this.destroyed) {
       return;
     }
 
-    // 清除所有 Marker
+    // Clear all markers
     this.markerManager.clear();
 
-    // 关闭所有 InfoWindow
+    // Close all InfoWindows
     this.infoWindowManager.closeAll();
 
-    // 清除所有 AnnotationView
+    // Clear all AnnotationViews
     this.annotationViewManager.clear();
   }
 
   /**
-   * 获取所有 Marker
+   * Get all markers
    *
-   * @returns Marker 数组
+   * @returns Array of markers
    */
   public getMarkers(): Marker[] {
     if (this.destroyed) {
@@ -2250,10 +2322,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 根据 ID 获取 Marker
+   * Get a marker by ID
    *
    * @param id Marker ID
-   * @returns Marker 实例，如果不存在则返回 null
+   * @returns Marker instance, or null if not found
    */
   public getMarkerById(id: number): Marker | null {
     if (this.destroyed) {
@@ -2262,13 +2334,13 @@ export class MapLibreMap {
     return this.markerManager.getMarker(id);
   }
 
-  // ========== Marker 选中管理 ==========
+// ========== Marker selection management ==========
 
   /**
-   * 选中 Marker
+   * Select a marker
    *
-   * @param marker 要选中的 Marker
-   * @param animated 是否显示动画（暂未实现）
+   * @param marker Marker to select
+   * @param animated Whether to animate (not yet implemented)
    */
   public selectMarker(marker: Marker, animated: boolean = true): void {
     if (this.destroyed) {
@@ -2278,9 +2350,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 取消选中 Marker
+   * Deselect a marker
    *
-   * @param marker 要取消选中的 Marker
+   * @param marker Marker to deselect
    */
   public deselectMarker(marker: Marker): void {
     if (this.destroyed) {
@@ -2290,7 +2362,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 取消所有选中的 Marker
+   * Deselect all markers
    */
   public deselectMarkers(): void {
     if (this.destroyed) {
@@ -2300,9 +2372,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取所有选中的 Marker
+   * Get all selected markers
    *
-   * @returns 选中的 Marker 数组
+   * @returns Array of selected markers
    */
   public getSelectedMarkers(): Marker[] {
     if (this.destroyed) {
@@ -2311,12 +2383,12 @@ export class MapLibreMap {
     return this.markerManager.getSelectedMarkers();
   }
 
-  // ========== 事件监听器 ==========
+// ========== Event listeners ==========
 
   /**
-   * 设置 Marker 点击监听器
+   * Set the marker click listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerClickListener(listener: OnMarkerClickListener | null): void {
     if (this.destroyed) {
@@ -2327,9 +2399,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 Marker 长按监听器
+   * Set the marker long-click listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerLongClickListener(listener: OnMarkerLongClickListener | null): void {
     if (this.destroyed) {
@@ -2340,9 +2412,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 Marker 拖拽监听器
+   * Set the marker drag listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerDragListener(listener: OnMarkerDragListener | null): void {
     if (this.destroyed) {
@@ -2352,9 +2424,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 Marker 选中监听器
+   * Set the marker selection listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerSelectListener(listener: OnMarkerSelectListener | null): void {
     if (this.destroyed) {
@@ -2364,9 +2436,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取 Marker 选中监听器
+   * Get the marker selection listener
    *
-   * @returns 监听器实例
+   * @returns Listener instance
    */
   public getOnMarkerSelectListener(): OnMarkerSelectListener | null {
     if (this.destroyed) {
@@ -2376,9 +2448,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 InfoWindow 点击监听器
+   * Set the InfoWindow click listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnInfoWindowClickListener(listener: OnInfoWindowClickListener | null): void {
     if (this.destroyed) {
@@ -2388,9 +2460,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 InfoWindow 关闭监听器
+   * Set the InfoWindow close listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnInfoWindowCloseListener(listener: OnInfoWindowCloseListener | null): void {
     if (this.destroyed) {
@@ -2400,9 +2472,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取 InfoWindow 关闭监听器
+   * Get the InfoWindow close listener
    *
-   * @returns 监听器实例
+   * @returns Listener instance
    */
   public getOnInfoWindowCloseListener(): OnInfoWindowCloseListener | null {
     if (this.destroyed) {
@@ -2412,11 +2484,11 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 InfoWindow 适配器
+   * Set the InfoWindow adapter
    *
-   * 允许自定义 InfoWindow 的显示内容
+   * Allows customizing InfoWindow content
    *
-   * @param adapter 适配器实例
+   * @param adapter Adapter instance
    */
   public setInfoWindowAdapter(adapter: InfoWindowAdapter | null): void {
     if (this.destroyed) {
@@ -2425,12 +2497,12 @@ export class MapLibreMap {
     this.markerManager.setInfoWindowAdapter(adapter);
   }
 
-  // ==================== Style 监听器管理 ====================
+// ==================== Style listener management ====================
 
   /**
-   * 添加样式加载完成监听器
+   * Add a style-loaded listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public addOnStyleLoadedListener(listener: OnStyleLoadedListener): void {
     if (this.destroyed) {
@@ -2439,10 +2511,10 @@ export class MapLibreMap {
     if (!this.styleLoadedListeners.includes(listener)) {
       this.styleLoadedListeners.push(listener);
 
-      // 如果样式已经加载，立即触发回调
+      // If the style is already loaded, invoke immediately
       if (this.styleLoaded) {
         try {
-          // 注意: Style 对象暂时传 null
+          // Note: Style currently passes null
           listener.onStyleLoaded(null);
         } catch (error) {
           console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
@@ -2452,9 +2524,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除样式加载完成监听器
+   * Remove a style-loaded listener
    *
-   * @param listener 要移除的监听器实例
+   * @param listener Listener instance to remove
    */
   public removeOnStyleLoadedListener(listener: OnStyleLoadedListener): void {
     const index = this.styleLoadedListeners.indexOf(listener);
@@ -2464,9 +2536,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 添加样式加载错误监听器
+   * Add a style load error listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public addOnStyleLoadErrorListener(listener: OnStyleLoadErrorListener): void {
     if (this.destroyed) {
@@ -2478,9 +2550,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除样式加载错误监听器
+   * Remove a style load error listener
    *
-   * @param listener 要移除的监听器实例
+   * @param listener Listener instance to remove
    */
   public removeOnStyleLoadErrorListener(listener: OnStyleLoadErrorListener): void {
     const index = this.styleLoadErrorListeners.indexOf(listener);
@@ -2490,10 +2562,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置样式图片缺失监听器
-   * 当地图渲染需要的图片不存在时会触发此回调，可用于懒加载图片
+   * Set the style image missing listener
+   * Triggered when the renderer requests an image that is not available; useful for lazy-loading
    *
-   * @param listener 监听器回调函数，参数为缺失的图片ID
+   * @param listener Callback invoked with the missing image ID
    */
   public setOnStyleImageMissingListener(listener: ((imageId: string) => void) | null): void {
     if (this.destroyed) {
@@ -2503,18 +2575,18 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除样式图片缺失监听器
+   * Remove the style image missing listener
    */
   public removeOnStyleImageMissingListener(): void {
     this.styleImageMissingListener = undefined;
   }
 
   /**
-   * 添加待处理操作到队列
+   * Add a pending operation to the queue
    *
-   * 如果样式已加载，立即执行；否则加入队列等待样式加载后执行
+   * Executes immediately if the style is already loaded; otherwise queues the operation until the style loads.
    *
-   * @param operation 待执行的操作
+   * @param operation Operation to execute
    */
   public waitForStyle(operation: PendingOperation): void {
     if (this.destroyed) {
@@ -2522,22 +2594,22 @@ export class MapLibreMap {
     }
 
     if (this.styleLoaded) {
-      // 样式已加载，立即执行
+      // Style already loaded, execute now
       try {
         operation();
       } catch (error) {
         console.error(`MapLibreMap: Error executing operation: ${error}`);
       }
     } else {
-      // 样式未加载，加入队列
+      // Style not yet loaded, enqueue
       this.pendingOperations.push(operation);
     }
   }
 
   /**
-   * 获取 InfoWindow 适配器
+   * Get the InfoWindow adapter
    *
-   * @returns 适配器实例
+   * @returns Adapter instance
    */
   public getInfoWindowAdapter(): InfoWindowAdapter | null {
     if (this.destroyed) {
@@ -2547,18 +2619,18 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取 MarkerManager 实例（内部使用）
+   * Get the MarkerManager instance (internal use)
    *
-   * @returns MarkerManager 实例
+   * @returns MarkerManager instance
    */
   public getMarkerManager(): MarkerManager {
     return this.markerManager;
   }
 
   /**
-   * 显示指定 Marker 的 InfoWindow
+   * Show the InfoWindow for a marker
    *
-   * @param marker 要显示 InfoWindow 的 Marker
+   * @param marker Marker to display
    */
   public showInfoWindow(marker: Marker): void {
     if (this.destroyed) {
@@ -2568,9 +2640,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 隐藏指定 Marker 的 InfoWindow
+   * Hide the InfoWindow for a marker
    *
-   * @param marker 要隐藏 InfoWindow 的 Marker
+   * @param marker Marker to hide
    */
   public hideInfoWindow(marker: Marker): void {
     if (this.destroyed) {
@@ -2579,12 +2651,12 @@ export class MapLibreMap {
     this.markerManager.hideInfoWindow(marker);
   }
 
-  // ========== Polygon 管理方法 ==========
+// ========== Polygon management ==========
 
   /**
-   * 获取所有 Polygon
+   * Get all polygons
    *
-   * @returns Polygon 数组
+   * @returns Array of polygons
    */
   public getPolygons(): Polygon[] {
     if (this.destroyed) {
@@ -2594,7 +2666,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 清除所有 Polygon
+   * Clear all polygons
    */
   public clearPolygons(): void {
     if (this.destroyed) {
@@ -2604,20 +2676,20 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取 PolygonManager 实例（内部使用）
+   * Get the PolygonManager instance (internal use)
    *
-   * @returns PolygonManager 实例
+   * @returns PolygonManager instance
    */
   public getPolygonManager(): PolygonManager {
     return this.polygonManager;
   }
 
-  // ========== Polyline 管理方法 ==========
+// ========== Polyline management ==========
 
   /**
-   * 获取所有 Polyline
+   * Get all polylines
    *
-   * @returns Polyline 数组
+   * @returns Array of polylines
    */
   public getPolylines(): Polyline[] {
     if (this.destroyed) {
@@ -2627,7 +2699,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 清除所有 Polyline
+   * Clear all polylines
    */
   public clearPolylines(): void {
     if (this.destroyed) {
@@ -2637,16 +2709,16 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取 PolylineManager 实例（内部使用）
+   * Get the PolylineManager instance (internal use)
    *
-   * @returns PolylineManager 实例
+   * @returns PolylineManager instance
    */
   public getPolylineManager(): PolylineManager {
     return this.polylineManager;
   }
 
   /**
-   * 隐藏所有 InfoWindow
+   * Hide all InfoWindows
    */
   public hideAllInfoWindows(): void {
     if (this.destroyed) {
@@ -2655,23 +2727,146 @@ export class MapLibreMap {
     this.markerManager.hideAllInfoWindows();
   }
 
-  // ========== 相机监听器方法 ==========
+// ========== Camera listener helpers ==========
 
   /**
-   * 添加相机空闲监听器
-   * 当相机停止移动（所有动画和手势结束）时触发
+   * Add an on-camera-will-change listener
+   * Mirrors Android MapView.addOnCameraWillChangeListener 回调
    *
-   * @param listener OnCameraIdleListener 实例
+   * @param listener OnCameraWillChangeListener 实例
+   */
+  public addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.cameraWillChangeWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnCameraWillChangeListener = (animated: boolean) => {
+      try {
+        listener(animated);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnCameraWillChangeListener', message);
+      }
+    };
+    this.cameraWillChangeWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnCameraWillChangeListener(wrapper);
+  }
+
+  /**
+   * Remove an on-camera-will-change listener
+   *
+   * @param listener 待移除的监听器
+   */
+  public removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.cameraWillChangeWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnCameraWillChangeListener(wrapper);
+      this.cameraWillChangeWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add an on-camera-is-changing listener
+   * 在相机连续变化时持续回调
+   *
+   * @param listener OnCameraIsChangingListener 实例
+   */
+  public addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.cameraIsChangingWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnCameraIsChangingListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnCameraIsChangingListener', message);
+      }
+    };
+    this.cameraIsChangingWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnCameraIsChangingListener(wrapper);
+  }
+
+  /**
+   * Remove an on-camera-is-changing listener
+   *
+   * @param listener 待移除的监听器
+   */
+  public removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.cameraIsChangingWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnCameraIsChangingListener(wrapper);
+      this.cameraIsChangingWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add an on-camera-did-change listener
+   * 在相机完成变化后回调
+   *
+   * @param listener OnCameraDidChangeListener 实例
+   */
+  public addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.cameraDidChangeWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnCameraDidChangeListener = (animated: boolean) => {
+      try {
+        listener(animated);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnCameraDidChangeListener', message);
+      }
+    };
+    this.cameraDidChangeWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnCameraDidChangeListener(wrapper);
+  }
+
+  /**
+   * Remove an on-camera-did-change listener
+   *
+   * @param listener 待移除的监听器
+   */
+  public removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.cameraDidChangeWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnCameraDidChangeListener(wrapper);
+      this.cameraDidChangeWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add an on-camera-idle listener
+   * Triggered when the camera stops moving (all animations and gestures complete)
+   *
+   * @param listener OnCameraIdleListener instance
    */
   public addOnCameraIdleListener(listener: OnCameraIdleListener): void {
     if (this.destroyed) {
       return;
     }
 
-    // 添加到调度器
+    // Register with the dispatcher
     this.cameraChangeDispatcher.addOnCameraIdleListener(listener);
 
-    // 注册到 NAPI
+    // Register with NAPI
     const callback = () => {
       this.cameraChangeDispatcher.notifyCameraIdle();
     };
@@ -2679,33 +2874,33 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除相机空闲监听器
+   * Remove an on-camera-idle listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraIdleListener(listener: OnCameraIdleListener): void {
     if (this.destroyed) {
       return;
     }
     this.cameraChangeDispatcher.removeOnCameraIdleListener(listener);
-    // Note: NAPI 层的回调无法精确移除，这是一个已知限制
+    // Note: NAPI callbacks cannot be removed individually—known limitation
   }
 
   /**
-   * 添加相机开始移动监听器
-   * 当相机开始移动时触发
+   * Add an on-camera-move-started listener
+   * Triggered when the camera begins moving
    *
-   * @param listener OnCameraMoveStartedListener 实例
+   * @param listener OnCameraMoveStartedListener instance
    */
   public addOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     if (this.destroyed) {
       return;
     }
 
-    // 添加到调度器
+    // Register with the dispatcher
     this.cameraChangeDispatcher.addOnCameraMoveStartedListener(listener);
 
-    // 注册到 NAPI
+    // Register with NAPI
     const callback = (reason: number) => {
       this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
     };
@@ -2713,9 +2908,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除相机开始移动监听器
+   * Remove an on-camera-move-started listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     if (this.destroyed) {
@@ -2725,20 +2920,20 @@ export class MapLibreMap {
   }
 
   /**
-   * 添加相机移动中监听器
-   * 在相机移动过程中频繁触发
+   * Add an on-camera-move listener
+   * Fires repeatedly while the camera is moving
    *
-   * @param listener OnCameraMoveListener 实例
+   * @param listener OnCameraMoveListener instance
    */
   public addOnCameraMoveListener(listener: OnCameraMoveListener): void {
     if (this.destroyed) {
       return;
     }
 
-    // 添加到调度器
+    // Register with the dispatcher
     this.cameraChangeDispatcher.addOnCameraMoveListener(listener);
 
-    // 注册到 NAPI
+    // Register with NAPI
     const callback = () => {
       this.cameraChangeDispatcher.notifyCameraMove();
     };
@@ -2746,9 +2941,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除相机移动中监听器
+   * Remove an on-camera-move listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraMoveListener(listener: OnCameraMoveListener): void {
     if (this.destroyed) {
@@ -2758,20 +2953,20 @@ export class MapLibreMap {
   }
 
   /**
-   * 添加相机移动取消监听器
-   * 当相机动画被中断或取消时触发
+   * Add an on-camera-move-canceled listener
+   * Triggered when a camera animation is interrupted or canceled
    *
-   * @param listener OnCameraMoveCanceledListener 实例
+   * @param listener OnCameraMoveCanceledListener instance
    */
   public addOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     if (this.destroyed) {
       return;
     }
 
-    // 添加到调度器
+    // Register with the dispatcher
     this.cameraChangeDispatcher.addOnCameraMoveCanceledListener(listener);
 
-    // 注册到 NAPI
+    // Register with NAPI
     const callback = () => {
       this.cameraChangeDispatcher.notifyCameraMoveCanceled();
     };
@@ -2779,9 +2974,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除相机移动取消监听器
+   * Remove an on-camera-move-canceled listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     if (this.destroyed) {
@@ -2791,22 +2986,22 @@ export class MapLibreMap {
   }
 
   /**
-   * 内部方法：通知相机开始移动（手势触发）
-   * 供手势处理器调用
+   * Internal: notify that the camera started moving (gesture initiated)
+   * Called by the gesture handler
    * @internal
    */
   public _notifyCameraMoveStartedByGesture(): void {
     if (this.destroyed) {
       return;
     }
-    // 参考 Android: 在相机移动时更新UI元素（InfoWindow等）
+    // Mirrors Android: update UI elements (InfoWindow, etc.) while the camera moves
     this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraMoveStarted(CameraMoveReason.GESTURE);
   }
 
   /**
-   * 内部方法：通知相机正在移动
-   * 供手势处理器调用
+   * Internal: notify that the camera is moving
+   * Called by the gesture handler
    * @internal
    */
   public _notifyCameraMove(): void {
@@ -2815,35 +3010,494 @@ export class MapLibreMap {
       return;
     }
     console.info('[MapLibreMap] _notifyCameraMove() called');
-    // 参考 Android: 在相机移动时更新UI元素（InfoWindow等）
+    // Mirrors Android: update UI elements (InfoWindow, etc.) while the camera moves
     this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraMove();
   }
 
   /**
-   * 内部方法：通知相机停止移动
-   * 供手势处理器调用
+   * Internal: notify that the camera became idle
+   * Called by the gesture handler
    * @internal
    */
   public _notifyCameraIdle(): void {
     if (this.destroyed) {
       return;
     }
-    // 参考 Android: 在相机停止时更新UI元素（InfoWindow等）
+    // Mirrors Android: update UI elements (InfoWindow, etc.) once the camera stops
     this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraIdle();
   }
 
-  // ========== 地图点击监听器管理 ==========
+// ========== Map loading listener management ==========
+
+  /**
+   * Add a will-start-loading-map listener
+   * 地图开始加载时回调（对齐 Android MapView.OnWillStartLoadingMapListener）
+   */
+  public addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.willStartLoadingMapWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnWillStartLoadingMapListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnWillStartLoadingMapListener', message);
+      }
+    };
+    this.willStartLoadingMapWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnWillStartLoadingMapListener(wrapper);
+  }
+
+  /**
+   * Remove a will-start-loading-map listener
+   */
+  public removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.willStartLoadingMapWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnWillStartLoadingMapListener(wrapper);
+      this.willStartLoadingMapWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a did-finish-loading-map listener
+   * 地图完成加载时回调（含样式与瓦片）
+   */
+  public addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didFinishLoadingMapWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidFinishLoadingMapListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidFinishLoadingMapListener', message);
+      }
+    };
+    this.didFinishLoadingMapWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidFinishLoadingMapListener(wrapper);
+  }
+
+  /**
+   * Remove a did-finish-loading-map listener
+   */
+  public removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didFinishLoadingMapWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidFinishLoadingMapListener(wrapper);
+      this.didFinishLoadingMapWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a did-fail-loading-map listener
+   * 地图加载失败（网络、样式错误等）时触发
+   */
+  public addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didFailLoadingMapWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidFailLoadingMapListener = (errorMessage: string) => {
+      try {
+        listener(errorMessage);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidFailLoadingMapListener', message);
+      }
+    };
+    this.didFailLoadingMapWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidFailLoadingMapListener(wrapper);
+  }
+
+  /**
+   * Remove a did-fail-loading-map listener
+   */
+  public removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didFailLoadingMapWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidFailLoadingMapListener(wrapper);
+      this.didFailLoadingMapWrappers.delete(listener);
+    }
+  }
+
+// ========== Rendering lifecycle listeners ==========
+
+  /**
+   * Add a will-start-rendering-frame listener
+   * 每帧渲染开始前回调
+   */
+  public addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.willStartRenderingFrameWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnWillStartRenderingFrameListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnWillStartRenderingFrameListener', message);
+      }
+    };
+    this.willStartRenderingFrameWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnWillStartRenderingFrameListener(wrapper);
+  }
+
+  /**
+   * Remove a will-start-rendering-frame listener
+   */
+  public removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.willStartRenderingFrameWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnWillStartRenderingFrameListener(wrapper);
+      this.willStartRenderingFrameWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a did-finish-rendering-frame listener（简单版）
+   */
+  public addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didFinishRenderingFrameWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidFinishRenderingFrameListener = (
+      fully: boolean,
+      frameEncodingTime: number,
+      frameRenderingTime: number
+    ) => {
+      try {
+        listener(fully, frameEncodingTime, frameRenderingTime);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidFinishRenderingFrameListener', message);
+      }
+    };
+    this.didFinishRenderingFrameWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidFinishRenderingFrameListener(wrapper);
+  }
+
+  /**
+   * Remove a did-finish-rendering-frame listener（简单版）
+   */
+  public removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didFinishRenderingFrameWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidFinishRenderingFrameListener(wrapper);
+      this.didFinishRenderingFrameWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a did-finish-rendering-frame listener（带统计信息）
+   */
+  public addOnDidFinishRenderingFrameWithStatsListener(
+    listener: OnDidFinishRenderingFrameWithStatsListener
+  ): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didFinishRenderingFrameWithStatsWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidFinishRenderingFrameWithStatsListener = (
+      fully: boolean,
+      stats: RenderingStats
+    ) => {
+      try {
+        listener(fully, stats);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidFinishRenderingFrameWithStatsListener', message);
+      }
+    };
+    this.didFinishRenderingFrameWithStatsWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidFinishRenderingFrameWithStatsListener(wrapper);
+  }
+
+  /**
+   * Remove a did-finish-rendering-frame listener（带统计信息）
+   */
+  public removeOnDidFinishRenderingFrameWithStatsListener(
+    listener: OnDidFinishRenderingFrameWithStatsListener
+  ): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didFinishRenderingFrameWithStatsWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidFinishRenderingFrameWithStatsListener(wrapper);
+      this.didFinishRenderingFrameWithStatsWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a will-start-rendering-map listener
+   */
+  public addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.willStartRenderingMapWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnWillStartRenderingMapListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnWillStartRenderingMapListener', message);
+      }
+    };
+    this.willStartRenderingMapWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnWillStartRenderingMapListener(wrapper);
+  }
+
+  /**
+   * Remove a will-start-rendering-map listener
+   */
+  public removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.willStartRenderingMapWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnWillStartRenderingMapListener(wrapper);
+      this.willStartRenderingMapWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a did-finish-rendering-map listener
+   */
+  public addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didFinishRenderingMapWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidFinishRenderingMapListener = (fully: boolean) => {
+      try {
+        listener(fully);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidFinishRenderingMapListener', message);
+      }
+    };
+    this.didFinishRenderingMapWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidFinishRenderingMapListener(wrapper);
+  }
+
+  /**
+   * Remove a did-finish-rendering-map listener
+   */
+  public removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didFinishRenderingMapWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidFinishRenderingMapListener(wrapper);
+      this.didFinishRenderingMapWrappers.delete(listener);
+    }
+  }
+
+// ========== Style lifecycle listeners ==========
+
+  /**
+   * Add a did-finish-loading-style listener（无 Style 对象版本）
+   */
+  public addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didFinishLoadingStyleWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidFinishLoadingStyleListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidFinishLoadingStyleListener', message);
+      }
+    };
+    this.didFinishLoadingStyleWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidFinishLoadingStyleListener(wrapper);
+  }
+
+  /**
+   * Remove a did-finish-loading-style listener
+   */
+  public removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didFinishLoadingStyleWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidFinishLoadingStyleListener(wrapper);
+      this.didFinishLoadingStyleWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a can-remove-unused-style-image listener
+   * 用于控制样式图片缓存释放
+   */
+  public addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.canRemoveUnusedStyleImageWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnCanRemoveUnusedStyleImageListener = (id: string) => {
+      try {
+        return listener(id);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnCanRemoveUnusedStyleImageListener', message);
+        return false;
+      }
+    };
+    this.canRemoveUnusedStyleImageWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnCanRemoveUnusedStyleImageListener(wrapper);
+  }
+
+  /**
+   * Remove a can-remove-unused-style-image listener
+   */
+  public removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.canRemoveUnusedStyleImageWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnCanRemoveUnusedStyleImageListener(wrapper);
+      this.canRemoveUnusedStyleImageWrappers.delete(listener);
+    }
+  }
+
+// ========== Map idle & data source listeners ==========
+
+  /**
+   * Add a did-become-idle listener
+   * 当地图完全空闲时触发
+   */
+  public addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.didBecomeIdleWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnDidBecomeIdleListener = () => {
+      try {
+        listener();
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnDidBecomeIdleListener', message);
+      }
+    };
+    this.didBecomeIdleWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnDidBecomeIdleListener(wrapper);
+  }
+
+  /**
+   * Remove a did-become-idle listener
+   */
+  public removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.didBecomeIdleWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnDidBecomeIdleListener(wrapper);
+      this.didBecomeIdleWrappers.delete(listener);
+    }
+  }
+
+  /**
+   * Add a source-changed listener
+   * 数据源内容发生变化时回调
+   */
+  public addOnSourceChangedListener(listener: OnSourceChangedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.sourceChangedWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnSourceChangedListener = (id: string) => {
+      try {
+        listener(id);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnSourceChangedListener', message);
+      }
+    };
+    this.sourceChangedWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnSourceChangedListener(wrapper);
+  }
+
+  /**
+   * Remove a source-changed listener
+   */
+  public removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.sourceChangedWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnSourceChangedListener(wrapper);
+      this.sourceChangedWrappers.delete(listener);
+    }
+  }
+
+// ========== Map click listener management ==========
 
   private mapClickListeners: OnMapClickListener[] = [];
   private mapLongClickListeners: OnMapLongClickListener[] = [];
 
   /**
-   * 添加地图点击监听器
-   * 当用户点击地图时触发（参考 Android addOnMapClickListener）
+   * Add a map click listener
+   * Triggered when the user taps the map (mirrors Android addOnMapClickListener)
    *
-   * @param listener OnMapClickListener 实例
+   * @param listener OnMapClickListener instance
    */
   public addOnMapClickListener(listener: OnMapClickListener): void {
     if (this.destroyed) {
@@ -2855,9 +3509,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除地图点击监听器
+   * Remove a map click listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnMapClickListener(listener: OnMapClickListener): void {
     if (this.destroyed) {
@@ -2870,10 +3524,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 添加地图长按监听器
-   * 当用户长按地图时触发（参考 Android addOnMapLongClickListener）
+   * Add a map long-click listener
+   * Triggered when the user long-presses the map (mirrors Android addOnMapLongClickListener)
    *
-   * @param listener OnMapLongClickListener 实例
+   * @param listener OnMapLongClickListener instance
    */
   public addOnMapLongClickListener(listener: OnMapLongClickListener): void {
     if (this.destroyed) {
@@ -2885,9 +3539,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除地图长按监听器
+   * Remove a map long-click listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnMapLongClickListener(listener: OnMapLongClickListener): void {
     if (this.destroyed) {
@@ -2899,18 +3553,18 @@ export class MapLibreMap {
     }
   }
 
-  // 触摸事件监听器列表（用于 Marker 拖拽等功能）
+  // Touch event listener lists (used for marker dragging and related features)
   private touchMoveListeners: OnTouchMoveListener[] = [];
   private touchUpListeners: OnTouchUpListener[] = [];
 
   /**
-   * 添加触摸移动监听器
-   * 用于实现 Marker 拖拽等需要连续跟踪触摸位置的功能
-   * 参考 Android AndroidGesturesManager.setMoveGestureListener
+   * Add a touch-move listener
+   * Used for features that require continuous touch tracking such as marker dragging
+   * Mirrors Android AndroidGesturesManager.setMoveGestureListener
    *
-   * 注意：触摸事件通过 NativeMapView 的手势系统分发，这里只是注册回调
+   * Note: touch events are dispatched by NativeMapView's gesture system; this only registers the callback
    *
-   * @param listener OnTouchMoveListener 实例
+   * @param listener OnTouchMoveListener instance
    */
   public addOnTouchMoveListener(listener: OnTouchMoveListener): void {
     if (this.destroyed) {
@@ -2922,9 +3576,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除触摸移动监听器
+   * Remove a touch-move listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnTouchMoveListener(listener: OnTouchMoveListener): void {
     if (this.destroyed) {
@@ -2937,11 +3591,11 @@ export class MapLibreMap {
   }
 
   /**
-   * 添加触摸释放监听器
-   * 用于检测触摸结束，实现 Marker 拖拽结束等功能
-   * 参考 iOS UIPanGestureRecognizer UIGestureRecognizerStateEnded
+   * Add a touch-up listener
+   * Detects touch end events for flows such as completing marker drag
+   * Mirrors iOS UIPanGestureRecognizer UIGestureRecognizerStateEnded
    *
-   * @param listener OnTouchUpListener 实例
+   * @param listener OnTouchUpListener instance
    */
   public addOnTouchUpListener(listener: OnTouchUpListener): void {
     if (this.destroyed) {
@@ -2953,9 +3607,9 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除触摸释放监听器
+   * Remove a touch-up listener
    *
-   * @param listener 要移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnTouchUpListener(listener: OnTouchUpListener): void {
     if (this.destroyed) {
@@ -2968,17 +3622,17 @@ export class MapLibreMap {
   }
 
   /**
-   * 移除所有监听器
-   * 
-   * 批量移除地图上的所有事件监听器，包括：
-   * - 样式加载监听器
-   * - 相机移动监听器
-   * - 地图点击/长按监听器
-   * - 触摸事件监听器
-   * - Marker 相关监听器
-   * 
-   * 通常在页面销毁时调用，防止内存泄漏
-   * 
+   * Remove all listeners
+   *
+   * Clears every map event listener in bulk, including:
+   * - Style listeners
+   * - Camera listeners
+   * - Map click/long-click listeners
+   * - Touch event listeners
+   * - Marker-related listeners
+   *
+   * Typically invoked during page teardown to avoid memory leaks
+   *
    * @example
    * aboutToDisappear() {
    *   if (this.mapController) {
@@ -2992,33 +3646,33 @@ export class MapLibreMap {
       return;
     }
     
-    // 清除样式监听器
+    // Clear style listeners
     this.styleLoadedListeners = [];
     this.styleLoadErrorListeners = [];
     this.styleImageMissingListener = undefined;
     
-    // 清除相机移动监听器（通过 dispatcher）
+    // Clear camera listeners via the dispatcher
     this.cameraChangeDispatcher.clearAllListeners();
     
-    // 清除地图交互监听器
+    // Clear map interaction listeners
     this.mapClickListeners = [];
     this.mapLongClickListeners = [];
     this.touchMoveListeners = [];
     this.touchUpListeners = [];
     
-    // 清除 Marker 相关监听器
+    // Clear marker-related listeners
     this.markerManager.clearAllListeners();
     
     console.info('[MapLibreMap] All listeners removed');
   }
 
   /**
-   * 内部方法：触发触摸移动事件
-   * 由 NativeMapView 或手势系统调用
+   * Internal: fire a touch-move event
+   * Called by NativeMapView or the gesture system
    *
-   * @param x 触摸位置 X 坐标
-   * @param y 触摸位置 Y 坐标
-   * @returns true 如果事件被消费
+   * @param x Touch X coordinate
+   * @param y Touch Y coordinate
+   * @returns true if the event is consumed
    */
   public fireTouchMoveEvent(x: number, y: number): boolean {
     if (this.destroyed) {
@@ -3028,7 +3682,7 @@ export class MapLibreMap {
     for (const listener of this.touchMoveListeners) {
       try {
         if (listener.onTouchMove(x, y)) {
-          return true; // 事件被消费
+          return true; // Event consumed
         }
       } catch (error) {
         console.error(`MapLibreMap: Error in touch move listener: ${error}`);
@@ -3038,12 +3692,12 @@ export class MapLibreMap {
   }
 
   /**
-   * 内部方法：触发触摸释放事件
-   * 由 NativeMapView 或手势系统调用
+   * Internal: fire a touch-up event
+   * Called by NativeMapView or the gesture system
    *
-   * @param x 触摸位置 X 坐标
-   * @param y 触摸位置 Y 坐标
-   * @returns true 如果事件被消费
+   * @param x Touch X coordinate
+   * @param y Touch Y coordinate
+   * @returns true if the event is consumed
    */
   public fireTouchUpEvent(x: number, y: number): boolean {
     if (this.destroyed) {
@@ -3053,7 +3707,7 @@ export class MapLibreMap {
     for (const listener of this.touchUpListeners) {
       try {
         if (listener.onTouchUp(x, y)) {
-          return true; // 事件被消费
+          return true; // Event consumed
         }
       } catch (error) {
         console.error(`MapLibreMap: Error in touch up listener: ${error}`);
@@ -3063,10 +3717,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 内部方法：触发地图点击事件
-   * @param x 点击位置 X 坐标
-   * @param y 点击位置 Y 坐标
-   * @returns 是否有监听器消费了该事件
+   * Internal: trigger a map click event
+   * @param x Click X coordinate
+   * @param y Click Y coordinate
+   * @returns Whether any listener consumed the event
    * @internal
    */
   public _notifyMapClick(x: number, y: number): boolean {
@@ -3076,13 +3730,13 @@ export class MapLibreMap {
 
     console.info(`[MapLibreMap] _notifyMapClick at (${x}, ${y}), listeners count: ${this.mapClickListeners.length}`);
 
-    // 遍历所有地图点击监听器（包括 MarkerManager 注册的监听器）
+    // Traverse every map click listener (including those from MarkerManager)
     for (const listener of this.mapClickListeners) {
       try {
         console.info(`[MapLibreMap] Calling map click listener...`);
         if (listener.onMapClick(x, y)) {
           console.info(`[MapLibreMap] Event consumed by listener`);
-          return true; // 事件被消费
+          return true; // Event consumed
         }
       } catch (error) {
         console.error(`MapLibreMap: Error in map click listener: ${error}`);
@@ -3093,10 +3747,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 内部方法：触发地图长按事件
-   * @param x 长按位置 X 坐标
-   * @param y 长按位置 Y 坐标
-   * @returns 是否有监听器消费了该事件
+   * Internal: trigger a map long-click event
+   * @param x Long-press X coordinate
+   * @param y Long-press Y coordinate
+   * @returns Whether any listener consumed the event
    * @internal
    */
   public _notifyMapLongClick(x: number, y: number): boolean {
@@ -3106,7 +3760,7 @@ export class MapLibreMap {
     for (const listener of this.mapLongClickListeners) {
       try {
         if (listener.onMapLongClick(x, y)) {
-          return true; // 事件被消费
+          return true; // Event consumed
         }
       } catch (error) {
         console.error(`MapLibreMap: Error in map long click listener: ${error}`);
@@ -3116,11 +3770,11 @@ export class MapLibreMap {
   }
 
   /**
-   * 尝试开始拖拽 Marker（在 Pan 手势开始时调用）
+   * Attempt to start dragging a marker (invoked when a pan gesture begins)
    *
-   * @param x 触摸位置 X 坐标（逻辑像素）
-   * @param y 触摸位置 Y 坐标（逻辑像素）
-   * @returns true 如果开始拖拽 Marker
+   * @param x Touch X coordinate (logical pixels)
+   * @param y Touch Y coordinate (logical pixels)
+   * @returns true if marker drag initiated
    * @internal
    */
   public tryStartMarkerDrag(x: number, y: number): boolean {
@@ -3128,7 +3782,7 @@ export class MapLibreMap {
       return false;
     }
 
-    // 尝试通过 MarkerManager 开始拖拽
+    // Delegate to MarkerManager to initiate the drag
     if (this.markerManager) {
       return this.markerManager.tryStartDrag(x, y);
     }
@@ -3136,18 +3790,18 @@ export class MapLibreMap {
     return false;
   }
 
-  // ========== AnnotationView 管理方法 ==========
+// ========== AnnotationView management ==========
 
   /**
-   * 获取 AnnotationViewManager 实例
-   * @returns AnnotationViewManager 实例
+   * Get the AnnotationViewManager instance
+   * @returns AnnotationViewManager
    */
   public getAnnotationViewManager(): AnnotationViewManager {
     return this.annotationViewManager;
   }
 
   /**
-   * 获取 ViewAnnotationManager 实例。
+   * Get the ViewAnnotationManager
    * @returns ViewAnnotationManager
    */
   public getViewAnnotationManager(): ViewAnnotationManager {
@@ -3155,8 +3809,8 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 ViewAnnotation 渲染回调，用于获取最新的渲染状态并同步到 UI。
-   * @param callback 接收 ViewAnnotationRenderState 数组的回调
+   * Set the ViewAnnotation render callback to sync the latest render states with the UI
+   * @param callback Callback receiving an array of ViewAnnotationRenderState
    */
   public setViewAnnotationRenderCallback(callback: ((states: ViewAnnotationRenderState[]) => void) | null): void {
     const hasCallback = callback !== null;
@@ -3170,16 +3824,16 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置 AnnotationViewDelegate
-   * 用于自定义 AnnotationView 的创建和事件处理
+   * Set the AnnotationViewDelegate
+   * Customizes creation and event handling for AnnotationViews
    *
-   * 参考：iOS MLNMapView.delegate
-   * 
-   * 设置 delegate 后，地图会自动为所有 Marker 调用 viewForAnnotation
-   * 来创建自定义视图。已存在的 Marker 会立即重新创建视图。
-   * 
-   * @param delegate AnnotationViewDelegate 实例，传 null 则清除委托
-   * 
+   * Mirrors iOS MLNMapView.delegate
+   *
+   * After the delegate is set, the map invokes viewForAnnotation for every marker to build custom views.
+   * Existing markers will rebuild their views immediately.
+   *
+   * @param delegate AnnotationViewDelegate instance; pass null to clear
+   *
    * @example
    * ```typescript
    * const delegate: AnnotationViewDelegate = {
@@ -3196,14 +3850,14 @@ export class MapLibreMap {
    *         scalesWithViewingDistance: true
    *       };
    *     }
-   *     return null; // 使用默认图标
+   *     return null; // Use default icon
    *   },
-   *   
+   *
    *   didSelectAnnotationView: (marker: Marker) => {
    *     console.log('Selected:', marker.getTitle());
    *   }
    * };
-   * 
+   *
    * map.setAnnotationViewDelegate(delegate);
    * ```
    */
@@ -3212,19 +3866,19 @@ export class MapLibreMap {
       return;
     }
     
-    // 保存 delegate
+    // Cache the delegate
     this.annotationViewDelegate = delegate;
 
-    // 将 delegate 传递给 AnnotationViewManager
+    // Forward the delegate to AnnotationViewManager
     this.annotationViewManager.setDelegate(delegate);
 
-    // 注意：AnnotationViewManager.setDelegate 会自动调用 recreateAllViews()
-    // 所以已存在的 Marker 会重新创建视图
+    // Note: AnnotationViewManager.setDelegate automatically calls recreateAllViews(),
+    // so existing markers will rebuild their views
   }
 
   /**
-   * 获取 AnnotationViewDelegate
-   * @returns AnnotationViewDelegate 实例或 null
+   * Get the AnnotationViewDelegate
+   * @returns AnnotationViewDelegate or null
    */
   public getAnnotationViewDelegate(): AnnotationViewDelegate | null {
     if (this.destroyed) {
@@ -3234,25 +3888,25 @@ export class MapLibreMap {
   }
 
   /**
-   * 为 Marker 注册 AnnotationView
+   * Register an AnnotationView for a marker
    *
-   * @param marker Marker 实例
-   * @param config AnnotationViewConfig 配置
+   * @param marker Marker instance
+   * @param config AnnotationViewConfig
    */
   public registerAnnotationView(marker: Marker, config: AnnotationViewConfig): void {
     if (this.destroyed) {
       return;
     }
 
-    // 使用 AnnotationViewManager 创建视图
+    // Create or update the view via AnnotationViewManager
     this.annotationViewManager.createOrUpdateView(marker);
 
   }
 
   /**
-   * 取消注册 AnnotationView
+   * Unregister an AnnotationView
    *
-   * @param marker Marker 实例
+   * @param marker Marker instance
    */
   public unregisterAnnotationView(marker: Marker): void {
     if (this.destroyed) {
@@ -3264,10 +3918,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 选中 Annotation
+   * Select an annotation
    *
-   * @param marker Marker 实例
-   * @param animated 是否播放动画
+   * @param marker Marker instance
+   * @param animated Whether to animate
    */
   public selectAnnotation(marker: Marker, animated: boolean = true): void {
     if (this.destroyed) {
@@ -3276,17 +3930,17 @@ export class MapLibreMap {
 
     this.annotationViewManager.selectAnnotation(marker, animated);
 
-    // 触发委托回调
+    // Notify delegate callback
     if (this.annotationViewDelegate?.didSelectAnnotationView) {
       this.annotationViewDelegate.didSelectAnnotationView(marker);
     }
   }
 
   /**
-   * 取消选中 Annotation
+   * Deselect an annotation
    *
-   * @param marker Marker 实例
-   * @param animated 是否播放动画
+   * @param marker Marker instance
+   * @param animated Whether to animate
    */
   public deselectAnnotation(marker: Marker, animated: boolean = true): void {
     if (this.destroyed) {
@@ -3295,16 +3949,16 @@ export class MapLibreMap {
 
     this.annotationViewManager.deselectAnnotation(marker, animated);
 
-    // 触发委托回调
+    // Notify delegate callback
     if (this.annotationViewDelegate?.didDeselectAnnotationView) {
       this.annotationViewDelegate.didDeselectAnnotationView(marker);
     }
   }
 
   /**
-   * 取消所有选中的 Annotations
+   * Deselect all annotations
    *
-   * @param animated 是否播放动画
+   * @param animated Whether to animate
    */
   public deselectAllAnnotations(animated: boolean = true): void {
     if (this.destroyed) {
@@ -3318,8 +3972,8 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取选中的 Annotations
-   * @returns 选中的 Marker 数组
+   * Get selected annotations
+   * @returns Array of selected markers
    */
   public getSelectedAnnotations(): Marker[] {
     if (this.destroyed) {
@@ -3329,10 +3983,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 从复用池获取 AnnotationView
+   * Dequeue an AnnotationView from the reuse pool
    *
-   * @param identifier 复用标识符
-   * @returns AnnotationViewData 实例或 null
+   * @param identifier Reuse identifier
+   * @returns AnnotationViewData or null
    */
   public dequeueReusableAnnotationView(identifier: string): AnnotationViewData | null {
     if (this.destroyed) {
@@ -3342,10 +3996,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 检查 Annotation 是否被选中
+   * Check whether an annotation is selected
    *
-   * @param marker Marker 实例
-   * @returns true 表示已选中
+   * @param marker Marker instance
+   * @returns true if selected
    */
   public isAnnotationSelected(marker: Marker): boolean {
     if (this.destroyed) {
@@ -3355,31 +4009,31 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取所有可见的 Annotations
+   * Get all visible annotations
    *
-   * 参考: iOS MLNMapView visibleAnnotations
+   * Mirrors iOS MLNMapView visibleAnnotations
    *
-   * @returns 当前屏幕可见的 Marker 数组
+   * @returns Array of markers currently visible on screen
    */
   public getVisibleAnnotations(): Marker[] {
     if (this.destroyed) {
       return [];
     }
 
-    // 获取所有具有自定义视图的 Marker
+    // Fetch all markers with custom views
     const allViews = this.annotationViewManager.getVisibleViews();
-    // 🔒 修复 ObservedObject 错误：过滤掉 marker 为 null 的情况
+    // 🔒 Fix ObservedObject error: filter out entries where marker is null
     return allViews
       .filter(viewData => viewData.marker !== null)
       .map(viewData => viewData.marker!);
   }
 
   /**
-   * 更新所有 AnnotationView 的位置
+   * Update positions for every AnnotationView
    *
-   * 在地图相机变化时自动调用，更新所有自定义视图的屏幕坐标
+   * Automatically invoked when the camera changes to keep custom view coordinates in sync
    *
-   * @param cameraChanged 相机参数是否发生变化（bearing/pitch）
+   * @param cameraChanged Whether camera parameters (bearing/pitch) changed
    * @private
    */
   private updateAnnotationViewPositions(cameraChanged: boolean = false): void {
@@ -3390,31 +4044,31 @@ export class MapLibreMap {
     this.viewAnnotationManager.refreshRenderStates();
   }
 
-  // ==================== 特性查询 (Feature Query) ====================
+// ==================== Feature queries ====================
 
   /**
-   * 查询指定点的渲染要素
+   * Query rendered features at a point
    *
-   * @param x X 坐标（逻辑像素，会自动转换为物理像素）
-   * @param y Y 坐标（逻辑像素，会自动转换为物理像素）
-   * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
-   * @param filter 可选的过滤器表达式
-   * @returns Feature 数组
+   * @param x X coordinate in logical pixels (converted to physical pixels internally)
+   * @param y Y coordinate in logical pixels (converted to physical pixels internally)
+   * @param layerIds Optional array of layer IDs to filter the results
+   * @param filter Optional filter expression
+   * @returns Array of features
    *
-   * @note 坐标系统说明：
-   * - 输入坐标为逻辑像素（与触摸事件坐标一致）
-   * - 内部会自动乘以 pixelRatio 转换为物理像素传递给底层渲染引擎
-   * - 这确保了在不同 DPI 设备上的查询准确性
+   * @note Coordinate system:
+   * - Inputs are logical pixels (same as touch coordinates)
+   * - Internally multiplied by pixelRatio to convert to physical pixels for the renderer
+   * - Ensures accurate results across different DPI devices
    *
    * @example
-  * ```typescript
-   * // 查询屏幕坐标 (100, 200) 处的所有要素（使用逻辑像素）
+   * ```typescript
+   * // Query all features at logical pixel (100, 200)
    * const features = map.queryRenderedFeaturesForPoint(100, 200);
    *
-   * // 只查询特定图层的要素
+   * // Only query specific layers
    * const features = map.queryRenderedFeaturesForPoint(100, 200, ['poi-layer', 'building-layer']);
    *
-   * // 使用过滤器查询
+   * // Query with a filter
    * const features = map.queryRenderedFeaturesForPoint(100, 200, ['poi-layer'], ['==', ['get', 'type'], 'restaurant']);
    * ```
    */
@@ -3430,7 +4084,7 @@ export class MapLibreMap {
     }
 
     try {
-      // DPI 转换：逻辑像素 -> 物理像素
+      // DPI conversion: logical pixels -> physical pixels
       const pixelRatio = this.nativeMapView.getPixelRatio();
       const screenX = x * pixelRatio;
       const screenY = y * pixelRatio;
@@ -3444,22 +4098,22 @@ export class MapLibreMap {
   }
 
   /**
-   * 查询矩形区域内的渲染要素（物理像素版本）
-   * 
-   * **注意**：此方法接受**物理像素**坐标，直接传递给底层渲染引擎，不进行 DPI 转换。
-   * 用于内部地图计算和需要精确物理像素控制的场景。
+   * Query rendered features within a rectangle (physical pixel variant)
    *
-   * @param left 左边界（物理像素）
-   * @param top 上边界（物理像素）
-   * @param right 右边界（物理像素）
-   * @param bottom 下边界（物理像素）
-   * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
-   * @param filter 可选的过滤器表达式
-   * @returns IFeature 数组
+   * **Note**: Accepts **physical pixel** coordinates and passes them directly to the renderer without DPI conversion.
+   * Useful for internal map calculations and scenarios requiring exact physical pixel control.
+   *
+   * @param left Left boundary in physical pixels
+   * @param top Top boundary in physical pixels
+   * @param right Right boundary in physical pixels
+   * @param bottom Bottom boundary in physical pixels
+   * @param layerIds Optional array of layer IDs to filter the results
+   * @param filter Optional filter expression
+   * @returns Array of IFeature
    *
    * @example
    * ```typescript
-   * // 内部地图计算使用物理像素
+   * // Internal calculations using physical pixels
    * const pixelRatio = map.getNativeMapView().getPixelRatio();
    * const physicalLeft = logicalLeft * pixelRatio;
    * const features = map.queryRenderedFeaturesForBoxPhysical(
@@ -3492,37 +4146,37 @@ export class MapLibreMap {
   }
 
   /**
-   * 查询矩形区域内的渲染要素（逻辑像素版本）
-   * 
-   * **注意**：此方法接受**逻辑像素**坐标（ArkUI 标准），会自动转换为物理像素。
-   * 用于 ArkUI 组件交互、触摸事件处理等场景。
+   * Query rendered features within a rectangle (logical pixel variant)
    *
-   * @param left 左边界（逻辑像素，会自动转换为物理像素）
-   * @param top 上边界（逻辑像素，会自动转换为物理像素）
-   * @param right 右边界（逻辑像素，会自动转换为物理像素）
-   * @param bottom 下边界（逻辑像素，会自动转换为物理像素）
-   * @param layerIds 可选的图层 ID 数组，如果提供则只查询这些图层
-   * @param filter 可选的过滤器表达式
-   * @returns IFeature 数组
+   * **Note**: Accepts **logical pixel** coordinates (ArkUI standard) and converts them to physical pixels.
+   * Intended for ArkUI component interactions, touch handling, and similar use cases.
    *
-   * @note 坐标系统说明：
-   * - 输入坐标为逻辑像素（与触摸事件坐标一致）
-   * - 内部会自动乘以 pixelRatio 转换为物理像素传递给底层渲染引擎
-   * - 这确保了在不同 DPI 设备上的查询准确性
-   * - 保持与 handleMapClick 等方法的坐标处理一致性
+   * @param left Left boundary in logical pixels (converted to physical pixels)
+   * @param top Top boundary in logical pixels (converted to physical pixels)
+   * @param right Right boundary in logical pixels (converted to physical pixels)
+   * @param bottom Bottom boundary in logical pixels (converted to physical pixels)
+   * @param layerIds Optional array of layer IDs to filter the results
+   * @param filter Optional filter expression
+   * @returns Array of IFeature
+   *
+   * @note Coordinate system:
+   * - Inputs are logical pixels (consistent with touch events)
+   * - Internally multiplied by pixelRatio to convert to physical pixels for the renderer
+   * - Ensures DPI accuracy across devices
+   * - Keeps coordinate handling consistent with methods like handleMapClick
    *
    * @example
-  * ```typescript
-   * // 查询矩形区域内的所有要素（逻辑像素坐标）
+   * ```typescript
+   * // Query all features in a rectangle (logical coordinates)
    * const features = map.queryRenderedFeaturesForBox(100, 100, 300, 300);
    *
-   * // 只查询特定图层的要素
+   * // Restrict to specific layers
    * const features = map.queryRenderedFeaturesForBox(
    *   100, 100, 300, 300,
    *   ['poi-layer', 'building-layer']
    * );
    *
-   * // 使用过滤器查询
+   * // Query with a filter
    * const features = map.queryRenderedFeaturesForBox(
    *   100, 100, 300, 300,
    *   ['poi-layer'],
@@ -3544,7 +4198,7 @@ export class MapLibreMap {
     }
 
     try {
-      // DPI 转换：逻辑像素 -> 物理像素
+      // DPI conversion: logical pixels -> physical pixels
       const pixelRatio = this.nativeMapView.getPixelRatio();
       const physicalLeft = left * pixelRatio;
       const physicalTop = top * pixelRatio;
@@ -3561,25 +4215,25 @@ export class MapLibreMap {
   }
 
   /**
-   * 查询数据源中的所有要素
-   * 
-   * 此方法查询指定数据源中的所有要素，不考虑这些要素是否已渲染。
-   * 这对于 GeoJSON 数据源特别有用，可以获取所有添加到数据源的要素。
-   * 
-   * @param sourceId 数据源 ID
-   * @param sourceLayerIds 可选的源图层 ID 数组（用于 vector tile 数据源）
-   * @param filter 可选的过滤器表达式
-   * @returns 查询到的要素数组
-   * 
+   * Query all features from a source
+   *
+   * Returns every feature in the specified source, regardless of whether it is currently rendered.
+   * Particularly useful for GeoJSON sources to retrieve all added features.
+   *
+   * @param sourceId Source ID
+   * @param sourceLayerIds Optional array of source layer IDs (for vector tile sources)
+   * @param filter Optional filter expression
+   * @returns Array of features
+   *
    * @example
-  * ```typescript
-   * // 查询 GeoJSON 数据源中的所有要素
+   * ```typescript
+   * // Query every feature from a GeoJSON source
    * const features = map.querySourceFeatures('my-source');
    *
-   * // 查询 vector tile 数据源中特定图层的要素
+   * // Query a specific layer from a vector tile source
    * const features = map.querySourceFeatures('composite', ['poi-label']);
    *
-   * // 使用过滤器查询
+   * // Query with a filter
    * const features = map.querySourceFeatures(
    *   'my-source',
    *   undefined,
@@ -3610,22 +4264,22 @@ export class MapLibreMap {
     }
   }
 
-  // ========== InfoWindow 支持方法 ==========
+// ========== InfoWindow helper methods ==========
 
   /**
-   * 获取 InfoWindowManager（内部使用）
+   * Get the InfoWindowManager (internal use)
    * @internal
    */
   public getInfoWindowManager(): InfoWindowManager {
     return this.infoWindowManager;
   }
 
-  // ========== 性能测量方法 (参考 Android) ==========
+// ========== Performance instrumentation (mirrors Android) ==========
 
   /**
-   * 设置 FPS 变化监听器（参考 Android MapLibreMap.setOnFpsChangedListener）
-   * 用于实时监控渲染帧率
-   * @param listener FPS 变化监听器，传入 null 则移除监听器
+   * Set the FPS change listener (mirrors Android MapLibreMap.setOnFpsChangedListener)
+   * Useful for monitoring rendering frame rate in real time
+   * @param listener Listener instance; pass null to remove
    */
   public setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
     if (this.destroyed) {
@@ -3646,283 +4300,389 @@ export class MapLibreMap {
     }
   }
 
-  // ========== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) ==========
+// ========== Observer event listeners (Shader, Glyph, Sprite, Tile) ==========
   
   /**
-   * 添加着色器编译前监听器
-   * @param listener 监听器对象或回调函数
+   * Add a pre-compile shader listener
+   * @param listener Listener object or callback
    */
-  public addOnPreCompileShaderListener(listener: OnPreCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
-    if (this.destroyed) return;
-    
-    // 如果是接口实现，转换为回调函数
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (shaderId: number, backendType: number, defines: string) => (listener as OnPreCompileShaderListener).onPreCompileShader(shaderId, backendType, defines);
-    
-    this.nativeMapView.addOnPreCompileShaderListener(callback);
+  public addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.preCompileShaderWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnPreCompileShaderListener = (shaderId: number, backendType: number, defines: string) => {
+      try {
+        listener(shaderId, backendType, defines);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnPreCompileShaderListener', message);
+      }
+    };
+    this.preCompileShaderWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnPreCompileShaderListener(wrapper);
   }
   
   /**
-   * 移除着色器编译前监听器
+   * Remove a pre-compile shader listener
    */
-  public removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
-    if (this.destroyed) return;
-    
-    // 如果是接口实现，转换为回调函数
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (shaderId: number, backendType: number, defines: string) => (listener as OnPreCompileShaderListener).onPreCompileShader(shaderId, backendType, defines);
-    
-    this.nativeMapView.removeOnPreCompileShaderListener(callback);
+  public removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.preCompileShaderWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnPreCompileShaderListener(wrapper);
+      this.preCompileShaderWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加着色器编译后监听器
-   * @param listener 监听器对象或回调函数
+   * Add a post-compile shader listener
+   * @param listener Listener object or callback
    */
-  public addOnPostCompileShaderListener(listener: OnPostCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (shaderId: number, backendType: number, defines: string) => (listener as OnPostCompileShaderListener).onPostCompileShader(shaderId, backendType, defines);
-    
-    this.nativeMapView.addOnPostCompileShaderListener(callback);
+  public addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.postCompileShaderWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnPostCompileShaderListener = (shaderId: number, backendType: number, defines: string) => {
+      try {
+        listener(shaderId, backendType, defines);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnPostCompileShaderListener', message);
+      }
+    };
+    this.postCompileShaderWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnPostCompileShaderListener(wrapper);
   }
   
   /**
-   * 移除着色器编译后监听器
+   * Remove a post-compile shader listener
    */
-  public removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (shaderId: number, backendType: number, defines: string) => (listener as OnPostCompileShaderListener).onPostCompileShader(shaderId, backendType, defines);
-    
-    this.nativeMapView.removeOnPostCompileShaderListener(callback);
+  public removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.postCompileShaderWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnPostCompileShaderListener(wrapper);
+      this.postCompileShaderWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加着色器编译失败监听器
-   * @param listener 监听器对象或回调函数
+   * Add a shader compile failure listener
+   * @param listener Listener object or callback
    */
-  public addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (shaderId: number, backendType: number, defines: string) => (listener as OnShaderCompileFailedListener).onShaderCompileFailed(shaderId, backendType, defines);
-    
-    this.nativeMapView.addOnShaderCompileFailedListener(callback);
+  public addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.shaderCompileFailedWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnShaderCompileFailedListener = (shaderId: number, backendType: number, defines: string) => {
+      try {
+        listener(shaderId, backendType, defines);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnShaderCompileFailedListener', message);
+      }
+    };
+    this.shaderCompileFailedWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnShaderCompileFailedListener(wrapper);
   }
   
   /**
-   * 移除着色器编译失败监听器
+   * Remove a shader compile failure listener
    */
-  public removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener | ((shaderId: number, backendType: number, defines: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (shaderId: number, backendType: number, defines: string) => (listener as OnShaderCompileFailedListener).onShaderCompileFailed(shaderId, backendType, defines);
-    
-    this.nativeMapView.removeOnShaderCompileFailedListener(callback);
+  public removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.shaderCompileFailedWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnShaderCompileFailedListener(wrapper);
+      this.shaderCompileFailedWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加字形请求监听器
-   * @param listener 监听器对象或回调函数
+   * Add a glyph request listener
+   * @param listener Listener object or callback
    */
-  public addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsRequestedListener).onGlyphsRequested(fontStack, rangeStart, rangeEnd);
-    
-    this.nativeMapView.addOnGlyphsRequestedListener(callback);
+  public addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.glyphsRequestedWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnGlyphsRequestedListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
+      try {
+        listener(fontStack, rangeStart, rangeEnd);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnGlyphsRequestedListener', message);
+      }
+    };
+    this.glyphsRequestedWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnGlyphsRequestedListener(wrapper);
   }
   
   /**
-   * 移除字形请求监听器
+   * Remove a glyph request listener
    */
-  public removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsRequestedListener).onGlyphsRequested(fontStack, rangeStart, rangeEnd);
-    
-    this.nativeMapView.removeOnGlyphsRequestedListener(callback);
+  public removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.glyphsRequestedWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnGlyphsRequestedListener(wrapper);
+      this.glyphsRequestedWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加字形加载完成监听器
-   * @param listener 监听器对象或回调函数
+   * Add a glyph loaded listener
+   * @param listener Listener object or callback
    */
-  public addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsLoadedListener).onGlyphsLoaded(fontStack, rangeStart, rangeEnd);
-    
-    this.nativeMapView.addOnGlyphsLoadedListener(callback);
+  public addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.glyphsLoadedWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnGlyphsLoadedListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
+      try {
+        listener(fontStack, rangeStart, rangeEnd);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnGlyphsLoadedListener', message);
+      }
+    };
+    this.glyphsLoadedWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnGlyphsLoadedListener(wrapper);
   }
   
   /**
-   * 移除字形加载完成监听器
+   * Remove a glyph loaded listener
    */
-  public removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsLoadedListener).onGlyphsLoaded(fontStack, rangeStart, rangeEnd);
-    
-    this.nativeMapView.removeOnGlyphsLoadedListener(callback);
+  public removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.glyphsLoadedWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnGlyphsLoadedListener(wrapper);
+      this.glyphsLoadedWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加字形加载错误监听器
-   * @param listener 监听器对象或回调函数
+   * Add a glyph error listener
+   * @param listener Listener object or callback
    */
-  public addOnGlyphsErrorListener(listener: OnGlyphsErrorListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsErrorListener).onGlyphsError(fontStack, rangeStart, rangeEnd);
-    
-    this.nativeMapView.addOnGlyphsErrorListener(callback);
+  public addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.glyphsErrorWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnGlyphsErrorListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
+      try {
+        listener(fontStack, rangeStart, rangeEnd);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnGlyphsErrorListener', message);
+      }
+    };
+    this.glyphsErrorWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnGlyphsErrorListener(wrapper);
   }
   
   /**
-   * 移除字形加载错误监听器
+   * Remove a glyph error listener
    */
-  public removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener | ((fontStack: string[], rangeStart: number, rangeEnd: number) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (fontStack: string[], rangeStart: number, rangeEnd: number) => (listener as OnGlyphsErrorListener).onGlyphsError(fontStack, rangeStart, rangeEnd);
-    
-    this.nativeMapView.removeOnGlyphsErrorListener(callback);
+  public removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.glyphsErrorWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnGlyphsErrorListener(wrapper);
+      this.glyphsErrorWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加 Sprite 请求监听器
-   * @param listener 监听器对象或回调函数
+   * Add a sprite request listener
+   * @param listener Listener object or callback
    */
-  public addOnSpriteRequestedListener(listener: OnSpriteRequestedListener | ((spriteId: string, url: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (spriteId: string, url: string) => (listener as OnSpriteRequestedListener).onSpriteRequested(spriteId, url);
-    
-    this.nativeMapView.addOnSpriteRequestedListener(callback);
+  public addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.spriteRequestedWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnSpriteRequestedListener = (spriteId: string, url: string) => {
+      try {
+        listener(spriteId, url);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnSpriteRequestedListener', message);
+      }
+    };
+    this.spriteRequestedWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnSpriteRequestedListener(wrapper);
   }
   
   /**
-   * 移除 Sprite 请求监听器
+   * Remove a sprite request listener
    */
-  public removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener | ((spriteId: string, url: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (spriteId: string, url: string) => (listener as OnSpriteRequestedListener).onSpriteRequested(spriteId, url);
-    
-    this.nativeMapView.removeOnSpriteRequestedListener(callback);
+  public removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.spriteRequestedWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnSpriteRequestedListener(wrapper);
+      this.spriteRequestedWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加 Sprite 加载完成监听器
-   * @param listener 监听器对象或回调函数
+   * Add a sprite loaded listener
+   * @param listener Listener object or callback
    */
-  public addOnSpriteLoadedListener(listener: OnSpriteLoadedListener | ((spriteId: string, url: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (spriteId: string, url: string) => (listener as OnSpriteLoadedListener).onSpriteLoaded(spriteId, url);
-    
-    this.nativeMapView.addOnSpriteLoadedListener(callback);
+  public addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.spriteLoadedWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnSpriteLoadedListener = (spriteId: string, url: string) => {
+      try {
+        listener(spriteId, url);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnSpriteLoadedListener', message);
+      }
+    };
+    this.spriteLoadedWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnSpriteLoadedListener(wrapper);
   }
   
   /**
-   * 移除 Sprite 加载完成监听器
+   * Remove a sprite loaded listener
    */
-  public removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener | ((spriteId: string, url: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (spriteId: string, url: string) => (listener as OnSpriteLoadedListener).onSpriteLoaded(spriteId, url);
-    
-    this.nativeMapView.removeOnSpriteLoadedListener(callback);
+  public removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.spriteLoadedWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnSpriteLoadedListener(wrapper);
+      this.spriteLoadedWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加 Sprite 加载错误监听器
-   * @param listener 监听器对象或回调函数
+   * Add a sprite error listener
+   * @param listener Listener object or callback
    */
-  public addOnSpriteErrorListener(listener: OnSpriteErrorListener | ((spriteId: string, url: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (spriteId: string, url: string) => (listener as OnSpriteErrorListener).onSpriteError(spriteId, url);
-    
-    this.nativeMapView.addOnSpriteErrorListener(callback);
+  public addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.spriteErrorWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnSpriteErrorListener = (spriteId: string, url: string) => {
+      try {
+        listener(spriteId, url);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnSpriteErrorListener', message);
+      }
+    };
+    this.spriteErrorWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnSpriteErrorListener(wrapper);
   }
   
   /**
-   * 移除 Sprite 加载错误监听器
+   * Remove a sprite error listener
    */
-  public removeOnSpriteErrorListener(listener: OnSpriteErrorListener | ((spriteId: string, url: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (spriteId: string, url: string) => (listener as OnSpriteErrorListener).onSpriteError(spriteId, url);
-    
-    this.nativeMapView.removeOnSpriteErrorListener(callback);
+  public removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.spriteErrorWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnSpriteErrorListener(wrapper);
+      this.spriteErrorWrappers.delete(listener);
+    }
   }
   
   /**
-   * 添加瓦片操作监听器
-   * @param listener 监听器对象或回调函数
+   * Add a tile action listener
+   * @param listener Listener object or callback
    */
-  public addOnTileActionListener(listener: OnTileActionListener | ((operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => (listener as OnTileActionListener).onTileAction(operation, x, y, z, wrap, overscaledZ, sourceId);
-    
-    this.nativeMapView.addOnTileActionListener(callback);
+  public addOnTileActionListener(listener: OnTileActionListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.tileActionWrappers.has(listener)) {
+      return;
+    }
+    const wrapper: OnTileActionListener = (
+      operation: number,
+      x: number,
+      y: number,
+      z: number,
+      wrap: number,
+      overscaledZ: number,
+      sourceId: string
+    ) => {
+      try {
+        listener(operation, x, y, z, wrap, overscaledZ, sourceId);
+      } catch (error) {
+        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
+        logListenerError('OnTileActionListener', message);
+      }
+    };
+    this.tileActionWrappers.set(listener, wrapper);
+    this.nativeMapView.addOnTileActionListener(wrapper);
   }
   
   /**
-   * 移除瓦片操作监听器
+   * Remove a tile action listener
    */
-  public removeOnTileActionListener(listener: OnTileActionListener | ((operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void)): void {
-    if (this.destroyed) return;
-    
-    const callback = typeof listener === 'function' 
-      ? listener 
-      : (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => (listener as OnTileActionListener).onTileAction(operation, x, y, z, wrap, overscaledZ, sourceId);
-    
-    this.nativeMapView.removeOnTileActionListener(callback);
+  public removeOnTileActionListener(listener: OnTileActionListener): void {
+    if (this.destroyed) {
+      return;
+    }
+    const wrapper = this.tileActionWrappers.get(listener);
+    if (wrapper) {
+      this.nativeMapView.removeOnTileActionListener(wrapper);
+      this.tileActionWrappers.delete(listener);
+    }
   }
 
   /**
-   * 设置最大帧率（参考 Android MapView.setMaximumFps）
-   * @param maximumFps 最大帧率，例如 30、60
+   * Set the maximum FPS (mirrors Android MapView.setMaximumFps)
+   * @param maximumFps Target frame rate, e.g., 30 or 60
    */
   public setMaximumFps(maximumFps: number): void {
     if (this.destroyed) {
@@ -3938,8 +4698,8 @@ export class MapLibreMap {
   }
 
   /**
-   * 设置渲染刷新模式（参考 Android MapView.setRenderingRefreshMode）
-   * @param mode 渲染模式：CONTINUOUS（持续渲染）或 WHEN_DIRTY（按需渲染）
+   * Set the rendering refresh mode (mirrors Android MapView.setRenderingRefreshMode)
+   * @param mode Rendering mode: CONTINUOUS or WHEN_DIRTY
    */
   public setRenderingRefreshMode(mode: RenderingRefreshMode): void {
     if (this.destroyed) {
@@ -3955,8 +4715,8 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取渲染刷新模式（参考 Android MapView.getRenderingRefreshMode）
-   * @returns 当前渲染模式
+   * Get the rendering refresh mode (mirrors Android MapView.getRenderingRefreshMode)
+   * @returns Current rendering mode
    */
   public getRenderingRefreshMode(): RenderingRefreshMode {
     if (this.destroyed) {
@@ -3972,50 +4732,50 @@ export class MapLibreMap {
     }
   }
 
-  // ========== 兼容性方法 (从 NativeMapView 迁移) ==========
+// ========== Compatibility helpers (migrated from NativeMapView) ==========
 
   /**
-   * 获取设备像素比
-   * @returns 设备像素比
+   * Get the device pixel ratio
+   * @returns Device pixel ratio
    */
   public getPixelRatio(): number {
     if (this.destroyed) {
       return 1.0;
     }
-    // 直接从 NativeMapView 获取像素比（已通过 NAPI 从底层获取）
+    // Retrieve pixel ratio directly from NativeMapView (already fetched via NAPI)
     return this.nativeMapView.getPixelRatio();
   }
 
   /**
-   * 设置内容边距（padding）
-   * 内容边距影响地图的可见区域，但不影响地图的大小
-   * @param top 上边距
-   * @param left 左边距
-   * @param bottom 下边距
-   * @param right 右边距
+   * Set content padding
+   * Padding affects the visible region without changing map size
+   * @param top Top padding
+   * @param left Left padding
+   * @param bottom Bottom padding
+   * @param right Right padding
    */
   public setContentPadding(top: number, left: number, bottom: number, right: number): void {
     if (this.destroyed) {
       return;
     }
-    // 调用 native 层的 setContentPadding 方法
-    // 注意：native 层的顺序是 [top, left, bottom, right]
+    // Invoke native setContentPadding
+    // Note: native expects [top, left, bottom, right]
     this.nativeMapView.setContentPadding([top, left, bottom, right]);
   }
 
   /**
-   * 获取内容边距
-   * @returns 边距数组 [top, left, bottom, right]
+   * Get content padding
+   * @returns Padding array [top, left, bottom, right]
    */
   public getContentPadding(): number[] {
     if (this.destroyed) {
       return [0, 0, 0, 0];
     }
     try {
-      // 从 native 层获取边距
+      // Fetch padding from native layer
       const padding: number[] = this.nativeMapView.getContentPadding();
       if (padding && Array.isArray(padding) && padding.length === 4) {
-        // native 返回 [top, left, bottom, right]
+        // Native returns [top, left, bottom, right]
         return padding;
       }
     } catch (error) {
@@ -4025,10 +4785,10 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取与密度相关的矩形
-   * 将逻辑坐标转换为物理像素坐标
-   * @param rect 矩形参数（逻辑坐标）
-   * @returns 调整后的矩形（物理像素坐标）
+   * Get a density-dependent rectangle
+   * Converts logical coordinates to physical pixels
+   * @param rect Rectangle in logical coordinates
+   * @returns Rectangle adjusted to physical pixels
    */
   public getDensityDependantRectangle(rect: Rect): Rect {
     const pixelRatio = this.getPixelRatio();
@@ -4041,35 +4801,35 @@ export class MapLibreMap {
   }
 
   /**
-   * 转换 Native LatLng 数组为 ETS LatLng 数组
+   * Convert a native LatLng array to ETS LatLng array
    * @private
    */
   private convertNativeLatLngArray(nativeArray: import('libmaplibre.so').LatLng[]): LatLng[] {
     return nativeArray.map(native => LatLng.fromNative(native));
   }
 
-  // ========== 调试功能（Debug Mode）==========
+// ========== Debug utilities ==========
 
   /**
-   * 设置调试选项
-   * 使用 MapDebugOptions 枚举值的位掩码来启用多个调试功能
+   * Configure debug options
+   * Uses MapDebugOptions bitmask to enable multiple debug features
    *
-   * 调试选项包括：
-   * - TileBoundaries: 显示瓦片边界（红线）
-   * - TileInfo: 显示瓦片坐标（x/y/z）
-   * - Timestamps: 显示瓦片加载时间戳
-   * - CollisionBoxes: 显示碰撞检测框（绿线）
-   * - OverdrawVisualization: 过度绘制可视化
+   * Options include:
+   * - TileBoundaries: show tile boundaries (red)
+   * - TileInfo: display tile coordinates (x/y/z)
+   * - Timestamps: display tile load timestamps
+   * - CollisionBoxes: show collision boxes (green)
+   * - OverdrawVisualization: visualize overdraw
    *
-   * @param debugOptions 调试选项的位掩码
+   * @param debugOptions Bitmask of debug options
    * @example
-  * ```typescript
+   * ```typescript
    * import { MapDebugOptions } from '@ohos/maplibre';
    *
-   * // 启用多个调试选项
+   * // Enable multiple debug options
    * map.setDebugOptions(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes);
    *
-   * // 禁用所有调试选项
+   * // Disable all debug options
    * map.setDebugOptions(MapDebugOptions.NoDebug);
    * ```
    */
@@ -4081,11 +4841,11 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取当前调试选项
+   * Get current debug options
    *
-   * @returns 当前启用的调试选项位掩码
+   * @returns Bitmask of enabled debug options
    * @example
-  * ```typescript
+   * ```typescript
    * const currentOptions = map.getDebugOptions();
    * console.log('Current debug options:', currentOptions);
    * ```
@@ -4098,27 +4858,27 @@ export class MapLibreMap {
   }
 
   /**
-   * 快速开关调试模式（使用默认调试选项组合）
+   * Toggle debug mode quickly (using a default option bundle)
    *
-   * 当启用调试模式时，会自动开启以下调试选项：
-   * - 瓦片边界（TileBoundaries）
-   * - 瓦片信息（TileInfo）  
-   * - 碰撞框（CollisionBoxes）
+   * Enabling debug mode turns on the following options:
+   * - TileBoundaries
+   * - TileInfo
+   * - CollisionBoxes
    *
-   * 这是最常用的调试选项组合，可以帮助诊断大多数渲染问题。
+   * This default set helps diagnose most rendering issues.
    *
-   * @param active 是否启用调试模式
+   * @param active Whether to enable debug mode
    * @example
-  * ```typescript
-   * // 快速启用调试模式
+   * ```typescript
+   * // Quickly enable debug mode
    * map.setDebugActive(true);
    *
-   * // 检查状态
+   * // Verify the state
    * if (map.isDebugActive()) {
    *   console.log('Debug mode is active');
    * }
    *
-   * // 关闭调试模式
+   * // Disable debug mode
    * map.setDebugActive(false);
    * ```
    */
@@ -4130,11 +4890,11 @@ export class MapLibreMap {
   }
 
   /**
-   * 检查是否处于调试模式
+   * Check whether debug mode is active
    *
-   * @returns 是否有任何调试选项被启用
+   * @returns true if any debug option is enabled
    * @example
-  * ```typescript
+   * ```typescript
    * if (map.isDebugActive()) {
    *   console.log('Debug visualizations are currently enabled');
    * }

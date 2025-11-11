@@ -4,7 +4,7 @@ import { ScaleBarUnit } from './widgets/ScaleBarView';
 import { WidgetLayoutHelper, Offset2D } from './widgets/WidgetLayoutTypes';
 
 /**
- * 焦点位置类型
+ * Focal point data type
  */
 export class FocalPoint {
   x: number = 0;
@@ -17,114 +17,114 @@ export class FocalPoint {
 }
 
 /**
- * UI 设置类
+ * UiSettings
  *
- * 管理地图的手势启用/禁用配置和 UI 组件配置
- * 参考 Android UiSettings 和 iOS MLNMapView 属性
+ * Manages gesture enablement and UI component configuration for the map.
+ * Mirrors Android UiSettings and iOS MLNMapView properties.
  */
 
 export class UiSettings {
-  // 手势启用状态
+  // Gesture enablement flags
   private scrollGesturesEnabled: boolean = true;
   private zoomGesturesEnabled: boolean = true;
   private rotateGesturesEnabled: boolean = true;
   private tiltGesturesEnabled: boolean = true;
   private doubleTapGesturesEnabled: boolean = true;
   private quickZoomGesturesEnabled: boolean = true;
-  // 滚动配置
+  // Scroll configuration
   private horizontalScrollGesturesEnabled: boolean = true;
-  // 手势灵敏度配置
+  // Gesture sensitivity configuration
   private focalPoint: FocalPoint | null = null;
-  // 惯性动画开关
+  // Inertial animation toggles
   private flingVelocityAnimationEnabled: boolean = true;
   private scaleVelocityAnimationEnabled: boolean = true;
   private rotateVelocityAnimationEnabled: boolean = true;
-  // 动画参数
-  private decelerationRate: number = 0.35; // iOS 风格（0-1），越大动画越长
-  private flingAnimationBaseTime: number = 300; // 基础动画时长（ms）
-  private flingThreshold: number = 100; // 速度阈值（像素/秒）
+  // Animation parameters
+  private decelerationRate: number = 0.35; // iOS style (0-1), higher = longer animation
+  private flingAnimationBaseTime: number = 300; // Base animation duration (ms)
+  private flingThreshold: number = 100; // Velocity threshold (px/s)
 
-  // 速度阈值
-  private minFlingVelocity: number = 100; // 平移最小速度（像素/秒）
-  private minScaleVelocity: number = 0.5; // 缩放最小速度
-  private minRotateVelocity: number = 5; // 旋转最小速度（度/秒）
+  // Velocity thresholds
+  private minFlingVelocity: number = 100; // Minimum pan velocity (px/s)
+  private minScaleVelocity: number = 0.5; // Minimum scale velocity
+  private minRotateVelocity: number = 5; // Minimum rotation velocity (deg/s)
 
-  // Tilt 相关配置
-  private minPitch: number = 0; // 最小俯仰角（度）
-  private maxPitch: number = 60; // 最大俯仰角（度）
-  private tiltSensitivity: number = 0.5; // 倾斜灵敏度（slowdown factor）
+  // Tilt configuration
+  private minPitch: number = 0; // Minimum pitch (deg)
+  private maxPitch: number = 60; // Maximum pitch (deg)
+  private tiltSensitivity: number = 0.5; // Tilt sensitivity (slowdown factor)
 
-  // Quick Zoom 相关配置
-  private quickZoomMaxChange: number = 4; // Quick Zoom 最大缩放变化
+  // Quick zoom configuration
+  private quickZoomMaxChange: number = 4; // Maximum quick zoom delta
 
-  // Zoom 相关配置
-  private zoomRate: number = 1.0; // 缩放速率倍率（参考 Android UiSettings）
+  // Zoom configuration
+  private zoomRate: number = 1.0; // Zoom rate multiplier (mirrors Android UiSettings)
 
-  // Rotation 相关配置
-  private rotationRate: number = 1.0; // 旋转速率倍率（控制旋转灵敏度）
+  // Rotation configuration
+  private rotationRate: number = 1.0; // Rotation sensitivity multiplier
 
-  // ==================== 指南针配置 ====================
+  // ==================== Compass configuration ====================
 
-  // 指南针启用状态
-  private compassEnabled: boolean = true;
-  // 指南针可见性模式
+  // Compass enablement
+  private compassEnabled: boolean = false;
+  // Compass visibility mode
   private compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
-  // 正北时是否淡出
+  // Fade when facing north
   private compassFadeWhenFacingNorth: boolean = true;
-  // 指南针对齐方式（使用 ArkUI Alignment）
+  // Compass alignment (ArkUI Alignment)
   private compassAlignment: Alignment = Alignment.TopEnd;
-  // 指南针边距
+  // Compass margins
   private compassMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // 指南针额外偏移（可选）
+  // Optional compass offset
   private compassOffset?: Offset2D;
-  // 指南针更新回调（由 MapLibreMap 注入）
+  // Compass configuration change callback (injected by MapLibreMap)
   public onCompassConfigChanged?: () => void;
-  // ==================== Logo 配置 ====================
+  // ==================== Logo configuration ====================
 
-  // Logo 启用状态
-  private logoEnabled: boolean = true;
-  // Logo 对齐方式（使用 ArkUI Alignment）
+  // Logo enablement
+  private logoEnabled: boolean = false;
+  // Logo alignment (ArkUI Alignment)
   private logoAlignment: Alignment = Alignment.BottomStart;
-  // Logo 边距
+  // Logo margins
   private logoMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Logo 额外偏移（可选）
+  // Optional logo offset
   private logoOffset?: Offset2D;
-  // Logo 更新回调
+  // Logo configuration callback
   public onLogoConfigChanged?: () => void;
-  // ==================== ScaleBar 配置 ====================
+  // ==================== ScaleBar configuration ====================
 
-  // ScaleBar 启用状态
-  private scaleBarEnabled: boolean = true; // 默认启用
+  // ScaleBar enablement
+  private scaleBarEnabled: boolean = true; // Enabled by default
 
-  // ScaleBar 单位系统
+  // ScaleBar units
   private scaleBarUnit: ScaleBarUnit = ScaleBarUnit.Metric;
-  // ScaleBar 是否使用深色样式
+  // Dark theme toggle for ScaleBar
   private scaleBarUseDarkStyles: boolean = false;
-  // ScaleBar 对齐方式（使用 ArkUI Alignment）
+  // ScaleBar alignment (ArkUI Alignment)
   private scaleBarAlignment: Alignment = Alignment.TopStart;
-  // ScaleBar 边距
+  // ScaleBar margins
   private scaleBarMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // ScaleBar 额外偏移（可选）
+  // Optional ScaleBar offset
   private scaleBarOffset?: Offset2D;
-  // ScaleBar 更新回调
+  // ScaleBar configuration callback
   public onScaleBarConfigChanged?: () => void;
-  // ==================== Attribution 配置 ====================
+  // ==================== Attribution configuration ====================
 
-  // Attribution 启用状态
+  // Attribution enablement
   private attributionEnabled: boolean = true;
-  // Attribution 对齐方式（使用 ArkUI Alignment）
+  // Attribution alignment (ArkUI Alignment)
   private attributionAlignment: Alignment = Alignment.BottomEnd;
-  // Attribution 边距
+  // Attribution margins
   private attributionMargins: Margins = { left: 10, top: 10, right: 10, bottom: 10 };
-  // Attribution 额外偏移（可选）
+  // Optional attribution offset
   private attributionOffset?: Offset2D;
-  // Attribution 更新回调
+  // Attribution configuration callback
   public onAttributionConfigChanged?: () => void;
 
-  // ==================== 手势配置 ====================
+  // ==================== Gesture configuration ====================
 
   /**
-   * 设置是否启用滚动手势（平移）
+   * Enable or disable scroll gestures (panning)
    */
   setScrollGesturesEnabled(enabled: boolean): UiSettings {
     this.scrollGesturesEnabled = enabled;
@@ -132,14 +132,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取滚动手势是否启用
+   * Check whether scroll gestures are enabled
    */
   isScrollGesturesEnabled(): boolean {
     return this.scrollGesturesEnabled;
   }
 
   /**
-   * 设置是否启用缩放手势
+   * Enable or disable zoom gestures
    */
   setZoomGesturesEnabled(enabled: boolean): UiSettings {
     this.zoomGesturesEnabled = enabled;
@@ -147,14 +147,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取缩放手势是否启用
+   * Check whether zoom gestures are enabled
    */
   isZoomGesturesEnabled(): boolean {
     return this.zoomGesturesEnabled;
   }
 
   /**
-   * 设置是否启用旋转手势
+   * Enable or disable rotate gestures
    */
   setRotateGesturesEnabled(enabled: boolean): UiSettings {
     this.rotateGesturesEnabled = enabled;
@@ -162,14 +162,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取旋转手势是否启用
+   * Check whether rotate gestures are enabled
    */
   isRotateGesturesEnabled(): boolean {
     return this.rotateGesturesEnabled;
   }
 
   /**
-   * 设置是否启用倾斜手势（双指拖动调整 pitch）
+   * Enable or disable tilt gestures (two-finger drag adjusts pitch)
    */
   setTiltGesturesEnabled(enabled: boolean): UiSettings {
     this.tiltGesturesEnabled = enabled;
@@ -177,14 +177,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取倾斜手势是否启用
+   * Check whether tilt gestures are enabled
    */
   isTiltGesturesEnabled(): boolean {
     return this.tiltGesturesEnabled;
   }
 
   /**
-   * 设置是否启用双击缩放手势
+   * Enable or disable double-tap zoom gestures
    */
   setDoubleTapGesturesEnabled(enabled: boolean): UiSettings {
     this.doubleTapGesturesEnabled = enabled;
@@ -192,14 +192,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取双击缩放手势是否启用
+   * Check whether double-tap zoom gestures are enabled
    */
   isDoubleTapGesturesEnabled(): boolean {
     return this.doubleTapGesturesEnabled;
   }
 
   /**
-   * 设置是否启用快速缩放手势（双击并拖动）
+   * Enable or disable quick zoom gestures (double-tap and drag)
    */
   setQuickZoomGesturesEnabled(enabled: boolean): UiSettings {
     this.quickZoomGesturesEnabled = enabled;
@@ -207,14 +207,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取快速缩放手势是否启用
+   * Check whether quick zoom gestures are enabled
    */
   isQuickZoomGesturesEnabled(): boolean {
     return this.quickZoomGesturesEnabled;
   }
 
   /**
-   * 设置是否启用水平滚动
+   * Enable or disable horizontal scroll gestures
    */
   setHorizontalScrollGesturesEnabled(enabled: boolean): UiSettings {
     this.horizontalScrollGesturesEnabled = enabled;
@@ -222,15 +222,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取水平滚动是否启用
+   * Check whether horizontal scrolling is enabled
    */
   isHorizontalScrollGesturesEnabled(): boolean {
     return this.horizontalScrollGesturesEnabled;
   }
 
   /**
-   * 设置手势焦点
-   * @param point 焦点坐标，null 表示使用默认焦点
+   * Set the gesture focal point
+   * @param point Focal coordinates; null uses the default focal point
    */
   setFocalPoint(point: FocalPoint | null): UiSettings {
     this.focalPoint = point;
@@ -238,14 +238,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取手势焦点
+   * Get the gesture focal point
    */
   getFocalPoint(): FocalPoint | null {
     return this.focalPoint;
   }
 
   /**
-   * 启用所有手势
+   * Enable or disable all gestures
    */
   setAllGesturesEnabled(enabled: boolean): UiSettings {
     this.scrollGesturesEnabled = enabled;
@@ -257,11 +257,11 @@ export class UiSettings {
     return this;
   }
 
-  // ==================== 惯性动画配置 ====================
+  // ==================== Inertial animation configuration ====================
 
   /**
-   * 设置是否启用 Fling 速度动画
-   * @param enabled 是否启用
+   * Enable or disable fling velocity animation
+   * @param enabled Whether the animation is enabled
    */
   setFlingVelocityAnimationEnabled(enabled: boolean): UiSettings {
     this.flingVelocityAnimationEnabled = enabled;
@@ -269,15 +269,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Fling 速度动画是否启用
+   * Check whether fling velocity animation is enabled
    */
   isFlingVelocityAnimationEnabled(): boolean {
     return this.flingVelocityAnimationEnabled;
   }
 
   /**
-   * 设置是否启用缩放速度动画
-   * @param enabled 是否启用
+   * Enable or disable scale velocity animation
+   * @param enabled Whether the animation is enabled
    */
   setScaleVelocityAnimationEnabled(enabled: boolean): UiSettings {
     this.scaleVelocityAnimationEnabled = enabled;
@@ -285,15 +285,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取缩放速度动画是否启用
+   * Check whether scale velocity animation is enabled
    */
   isScaleVelocityAnimationEnabled(): boolean {
     return this.scaleVelocityAnimationEnabled;
   }
 
   /**
-   * 设置是否启用旋转速度动画
-   * @param enabled 是否启用
+   * Enable or disable rotate velocity animation
+   * @param enabled Whether the animation is enabled
    */
   setRotateVelocityAnimationEnabled(enabled: boolean): UiSettings {
     this.rotateVelocityAnimationEnabled = enabled;
@@ -301,15 +301,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取旋转速度动画是否启用
+   * Check whether rotate velocity animation is enabled
    */
   isRotateVelocityAnimationEnabled(): boolean {
     return this.rotateVelocityAnimationEnabled;
   }
 
   /**
-   * 批量设置所有速度动画开关
-   * @param enabled 是否启用
+   * Toggle all velocity-driven animations at once
+   * @param enabled Whether the animations are enabled
    */
   setAllVelocityAnimationsEnabled(enabled: boolean): UiSettings {
     this.flingVelocityAnimationEnabled = enabled;
@@ -319,197 +319,197 @@ export class UiSettings {
   }
 
   /**
-   * 设置减速率（0-1）
-   * 越大动画时间越长，减速越慢
-   * @param rate 减速率
+   * Set the deceleration rate (0-1)
+   * Higher values mean longer animations and slower deceleration
+   * @param rate Deceleration rate
    */
   setDecelerationRate(rate: number): void {
-    this.decelerationRate = Math.max(0, Math.min(1, rate)); // 限制在 0-1
+    this.decelerationRate = Math.max(0, Math.min(1, rate)); // Clamp to 0-1
   }
 
   /**
-   * 获取减速率
+   * Get the deceleration rate
    */
   getDecelerationRate(): number {
     return this.decelerationRate;
   }
 
   /**
-   * 设置 Fling 速度阈值
-   * @param threshold 阈值（像素/秒）
+   * Set fling velocity threshold
+   * @param threshold Threshold in pixels per second
    */
   setFlingThreshold(threshold: number): void {
     this.flingThreshold = Math.max(0, threshold);
   }
 
   /**
-   * 获取 Fling 速度阈值
+   * Get fling velocity threshold
    */
   getFlingThreshold(): number {
     return this.flingThreshold;
   }
 
   /**
-   * 设置 Fling 动画基础时长
-   * @param time 时长（毫秒）
+   * Set base fling animation duration
+   * @param time Duration in milliseconds
    */
   setFlingAnimationBaseTime(time: number): void {
     this.flingAnimationBaseTime = Math.max(0, time);
   }
 
   /**
-   * 获取 Fling 动画基础时长
+   * Get base fling animation duration
    */
   getFlingAnimationBaseTime(): number {
     return this.flingAnimationBaseTime;
   }
 
   /**
-   * 设置平移最小速度阈值
-   * @param velocity 速度（像素/秒）
+   * Set minimum pan velocity threshold
+   * @param velocity Velocity in pixels per second
    */
   setMinFlingVelocity(velocity: number): void {
     this.minFlingVelocity = Math.max(0, velocity);
   }
 
   /**
-   * 获取平移最小速度阈值
+   * Get minimum pan velocity threshold
    */
   getMinFlingVelocity(): number {
     return this.minFlingVelocity;
   }
 
   /**
-   * 设置缩放最小速度阈值
-   * @param velocity 速度
+   * Set minimum scale velocity threshold
+   * @param velocity Velocity
    */
   setMinScaleVelocity(velocity: number): void {
     this.minScaleVelocity = Math.max(0, velocity);
   }
 
   /**
-   * 获取缩放最小速度阈值
+   * Get minimum scale velocity threshold
    */
   getMinScaleVelocity(): number {
     return this.minScaleVelocity;
   }
 
   /**
-   * 设置旋转最小速度阈值
-   * @param velocity 速度（度/秒）
+   * Set minimum rotation velocity threshold
+   * @param velocity Velocity in degrees per second
    */
   setMinRotateVelocity(velocity: number): void {
     this.minRotateVelocity = Math.max(0, velocity);
   }
 
   /**
-   * 获取旋转最小速度阈值
+   * Get minimum rotation velocity threshold
    */
   getMinRotateVelocity(): number {
     return this.minRotateVelocity;
   }
 
-  // ==================== Tilt 配置 ====================
+  // ==================== Tilt configuration ====================
 
   /**
-   * 设置最小俯仰角
+   * Set minimum pitch
    */
   setMinPitch(pitch: number): void {
     this.minPitch = Math.max(0, Math.min(60, pitch));
   }
 
   /**
-   * 获取最小俯仰角
+   * Get minimum pitch
    */
   getMinPitch(): number {
     return this.minPitch;
   }
 
   /**
-   * 设置最大俯仰角
+   * Set maximum pitch
    */
   setMaxPitch(pitch: number): void {
     this.maxPitch = Math.max(0, Math.min(60, pitch));
   }
 
   /**
-   * 获取最大俯仰角
+   * Get maximum pitch
    */
   getMaxPitch(): number {
     return this.maxPitch;
   }
 
   /**
-   * 设置倾斜灵敏度
-   * 值越大，倾斜越慢（slowdown factor）
+   * Set tilt sensitivity
+   * Larger values slow the tilt down (slowdown factor)
    */
   setTiltSensitivity(sensitivity: number): void {
     this.tiltSensitivity = Math.max(0.1, Math.min(5.0, sensitivity));
   }
 
   /**
-   * 获取倾斜灵敏度
+   * Get tilt sensitivity
    */
   getTiltSensitivity(): number {
     return this.tiltSensitivity;
   }
 
-  // ==================== Quick Zoom 配置 ====================
+  // ==================== Quick zoom configuration ====================
 
   /**
-   * 设置 Quick Zoom 最大缩放变化
+   * Set maximum quick zoom delta
    */
   setQuickZoomMaxChange(maxChange: number): void {
     this.quickZoomMaxChange = Math.max(1, Math.min(10, maxChange));
   }
 
   /**
-   * 获取 Quick Zoom 最大缩放变化
+   * Get maximum quick zoom delta
    */
   getQuickZoomMaxChange(): number {
     return this.quickZoomMaxChange;
   }
 
-  // ==================== Zoom Rate 配置 ====================
+  // ==================== Zoom rate configuration ====================
 
   /**
-   * 设置缩放速率倍率
-   * 参考 Android UiSettings.setZoomRate()
-   * @param rate 缩放速率倍率（默认 1.0）
+   * Set zoom rate multiplier
+   * Mirrors Android UiSettings.setZoomRate()
+   * @param rate Zoom rate multiplier (default 1.0)
    */
   setZoomRate(rate: number): void {
     this.zoomRate = Math.max(0.1, Math.min(10.0, rate));
   }
 
   /**
-   * 获取缩放速率倍率
+   * Get zoom rate multiplier
    */
   getZoomRate(): number {
     return this.zoomRate;
   }
 
-  // ==================== Rotation Rate 配置 ====================
+  // ==================== Rotation rate configuration ====================
 
   /**
-   * 设置旋转速率倍率
-   * @param rate 旋转速率倍率（默认 1.0，越小旋转越慢）
+   * Set rotation rate multiplier
+   * @param rate Rotation rate multiplier (default 1.0; smaller slows rotation)
    */
   setRotationRate(rate: number): void {
     this.rotationRate = Math.max(0.1, Math.min(10.0, rate));
   }
 
   /**
-   * 获取旋转速率倍率
+   * Get rotation rate multiplier
    */
   getRotationRate(): number {
     return this.rotationRate;
   }
 
-  // ==================== 指南针配置方法 ====================
+  // ==================== Compass configuration methods ====================
 
   /**
-   * 设置指南针启用状态
-   * @param enabled 是否启用指南针
+   * Enable or disable the compass
+   * @param enabled Whether the compass is enabled
    */
   setCompassEnabled(enabled: boolean): void {
     if (this.compassEnabled !== enabled) {
@@ -519,15 +519,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针启用状态
+   * Check whether the compass is enabled
    */
   isCompassEnabled(): boolean {
     return this.compassEnabled;
   }
 
   /**
-   * 设置指南针可见性模式
-   * @param visibility 可见性模式
+   * Set compass visibility mode
+   * @param visibility Visibility mode
    */
   setCompassVisibility(visibility: CompassVisibility): void {
     if (this.compassVisibility !== visibility) {
@@ -537,15 +537,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针可见性模式
+   * Get compass visibility mode
    */
   getCompassVisibility(): CompassVisibility {
     return this.compassVisibility;
   }
 
   /**
-   * 设置指南针在正北时是否淡出
-   * @param fade 是否淡出
+   * Control whether the compass fades when facing north
+   * @param fade Whether to fade
    */
   setCompassFadeFacingNorth(fade: boolean): void {
     if (this.compassFadeWhenFacingNorth !== fade) {
@@ -555,18 +555,18 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针在正北时是否淡出
+   * Check whether the compass fades when facing north
    */
   isCompassFadeWhenFacingNorth(): boolean {
     return this.compassFadeWhenFacingNorth;
   }
 
   /**
-   * 设置指南针边距
-   * @param left 左边距
-   * @param top 上边距
-   * @param right 右边距
-   * @param bottom 下边距
+   * Set compass margins
+   * @param left Left margin
+   * @param top Top margin
+   * @param right Right margin
+   * @param bottom Bottom margin
    */
   setCompassMargins(left: number, top: number, right: number, bottom: number): void {
     this.compassMargins.left = left;
@@ -577,43 +577,43 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针边距
+   * Get compass margins
    */
   getCompassMargins(): Margins {
     return this.compassMargins;
   }
   
   /**
-   * 获取指南针左边距
+   * Get compass left margin
    */
   getCompassMarginLeft(): number {
     return this.compassMargins.left;
   }
   
   /**
-   * 获取指南针上边距
+   * Get compass top margin
    */
   getCompassMarginTop(): number {
     return this.compassMargins.top;
   }
   
   /**
-   * 获取指南针右边距
+   * Get compass right margin
    */
   getCompassMarginRight(): number {
     return this.compassMargins.right;
   }
   
   /**
-   * 获取指南针下边距
+   * Get compass bottom margin
    */
   getCompassMarginBottom(): number {
     return this.compassMargins.bottom;
   }
 
   /**
-   * 设置指南针对齐方式（鸿蒙风格）
-   * @param alignment ArkUI Alignment 枚举
+   * Set compass alignment (ArkUI style)
+   * @param alignment ArkUI Alignment
    */
   setCompassAlignment(alignment: Alignment): void {
     if (this.compassAlignment !== alignment) {
@@ -623,15 +623,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针对齐方式
+   * Get compass alignment
    */
   getCompassAlignment(): Alignment {
     return this.compassAlignment;
   }
   
   /**
-   * 设置指南针额外偏移
-   * @param offset 偏移量 { x, y }（vp）
+   * Set additional compass offset
+   * @param offset Offset { x, y } in vp
    */
   setCompassOffset(offset: Offset2D | undefined): void {
     this.compassOffset = offset;
@@ -639,16 +639,16 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针额外偏移
+   * Get additional compass offset
    */
   getCompassOffset(): Offset2D | undefined {
     return this.compassOffset;
   }
 
   /**
-   * 设置指南针位置（向后兼容）
-   * @param position 位置枚举
-   * @deprecated 请使用 setCompassAlignment() 替代
+   * Set compass position (backward compatibility)
+   * @param position Ornament position enum
+   * @deprecated Use setCompassAlignment() instead
    */
   setCompassPosition(position: OrnamentPosition): void {
     const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
@@ -656,8 +656,8 @@ export class UiSettings {
   }
 
   /**
-   * 获取指南针位置（向后兼容）
-   * @deprecated 请使用 getCompassAlignment() 替代
+   * Get compass position (backward compatibility)
+   * @deprecated Use getCompassAlignment() instead
    */
   getCompassPosition(): OrnamentPosition {
     const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.compassAlignment);
@@ -665,7 +665,7 @@ export class UiSettings {
   }
 
   /**
-   * 通知指南针配置变更
+   * Notify compass configuration change
    */
   private notifyCompassConfigChanged(): void {
     if (this.onCompassConfigChanged) {
@@ -673,11 +673,11 @@ export class UiSettings {
     }
   }
 
-  // ==================== Logo 配置方法 ====================
+  // ==================== Logo configuration methods ====================
 
   /**
-   * 设置 Logo 启用状态
-   * @param enabled 是否启用 Logo
+   * Enable or disable the logo
+   * @param enabled Whether the logo is enabled
    */
   setLogoEnabled(enabled: boolean): void {
     if (this.logoEnabled !== enabled) {
@@ -687,15 +687,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Logo 启用状态
+   * Check whether the logo is enabled
    */
   isLogoEnabled(): boolean {
     return this.logoEnabled;
   }
 
   /**
-   * 设置 Logo 对齐方式（鸿蒙风格）
-   * @param alignment ArkUI Alignment 枚举
+   * Set logo alignment (ArkUI style)
+   * @param alignment ArkUI Alignment
    */
   setLogoAlignment(alignment: Alignment): void {
     if (this.logoAlignment !== alignment) {
@@ -705,16 +705,16 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Logo 对齐方式
+   * Get logo alignment
    */
   getLogoAlignment(): Alignment {
     return this.logoAlignment;
   }
 
   /**
-   * 设置 Logo 位置（向后兼容）
-   * @param position 位置枚举
-   * @deprecated 请使用 setLogoAlignment() 替代
+   * Set logo position (backward compatibility)
+   * @param position Ornament position enum
+   * @deprecated Use setLogoAlignment() instead
    */
   setLogoPosition(position: OrnamentPosition): void {
     const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
@@ -722,8 +722,8 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Logo 位置（向后兼容）
-   * @deprecated 请使用 getLogoAlignment() 替代
+   * Get logo position (backward compatibility)
+   * @deprecated Use getLogoAlignment() instead
    */
   getLogoPosition(): OrnamentPosition {
     const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.logoAlignment);
@@ -731,11 +731,11 @@ export class UiSettings {
   }
 
   /**
-   * 设置 Logo 边距
-   * @param left 左边距
-   * @param top 上边距
-   * @param right 右边距
-   * @param bottom 下边距
+   * Set logo margins
+   * @param left Left margin
+   * @param top Top margin
+   * @param right Right margin
+   * @param bottom Bottom margin
    */
   setLogoMargins(left: number, top: number, right: number, bottom: number): void {
     this.logoMargins.left = left;
@@ -746,43 +746,43 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Logo 边距
+   * Get logo margins
    */
   getLogoMargins(): Margins {
     return this.logoMargins;
   }
   
   /**
-   * 获取 Logo 左边距
+   * Get logo left margin
    */
   getLogoMarginLeft(): number {
     return this.logoMargins.left;
   }
   
   /**
-   * 获取 Logo 上边距
+   * Get logo top margin
    */
   getLogoMarginTop(): number {
     return this.logoMargins.top;
   }
   
   /**
-   * 获取 Logo 右边距
+   * Get logo right margin
    */
   getLogoMarginRight(): number {
     return this.logoMargins.right;
   }
   
   /**
-   * 获取 Logo 下边距
+   * Get logo bottom margin
    */
   getLogoMarginBottom(): number {
     return this.logoMargins.bottom;
   }
   
   /**
-   * 设置 Logo 额外偏移
-   * @param offset 偏移量 { x, y }（vp）
+   * Set additional logo offset
+   * @param offset Offset { x, y } in vp
    */
   setLogoOffset(offset: Offset2D | undefined): void {
     this.logoOffset = offset;
@@ -790,14 +790,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Logo 额外偏移
+   * Get additional logo offset
    */
   getLogoOffset(): Offset2D | undefined {
     return this.logoOffset;
   }
 
   /**
-   * 通知 Logo 配置变更
+   * Notify logo configuration change
    */
   private notifyLogoConfigChanged(): void {
     if (this.onLogoConfigChanged) {
@@ -805,11 +805,11 @@ export class UiSettings {
     }
   }
 
-  // ==================== ScaleBar 配置方法 ====================
+  // ==================== ScaleBar configuration methods ====================
 
   /**
-   * 设置 ScaleBar 启用状态
-   * @param enabled 是否启用 ScaleBar
+   * Enable or disable the ScaleBar
+   * @param enabled Whether the ScaleBar is enabled
    */
   setScaleBarEnabled(enabled: boolean): void {
     if (this.scaleBarEnabled !== enabled) {
@@ -819,15 +819,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 启用状态
+   * Check whether the ScaleBar is enabled
    */
   isScaleBarEnabled(): boolean {
     return this.scaleBarEnabled;
   }
 
   /**
-   * 设置 ScaleBar 单位系统
-   * @param unit 单位系统（公制/英制）
+   * Set ScaleBar unit system
+   * @param unit Unit system (metric/imperial)
    */
   setScaleBarUnit(unit: ScaleBarUnit): void {
     if (this.scaleBarUnit !== unit) {
@@ -837,15 +837,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 单位系统
+   * Get ScaleBar unit system
    */
   getScaleBarUnit(): ScaleBarUnit {
     return this.scaleBarUnit;
   }
 
   /**
-   * 设置 ScaleBar 是否使用深色样式
-   * @param useDarkStyles 是否使用深色样式
+   * Toggle dark style for ScaleBar
+   * @param useDarkStyles Whether to use dark styles
    */
   setScaleBarUseDarkStyles(useDarkStyles: boolean): void {
     if (this.scaleBarUseDarkStyles !== useDarkStyles) {
@@ -855,15 +855,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 是否使用深色样式
+   * Check whether ScaleBar uses dark styles
    */
   isScaleBarUseDarkStyles(): boolean {
     return this.scaleBarUseDarkStyles;
   }
 
   /**
-   * 设置 ScaleBar 对齐方式（鸿蒙风格）
-   * @param alignment ArkUI Alignment 枚举
+   * Set ScaleBar alignment (ArkUI style)
+   * @param alignment ArkUI Alignment
    */
   setScaleBarAlignment(alignment: Alignment): void {
     if (this.scaleBarAlignment !== alignment) {
@@ -873,16 +873,16 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 对齐方式
+   * Get ScaleBar alignment
    */
   getScaleBarAlignment(): Alignment {
     return this.scaleBarAlignment;
   }
 
   /**
-   * 设置 ScaleBar 位置（向后兼容）
-   * @param position 位置枚举
-   * @deprecated 请使用 setScaleBarAlignment() 替代
+   * Set ScaleBar position (backward compatibility)
+   * @param position Ornament position enum
+   * @deprecated Use setScaleBarAlignment() instead
    */
   setScaleBarPosition(position: OrnamentPosition): void {
     const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
@@ -890,8 +890,8 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 位置（向后兼容）
-   * @deprecated 请使用 getScaleBarAlignment() 替代
+   * Get ScaleBar position (backward compatibility)
+   * @deprecated Use getScaleBarAlignment() instead
    */
   getScaleBarPosition(): OrnamentPosition {
     const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.scaleBarAlignment);
@@ -899,11 +899,11 @@ export class UiSettings {
   }
 
   /**
-   * 设置 ScaleBar 边距
-   * @param left 左边距
-   * @param top 上边距
-   * @param right 右边距
-   * @param bottom 下边距
+   * Set ScaleBar margins
+   * @param left Left margin
+   * @param top Top margin
+   * @param right Right margin
+   * @param bottom Bottom margin
    */
   setScaleBarMargins(left: number, top: number, right: number, bottom: number): void {
     this.scaleBarMargins.left = left;
@@ -914,43 +914,43 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 边距
+   * Get ScaleBar margins
    */
   getScaleBarMargins(): Margins {
     return this.scaleBarMargins;
   }
   
   /**
-   * 获取 ScaleBar 左边距
+   * Get ScaleBar left margin
    */
   getScaleBarMarginLeft(): number {
     return this.scaleBarMargins.left;
   }
   
   /**
-   * 获取 ScaleBar 上边距
+   * Get ScaleBar top margin
    */
   getScaleBarMarginTop(): number {
     return this.scaleBarMargins.top;
   }
   
   /**
-   * 获取 ScaleBar 右边距
+   * Get ScaleBar right margin
    */
   getScaleBarMarginRight(): number {
     return this.scaleBarMargins.right;
   }
   
   /**
-   * 获取 ScaleBar 下边距
+   * Get ScaleBar bottom margin
    */
   getScaleBarMarginBottom(): number {
     return this.scaleBarMargins.bottom;
   }
   
   /**
-   * 设置 ScaleBar 额外偏移
-   * @param offset 偏移量 { x, y }（vp）
+   * Set additional ScaleBar offset
+   * @param offset Offset { x, y } in vp
    */
   setScaleBarOffset(offset: Offset2D | undefined): void {
     this.scaleBarOffset = offset;
@@ -958,14 +958,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取 ScaleBar 额外偏移
+   * Get additional ScaleBar offset
    */
   getScaleBarOffset(): Offset2D | undefined {
     return this.scaleBarOffset;
   }
 
   /**
-   * 通知 ScaleBar 配置变更
+   * Notify ScaleBar configuration change
    */
   private notifyScaleBarConfigChanged(): void {
     if (this.onScaleBarConfigChanged) {
@@ -973,11 +973,11 @@ export class UiSettings {
     }
   }
 
-  // ==================== Attribution 配置方法 ====================
+  // ==================== Attribution configuration methods ====================
 
   /**
-   * 设置 Attribution 启用状态
-   * @param enabled 是否启用 Attribution
+   * Enable or disable attribution control
+   * @param enabled Whether attribution is enabled
    */
   setAttributionEnabled(enabled: boolean): void {
     if (this.attributionEnabled !== enabled) {
@@ -987,15 +987,15 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Attribution 启用状态
+   * Check whether attribution is enabled
    */
   isAttributionEnabled(): boolean {
     return this.attributionEnabled;
   }
 
   /**
-   * 设置 Attribution 对齐方式（鸿蒙风格）
-   * @param alignment ArkUI Alignment 枚举
+   * Set attribution alignment (ArkUI style)
+   * @param alignment ArkUI Alignment
    */
   setAttributionAlignment(alignment: Alignment): void {
     if (this.attributionAlignment !== alignment) {
@@ -1005,16 +1005,16 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Attribution 对齐方式
+   * Get attribution alignment
    */
   getAttributionAlignment(): Alignment {
     return this.attributionAlignment;
   }
 
   /**
-   * 设置 Attribution 位置（向后兼容）
-   * @param position 位置枚举
-   * @deprecated 请使用 setAttributionAlignment() 替代
+   * Set attribution position (backward compatibility)
+   * @param position Ornament position enum
+   * @deprecated Use setAttributionAlignment() instead
    */
   setAttributionPosition(position: OrnamentPosition): void {
     const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
@@ -1022,8 +1022,8 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Attribution 位置（向后兼容）
-   * @deprecated 请使用 getAttributionAlignment() 替代
+   * Get attribution position (backward compatibility)
+   * @deprecated Use getAttributionAlignment() instead
    */
   getAttributionPosition(): OrnamentPosition {
     const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.attributionAlignment);
@@ -1031,11 +1031,11 @@ export class UiSettings {
   }
 
   /**
-   * 设置 Attribution 边距
-   * @param left 左边距
-   * @param top 上边距
-   * @param right 右边距
-   * @param bottom 下边距
+   * Set attribution margins
+   * @param left Left margin
+   * @param top Top margin
+   * @param right Right margin
+   * @param bottom Bottom margin
    */
   setAttributionMargins(left: number, top: number, right: number, bottom: number): void {
     this.attributionMargins.left = left;
@@ -1046,43 +1046,43 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Attribution 边距
+   * Get attribution margins
    */
   getAttributionMargins(): Margins {
     return this.attributionMargins;
   }
   
   /**
-   * 获取 Attribution 左边距
+   * Get attribution left margin
    */
   getAttributionMarginLeft(): number {
     return this.attributionMargins.left;
   }
   
   /**
-   * 获取 Attribution 上边距
+   * Get attribution top margin
    */
   getAttributionMarginTop(): number {
     return this.attributionMargins.top;
   }
   
   /**
-   * 获取 Attribution 右边距
+   * Get attribution right margin
    */
   getAttributionMarginRight(): number {
     return this.attributionMargins.right;
   }
   
   /**
-   * 获取 Attribution 下边距
+   * Get attribution bottom margin
    */
   getAttributionMarginBottom(): number {
     return this.attributionMargins.bottom;
   }
   
   /**
-   * 设置 Attribution 额外偏移
-   * @param offset 偏移量 { x, y }（vp）
+   * Set additional attribution offset
+   * @param offset Offset { x, y } in vp
    */
   setAttributionOffset(offset: Offset2D | undefined): void {
     this.attributionOffset = offset;
@@ -1090,14 +1090,14 @@ export class UiSettings {
   }
 
   /**
-   * 获取 Attribution 额外偏移
+   * Get additional attribution offset
    */
   getAttributionOffset(): Offset2D | undefined {
     return this.attributionOffset;
   }
 
   /**
-   * 通知 Attribution 配置变更
+   * Notify attribution configuration change
    */
   private notifyAttributionConfigChanged(): void {
     if (this.onAttributionConfigChanged) {
