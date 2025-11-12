@@ -21,10 +21,10 @@ public:
     Impl(RunLoop*, RunLoop::Type);
     ~Impl();
 
-    void closeHolder();  // 实现在 run_loop.cpp 中
+    void closeHolder();  // Implemented in run_loop.cpp.
 
     uv_handle_t* holderHandle() { 
-        // ✅ 如果已关闭，返回 nullptr 防止访问悬空指针
+        // If it is already closed, return nullptr to avoid dangling pointers.
         return holderClosed ? nullptr : reinterpret_cast<uv_handle_t*>(holder); 
     }
     
@@ -42,7 +42,7 @@ public:
     std::thread::id tid;
 
 private:
-    bool holderClosed = false;  // ✅ 修复退出崩溃：防止 holder 被重复删除
+    bool holderClosed = false;  // Prevent double-deleting the holder during shutdown.
 };
 
 } // namespace util

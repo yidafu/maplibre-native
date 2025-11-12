@@ -86,8 +86,8 @@ void TimerThreadPool::submit(std::function<void()>&& task) {
 }
 
 TimerThreadPool& TimerThreadPool::instance() {
-    // 单例，延迟初始化，线程安全（C++11）
-    static TimerThreadPool pool(4);  // 4 个工作线程
+    // Singleton, lazily initialized, thread-safe per C++11.
+    static TimerThreadPool pool(4);  // Four worker threads.
     return pool;
 }
 

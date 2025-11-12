@@ -5,12 +5,12 @@ namespace mbgl {
 namespace harmony {
 
 std::unique_ptr<Bitmap> BitmapFactory::createBitmap(const mbgl::PremultipliedImage& image) {
-    // 在harmony平台上，我们直接创建Bitmap对象
+    // On Harmony we create Bitmap objects directly.
     return std::unique_ptr<Bitmap>(new Bitmap(image.size.width, image.size.height, image.clone()));
 }
 
 mbgl::PremultipliedImage BitmapFactory::convertToPremultipliedImage(const Bitmap& bitmap) {
-    // 在harmony平台上，我们直接返回bitmap中的image
+    // On Harmony we return the image stored in the bitmap.
     return bitmap.getImage().clone();
 }
 

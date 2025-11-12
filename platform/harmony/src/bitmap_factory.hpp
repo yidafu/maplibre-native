@@ -6,8 +6,8 @@
 namespace mbgl {
 namespace harmony {
 
-// 在harmony平台上，我们简化位图工厂处理
-// 这里提供一个基本的框架，实际实现可能需要根据harmony平台特性调整
+// Provide a simplified bitmap factory for Harmony.
+// This is a minimal framework; adjust the implementation for Harmony specifics if needed.
 
 class BitmapFactory {
 public:

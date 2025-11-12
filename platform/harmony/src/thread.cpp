@@ -27,7 +27,7 @@ void setCurrentThreadName(const std::string& name) {
 }
 
 void makeThreadLowPriority() {
-    // 设置为最低优先级
+    // Set to the lowest priority.
     setpriority(PRIO_PROCESS, 0, 19);
 }
 
@@ -39,15 +39,15 @@ void setCurrentThreadPriority(double priority) {
     setpriority(PRIO_PROCESS, 0, int(priority));
 }
 
-// 在harmony平台上，我们简化attachThread和detachThread的实现
+// On Harmony we use simplified attachThread/detachThread implementations.
 void attachThread() {
-    // harmony平台上不需要特殊的线程附加逻辑
-    // 这里提供一个空实现以满足链接需求
+    // Harmony does not require special thread attachment logic.
+    // Provide an empty implementation to satisfy the linker.
 }
 
 void detachThread() {
-    // harmony平台上不需要特殊的线程分离逻辑
-    // 这里提供一个空实现以满足链接需求
+    // Harmony does not require special thread detachment logic.
+    // Provide an empty implementation to satisfy the linker.
 }
 
 } // namespace platform

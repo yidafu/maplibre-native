@@ -96,38 +96,38 @@ public:
      * Schedules the async handle to be closed.
      * The actual deletion happens in the close callback.
      * 
-     * ⚡ CRITICAL FIX: 避免RunLoop退出死锁
+     * Critical Fix: Prevent RunLoop shutdown deadlock
      * 
-     * 问题：uv_close()的callback需要RunLoop运行才能触发
-     * 如果在RunLoop.stop()后析构AsyncTask，会导致：
-     * - 主线程等待RunLoop线程退出
-     * - RunLoop线程等待uv_close callback
-     * - callback永远不会被调用 → 死锁！
+     * Problem: uv_close() callbacks require the RunLoop to continue processing.
+     * If AsyncTask is destroyed after RunLoop::stop(), the following deadlock occurs:
+     * - The main thread waits for the RunLoop thread to join.
+     * - The RunLoop thread waits for the uv_close callback.
+     * - The callback never fires because the loop already stopped.
      * 
-     * 解决方案：使用 uv_close + 引用计数 + 立即清空data指针
-     * - 使用原子标志跟踪清理状态
-     * - uv_close标记handle为closing，libuv会在下次迭代清理
-     * - 设置data为完成标志，closeCallback可以安全地标记完成
-     * - 即使callback没有触发，也不会有内存安全问题
+     * Solution: use uv_close + reference counting + immediate data clearing.
+     * - Track cleanup state with an atomic flag.
+     * - uv_close marks the handle as closing; libuv cleans it during the next iteration.
+     * - Replace data with a completion flag so closeCallback can safely finalize cleanup.
+     * - Even if the callback never runs, there is no unsafe memory access.
      */
     ~Impl() {
         if (!async) {
             return;
         }
         
-        // 🛡️ 使用原子标志跟踪清理状态
-        // closeCallback 会设置这个标志并删除它
+        // Track cleanup state with an atomic flag.
+        // closeCallback sets the flag and deletes it.
         auto* completionFlag = new std::atomic<bool>(false);
         async->data = completionFlag;
         
-        // 调用uv_close标记handle为关闭状态
-        // libuv会在下次事件循环迭代时清理handle
-        // closeCallback 会在 RunLoop 运行时被调用
+        // Call uv_close to mark the handle as closing.
+        // libuv cleans it during the next event-loop iteration.
+        // closeCallback runs when the RunLoop iterates again.
         uv_close(reinterpret_cast<uv_handle_t*>(async), closeCallback);
         
-        // 注意：不要delete async，它会在closeCallback中被删除
-        //      如果closeCallback没被调用，会有小的内存泄漏
-        //      但这比崩溃或死锁要好得多
+        // Do not delete async here: closeCallback owns that responsibility.
+        // If closeCallback never runs, we leak a tiny amount of memory,
+        // which is preferable to a crash or deadlock.
         async = nullptr;
         
     }
@@ -176,7 +176,7 @@ private:
     static void closeCallback(uv_handle_t* handle) {
         auto* asyncHandle = reinterpret_cast<uv_async_t*>(handle);
         
-        // 如果有完成标志，标记完成并删除
+        // If a completion flag exists, mark it finished and delete it.
         if (asyncHandle->data) {
             auto* completionFlag = static_cast<std::atomic<bool>*>(asyncHandle->data);
             completionFlag->store(true, std::memory_order_release);
@@ -184,7 +184,7 @@ private:
             asyncHandle->data = nullptr;
         }
         
-        // 删除 async handle
+        // Delete the async handle.
         delete asyncHandle;
     }
     

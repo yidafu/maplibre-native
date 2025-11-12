@@ -5,8 +5,8 @@
 namespace mbgl {
 namespace harmony {
 
-// 在harmony平台上，我们简化位图处理
-// 这里提供一个基本的框架，实际实现可能需要根据harmony平台特性调整
+// Provide a simplified bitmap abstraction for Harmony.
+// Extend this skeleton as needed to match Harmony platform requirements.
 
 class Bitmap {
 public:

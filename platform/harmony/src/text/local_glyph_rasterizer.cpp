@@ -23,7 +23,7 @@ namespace mbgl {
 namespace {
 
 /**
- * 将 char32_t Unicode 码点转换为 UTF-8 字符串
+ * Convert a char32_t Unicode code point into a UTF-8 string.
  */
 std::string codepointToUTF8(char32_t codepoint) {
     std::string result;
@@ -50,7 +50,7 @@ std::string codepointToUTF8(char32_t codepoint) {
 } // namespace
 
 /**
- * 使用 TextBlob 方式（参考官方文档）
+ * Render glyphs using the TextBlob approach (per the official documentation).
  * https://developer.huawei.com/consumer/cn/doc/harmonyos-guides/textblock-drawing-c
  */
 class LocalGlyphRasterizer::Impl {
@@ -71,7 +71,7 @@ public:
     }
     
     /**
-     * 使用 TextBlob 渲染字形（按照官方文档正确实现）
+     * Render a glyph with TextBlob exactly as described in the documentation.
      */
     PremultipliedImage drawGlyphBitmap(char32_t codepoint, 
                                        const std::string& /* fontName */,
@@ -80,26 +80,26 @@ public:
         constexpr float fontSize = 24.0f;
         std::string text = codepointToUTF8(codepoint);
         
-        // 1. 创建字体对象
+        // 1. Create the font object.
         OH_Drawing_Font* font = OH_Drawing_FontCreate();
         if (!font) {
             Log::Error(Event::General, "HarmonyOS: Failed to create font");
             return PremultipliedImage(Size(bitmapSize, bitmapSize));
         }
         
-        // 设置字体大小
+        // Configure font size.
         OH_Drawing_FontSetTextSize(font, fontSize);
         
-        // 设置抗锯齿和其他属性
+        // Configure anti-aliasing and related properties.
         OH_Drawing_FontSetEdging(font, FONT_EDGING_ANTI_ALIAS);
         OH_Drawing_FontSetSubpixel(font, true);
         
-        // 设置粗体
+        // Apply fake bold when requested.
         if (bold) {
             OH_Drawing_FontSetFakeBoldText(font, true);
         }
         
-        // 2. 创建字块对象（按照官方文档）
+        // 2. Create the text blob as documented.
         OH_Drawing_TextBlob* textBlob = OH_Drawing_TextBlobCreateFromString(
             text.c_str(), 
             font, 
@@ -111,7 +111,7 @@ public:
             return PremultipliedImage(Size(bitmapSize, bitmapSize));
         }
         
-        // 3. 创建 Bitmap
+        // 3. Create the bitmap.
         OH_Drawing_Bitmap* bitmap = OH_Drawing_BitmapCreate();
         if (!bitmap) {
             Log::Error(Event::General, "HarmonyOS: Failed to create bitmap");
@@ -125,7 +125,7 @@ public:
         format.alphaFormat = ALPHA_FORMAT_PREMUL;
         OH_Drawing_BitmapBuild(bitmap, bitmapSize, bitmapSize, &format);
         
-        // 4. 创建 Canvas
+        // 4. Create the canvas.
         OH_Drawing_Canvas* canvas = OH_Drawing_CanvasCreate();
         if (!canvas) {
             Log::Error(Event::General, "HarmonyOS: Failed to create canvas");
@@ -138,7 +138,7 @@ public:
         OH_Drawing_CanvasBind(canvas, bitmap);
         OH_Drawing_CanvasClear(canvas, 0xFFFFFFFF);
         
-        // 5. 创建画刷（关键！按照官方文档）
+        // 5. Create the brush (critical per the documentation).
         OH_Drawing_Brush* brush = OH_Drawing_BrushCreate();
         if (!brush) {
             OH_Drawing_CanvasDestroy(canvas);
@@ -148,33 +148,33 @@ public:
             return PremultipliedImage(Size(bitmapSize, bitmapSize));
         }
         
-        // 设置画刷抗锯齿
+        // Enable anti-aliasing on the brush.
         OH_Drawing_BrushSetAntiAlias(brush, true);
-        // 设置画刷颜色为黑色
+        // Paint in opaque black.
         OH_Drawing_BrushSetColor(brush, 0xFF000000);
         
-        // 6. 对于中文，还需要画笔描边（参考官方文档"中文文字描边"）
+        // 6. For Chinese glyphs, add a pen outline (per "Chinese text stroke").
         OH_Drawing_Pen* pen = OH_Drawing_PenCreate();
         if (pen) {
             OH_Drawing_PenSetAntiAlias(pen, true);
-            OH_Drawing_PenSetWidth(pen, 0); // 无描边
+            OH_Drawing_PenSetWidth(pen, 0); // No stroke width.
             OH_Drawing_PenSetColor(pen, 0xFF000000);
         }
         
-        // 7. 绘制字块（按照官方文档顺序）
-        // 对于中文：先描边，再填充
+        // 7. Draw the text blob (follow the documented order).
+        // For Chinese glyphs: stroke first, then fill.
         if (pen) {
             OH_Drawing_CanvasAttachPen(canvas, pen);
             OH_Drawing_CanvasDrawTextBlob(canvas, textBlob, 5.0f, 25.0f);
             OH_Drawing_CanvasDetachPen(canvas);
         }
         
-        // 设置画刷填充效果
+        // Configure brush fill behavior.
         OH_Drawing_CanvasAttachBrush(canvas, brush);
-        // 绘制字块
+        // Draw the text blob.
         OH_Drawing_CanvasDrawTextBlob(canvas, textBlob, 5.0f, 25.0f);
         
-        // 8. 提取像素
+        // 8. Extract pixel data.
         void* pixels = OH_Drawing_BitmapGetPixels(bitmap);
         Size size(bitmapSize, bitmapSize);
         PremultipliedImage result(size);
@@ -183,7 +183,7 @@ public:
             std::memcpy(result.data.get(), pixels, bitmapSize * bitmapSize * 4);
         }
         
-        // 9. 清理（按照官方文档顺序）
+        // 9. Clean up objects in the documented order.
         OH_Drawing_CanvasDetachBrush(canvas);
         if (pen) {
             OH_Drawing_PenDestroy(pen);

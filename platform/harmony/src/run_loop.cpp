@@ -115,12 +115,12 @@ RunLoop::Impl::Impl(RunLoop*, RunLoop::Type type_)
     : type(type_) {
 }
 
-// ✅ 修复退出崩溃：closeHolder() 实现
+// Shutdown fix: closeHolder() implementation.
 void RunLoop::Impl::closeHolder() {
     if (!holderClosed) {
-        // 先保存 holder 指针，因为设置 holderClosed 后 holderHandle() 会返回 nullptr
+        // Save the holder pointer first because holderHandle() returns nullptr after holderClosed is set.
         auto* holderPtr = reinterpret_cast<uv_handle_t*>(holder);
-        holderClosed = true;  // ✅ 标记为已关闭，防止重复删除
+        holderClosed = true;  // Mark closed to prevent double deletion.
         uv_close(holderPtr, [](uv_handle_t* h) { 
             delete reinterpret_cast<uv_async_t*>(h); 
         });
@@ -134,13 +134,14 @@ RunLoop::Impl::~Impl() {
         Logger::warn("RunLoop", "RunLoop destroyed with %zu active watches", watchPoll.size());
     }
     
-    // ✅ 修复退出崩溃：安全清理 holder（如果还未删除）
-    // 注意：正常情况下 holder 应该在 stop() 或析构函数中已经通过 uv_close 删除
-    // 这里只是防御性编程，处理异常情况
+    // Shutdown fix: defensively clean the holder if it was not removed earlier.
+    // Normally stop() or the destructor should close it via uv_close.
+    // This is defensive programming for exceptional situations.
     if (holder && !holderClosed) {
         Logger::warn("RunLoop", "Holder not properly closed before Impl destruction");
-        // 注意：这里不能调用 uv_close，因为 loop 可能已经不可用
-        // 直接删除可能会造成小的内存泄漏（uv handle 未正确关闭），但比崩溃好
+        // Do not call uv_close here because the loop may already be invalid.
+        // Deleting directly may leak a small amount (the uv handle stays open),
+        // but that is safer than crashing.
         delete holder;
         holder = nullptr;
     }
@@ -209,15 +210,15 @@ RunLoop::RunLoop(Type type)
  * 4. Run loop multiple times to process close callbacks
  * 5. Close and free the loop (for Type::New)
  * 
- * ⚡ ENHANCED FIX: 确保所有 AsyncTask close callbacks 被处理
- * - 增加循环迭代次数，从 10 次提高到 50 次
- * - 添加详细日志记录清理状态
- * - 使用 uv_walk 检查未关闭的句柄
+ * Enhanced fix: ensure all AsyncTask close callbacks are processed.
+ * - Increase loop iterations from 10 to 50.
+ * - Add detailed logging of cleanup progress.
+ * - Use uv_walk to detect unclosed handles.
  */
 RunLoop::~RunLoop() {
     Scheduler::SetCurrent(nullptr);
 
-    // 强制关闭所有活跃的Watch句柄
+    // Force-close all active watch handles.
     if (!impl->watchPoll.empty()) {
         for (auto it = impl->watchPoll.begin(); it != impl->watchPoll.end(); ++it) {
             auto& watch = it->second;
@@ -228,8 +229,8 @@ RunLoop::~RunLoop() {
         impl->watchPoll.clear();
     }
 
-    // ✅ 修复退出崩溃：检查 holder 是否已经被关闭
-    // 如果在 stop() 中已经关闭，holderHandle() 会返回 nullptr，避免访问悬空指针
+    // Shutdown fix: verify whether the holder was already closed.
+    // If stop() closed it, holderHandle() returns nullptr and avoids dangling access.
     if (!impl->isHolderClosed() && impl->holderHandle()) {
         impl->closeHolder();
     } else {
@@ -239,15 +240,15 @@ RunLoop::~RunLoop() {
         return;
     }
 
-    // 销毁 AsyncTask - 这会调用 uv_close
-    // 注意：stop() 可能已经销毁了 impl->async
+    // Destroy AsyncTask; this issues uv_close.
+    // Note: stop() may have already destroyed impl->async.
     if (impl->async) {
         impl->async.reset();
     } else {
     }
 
-    // ⚡ 关键修复：增加循环迭代次数，确保 AsyncTask close callbacks 被处理
-    // 从 10 次提高到 50 次，给足够时间处理所有 pending close callbacks
+    // Key fix: increase loop iterations to ensure AsyncTask close callbacks complete.
+    // Raise the limit from 10 to 50 to give sufficient time for pending callbacks.
     const int MAX_CLEANUP_ITERATIONS = 50;
     int lastResult = 0;
     for (int i = 0; i < MAX_CLEANUP_ITERATIONS; i++) {
@@ -257,7 +258,7 @@ RunLoop::~RunLoop() {
             break;
         }
         
-        // 每10次迭代记录一次状态
+        // Record status every ten iterations.
         if ((i + 1) % 10 == 0) {
         }
     }
@@ -266,7 +267,7 @@ RunLoop::~RunLoop() {
         Logger::warn("RunLoop", "Loop still has %d active handles after %d iterations", lastResult, MAX_CLEANUP_ITERATIONS);
     }
 
-    // 检查并强制关闭任何剩余的句柄
+    // Inspect and force-close any remaining handles.
     int handleCount = 0;
     uv_walk(impl->loop, [](uv_handle_t* handle, void* arg) {
         int* count = static_cast<int*>(arg);
@@ -283,7 +284,7 @@ RunLoop::~RunLoop() {
         uv_run(impl->loop, UV_RUN_NOWAIT);
     }
 
-    // 关闭循环
+    // Close the loop.
     if (int err = uv_loop_close(impl->loop); err == UV_EBUSY) {
         Logger::error("RunLoop", "Failed to close loop: UV_EBUSY - loop still has active handles");
     } else if (err != 0) {
@@ -313,9 +314,9 @@ void RunLoop::wake() {
 void RunLoop::run() {
     MBGL_VERIFY_THREAD(impl->tid);
     
-    // ✅ 关键修复：确保当前线程的 Scheduler 设置正确
-    // 参考 Android MapRenderer::render() 的做法（line 231）
-    // 防御性编程：即使构造函数已设置，在事件循环开始前再次确认
+    // Key fix: ensure the current thread has the correct Scheduler.
+    // Mirrors the defensive pattern used in Android's MapRenderer::render().
+    // Even though the constructor sets it, confirm again before the loop runs.
     Scheduler::SetCurrent(this);
     
     uv_ref(impl->holderHandle());
@@ -325,8 +326,8 @@ void RunLoop::run() {
 void RunLoop::runOnce() {
     MBGL_VERIFY_THREAD(impl->tid);
     
-    // ✅ 确保 Scheduler 正确
-    // 参考 Android 的防御性编程模式
+    // Ensure Scheduler is set correctly.
+    // Follow the defensive pattern borrowed from Android.
     Scheduler::SetCurrent(this);
     
     uv_run(impl->loop, UV_RUN_NOWAIT);
@@ -334,39 +335,39 @@ void RunLoop::runOnce() {
 
 void RunLoop::stop() {
     invoke([this] {
-        // ⚡ ANR FIX: 关闭所有 active handles，让 RunLoop 能够立即退出
-        // 
-        // 根本问题：
-        // - uv_run(UV_RUN_NOWAIT) 只要有 active handle 就返回非零值
-        // - 即使关闭了 holder，impl->async 仍然 active
-        // - 导致 RunLoop 线程无法退出 → 主线程 join() 阻塞 → ANR
+        // ANR fix: close all active handles so the RunLoop can exit immediately.
         //
-        // 解决方案：
-        // 1. 销毁 impl->async（这会调用 uv_close）
-        // 2. 关闭 holder handle
-        // 3. 运行循环处理所有 close callbacks
-        // 4. uv_run() 会在所有 handles 关闭后返回 0
-        // 5. RunLoop 线程正常退出，无需 detach
+        // Root cause:
+        // - uv_run(UV_RUN_NOWAIT) returns non-zero while any handle remains active.
+        // - Even if the holder is closed, impl->async stays active.
+        // - The RunLoop thread cannot exit, the main thread blocks on join(), and ANR occurs.
+        //
+        // Solution:
+        // 1. Destroy impl->async (issues uv_close).
+        // 2. Close the holder handle.
+        // 3. Run the loop to process all close callbacks.
+        // 4. uv_run() returns 0 after every handle closes.
+        // 5. The RunLoop thread exits normally without detaching.
         
-        // ⚡ 关键修复 1：先销毁 AsyncTask（这会触发 uv_close）
+        // Key fix 1: destroy AsyncTask first (triggers uv_close).
         if (impl->async) {
             impl->async.reset();
             
-            // 立即运行一次循环，让 uv_close 生效（从 pending 变为 closing）
+            // Run the loop once so uv_close moves from pending to closing.
             uv_run(impl->loop, UV_RUN_NOWAIT);
         }
         
-        // ✅ 修复退出崩溃：使用 closeHolder() 方法，它会设置 holderClosed 标志
+        // Shutdown fix: closeHolder() sets holderClosed and prevents double deletion.
         if (!impl->isHolderClosed()) {
-            impl->closeHolder();  // 这会设置 holderClosed = true，防止析构函数重复删除
+            impl->closeHolder();  // Sets holderClosed = true to avoid double deletion.
             
-            // 立即运行一次循环，让 uv_close 生效
+            // Run the loop once so uv_close takes effect.
             uv_run(impl->loop, UV_RUN_NOWAIT);
         }
         
-        // 运行循环以处理所有 close callbacks
-        // 现在需要处理：holder + AsyncTask 的 async handle
-        const int MAX_ITERATIONS = 30;  // 增加迭代次数给更多时间
+        // Process all remaining close callbacks.
+        // Handles still active: holder + AsyncTask's async handle.
+        const int MAX_ITERATIONS = 30;  // Increase iterations to allow extra time.
         int lastResult = 0;
         
         for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -374,13 +375,13 @@ void RunLoop::stop() {
             lastResult = result;
             
             if (result == 0) {
-                // 没有更多 active handles - 完美！
+                // No active handles remain - great!
                 break;
             }
             
-            // 每5次迭代记录一次状态 + 诊断信息
+            // Every five iterations log the status for diagnostics.
             if ((i + 1) % 5 == 0) {
-                // 🔍 在迭代过程中也列出 handles 帮助诊断
+                // Also list handles during iteration to aid diagnostics.
                 if ((i + 1) == 10 || (i + 1) == 20) {
                     int handleCount = 0;
                     uv_walk(impl->loop, [](uv_handle_t* /* handle */, void* arg) {
@@ -392,9 +393,9 @@ void RunLoop::stop() {
         }
         
         if (lastResult > 0) {
-            Logger::warn("RunLoop", "⚠️ stop() completed with %d active handles remaining", lastResult);
+            Logger::warn("RunLoop", "Warning: stop() completed with %d active handles remaining", lastResult);
             
-            // 🔍 诊断：列出所有未关闭的 handles
+            // Diagnostic: list all handles that are still open.
             int handleCount = 0;
             uv_walk(impl->loop, [](uv_handle_t* handle, void* arg) {
                 int* count = static_cast<int*>(arg);
@@ -410,8 +411,8 @@ void RunLoop::stop() {
             
             Logger::warn("RunLoop", "   Total handles found: %d", handleCount);
             
-            // ⚡ 关键修复：强制关闭所有剩余的 handles
-            Logger::warn("RunLoop", "   ⚡ Force-closing all remaining handles NOW");
+            // Key fix: force-close every remaining handle.
+            Logger::warn("RunLoop", "   Force-closing all remaining handles now");
             uv_walk(impl->loop, [](uv_handle_t* handle, void*) {
                 if (!uv_is_closing(handle)) {
                     const char* typeName = uv_handle_type_name(uv_handle_get_type(handle));
@@ -421,7 +422,7 @@ void RunLoop::stop() {
                 }
             }, nullptr);
             
-            // 再次运行循环处理 close callbacks
+            // Run the loop again to process additional close callbacks.
             Logger::warn("RunLoop", "   Running loop to process force-close callbacks...");
             for (int i = 0; i < 50; i++) {
                 int result = uv_run(impl->loop, UV_RUN_NOWAIT);
@@ -429,7 +430,7 @@ void RunLoop::stop() {
                     break;
                 }
                 if (i == 49) {
-                    Logger::error("RunLoop", "   ⚠️  Still %d active handles after force-close!", result);
+                    Logger::error("RunLoop", "   Warning: still %d active handles after force-close!", result);
                 }
             }
         } else {

@@ -1,13 +1,13 @@
 #include <mbgl/util/logging.hpp>
 #include <mbgl/util/enum.hpp>
 
-// 包含新的 Logger 类
+// Include the new Logger class wrapper.
 #include "../maplibre_harmony/src/main/cpp/utils/logger.h"
 
 namespace mbgl {
 
 void Log::platformRecord(EventSeverity severity, const std::string& msg) {
-    // 使用新的 Logger 类封装日志打印
+    // Delegate logging to the new Logger wrapper.
     const char* severityStr = Enum<EventSeverity>::toString(severity);
     std::string formattedMsg = std::string("[") + severityStr + "] " + msg;
     

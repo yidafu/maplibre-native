@@ -8,8 +8,8 @@ namespace platform {
 std::string uppercase(const std::string& str) {
     auto env{harmony::AttachEnv()};
     
-    // Harmony平台上的字符串大写转换实现
-    // 这里使用简单的ASCII大写转换作为临时实现
+    // Harmony implementation of uppercase conversion.
+    // Use a simple ASCII-only conversion as a temporary solution.
     std::string result;
     result.reserve(str.size());
     
@@ -27,8 +27,8 @@ std::string uppercase(const std::string& str) {
 std::string lowercase(const std::string& str) {
     auto env{harmony::AttachEnv()};
     
-    // Harmony平台上的字符串小写转换实现
-    // 这里使用简单的ASCII小写转换作为临时实现
+    // Harmony implementation of lowercase conversion.
+    // Use a simple ASCII-only conversion as a temporary solution.
     std::string result;
     result.reserve(str.size());
     

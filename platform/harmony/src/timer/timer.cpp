@@ -1,17 +1,17 @@
 /**
  * HarmonyOS Timer Implementation - Thread Pool Version
  * 
- * 改进点：
- * - 使用线程池代替每个 Timer 创建独立线程
- * - 减少线程创建/销毁开销
- * - 复用工作线程，降低系统资源占用
+ * Improvements:
+ * - Use a thread pool instead of spawning a dedicated thread per timer.
+ * - Reduce the overhead of thread creation and destruction.
+ * - Reuse worker threads to lower overall resource usage.
  * 
- * 保持不变：
- * - 通过 RunLoop::invoke() 保证回调线程安全
- * - 避免鸿蒙主线程 loop 的 uv_timer_t 限制
- * - 符合官方建议："自己启动线程使用 libuv"
+ * Unchanged behavior:
+ * - Preserve thread safety by invoking callbacks via RunLoop::invoke().
+ * - Avoid the Harmony main-loop `uv_timer_t` limitations.
+ * - Follow the guidance: "start your own thread and run libuv there."
  * 
- * 官方文档参考：
+ * Official documentation:
  * https://developer.huawei.com/consumer/cn/doc/harmonyos-references-V5/libuv-V5
  */
 
@@ -48,10 +48,10 @@ public:
         callback = std::move(cb);
         running = true;
         
-        // 获取 RunLoop（确保回调在正确线程执行）
+        // Acquire the RunLoop to ensure callbacks execute on the correct thread.
         runLoop = RunLoop::Get();
 
-        // 提交到线程池（而不是创建独立线程）
+        // Submit work to the thread pool instead of creating a dedicated thread.
         TimerThreadPool::instance().submit([this]() {
             bool hasFired = false;
             while (running) {
@@ -63,7 +63,7 @@ public:
                         if (running && callback) {
                             callback();
                             
-                            // 非重复 timer 在回调后停止
+                            // Stop non-repeating timers after the callback executes.
                             if (repeatCount == 0) {
                                 stop();
                             }
@@ -73,11 +73,11 @@ public:
                     hasFired = true;
                 }
 
-                // 处理重复/非重复逻辑
+                // Handle repeat versus one-shot timers.
                 if (running && this->repeat.count() > 0) {
                     delay = this->repeat;
                 } else if (hasFired && this->repeat.count() == 0) {
-                    // 非重复 timer，给 lambda 时间执行
+                    // For one-shot timers, give the lambda time to finish.
                     delay = std::chrono::milliseconds(10);
                 }
             }

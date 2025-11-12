@@ -15,76 +15,76 @@ namespace mbgl {
 namespace util {
 
 /**
- * TimerThreadPool - 专门用于 Timer 的轻量级线程池
- * 
- * 设计目标：
- * - 减少频繁创建/销毁线程的开销
- * - 复用工作线程执行多个 timer 任务
- * - 线程安全，支持从任意线程提交任务
- * 
- * 使用场景：
- * - Timer::Impl 提交睡眠+回调任务
- * - 多个 Timer 共享固定数量的工作线程
- * 
- * HarmonyOS 考虑：
- * - 符合官方建议："自己启动线程，并在上面使用 libuv 完成自己的业务"
- * - 不依赖主线程 loop，避免双 loop 限制
- * - 通过 RunLoop::invoke() 确保回调线程安全
+ * TimerThreadPool - Lightweight thread pool dedicated to Timer tasks.
+ *
+ * Goals:
+ * - Reduce the overhead of frequently creating and destroying threads.
+ * - Reuse worker threads to execute multiple timer jobs.
+ * - Maintain thread safety, allowing submissions from any thread.
+ *
+ * Usage scenarios:
+ * - `Timer::Impl` submits sleep + callback work items.
+ * - Multiple `Timer` instances share a fixed set of worker threads.
+ *
+ * HarmonyOS considerations:
+ * - Follow the official guidance: "start your own thread and run libuv on it."
+ * - Avoid reliance on the main-thread loop to prevent dual-loop constraints.
+ * - Ensure callbacks remain thread-safe via `RunLoop::invoke()`.
  */
 class TimerThreadPool : private util::noncopyable {
 public:
     /**
-     * 构造函数
-     * 
-     * @param numThreads 工作线程数量（默认 4）
+     * Constructor.
+     *
+     * @param numThreads Number of worker threads (default: 4).
      */
     explicit TimerThreadPool(size_t numThreads = 4);
     
     /**
-     * 析构函数
-     * 
-     * 等待所有任务完成，然后关闭线程池
+     * Destructor.
+     *
+     * Wait for all tasks to finish, then shut down the pool.
      */
     ~TimerThreadPool();
     
     /**
-     * 提交任务到线程池
-     * 
-     * @param task 要执行的任务
-     * 
-     * 线程安全：可以从任意线程调用
+     * Submit a task to the pool.
+     *
+     * @param task The work item to execute.
+     *
+     * Thread-safe: may be called from any thread.
      */
     void submit(std::function<void()>&& task);
     
     /**
-     * 获取全局单例
-     * 
-     * 延迟初始化，第一次调用时创建
+     * Get the global singleton instance.
+     *
+     * Lazily initialized on the first call.
      */
     static TimerThreadPool& instance();
     
     /**
-     * 获取当前待处理任务数量
+     * Get the number of pending tasks.
      */
     size_t pendingTaskCount() const;
     
     /**
-     * 获取工作线程数量
+     * Get the number of worker threads.
      */
     size_t threadCount() const { return workers.size(); }
 
 private:
-    // 工作线程
+    // Worker threads.
     std::vector<std::thread> workers;
     
-    // 任务队列
+    // Task queue.
     std::queue<std::function<void()>> tasks;
     
-    // 同步原语
+    // Synchronization primitives.
     mutable std::mutex queueMutex;
     std::condition_variable condition;
     
-    // 停止标志
+    // Shutdown flag.
     std::atomic<bool> stop;
 };
 

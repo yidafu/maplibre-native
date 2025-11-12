@@ -4,8 +4,8 @@ namespace mbgl {
 namespace harmony {
 
 UniqueEnv AttachEnv() {
-    // harmony平台上不需要特殊的环境附加逻辑
-    // 返回一个空指针，EnvDeleter会处理释放
+    // Harmony does not require special environment attachment logic.
+    // Return a null pointer and let EnvDeleter manage the cleanup.
     return UniqueEnv(nullptr);
 }
 
