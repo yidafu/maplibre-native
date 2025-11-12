@@ -8,6 +8,7 @@ import { Layer } from './layers/Layer';
 import type { Source } from './sources/Source';
 import type { Icon, LightSpecification, TransitionOptions } from 'libmaplibre.so';
 import { Image } from './images/Image';
+import { Light } from './light/Light';
 
 // Source wrappers
 import { GeoJsonSource } from './sources/GeoJsonSource';
@@ -334,15 +335,25 @@ export class Style {
   /**
    * Get the lighting specification
    */
-  getLight(): LightSpecification | null {
-    return this.nativeInstance.getLight();
+  getLight(): Light | null {
+    const nativeLight = this.nativeInstance.getLight();
+    if (!nativeLight) {
+      return null;
+    }
+    return Light.fromNative(nativeLight as maplibre.Light);
   }
 
   /**
    * Set the lighting configuration
    */
-  setLight(lightJson: string): void {
-    this.nativeInstance.setLight(lightJson);
+  setLight(light: Light | LightSpecification): void {
+    let specification: LightSpecification;
+    if (light instanceof Light) {
+      specification = light.toSpecification();
+    } else {
+      specification = light;
+    }
+    this.nativeInstance.setLight(specification);
   }
 
   // ========== Transition management ==========

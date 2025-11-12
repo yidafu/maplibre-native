@@ -10,6 +10,7 @@
 #include <native_window/external_window.h>
 #include <memory>
 #include <functional>
+#include <mbgl/util/image.hpp>
 
 namespace mbgl {
 namespace harmony {
@@ -94,6 +95,10 @@ public:
     
     // Resume rendering
     void resume();
+
+    // Tile cache control
+    void setTileCacheEnabled(bool enabled);
+    bool getTileCacheEnabled() const;
     
     // Stop all network requests
     void stopAllRequests();
@@ -121,6 +126,10 @@ public:
     // FPS measurement (aligned with Android MapRenderer)
     void setOnFpsChangedCallback(std::function<void(double)> callback);
     void enableFpsMeasurement(bool enable);
+    
+    using SnapshotSuccessCallback = std::function<void(mbgl::PremultipliedImage&&, float)>;
+    using SnapshotErrorCallback = std::function<void(const std::string&)>;
+    void requestSnapshot(SnapshotSuccessCallback success, SnapshotErrorCallback error);
     
     // 📝 Instance identifier
     std::string getInstanceId() const { return instanceId_; }

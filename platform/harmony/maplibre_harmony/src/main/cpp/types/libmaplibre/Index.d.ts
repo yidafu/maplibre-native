@@ -59,6 +59,11 @@ export { IconFactory } from './IconFactory';
  */
 export { Style, StyleBuilder } from './Style';
 
+/**
+ * Light - 样式光照控制类
+ */
+export { Light } from './light/Light';
+
 // ========== GeoJSON 类型 (NAPI 类) ==========
 
 /**

@@ -535,6 +535,71 @@ void HarmonyMapRenderThread::resizeFramebuffer(int width, int height) {
     });
 }
 
+void HarmonyMapRenderThread::setTileCacheEnabled(bool enabled) {
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "setTileCacheEnabled() ignored: instance is being destroyed or stopping");
+        return;
+    }
+
+    invoke([this, enabled]() {
+        if (!renderer_) {
+            Logger::warn("MapRenderThread", "setTileCacheEnabled() ignored: renderer not initialized");
+            return;
+        }
+
+        try {
+            renderer_->setTileCacheEnabled(enabled);
+            Logger::info("MapRenderThread", "Tile cache %s", enabled ? "enabled" : "disabled");
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "setTileCacheEnabled failed: %s", e.what());
+        }
+    });
+}
+
+bool HarmonyMapRenderThread::getTileCacheEnabled() const {
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "getTileCacheEnabled() returning false: instance is being destroyed or stopping");
+        return false;
+    }
+
+    if (isOnThread()) {
+        if (!renderer_) {
+            Logger::warn("MapRenderThread", "getTileCacheEnabled() on render thread: renderer not initialized");
+            return false;
+        }
+        try {
+            return renderer_->getTileCacheEnabled();
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "getTileCacheEnabled failed on render thread: %s", e.what());
+            return false;
+        }
+    }
+
+    auto promise = std::make_shared<std::promise<bool>>();
+    auto future = promise->get_future();
+
+    const_cast<HarmonyMapRenderThread*>(this)->invoke([this, promise]() {
+        bool enabled = false;
+        if (!destroying_.load() && renderer_) {
+            try {
+                enabled = renderer_->getTileCacheEnabled();
+            } catch (const std::exception& e) {
+                Logger::error("MapRenderThread", "getTileCacheEnabled failed on dispatched call: %s", e.what());
+            }
+        } else {
+            Logger::warn("MapRenderThread", "getTileCacheEnabled dispatched: renderer unavailable");
+        }
+        promise->set_value(enabled);
+    });
+
+    try {
+        return future.get();
+    } catch (const std::exception& e) {
+        Logger::error("MapRenderThread", "getTileCacheEnabled future failed: %s", e.what());
+        return false;
+    }
+}
+
 std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
     const ScreenCoordinate& point,
     const RenderedQueryOptions& options) const {
@@ -589,6 +654,49 @@ void HarmonyMapRenderThread::enableFpsMeasurement(bool enable) {
     }
 }
 
+void HarmonyMapRenderThread::requestSnapshot(SnapshotSuccessCallback success, SnapshotErrorCallback error) {
+    if (destroying_.load() || shouldStop_) {
+        if (error) {
+            error("Renderer is shutting down");
+        }
+        return;
+    }
+    
+    if (!renderer_ || !backend_) {
+        if (error) {
+            error("Renderer backend not initialized");
+        }
+        return;
+    }
+    
+    bool accepted = false;
+    {
+        std::lock_guard<std::mutex> lock(snapshotMutex_);
+        if (!snapshotPending_) {
+            snapshotSuccessCallback_ = std::move(success);
+            snapshotErrorCallback_ = std::move(error);
+            snapshotPending_ = true;
+            accepted = true;
+        }
+    }
+    
+    if (!accepted) {
+        if (error) {
+            error("Snapshot already in progress");
+        }
+        return;
+    }
+    
+    invoke([this]() {
+        if (destroying_.load() || shouldStop_) {
+            return;
+        }
+        if (map_) {
+            map_->triggerRepaint();
+        }
+    });
+}
+
 // ==================== VSync control ====================
 
 void HarmonyMapRenderThread::onVSyncFrame() {
@@ -626,6 +734,10 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     auto params = pendingUpdateParams_;
     pendingUpdateParams_.reset();
     
+    std::unique_ptr<mbgl::PremultipliedImage> snapshotImage;
+    SnapshotSuccessCallback snapshotSuccess;
+    SnapshotErrorCallback snapshotError;
+    
     // Execute the actual render
     if (params && renderer_ && backend_) {
         try {
@@ -636,6 +748,30 @@ void HarmonyMapRenderThread::onVSyncFrame() {
             gfx::BackendScope scope{glBackend->getImpl()};
             
             renderer_->render(params);
+            
+            bool shouldCapture = false;
+            {
+                std::lock_guard<std::mutex> lock(snapshotMutex_);
+                if (snapshotPending_) {
+                    shouldCapture = true;
+                    snapshotPending_ = false;
+                    snapshotSuccess = std::move(snapshotSuccessCallback_);
+                    snapshotError = std::move(snapshotErrorCallback_);
+                    snapshotSuccessCallback_ = nullptr;
+                    snapshotErrorCallback_ = nullptr;
+                }
+            }
+            
+            if (shouldCapture) {
+                try {
+                    auto image = glBackend->readFramebuffer();
+                    snapshotImage = std::make_unique<mbgl::PremultipliedImage>(std::move(image));
+                } catch (const std::exception& e) {
+                    if (snapshotError) {
+                        snapshotError(std::string("Failed to read framebuffer: ") + e.what());
+                    }
+                }
+            }
             
             // FPS measurement (mirrors Android MapRenderer::updateFps)
             if (measureFps_.load() && fpsCallback_) {
@@ -651,9 +787,11 @@ void HarmonyMapRenderThread::onVSyncFrame() {
                 
                 lastFrameTime_ = currentTime;
             }
-            
         } catch (const std::exception& e) {
             Logger::error("MapRenderThread", "Render failed on VSync: %s", e.what());
+            if (snapshotError) {
+                snapshotError(std::string("Render failed: ") + e.what());
+            }
         }
     } else if (map_) {
         // If no parameters are pending, request another repaint (Map decides whether it is necessary)
@@ -663,6 +801,10 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     
     // Note: if further rendering is needed, Map will call update() again inside onDidFinishRenderingFrame
     // This re-requests VSync and maintains the synchronized render loop
+    
+    if (snapshotImage && snapshotSuccess) {
+        snapshotSuccess(std::move(*snapshotImage), pixelRatio_);
+    }
 }
 
 } // namespace harmony

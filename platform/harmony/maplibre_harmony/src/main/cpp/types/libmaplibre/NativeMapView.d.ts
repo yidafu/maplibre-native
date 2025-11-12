@@ -3,6 +3,7 @@
  * NativeMapView C++ NAPI Bindings
  */
 
+import image from '@ohos.multimedia.image';
 import type { Style } from './Style';
 import type { Icon } from './Icon';
 import type { Image } from './images/Image';
@@ -14,6 +15,7 @@ import type { Source } from './sources';
 import type { IFeature, Geometry } from './geojson';
 import type { ExpressionLiteral } from './ExpressionTypes';
 import type { LightSpecification, MapSnapshotterObserver } from './CommonTypes';
+import type { Light } from './light/Light';
 
 // ==================== Type Definitions ====================
 
@@ -335,7 +337,7 @@ export class NativeMapView {
    * 设置经纬度边界
    * @param bounds 边界对象
    */
-  setLatLngBounds(bounds: LatLngBounds): void;
+  setLatLngBounds(bounds: LatLngBounds | null): void;
 
   // ========== Camera Control ==========
 
@@ -589,9 +591,33 @@ export class NativeMapView {
   // ========== Snapshot ==========
 
   /**
-   * 计划快照生成
+   * 请求一次地图快照，渲染完成后会触发回调。
    */
   scheduleSnapshot(): void;
+
+  /**
+   * 注册快照完成回调。
+   * @param listener 回调函数，参数为快照结果对象。
+   */
+  addOnSnapshotReadyListener(listener: (result: MapViewSnapshotPayload) => void): void;
+
+  /**
+   * 移除快照完成回调。
+   * @param listener 需要移除的回调函数。
+   */
+  removeOnSnapshotReadyListener(listener: (result: MapViewSnapshotPayload) => void): void;
+
+  /**
+   * 注册快照错误回调。
+   * @param listener 回调函数，参数为错误信息。
+   */
+  addOnSnapshotErrorListener(listener: (message: string) => void): void;
+
+  /**
+   * 移除快照错误回调。
+   * @param listener 需要移除的回调函数。
+   */
+  removeOnSnapshotErrorListener(listener: (message: string) => void): void;
 
   // ========== Annotations ==========
 
@@ -883,9 +909,9 @@ export class NativeMapView {
 
   /**
    * 获取光照设置
-   * @returns 光照对象（包含位置、颜色、强度等属性）
+   * @returns 光照对象（NAPI Light 实例），如果样式尚未定义光照则返回 null
    */
-  getLight(): LightSpecification;
+  getLight(): Light | null;
 
   // ========== Layers ==========
 
@@ -967,22 +993,21 @@ export class NativeMapView {
   // ========== Images ==========
 
   /**
-   * 添加图像（原始位图方式，不推荐）
-   * @deprecated 建议使用 Image 类或 Icon 对象方式
+   * 添加图像（直接传入 HarmonyOS PixelMap）
    * @param name 图像名称
    * @param bitmap PixelMap 位图数据（HarmonyOS PixelMap 对象）
-   * @param pixelRatio 像素比
+   * @param pixelRatio 像素比，默认 1.0
    * @param sdf 是否为 SDF 图像
-   * 
-   * @note 此方法当前 PixelMap 转换未实现，建议使用 Image 类或 Style.addImage()
+   *
+   * @remarks
+   * 内部会将 PixelMap 转换为 `PremultipliedImage` 并在渲染线程注册到样式中。
+   * 添加成功后将自动触发地图重绘。
    */
-  addImage(name: string, bitmap: unknown, pixelRatio: number, sdf: boolean): void;
+  addImage(name: string, bitmap: image.PixelMap, pixelRatio: number, sdf: boolean): void;
 
   /**
    * 批量添加图像
    * @param images 图像数组（Image 对象数组）
-   * 
-   * @note 此方法当前在 C++ 层未实现，建议逐个添加或使用 Style API
    */
   addImages(images: Image[]): void;
 
@@ -1465,6 +1490,23 @@ export interface PixelCoordinateResult {
 export interface LatLngResult {
   latitude: number;
   longitude: number;
+}
+
+/**
+ * MapView 快照回调负载
+ */
+export interface MapViewSnapshotPayload {
+  /** 图像数据（RGBA 格式） */
+  data: ArrayBuffer;
+
+  /** 图像宽度 */
+  width: number;
+
+  /** 图像高度 */
+  height: number;
+
+  /** 像素密度 */
+  pixelRatio: number;
 }
 
 /**

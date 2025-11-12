@@ -1,32 +1,150 @@
-import type { LightSpecification } from 'libmaplibre.so';
+import maplibre from 'libmaplibre.so';
+import type { LightSpecification, TransitionOptions } from 'libmaplibre.so';
+
+interface LightPositionInput {
+  radial: number;
+  azimuthal: number;
+  polar?: number;
+}
+
+interface LightPositionState {
+  radial: number;
+  azimuthal: number;
+  polar: number;
+}
+
+interface NativeLightPosition {
+  radial: number;
+  azimuthal: number;
+  polar: number;
+}
+
+class InternalMarker {
+  static readonly INSTANCE: InternalMarker = new InternalMarker();
+
+  private constructor() {
+  }
+}
 
 /**
- * Light - 光照类型
- * 
- * 从 libmaplibre.so 重新导出 LightSpecification。
- * C++ 层返回的是符合此规范的普通 JavaScript 对象（对象字面量）。
- * 
- * 规范参考：https://maplibre.org/maplibre-style-spec/light/
- * 
- * @example
- * ```typescript
- * // 获取当前光照
- * const light = map.getLight();
- * 
- * // 创建光照配置
- * const lightConfig: Light = {
- *   anchor: 'viewport',
- *   position: [1.15, 210, 30],
- *   color: '#ffffff',
- *   intensity: 0.5
- * };
- * ```
+ * Light - 样式光照控制类（与 Android/iOS 接口一致）
+ *
+ * 通过 Style.getLight() / MapLibreMap.getLight() 获取实例
  */
-export type Light = LightSpecification;
+export class Light {
+  static readonly _TYPE_: string = 'Light';
+  private nativeInstance: maplibre.Light;
+
+  private constructor(_: InternalMarker, nativeInstance: maplibre.Light) {
+    this.nativeInstance = nativeInstance;
+  }
+
+  static fromNative(nativeInstance: maplibre.Light): Light {
+    return new Light(InternalMarker.INSTANCE, nativeInstance);
+  }
+
+  getNative(): maplibre.Light {
+    return this.nativeInstance;
+  }
+
+  getAnchor(): 'map' | 'viewport' {
+    return this.nativeInstance.getAnchor() as 'map' | 'viewport';
+  }
+
+  setAnchor(anchor: 'map' | 'viewport'): Light {
+    this.nativeInstance.setAnchor(anchor);
+    return this;
+  }
+
+  private normalizePosition(position: LightPositionInput | number[]): LightPositionState {
+    let normalized: LightPositionState = { radial: 0, azimuthal: 0, polar: 0 };
+
+    if (position instanceof Array) {
+      const length: number = position.length;
+      normalized.radial = length >= 1 ? (position[0] as number) : 0;
+      normalized.azimuthal = length >= 2 ? (position[1] as number) : 0;
+      normalized.polar = length >= 3 ? (position[2] as number) : 0;
+      return normalized;
+    }
+
+    const input: LightPositionInput = position as LightPositionInput;
+    normalized.radial = input.radial;
+    normalized.azimuthal = input.azimuthal;
+    normalized.polar = input.polar === undefined ? 0 : input.polar;
+    return normalized;
+  }
+
+  getPosition(): LightPositionState {
+    const raw = this.nativeInstance.getPosition() as NativeLightPosition;
+    const result: LightPositionState = { radial: raw.radial, azimuthal: raw.azimuthal, polar: raw.polar };
+    return result;
+  }
+
+  setPosition(position: LightPositionInput | number[]): Light {
+    const normalized = this.normalizePosition(position);
+    this.nativeInstance.setPosition(normalized);
+    return this;
+  }
+
+  getPositionTransition(): TransitionOptions {
+    return this.nativeInstance.getPositionTransition() as TransitionOptions;
+  }
+
+  setPositionTransition(duration: number, delay: number = 0): Light {
+    this.nativeInstance.setPositionTransition(duration, delay);
+    return this;
+  }
+
+  getColor(): string {
+    return this.nativeInstance.getColor() as string;
+  }
+
+  setColor(color: string): Light {
+    this.nativeInstance.setColor(color);
+    return this;
+  }
+
+  getColorTransition(): TransitionOptions {
+    return this.nativeInstance.getColorTransition() as TransitionOptions;
+  }
+
+  setColorTransition(duration: number, delay: number = 0): Light {
+    this.nativeInstance.setColorTransition(duration, delay);
+    return this;
+  }
+
+  getIntensity(): number {
+    return this.nativeInstance.getIntensity() as number;
+  }
+
+  setIntensity(intensity: number): Light {
+    this.nativeInstance.setIntensity(intensity);
+    return this;
+  }
+
+  getIntensityTransition(): TransitionOptions {
+    return this.nativeInstance.getIntensityTransition() as TransitionOptions;
+  }
+
+  setIntensityTransition(duration: number, delay: number = 0): Light {
+    this.nativeInstance.setIntensityTransition(duration, delay);
+    return this;
+  }
+
+  toSpecification(): LightSpecification {
+    const position = this.getPosition();
+    return {
+      anchor: this.getAnchor(),
+      position: [position.radial, position.azimuthal, position.polar],
+      color: this.getColor(),
+      intensity: this.getIntensity()
+    };
+  }
+}
 
 /**
  * LightOptions - 光照选项接口（向后兼容）
- * 
+ *
  * @deprecated 请使用 Light 或 LightSpecification 类型
  */
 export type LightOptions = LightSpecification;

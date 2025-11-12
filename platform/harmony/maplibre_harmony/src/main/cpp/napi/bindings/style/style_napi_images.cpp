@@ -8,7 +8,11 @@
 #include <mbgl/style/light.hpp>
 #include <mbgl/style/transition_options.hpp>
 #include <mbgl/util/image.hpp>
+#include <mbgl/util/color.hpp>
 #include <vector>
+#include "style/light_harmony.hpp"
+#include <functional>
+#include <array>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -729,23 +733,13 @@ napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
     }
     
     try {
-        const mbgl::style::Light* light = style->map->getStyle().getLight();
+        mbgl::style::Light* light = style->map->getStyle().getLight();
         if (!light) {
+            Logger::warn("StyleNAPI", "GetLight: Style has no light definition");
             return napiArgs.Null();
         }
         
-        // Create the return object
-        napi_value result;
-        napi_create_object(env, &result);
-        
-        // Note: retrieving Light properties is involved and should use the conversion API
-        // This implementation returns only basic information for now
-        Logger::info("StyleNAPI", "GetLight called");
-        
-        // TODO: fully convert Light properties
-        // Reference Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
-        
-        return result;
+        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *style->map, *light);
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetLight failed: %s", e.what());
         return napiArgs.Null();
@@ -774,14 +768,182 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Create a new Light object
-        // TODO: parse the light options object and apply every property
-        // Reference Android: platform/android/MapLibreAndroid/src/cpp/style/light.cpp
-        
-        Logger::info("StyleNAPI", "SetLight called (implementation incomplete)");
-        Logger::warn("StyleNAPI", "SetLight: Full light property parsing not yet implemented");
+        mbgl::style::Light* light = style->map->getStyle().getLight();
+        if (!light) {
+            Logger::warn("StyleNAPI", "SetLight: Style does not contain a light definition");
+            return napiArgs.Undefined();
+        }
 
-        (void)lightOptions; // suppress unused warning until fully implemented
+        napi_valuetype valueType = napi_undefined;
+        napi_typeof(env, lightOptions, &valueType);
+
+        if (valueType == napi_string) {
+            std::string json = GetStringFromValue(env, lightOptions);
+            Logger::warn("StyleNAPI", "SetLight: JSON string parsing not supported yet, ignoring input");
+            Logger::info("StyleNAPI", "SetLight input JSON: %s", json.c_str());
+            return napiArgs.Undefined();
+        }
+
+        if (valueType != napi_object) {
+            Logger::warn("StyleNAPI", "SetLight: Expected object argument");
+            return napiArgs.Undefined();
+        }
+
+        auto hasProperty = [&](napi_value object, const char* name, napi_value& out) -> bool {
+            bool has = false;
+            if (napi_has_named_property(env, object, name, &has) != napi_ok || !has) {
+                return false;
+            }
+            if (napi_get_named_property(env, object, name, &out) != napi_ok) {
+                return false;
+            }
+            return true;
+        };
+
+        // anchor
+        {
+            napi_value anchorValue;
+            if (hasProperty(lightOptions, "anchor", anchorValue)) {
+                std::string anchor = GetStringFromValue(env, anchorValue);
+                if (anchor == "map") {
+                    light->setAnchor(mbgl::style::LightAnchorType::Map);
+                } else if (anchor == "viewport") {
+                    light->setAnchor(mbgl::style::LightAnchorType::Viewport);
+                } else {
+                    Logger::warn("StyleNAPI", "SetLight: Unknown anchor '%s'", anchor.c_str());
+                }
+            }
+        }
+
+        // position
+        {
+            napi_value positionValue;
+            if (hasProperty(lightOptions, "position", positionValue)) {
+                std::array<float, 3> spherical = {1.15f, 210.0f, 30.0f};
+                bool parsed = false;
+                bool isArray = false;
+                if (napi_is_array(env, positionValue, &isArray) == napi_ok && isArray) {
+                    uint32_t length = 0;
+                    napi_get_array_length(env, positionValue, &length);
+                    if (length >= 2) {
+                        double radial = 0.0;
+                        double azimuthal = 0.0;
+                        double polar = 0.0;
+                        napi_value element;
+                        napi_get_element(env, positionValue, 0, &element);
+                        napi_get_value_double(env, element, &radial);
+                        napi_get_element(env, positionValue, 1, &element);
+                        napi_get_value_double(env, element, &azimuthal);
+                        if (length >= 3) {
+                            napi_get_element(env, positionValue, 2, &element);
+                            napi_get_value_double(env, element, &polar);
+                        }
+                        spherical = {static_cast<float>(radial),
+                                     static_cast<float>(azimuthal),
+                                     static_cast<float>(polar)};
+                        parsed = true;
+                    }
+                } else {
+                    napi_value radialValue, azimuthalValue, polarValue;
+                    double radial = 0.0, azimuthal = 0.0, polar = 0.0;
+                    if (hasProperty(positionValue, "radial", radialValue) &&
+                        hasProperty(positionValue, "azimuthal", azimuthalValue)) {
+                        napi_get_value_double(env, radialValue, &radial);
+                        napi_get_value_double(env, azimuthalValue, &azimuthal);
+                        if (hasProperty(positionValue, "polar", polarValue)) {
+                            napi_get_value_double(env, polarValue, &polar);
+                        }
+                        spherical = {static_cast<float>(radial),
+                                     static_cast<float>(azimuthal),
+                                     static_cast<float>(polar)};
+                        parsed = true;
+                    }
+                }
+
+                if (parsed) {
+                    mbgl::style::Position position(spherical);
+                    light->setPosition(position);
+                } else {
+                    Logger::warn("StyleNAPI", "SetLight: Failed to parse position");
+                }
+            }
+        }
+
+        // color
+        {
+            napi_value colorValue;
+            if (hasProperty(lightOptions, "color", colorValue)) {
+                std::string colorStr = GetStringFromValue(env, colorValue);
+                auto parsedColor = mbgl::Color::parse(colorStr);
+                if (parsedColor) {
+                    light->setColor(*parsedColor);
+                } else {
+                    Logger::warn("StyleNAPI", "SetLight: Invalid color '%s'", colorStr.c_str());
+                }
+            }
+        }
+
+        // intensity
+        {
+            napi_value intensityValue;
+            if (hasProperty(lightOptions, "intensity", intensityValue)) {
+                double intensity = 0.0;
+                if (napi_get_value_double(env, intensityValue, &intensity) == napi_ok) {
+                    light->setIntensity(static_cast<float>(intensity));
+                } else {
+                    Logger::warn("StyleNAPI", "SetLight: Failed to parse intensity");
+                }
+            }
+        }
+
+        auto applyTransition = [&](const char* propertyName,
+                                   const std::function<void(const mbgl::style::TransitionOptions&)>& setter) {
+            napi_value transitionValue;
+            if (!hasProperty(lightOptions, propertyName, transitionValue)) {
+                return;
+            }
+
+            napi_valuetype transitionType = napi_undefined;
+            napi_typeof(env, transitionValue, &transitionType);
+            if (transitionType != napi_object) {
+                Logger::warn("StyleNAPI", "SetLight: Transition '%s' must be an object", propertyName);
+                return;
+            }
+
+            mbgl::style::TransitionOptions options;
+
+            napi_value durationValue;
+            if (hasProperty(transitionValue, "duration", durationValue)) {
+                double durationMs = 0.0;
+                if (napi_get_value_double(env, durationValue, &durationMs) == napi_ok) {
+                    options.duration.emplace(mbgl::Milliseconds(static_cast<int64_t>(durationMs)));
+                }
+            }
+
+            napi_value delayValue;
+            if (hasProperty(transitionValue, "delay", delayValue)) {
+                double delayMs = 0.0;
+                if (napi_get_value_double(env, delayValue, &delayMs) == napi_ok) {
+                    options.delay.emplace(mbgl::Milliseconds(static_cast<int64_t>(delayMs)));
+                }
+            }
+
+            setter(options);
+        };
+
+        applyTransition("positionTransition", [&](const mbgl::style::TransitionOptions& options) {
+            light->setPositionTransition(options);
+        });
+
+        applyTransition("colorTransition", [&](const mbgl::style::TransitionOptions& options) {
+            light->setColorTransition(options);
+        });
+
+        applyTransition("intensityTransition", [&](const mbgl::style::TransitionOptions& options) {
+            light->setIntensityTransition(options);
+        });
+
+        Logger::info("StyleNAPI", "SetLight applied light specification");
 
         return napiArgs.Undefined();
     } catch (const std::exception& e) {

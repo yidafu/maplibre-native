@@ -9,6 +9,8 @@
 #include "rendering/harmony_renderer.hpp"
 #include <mbgl/style/style.hpp>
 #include <mbgl/map/camera.hpp>
+#include <vector>
+#include <cstring>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -1360,9 +1362,97 @@ napi_value NativeMapView::getVisibleCoordinateBounds(napi_env env, napi_callback
 }
 
 napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info) {
-    // Snapshot functionality requires renderer callback support
-    // Snapshot functionality requires renderer callback support
     NapiArgs args(env, info);
+    
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "scheduleSnapshot: Failed to unwrap instance");
+        return args.Undefined();
+    }
+    
+    if (!instance->map || !instance->harmonyRenderer) {
+        Logger::warn("NativeMapView", "scheduleSnapshot: Map or renderer not initialized");
+        return args.Undefined();
+    }
+    
+    if (!instance->callbackManager_) {
+        Logger::error("NativeMapView", "scheduleSnapshot: CallbackManager not initialized");
+        return args.Undefined();
+    }
+    
+    if (!instance->callbackManager_->HasCallback("onSnapshotReady")) {
+        Logger::warn("NativeMapView", "scheduleSnapshot: No snapshot listeners registered");
+        return args.Undefined();
+    }
+    
+    {
+        std::lock_guard<std::mutex> lock(instance->snapshotMutex_);
+        if (instance->snapshotInProgress_) {
+            Logger::warn("NativeMapView", "scheduleSnapshot: Snapshot request already in progress");
+            return args.Undefined();
+        }
+        instance->snapshotInProgress_ = true;
+    }
+    
+    auto callbackManager = instance->callbackManager_;
+    
+    try {
+        instance->harmonyRenderer->requestSnapshot(
+            [instance, callbackManager](mbgl::PremultipliedImage&& image, float pixelRatioValue) {
+                auto dataPtr = std::make_shared<std::vector<uint8_t>>(image.bytes());
+                if (!dataPtr->empty()) {
+                    std::memcpy(dataPtr->data(), image.data.get(), image.bytes());
+                }
+                uint32_t width = image.size.width;
+                uint32_t height = image.size.height;
+                
+                if (callbackManager) {
+                    callbackManager->InvokeCallbackWithObject(
+                        "onSnapshotReady",
+                        [dataPtr, width, height, pixelRatioValue](napi_env env, napi_value result) {
+                            void* buffer = nullptr;
+                            napi_value arrayBuffer;
+                            napi_status status = napi_create_arraybuffer(env, dataPtr->size(), &buffer, &arrayBuffer);
+                            if (status == napi_ok && buffer && !dataPtr->empty()) {
+                                std::memcpy(buffer, dataPtr->data(), dataPtr->size());
+                            } else {
+                                Logger::error("NativeMapView", "scheduleSnapshot: Failed to create ArrayBuffer for snapshot data");
+                                napi_get_undefined(env, &arrayBuffer);
+                            }
+                            
+                            napi_set_named_property(env, result, "data", arrayBuffer);
+                            
+                            napi_value widthValue;
+                            napi_create_uint32(env, width, &widthValue);
+                            napi_set_named_property(env, result, "width", widthValue);
+                            
+                            napi_value heightValue;
+                            napi_create_uint32(env, height, &heightValue);
+                            napi_set_named_property(env, result, "height", heightValue);
+                            
+                            napi_value pixelRatio;
+                            napi_create_double(env, static_cast<double>(pixelRatioValue), &pixelRatio);
+                            napi_set_named_property(env, result, "pixelRatio", pixelRatio);
+                        });
+                }
+                
+                instance->resetSnapshotState();
+            },
+            [instance, callbackManager](const std::string& message) {
+                Logger::error("NativeMapView", "scheduleSnapshot: %s", message.c_str());
+                if (callbackManager && callbackManager->HasCallback("onSnapshotError")) {
+                    callbackManager->InvokeCallbackWithString("onSnapshotError", message);
+                }
+                instance->resetSnapshotState();
+            });
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "scheduleSnapshot: Failed to request snapshot - %s", e.what());
+        if (instance->callbackManager_->HasCallback("onSnapshotError")) {
+            instance->callbackManager_->InvokeCallbackWithString("onSnapshotError", e.what());
+        }
+        instance->resetSnapshotState();
+    }
+    
     return args.Undefined();
 }
 
@@ -1424,6 +1514,11 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
     }
     
     return args.Undefined();
+}
+
+void NativeMapView::resetSnapshotState() {
+    std::lock_guard<std::mutex> lock(snapshotMutex_);
+    snapshotInProgress_ = false;
 }
 
 

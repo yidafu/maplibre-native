@@ -1,4 +1,5 @@
-import maplibre, { EdgeInsets, NativeMapView } from 'libmaplibre.so';
+import maplibre, { EdgeInsets, MapViewSnapshotPayload, NativeMapView } from 'libmaplibre.so';
+import image from '@ohos.multimedia.image';
 import type { Icon, ExpressionLiteral as NapiExpressionLiteral, Geometry } from 'libmaplibre.so';
 import { MapLibreMapOptions } from './MapLibreMapOptions';
 import { CameraPosition } from './camera/CameraPosition';
@@ -879,8 +880,12 @@ export class MapLibreMap {
     return this.styleLoaded;
   }
 
-  public setLatLngBounds(bounds: LatLngBounds): void {
+  public setLatLngBounds(bounds?: LatLngBounds | null): void {
     if (this.destroyed) {
+      return;
+    }
+    if (!bounds) {
+      this.nativeMapView.setLatLngBounds(null);
       return;
     }
     this.nativeMapView.setLatLngBounds(bounds);
@@ -1499,6 +1504,81 @@ export class MapLibreMap {
     this.nativeMapView.scheduleSnapshot();
   }
 
+  /**
+   * 获取当前地图的快照 PixelMap。
+   */
+  public snapshot(): Promise<image.PixelMap> {
+    if (this.destroyed) {
+      return Promise.reject(new Error('MapLibreMap has been destroyed'));
+    }
+    if (!this.nativeMapView) {
+      return Promise.reject(new Error('NativeMapView not initialized'));
+    }
+
+    return new Promise((resolve, reject) => {
+      let readyListener: (payload: MapViewSnapshotPayload) => Promise<void>;
+      let errorListener: (message: string) => void;
+
+      const cleanup = (): void => {
+        if (!this.nativeMapView) {
+          return;
+        }
+        this.nativeMapView.removeOnSnapshotReadyListener(readyListener);
+        this.nativeMapView.removeOnSnapshotErrorListener(errorListener);
+      };
+
+      readyListener = async (payload: MapViewSnapshotPayload): Promise<void> => {
+        cleanup();
+        try {
+          const pixelMap = await this.createPixelMapFromSnapshot(payload);
+          resolve(pixelMap);
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(`${error}`));
+        }
+      };
+
+      errorListener = (message: string): void => {
+        cleanup();
+        reject(new Error(message));
+      };
+
+      this.nativeMapView.addOnSnapshotReadyListener(readyListener);
+      this.nativeMapView.addOnSnapshotErrorListener(errorListener);
+
+      try {
+        this.nativeMapView.scheduleSnapshot();
+      } catch (error) {
+        cleanup();
+        reject(error instanceof Error ? error : new Error(`${error}`));
+      }
+    });
+  }
+  private async createPixelMapFromSnapshot(payload: MapViewSnapshotPayload): Promise<image.PixelMap> {
+    return new Promise((resolve, reject) => {
+      try {
+        const imageInfo: image.ImageInfo = {
+          size: { width: payload.width, height: payload.height },
+          pixelFormat: image.PixelMapFormat.RGBA_8888,
+          alphaType: image.AlphaType.PREMUL,
+          density: 160,
+          stride: payload.width * 4,
+          mimeType: 'image/png',
+          isHdr: false,
+        };
+
+        image.createPixelMap(payload.data, imageInfo, (err, pixelMap) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(pixelMap);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   // Camera position
   public getCameraPosition(): CameraPosition | null {
     if (this.destroyed) {
@@ -1877,7 +1957,11 @@ export class MapLibreMap {
     if (this.destroyed) {
       return null;
     }
-    return this.nativeMapView.getLight();
+    const nativeLight = this.nativeMapView.getLight();
+    if (!nativeLight) {
+      return null;
+    }
+    return Light.fromNative(nativeLight as maplibre.Light);
   }
 
   // Layer helpers — strong typed Layer
@@ -2006,6 +2090,21 @@ export class MapLibreMap {
   }
 
   // Images
+  /**
+   * 从 PixelMap 注册图像资源
+   *
+   * @param name 图像名称
+   * @param pixelMap HarmonyOS PixelMap 对象
+   * @param pixelRatio 像素比，默认 1.0
+   * @param sdf 是否为 SDF 图像
+   */
+  public addImage(name: string, pixelMap: image.PixelMap, pixelRatio: number = 1.0, sdf: boolean = false): void {
+    if (this.destroyed) {
+      return;
+    }
+    this.nativeMapView.addImage(name, pixelMap, pixelRatio, sdf);
+  }
+
   public addImages(images: Image[]): void {
     if (this.destroyed) {
       return;

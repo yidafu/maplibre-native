@@ -7,6 +7,7 @@
 #include <mbgl/map/map_observer.hpp>
 #include <mbgl/gfx/backend.hpp>
 #include <mbgl/actor/scheduler.hpp>
+#include <mbgl/util/image.hpp>
 
 #include <memory>
 #include <thread>
@@ -159,6 +160,16 @@ public:
      * Resize the framebuffer.
      */
     void resizeFramebuffer(int width, int height);
+
+    /**
+     * Enable or disable the renderer tile cache.
+     */
+    void setTileCacheEnabled(bool enabled);
+
+    /**
+     * Query the current tile cache state.
+     */
+    bool getTileCacheEnabled() const;
     
     
     // ==================== Query utilities ====================
@@ -190,6 +201,10 @@ public:
      * Enable or disable FPS measurement.
      */
     void enableFpsMeasurement(bool enable);
+    
+    using SnapshotSuccessCallback = std::function<void(mbgl::PremultipliedImage&&, float)>;
+    using SnapshotErrorCallback = std::function<void(const std::string&)>;
+    void requestSnapshot(SnapshotSuccessCallback success, SnapshotErrorCallback error);
 
 private:
     // ==================== Thread functions ====================
@@ -263,6 +278,12 @@ private:
     std::unique_ptr<HarmonyVSyncManager> vsyncManager_;
     std::shared_ptr<UpdateParameters> pendingUpdateParams_{nullptr};
     std::atomic<bool> pendingRender_{false};
+    
+    // Snapshot handling
+    std::mutex snapshotMutex_;
+    SnapshotSuccessCallback snapshotSuccessCallback_;
+    SnapshotErrorCallback snapshotErrorCallback_;
+    bool snapshotPending_{false};
 
     // Most recent logical size (used immediately after window recreation)
     int lastWidth_{0};

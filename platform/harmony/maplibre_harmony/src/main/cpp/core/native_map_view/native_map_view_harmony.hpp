@@ -287,6 +287,10 @@ public:
     static napi_value removeOnWillStartRenderingMapListener(napi_env env, napi_callback_info info);
     static napi_value addOnDidFinishRenderingMapListener(napi_env env, napi_callback_info info);
     static napi_value removeOnDidFinishRenderingMapListener(napi_env env, napi_callback_info info);
+    static napi_value addOnSnapshotReadyListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnSnapshotReadyListener(napi_env env, napi_callback_info info);
+    static napi_value addOnSnapshotErrorListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnSnapshotErrorListener(napi_env env, napi_callback_info info);
     
     // Style event listeners (Android-style)
     static napi_value addOnDidFinishLoadingStyleListener(napi_env env, napi_callback_info info);
@@ -349,6 +353,12 @@ public:
 
 private:
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
+    static napi_value ensureStyleWrapper(napi_env env, NativeMapView* instance);
+    friend bool CallStyleMethod(napi_env env,
+                                NativeMapView* instance,
+                                const char* methodName,
+                                size_t argc,
+                                napi_value* argv);
     
     mbgl::Map& getMap();
     
@@ -396,7 +406,7 @@ private:
     std::unique_ptr<ThreadSafeCallback> fpsChangedCallback_;  // Callback invoked when FPS changes
     
     // Unified callback manager
-    std::unique_ptr<mbgl::harmony::CallbackManager> callbackManager_;
+    std::shared_ptr<mbgl::harmony::CallbackManager> callbackManager_;
     
     // Application cache directory path
     std::string cachePath_;
@@ -410,6 +420,11 @@ private:
     std::unordered_map<int64_t, HarmonyViewAnnotation> viewAnnotations_;
     int64_t nextViewAnnotationId_ = 1;
     mutable std::mutex viewAnnotationMutex_;
+    
+    // Snapshot state
+    std::mutex snapshotMutex_;
+    bool snapshotInProgress_ = false;
+    void resetSnapshotState();
     
     // ==================== Map thread helper methods ====================
     

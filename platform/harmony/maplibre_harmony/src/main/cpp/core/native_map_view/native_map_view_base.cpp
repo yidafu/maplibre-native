@@ -87,7 +87,7 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string
     nativeWindow = nullptr;
     
     // Initialize the callback manager
-    callbackManager_ = std::make_unique<mbgl::harmony::CallbackManager>(env);
+    callbackManager_ = std::make_shared<mbgl::harmony::CallbackManager>(env);
 }
 
 NativeMapView::~NativeMapView() {
@@ -107,6 +107,8 @@ void NativeMapView::cleanupAllResources() {
         Logger::warn("NativeMapView", "Resources already cleaned (sync), skipping");
         return;
     }
+
+    resetSnapshotState();
 
     // 0. Clear callbacks
     if (callbackManager_) {
@@ -159,6 +161,8 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         if (onComplete) onComplete();
         return;
     }
+
+    resetSnapshotState();
     
     try {
         // 0. Clear all callbacks (with ANR monitoring)
@@ -349,6 +353,10 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"setVisibleCoordinateBounds", nullptr, setVisibleCoordinateBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getVisibleCoordinateBounds", nullptr, getVisibleCoordinateBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"scheduleSnapshot", nullptr, scheduleSnapshot, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnSnapshotReadyListener", nullptr, addOnSnapshotReadyListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnSnapshotReadyListener", nullptr, removeOnSnapshotReadyListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnSnapshotErrorListener", nullptr, addOnSnapshotErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnSnapshotErrorListener", nullptr, removeOnSnapshotErrorListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getCameraPosition", nullptr, getCameraPosition, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"updateMarker", nullptr, updateMarker, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addMarkers", nullptr, addMarkers, nullptr, nullptr, nullptr, napi_default, nullptr},

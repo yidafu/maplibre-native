@@ -219,6 +219,22 @@ void HarmonyRenderer::resume() {
     }
 }
 
+void HarmonyRenderer::setTileCacheEnabled(bool enabled) {
+    if (!mapRenderThread_) {
+        Logger::warn("HarmonyRenderer", "[%s] setTileCacheEnabled ignored: mapRenderThread_ not ready", instanceId_.c_str());
+        return;
+    }
+    mapRenderThread_->setTileCacheEnabled(enabled);
+}
+
+bool HarmonyRenderer::getTileCacheEnabled() const {
+    if (!mapRenderThread_) {
+        Logger::warn("HarmonyRenderer", "[%s] getTileCacheEnabled defaulting to false: mapRenderThread_ not ready", instanceId_.c_str());
+        return false;
+    }
+    return mapRenderThread_->getTileCacheEnabled();
+}
+
 void HarmonyRenderer::stopAllRequests() {
     
     try {
@@ -585,6 +601,23 @@ void HarmonyRenderer::enableFpsMeasurement(bool enable) {
     }
     
     mapRenderThread_->enableFpsMeasurement(enable);
+}
+
+void HarmonyRenderer::requestSnapshot(SnapshotSuccessCallback success, SnapshotErrorCallback error) {
+    if (!mapRenderThread_) {
+        if (error) {
+            error("Render thread not initialized");
+        }
+        return;
+    }
+    
+    mapRenderThread_->requestSnapshot(
+        [success = std::move(success)](mbgl::PremultipliedImage&& image, float pixelRatio) mutable {
+            if (success) {
+                success(std::move(image), pixelRatio);
+            }
+        },
+        std::move(error));
 }
 
 // Scheduler interface implementation

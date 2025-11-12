@@ -622,18 +622,68 @@ napi_value NativeMapView::getPrefetchZoomDelta(napi_env env, napi_callback_info 
 }
 
 napi_value NativeMapView::setTileCacheEnabled(napi_env env, napi_callback_info info) {
-    // Tile cache control requires renderer frontend support
-    // Tile cache control requires renderer frontend support
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+
+    napi_value undefined = args.Undefined();
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "setTileCacheEnabled: Invalid arguments");
+        return undefined;
+    }
+
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "setTileCacheEnabled: Failed to unwrap instance");
+        return undefined;
+    }
+
+    if (instance->isDestroying.load()) {
+        Logger::warn("NativeMapView", "setTileCacheEnabled: Instance is being destroyed");
+        return undefined;
+    }
+
+    bool enabled = args.GetBool(0, "enabled");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "setTileCacheEnabled: Failed to parse enabled flag");
+        return undefined;
+    }
+
+    if (!instance->harmonyRenderer) {
+        Logger::warn("NativeMapView", "setTileCacheEnabled: HarmonyRenderer not initialized");
+        return undefined;
+    }
+
+    instance->harmonyRenderer->setTileCacheEnabled(enabled);
     return undefined;
 }
 
 napi_value NativeMapView::getTileCacheEnabled(napi_env env, napi_callback_info info) {
-    // Tile cache control requires renderer frontend support
-    // Tile cache control requires renderer frontend support
     napi_value result;
     napi_get_boolean(env, false, &result);
+
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "getTileCacheEnabled: Failed to unwrap instance");
+        return result;
+    }
+
+    if (!instance->harmonyRenderer) {
+        Logger::warn("NativeMapView", "getTileCacheEnabled: HarmonyRenderer not initialized");
+        return result;
+    }
+
+    bool enabled = false;
+    try {
+        enabled = instance->harmonyRenderer->getTileCacheEnabled();
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getTileCacheEnabled: Exception - %s", e.what());
+    }
+
+    napi_get_boolean(env, enabled, &result);
     return result;
 }
 
@@ -1832,6 +1882,10 @@ IMPLEMENT_ADD_LISTENER(addOnDidBecomeIdleListener, "onDidBecomeIdle")
 IMPLEMENT_REMOVE_LISTENER(removeOnDidBecomeIdleListener, "onDidBecomeIdle")
 IMPLEMENT_ADD_LISTENER(addOnSourceChangedListener, "onSourceChanged")
 IMPLEMENT_REMOVE_LISTENER(removeOnSourceChangedListener, "onSourceChanged")
+IMPLEMENT_ADD_LISTENER(addOnSnapshotReadyListener, "onSnapshotReady")
+IMPLEMENT_REMOVE_LISTENER(removeOnSnapshotReadyListener, "onSnapshotReady")
+IMPLEMENT_ADD_LISTENER(addOnSnapshotErrorListener, "onSnapshotError")
+IMPLEMENT_REMOVE_LISTENER(removeOnSnapshotErrorListener, "onSnapshotError")
 
 // ===== Observer event listeners (Shader, Glyph, Sprite, Tile) =====
 IMPLEMENT_ADD_LISTENER(addOnPreCompileShaderListener, "onPreCompileShader")

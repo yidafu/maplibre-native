@@ -3,17 +3,23 @@
 #include "napi/bindings/style/style_napi.hpp"
 #include "napi/bindings/image/image_napi.hpp"
 #include "napi/core/napi_args.hpp"
+#include "geometry/lat_lng_bounds_harmony.hpp"
 #include "utils/logger.h"
 #include "style/transition_options_harmony.hpp"
 #include "style/layer_source_factory_harmony.hpp"
+#include <mbgl/map/bound_options.hpp>
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/image.hpp>
 #include <mbgl/style/layer.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/light.hpp>
+#include "style/light_harmony.hpp"
 // Support waiting for resource readiness gating
 #include <chrono>
 #include <thread>
+#include <cstring>
+#include <multimedia/image_framework/image_pixel_map_napi.h>
+#include <multimedia/image_framework/image_pixel_map_mdk.h>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
@@ -21,6 +27,56 @@ using maplibre::harmony::ImageNAPI;
 
 namespace mbgl {
 namespace harmony {
+
+bool CallStyleMethod(napi_env env,
+                     NativeMapView* instance,
+                     const char* methodName,
+                     size_t argc,
+                     napi_value* argv) {
+    if (!instance || !instance->map) {
+        Logger::error("NativeMapView", "CallStyleMethod: Map not initialized");
+        return false;
+    }
+
+    napi_value styleObject = NativeMapView::ensureStyleWrapper(env, instance);
+    if (styleObject == nullptr) {
+        Logger::error("NativeMapView", "CallStyleMethod: Failed to acquire Style wrapper");
+        return false;
+    }
+
+    napi_value method;
+    napi_status status = napi_get_named_property(env, styleObject, methodName, &method);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "CallStyleMethod: Failed to get method '%s', status=%d", methodName, status);
+        return false;
+    }
+
+    napi_valuetype type;
+    status = napi_typeof(env, method, &type);
+    if (status != napi_ok || type != napi_function) {
+        Logger::error("NativeMapView", "CallStyleMethod: Property '%s' is not a function", methodName);
+        return false;
+    }
+
+    status = napi_call_function(env, styleObject, method, argc, argv, nullptr);
+    if (status != napi_ok) {
+        bool hasException = false;
+        napi_is_exception_pending(env, &hasException);
+        if (hasException) {
+            napi_value exception;
+            napi_get_and_clear_last_exception(env, &exception);
+            Logger::error("NativeMapView", "CallStyleMethod: Exception thrown while calling '%s'", methodName);
+            // Re-throw to ETS layer so it can handle the error
+            napi_throw(env, exception);
+        } else {
+            Logger::error("NativeMapView", "CallStyleMethod: napi_call_function failed for '%s', status=%d", methodName,
+                          status);
+        }
+        return false;
+    }
+
+    return true;
+}
 
 napi_value NativeMapView::getStyleUrl(napi_env env, napi_callback_info info) {
     napi_value undefined;
@@ -192,16 +248,38 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
         return args.Undefined();
     }
     
-    // Check whether the argument is null (allows clearing the bound constraint)
-    if (!args.Has(0)) {
+    // Check whether the argument is null or undefined (allows clearing the bound constraint)
+    if (!args.Has(0) || args.IsNullOrUndefined(0)) {
         // Clear the boundary constraint
-        instance->invokeOnMapThread([](mbgl::Map* m){ m->setBounds(mbgl::BoundOptions()); });
-        Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared (no argument)");
+        instance->invokeOnMapThread([](mbgl::Map* m){
+            m->setBounds(mbgl::BoundOptions().withLatLngBounds(mbgl::LatLngBounds()));
+        });
+        Logger::info("NativeMapView", "setLatLngBounds: Bounds cleared");
         return args.Undefined();
     }
     
-    // TODO: Implement LatLngBounds argument parsing and apply the bounds
-    Logger::warn("NativeMapView", "setLatLngBounds: LatLngBounds parameter parsing not yet implemented");
+    auto boundsValue = args.GetObject(0, "bounds");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "setLatLngBounds: Failed to retrieve bounds object - %s", args.GetError().c_str());
+        return args.Undefined();
+    }
+    
+    mbgl::LatLngBounds bounds;
+    if (!LatLngBoundsHarmony::ParseLatLngBounds(env, boundsValue, bounds)) {
+        Logger::error("NativeMapView", "setLatLngBounds: Invalid LatLngBounds argument");
+        return args.Undefined();
+    }
+    
+    try {
+        instance->invokeOnMapThread([bounds](mbgl::Map* m){
+            m->setBounds(mbgl::BoundOptions().withLatLngBounds(bounds));
+        });
+        Logger::info("NativeMapView", "setLatLngBounds: Applied bounds "
+                                      "(north=%.6f, east=%.6f, south=%.6f, west=%.6f)",
+                      bounds.north(), bounds.east(), bounds.south(), bounds.west());
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "setLatLngBounds: Failed - %s", e.what());
+    }
     
     return args.Undefined();
 }
@@ -255,6 +333,74 @@ napi_value NativeMapView::isFullyLoaded(napi_env env, napi_callback_info info) {
     return result;
 }
 
+napi_value NativeMapView::ensureStyleWrapper(napi_env env, NativeMapView* instance) {
+    if (!instance) {
+        Logger::error("NativeMapView", "ensureStyleWrapper: instance is null");
+        return nullptr;
+    }
+    
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "ensureStyleWrapper: Map not initialized");
+        return nullptr;
+    }
+
+    if (instance->styleRef_ != nullptr) {
+        napi_value cachedStyle = nullptr;
+        napi_status status = napi_get_reference_value(env, instance->styleRef_, &cachedStyle);
+        if (status == napi_ok && cachedStyle != nullptr) {
+            return cachedStyle;
+        }
+
+        Logger::info("NativeMapView", "ensureStyleWrapper: Cached Style reference invalid, recreating");
+        napi_delete_reference(env, instance->styleRef_);
+        instance->styleRef_ = nullptr;
+    }
+
+    if (maplibre::harmony::StyleNAPI::constructor == nullptr) {
+        Logger::error("NativeMapView", "ensureStyleWrapper: StyleNAPI::constructor is nullptr");
+        return nullptr;
+    }
+
+    napi_value constructor;
+    napi_status status =
+        napi_get_reference_value(env, maplibre::harmony::StyleNAPI::constructor, &constructor);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "ensureStyleWrapper: Failed to get Style constructor reference, status=%d",
+                      status);
+        return nullptr;
+    }
+
+    napi_valuetype constructorType;
+    napi_typeof(env, constructor, &constructorType);
+    if (constructorType != napi_function) {
+        Logger::error("NativeMapView", "ensureStyleWrapper: Style constructor is not a function");
+        return nullptr;
+    }
+
+    napi_value args[1];
+    int64_t mapPtr = reinterpret_cast<int64_t>(instance->map);
+    status = napi_create_int64(env, mapPtr, &args[0]);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "ensureStyleWrapper: Failed to create mapPtr argument, status=%d", status);
+        return nullptr;
+    }
+
+    napi_value styleInstance;
+    status = napi_new_instance(env, constructor, 1, args, &styleInstance);
+    if (status != napi_ok) {
+        Logger::error("NativeMapView", "ensureStyleWrapper: Failed to create Style instance, status=%d", status);
+        return nullptr;
+    }
+
+    status = napi_create_reference(env, styleInstance, 1, &instance->styleRef_);
+    if (status != napi_ok) {
+        Logger::warn("NativeMapView",
+                     "ensureStyleWrapper: Failed to create reference for Style instance, status=%d", status);
+    }
+
+    return styleInstance;
+}
+
 napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
     // Obtain the NativeMapView instance
     napi_value thisObj;
@@ -270,70 +416,16 @@ napi_value NativeMapView::getStyle(napi_env env, napi_callback_info info) {
     
     if (!instance->map) {
         Logger::warn("NativeMapView", "getStyle: Map not initialized");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Check whether a cached Style instance already exists
-    if (instance->styleRef_ != nullptr) {
-        napi_value cachedStyle;
-        napi_status status = napi_get_reference_value(env, instance->styleRef_, &cachedStyle);
-        if (status == napi_ok && cachedStyle != nullptr) {
-            return cachedStyle;
-        }
-
-        // Cached reference is no longer valid, clean it up and recreate.
-        napi_delete_reference(env, instance->styleRef_);
-        instance->styleRef_ = nullptr;
+        napi_value nullValue;
+        napi_get_null(env, &nullValue);
+        return nullValue;
     }
 
-    // Verify that the Style constructor reference has been initialized
-    if (maplibre::harmony::StyleNAPI::constructor == nullptr) {
-        Logger::error("NativeMapView", "getStyle: StyleNAPI::constructor is nullptr - Style class not initialized");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Obtain the Style constructor
-    napi_value styleConstructor;
-    napi_status status = napi_get_reference_value(env, maplibre::harmony::StyleNAPI::constructor, &styleConstructor);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "getStyle: Failed to get Style constructor reference, status=%d", status);
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Validate that the constructor is available
-    napi_valuetype constructorType;
-    napi_typeof(env, styleConstructor, &constructorType);
-    if (constructorType != napi_function) {
-        Logger::error("NativeMapView", "getStyle: Style constructor is not a function, type=%d", constructorType);
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the parameter: mapPtr
-    napi_value args[1];
-    int64_t mapPtr = reinterpret_cast<int64_t>(instance->map);
-    napi_create_int64(env, mapPtr, &args[0]);
-    // Create the StyleNAPI instance
-    napi_value styleInstance;
-    status = napi_new_instance(env, styleConstructor, 1, args, &styleInstance);
-    if (status != napi_ok) {
-        Logger::error("NativeMapView", "getStyle: Failed to create Style instance, status=%d", status);
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Cache Style instance to avoid recreating wrappers during polling.
-    status = napi_create_reference(env, styleInstance, 1, &instance->styleRef_);
-    if (status != napi_ok) {
-        Logger::warn("NativeMapView", "getStyle: Failed to create reference for Style instance, status=%d", status);
+    napi_value styleInstance = ensureStyleWrapper(env, instance);
+    if (styleInstance == nullptr) {
+        napi_value nullValue;
+        napi_get_null(env, &nullValue);
+        return nullValue;
     }
 
     return styleInstance;
@@ -428,20 +520,7 @@ napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
             return args.Undefined();
         }
         
-        // Create a simple object with light properties
-        // TODO: Implement full Light NAPI wrapper class for property modification
-        napi_value lightObj;
-        napi_create_object(env, &lightObj);
-        
-        // Add anchor property
-        auto anchor = light->getAnchor();
-        napi_value anchorValue;
-        const char* anchorStr = (anchor == mbgl::style::LightAnchorType::Map) ? "map" : "viewport";
-        napi_create_string_utf8(env, anchorStr, NAPI_AUTO_LENGTH, &anchorValue);
-        napi_set_named_property(env, lightObj, "anchor", anchorValue);
-        
-        Logger::info("NativeMapView", "getLight: Returned light object");
-        return lightObj;
+        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *instance->map, *light);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getLight: Exception - %s", e.what());
         return args.Undefined();
@@ -513,34 +592,93 @@ napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addLayer(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: Implement the Layer NAPI wrapper
-    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1052-1064
-    Logger::warn("NativeMapView", "addLayer: Not implemented - requires Layer wrapper classes");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+
+    napi_value undefined = args.Undefined();
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addLayer: Invalid arguments");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance || !instance->map) {
+        Logger::error("NativeMapView", "addLayer: Map not initialized");
+        return undefined;
+    }
+
+    napi_value layerValue = args.GetValue(0);
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addLayer: Failed to obtain layer argument");
+        return undefined;
+    }
+
+    napi_value argv[1] = {layerValue};
+    if (!CallStyleMethod(env, instance, "addLayer", 1, argv)) {
+        Logger::error("NativeMapView", "addLayer: Failed to delegate to Style.addLayer");
+    }
     
     return undefined;
 }
 
 napi_value NativeMapView::addLayerAbove(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: Implement the Layer NAPI wrapper
-    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1066-1103
-    Logger::warn("NativeMapView", "addLayerAbove: Not implemented - requires Layer wrapper classes");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+
+    napi_value undefined = args.Undefined();
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addLayerAbove: Invalid arguments");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance || !instance->map) {
+        Logger::error("NativeMapView", "addLayerAbove: Map not initialized");
+        return undefined;
+    }
+
+    napi_value layerValue = args.GetValue(0);
+    napi_value aboveLayerIdValue = args.GetValue(1);
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addLayerAbove: Failed to obtain arguments");
+        return undefined;
+    }
+
+    napi_value argv[2] = {layerValue, aboveLayerIdValue};
+    if (!CallStyleMethod(env, instance, "addLayerAbove", 2, argv)) {
+        Logger::error("NativeMapView", "addLayerAbove: Failed to delegate to Style.addLayerAbove");
+    }
     
     return undefined;
 }
 
 napi_value NativeMapView::addLayerAt(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: Implement the Layer NAPI wrapper
-    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1105-1128
-    Logger::warn("NativeMapView", "addLayerAt: Not implemented - requires Layer wrapper classes");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(2);
+
+    napi_value undefined = args.Undefined();
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addLayerAt: Invalid arguments");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance || !instance->map) {
+        Logger::error("NativeMapView", "addLayerAt: Map not initialized");
+        return undefined;
+    }
+
+    napi_value layerValue = args.GetValue(0);
+    napi_value indexValue = args.GetValue(1);
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addLayerAt: Failed to obtain arguments");
+        return undefined;
+    }
+
+    napi_value argv[2] = {layerValue, indexValue};
+    if (!CallStyleMethod(env, instance, "addLayerAt", 2, argv)) {
+        Logger::error("NativeMapView", "addLayerAt: Failed to delegate to Style.addLayerAt");
+    }
     
     return undefined;
 }
@@ -655,12 +793,31 @@ napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::addSource(napi_env env, napi_callback_info info) {
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
-    // TODO: Implement the Source NAPI wrapper
-    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1194-1204
-    Logger::warn("NativeMapView", "addSource: Not implemented - requires Source wrapper classes");
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+
+    napi_value undefined = args.Undefined();
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addSource: Invalid arguments");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance || !instance->map) {
+        Logger::error("NativeMapView", "addSource: Map not initialized");
+        return undefined;
+    }
+
+    napi_value sourceValue = args.GetValue(0);
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addSource: Failed to obtain source argument");
+        return undefined;
+    }
+
+    napi_value argv[1] = {sourceValue};
+    if (!CallStyleMethod(env, instance, "addSource", 1, argv)) {
+        Logger::error("NativeMapView", "addSource: Failed to delegate to Style.addSource");
+    }
     
     return undefined;
 }
@@ -703,33 +860,85 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(4);
     
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    
+    napi_value undefined = args.Undefined();
     if (args.HasError()) {
         Logger::error("NativeMapView", "addImage: Invalid arguments");
         return undefined;
     }
     
-    // Obtain the NativeMapView instance
     NativeMapView* instance = nullptr;
-    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance || !instance->map) {
         Logger::error("NativeMapView", "addImage: Map not initialized");
         return undefined;
     }
     
-    try {
-        // TODO: Implement image creation from PixelMap
-        // Reference Android bitmap.cpp and iOS UIImage+MLNAdditions.mm
-        // Need to implement PixelMap -> PremultipliedImage conversion
-        Logger::warn("NativeMapView", "addImage: PixelMap conversion not implemented yet");
-        Logger::info("NativeMapView", "addImage: Please use Image class or Style.addImage() instead");
-        
-        return undefined;
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "addImage: Failed - %s", e.what());
+    std::string imageName = args.GetString(0, "name");
+    napi_value pixelMapValue = args.GetValue(1);
+    double pixelRatioDouble = args.GetDouble(2, "pixelRatio");
+    bool sdf = args.GetBool(3, "sdf");
+    if (args.HasError()) {
+        Logger::error("NativeMapView", "addImage: Failed to parse arguments");
         return undefined;
     }
+
+    if (pixelRatioDouble <= 0.0) {
+        Logger::warn("NativeMapView", "addImage: pixelRatio <= 0 detected, defaulting to 1.0");
+        pixelRatioDouble = 1.0;
+    }
+
+    NativePixelMap* nativePixelMap = OH_PixelMap_InitNativePixelMap(env, pixelMapValue);
+    if (!nativePixelMap) {
+        Logger::error("NativeMapView", "addImage: Failed to get native PixelMap");
+        return undefined;
+    }
+
+    OhosPixelMapInfos imageInfo{};
+    int32_t result = OH_PixelMap_GetImageInfo(nativePixelMap, &imageInfo);
+    if (result != 0) {
+        Logger::error("NativeMapView", "addImage: Failed to get PixelMap info, error=%d", result);
+        return undefined;
+    }
+
+    const uint32_t width = static_cast<uint32_t>(imageInfo.width);
+    const uint32_t height = static_cast<uint32_t>(imageInfo.height);
+    if (width == 0 || height == 0) {
+        Logger::error("NativeMapView", "addImage: PixelMap has invalid dimensions (%u x %u)", width, height);
+        return undefined;
+    }
+
+    void* pixelData = nullptr;
+    result = OH_PixelMap_AccessPixels(nativePixelMap, &pixelData);
+    if (result != 0 || pixelData == nullptr) {
+        Logger::error("NativeMapView", "addImage: Failed to access PixelMap pixels, error=%d", result);
+        return undefined;
+    }
+
+    const size_t byteSize = static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
+    mbgl::PremultipliedImage premultiplied({width, height});
+    std::memcpy(premultiplied.data.get(), pixelData, byteSize);
+
+    OH_PixelMap_UnAccessPixels(nativePixelMap);
+
+    try {
+        auto* imagePtr = new mbgl::style::Image(
+            imageName,
+            std::move(premultiplied),
+            static_cast<float>(pixelRatioDouble),
+            sdf
+        );
+
+        std::string imageId = imageName;
+        instance->invokeOnMapThread([imagePtr, imageId, width, height](mbgl::Map* map) {
+            std::unique_ptr<mbgl::style::Image> image(imagePtr);
+            map->getStyle().addImage(std::move(image));
+            map->triggerRepaint();
+            Logger::info("NativeMapView", "addImage: Added image '%s' (%ux%u)", imageId.c_str(), width, height);
+        });
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "addImage: Failed to create style image - %s", e.what());
+    }
+
+    return undefined;
 }
 
 napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {

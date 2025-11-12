@@ -8,6 +8,8 @@
 import type { Layer } from './layers';
 import type { Source } from './sources';
 import type { Image } from './images/Image';
+import type { LightSpecification } from './CommonTypes';
+import type { Light } from './light/Light';
 
 /**
  * Style - 地图样式管理类
@@ -166,15 +168,15 @@ export class Style {
 
   /**
    * 获取光照设置
-   * @returns 光照配置对象（包含 anchor、position、color 等属性），如果不存在则返回 null
+   * @returns 光照对象（Light NAPI 实例），如果不存在则返回 null
    */
-  getLight(): object | null;
+  getLight(): Light | null;
 
   /**
    * 设置光照
-   * @param lightJson 光照 JSON 配置字符串
+   * @param light 光照对象或光照配置
    */
-  setLight(lightJson: string): void;
+  setLight(light: Light | LightSpecification): void;
 
   // ========== 过渡效果管理 ==========
 
