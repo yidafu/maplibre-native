@@ -2,9 +2,9 @@ import { PropertyValue } from './PropertyValue';
 import { Expression } from '../expressions/Expression';
 
 /**
- * LayoutPropertyValue - Layout 属性值封装类
+ * LayoutPropertyValue - Layout property value wrapper
  *
- * Layout属性影响图层的布局和几何形状
+ * Layout properties influence layer geometry and placement
  */
 export class LayoutPropertyValue<T> extends PropertyValue<T> {
   constructor(name: string, value: T | null = null, expression: Expression<T> | null = null) {
@@ -12,14 +12,14 @@ export class LayoutPropertyValue<T> extends PropertyValue<T> {
   }
 
   /**
-   * 创建常量值的Layout属性
+   * Create a layout property with a constant value
    */
   public static value<T>(name: string, value: T): LayoutPropertyValue<T> {
     return new LayoutPropertyValue<T>(name, value, null);
   }
 
   /**
-   * 创建表达式的Layout属性
+   * Create a layout property backed by an Expression
    */
   public static expression<T>(name: string, expression: Expression<T>): LayoutPropertyValue<T> {
     return new LayoutPropertyValue<T>(name, null, expression);

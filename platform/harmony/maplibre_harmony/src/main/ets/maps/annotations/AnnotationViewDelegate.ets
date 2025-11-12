@@ -5,13 +5,13 @@ import { CenterOffset } from './AnnotationView';
 import { Marker } from './Marker';
 
 /**
- * AnnotationView 自定义内容构建器类型
- * 
- * 用于为 AnnotationView 提供自定义的 UI 内容
- * 
- * @param marker 关联的 Marker
- * @returns Builder 函数，用于渲染自定义内容
- * 
+ * AnnotationView custom content builder type
+ *
+ * Supplies custom UI content for an AnnotationView.
+ *
+ * @param marker Associated marker
+ * @returns Builder function that renders custom content
+ *
  * @example
  * ```typescript
  * const customBuilder: AnnotationViewBuilder = (marker: Marker) => {
@@ -30,7 +30,7 @@ import { Marker } from './Marker';
 export type AnnotationViewBuilder = (marker: Marker) => (() => void) | null;
 
 /**
- * AnnotationView 尺寸配置
+ * AnnotationView size configuration
  */
 export interface AnnotationViewSize {
   width: number;
@@ -38,14 +38,14 @@ export interface AnnotationViewSize {
 }
 
 /**
- * AnnotationViewConfig - AnnotationView 配置
+ * AnnotationViewConfig - AnnotationView configuration
  *
- * 用于定义自定义 AnnotationView 的属性和行为
- * 
- * 参考：
- * - iOS: MLNAnnotationView 的各项属性
- * - Android: Marker 的配置选项
- * 
+ * Defines properties and behavior for custom AnnotationViews.
+ *
+ * References:
+ * - iOS: MLNAnnotationView properties
+ * - Android: Marker configuration options
+ *
  * @example
  * ```typescript
  * const config: AnnotationViewConfig = {
@@ -64,20 +64,20 @@ export interface AnnotationViewSize {
  */
 export interface AnnotationViewConfig {
   /**
-   * 复用标识符
-   * 
-   * 具有相同标识符的视图可以被复用，提高性能
-   * 
-   * 参考：iOS MLNAnnotationView.reuseIdentifier
+   * Reuse identifier
+   *
+   * Views sharing the same identifier can be reused for performance.
+   *
+   * Reference: iOS MLNAnnotationView.reuseIdentifier
    */
   reuseIdentifier: string;
 
   /**
-   * 自定义内容构建器
-   * 
-   * 提供自定义的 UI 内容来替代默认图标
-   * 如果不提供，将使用 Marker 的 icon 作为显示内容
-   * 
+   * Custom content builder
+   *
+   * Provides custom UI in place of the default icon.
+   * If omitted, the marker icon is used as the visual.
+   *
    * @example
    * ```typescript
    * contentBuilder: () => {
@@ -92,109 +92,107 @@ export interface AnnotationViewConfig {
   contentBuilder?: () => void;
 
   /**
-   * 是否可拖拽
-   * 
-   * 设置为 true 后，用户可以长按并拖动 AnnotationView
-   * 
-   * 参考：iOS MLNAnnotationView.draggable
-   * 
+   * Draggable flag
+   *
+   * When true, users can long-press and drag the AnnotationView.
+   *
+   * Reference: iOS MLNAnnotationView.draggable
+   *
    * @default false
    */
   draggable?: boolean;
 
   /**
-   * 是否根据距离缩放
-   * 
-   * 当地图倾斜时，靠近地平线的视图会自动缩小，
-   * 模拟透视效果，使地图更加立体
-   * 
-   * 参考：iOS MLNAnnotationView.scalesWithViewingDistance
-   * 
+   * Distance-based scaling
+   *
+   * When enabled, views near the horizon shrink during pitch to simulate perspective.
+   *
+   * Reference: iOS MLNAnnotationView.scalesWithViewingDistance
+   *
    * @default false
    */
   scalesWithViewingDistance?: boolean;
 
   /**
-   * 是否跟随地图旋转
-   * 
-   * 设置为 true 后，AnnotationView 会跟随地图一起旋转
-   * 
-   * 参考：iOS MLNAnnotationView.rotatesToMatchCamera
-   * 
+   * Rotate with map
+   *
+   * When true, the AnnotationView rotates with the map.
+   *
+   * Reference: iOS MLNAnnotationView.rotatesToMatchCamera
+   *
    * @default false
    */
   rotatesToMatchCamera?: boolean;
 
   /**
-   * 中心偏移
-   * 
-   * 调整视图中心点相对于 Marker 位置的偏移
-   * 正值向右/下移动，负值向左/上移动
-   * 
-   * 参考：iOS MLNAnnotationView.centerOffset
-   * 
+   * Center offset
+   *
+   * Adjusts the view center relative to the marker.
+   * Positive values move right/down; negative left/up.
+   *
+   * Reference: iOS MLNAnnotationView.centerOffset
+   *
    * @default { dx: 0, dy: 0 }
    */
   centerOffset?: CenterOffset;
 
   /**
-   * 初始选中状态
-   * 
-   * 设置视图的初始选中状态
-   * 
-   * 参考：iOS MLNAnnotationView.selected
-   * 
+   * Initial selection state
+   *
+   * Sets the initial selection state of the view.
+   *
+   * Reference: iOS MLNAnnotationView.selected
+   *
    * @default false
    */
   selected?: boolean;
 
   /**
-   * 是否启用
-   * 
-   * 禁用后，视图不响应手势事件
-   * 
-   * 参考：iOS MLNAnnotationView.enabled
-   * 
+   * Enabled flag
+   *
+   * Disabled views do not respond to gestures.
+   *
+   * Reference: iOS MLNAnnotationView.enabled
+   *
    * @default true
    */
   enabled?: boolean;
 
   /**
-   * 视图大小（可选）
-   * 
-   * 指定自定义视图的尺寸，如果不指定则由内容自适应
+   * Optional view size
+   *
+   * Provide explicit size; otherwise content drives layout.
    */
   size?: AnnotationViewSize;
 
   /**
-   * z-index（可选）
-   * 
-   * 控制视图的显示层级，值越大越在上层
-   * 如果不指定，使用 Marker 的 zIndex
+   * Optional z-index
+   *
+   * Controls stacking order (higher draws on top). Defaults to marker zIndex.
    */
   zIndex?: number;
 
   /**
-   * 初始透明度（可选）
-   * 
-   * 设置视图的初始透明度
-   * 
+   * Optional initial opacity
+   *
+   * Sets starting opacity.
+   *
    * @default 1.0
    */
   alpha?: number;
 }
 
 /**
- * AnnotationViewDelegate - AnnotationView 委托接口
+ * AnnotationViewDelegate - AnnotationView delegate interface
  *
- * 用于自定义 AnnotationView 的创建和事件处理
+ * Customizes creation and event handling for AnnotationViews.
  *
- * 参考: iOS MLNMapViewDelegate 的 annotation view 相关方法
+ * Reference: iOS MLNMapViewDelegate annotation view methods.
  *
- * 使用示例:
+ * Usage example:
  * ```typescript
  * const delegate: AnnotationViewDelegate = {
- *   // 为特定 Marker 创建自定义视图
+ *   // Create a custom view for specific markers
  *   viewForAnnotation: (marker: Marker) => {
  *     if (marker.getIcon() === 'custom-pin') {
  *       return {
@@ -213,42 +211,42 @@ export interface AnnotationViewConfig {
  *         scalesWithViewingDistance: true
  *       };
  *     }
- *     return null; // 使用默认图标
+ *     return null; // Use the default icon
  *   },
  *
- *   // 处理选中事件
+ *   // Handle selection events
  *   didSelectAnnotationView: (marker: Marker) => {
  *     console.log('Marker selected:', marker.getTitle());
  *   },
  *
- *   // 处理拖拽事件
+ *   // Handle drag events
  *   annotationViewDidEndDragging: (marker: Marker, position: LatLng) => {
  *     console.log('Marker dragged to:', position);
  *   }
  * };
  *
- * // 设置到地图
+ * // Attach to the map
  * mapLibreMap.setAnnotationViewDelegate(delegate);
  * ```
  */
 export interface AnnotationViewDelegate {
   /**
-   * 请求为 Marker 创建 AnnotationView 配置
+   * Request AnnotationView configuration for a marker
    *
-   * @param marker Marker 实例
-   * @returns AnnotationViewConfig 配置对象，返回 null 使用默认图标
+   * @param marker Marker instance
+   * @returns AnnotationViewConfig or null to use default icon
    *
-   * 参考：iOS `mapView:viewForAnnotation:`
-   * 
-   * 此方法会在以下时机被调用：
-   * - Marker 添加到地图时
-   * - Marker 进入屏幕可见区域时（如果启用虚拟化）
-   * - 需要从复用池获取视图时
-   * 
+   * Reference: iOS `mapView:viewForAnnotation:`
+   *
+   * Invoked when:
+   * - Marker is added to the map
+   * - Marker enters the visible region (when virtualization enabled)
+   * - A view is required from the reuse pool
+   *
    * @example
    * ```typescript
-   * viewForAnnotation: (marker: Marker) => {
-   *   // 根据不同类型返回不同配置
+ * viewForAnnotation: (marker: Marker) => {
+ *   // Return different configs based on marker type
    *   const type = marker.getSnippet();
    *   
    *   if (type === 'restaurant') {
@@ -261,51 +259,48 @@ export interface AnnotationViewDelegate {
    *       centerOffset: { dx: 0, dy: -16 }
    *     };
    *   }
-   *   
-   *   return null; // 使用默认图标
+ * 
+ *   return null; // Use the default icon
    * }
    * ```
    */
   viewForAnnotation?(marker: Marker): AnnotationViewConfig | null;
 
   /**
-   * AnnotationView 被选中时调用
+   * Called when AnnotationView is selected
    *
-   * @param marker 被选中的 Marker
+   * @param marker Selected marker
    *
-   * 参考：iOS `mapView:didSelectAnnotationView:`
-   * 
-   * 用户点击 AnnotationView 后会触发此方法
-   * 可以在此方法中显示详细信息、修改样式等
+   * Reference: iOS `mapView:didSelectAnnotationView:`
+   *
+   * Triggered when the user taps the AnnotationView; update styling or show details here.
    */
   didSelectAnnotationView?(marker: Marker): void;
 
   /**
-   * AnnotationView 被取消选中时调用
+   * Called when AnnotationView is deselected
    *
-   * @param marker 被取消选中的 Marker
+   * @param marker Marker being deselected
    *
-   * 参考：iOS `mapView:didDeselectAnnotationView:`
-   * 
-   * 当选中其他 AnnotationView 或点击地图时会触发此方法
-   * 可以在此方法中恢复样式、隐藏信息等
+   * Reference: iOS `mapView:didDeselectAnnotationView:`
+   *
+   * Triggered when another AnnotationView is selected or the map is tapped; use to restore styling.
    */
   didDeselectAnnotationView?(marker: Marker): void;
 
   /**
-   * AnnotationView 即将开始拖拽
+   * AnnotationView will start dragging
    *
-   * @param marker 即将拖拽的 Marker
+   * @param marker Marker about to be dragged
    *
-   * 参考：iOS `mapView:annotationView:didChangeDragState:` with state starting
-   * 
-   * 用户长按并开始拖拽时触发
-   * 可以在此方法中修改 Marker 的外观或执行其他准备操作
-   * 
+   * Reference: iOS `mapView:annotationView:didChangeDragState:` (starting)
+   *
+   * Triggered when user long-presses and begins dragging; prepare UI here.
+   *
    * @example
    * ```typescript
-   * annotationViewWillStartDragging: (marker: Marker) => {
-   *   // 修改透明度表示正在拖拽
+ * annotationViewWillStartDragging: (marker: Marker) => {
+ *   // Adjust opacity to indicate dragging
    *   marker.setAlpha(0.7);
    * }
    * ```
@@ -313,37 +308,33 @@ export interface AnnotationViewDelegate {
   annotationViewWillStartDragging?(marker: Marker): void;
 
   /**
-   * AnnotationView 拖拽中
+   * AnnotationView is being dragged
    *
-   * @param marker 正在拖拽的 Marker
-   * @param newPosition 新的地理位置
+   * @param marker Marker being dragged
+   * @param newPosition Updated geographic position
    *
-   * 参考：iOS `mapView:annotationView:didChangeDragState:` with state dragging
-   * 
-   * 拖拽过程中频繁触发
-   * 可以在此方法中实时更新 UI 或执行其他操作
-   * 
-   * **注意**：此方法调用频率很高，避免执行耗时操作
+   * Reference: iOS `mapView:annotationView:didChangeDragState:` (dragging)
+   *
+   * Called frequently during drag; update UI carefully (avoid heavy work).
    */
   annotationViewDidDrag?(marker: Marker, newPosition: LatLng): void;
 
   /**
-   * AnnotationView 拖拽结束
+   * AnnotationView finished dragging
    *
-   * @param marker 拖拽的 Marker
-   * @param finalPosition 最终的地理位置
+   * @param marker Dragged marker
+   * @param finalPosition Final geographic position
    *
-   * 参考：iOS `mapView:annotationView:didChangeDragState:` with state ending
-   * 
-   * 用户释放手指，拖拽结束时触发
-   * 可以在此方法中保存 Marker 的新位置或执行清理操作
-   * 
+   * Reference: iOS `mapView:annotationView:didChangeDragState:` (ending)
+   *
+   * Triggered when the user releases the marker; persist position or cleanup here.
+   *
    * @example
    * ```typescript
-   * annotationViewDidEndDragging: (marker: Marker, position: LatLng) => {
-   *   // 恢复透明度
+ * annotationViewDidEndDragging: (marker: Marker, position: LatLng) => {
+ *   // Restore opacity
    *   marker.setAlpha(1.0);
-   *   // 保存新位置到服务器
+ *   // Persist the new position to a server
    *   saveMarkerPosition(marker.getId(), position);
    * }
    * ```
@@ -351,17 +342,17 @@ export interface AnnotationViewDelegate {
   annotationViewDidEndDragging?(marker: Marker, finalPosition: LatLng): void;
 
   /**
-   * 获取复用标识符（可选）
+   * Optional reuse identifier lookup
    *
-   * @param marker Marker 实例
-   * @returns 复用标识符，可以返回 undefined
-   * 
-   * 如果不提供此方法，将使用 viewForAnnotation 返回的 config.reuseIdentifier
-   * 
+   * @param marker Marker instance
+   * @returns Reuse identifier or undefined
+   *
+  * If omitted, config.reuseIdentifier from viewForAnnotation is used.
+   *
    * @example
    * ```typescript
-   * getReuseIdentifier: (marker: Marker) => {
-   *   // 根据 Marker 类型返回不同的标识符
+ * getReuseIdentifier: (marker: Marker) => {
+ *   // Return different identifiers based on marker type
    *   return marker.getSnippet() || 'default';
    * }
    * ```

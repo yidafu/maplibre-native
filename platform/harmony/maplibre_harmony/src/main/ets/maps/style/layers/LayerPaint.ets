@@ -1,47 +1,47 @@
 /**
  * MapLibre Layer Paint Properties
- * 图层绘制属性类型定义
+ * Layer paint property type definitions
  *
- * 根据 MapLibre Style Spec 定义各图层类型的 Paint 属性
+ * Paint property sets for each layer type derived from the MapLibre Style Spec
  * @see https://maplibre.org/maplibre-style-spec/layers/
  */
 
 import type { Expression } from './Expression';
 import type { ExpressionLiteral } from './PropertyTypes';
 /**
- * 支持 Expression 的属性值类型
+ * Property value that can accept Expressions
  */
 export type DataDrivenProperty<T> = T | Expression | ExpressionLiteral;
 
 /**
- * 颜色类型 - 支持 CSS 颜色字符串或 Expression
+ * Color type - accepts CSS color strings or Expressions
  */
 export type Color = DataDrivenProperty<string>;
 
 /**
- * 平移锚点
+ * Translate anchor
  */
 export type TranslateAnchor = 'map' | 'viewport';
 
 // ==================== Background Layer Paint ====================
 
 /**
- * BackgroundPaint - 背景图层绘制属性
+ * BackgroundPaint - Background layer paint properties
  */
 export interface BackgroundPaint {
   /**
-   * 背景颜色
+   * Background color
    * @default "#000000"
    */
   'background-color'?: Color;
 
   /**
-   * 背景图案
+   * Background pattern
    */
   'background-pattern'?: DataDrivenProperty<string>;
 
   /**
-   * 背景不透明度
+   * Background opacity
    * @default 1
    */
   'background-opacity'?: DataDrivenProperty<number>;
@@ -50,47 +50,47 @@ export interface BackgroundPaint {
 // ==================== Fill Layer Paint ====================
 
 /**
- * FillPaint - 填充图层绘制属性
+ * FillPaint - Fill layer paint properties
  */
 export interface FillPaint {
   /**
-   * 是否启用填充抗锯齿
+   * Toggle fill antialiasing
    * @default true
    */
   'fill-antialias'?: boolean;
 
   /**
-   * 填充不透明度
+   * Fill opacity
    * @default 1
    */
   'fill-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 填充颜色
+   * Fill color
    * @default "#000000"
    */
   'fill-color'?: Color;
 
   /**
-   * 填充轮廓颜色
-   * 如果未指定，则使用 fill-color
+   * Fill outline color
+   * Falls back to fill-color when unspecified
    */
   'fill-outline-color'?: Color;
 
   /**
-   * 填充平移 [x, y]（像素）
+   * Fill translate [x, y] in pixels
    * @default [0, 0]
    */
   'fill-translate'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 填充平移锚点
+   * Fill translate anchor
    * @default "map"
    */
   'fill-translate-anchor'?: TranslateAnchor;
 
   /**
-   * 填充图案
+   * Fill pattern
    */
   'fill-pattern'?: DataDrivenProperty<string>;
 }
@@ -98,71 +98,71 @@ export interface FillPaint {
 // ==================== Line Layer Paint ====================
 
 /**
- * LinePaint - 线图层绘制属性
+ * LinePaint - Line layer paint properties
  */
 export interface LinePaint {
   /**
-   * 线不透明度
+   * Line opacity
    * @default 1
    */
   'line-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 线颜色
+   * Line color
    * @default "#000000"
    */
   'line-color'?: Color;
 
   /**
-   * 线平移 [x, y]（像素）
+   * Line translate [x, y] in pixels
    * @default [0, 0]
    */
   'line-translate'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 线平移锚点
+   * Line translate anchor
    * @default "map"
    */
   'line-translate-anchor'?: TranslateAnchor;
 
   /**
-   * 线宽度（像素）
+   * Line width in pixels
    * @default 1
    */
   'line-width'?: DataDrivenProperty<number>;
 
   /**
-   * 线间隙宽度（像素）
+   * Line gap width in pixels
    * @default 0
    */
   'line-gap-width'?: DataDrivenProperty<number>;
 
   /**
-   * 线偏移（像素）
+   * Line offset in pixels
    * @default 0
    */
   'line-offset'?: DataDrivenProperty<number>;
 
   /**
-   * 线模糊（像素）
+   * Line blur in pixels
    * @default 0
    */
   'line-blur'?: DataDrivenProperty<number>;
 
   /**
-   * 线虚线图案
-   * 数组指定虚线和间隔的长度（单位：线宽倍数）
+   * Line dash array
+   * Array of dash and gap lengths (multiples of line width)
    */
   'line-dasharray'?: DataDrivenProperty<number[]>;
 
   /**
-   * 线图案
+   * Line pattern
    */
   'line-pattern'?: DataDrivenProperty<string>;
 
   /**
-   * 线渐变色
-   * 仅当 source 为 geojson 且 lineMetrics 为 true 时有效
+   * Line gradient
+   * Requires a GeoJSON source with lineMetrics enabled
    */
   'line-gradient'?: Expression;
 }
@@ -170,93 +170,93 @@ export interface LinePaint {
 // ==================== Symbol Layer Paint ====================
 
 /**
- * SymbolPaint - 符号图层绘制属性
+ * SymbolPaint - Symbol layer paint properties
  */
 export interface SymbolPaint {
-  // ---------- Icon Paint 属性 ----------
+  // ---------- Icon paint properties ----------
 
   /**
-   * 图标不透明度
+   * Icon opacity
    * @default 1
    */
   'icon-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 图标颜色
+   * Icon color
    * @default "#000000"
    */
   'icon-color'?: Color;
 
   /**
-   * 图标光晕颜色
+   * Icon halo color
    * @default "rgba(0, 0, 0, 0)"
    */
   'icon-halo-color'?: Color;
 
   /**
-   * 图标光晕宽度（像素）
+   * Icon halo width in pixels
    * @default 0
    */
   'icon-halo-width'?: DataDrivenProperty<number>;
 
   /**
-   * 图标光晕模糊（像素）
+   * Icon halo blur in pixels
    * @default 0
    */
   'icon-halo-blur'?: DataDrivenProperty<number>;
 
   /**
-   * 图标平移 [x, y]（像素）
+   * Icon translate [x, y] in pixels
    * @default [0, 0]
    */
   'icon-translate'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 图标平移锚点
+   * Icon translate anchor
    * @default "map"
    */
   'icon-translate-anchor'?: TranslateAnchor;
 
-  // ---------- Text Paint 属性 ----------
+  // ---------- Text paint properties ----------
 
   /**
-   * 文本不透明度
+   * Text opacity
    * @default 1
    */
   'text-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 文本颜色
+   * Text color
    * @default "#000000"
    */
   'text-color'?: Color;
 
   /**
-   * 文本光晕颜色
+   * Text halo color
    * @default "rgba(0, 0, 0, 0)"
    */
   'text-halo-color'?: Color;
 
   /**
-   * 文本光晕宽度（像素）
+   * Text halo width in pixels
    * @default 0
    */
   'text-halo-width'?: DataDrivenProperty<number>;
 
   /**
-   * 文本光晕模糊（像素）
+   * Text halo blur in pixels
    * @default 0
    */
   'text-halo-blur'?: DataDrivenProperty<number>;
 
   /**
-   * 文本平移 [x, y]（像素）
+   * Text translate [x, y] in pixels
    * @default [0, 0]
    */
   'text-translate'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 文本平移锚点
+   * Text translate anchor
    * @default "map"
    */
   'text-translate-anchor'?: TranslateAnchor;
@@ -265,81 +265,81 @@ export interface SymbolPaint {
 // ==================== Circle Layer Paint ====================
 
 /**
- * 圆形缩放方式
+ * Circle pitch scale options
  */
 export type CirclePitchScale = 'map' | 'viewport';
 
 /**
- * 圆形对齐方式
+ * Circle pitch alignment
  */
 export type CirclePitchAlignment = 'map' | 'viewport';
 
 /**
- * CirclePaint - 圆形图层绘制属性
+ * CirclePaint - Circle layer paint properties
  */
 export interface CirclePaint {
   /**
-   * 圆形半径（像素）
+   * Circle radius in pixels
    * @default 5
    */
   'circle-radius'?: DataDrivenProperty<number>;
 
   /**
-   * 圆形颜色
+   * Circle color
    * @default "#000000"
    */
   'circle-color'?: Color;
 
   /**
-   * 圆形模糊（像素）
+   * Circle blur in pixels
    * @default 0
    */
   'circle-blur'?: DataDrivenProperty<number>;
 
   /**
-   * 圆形不透明度
+   * Circle opacity
    * @default 1
    */
   'circle-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 圆形平移 [x, y]（像素）
+   * Circle translate [x, y] in pixels
    * @default [0, 0]
    */
   'circle-translate'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 圆形平移锚点
+   * Circle translate anchor
    * @default "map"
    */
   'circle-translate-anchor'?: TranslateAnchor;
 
   /**
-   * 圆形缩放方式
+   * Circle pitch scale mode
    * @default "map"
    */
   'circle-pitch-scale'?: CirclePitchScale;
 
   /**
-   * 圆形对齐方式
+   * Circle pitch alignment
    * @default "viewport"
    */
   'circle-pitch-alignment'?: CirclePitchAlignment;
 
   /**
-   * 圆形描边宽度（像素）
+   * Circle stroke width in pixels
    * @default 0
    */
   'circle-stroke-width'?: DataDrivenProperty<number>;
 
   /**
-   * 圆形描边颜色
+   * Circle stroke color
    * @default "#000000"
    */
   'circle-stroke-color'?: Color;
 
   /**
-   * 圆形描边不透明度
+   * Circle stroke opacity
    * @default 1
    */
   'circle-stroke-opacity'?: DataDrivenProperty<number>;
@@ -348,33 +348,33 @@ export interface CirclePaint {
 // ==================== Heatmap Layer Paint ====================
 
 /**
- * HeatmapPaint - 热力图图层绘制属性
+ * HeatmapPaint - Heatmap layer paint properties
  */
 export interface HeatmapPaint {
   /**
-   * 热力图半径（像素）
+   * Heatmap radius in pixels
    * @default 30
    */
   'heatmap-radius'?: DataDrivenProperty<number>;
 
   /**
-   * 热力图权重
-   * 用于设置每个点对热力图的贡献程度
+   * Heatmap weight
+   * Controls per-point contribution to the heatmap
    * @default 1
    */
   'heatmap-weight'?: DataDrivenProperty<number>;
 
   /**
-   * 热力图强度
-   * 控制全局热力图强度
+   * Heatmap intensity
+   * Adjusts the overall heatmap strength
    * @default 1
    */
   'heatmap-intensity'?: DataDrivenProperty<number>;
 
   /**
-   * 热力图颜色
-   * 定义热力图的颜色渐变
-   * 必须使用插值表达式，输入为 ["heatmap-density"]
+   * Heatmap color ramp
+   * Defines the gradient used for the heatmap
+   * Must use an interpolation expression over ["heatmap-density"]
    * @example
   * [
    *   "interpolate",
@@ -391,7 +391,7 @@ export interface HeatmapPaint {
   'heatmap-color'?: Expression;
 
   /**
-   * 热力图不透明度
+   * Heatmap opacity
    * @default 1
    */
   'heatmap-opacity'?: DataDrivenProperty<number>;
@@ -400,52 +400,52 @@ export interface HeatmapPaint {
 // ==================== Fill-Extrusion Layer Paint ====================
 
 /**
- * FillExtrusionPaint - 填充拉伸图层绘制属性
+ * FillExtrusionPaint - Fill extrusion layer paint properties
  */
 export interface FillExtrusionPaint {
   /**
-   * 填充拉伸不透明度
+   * Fill extrusion opacity
    * @default 1
    */
   'fill-extrusion-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 填充拉伸颜色
+   * Fill extrusion color
    * @default "#000000"
    */
   'fill-extrusion-color'?: Color;
 
   /**
-   * 填充拉伸平移 [x, y]（像素）
+   * Fill extrusion translate [x, y] in pixels
    * @default [0, 0]
    */
   'fill-extrusion-translate'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 填充拉伸平移锚点
+   * Fill extrusion translate anchor
    * @default "map"
    */
   'fill-extrusion-translate-anchor'?: TranslateAnchor;
 
   /**
-   * 填充拉伸图案
+   * Fill extrusion pattern
    */
   'fill-extrusion-pattern'?: DataDrivenProperty<string>;
 
   /**
-   * 填充拉伸高度（米）
+   * Fill extrusion height in meters
    * @default 0
    */
   'fill-extrusion-height'?: DataDrivenProperty<number>;
 
   /**
-   * 填充拉伸基础高度（米）
+   * Fill extrusion base height in meters
    * @default 0
    */
   'fill-extrusion-base'?: DataDrivenProperty<number>;
 
   /**
-   * 是否应用垂直渐变
+   * Apply vertical gradient
    * @default true
    */
   'fill-extrusion-vertical-gradient'?: boolean;
@@ -454,58 +454,58 @@ export interface FillExtrusionPaint {
 // ==================== Raster Layer Paint ====================
 
 /**
- * 栅格重采样方式
+ * Raster resampling modes
  */
 export type RasterResampling = 'linear' | 'nearest';
 
 /**
- * RasterPaint - 栅格图层绘制属性
+ * RasterPaint - Raster layer paint properties
  */
 export interface RasterPaint {
   /**
-   * 栅格不透明度
+   * Raster opacity
    * @default 1
    */
   'raster-opacity'?: DataDrivenProperty<number>;
 
   /**
-   * 栅格色相旋转（度）
+   * Raster hue rotation in degrees
    * @default 0
    */
   'raster-hue-rotate'?: DataDrivenProperty<number>;
 
   /**
-   * 栅格最小亮度
+   * Raster minimum brightness
    * @default 0
    */
   'raster-brightness-min'?: DataDrivenProperty<number>;
 
   /**
-   * 栅格最大亮度
+   * Raster maximum brightness
    * @default 1
    */
   'raster-brightness-max'?: DataDrivenProperty<number>;
 
   /**
-   * 栅格饱和度
+   * Raster saturation
    * @default 0
    */
   'raster-saturation'?: DataDrivenProperty<number>;
 
   /**
-   * 栅格对比度
+   * Raster contrast
    * @default 0
    */
   'raster-contrast'?: DataDrivenProperty<number>;
 
   /**
-   * 栅格重采样方式
+   * Raster resampling mode
    * @default "linear"
    */
   'raster-resampling'?: RasterResampling;
 
   /**
-   * 栅格淡入淡出持续时间（毫秒）
+   * Raster fade duration in milliseconds
    * @default 300
    */
   'raster-fade-duration'?: number;
@@ -514,74 +514,74 @@ export interface RasterPaint {
 // ==================== Hillshade Layer Paint ====================
 
 /**
- * 山体阴影光照锚点
+ * Hillshade illumination anchor
  */
 export type HillshadeIlluminationAnchor = 'map' | 'viewport';
 
 /**
- * 山体阴影算法
+ * Hillshade rendering method
  */
 export type HillshadeMethod = 'standard' | 'basic' | 'combined' | 'igor' | 'multidirectional';
 
 /**
- * HillshadePaint - 山体阴影图层绘制属性
+ * HillshadePaint - Hillshade layer paint properties
  */
 export interface HillshadePaint {
   /**
-   * 山体阴影光照方向（度）
-   * 0 表示正北，90 表示正东
+   * Illumination direction in degrees
+   * 0 = north, 90 = east
    * @default 335
    *
-   * 当 hillshade-method 为 multidirectional 时，可以指定多个光源方向
+   * Accepts multiple directions when hillshade-method is multidirectional
    */
   'hillshade-illumination-direction'?: DataDrivenProperty<number | number[]>;
 
   /**
-   * 山体阴影光照高度（度）
-   * 0 表示日落，90 表示正午
+   * Illumination altitude in degrees
+  * 0 = sunset, 90 = noon
    * @default 45
    *
-   * 当 hillshade-method 为 multidirectional 时，可以指定多个光源高度
+   * Accepts multiple altitudes when hillshade-method is multidirectional
    */
   'hillshade-illumination-altitude'?: DataDrivenProperty<number | number[]>;
 
   /**
-   * 山体阴影光照锚点
+   * Illumination anchor
    * @default "viewport"
    */
   'hillshade-illumination-anchor'?: HillshadeIlluminationAnchor;
 
   /**
-   * 山体阴影夸张程度
+   * Hillshade exaggeration
    * @default 0.5
    */
   'hillshade-exaggeration'?: DataDrivenProperty<number>;
 
   /**
-   * 山体阴影阴影颜色
+   * Hillshade shadow color
    * @default "#000000"
    *
-   * 当 hillshade-method 为 multidirectional 时，可以指定多个颜色
+   * Accepts multiple colors when hillshade-method is multidirectional
    */
   'hillshade-shadow-color'?: DataDrivenProperty<string | string[]>;
 
   /**
-   * 山体阴影高光颜色
+   * Hillshade highlight color
    * @default "#FFFFFF"
    *
-   * 当 hillshade-method 为 multidirectional 时，可以指定多个颜色
+   * Accepts multiple colors when hillshade-method is multidirectional
    */
   'hillshade-highlight-color'?: DataDrivenProperty<string | string[]>;
 
   /**
-   * 山体阴影强调颜色
-   * 用于强调陡峭的地形特征
+   * Hillshade accent color
+   * Emphasizes steep terrain
    * @default "#000000"
    */
   'hillshade-accent-color'?: Color;
 
   /**
-   * 山体阴影算法
+   * Hillshade method
    * @default "standard"
    */
   'hillshade-method'?: HillshadeMethod;

@@ -2,55 +2,55 @@ import { AnnotationType } from './AnnotationType';
 import { MapLibreMap } from '../MapLibreMap';
 
 /**
- * Annotation - 标注基类
+ * Annotation - base class for map annotations.
  *
- * 所有地图标注的抽象基类，管理标注的 ID、与地图的关联等基础功能。
+ * Abstract base class that manages annotation IDs, map association, and other fundamentals.
  *
- * 参考:
+ * References:
  * - Android: org.maplibre.android.annotations.Annotation
  *
  * @abstract
  */
 export abstract class Annotation {
   /**
-   * 标注的唯一 ID
-   * -1 表示尚未添加到地图
-   * 由 MapLibreMap 在添加标注时分配
+   * Unique annotation ID.
+   * `-1` indicates the annotation is not yet added to the map.
+   * Assigned by `MapLibreMap` when the annotation is added.
    */
   private id: number = -1;
   /**
-   * 关联的 MapLibreMap 实例
+   * Associated `MapLibreMap` instance.
    */
   protected mapLibreMap: MapLibreMap | null = null;
 
   /**
-   * 构造函数
+   * Constructor.
    */
   protected constructor() {
   }
 
   /**
-   * 获取标注的唯一 ID
+   * Get the unique annotation ID.
    *
-   * @returns 标注 ID，-1 表示尚未添加到地图
+   * @returns Annotation ID; `-1` means it has not been added to the map.
    */
   public getId(): number {
     return this.id;
   }
 
   /**
-   * 设置标注的 ID
+   * Set the annotation ID.
    *
-   * 内部使用，由 MapLibreMap 调用
+   * Internal use only, invoked by `MapLibreMap`.
    *
-   * @param id 标注 ID
+   * @param id Annotation ID.
    */
   public setId(id: number): void {
     this.id = id;
   }
 
   /**
-   * 从地图上移除此标注
+   * Remove this annotation from the map.
    */
   public remove(): void {
     if (this.mapLibreMap === null) {
@@ -60,39 +60,39 @@ export abstract class Annotation {
   }
 
   /**
-   * 设置关联的 MapLibreMap
+   * Set the associated `MapLibreMap`.
    *
-   * 内部使用，由 MapLibreMap 调用
+   * Internal use only, invoked by `MapLibreMap`.
    *
-   * @param map MapLibreMap 实例
+   * @param map `MapLibreMap` instance.
    */
   public setMapLibreMap(map: MapLibreMap): void {
     this.mapLibreMap = map;
   }
 
   /**
-   * 获取关联的 MapLibreMap
+   * Get the associated `MapLibreMap`.
    *
-   * @returns MapLibreMap 实例，如果未添加到地图则返回 null
+   * @returns `MapLibreMap` instance, or `null` if not added to a map.
    */
   public getMapLibreMap(): MapLibreMap | null {
     return this.mapLibreMap;
   }
 
   /**
-   * 获取标注类型
+   * Get the annotation type.
    *
-   * 子类必须实现此方法
+   * Must be implemented by subclasses.
    *
-   * @returns 标注类型
+   * @returns Annotation type.
    */
   public abstract getType(): AnnotationType;
 
   /**
-   * 比较两个标注是否相同
+   * Determine whether two annotations are equal.
    *
-   * @param other 另一个标注
-   * @returns true 如果 ID 相同
+   * @param other Another annotation.
+   * @returns `true` if they share the same ID.
    */
   public equals(other: Annotation | null): boolean {
     if (this === other) {
@@ -105,10 +105,10 @@ export abstract class Annotation {
   }
 
   /**
-   * 比较两个标注的顺序
+   * Compare two annotations by their IDs.
    *
-   * @param other 另一个标注
-   * @returns -1, 0, 或 1
+   * @param other Another annotation.
+   * @returns `-1`, `0`, or `1`.
    */
   public compareTo(other: Annotation): number {
     if (this.id < other.getId()) {
@@ -120,9 +120,9 @@ export abstract class Annotation {
   }
 
   /**
-   * 获取哈希码
+   * Get the hash code.
    *
-   * @returns 哈希码
+   * @returns Hash code.
    */
   public hashCode(): number {
     return this.id;

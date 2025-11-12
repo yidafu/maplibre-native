@@ -1,7 +1,7 @@
 /**
- * Source - 数据源类型定义
+ * Source - Source type definitions
  *
- * 数据源由 NAPI 层提供，此文件提供辅助类型定义和联合类型
+ * Sources come from the NAPI layer; this module provides helper aliases and unions
  */
 
 import type { GeoJsonSource } from './GeoJsonSource';
@@ -10,9 +10,9 @@ import type { RasterSource } from './RasterSource';
 import type { RasterDemSource } from './RasterDemSource';
 import type { ImageSource } from './ImageSource';
 /**
- * Source - 所有数据源类型的联合类型
+ * Source - Union of all supported source types
  *
- * 这个联合类型包含了所有可能的数据源类型，用于类型安全的数据源操作
+ * Enables type-safe operations across every source variant
  */
 export type Source =
   | GeoJsonSource
@@ -22,92 +22,92 @@ export type Source =
     | ImageSource;
 
 /**
- * SourceData - 数据源数据类型
+ * SourceData - Source payload type
  */
 export type SourceData = Object | string | null;
 
 /**
- * SourceMetadata - 数据源元数据类型
+ * SourceMetadata - Source metadata structure
  */
 export type SourceMetadata = Record<string, Object> | null;
 
 /**
- * ClusterProperties - 聚合属性类型
+ * ClusterProperties - Aggregation property map
  */
 export type ClusterProperties = Record<string, Object> | null;
 
 /**
- * SourceOptions - 数据源选项接口
+ * SourceOptions - Source configuration interface
  *
- * 用于构建数据源的配置选项
+ * Provides the options available when constructing a source
  */
 export interface SourceOptions {
-  /** 数据源 ID */
+  /** Source identifier */
   id: string;
 
-  /** 数据源类型: 'vector', 'raster', 'raster-dem', 'geojson', 'image', 'video' */
+  /** Source type: 'vector', 'raster', 'raster-dem', 'geojson', 'image', 'video' */
   type: string;
 
-  /** 数据 (GeoJSON 数据源) */
+  /** Data payload (GeoJSON source) */
   data?: SourceData;
 
-  /** 最小缩放级别 */
+  /** Minimum zoom level */
   minZoom?: number;
 
-  /** 最大缩放级别 */
+  /** Maximum zoom level */
   maxZoom?: number;
 
-  /** 版权信息 */
+  /** Attribution string */
   attribution?: string;
 
-  /** 边界 [west, south, east, north] */
+  /** Bounds [west, south, east, north] */
   bounds?: number[];
 
-  /** 是否启用聚类 (GeoJSON) */
+  /** Enable clustering (GeoJSON) */
   cluster?: boolean;
 
-  /** 聚类最大缩放级别 */
+  /** Maximum cluster zoom */
   clusterMaxZoom?: number;
 
-  /** 聚类半径 (像素) */
+  /** Cluster radius in pixels */
   clusterRadius?: number;
 
-  /** 聚类最小点数 */
+  /** Minimum points per cluster */
   clusterMinPoints?: number;
 
-  /** 聚类属性 */
+  /** Cluster property definitions */
   clusterProperties?: ClusterProperties;
 
-  /** 是否生成要素 ID */
+  /** Auto-generate feature IDs */
   generateId?: boolean;
 
-  /** 提升为 ID 的属性名 */
+  /** Property name to promote as ID */
   promoteId?: string;
 
-  /** 几何简化容差 */
+  /** Geometry simplification tolerance */
   tolerance?: number;
 
-  /** 瓦片缓冲区 */
+  /** Tile buffer size */
   buffer?: number;
 
-  /** 是否启用线度量 */
+  /** Enable line metrics */
   lineMetrics?: boolean;
 
-  /** 最大缩放级别 (瓦片源) */
+  /** Maximum zoom (tile sources) */
   maxzoom?: number;
 
-  /** 瓦片大小 */
+  /** Tile size */
   tileSize?: number;
 
   /** TileJSON URL */
   url?: string;
 
-  /** 瓦片 URL 模板列表 */
+  /** Tile URL templates */
   tiles?: string[];
 
-  /** 瓦片方案: 'xyz' 或 'tms' */
+  /** Tile scheme: 'xyz' or 'tms' */
   scheme?: string;
 
-  /** 元数据 */
+  /** Metadata */
   metadata?: SourceMetadata;
 }

@@ -1,5 +1,5 @@
 /**
- * RasterDemSource - DEM 数据源封装类
+ * RasterDemSource - Wrapper for digital elevation model sources
  */
 import type { RasterDemSourceOptions } from 'libmaplibre.so';
 import maplibre from 'libmaplibre.so';
@@ -12,7 +12,7 @@ class InternalMarker {
 }
 
 export class RasterDemSource {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'RasterDemSource';
   private nativeInstance: maplibre.RasterDemSource;
 
@@ -62,7 +62,7 @@ export class RasterDemSource {
   }
 }
 
-// DemEncoding 类型定义
+// DemEncoding type declaration
 export enum DemEncoding {
   MAPBOX = 'mapbox',
   TERRARIUM = 'terrarium'

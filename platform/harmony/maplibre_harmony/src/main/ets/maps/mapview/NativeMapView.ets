@@ -358,7 +358,7 @@ export struct MapView {
   }
 
   /**
-   * 获取 Compass 的 X 位置
+   * Get the compass X position
    */
   private getCompassX(): Length {
     const uiSettings = this.controller.getUiSettings();
@@ -378,7 +378,7 @@ export struct MapView {
   }
 
   /**
-   * 获取 Compass 的 Y 位置
+   * Get the compass Y position
    */
   private getCompassY(): Length {
     const uiSettings = this.controller.getUiSettings();
@@ -575,9 +575,9 @@ export struct MapView {
       // ========== Configure AnnotationView callbacks ==========
       const annotationViewManager = mapLibreMap.getMarkerManager().getAnnotationViewManager();
 
-      // 监听 AnnotationView 数据变化，更新 UI
-      // 注意：由于 AnnotationViewManager 目前没有回调机制，我们需要在相机移动时更新
-      // 这将在相机监听器中实现
+      // Observe AnnotationView data changes to refresh the UI
+      // Note: AnnotationViewManager currently lacks callbacks, so updates run during camera movement
+      // This behavior is implemented inside the camera listener
 
     } catch (error) {
       this.logNativeMapViewError('Failed to setup InfoWindow/AnnotationView callbacks', error);
@@ -588,11 +588,11 @@ export struct MapView {
   }
 
   /**
-   * 构建组件
+   * Build the component
    */
   build() {
     Stack() {
-      // 地图 XComponent
+      // Map XComponent
       XComponent({
         type: XComponentType.SURFACE,
         controller: this.controller,
@@ -600,9 +600,9 @@ export struct MapView {
         .width('100%')
         .height('100%')
         .parallelGesture(
-          // 使用 GestureGroup 组合多个手势，允许并行识别
+          // Use GestureGroup to combine multiple gestures and allow parallel recognition
           GestureGroup(GestureMode.Parallel,
-            // 平移手势 - 单指拖动
+            // Pan gesture - single-finger drag
             PanGesture({ fingers: 1, distance: 5 })
               .onActionStart((event: GestureEvent) => {
                 this.controller.getGestureDetector().onPanStart(event);
@@ -614,7 +614,7 @@ export struct MapView {
                 this.controller.getGestureDetector().onPanEnd(event);
               }),
 
-            // 缩放手势 - 双指捏合
+            // Pinch gesture - two-finger pinch
             PinchGesture({ fingers: 2, distance: 5 })
               .onActionStart((event: GestureEvent) => {
                 this.controller.getGestureDetector().onPinchStart(event);
@@ -626,7 +626,7 @@ export struct MapView {
                 this.controller.getGestureDetector().onPinchEnd(event);
               }),
 
-            // 旋转手势 - 双指旋转
+            // Rotation gesture - two-finger rotate
             RotationGesture({ fingers: 2, angle: 1 })
               .onActionStart((event: GestureEvent) => {
                 this.controller.getGestureDetector().onRotateStart(event);
@@ -639,7 +639,7 @@ export struct MapView {
               })
           )
         )
-        // 双击手势 - 使用 priorityGesture 确保优先级最高
+        // Double-tap gesture - use priorityGesture to ensure the highest priority
         .priorityGesture(
           TapGesture({ count: 2 })
             .onAction((event: GestureEvent) => {
@@ -647,14 +647,14 @@ export struct MapView {
             }),
           GestureMask.Normal
         )
-        // 长按手势 - 独立绑定
+        // Long-press gesture - registered separately
         .gesture(
           LongPressGesture({ repeat: false, duration: 500 })
             .onAction((event: GestureEvent) => {
               this.controller.getGestureDetector().onLongPress(event);
             })
         )
-        // 单击手势 - 独立绑定，系统会自动处理与长按的冲突
+        // Single-tap gesture - registered separately; the system resolves conflicts with long press
         .gesture(
           TapGesture({ count: 1 })
             .onAction((event: GestureEvent) => {
@@ -662,7 +662,7 @@ export struct MapView {
             })
         )
         .gesture(
-          // Tilt 手势 - 双指垂直拖动
+          // Tilt gesture - two-finger vertical drag
           PanGesture({ fingers: 2, distance: 10, direction: PanDirection.Vertical })
             .onActionStart((event: GestureEvent) => {
               this.controller.getGestureDetector().onTwoFingerPanStart(event);
@@ -675,7 +675,7 @@ export struct MapView {
             })
         )
 
-      // Compass 组件 - 根据 UiSettings 配置定位（绝对定位）
+      // Compass component - absolute positioning configured via UiSettings
       if (this.controller.getUiSettings().isCompassEnabled()) {
         CompassView({
           externalBearing: this.compassBearing,
@@ -691,7 +691,7 @@ export struct MapView {
           .position({ x: this.getCompassX(), y: this.getCompassY() })
       }
 
-      // Logo 组件 - 根据 UiSettings 配置定位（绝对定位）
+      // Logo component - absolute positioning configured via UiSettings
       if (this.controller.getUiSettings().isLogoEnabled()) {
         LogoView({
           logoEnabled: this.controller.getUiSettings().isLogoEnabled()
@@ -701,7 +701,7 @@ export struct MapView {
           .position({ x: this.getLogoX(), y: this.getLogoY() })
       }
 
-      // ScaleBar 组件 - 根据 UiSettings 配置定位（绝对定位）
+      // Scale bar component - absolute positioning configured via UiSettings
       if (this.controller.getUiSettings().isScaleBarEnabled()) {
         ScaleBarView({
           isEnabled: this.controller.getUiSettings().isScaleBarEnabled(),
@@ -712,7 +712,7 @@ export struct MapView {
           .position({ x: this.getScaleBarX(), y: this.getScaleBarY() })
       }
 
-      // AnnotationView 覆盖层 - 显示所有自定义 AnnotationView
+      // AnnotationView overlay - renders all custom AnnotationViews
       AnnotationViewOverlay({
         visibleAnnotationViews: this.visibleAnnotationViews,
         mapBearing: this.compassBearing,
@@ -796,7 +796,7 @@ export struct MapView {
         .height('100%')
         .hitTestBehavior(HitTestMode.Transparent)
 
-      // InfoWindow 覆盖层 - 显示所有 InfoWindow
+      // InfoWindow overlay - renders every InfoWindow
       InfoWindowOverlay({
         visibleInfoWindows: this.visibleInfoWindows,
         onInfoWindowClick: (marker: Marker) => {
@@ -856,7 +856,7 @@ export struct MapView {
         }
       })
 
-      // 声明式子组件渲染（Marker、Source、Layer 等）
+      // Declarative child rendering (Marker, Source, Layer, etc.)
       if (this.children) {
         this.children()
       }
@@ -864,64 +864,64 @@ export struct MapView {
   }
 
   /**
-   * 添加平移手势监听器
+   * Add a pan gesture listener
    */
   addOnMoveListener(listener: OnMoveListener): void {
     this.controller.getGestureDetector().addOnMoveListener(listener);
   }
 
   /**
-   * 添加缩放手势监听器
+   * Add a scale gesture listener
    */
   addOnScaleListener(listener: OnScaleListener): void {
     this.controller.getGestureDetector().addOnScaleListener(listener);
   }
 
   /**
-   * 添加旋转手势监听器
+   * Add a rotate gesture listener
    */
   addOnRotateListener(listener: OnRotateListener): void {
     this.controller.getGestureDetector().addOnRotateListener(listener);
   }
 
   /**
-   * 添加点击监听器
+   * Add a tap listener
    */
   addOnMapClickListener(listener: OnMapClickListener): void {
     this.controller.getGestureDetector().addOnMapClickListener(listener);
   }
 
   /**
-   * 添加长按监听器
+   * Add a long-press listener
    */
   addOnMapLongClickListener(listener: OnMapLongClickListener): void {
     this.controller.getGestureDetector().addOnMapLongClickListener(listener);
   }
 
   /**
-   * 添加双击监听器
+   * Add a double-tap listener
    */
   addOnDoubleTapListener(listener: OnDoubleTapListener): void {
     this.controller.getGestureDetector().addOnDoubleTapListener(listener);
   }
 
   /**
-   * 添加倾斜监听器
+   * Add a tilt listener
    */
   addOnTiltListener(listener: OnTiltListener): void {
     this.controller.getGestureDetector().addOnTiltListener(listener);
   }
 
   /**
-   * 添加 Quick Zoom 监听器
+   * Add a quick zoom listener
    */
   addOnQuickZoomListener(listener: OnQuickZoomListener): void {
     this.controller.getGestureDetector().addOnQuickZoomListener(listener);
   }
 
   /**
-   * 获取地图俯仰角度
-   * @returns 当前俯仰角度（度）
+   * Get the map pitch
+   * @returns Current pitch in degrees
    */
   getPitch(): number {
     const mapView = this.controller.getMapView();
@@ -940,9 +940,9 @@ export struct MapView {
   }
 
   /**
-   * 设置地图俯仰角度
-   * @param pitch 俯仰角度（度，0-60）
-   * @param duration 可选的动画时长（毫秒），默认为 0（不使用动画）
+   * Set the map pitch
+   * @param pitch Pitch in degrees (0-60)
+   * @param duration Optional animation duration in milliseconds, default 0 (no animation)
    */
   setPitch(pitch: number, duration: number = 0): void {
     const mapView = this.controller.getMapView();
@@ -959,24 +959,24 @@ export struct MapView {
   }
 
   /**
-   * 获取 UI 设置
+   * Get the UI settings
    */
   getUiSettings(): UiSettings {
     return this.controller.getUiSettings();
   }
 
   /**
-   * 设置 MapLibreMap 实例（用于 InfoWindow 管理）
-   * 应在创建 MapLibreMap 后立即调用
+   * Set the MapLibreMap instance (used for InfoWindow management)
+   * Should be called immediately after the MapLibreMap is created
    */
   setMapLibreMap(mapLibreMap: MapLibreMap): void {
     this.controller.setMapLibreMapInstance(mapLibreMap);
-    // 立即设置 InfoWindow 回调
+    // Set InfoWindow callbacks immediately
     this.setupInfoWindowCallbacks();
   }
 
   /**
-   * 设置地图样式
+   * Set the map style
    */
   setStyleUrl(url: string): void {
     this.styleUrl = url;
@@ -984,7 +984,7 @@ export struct MapView {
   }
 
   /**
-   * 取消所有正在进行的相机过渡动画
+   * Cancel all ongoing camera transition animations
    */
   cancelTransitions(): void {
     const mapView = this.controller.getMapView();
@@ -1001,32 +1001,32 @@ export struct MapView {
   }
 
   /**
-   * 跳转到指定位置
+   * Jump to the specified camera position
    */
   jumpTo(angle: number, latitude: number, longitude: number, pitch: number, zoom: number): void {
     this.controller.jumpTo(angle, latitude, longitude, pitch, zoom);
   }
 
   /**
-   * 飞行到指定位置（带飞行动画）
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
+   * Fly to the specified camera position (with animation)
+   * @param options Camera options
+   * @param duration Animation duration in milliseconds
    */
   flyTo(options: CameraOptions, duration: number): void {
     this.controller.flyTo(options, duration);
   }
 
   /**
-   * 平滑过渡到指定位置
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
+   * Transition smoothly to the specified camera position
+   * @param options Camera options
+   * @param duration Animation duration in milliseconds
    */
   easeTo(options: CameraOptions, duration: number): void {
     this.controller.easeTo(options, duration);
   }
 
   /**
-   * 添加标记
+   * Add a marker
    */
   addMarkers(markers: Marker[]): number[] {
     return this.controller.addMarkers(markers);
@@ -1049,44 +1049,44 @@ export struct MapView {
   }
 
   /**
-   * 触发重绘
+   * Trigger a redraw
    */
   triggerRepaint(): void {
     this.controller.triggerRepaint();
   }
 
   /**
-   * 显示/隐藏地图
+   * Show or hide the map
    */
   setVisible(visible: boolean): void {
     this.isVisible = visible;
   }
 
   /**
-   * 获取地图控制器
+   * Get the map controller
    */
   getController(): NativeMapViewController {
     return this.controller;
   }
 
   /**
-   * 获取视图宽度
+   * Get the view width
    */
   getWidth(): number {
     return this.controller.getWidth();
   }
 
   /**
-   * 获取视图高度
+   * Get the view height
    */
   getHeight(): number {
     return this.controller.getHeight();
   }
 
-  // ========== 监听器方法代理 ==========
-  // 将 Controller 的监听器方法暴露给组件使用者
+  // ========== Listener method proxies ==========
+  // Expose controller listener methods to component consumers
 
-  // ===== 相机事件监听器 =====
+  // ===== Camera event listeners =====
 
   addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
     this.controller.addOnCameraWillChangeListener(listener);
@@ -1112,7 +1112,7 @@ export struct MapView {
     this.controller.removeOnCameraDidChangeListener(listener);
   }
 
-  // ===== 地图加载事件监听器 =====
+  // ===== Map loading listeners =====
 
   addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
     this.controller.addOnWillStartLoadingMapListener(listener);
@@ -1138,7 +1138,7 @@ export struct MapView {
     this.controller.removeOnDidFailLoadingMapListener(listener);
   }
 
-  // ===== 渲染事件监听器 =====
+  // ===== Rendering listeners =====
 
   addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
     this.controller.addOnWillStartRenderingFrameListener(listener);
@@ -1180,7 +1180,7 @@ export struct MapView {
     this.controller.removeOnDidFinishRenderingMapListener(listener);
   }
 
-  // ===== 样式事件监听器 =====
+  // ===== Style listeners =====
 
   addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
     this.controller.addOnDidFinishLoadingStyleListener(listener);
@@ -1206,7 +1206,7 @@ export struct MapView {
     this.controller.removeOnCanRemoveUnusedStyleImageListener(listener);
   }
 
-  // ===== 其他事件监听器 =====
+  // ===== Other listeners =====
 
   addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
     this.controller.addOnDidBecomeIdleListener(listener);
@@ -1305,177 +1305,177 @@ export struct MapView {
   }
 
   /**
-   * 获取地图异步（对齐 Android getMapAsync 模式）
-   * @param callback 地图就绪回调
+   * Get the map asynchronously (mirrors the Android getMapAsync pattern)
+   * @param callback Map ready callback
    */
   getMapAsync(callback: OnMapReadyCallback): void {
     this.controller.getMapAsync(callback);
   }
 
-  // ========== 渲染控制方法 ==========
+  // ========== Rendering control methods ==========
 
   /**
-   * 在渲染线程上执行任务
+   * Execute a task on the rendering thread
    */
   queueEvent(runnable: () => void): void {
     this.controller.queueEvent(runnable);
   }
 
   /**
-   * 设置最大帧率
+   * Set the maximum frame rate
    */
   setMaximumFps(maximumFps: number): void {
     this.controller.setMaximumFps(maximumFps);
   }
 
   /**
-   * 设置渲染刷新模式
+   * Set the rendering refresh mode
    */
   setRenderingRefreshMode(mode: RenderingRefreshMode): void {
     this.controller.setRenderingRefreshMode(mode);
   }
 
   /**
-   * 获取渲染刷新模式
+   * Get the rendering refresh mode
    */
   getRenderingRefreshMode(): RenderingRefreshMode {
     return this.controller.getRenderingRefreshMode();
   }
 
   /**
-   * 设置 FPS 变化监听器
+   * Set the FPS changed listener
    */
   setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
     this.controller.setOnFpsChangedListener(listener);
   }
 
-  // ========== 性能和缓存配置 ==========
+  // ========== Performance and cache configuration ==========
 
   /**
-   * 设置是否预加载瓦片
+   * Enable or disable tile preloading
    */
   setPrefetchesTiles(enabled: boolean): void {
     this.controller.setPrefetchesTiles(enabled);
   }
 
   /**
-   * 设置是否启用瓦片缓存
+   * Enable or disable tile caching
    */
   setTileCacheEnabled(enabled: boolean): void {
     this.controller.setTileCacheEnabled(enabled);
   }
 
   /**
-   * 设置 LOD 最小半径
+   * Set the minimum LOD radius
    */
   setTileLodMinRadius(radius: number): void {
     this.controller.setTileLodMinRadius(radius);
   }
 
   /**
-   * 设置 LOD 缩放因子
+   * Set the LOD scale factor
    */
   setTileLodScale(scale: number): void {
     this.controller.setTileLodScale(scale);
   }
 
   /**
-   * 设置 LOD 俯仰角阈值
+   * Set the LOD pitch threshold
    */
   setTileLodPitchThreshold(threshold: number): void {
     this.controller.setTileLodPitchThreshold(threshold);
   }
 
   /**
-   * 设置 LOD 缩放级别偏移
+   * Set the LOD zoom level offset
    */
   setTileLodZoomShift(shift: number): void {
     this.controller.setTileLodZoomShift(shift);
   }
 
-  // ========== 鸿蒙风格的生命周期方法 ==========
+  // ========== Harmony-style lifecycle methods ==========
 
   /**
-   * 页面显示时调用（鸿蒙生命周期）
-   * 用于恢复地图渲染
+   * Called when the page becomes visible (Harmony lifecycle)
+   * Used to resume map rendering
    */
   onPageShow(): void {
-    // 恢复渲染
+    // Resume rendering
     this.controller.triggerRepaint();
   }
 
   /**
-   * 页面隐藏时调用（鸿蒙生命周期）
-   * 用于暂停地图渲染、暂停定位等，节省资源
+   * Called when the page is hidden (Harmony lifecycle)
+   * Used to pause map rendering and location updates to save resources
    */
   onPageHide(): void {
-    // 当前实现不暂停渲染，仅记录日志
-    // 未来可以添加更多资源管理逻辑
+    // Current implementation does not pause rendering; logs only
+    // Future enhancements can add more resource management logic
   }
 
   /**
-   * 返回键处理（鸿蒙生命周期）
-   * @returns true 表示消费了返回事件，false 表示不消费
+   * Back button handling (Harmony lifecycle)
+   * @returns true if the back event is consumed; false otherwise
    */
   onBackPress(): boolean {
 
-    // 取消正在进行的相机动画
+    // Cancel ongoing camera animations
     this.controller.getMapView()?.cancelTransitions();
 
-    // 不消费返回事件，让系统处理
+    // Do not consume the back event; allow the system to handle it
     return false;
   }
 
   /**
-   * 内存压力回调（鸿蒙风格）
-   * @param level 内存压力级别
+   * Memory pressure callback (Harmony style)
+   * @param level Memory pressure level
    */
   onMemoryLevel(level: number): void {
     hilog.warn(DOMAIN, 'NativeMapView', `onMemoryLevel: Memory pressure level ${level}`);
 
-    // 根据内存压力级别采取不同措施
+    // Take actions based on the reported memory pressure level
     if (level >= 2) {
-      // 高内存压力：清理缓存
+      // High memory pressure: clear caches
       this.controller.onLowMemory();
     }
   }
 
-  // ========== 新增方法：对齐 Android/iOS API ==========
+  // ========== Additional APIs aligned with Android/iOS ==========
 
   /**
-   * 设置内容边距（对齐 Android API）
-   * @param padding 边距数组 [top, left, bottom, right]（逻辑像素）
+   * Set content padding (aligned with the Android API)
+   * @param padding Padding array [top, left, bottom, right] (logical pixels)
    */
   setContentPadding(padding: number[]): void {
     this.controller.setContentPadding(padding);
   }
 
   /**
-   * 获取内容边距（对齐 Android API）
-   * @returns 边距数组 [top, left, bottom, right]
+   * Get content padding (aligned with the Android API)
+   * @returns Padding array [top, left, bottom, right]
    */
   getContentPadding(): number[] {
     return this.controller.getContentPadding();
   }
 
   /**
-   * 获取设备像素比（对齐 Android API）
-   * @returns 像素比
+   * Get the device pixel ratio (aligned with the Android API)
+   * @returns Pixel ratio
    */
   getPixelRatio(): number {
     return this.controller.getPixelRatio();
   }
 
-  // ========== 调试功能（Debug Mode）==========
+  // ========== Debug features (Debug Mode) ==========
 
   /**
-   * 设置调试选项
-   * 使用 MapDebugOptions 枚举值的位掩码来启用多个调试功能
+   * Configure debug options
+   * Use the MapDebugOptions bitmask to enable multiple debug features
    *
-   * @param debugOptions 调试选项的位掩码
+   * @param debugOptions Bitmask of debug options
    * @example
   * ```typescript
-   * // 启用多个调试选项
+   * // Enable multiple debug options
    * nativeMapView.setDebug(MapDebugOptions.TileBoundaries | MapDebugOptions.CollisionBoxes);
    * ```
    */
@@ -1494,9 +1494,9 @@ export struct MapView {
   }
 
   /**
-   * 获取当前调试选项
+   * Get the current debug options
    *
-   * @returns 当前启用的调试选项位掩码
+   * @returns Bitmask of the currently enabled debug options
    */
   getDebug(): number {
     const mapView = this.controller.getMapView();
@@ -1514,16 +1514,16 @@ export struct MapView {
   }
 
   /**
-   * 快速开关调试模式（使用默认调试选项组合）
-   * 启用时会显示：瓦片边界、瓦片信息和碰撞框
+   * Toggle debug mode quickly (uses the default option set)
+   * When enabled, shows tile boundaries, tile info, and collision boxes
    *
-   * @param active 是否启用调试模式
+   * @param active Whether to enable debug mode
    * @example
   * ```typescript
-   * // 快速启用调试模式
+   * // Quickly enable debug mode
    * nativeMapView.setDebugActive(true);
    *
-   * // 关闭调试模式
+   * // Disable debug mode
    * nativeMapView.setDebugActive(false);
    * ```
    */
@@ -1542,9 +1542,9 @@ export struct MapView {
   }
 
   /**
-   * 检查是否处于调试模式
+   * Check whether debug mode is active
    *
-   * @returns 是否有任何调试选项被启用
+   * @returns True if any debug options are enabled
    */
   isDebugActive(): boolean {
     const mapView = this.controller.getMapView();

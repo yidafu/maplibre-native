@@ -8,11 +8,11 @@ import { Point } from '../geometry/Point';
 import { Marker } from './Marker';
 
 /**
- * InfoWindowManager - 信息窗口管理器
+ * InfoWindowManager - InfoWindow controller
  *
- * 管理所有 InfoWindow 的显示和隐藏
+ * Manages display and dismissal of all InfoWindows.
  *
- * 参考:
+ * Reference:
  * - Android: InfoWindowManager.java
  */
 export class InfoWindowManager {
@@ -22,13 +22,13 @@ export class InfoWindowManager {
   private onLongClickListener: OnInfoWindowLongClickListener | null = null;
   private onCloseListener: OnInfoWindowCloseListener | null = null;
   private allowConcurrentMultiple: boolean = false;
-  // UI 回调 - 用于通知外部显示/隐藏/更新 UI
+  // UI callbacks notifying external layer to show/hide/update
   private onShowUICallback?: (marker: Marker, position: InfoWindowPosition) => void;
   private onHideUICallback?: (marker: Marker) => void;
   private onUpdateUICallback?: (marker: Marker, position: InfoWindowPosition) => void;
 
   /**
-   * 设置 UI 显示回调
+   * Register UI show callback
    */
   setOnShowUICallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
     console.info(`[InfoWindowManager] setOnShowUICallback called`);
@@ -36,108 +36,108 @@ export class InfoWindowManager {
   }
 
   /**
-   * 设置 UI 隐藏回调
+   * Register UI hide callback
    */
   setOnHideUICallback(callback: (marker: Marker) => void): void {
     this.onHideUICallback = callback;
   }
 
   /**
-   * 设置 UI 更新回调
+   * Register UI update callback
    */
   setOnUpdateUICallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
     this.onUpdateUICallback = callback;
   }
 
   /**
-   * 设置 InfoWindowAdapter
+   * Assign InfoWindowAdapter
    */
   setAdapter(adapter: InfoWindowAdapter | null): void {
     this.adapter = adapter;
   }
 
   /**
-   * 获取 InfoWindowAdapter
+   * Retrieve InfoWindowAdapter
    */
   getAdapter(): InfoWindowAdapter | null {
     return this.adapter;
   }
 
   /**
-   * 设置点击监听器
+   * Set click listener
    */
   setOnClickListener(listener: OnInfoWindowClickListener | null): void {
     this.onClickListener = listener;
   }
 
   /**
-   * 获取点击监听器
+   * Get click listener
    */
   getOnClickListener(): OnInfoWindowClickListener | null {
     return this.onClickListener;
   }
 
   /**
-   * 设置长按监听器
+   * Set long-click listener
    */
   setOnLongClickListener(listener: OnInfoWindowLongClickListener | null): void {
     this.onLongClickListener = listener;
   }
 
   /**
-   * 获取长按监听器
+   * Get long-click listener
    */
   getOnLongClickListener(): OnInfoWindowLongClickListener | null {
     return this.onLongClickListener;
   }
 
   /**
-   * 设置关闭监听器
+   * Set close listener
    */
   setOnCloseListener(listener: OnInfoWindowCloseListener | null): void {
     this.onCloseListener = listener;
   }
 
   /**
-   * 获取关闭监听器
+   * Get close listener
    */
   getOnCloseListener(): OnInfoWindowCloseListener | null {
     return this.onCloseListener;
   }
 
   /**
-   * 设置是否允许多个 InfoWindow 同时显示
+   * Control whether multiple InfoWindows may be shown simultaneously
    */
   setAllowConcurrentMultiple(allow: boolean): void {
     this.allowConcurrentMultiple = allow;
   }
 
   /**
-   * 是否允许多个 InfoWindow 同时显示
+   * Check whether multiple InfoWindows are allowed simultaneously
    */
   isAllowConcurrentMultiple(): boolean {
     return this.allowConcurrentMultiple;
   }
 
   /**
-   * 显示 Marker 的 InfoWindow
-   * @param marker Marker 实例
-   * @param screenWidth 屏幕宽度
-   * @param screenHeight 屏幕高度
-   * @param markerScreenPosition Marker 的屏幕坐标
-   * @param style 可选的 InfoWindow 样式配置
+   * Show InfoWindow for a marker
+   * @param marker Marker instance
+   * @param screenWidth Screen width
+   * @param screenHeight Screen height
+   * @param markerScreenPosition Marker screen coordinates
+   * @param style Optional InfoWindow style
    */
   show(marker: Marker, screenWidth: number, screenHeight: number, markerScreenPosition: Point,
     style?: InfoWindowStyle): InfoWindow | null {
     console.info(`[InfoWindowManager] show() called for marker: ${marker.getTitle()}, screenWidth: ${screenWidth}, screenHeight: ${screenHeight}, markerPos: (${markerScreenPosition.x}, ${markerScreenPosition.y})`);
     console.info(`[InfoWindowManager] onShowUICallback is ${this.onShowUICallback ? 'defined' : 'null/undefined'}`);
     
-    // 如果不允许多个，先关闭已有的
+    // Close existing windows if multiple display not allowed
     if (!this.allowConcurrentMultiple) {
       this.closeAll();
     }
 
-    // 检查是否有内容可显示
+    // Ensure marker has content to display
     if (!this.isValidForMarker(marker)) {
       console.warn('[InfoWindowManager] Marker has no title or snippet, cannot show InfoWindow');
       return null;
@@ -145,15 +145,15 @@ export class InfoWindowManager {
     
     console.info(`[InfoWindowManager] Marker has valid content, proceeding to create/show InfoWindow`);
 
-    // 创建或获取 InfoWindow
+    // Create or retrieve InfoWindow
     const markerId = marker.getId();
     let infoWindow = this.infoWindows.get(markerId);
 
     if (!infoWindow) {
-      // 使用样式配置创建 InfoWindow
+      // Instantiate InfoWindow with style
       infoWindow = new InfoWindow(marker, style);
 
-      // 设置回调
+      // Configure callbacks
       infoWindow.setOnShowCallback((m: Marker, pos: InfoWindowPosition) => {
         if (this.onShowUICallback) {
           this.onShowUICallback(m, pos);
@@ -177,11 +177,11 @@ export class InfoWindowManager {
 
       this.infoWindows.set(markerId, infoWindow);
     } else if (style) {
-      // 如果 InfoWindow 已存在但提供了新样式，更新样式
+      // Update style when InfoWindow exists and new style provided
       infoWindow.setStyle(style);
     }
 
-    // 显示
+    // Display InfoWindow
     console.info(`[InfoWindowManager] Calling infoWindow.show()`);
     infoWindow.show(screenWidth, screenHeight, markerScreenPosition);
     console.info(`[InfoWindowManager] InfoWindow.show() completed, isShown: ${infoWindow.isShown()}`);
@@ -190,7 +190,7 @@ export class InfoWindowManager {
   }
 
   /**
-   * 关闭指定 Marker 的 InfoWindow
+   * Close InfoWindow for specific marker
    */
   close(marker: Marker): void {
     const infoWindow = this.infoWindows.get(marker.getId());
@@ -200,7 +200,7 @@ export class InfoWindowManager {
   }
 
   /**
-   * 关闭所有 InfoWindow
+   * Close all InfoWindows
    */
   closeAll(): void {
     let closedCount = 0;
@@ -216,7 +216,7 @@ export class InfoWindowManager {
   }
 
   /**
-   * 检查 Marker 是否有有效的 InfoWindow 内容
+   * Determine whether marker has InfoWindow content
    */
   isValidForMarker(marker: Marker): boolean {
     const title = marker.getTitle();
@@ -227,17 +227,17 @@ export class InfoWindowManager {
   }
 
   /**
-   * 获取指定 Marker 的 InfoWindow
+   * Retrieve InfoWindow for marker
    */
   get(marker: Marker): InfoWindow | null {
     return this.infoWindows.get(marker.getId()) || null;
   }
 
   /**
-   * 更新所有显示中的 InfoWindow 位置
-   * @param screenWidth 屏幕宽度
-   * @param screenHeight 屏幕高度
-   * @param getMarkerScreenPosition 获取 Marker 屏幕坐标的函数
+   * Update positions for all visible InfoWindows
+   * @param screenWidth Screen width
+   * @param screenHeight Screen height
+   * @param getMarkerScreenPosition Function returning marker screen position
    */
   updatePositions(
     screenWidth: number,
@@ -257,7 +257,7 @@ export class InfoWindowManager {
   }
 
   /**
-   * 触发 InfoWindow 点击事件
+   * Trigger InfoWindow click event
    */
   triggerClick(marker: Marker): boolean {
     if (this.onClickListener) {
@@ -268,7 +268,7 @@ export class InfoWindowManager {
   }
 
   /**
-   * 触发 InfoWindow 长按事件
+   * Trigger InfoWindow long-click event
    */
   triggerLongClick(marker: Marker): boolean {
     if (this.onLongClickListener) {
@@ -279,7 +279,7 @@ export class InfoWindowManager {
   }
 
   /**
-   * 获取所有显示中的 InfoWindow
+   * Get all visible InfoWindows
    */
   getVisibleInfoWindows(): InfoWindow[] {
     const visible: InfoWindow[] = [];

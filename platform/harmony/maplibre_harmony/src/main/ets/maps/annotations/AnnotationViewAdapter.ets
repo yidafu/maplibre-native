@@ -3,15 +3,15 @@ import { Marker } from './Marker';
 import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
 
 /**
- * AnnotationViewAdapter - 自定义 Annotation 视图适配器（兼容层）
+ * AnnotationViewAdapter - Legacy annotation view adapter (compatibility layer)
  *
- * **注意**: 此接口已废弃，建议使用 {@link AnnotationViewDelegate} 替代
- * 
- * 该接口保留用于向后兼容，新代码应使用功能更完整的 AnnotationViewDelegate
+ * **Note**: This interface is deprecated; prefer {@link AnnotationViewDelegate}.
  *
- * @deprecated 使用 {@link AnnotationViewDelegate} 替代
- * 
- * @example 旧用法（不推荐）：
+ * Retained for backward compatibility. New code should use the richer AnnotationViewDelegate.
+ *
+ * @deprecated Use {@link AnnotationViewDelegate} instead.
+ *
+ * @example Legacy usage (not recommended):
  * ```typescript
  * class MyAdapter implements AnnotationViewAdapter {
  *   getAnnotationView(marker: Marker): object | null {
@@ -20,7 +20,7 @@ import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDe
  * }
  * ```
  * 
- * @example 新用法（推荐）：
+ * @example Recommended delegate usage:
  * ```typescript
  * const delegate: AnnotationViewDelegate = {
  *   viewForAnnotation: (marker: Marker) => {
@@ -39,36 +39,36 @@ import { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDe
  */
 export interface AnnotationViewAdapter {
   /**
-   * 为 Marker 创建自定义视图
+   * Create a custom view for a marker
    *
-   * @param marker 要显示的 Marker
-   * @returns 自定义视图组件内容，返回 null 使用默认图标
-   * 
-   * @deprecated 使用 AnnotationViewDelegate.viewForAnnotation 替代
+   * @param marker Marker to render
+   * @returns Custom view component or null to use default icon
+   *
+   * @deprecated Use AnnotationViewDelegate.viewForAnnotation
    */
   getAnnotationView(marker: Marker): object | null;
 
   /**
-   * 获取视图复用标识符（可选，用于性能优化）
+   * Optional reuse identifier (performance optimization)
    *
-   * 具有相同标识符的视图可以被复用，减少视图创建开销
+   * Views sharing the same identifier can be reused to avoid extra creation cost.
    *
-   * @param marker 要显示的 Marker
-   * @returns 复用标识符，默认使用 marker.getIcon()
-   * 
-   * @deprecated 使用 AnnotationViewDelegate.getReuseIdentifier 替代
+   * @param marker Marker being displayed
+   * @returns Reuse identifier (defaults to marker.getIcon())
+   *
+   * @deprecated Use AnnotationViewDelegate.getReuseIdentifier
    */
   getReuseIdentifier?(marker: Marker): string;
 }
 
 /**
- * 从 AnnotationViewAdapter 创建 AnnotationViewDelegate（兼容层）
- * 
- * 将旧的 Adapter 接口转换为新的 Delegate 接口
- * 
- * @param adapter 旧的 AnnotationViewAdapter 实例
- * @returns 转换后的 AnnotationViewDelegate 实例
- * 
+ * Create AnnotationViewDelegate from AnnotationViewAdapter (compat layer)
+ *
+ * Converts the legacy adapter interface into the delegate interface.
+ *
+ * @param adapter Legacy AnnotationViewAdapter instance
+ * @returns Converted AnnotationViewDelegate
+ *
  * @example
  * ```typescript
  * const oldAdapter: AnnotationViewAdapter = { ... };
@@ -89,15 +89,15 @@ class DelegateAdapter implements AnnotationViewDelegate {
       return null;
     }
 
-    // 获取复用标识符
+    // Determine reuse identifier
     const reuseIdentifier = this.adapter.getReuseIdentifier?.(marker) ?? marker.getIcon() ?? 'default';
 
-    // 注意：由于 adapter 返回的是 object，我们无法直接转换为 Builder
-    // 这里返回一个基本配置，实际内容需要通过其他方式处理
+    // Note: adapter returns plain object; cannot convert to Builder directly
+    // Provide minimal config—actual rendering handled elsewhere
     const config: AnnotationViewConfig = {
       reuseIdentifier: reuseIdentifier,
-      // customView 暂时无法直接转换为 contentBuilder
-      // 这是为什么建议直接使用 Delegate 的原因
+      // customView cannot currently be converted into a contentBuilder
+      // Hence the recommendation to rely on the Delegate API
     };
     return config;
   }

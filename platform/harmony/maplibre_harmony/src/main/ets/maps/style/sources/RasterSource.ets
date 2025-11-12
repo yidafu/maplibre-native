@@ -1,5 +1,5 @@
 /**
- * RasterSource - 栅格数据源封装类
+ * RasterSource - Wrapper for raster data sources
  */
 import type { RasterSourceOptions } from 'libmaplibre.so';
 import maplibre from 'libmaplibre.so';
@@ -12,7 +12,7 @@ class InternalMarker {
 }
 
 export class RasterSource {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'RasterSource';
   private nativeInstance: maplibre.RasterSource;
 

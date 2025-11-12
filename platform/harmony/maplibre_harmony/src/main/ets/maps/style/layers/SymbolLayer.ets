@@ -1,5 +1,5 @@
 /**
- * SymbolLayer - 封装类
+ * SymbolLayer - Wrapper class
  */
 import maplibre from 'libmaplibre.so';
 import type { ExpressionLiteral, PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
@@ -15,7 +15,7 @@ class InternalMarker {
 }
 
 export class SymbolLayer {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'SymbolLayer';
   private nativeInstance: maplibre.SymbolLayer;
 
@@ -65,8 +65,8 @@ export class SymbolLayer {
   }
 
   /**
-   * 设置图层过滤器
-   * @param filter Expression 实例或表达式字面量数组
+   * Configure the layer filter
+   * @param filter Expression instance or expression literal array
    */
   setFilter(filter: Expression<boolean> | ExpressionLiteral): SymbolLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
@@ -94,7 +94,7 @@ export class SymbolLayer {
     return this;
   }
 
-  // ========== Symbol 图标属性方法 ==========
+  // ========== Symbol icon property helpers ==========
 
   setIconImage(iconImage: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setIconImage(convertValue(iconImage));
@@ -161,7 +161,7 @@ export class SymbolLayer {
     return this;
   }
 
-  // ========== Symbol 文本属性方法 ==========
+  // ========== Symbol text property helpers ==========
 
   setTextField(text: PropertyValue<string>): SymbolLayer {
     this.nativeInstance.setTextField(convertValue(text));
@@ -268,7 +268,7 @@ export class SymbolLayer {
     return this;
   }
 
-  // ========== Getter 方法 ==========
+  // ========== Getter helpers ==========
 
   getIconImage(): string {
     return this.nativeInstance.getIconImage();
@@ -358,12 +358,12 @@ export class SymbolLayer {
     return this.nativeInstance.getTextHaloWidth();
   }
 
-  // ========== 批量属性设置方法（参考 Android withProperties）==========
+  // ========== Batch property helpers (Android withProperties parity) ==========
 
   /**
-   * 批量设置文本属性
-   * @param props 文本属性配置对象
-   * @returns 返回 this 以支持链式调用
+   * Set text properties in batch
+   * @param props Text property configuration
+   * @returns this (supports chaining)
    * @example
    * ```typescript
    * layer.withTextProperties({
@@ -418,9 +418,9 @@ export class SymbolLayer {
   }
 
   /**
-   * 批量设置图标属性
-   * @param props 图标属性配置对象
-   * @returns 返回 this 以支持链式调用
+   * Set icon properties in batch
+   * @param props Icon property configuration
+   * @returns this (supports chaining)
    * @example
    * ```typescript
    * layer.withIconProperties({
@@ -475,9 +475,9 @@ export class SymbolLayer {
   }
 
   /**
-   * 批量设置所有属性（文本 + 图标）
-   * @param props 完整属性配置对象
-   * @returns 返回 this 以支持链式调用
+   * Set text and icon properties together
+   * @param props Combined property configuration
+   * @returns this (supports chaining)
    * @example
    * ```typescript
    * layer.withProperties({
@@ -504,13 +504,13 @@ export class SymbolLayer {
     return this;
   }
 
-  // ========== 通用属性方法（Android兼容API）==========
+  // ========== Generic property API (Android-compatible) ==========
 
   /**
-   * 设置单个属性
-   * @param propertyName 属性名称（如 'text-field', 'icon-image', 'text-color'）
-   * @param value 属性值（常量值或Expression）
-   * @returns this（支持链式调用）
+   * Set a single property
+   * @param propertyName Property key (for example, 'text-field', 'icon-image', 'text-color')
+   * @param value Property value (constant or Expression)
+   * @returns this (supports chaining)
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): SymbolLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
@@ -518,9 +518,9 @@ export class SymbolLayer {
   }
 
   /**
-   * 批量设置属性
-   * @param properties 属性对象，键为属性名，值为属性值
-   * @returns this（支持链式调用）
+   * Set multiple properties in batch
+   * @param properties Map of property names to values
+   * @returns this (supports chaining)
    * @example
    * layer.setProperties({
    *   'text-field': ['get', 'name'],
@@ -542,7 +542,7 @@ export class SymbolLayer {
 }
 
 /**
- * 文本属性接口
+ * Text property interface
  */
 export interface TextProperties {
   textField?: PropertyValue<string>;
@@ -561,7 +561,7 @@ export interface TextProperties {
 }
 
 /**
- * 图标属性接口
+ * Icon property interface
  */
 export interface IconProperties {
   iconImage?: PropertyValue<string>;
@@ -580,7 +580,7 @@ export interface IconProperties {
 }
 
 /**
- * Symbol 完整属性接口
+ * Combined Symbol property interface
  */
 export interface SymbolProperties {
   text?: TextProperties;

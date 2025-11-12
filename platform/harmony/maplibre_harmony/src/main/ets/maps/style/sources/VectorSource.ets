@@ -1,5 +1,5 @@
 /**
- * VectorSource - 矢量数据源封装类
+ * VectorSource - Wrapper for vector data sources
  */
 import type { VectorSourceOptions } from 'libmaplibre.so';
 import maplibre from 'libmaplibre.so';
@@ -12,7 +12,7 @@ class InternalMarker {
 }
 
 export class VectorSource {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'VectorSource';
   private nativeInstance: maplibre.VectorSource;
 
@@ -57,7 +57,7 @@ export class VectorSource {
   }
 
   /**
-   * 设置最小缩放级别
+   * Set the minimum zoom level
    */
   setMinZoom(minZoom: number): VectorSource {
     this.nativeInstance.setMinZoom(minZoom);
@@ -65,7 +65,7 @@ export class VectorSource {
   }
 
   /**
-   * 设置最大缩放级别
+   * Set the maximum zoom level
    */
   setMaxZoom(maxZoom: number): VectorSource {
     this.nativeInstance.setMaxZoom(maxZoom);

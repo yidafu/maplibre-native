@@ -4,36 +4,36 @@ import { LatLng } from '../geometry/LatLng';
 
 import { Marker } from './Marker';
 
-// 常量定义（参考 iOS/mbgl）
-const PITCH_MAX_DEGREES = 60; // mbgl::util::PITCH_MAX 约为 60度
+// Constants (aligned with iOS/mbgl)
+const PITCH_MAX_DEGREES = 60; // mbgl::util::PITCH_MAX ≈ 60 degrees
 const DEFAULT_VIEW_SIZE = 40;
 
 /**
- * 拖拽状态枚举
+ * Drag state enumeration
  *
- * 参考: iOS MLNAnnotationViewDragState
+ * Mirrors iOS `MLNAnnotationViewDragState`
  */
 export enum DragState {
-  None = 0, // 未拖拽
-  Starting = 1, // 开始拖拽
-  Dragging = 2, // 拖拽中
-  Canceling = 3, // 取消拖拽
-  Ending = 4 // 结束拖拽
+  None = 0, // Not dragging
+  Starting = 1, // Dragging started
+  Dragging = 2, // Drag in progress
+  Canceling = 3, // Drag canceled
+  Ending = 4 // Drag finished
 }
 
 /**
- * 中心偏移
+ * Center offset
  *
- * 用于调整视图中心点相对于 Marker 位置的偏移
- * 正值向右/下移动，负值向左/上移动
+ * Adjusts the view’s center relative to the marker position.
+ * Positive values shift right/down; negative values shift left/up.
  */
 export interface CenterOffset {
-  dx: number; // 水平偏移（点）
-  dy: number; // 垂直偏移（点）
+  dx: number; // Horizontal offset in points
+  dy: number; // Vertical offset in points
 }
 
 /**
- * ViewPosition - 视图位置
+ * ViewPosition - Screen-space view position
  */
 interface ViewPosition {
   x: number;
@@ -41,7 +41,7 @@ interface ViewPosition {
 }
 
 /**
- * AnnotationView 状态
+ * AnnotationView state container
  */
 export class AnnotationViewState {
   selected: boolean = false;
@@ -53,9 +53,9 @@ export class AnnotationViewState {
 }
 
 /**
- * AnnotationView 协议
+ * AnnotationView protocol
  *
- * 参考: iOS MLNAnnotationView
+ * Mirrors iOS `MLNAnnotationView`
  */
 export interface AnnotationViewProtocol {
   reuseIdentifier: string | null;
@@ -68,33 +68,33 @@ export interface AnnotationViewProtocol {
 }
 
 /**
- * AnnotationView - Marker 自定义视图组件
+ * AnnotationView - Custom marker view component
  *
- * 允许使用 ArkTS 组件作为 Marker 的显示视图，提供完整的自定义能力和交互特性
- * 
- * **核心特性**：
- * - ✅ 自定义视图内容（通过 @BuilderParam）
- * - ✅ 选中状态管理（点击切换）
- * - ✅ 拖拽支持（长按启动）
- * - ✅ 视图复用（reuseIdentifier）
- * - ✅ 距离缩放（scalesWithViewingDistance）
- * - ✅ 跟随旋转（rotatesToMatchCamera）
- * - ✅ 流畅动画效果
- * 
- * **参考实现**：
- * - iOS: MLNAnnotationView - UIView 子类，支持完整的视图层次
- * - Android: 使用自定义布局 XML 或 View
- * 
- * **生命周期**：
- * 1. 创建 - 从委托或复用池获取
- * 2. aboutToAppear - 初始化位置和变换
- * 3. 更新 - 响应地图相机变化
- * 4. prepareForReuse - 重置状态用于复用
- * 5. 销毁 - 从地图移除
- * 
- * **使用示例**：
+ * Enables ArkTS components to render marker visuals, offering rich customization and interaction.
+ *
+ * **Key features**:
+ * - ✅ Custom content via `@BuilderParam`
+ * - ✅ Selection management (tap to toggle)
+ * - ✅ Drag support (long-press to start)
+ * - ✅ View reuse (`reuseIdentifier`)
+ * - ✅ Distance-based scaling (`scalesWithViewingDistance`)
+ * - ✅ Camera-aligned rotation (`rotatesToMatchCamera`)
+ * - ✅ Smooth animations
+ *
+ * **Reference implementations**:
+ * - iOS: `MLNAnnotationView` (UIView subclass with full view hierarchy)
+ * - Android: Custom layout XML or View
+ *
+ * **Lifecycle**:
+ * 1. Creation – obtained from delegate or reuse pool
+ * 2. `aboutToAppear` – initialize position and transforms
+ * 3. Update – respond to camera changes
+ * 4. `prepareForReuse` – reset mutable state for reuse
+ * 5. Destroy – remove from map
+ *
+ * **Usage example**:
  * ```typescript
- * // 基础用法 - 使用默认图标
+ * // Basic usage – default icon
  * AnnotationView({
  *   marker: myMarker,
  *   reuseIdentifier: "default-pin",
@@ -102,7 +102,7 @@ export interface AnnotationViewProtocol {
  *   screenY: 200
  * })
  * 
- * // 高级用法 - 自定义内容
+ * // Advanced usage – custom content
  * AnnotationView({
  *   marker: myMarker,
  *   reuseIdentifier: "custom-pin",
@@ -126,32 +126,32 @@ export interface AnnotationViewProtocol {
  * })
  * ```
  * 
- * **性能优化建议**：
- * - 使用 reuseIdentifier 启用视图复用
- * - 避免在 customContentBuilder 中执行耗时操作
- * - 谨慎使用 scalesWithViewingDistance（大量视图时）
- * - 合理设置 zIndex 避免过度重绘
+ * **Performance tips**:
+ * - Use `reuseIdentifier` to enable view reuse
+ * - Avoid heavy work in `customContentBuilder`
+ * - Use `scalesWithViewingDistance` carefully when many views exist
+ * - Tune `zIndex` to minimize overdraw
  * 
- * @see {@link AnnotationViewDelegate} 委托接口定义
- * @see {@link AnnotationViewConfig} 配置选项
- * @see {@link AnnotationViewManager} 管理器实现
+ * @see {@link AnnotationViewDelegate} Delegate definition
+ * @see {@link AnnotationViewConfig} Configuration options
+ * @see {@link AnnotationViewManager} Manager implementation
  */
 @Component
 export struct AnnotationView {
   @Prop marker: Marker;
   @Prop reuseIdentifier: string | null = null;
   @State private viewState: AnnotationViewState = new AnnotationViewState();
-  @State private viewOpacity: number = 1; // 重命名避免冲突
-  @State private viewScale: number = 1; // 重命名避免冲突
+  @State private viewOpacity: number = 1; // Renamed to avoid conflicts
+  @State private viewScale: number = 1; // Renamed to avoid conflicts
   @State private rotation: number = 0;
-  // 位置信息（屏幕坐标）
+  // Screen-space position
   @Prop screenX: number = 0;
   @Prop screenY: number = 0;
   @Prop centerOffset: CenterOffset = { dx: 0, dy: 0 };
-  // 锚点（用于定位，默认底部中心）
+  // Anchor (default bottom-center)
   @Prop anchorU: number = 0.5;
   @Prop anchorV: number = 1.0;
-  // 配置属性
+  // Configuration flags
   @Prop isDraggable: boolean = false;
   @Prop scalesWithViewingDistance: boolean = false;
   @Prop rotatesToMatchCamera: boolean = false;
@@ -161,51 +161,51 @@ export struct AnnotationView {
   @Prop baseZIndex: number = -1;
   @Prop preferredWidth: number | null = null;
   @Prop preferredHeight: number | null = null;
-  // 可见性
+  // Visibility
   @Prop visible: boolean = true;
   @Prop nativeScale: number = 1;
   @Prop nativeRotation: number = 0;
   @Prop nativeOpacity: number = 1;
   @Prop reuseVersion: number = 0;
-  // 自定义内容构建器
+  // Custom content builder
   @BuilderParam customContentBuilder?: () => void;
-  // 视图尺寸（用于计算位置）
+  // View dimensions (for layout calculations)
   private viewWidth: number = DEFAULT_VIEW_SIZE;
   private viewHeight: number = DEFAULT_VIEW_SIZE;
-  // Transform 跟踪（用于增量更新）
+  // Transform tracking (for incremental updates)
   private lastAppliedScale: number = 1;
   private lastAppliedRotation: number = 0;
-  // 拖拽相关
+  // Drag state
   private dragStartX: number = 0;
   private dragStartY: number = 0;
   private currentDragX: number = 0;
   private currentDragY: number = 0;
-  // 地图相关（用于高级特性）
+  // Map-related data (advanced features)
   @Prop mapBearing: number = 0;
   @Prop mapPitch: number = 0;
   @Prop screenHeight: number = 800;
-  // 计算后的位置和变换（用于 build 方法）
+  // Computed position/transform (consumed by build)
   @State private computedPosX: number = 0;
   @State private computedPosY: number = 0;
   @State private computedScale: number = 1;
   @State private computedRotation: number = 0;
-  // 回调（重命名避免与 CustomComponent 方法冲突）
+  // Callbacks (names adjusted to avoid CustomComponent collisions)
   onSelect?: (marker: Marker) => void;
   onDeselect?: (marker: Marker) => void;
-  onMarkerDragStart?: (marker: Marker) => void; // 重命名
+  onMarkerDragStart?: (marker: Marker) => void; // Renamed to avoid conflicts
   onDrag?: (marker: Marker, screenX: number, screenY: number) => void;
-  onMarkerDragEnd?: (marker: Marker, screenX: number, screenY: number) => void; // 重命名
-  // 外部配置缓存
+  onMarkerDragEnd?: (marker: Marker, screenX: number, screenY: number) => void; // Renamed to avoid conflicts
+  // Cached external configuration
   private viewAlphaInternal: number = 1;
   private baseZIndexInternal: number = 1;
   private lastSelectedProp: boolean = false;
   private lastReuseVersion: number = -1;
 
   /**
-   * 准备复用（重置状态）
+   * Prepare for reuse (reset state)
    *
-   * 参考: iOS MLNAnnotationView prepareForReuse
-   * 当视图从复用池中取出时调用，重置所有可变状态
+   * Mirrors iOS `MLNAnnotationView.prepareForReuse`.
+   * Called when the view is dequeued to reset mutable state.
    */
   public prepareForReuse(): void {
     this.viewState.selected = false;
@@ -222,7 +222,7 @@ export struct AnnotationView {
   }
 
   /**
-   * 设置选中状态
+   * Toggle selection state
    */
   public setSelected(selected: boolean, animated: boolean): void {
     if (this.viewState.selected === selected) {
@@ -231,13 +231,13 @@ export struct AnnotationView {
 
     this.viewState.selected = selected;
 
-    // animation 属性会自动应用到状态变化
+    // Animation attributes automatically apply to state changes
     this.viewScale = selected ? 1.2 : 1.0;
     this.viewOpacity = selected ? 1.0 : 0.8;
 
     this.updateComputedProperties();
 
-    // 触发回调
+    // Fire selection callbacks
     if (selected && this.onSelect) {
       this.onSelect(this.marker);
     } else if (!selected && this.onDeselect) {
@@ -246,16 +246,16 @@ export struct AnnotationView {
   }
 
   /**
-   * 设置拖拽状态
+   * Update drag state
    *
-   * 参考: iOS MLNAnnotationView setDragState:animated:
-   * 根据不同的拖拽状态应用不同的动画效果
+   * Follows iOS `MLNAnnotationView.setDragState:animated:`.
+   * Applies distinct animations for each drag state.
    */
   public setDragState(state: DragState, animated: boolean): void {
     const prevState = this.viewState.dragState;
     this.viewState.dragState = state;
 
-    // 参考 iOS MBXAnnotationView 的动画实现
+    // Inspired by the animation logic of iOS MBXAnnotationView
     switch (state) {
       case DragState.None:
         this.viewScale = 1.0;
@@ -263,25 +263,25 @@ export struct AnnotationView {
         break;
 
       case DragState.Starting:
-        // 开始拖拽时快速放大（弹性效果）
+        // Bounce up quickly when dragging starts
         this.viewScale = 1.5;
         this.viewOpacity = 0.95;
         break;
 
       case DragState.Dragging:
-        // 拖拽中保持放大状态
+        // Maintain a larger scale while dragging
         this.viewScale = 1.3;
         this.viewOpacity = 0.9;
         break;
 
       case DragState.Canceling:
-        // 取消时快速恢复
+        // Snap back quickly when canceled
         this.viewScale = 1.0;
         this.viewOpacity = 1.0;
         break;
 
       case DragState.Ending:
-        // 结束时从放大状态缓慢恢复
+        // Ease back after drag ends
         this.viewScale = 1.0;
         this.viewOpacity = 1.0;
         break;
@@ -291,10 +291,10 @@ export struct AnnotationView {
   }
 
   /**
-   * 计算实际位置（考虑锚点和中心偏移）
+   * Calculate position taking anchor and center offset into account
    */
   private calculatePosition(): ViewPosition {
-    // 拖拽中使用拖拽位置
+    // While dragging use drag position
     if (this.viewState.dragState === DragState.Dragging) {
       const pos: ViewPosition = {
         x: this.currentDragX - (this.viewWidth * this.anchorU) + this.centerOffset.dx,
@@ -303,7 +303,7 @@ export struct AnnotationView {
       return pos;
     }
 
-    // 正常情况
+    // Normal path
     const pos: ViewPosition = {
       x: this.screenX - (this.viewWidth * this.anchorU) + this.centerOffset.dx,
       y: this.screenY - (this.viewHeight * this.anchorV) + this.centerOffset.dy
@@ -312,7 +312,7 @@ export struct AnnotationView {
   }
 
   /**
-   * 更新计算后的属性
+   * Update computed properties
    */
   private updateComputedProperties(): void {
     const pos = this.calculatePosition();
@@ -381,22 +381,22 @@ export struct AnnotationView {
   }
 
   /**
-   * 计算缩放比例（根据距离）
+   * Calculate scale factor based on viewing distance
    *
-   * 参考: iOS MLNAnnotationView updateScaleTransformForViewingDistance
+   * Mirrors iOS `MLNAnnotationView.updateScaleTransformForViewingDistance`.
    *
-   * 实现原理：
-   * 1. 计算视图在屏幕上的相对位置（0.0 = 顶部，1.0 = 底部）
-   * 2. 计算最大缩放减少量 = 1.0 - 相对位置
-   * 3. 计算倾斜强度 = 当前倾斜角度 / 最大倾斜角度
-   * 4. 最终缩放 = 1.0 - (最大缩放减少量 * 倾斜强度)
+   * Implementation steps:
+   * 1. Compute normalized screen position (0.0 = top, 1.0 = bottom)
+   * 2. Determine maximum scale reduction = 1.0 - normalized position
+   * 3. Determine pitch intensity = current pitch / maximum pitch
+   * 4. Final scale = 1.0 - (max reduction * pitch intensity)
    *
-   * 这样越靠近地平线的视图越小，模拟透视效果
+   * Results in smaller views near the horizon to mimic perspective.
    */
   private calculateScale(): number {
     let baseScale = this.viewScale * (this.nativeScale || 1);
 
-    // 如果未启用或拖拽中，不应用距离缩放
+    // Skip distance-based scaling when disabled or actively dragging
     if (!this.viewState.scalesWithViewingDistance ||
       this.viewState.dragState === DragState.Dragging ||
       this.screenHeight <= 0 ||
@@ -404,37 +404,37 @@ export struct AnnotationView {
     return baseScale;
     }
 
-    // 计算视图中心在屏幕上的归一化 Y 位置 (0.0 = 顶部, 1.0 = 底部)
+    // Normalized Y position of the view center (0.0 = top, 1.0 = bottom)
     const normalizedY = Math.max(0, Math.min(1, this.screenY / this.screenHeight));
 
-    // 最大缩放减少量：越靠近顶部（地平线），减少量越大
+    // Maximum reduction: larger near the top (horizon)
     const maxScaleReduction = 1.0 - normalizedY;
 
-    // 倾斜强度：当前倾斜角度占最大倾斜角度的比例
-    const pitch = Math.max(0, this.mapPitch); // 防止负值
+    // Pitch intensity: proportion of max pitch (clamped to avoid negatives)
+    const pitch = Math.max(0, this.mapPitch);
     const pitchIntensity = Math.min(1.0, pitch / PITCH_MAX_DEGREES);
 
-    // 计算倾斜调整后的缩放比例
-    // pitchAdjustedScale 范围从 1.0（无倾斜）到 0.0（最大倾斜且在顶部）
+    // Compute pitch-adjusted scale
+    // Range: 1.0 (no pitch) → 0.0 (max pitch at horizon)
     const pitchAdjustedScale = 1.0 - (maxScaleReduction * pitchIntensity);
 
-    // 应用缩放，确保不会太小
+    // Avoid shrinking below a reasonable size
     const distanceScale = Math.max(0.3, pitchAdjustedScale);
 
     return baseScale * distanceScale;
   }
 
   /**
-   * 计算旋转角度
+   * Calculate rotation angle
    *
-   * 参考: iOS MLNAnnotationView updateRotateTransform
+   * Mirrors iOS `MLNAnnotationView.updateRotateTransform`
    */
   private calculateRotation(): number {
     let rotation = this.marker.getRotation() + (this.nativeRotation || 0);
 
-    // 如果启用跟随地图旋转，叠加地图方向
+    // Apply map bearing when rotation is tied to the camera
     if (this.viewState.rotatesToMatchCamera) {
-      // mapBearing 是顺时针角度，需要取负值以匹配 iOS 行为
+      // Map bearing is clockwise; invert to match iOS behavior
       rotation -= this.mapBearing;
     }
 
@@ -442,20 +442,20 @@ export struct AnnotationView {
   }
 
   /**
-   * 创建手势
+   * Create gesture handlers
    *
-   * 组合点击、长按和拖拽手势
-   * 参考: iOS MLNAnnotationView 的手势识别器配置
+   * Combines tap, long-press, and drag gestures.
+   * Inspired by the gesture configuration of iOS `MLNAnnotationView`.
    */
   private createGestures(): GestureType {
     if (!this.viewState.enabled) {
       return TapGesture({ count: 1 })
         .onAction(() => {
-          // 禁用状态下不响应
+          // Ignore interactions while disabled
         });
     }
 
-    // 基础点击手势
+    // Primary tap gesture
     const tapGesture = TapGesture({ count: 1 })
       .onAction(() => {
         if (!this.viewState.selected) {
@@ -463,12 +463,12 @@ export struct AnnotationView {
         }
       });
 
-    // 如果可拖拽，添加拖拽手势组合
+    // If draggable, compose additional gestures
     if (this.viewState.draggable) {
-      // 拖拽手势（Pan）
+      // Pan gesture for dragging
       const panGesture = PanGesture({ fingers: 1, distance: 5 })
         .onActionStart((event: GestureEvent) => {
-          // Pan 开始时检查是否已经在拖拽状态
+          // When pan begins, ensure we are in dragging state
           if (this.viewState.dragState === DragState.Starting ||
             this.viewState.dragState === DragState.Dragging) {
             this.setDragState(DragState.Dragging, false);
@@ -491,24 +491,24 @@ export struct AnnotationView {
           }
         });
 
-      // 长按手势用于启动拖拽
+      // Long-press to initiate drag
       const longPressGesture = LongPressGesture({ fingers: 1, repeat: false, duration: 500 })
         .onAction((event: GestureEvent) => {
           this.startDrag(event);
         })
         .onActionEnd(() => {
-          // 如果长按结束但没有进入拖拽状态，当作点击
+          // Treat as tap if long-press ends without entering drag
           if (this.viewState.dragState === DragState.Starting) {
             this.cancelDrag();
             this.setSelected(!this.viewState.selected, true);
           }
         });
 
-      // 组合手势：长按 + 拖动（序列）或 点击（独立）
+      // Combine gestures: long-press + drag sequence plus tap
       return GestureGroup(GestureMode.Parallel,
-        // 拖拽序列：长按后可以拖动
+        // Drag sequence: long-press then pan
         GestureGroup(GestureMode.Sequence, longPressGesture, panGesture),
-        // 普通点击
+        // Standard tap
         tapGesture
       );
     }
@@ -517,7 +517,7 @@ export struct AnnotationView {
   }
 
   /**
-   * 开始拖拽
+   * Begin drag sequence
    */
   private startDrag(event: GestureEvent): void {
     if (!this.viewState.draggable) {
@@ -534,7 +534,7 @@ export struct AnnotationView {
       this.onMarkerDragStart(this.marker);
     }
 
-    // 短暂延迟后进入拖拽状态
+    // Transition into dragging after a short delay
     setTimeout(() => {
       if (this.viewState.dragState === DragState.Starting) {
         this.setDragState(DragState.Dragging, false);
@@ -543,14 +543,14 @@ export struct AnnotationView {
   }
 
   /**
-   * 更新拖拽
+   * Update ongoing drag
    */
   private updateDrag(event: GestureEvent): void {
     if (this.viewState.dragState !== DragState.Dragging) {
       return;
     }
 
-    // 更新拖拽位置
+    // Update drag coordinates
     this.currentDragX = this.dragStartX + event.offsetX;
     this.currentDragY = this.dragStartY + event.offsetY;
 
@@ -560,7 +560,7 @@ export struct AnnotationView {
   }
 
   /**
-   * 结束拖拽
+   * Complete the drag
    */
   private endDrag(event: GestureEvent): void {
     if (this.viewState.dragState !== DragState.Dragging) {
@@ -573,14 +573,14 @@ export struct AnnotationView {
       this.onMarkerDragEnd(this.marker, this.currentDragX, this.currentDragY);
     }
 
-    // 结束后恢复正常状态
+    // Restore idle state after completion
     setTimeout(() => {
       this.setDragState(DragState.None, false);
     }, 150);
   }
 
   /**
-   * 取消拖拽
+   * Cancel the drag
    */
   private cancelDrag(): void {
     this.setDragState(DragState.Canceling, true);
@@ -593,37 +593,36 @@ export struct AnnotationView {
   }
 
   /**
-   * 获取当前动画曲线
-   * 根据不同的状态返回不同的动画曲线
+   * Determine the animation curve
    *
-   * 注意：由于 Harmony SDK 限制，使用基础曲线类型
-   * 理想情况下应该使用 SpringMotion 或 Spring，但这些在当前 SDK 版本中不可用
+   * Returns different curves per state. Harmony SDK currently only exposes basic curves;
+   * ideally SpringMotion/Spring would be used, but they are unavailable.
    */
   private getAnimationCurve(): Curve {
     switch (this.viewState.dragState) {
       case DragState.Starting:
-        // 开始拖拽：快速加速
+        // Drag starting: accelerate quickly
         return Curve.FastOutSlowIn;
       case DragState.Ending:
-        // 结束拖拽：缓慢结束
+        // Drag ending: ease out slowly
         return Curve.FastOutSlowIn;
       case DragState.Canceling:
-        // 取消拖拽：快速恢复
+        // Drag cancel: snap back quickly
         return Curve.FastOutSlowIn;
       default:
-      // 默认：平滑过渡
+      // Default: smooth transition
         return Curve.EaseOut;
     }
   }
 
   /**
-   * 获取动画时长
+   * Determine animation duration
    */
   private getAnimationDuration(): number {
     switch (this.viewState.dragState) {
       case DragState.Starting:
       case DragState.Ending:
-        return 400; // 参考 iOS 的 0.4 秒
+        return 400; // Matches iOS ~0.4s
       case DragState.Canceling:
         return 200;
       default:
@@ -632,64 +631,61 @@ export struct AnnotationView {
   }
 
   /**
-   * 构建视图
-   * 
-   * 渲染逻辑：
-   * 1. 如果提供了 customContentBuilder，渲染自定义内容
-   * 2. 否则渲染默认图标（从 Marker 获取）
-   * 3. 应用所有变换（位置、缩放、旋转、透明度）
-   * 4. 设置手势、动画和 z-index
+   * Build the view
+   *
+   * Rendering flow:
+   * 1. Render custom content when `customContentBuilder` is provided
+   * 2. Otherwise render the marker's default icon
+   * 3. Apply transforms (position, scale, rotation, opacity)
+   * 4. Attach gestures, animations, and z-index adjustments
    */
   build() {
     Stack() {
-      // 内容区域
+      // Content region
       if (this.customContentBuilder) {
-        // 渲染自定义内容
-        // 参考：iOS MLNAnnotationView 的子视图层次
+        // Render custom content (analogous to iOS subview hierarchy)
         this.customContentBuilder()
       } else {
-        // 渲染默认图标
-        // 参考：Android Marker 的 Icon 显示
+        // Render default icon (similar to Android marker icon)
         Image(this.marker.getIcon() || $r('app.media.startIcon'))
           .width(this.viewWidth || DEFAULT_VIEW_SIZE)
           .height(this.viewHeight || DEFAULT_VIEW_SIZE)
           .opacity(this.marker.getAlpha())
           .objectFit(ImageFit.Contain)
-          .interpolation(ImageInterpolation.High) // 高质量插值
+          .interpolation(ImageInterpolation.High) // High-quality sampling
       }
     }
     .width('auto')
     .height('auto')
-    // 位置变换
+    // Position transform
     .position({ x: this.computedPosX, y: this.computedPosY })
-    // 透明度变换（组合 Marker 的 alpha 和视图状态的 opacity）
+    // Combine opacity: marker alpha × view opacity × native opacity
     .opacity(this.viewOpacity * this.marker.getAlpha() * this.viewAlphaInternal * (this.nativeOpacity || 1))
-    // 缩放变换（组合距离缩放和状态缩放）
+    // Scale transform (distance scaling × state scaling)
     .scale({ 
       x: this.computedScale, 
       y: this.computedScale,
       centerX: '50%',
-      centerY: '100%' // 从底部中心缩放，模拟 pin 效果
+      centerY: '100%' // Scale from bottom-center to emulate pin effect
     })
-    // 旋转变换（组合 Marker 旋转和相机旋转）
+    // Rotation transform (marker rotation + camera rotation)
     .rotate({ 
       angle: this.computedRotation,
       centerX: '50%',
-      centerY: '100%' // 从底部中心旋转
+      centerY: '100%' // Rotate from bottom-center
     })
-    // 动画配置
+    // Animation configuration
     .animation({
       duration: this.getAnimationDuration(),
       curve: this.getAnimationCurve(),
       tempo: 1.0,
       playMode: PlayMode.Normal
     })
-    // 可见性
+    // Visibility
     .visibility(this.visible && this.marker.getVisible() ? Visibility.Visible : Visibility.None)
-    // 手势处理
+    // Gesture handling
     .gesture(this.createGestures())
-    // Z-index 层级管理
-    // 选中 > 拖拽中 > Marker 的 zIndex > 默认
+    // Z-index ordering: selected > dragging > marker zIndex > default
     .zIndex(
       this.viewState.selected
         ? this.baseZIndexInternal + 1000
@@ -697,19 +693,19 @@ export struct AnnotationView {
             ? this.baseZIndexInternal + 500
             : this.baseZIndexInternal)
     )
-    // 监听尺寸变化（用于位置计算）
+    // Track size changes to update layout
     .onAreaChange((oldValue: Area, newValue: Area) => {
       const newWidth = Number(newValue.width);
       const newHeight = Number(newValue.height);
       
-      // 只在尺寸真正改变时更新
+      // Update only when size actually changes
       if (newWidth !== this.viewWidth || newHeight !== this.viewHeight) {
         this.viewWidth = newWidth;
         this.viewHeight = newHeight;
         this.updateComputedProperties();
       }
     })
-    // 辅助开发：设置组件 ID（便于调试）
+    // Debug helper: assign component ID
     .id(`annotation-view-${this.marker.getId()}`)
   }
 }

@@ -2,9 +2,9 @@ import { PropertyValue } from './PropertyValue';
 import { Expression } from '../expressions/Expression';
 
 /**
- * PaintPropertyValue - Paint 属性值封装类
+ * PaintPropertyValue - Paint property value wrapper
  *
- * Paint属性影响图层的渲染外观（如颜色、透明度等）
+ * Paint properties affect visual appearance (color, opacity, etc.)
  */
 export class PaintPropertyValue<T> extends PropertyValue<T> {
   constructor(name: string, value: T | null = null, expression: Expression<T> | null = null) {
@@ -12,14 +12,14 @@ export class PaintPropertyValue<T> extends PropertyValue<T> {
   }
 
   /**
-   * 创建常量值的Paint属性
+   * Create a paint property with a constant value
    */
   public static value<T>(name: string, value: T): PaintPropertyValue<T> {
     return new PaintPropertyValue<T>(name, value, null);
   }
 
   /**
-   * 创建表达式的Paint属性
+   * Create a paint property backed by an Expression
    */
   public static expression<T>(name: string, expression: Expression<T>): PaintPropertyValue<T> {
     return new PaintPropertyValue<T>(name, null, expression);

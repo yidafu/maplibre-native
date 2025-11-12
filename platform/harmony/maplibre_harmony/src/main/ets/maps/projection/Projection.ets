@@ -1,35 +1,36 @@
 /**
- * Projection - 坐标投影工具类
+ * Projection - Coordinate projection utility
  *
- * 用于在屏幕坐标和地理坐标之间进行转换。屏幕坐标以屏幕像素（而非显示像素）表示，
- * 相对于地图的左上角（而非整个屏幕的左上角）。
- * 
- * **平台对照**：
- * - Android: `Projection` 类 - `map.getProjection()`
- * - iOS: `MLNMapView` 的坐标转换方法（如 `convertCoordinate:toPointToView:`）
- * 
- * **主要功能**：
- * 1. 屏幕坐标 ↔ 地理坐标转换（单点和批量）
- * 2. 地理坐标 ↔ 投影米坐标转换
- * 3. 可见区域查询
- * 4. 距离和比例计算
- * 
+ * Converts between screen and geographic coordinates. Screen coordinates are expressed in
+ * screen pixels (not physical display pixels) relative to the top-left corner of the map view
+ * rather than the device screen.
+ *
+ * **Platform parity**:
+ * - Android: `Projection` (`map.getProjection()`)
+ * - iOS: Coordinate conversion methods on `MLNMapView` (for example `convertCoordinate:toPointToView:`)
+ *
+ * **Key capabilities**:
+ * 1. Screen ↔ geographic coordinate conversion (single point and batch)
+ * 2. Geographic coordinate ↔ projected meters conversion
+ * 3. Visible region queries
+ * 4. Distance and scale calculations
+ *
  * @example
  * ```typescript
- * // 获取 Projection 实例
+ * // Obtain the Projection instance
  * const projection = map.getProjection();
- * 
- * // 地理坐标转屏幕坐标
+ *
+ * // Convert a geographic coordinate to screen space
  * const latLng = new LatLng(39.9, 116.4);
  * const screenPoint = projection.toScreenLocation(latLng);
- * 
- * // 屏幕坐标转地理坐标
+ *
+ * // Convert a screen point back to a geographic coordinate
  * const location = projection.fromScreenLocation(new Point(100, 100));
- * 
- * // 获取可见区域
+ *
+ * // Get the current visible region
  * const visibleRegion = projection.getVisibleRegion();
  * ```
- * 
+ *
  * @see {@link https://docs.maplibre.org/android/api/ | MapLibre Android API}
  */
 import { NativeMapView } from 'libmaplibre.so';
@@ -40,8 +41,8 @@ import { VisibleRegion } from './VisibleRegion';
 import { LatLngBounds } from '../geometry/LatLngBounds';
 
 /**
- * GeometryConstants - 几何常量
- * 参考 Android 实现
+ * GeometryConstants - Geometry constants
+ * Mirrors the Android implementation
  */
 class GeometryConstants {
   static readonly MIN_LATITUDE: number = -90.0;
@@ -52,9 +53,9 @@ class GeometryConstants {
 }
 
 /**
- * Projection 类
+ * Projection class
  *
- * 提供地图投影相关的工具方法，对齐 Android API
+ * Provides map projection helper methods aligned with the Android API
  */
 export class Projection {
   private nativeMapView: NativeMapView;
@@ -64,11 +65,11 @@ export class Projection {
   private static readonly DEFAULT_PIXEL_RATIO: number = 1;
 
   /**
-   * 构造函数
+   * Constructor
    *
-   * @param nativeMapView NativeMapView 实例
-   * @param viewWidth 视图宽度（逻辑像素）
-   * @param viewHeight 视图高度（逻辑像素）
+   * @param nativeMapView NativeMapView instance
+   * @param viewWidth View width in logical pixels
+   * @param viewHeight View height in logical pixels
    */
   constructor(nativeMapView: NativeMapView, viewWidth: number, viewHeight: number) {
     this.nativeMapView = nativeMapView;
@@ -90,26 +91,26 @@ export class Projection {
   }
 
   /**
-   * 更新视图尺寸
+   * Update the view dimensions
    *
-   * @param width 新的视图宽度
-   * @param height 新的视图高度
+   * @param width New view width
+   * @param height New view height
    */
   public updateViewSize(width: number, height: number): void {
     this.viewWidth = width;
     this.viewHeight = height;
   }
 
-  // ========== 单点坐标转换 ==========
+  // ========== Single-point coordinate conversion ==========
 
   /**
-   * 将地理坐标转换为屏幕坐标
-   * 
-   * 对应 Android: `toScreenLocation(LatLng)`
-   * 对应 iOS: `convertCoordinate:toPointToView:`
+   * Convert a geographic coordinate to a screen coordinate
    *
-   * @param location 地理坐标
-   * @returns 屏幕坐标（像素）
+   * Android: `toScreenLocation(LatLng)`
+   * iOS: `convertCoordinate:toPointToView:`
+   *
+   * @param location Geographic coordinate
+   * @returns Screen coordinate (pixels)
    */
   public toScreenLocation(location: LatLng): Point {
     const physical: IPixelCoordinate = this.nativeMapView.pixelForLatLng(location.latitude, location.longitude);
@@ -118,13 +119,13 @@ export class Projection {
   }
 
   /**
-   * 将屏幕坐标转换为地理坐标
-   * 
-   * 对应 Android: `fromScreenLocation(PointF)`
-   * 对应 iOS: `convertPoint:toCoordinateFromView:`
+   * Convert a screen coordinate to a geographic coordinate
    *
-   * @param point 屏幕坐标（像素）
-   * @returns 地理坐标
+   * Android: `fromScreenLocation(PointF)`
+   * iOS: `convertPoint:toCoordinateFromView:`
+   *
+   * @param point Screen coordinate (pixels)
+   * @returns Geographic coordinate
    */
   public fromScreenLocation(point: Point): LatLng {
     const pixelRatio = this.getPixelRatio();
@@ -134,36 +135,36 @@ export class Projection {
   }
 
   /**
-   * 将地理坐标转换为屏幕坐标（旧方法名，保持向后兼容）
-   * @deprecated 使用 toScreenLocation 替代
+   * Convert a geographic coordinate to a screen coordinate (legacy name for backward compatibility)
+   * @deprecated Use toScreenLocation instead
    *
-   * @param latLng 地理坐标
-   * @returns 屏幕坐标（像素）
+   * @param latLng Geographic coordinate
+   * @returns Screen coordinate (pixels)
    */
   public latLngToScreenLocation(latLng: LatLng): Point {
     return this.toScreenLocation(latLng);
   }
 
   /**
-   * 将屏幕坐标转换为地理坐标（旧方法名，保持向后兼容）
-   * @deprecated 使用 fromScreenLocation 替代
+   * Convert a screen coordinate to a geographic coordinate (legacy name for backward compatibility)
+   * @deprecated Use fromScreenLocation instead
    *
-   * @param point 屏幕坐标（像素）
-   * @returns 地理坐标
+   * @param point Screen coordinate (pixels)
+   * @returns Geographic coordinate
    */
   public screenLocationToLatLng(point: Point): LatLng {
     return this.fromScreenLocation(point);
   }
 
-  // ========== 批量坐标转换 ==========
+  // ========== Batch coordinate conversion ==========
 
   /**
-   * 批量将地理坐标转换为屏幕坐标（Android 风格）
-   * 
-   * 对应 Android: `toScreenLocations(double[], double[])`
-   * 
-   * @param input 输入数组，格式为 [lat1, lng1, lat2, lng2, ...]
-   * @param output 输出数组，格式为 [x1, y1, x2, y2, ...]
+   * Batch convert geographic coordinates to screen coordinates (Android style)
+   *
+   * Android: `toScreenLocations(double[], double[])`
+   *
+   * @param input Input array formatted as [lat1, lng1, lat2, lng2, ...]
+   * @param output Output array formatted as [x1, y1, x2, y2, ...]
    */
   public toScreenLocations(input: number[], output: number[]): void {
     if (input.length % 2 !== 0) {
@@ -185,12 +186,12 @@ export class Projection {
   }
 
   /**
-   * 批量将屏幕坐标转换为地理坐标（Android 风格）
-   * 
-   * 对应 Android: `fromScreenLocations(double[], double[])`
-   * 
-   * @param input 输入数组，格式为 [x1, y1, x2, y2, ...]
-   * @param output 输出数组，格式为 [lat1, lng1, lat2, lng2, ...]
+   * Batch convert screen coordinates to geographic coordinates (Android style)
+   *
+   * Android: `fromScreenLocations(double[], double[])`
+   *
+   * @param input Input array formatted as [x1, y1, x2, y2, ...]
+   * @param output Output array formatted as [lat1, lng1, lat2, lng2, ...]
    */
   public fromScreenLocations(input: number[], output: number[]): void {
     if (input.length % 2 !== 0) {
@@ -212,11 +213,11 @@ export class Projection {
   }
 
   /**
-   * 批量将地理坐标转换为屏幕坐标（旧方法名，保持向后兼容）
-   * @deprecated 使用数组版本的 toScreenLocations 或遍历调用 toScreenLocation
+   * Batch convert geographic coordinates to screen positions (legacy name for backward compatibility)
+   * @deprecated Use the array-based toScreenLocations or iterate over toScreenLocation
    *
-   * @param latLngs 地理坐标数组
-   * @returns 屏幕坐标数组
+   * @param latLngs Array of geographic coordinates
+   * @returns Array of screen coordinates
    */
   public latLngsToScreenLocations(latLngs: LatLng[]): Point[] {
     const points: Point[] = [];
@@ -227,11 +228,11 @@ export class Projection {
   }
 
   /**
-   * 批量将屏幕坐标转换为地理坐标（旧方法名，保持向后兼容）
-   * @deprecated 使用数组版本的 fromScreenLocations 或遍历调用 fromScreenLocation
+   * Batch convert screen coordinates to geographic coordinates (legacy name for backward compatibility)
+   * @deprecated Use the array-based fromScreenLocations or iterate over fromScreenLocation
    *
-   * @param points 屏幕坐标数组
-   * @returns 地理坐标数组
+   * @param points Array of screen coordinates
+   * @returns Array of geographic coordinates
    */
   public screenLocationsToLatLngs(points: Point[]): LatLng[] {
     const latLngs: LatLng[] = [];
@@ -241,27 +242,27 @@ export class Projection {
     return latLngs;
   }
 
-  // ========== 可见区域 ==========
+  // ========== Visible region ==========
 
   /**
-   * 获取当前地图的可见区域
-   * 
-   * 返回屏幕四个角对应的地理坐标和包含整个区域的边界。
-   * 
-   * 对应 Android: `getVisibleRegion()` / `getVisibleRegion(boolean)`
-   * 对应 iOS: `visibleCoordinateBounds`
+   * Get the current visible region of the map
    *
-   * @param ignorePadding 是否忽略内容边距。
-   *                      - true: 返回整个地图视图的可见区域（默认）
-   *                      - false: 返回扣除内容边距后的可见区域
-   * @returns 可见区域对象
-   * 
+   * Returns the geographic coordinates of the four screen corners and the bounding region.
+   *
+   * Android: `getVisibleRegion()` / `getVisibleRegion(boolean)`
+   * iOS: `visibleCoordinateBounds`
+   *
+   * @param ignorePadding Whether to ignore content padding.
+   *                      - true: Return the visible region for the full map view (default)
+   *                      - false: Return the region after subtracting content padding
+   * @returns Visible region details
+   *
    * @example
    * ```typescript
-   * // 获取整个地图的可见区域（忽略边距）
+   * // Fetch the full map region (ignoring padding)
    * const fullRegion = projection.getVisibleRegion();
-   * 
-   * // 获取扣除边距后的可见区域
+   *
+   * // Fetch the region constrained by content padding
    * const paddedRegion = projection.getVisibleRegion(false);
    * ```
    */
@@ -269,13 +270,13 @@ export class Projection {
     let left: number, right: number, top: number, bottom: number;
     
     if (ignorePadding) {
-      // 忽略边距，使用完整视图尺寸
+      // Ignore padding and use the full view size
       left = 0;
       right = this.viewWidth;
       top = 0;
       bottom = this.viewHeight;
     } else {
-      // 考虑内容边距
+      // Respect content padding
       // contentPadding: [left, top, right, bottom]
       left = this.contentPadding[0];
       right = this.viewWidth - this.contentPadding[2];
@@ -283,19 +284,19 @@ export class Projection {
       bottom = this.viewHeight - this.contentPadding[3];
     }
     
-    // 计算中心点
+    // Calculate the center point
     const centerX = left + (right - left) / 2;
     const centerY = top + (bottom - top) / 2;
     const center = this.fromScreenLocation(PixelCoordinate.create(centerX, centerY));
     
-    // 获取四个角点的地理坐标
-    // 注意：屏幕坐标系原点在左上角
+    // Resolve geographic coordinates for the four corners
+    // Screen coordinate origin is the top-left corner
     const topLeft = this.fromScreenLocation(PixelCoordinate.create(left, top));
     const topRight = this.fromScreenLocation(PixelCoordinate.create(right, top));
     const bottomRight = this.fromScreenLocation(PixelCoordinate.create(right, bottom));
     const bottomLeft = this.fromScreenLocation(PixelCoordinate.create(left, bottom));
     
-    // 计算包含所有角点的边界（参考 Android 实现）
+    // Compute bounds that include all corner points (mirrors Android implementation)
     const latLngs = [topRight, bottomRight, bottomLeft, topLeft];
     
     let maxEastLonSpan = 0;
@@ -333,7 +334,7 @@ export class Projection {
     
     let bounds: LatLngBounds;
     if (east < west) {
-      // 边界跨越本初子午线
+      // Bounds cross the prime meridian
       const ne = new LatLng(north, east + GeometryConstants.LONGITUDE_SPAN);
       const sw = new LatLng(south, west);
       bounds = LatLngBounds.fromLatLngs(ne, sw);
@@ -347,20 +348,20 @@ export class Projection {
   }
 
   /**
-   * 获取当前地图的可见坐标边界
-   * 
-   * 对应 Android: `getVisibleCoordinateBounds(double[])`
-   * 
-   * 此方法忽略内容边距。
-   * 
-   * @returns 可见坐标边界 (LatLngBounds)
+   * Get the visible coordinate bounds of the map
+   *
+   * Android: `getVisibleCoordinateBounds(double[])`
+   *
+   * This method ignores content padding.
+   *
+   * @returns Visible coordinate bounds (LatLngBounds)
    */
   public getVisibleCoordinateBounds(): LatLngBounds {
-    // 直接从 Native 获取
+    // Fetch directly from native
     const latLngs = this.nativeMapView.getVisibleCoordinateBounds();
     if (latLngs && latLngs.length >= 4) {
-      // 返回格式：[topLeft, topRight, bottomRight, bottomLeft]
-      // 我们需要构建 LatLngBounds
+      // Return order: [topLeft, topRight, bottomRight, bottomLeft]
+      // Construct a LatLngBounds from the native data
       const north = Math.max(latLngs[0].latitude, latLngs[1].latitude, 
                              latLngs[2].latitude, latLngs[3].latitude);
       const south = Math.min(latLngs[0].latitude, latLngs[1].latitude,
@@ -374,44 +375,44 @@ export class Projection {
       return LatLngBounds.fromLatLngs(ne, sw);
     }
     
-    // 如果 Native 方法失败，使用 getVisibleRegion 作为后备
+    // Fallback to getVisibleRegion if the native method fails
     return this.getVisibleRegion(true).latLngBounds;
   }
 
-  // ========== 工具方法 ==========
+  // ========== Utility methods ==========
 
   /**
-   * 获取指定纬度下每像素代表的米数
+   * Get the meters-per-pixel value at the specified latitude
    *
-   * 使用当前地图的缩放级别
+   * Uses the map's current zoom level
    *
-   * @param latitude 纬度
-   * @returns 每像素米数
+   * @param latitude Latitude
+   * @returns Meters per pixel
    */
   public getMetersPerPixelAtLatitude(latitude: number): number {
-    // 使用 NativeMapView 的方法，它会使用当前的 zoom level
+    // Use the NativeMapView API which derives the current zoom level
     const zoom: number = this.nativeMapView.getZoom();
     return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, zoom);
   }
 
   /**
-   * 获取指定纬度和缩放级别下每像素代表的米数
+   * Get the meters-per-pixel value at the specified latitude and zoom level
    *
-   * @param latitude 纬度
-   * @param zoom 缩放级别
-   * @returns 每像素米数
+   * @param latitude Latitude
+   * @param zoom Zoom level
+   * @returns Meters per pixel
    */
   public getMetersPerPixelAtLatitudeAndZoom(latitude: number, zoom: number): number {
     return this.nativeMapView.getMetersPerPixelAtLatitude(latitude, zoom);
   }
 
   /**
-   * 将地理坐标转换为投影米坐标（Spherical Mercator 投影）
-   * 
-   * 对应 Android: `getProjectedMetersForLatLng(LatLng)`
+   * Convert a geographic coordinate to projected meters (Spherical Mercator projection)
    *
-   * @param latLng 地理坐标
-   * @returns 投影米坐标
+   * Android: `getProjectedMetersForLatLng(LatLng)`
+   *
+   * @param latLng Geographic coordinate
+   * @returns Projected meters
    */
   public getProjectedMetersForLatLng(latLng: LatLng): ProjectedMeters {
     const result: IProjectedMeters = this.nativeMapView.projectedMetersForLatLng(latLng.latitude, latLng.longitude);
@@ -419,12 +420,12 @@ export class Projection {
   }
 
   /**
-   * 将投影米坐标转换为地理坐标
-   * 
-   * 对应 Android: `getLatLngForProjectedMeters(ProjectedMeters)`
+   * Convert projected meters back to a geographic coordinate
    *
-   * @param projectedMeters 投影米坐标
-   * @returns 地理坐标
+   * Android: `getLatLngForProjectedMeters(ProjectedMeters)`
+   *
+   * @param projectedMeters Projected meters
+   * @returns Geographic coordinate
    */
   public getLatLngForProjectedMeters(projectedMeters: ProjectedMeters): LatLng {
     return LatLng.fromNative(this.nativeMapView.latLngForProjectedMeters(projectedMeters.northing,
@@ -432,72 +433,72 @@ export class Projection {
   }
 
   /**
-   * 将地理坐标转换为投影米坐标（旧方法名，保持向后兼容）
-   * @deprecated 使用 getProjectedMetersForLatLng 替代
+   * Convert a geographic coordinate to projected meters (legacy name for backward compatibility)
+   * @deprecated Use getProjectedMetersForLatLng instead
    *
-   * @param latLng 地理坐标
-   * @returns 投影米坐标
+   * @param latLng Geographic coordinate
+   * @returns Projected meters
    */
   public toProjectedMeters(latLng: LatLng): ProjectedMeters {
     return this.getProjectedMetersForLatLng(latLng);
   }
 
   /**
-   * 将投影米坐标转换为地理坐标（旧方法名，保持向后兼容）
-   * @deprecated 使用 getLatLngForProjectedMeters 替代
+   * Convert projected meters to a geographic coordinate (legacy name for backward compatibility)
+   * @deprecated Use getLatLngForProjectedMeters instead
    *
-   * @param projectedMeters 投影米坐标
-   * @returns 地理坐标
+   * @param projectedMeters Projected meters
+   * @returns Geographic coordinate
    */
   public fromProjectedMeters(projectedMeters: ProjectedMeters): LatLng {
     return this.getLatLngForProjectedMeters(projectedMeters);
   }
 
   /**
-   * 获取视图宽度
+   * Get the view width
    */
   public getViewWidth(): number {
     return this.viewWidth;
   }
 
   /**
-   * 获取视图高度
+   * Get the view height
    */
   public getViewHeight(): number {
     return this.viewHeight;
   }
 
-  // ========== 内容边距 (Content Padding) ==========
+  // ========== Content padding ==========
 
   /**
-   * 设置内容边距
-   * 影响地图中心点的计算，使地图逻辑中心偏移
+   * Set the content padding
+   * Adjusts how the map center is calculated so the logical center shifts
    *
-   * 参考 Android: Projection.setContentPadding()
+   * Android reference: Projection.setContentPadding()
    *
-   * @param left 左边距（像素）
-   * @param top 上边距（像素）
-   * @param right 右边距（像素）
-   * @param bottom 下边距（像素）
+   * @param left Left padding in pixels
+   * @param top Top padding in pixels
+   * @param right Right padding in pixels
+   * @param bottom Bottom padding in pixels
    */
   public setContentPadding(left: number, top: number, right: number, bottom: number): void {
-    // 存储边距值
+    // Store padding values
     this.contentPadding = [left, top, right, bottom];
 
-    // 调用 Native 方法设置边距
-    // Native 层期望数组格式: [left, top, right, bottom]
+    // Propagate to the native layer
+    // Native expects: [left, top, right, bottom]
     this.nativeMapView.setContentPadding(this.contentPadding);
   }
 
   /**
-   * 获取当前内容边距
+   * Get the current content padding
    *
-   * 参考 Android: Projection.getContentPadding()
+   * Android reference: Projection.getContentPadding()
    *
-   * @returns [left, top, right, bottom] 边距数组
+   * @returns Padding array [left, top, right, bottom]
    */
   public getContentPadding(): number[] {
-    // 从 Native 层获取最新的边距值
+    // Fetch the latest padding state from native
     try {
       const padding: number[] = this.nativeMapView.getContentPadding();
       if (padding && padding.length === 4) {
@@ -508,20 +509,20 @@ export class Projection {
       console.error(`[Projection] Failed to get content padding from native: ${reason}`);
     }
 
-    // 返回副本，防止外部修改
+    // Return a copy to avoid external mutation
     return [...this.contentPadding];
   }
 
-  // ========== 静态工具方法 (参考 Android 实现) ==========
+  // ========== Static helper methods (aligned with Android) ==========
 
   /**
-   * 计算两个地理坐标之间的方位角（bearing）
-   * 
-   * 对应 Android: `Projection.bearing(LatLng, LatLng)`
-   * 
-   * @param latLng1 起点坐标
-   * @param latLng2 终点坐标
-   * @returns 方位角（单位：度）
+   * Calculate the bearing between two geographic coordinates
+   *
+   * Android: `Projection.bearing(LatLng, LatLng)`
+   *
+   * @param latLng1 Start coordinate
+   * @param latLng2 Target coordinate
+   * @returns Bearing in degrees
    */
   public static bearing(latLng1: LatLng, latLng2: LatLng): number {
     const lon1 = Projection.degreesToRadians(latLng1.longitude);
@@ -537,12 +538,12 @@ export class Projection {
   }
 
   /**
-   * 将角度转换为弧度
-   * 
-   * 对应 Android: `Projection.degreesToRadians(double)`
-   * 
-   * @param degrees 角度（0-360）
-   * @returns 弧度
+   * Convert degrees to radians
+   *
+   * Android: `Projection.degreesToRadians(double)`
+   *
+   * @param degrees Degrees (0-360)
+   * @returns Radians
    */
   public static degreesToRadians(degrees: number): number {
     const radians = degrees % 360;
@@ -550,12 +551,12 @@ export class Projection {
   }
 
   /**
-   * 将弧度转换为角度
-   * 
-   * 对应 Android: `Projection.radiansToDegrees(double)`
-   * 
-   * @param radians 弧度
-   * @returns 角度（0-360）
+   * Convert radians to degrees
+   *
+   * Android: `Projection.radiansToDegrees(double)`
+   *
+   * @param radians Radians
+   * @returns Degrees (0-360)
    */
   public static radiansToDegrees(radians: number): number {
     const degrees = radians % (2 * Math.PI);
@@ -563,13 +564,13 @@ export class Projection {
   }
 
   /**
-   * 计算东西边界之间的绝对距离（以度为单位）
-   * 
-   * 对应 Android: `Projection.getLongitudeSpan(double, double)`
-   * 
-   * @param east 东经
-   * @param west 西经
-   * @returns 跨度距离（度）
+   * Calculate the longitudinal span between east and west boundaries (degrees)
+   *
+   * Android: `Projection.getLongitudeSpan(double, double)`
+   *
+   * @param east Eastern longitude
+   * @param west Western longitude
+   * @returns Longitudinal span in degrees
    */
   public static getLongitudeSpan(east: number, west: number): number {
     const longSpan = Math.abs(east - west);
@@ -577,17 +578,17 @@ export class Projection {
       return longSpan;
     }
 
-    // 最短跨度包含本初子午线
+    // Shortest span includes the prime meridian
     return GeometryConstants.LONGITUDE_SPAN - longSpan;
   }
 
   /**
-   * 基于最小比例和当前比例计算缩放级别
-   * 
-   * 对应 Android: `Projection.calculateZoom(float)`
-   * 
-   * @param minScale 最小比例
-   * @returns 适合 MapView 的缩放级别
+   * Calculate the target zoom level based on the minimum scale and current zoom
+   *
+   * Android: `Projection.calculateZoom(float)`
+   *
+   * @param minScale Minimum scale factor
+   * @returns Zoom level suitable for the MapView
    */
   public calculateZoom(minScale: number): number {
     return this.nativeMapView.getZoom() + Math.log(minScale) / Math.log(2);

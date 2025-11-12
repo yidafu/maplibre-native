@@ -3,68 +3,69 @@ import { LayoutPropertyValue } from './LayoutPropertyValue';
 import { Expression } from '../expressions/Expression';
 
 /**
- * PropertyFactory - 属性工厂类
+ * PropertyFactory - Property factory utilities
  *
- * 为所有图层的布局和绘制属性提供工厂方法，支持常量值和 Expression。
+ * Provides factory helpers for every layer layout/paint property, supporting both constant
+ * values and Expressions.
  *
- * 此类提供两类方法：
- * 1. **Layout Properties（布局属性）**: 控制图层几何形状的放置和排列
- * 2. **Paint Properties（绘制属性）**: 控制图层的视觉外观
+ * Two categories of helpers are available:
+ * 1. **Layout Properties** – control geometry placement and arrangement
+ * 2. **Paint Properties** – control visual appearance
  *
- * 每个属性方法都支持：
- * - 常量值：直接传入原始值（如数字、字符串、布尔值、数组）
- * - Expression：传入 Expression 对象，实现数据驱动或缩放级别驱动的动态样式
+ * Each helper accepts:
+ * - Constant values: raw primitives (numbers, strings, booleans, arrays)
+ * - Expressions: `Expression` instances for data- or zoom-driven styling
  *
  * @example
-* ```typescript
+ * ```typescript
  * import { FillLayer } from 'libmaplibre.so';
  * import { Expression, Interpolator, Stop, PropertyFactory } from 'maplibre_harmony';
  *
  * const layer = new FillLayer("regions", "regions-source");
  *
- * // 使用常量值
+ * // Constant value
  * layer.setFillColor(PropertyFactory.fillColor("#ff0000").getValue());
  *
- * // 使用数据驱动 Expression
+ * // Data-driven expression
  * layer.setFillColor(
- *     PropertyFactory.fillColor(
- *         Expression.match(
- *             Expression.get("type"),
- *             Expression.literal("park"), Expression.literal("#00ff00"),
- *             Expression.literal("water"), Expression.literal("#0000ff"),
- *             Expression.literal("#cccccc")
- *         )
- *     ).getExpression()?.toArray()
+ *   PropertyFactory.fillColor(
+ *     Expression.match(
+ *       Expression.get("type"),
+ *       Expression.literal("park"), Expression.literal("#00ff00"),
+ *       Expression.literal("water"), Expression.literal("#0000ff"),
+ *       Expression.literal("#cccccc")
+ *     )
+ *   ).getExpression()?.toArray()
  * );
  *
- * // 使用缩放级别插值
+ * // Zoom-based interpolation
  * layer.setFillOpacity(
- *     PropertyFactory.fillOpacity(
- *         Expression.interpolate(
- *             Interpolator.linear(),
- *             Expression.zoom(),
- *             Stop.stop(10, Expression.literal(0.3)),
- *             Stop.stop(15, Expression.literal(0.8))
- *         )
- *     ).getExpression()?.toArray()
+ *   PropertyFactory.fillOpacity(
+ *     Expression.interpolate(
+ *       Interpolator.linear(),
+ *       Expression.zoom(),
+ *       Stop.stop(10, Expression.literal(0.3)),
+ *       Stop.stop(15, Expression.literal(0.8))
+ *     )
+ *   ).getExpression()?.toArray()
  * );
  * ```
  *
- * @see {@link Expression} - Expression 类文档
- * @see {@link (https://maplibre.org/maplibre-style-spec/)} - MapLibre Style Specification
+ * @see {@link Expression} for the Expression API
+ * @see https://maplibre.org/maplibre-style-spec/ for the MapLibre Style Specification
  */
 export class PropertyFactory {
-  // ==================== 通用属性 ====================
+  // ==================== Common properties ====================
 
   /**
-   * 设置图层可见性
+   * Configure layer visibility
    *
-   * 控制图层是否在地图上显示。
+   * Controls whether the layer is rendered on the map.
    *
-   * @param value - 可见性值
-   *   - `'visible'`: 图层可见
-   *   - `'none'`: 图层隐藏
-   * @returns 布局属性值包装器
+   * @param value Visibility value
+   *   - `'visible'`: layer is rendered
+   *   - `'none'`: layer is hidden
+   * @returns Layout property wrapper
    *
    * @example
   * ```typescript
@@ -75,22 +76,23 @@ export class PropertyFactory {
     return new LayoutPropertyValue<string>('visibility', value);
   }
 
-  // ==================== Fill 图层属性 ====================
+  // ==================== Fill layer properties ====================
 
   /**
-   * 设置填充颜色
+   * Configure fill color
    *
-   * 填充部分的颜色。支持 RGBA 格式，alpha 通道不会影响 1px 边框的不透明度。
+   * Defines the fill’s color. RGBA values are supported; the alpha channel does not affect the
+   * opacity of the 1 px outline.
    *
-   * @param color - CSS 颜色字符串（如 "#ff0000", "rgba(255,0,0,0.5)", "red"）
-   * @returns 绘制属性值包装器
+   * @param color CSS color string (e.g. `"#ff0000"`, `"rgba(255,0,0,0.5)"`, `"red"`)
+   * @returns Paint property wrapper
    *
    * @example
   * ```typescript
-   * // 常量颜色
+   * // Constant color
    * layer.setFillColor(PropertyFactory.fillColor("#ff0000").getValue());
    *
-   * // 数据驱动颜色
+   * // Data-driven color
    * layer.setFillColor(
    *     PropertyFactory.fillColor(
    *         Expression.match(
@@ -102,7 +104,7 @@ export class PropertyFactory {
    *     ).getExpression()?.toArray()
    * );
    *
-   * // 缩放级别插值
+   * // Zoom-level interpolation
    * layer.setFillColor(
    *     PropertyFactory.fillColor(
    *         Expression.interpolate(
@@ -164,7 +166,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制 fillTranslate 的参考框架
+   * Configure the reference frame for fillTranslate
    * @param anchor 'map' | 'viewport'
    */
   public static fillTranslateAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
@@ -176,8 +178,8 @@ export class PropertyFactory {
   }
 
   /**
-   * 填充的排序键，用于控制同一图层内填充的绘制顺序
-   * 排序键较小的填充将绘制在排序键较大的填充下方
+   * Fill sort key controlling draw order within the same layer
+   * Smaller keys are rendered beneath larger ones
    */
   public static fillSortKey(sortKey: number): LayoutPropertyValue<number>;
 
@@ -187,7 +189,7 @@ export class PropertyFactory {
     return PropertyFactory.createLayoutProperty('fill-sort-key', value);
   }
 
-  // ==================== Line 图层属性 ====================
+  // ==================== Line layer properties ====================
 
   public static lineColor(color: string): PaintPropertyValue<string>;
 
@@ -262,7 +264,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 线条平移，单位为像素。值为 [x, y]，负值表示向左和向上
+   * Line translation in pixels; `[x, y]`, negative values move left/up
    */
   public static lineTranslate(translate: number[]): PaintPropertyValue<number[]>;
 
@@ -273,7 +275,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制 lineTranslate 的参考框架
+   * Configure the reference frame for lineTranslate
    * @param anchor 'map' | 'viewport'
    */
   public static lineTranslateAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
@@ -285,7 +287,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 线条偏移，单位为像素。正值向右偏移，负值向左偏移
+   * Line offset in pixels; positive shifts right, negative shifts left
    */
   public static lineOffset(offset: number): PaintPropertyValue<number>;
 
@@ -296,7 +298,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 斜接限制，用于自动将斜接连接转换为斜面连接
+   * Miter limit that converts miter joins to bevel joins automatically
    */
   public static lineMiterLimit(limit: number): LayoutPropertyValue<number>;
 
@@ -307,7 +309,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 圆角限制，用于自动将圆角连接转换为斜接连接
+   * Round limit that converts round joins to miter joins automatically
    */
   public static lineRoundLimit(limit: number): LayoutPropertyValue<number>;
 
@@ -318,15 +320,15 @@ export class PropertyFactory {
   }
 
   /**
-   * 定义沿线条长度的渐变颜色（仅支持 Expression）
-   * 必须使用 line-progress 表达式
+   * Define gradient colors along the line (Expression only)
+   * Must rely on the `line-progress` expression
    */
   public static lineGradient(expression: Expression<string>): PaintPropertyValue<string> {
     return PropertyFactory.createPaintProperty('line-gradient', expression);
   }
 
   /**
-   * 线条的排序键，用于控制同一图层内线条的绘制顺序
+   * Line sort key controlling draw order within the same layer
    */
   public static lineSortKey(sortKey: number): LayoutPropertyValue<number>;
 
@@ -336,7 +338,7 @@ export class PropertyFactory {
     return PropertyFactory.createLayoutProperty('line-sort-key', value);
   }
 
-  // ==================== Circle 图层属性 ====================
+  // ==================== Circle layer properties ====================
 
   public static circleRadius(radius: number): PaintPropertyValue<number>;
 
@@ -395,7 +397,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 圆形平移，单位为像素。值为 [x, y]，负值表示向左和向上
+   * Circle translation in pixels; `[x, y]`, negative values move left/up
    */
   public static circleTranslate(translate: number[]): PaintPropertyValue<number[]>;
 
@@ -406,7 +408,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制 circleTranslate 的参考框架
+   * Configure the reference frame for circleTranslate
    * @param anchor 'map' | 'viewport'
    */
   public static circleTranslateAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
@@ -418,7 +420,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制圆形相对于地图的缩放行为
+   * Control how circles scale relative to the map
    * @param scale 'map' | 'viewport'
    */
   public static circlePitchScale(scale: 'map' | 'viewport'): PaintPropertyValue<string>;
@@ -430,7 +432,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制圆形相对于地图的方向
+   * Control how circles align relative to the map
    * @param alignment 'map' | 'viewport'
    */
   public static circlePitchAlignment(alignment: 'map' | 'viewport'): PaintPropertyValue<string>;
@@ -442,7 +444,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 圆形的排序键，用于控制同一图层内圆形的绘制顺序
+   * Circle sort key controlling draw order within the same layer
    */
   public static circleSortKey(sortKey: number): LayoutPropertyValue<number>;
 
@@ -452,7 +454,7 @@ export class PropertyFactory {
     return PropertyFactory.createLayoutProperty('circle-sort-key', value);
   }
 
-  // ==================== Symbol 图层属性 ====================
+  // ==================== Symbol layer properties ====================
 
   public static iconImage(iconImage: string): LayoutPropertyValue<string>;
 
@@ -479,7 +481,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标允许重叠
+   * Allow icon overlap
    */
   public static iconAllowOverlap(allowOverlap: boolean): LayoutPropertyValue<boolean>;
 
@@ -490,7 +492,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标忽略放置
+   * Ignore icon placement
    */
   public static iconIgnorePlacement(ignorePlacement: boolean): LayoutPropertyValue<boolean>;
 
@@ -501,7 +503,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标可选，当图标不可用时仍然显示文本
+   * Icon optional flag; display text even when the icon is unavailable
    */
   public static iconOptional(optional: boolean): LayoutPropertyValue<boolean>;
 
@@ -512,7 +514,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标锚点位置
+   * Icon anchor position
    */
   public static iconAnchor(anchor: string): LayoutPropertyValue<string>;
 
@@ -523,7 +525,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标偏移量 [x, y]
+   * Icon offset [x, y]
    */
   public static iconOffset(offset: number[]): LayoutPropertyValue<number[]>;
 
@@ -534,7 +536,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标填充
+   * Icon padding
    */
   public static iconPadding(padding: number): LayoutPropertyValue<number>;
 
@@ -545,7 +547,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 防止图标上下颠倒
+   * Keep icon upright
    */
   public static iconKeepUpright(keepUpright: boolean): LayoutPropertyValue<boolean>;
 
@@ -556,7 +558,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标倾斜对齐方式
+   * Icon pitch alignment
    */
   public static iconPitchAlignment(alignment: 'map' | 'viewport' | 'auto'): LayoutPropertyValue<string>;
 
@@ -567,7 +569,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标旋转对齐方式
+   * Icon rotation alignment
    */
   public static iconRotationAlignment(alignment: 'map' | 'viewport' | 'auto'): LayoutPropertyValue<string>;
 
@@ -578,7 +580,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标文本适配方式
+   * Icon text-fit mode
    */
   public static iconTextFit(fit: 'none' | 'width' | 'height' | 'both'): LayoutPropertyValue<string>;
 
@@ -589,7 +591,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标文本适配填充 [top, right, bottom, left]
+   * Icon text-fit padding [top, right, bottom, left]
    */
   public static iconTextFitPadding(padding: number[]): LayoutPropertyValue<number[]>;
 
@@ -600,7 +602,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标平移 [x, y]
+   * Icon translate [x, y]
    */
   public static iconTranslate(translate: number[]): PaintPropertyValue<number[]>;
 
@@ -611,7 +613,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制 iconTranslate 的参考框架
+   * Configure the reference frame for iconTranslate
    */
   public static iconTranslateAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
 
@@ -622,7 +624,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标光晕宽度
+   * Icon halo width
    */
   public static iconHaloWidth(width: number): PaintPropertyValue<number>;
 
@@ -633,7 +635,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标光晕颜色
+   * Icon halo color
    */
   public static iconHaloColor(color: string): PaintPropertyValue<string>;
 
@@ -644,7 +646,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 图标光晕模糊
+   * Icon halo blur
    */
   public static iconHaloBlur(blur: number): PaintPropertyValue<number>;
 
@@ -711,7 +713,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本最大宽度（单位：ems）
+   * Text maximum width (ems)
    */
   public static textMaxWidth(maxWidth: number): LayoutPropertyValue<number>;
 
@@ -722,7 +724,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本字母间距（单位：ems）
+   * Text letter spacing (ems)
    */
   public static textLetterSpacing(letterSpacing: number): LayoutPropertyValue<number>;
 
@@ -733,7 +735,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本对齐方式
+   * Text justification
    */
   public static textJustify(justify: 'auto' | 'left' | 'center' | 'right'): LayoutPropertyValue<string>;
 
@@ -744,7 +746,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本径向偏移
+   * Text radial offset
    */
   public static textRadialOffset(radialOffset: number): LayoutPropertyValue<number>;
 
@@ -755,7 +757,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本可变锚点
+   * Text variable anchors
    */
   public static textVariableAnchor(variableAnchor: string[]): LayoutPropertyValue<string[]>;
 
@@ -766,7 +768,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本可变锚点偏移
+   * Text variable anchor offsets
    */
   public static textVariableAnchorOffset(offset: number[]): LayoutPropertyValue<number[]>;
 
@@ -777,7 +779,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本旋转角度
+   * Text rotation angle
    */
   public static textRotate(rotate: number): LayoutPropertyValue<number>;
 
@@ -788,7 +790,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本填充
+   * Text padding
    */
   public static textPadding(padding: number): LayoutPropertyValue<number>;
 
@@ -799,7 +801,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 防止文本上下颠倒
+   * Keep text upright
    */
   public static textKeepUpright(keepUpright: boolean): LayoutPropertyValue<boolean>;
 
@@ -810,7 +812,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本转换（大小写）
+   * Text transform (case)
    */
   public static textTransform(transform: 'none' | 'uppercase' | 'lowercase'): LayoutPropertyValue<string>;
 
@@ -821,7 +823,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本最大角度
+   * Text maximum angle
    */
   public static textMaxAngle(maxAngle: number): LayoutPropertyValue<number>;
 
@@ -832,7 +834,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本旋转对齐方式
+   * Text rotation alignment
    */
   public static textRotationAlignment(alignment: 'map' | 'viewport' | 'auto'): LayoutPropertyValue<string>;
 
@@ -843,7 +845,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本倾斜对齐方式
+   * Text pitch alignment
    */
   public static textPitchAlignment(alignment: 'map' | 'viewport' | 'auto'): LayoutPropertyValue<string>;
 
@@ -854,7 +856,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本行高（单位：ems）
+   * Text line height (ems)
    */
   public static textLineHeight(lineHeight: number): LayoutPropertyValue<number>;
 
@@ -865,7 +867,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本书写模式
+   * Text writing mode
    */
   public static textWritingMode(writingMode: string[]): LayoutPropertyValue<string[]>;
 
@@ -876,7 +878,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本允许重叠
+   * Allow text overlap
    */
   public static textAllowOverlap(allowOverlap: boolean): LayoutPropertyValue<boolean>;
 
@@ -887,7 +889,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本忽略放置
+   * Ignore text placement
    */
   public static textIgnorePlacement(ignorePlacement: boolean): LayoutPropertyValue<boolean>;
 
@@ -898,7 +900,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本可选，当文本不可用时仍然显示图标
+   * Text optional flag; show icons when text is unavailable
    */
   public static textOptional(optional: boolean): LayoutPropertyValue<boolean>;
 
@@ -941,7 +943,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本光晕模糊
+   * Text halo blur
    */
   public static textHaloBlur(blur: number): PaintPropertyValue<number>;
 
@@ -952,7 +954,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 文本平移 [x, y]
+   * Text translate [x, y]
    */
   public static textTranslate(translate: number[]): PaintPropertyValue<number[]>;
 
@@ -963,7 +965,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制 textTranslate 的参考框架
+   * Configure the reference frame for textTranslate
    */
   public static textTranslateAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
 
@@ -974,7 +976,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 符号放置方式
+   * Symbol placement mode
    */
   public static symbolPlacement(placement: 'point' | 'line' | 'line-center'): LayoutPropertyValue<string>;
 
@@ -985,7 +987,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 符号间距（仅当 symbolPlacement 为 line 时有效）
+   * Symbol spacing (only applies when symbolPlacement is set to line)
    */
   public static symbolSpacing(spacing: number): LayoutPropertyValue<number>;
 
@@ -996,7 +998,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 符号避免边缘
+   * Avoid symbol placement near tile edges
    */
   public static symbolAvoidEdges(avoidEdges: boolean): LayoutPropertyValue<boolean>;
 
@@ -1007,7 +1009,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 符号排序键
+   * Symbol sort key
    */
   public static symbolSortKey(sortKey: number): LayoutPropertyValue<number>;
 
@@ -1018,7 +1020,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 符号 Z 顺序（已弃用，使用 symbolSortKey）
+   * Symbol Z order (deprecated; prefer symbolSortKey)
    */
   public static symbolZOrder(zOrder: 'auto' | 'viewport-y' | 'source'): LayoutPropertyValue<string>;
 
@@ -1029,7 +1031,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 符号屏幕空间（已弃用）
+   * Symbol screen-space flag (deprecated)
    */
   public static symbolScreenSpace(screenSpace: boolean): LayoutPropertyValue<boolean>;
 
@@ -1039,7 +1041,7 @@ export class PropertyFactory {
     return PropertyFactory.createLayoutProperty('symbol-screen-space', value);
   }
 
-  // ==================== Raster 图层属性 ====================
+  // ==================== Raster layer properties ====================
 
   public static rasterOpacity(opacity: number): PaintPropertyValue<number>;
 
@@ -1090,7 +1092,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 栅格淡入淡出持续时间（毫秒）
+   * Raster fade duration in milliseconds
    */
   public static rasterFadeDuration(fadeDuration: number): PaintPropertyValue<number>;
 
@@ -1101,7 +1103,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 栅格重采样方式
+   * Raster resampling mode
    */
   public static rasterResampling(resampling: 'linear' | 'nearest'): PaintPropertyValue<string>;
 
@@ -1111,7 +1113,7 @@ export class PropertyFactory {
     return PropertyFactory.createPaintProperty('raster-resampling', value);
   }
 
-  // ==================== Background 图层属性 ====================
+  // ==================== Background layer properties ====================
 
   public static backgroundColor(color: string): PaintPropertyValue<string>;
 
@@ -1137,7 +1139,7 @@ export class PropertyFactory {
     return PropertyFactory.createPaintProperty('background-pattern', value);
   }
 
-  // ==================== Heatmap 图层属性 ====================
+  // ==================== Heatmap layer properties ====================
 
   public static heatmapWeight(weight: number): PaintPropertyValue<number>;
 
@@ -1172,14 +1174,14 @@ export class PropertyFactory {
   }
 
   /**
-   * 定义热力图的颜色渐变（仅支持 Expression）
-   * 必须使用 heatmap-density 表达式
+   * Define the heatmap color ramp (Expression only)
+   * Must use the `heatmap-density` expression
    */
   public static heatmapColor(expression: Expression<string>): PaintPropertyValue<string> {
     return PropertyFactory.createPaintProperty('heatmap-color', expression);
   }
 
-  // ==================== Hillshade 图层属性 ====================
+  // ==================== Hillshade layer properties ====================
 
   public static hillshadeIlluminationDirection(direction: number): PaintPropertyValue<number>;
 
@@ -1229,7 +1231,7 @@ export class PropertyFactory {
     return PropertyFactory.createPaintProperty('hillshade-accent-color', value);
   }
 
-  // ==================== FillExtrusion 图层属性 ====================
+  // ==================== FillExtrusion layer properties ====================
 
   public static fillExtrusionHeight(height: number): PaintPropertyValue<number>;
 
@@ -1280,7 +1282,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 控制 fillExtrusionTranslate 的参考框架
+   * Configure the reference frame for fillExtrusionTranslate
    * @param anchor 'map' | 'viewport'
    */
   public static fillExtrusionTranslateAnchor(anchor: 'map' | 'viewport'): PaintPropertyValue<string>;
@@ -1299,10 +1301,10 @@ export class PropertyFactory {
     return PropertyFactory.createPaintProperty('fill-extrusion-vertical-gradient', value);
   }
 
-  // ==================== 辅助方法 ====================
+  // ==================== Helper methods ====================
 
   /**
-   * 创建 Paint 属性
+   * Create a paint property wrapper
    */
   private static createPaintProperty<T>(name: string, value: T | Expression<T>): PaintPropertyValue<T> {
     if (value instanceof Expression) {
@@ -1313,7 +1315,7 @@ export class PropertyFactory {
   }
 
   /**
-   * 创建 Layout 属性
+   * Create a layout property wrapper
    */
   private static createLayoutProperty<T>(name: string, value: T | Expression<T>): LayoutPropertyValue<T> {
     if (value instanceof Expression) {

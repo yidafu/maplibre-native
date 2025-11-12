@@ -1,5 +1,5 @@
 /**
- * FillLayer - 封装类
+ * FillLayer - Wrapper class
  */
 import maplibre, { JSONValue } from 'libmaplibre.so';
 import type { ExpressionLiteral, PropertyValue as NativePropertyValue } from 'libmaplibre.so';
@@ -14,7 +14,7 @@ class InternalMarker {
 }
 
 export class FillLayer {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'FillLayer';
   private nativeInstance: maplibre.FillLayer;
 
@@ -64,8 +64,8 @@ export class FillLayer {
   }
 
   /**
-   * 设置图层过滤器
-   * @param filter Expression 实例或表达式字面量数组
+   * Configure the layer filter
+   * @param filter Expression instance or expression literal array
    */
   setFilter(filter: Expression<boolean> | ExpressionLiteral): FillLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
@@ -78,7 +78,7 @@ export class FillLayer {
     return this;
   }
 
-  // ========== Fill 绘制属性方法 ==========
+  // ========== Fill style property helpers ==========
 
   setFillColor(color: PropertyValue<string>): FillLayer {
     this.nativeInstance.setFillColor(convertValue(color));
@@ -120,13 +120,13 @@ export class FillLayer {
     return this;
   }
 
-  // ========== 通用属性方法（Android兼容API）==========
+  // ========== Generic property API (Android-compatible) ==========
 
   /**
-   * 设置单个属性
-   * @param propertyName 属性名称（如 'fill-color', 'fill-opacity'）
-   * @param value 属性值（常量值或Expression）
-   * @returns this（支持链式调用）
+   * Set a single property
+   * @param propertyName Property key (for example, 'fill-color', 'fill-opacity')
+   * @param value Property value (constant or Expression)
+   * @returns this (supports chaining)
    */
   setProperty(propertyName: string, value: PropertyValue<JSONValue>): FillLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value));
@@ -134,9 +134,9 @@ export class FillLayer {
   }
 
   /**
-   * 批量设置属性
-   * @param properties 属性对象，键为属性名，值为属性值
-   * @returns this（支持链式调用）
+   * Set multiple properties in batch
+   * @param properties Map of property names to values
+   * @returns this (supports chaining)
    * @example
    * layer.setProperties({
    *   'fill-color': '#FF0000',
@@ -155,7 +155,7 @@ export class FillLayer {
     return this;
   }
 
-  // ========== Getter 方法 ==========
+  // ========== Getter helpers ==========
 
   getFillColor(): string | undefined {
     return this.nativeInstance.getFillColor();

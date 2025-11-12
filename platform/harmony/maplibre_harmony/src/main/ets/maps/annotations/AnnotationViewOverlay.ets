@@ -6,27 +6,27 @@ import { LatLng } from '../geometry/LatLng';
 import { Marker } from './Marker';
 
 /**
- * AnnotationViewOverlay - AnnotationView 渲染层
+ * AnnotationViewOverlay - Rendering layer for AnnotationView instances
  *
- * 作为覆盖层在地图上方渲染所有的 AnnotationView
+ * Acts as an overlay above the map to render all AnnotationViews.
  *
- * 参考:
- * - iOS: MLNMapView 的 annotationContainerView
- * - Android: 自定义 ViewGroup 覆盖层
+ * References:
+ * - iOS: MLNMapView annotationContainerView
+ * - Android: Custom ViewGroup overlay
  *
- * 特性：
- * - 支持自定义视图内容
- * - Z-index 排序（选中和拖拽的视图在最上层）
- * - 事件穿透（允许点击地图）
- * - 动画效果
+ * Features:
+ * - Supports custom view content
+ * - Z-index ordering (selected and dragged views appear on top)
+ * - Event passthrough (allows map gestures underneath)
+ * - Animation support
  *
- * 使用方式：
+ * Usage example:
  * ```typescript
  * Stack() {
- *   // 地图层
+ *   // Map layer
  *   XComponent(...)
  *
- *   // AnnotationView 层
+ *   // Annotation layer
  *   AnnotationViewOverlay({
  *     visibleAnnotationViews: $visibleAnnotationViews,
  *     mapBearing: this.mapBearing,
@@ -39,28 +39,28 @@ import { Marker } from './Marker';
 @Component
 export struct AnnotationViewOverlay {
   @Link visibleAnnotationViews: AnnotationViewData[];
-  // 地图状态（用于高级特性）
+  // Map state for advanced behavior
   @Prop mapBearing: number = 0;
   @Prop mapPitch: number = 0;
   @Prop screenWidth: number = 0;
   @Prop screenHeight: number = 0;
-  // 事件回调
+  // Event callbacks
   onAnnotationSelect?: (marker: Marker) => void;
   onAnnotationDeselect?: (marker: Marker) => void;
   onAnnotationDragStart?: (marker: Marker) => void;
   onAnnotationDrag?: (marker: Marker, screenX: number, screenY: number) => void;
   onAnnotationDragEnd?: (marker: Marker, screenX: number, screenY: number) => void;
-  // 自定义视图构建器工厂（由外部提供）
+  // Custom view builder factory provided by the consumer
   customViewBuilderFactory?: (marker: Marker) => (() => void) | null;
 
   /**
-   * 构建单个 AnnotationView
+   * Build a single AnnotationView
    *
-   * 为每个 AnnotationViewData 创建对应的 AnnotationView 组件
+   * Creates an AnnotationView component for each AnnotationViewData entry
    */
   @Builder
   buildAnnotationView(viewData: AnnotationViewData) {
-    // 🔒 修复 ObservedObject 错误：检查 marker 是否为 null
+    // 🔒 Prevent ObservedObject errors by ensuring marker is not null
     if (viewData.marker !== null) {
       AnnotationView({
         marker: viewData.marker,
@@ -128,17 +128,17 @@ export struct AnnotationViewOverlay {
   }
 
   /**
-   * 排序 AnnotationView（Z-index 优化）
+   * Sort AnnotationViews for optimal Z-index ordering
    *
-   * 选中的和拖拽的视图应该在最上层
+   * Selected or dragged views should render above others
    *
-   * @param viewDataArray 视图数据数组
-   * @returns 排序后的数组
+   * @param viewDataArray Array of view data entries
+   * @returns Sorted array
    */
   private sortAnnotationViews(viewDataArray: AnnotationViewData[]): AnnotationViewData[] {
     return viewDataArray.slice().sort((a, b) => {
-      // 简单排序：后添加的在上方（默认行为）
-      // ForEach 和 zIndex 会自动处理层级
+      // Simple ordering: items appended later appear on top (default behavior)
+      // ForEach and zIndex handle layering automatically
       return 0;
     });
   }
@@ -165,13 +165,13 @@ export struct AnnotationViewOverlay {
 }
 
 /**
- * 辅助函数：包装 Builder 以支持动态参数
+ * Helper: wrap a parameterized Builder so it can be used dynamically
  *
- * 用于将带参数的 Builder 包装成 AnnotationView 可以使用的形式
+ * Converts a Builder with parameters into a no-arg Builder for AnnotationView
  *
- * @param builder Builder 函数
- * @param params 参数对象
- * @returns 包装后的无参 Builder 函数
+ * @param builder Builder function
+ * @param params Parameter object
+ * @returns Wrapped no-argument Builder
  */
 export function wrapBuilderWithParams<T>(builder: (params: T) => void, params: T): () => void {
   return () => {

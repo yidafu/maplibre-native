@@ -1,54 +1,54 @@
 import type { ExpressionLiteral } from '../expressions/ExpressionTypes';
 
 /**
- * 聚类属性类型
- * 格式：{ "propertyName": [operatorExpression, mapExpression] }
+ * Cluster property configuration
+ * Format: { "propertyName": [operatorExpression, mapExpression] }
  */
 export type ClusterProperties = Record<string, [ExpressionLiteral | string, ExpressionLiteral]>;
 
 /**
- * GeoJsonOptions - GeoJSON数据源选项配置
+ * GeoJsonOptions - Configuration for GeoJSON sources
  */
 export interface GeoJsonOptions {
-  // 最小缩放级别
+  // Minimum zoom level
   minzoom?: number;
 
-  // 最大缩放级别
+  // Maximum zoom level
   maxzoom?: number;
 
-  // 简化容差（Douglas-Peucker算法）
+  // Simplification tolerance (Douglas-Peucker)
   tolerance?: number;
 
-  // 瓦片缓冲区大小
+  // Tile buffer size
   buffer?: number;
 
-  // 是否启用聚类
+  // Enable clustering
   cluster?: boolean;
 
-  // 聚类半径（像素）
+  // Cluster radius in pixels
   clusterRadius?: number;
 
-  // 聚类的最大缩放级别
+  // Maximum zoom level for clustering
   clusterMaxZoom?: number;
 
-  // 聚类最小点数
+  // Minimum number of points required for clustering
   clusterMinPoints?: number;
 
-  // 聚类属性
+  // Cluster property aggregation definitions
   clusterProperties?: ClusterProperties;
 
-  // 是否为每个要素生成ID
+  // Automatically generate feature IDs
   generateId?: boolean;
 
-  // 是否启用线条距离度量
+  // Enable line distance metrics
   lineMetrics?: boolean;
 
-  // 提升ID属性
+  // Promote ID property
   promoteId?: string;
 }
 
 /**
- * GeoJsonOptions 构建器类
+ * Builder for GeoJsonOptions
  */
 export class GeoJsonOptionsBuilder {
   private options: GeoJsonOptions = {};

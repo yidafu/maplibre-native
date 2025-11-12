@@ -1,5 +1,5 @@
 /**
- * BackgroundLayer - 封装类
+ * BackgroundLayer - Wrapper class
  */
 import maplibre from 'libmaplibre.so';
 import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
@@ -14,7 +14,7 @@ class InternalMarker {
 }
 
 export class BackgroundLayer {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'BackgroundLayer';
   private nativeInstance: maplibre.BackgroundLayer;
 
@@ -74,7 +74,7 @@ export class BackgroundLayer {
     return this;
   }
 
-  // ========== Getter 方法 ==========
+  // ========== Getter helpers ==========
 
   getBackgroundColor(): string | undefined {
     return this.nativeInstance.getBackgroundColor();
@@ -83,13 +83,13 @@ export class BackgroundLayer {
   getBackgroundOpacity(): number | undefined {
     return this.nativeInstance.getBackgroundOpacity();
   }
-  // ========== 通用属性方法（Android兼容API）==========
+  // ========== Generic property API (Android-compatible) ==========
 
   /**
-   * 设置单个属性
-   * @param propertyName 属性名称
-   * @param value 属性值（常量值或Expression）
-   * @returns this（支持链式调用）
+   * Set a single property
+   * @param propertyName Property key
+   * @param value Property value (constant or Expression)
+   * @returns this (supports chaining)
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): BackgroundLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
@@ -97,9 +97,9 @@ export class BackgroundLayer {
   }
 
   /**
-   * 批量设置属性
-   * @param properties 属性对象，键为属性名，值为属性值
-   * @returns this（支持链式调用）
+   * Set multiple properties in batch
+   * @param properties Map of property name to value
+   * @returns this (supports chaining)
    * @example
    * layer.setProperties({
    *   'background-color': '#F0E9E1'

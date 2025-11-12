@@ -1,45 +1,45 @@
 /**
- * TileSet - 瓦片集配置类
+ * TileSet - Configuration helper for tile sources
  *
- * 用于配置矢量瓦片和栅格瓦片数据源
+ * Applies to both vector and raster tile sources
  */
 export interface TileSetOptions {
-  // 瓦片URL数组，支持{z}/{x}/{y}占位符
+  // Tile URL templates, supports {z}/{x}/{y} placeholders
   tiles: string[];
 
-  // 最小缩放级别
+  // Minimum zoom level
   minzoom?: number;
 
-  // 最大缩放级别
+  // Maximum zoom level
   maxzoom?: number;
 
-  // 边界范围 [west, south, east, north]
+  // Bounds [west, south, east, north]
   bounds?: number[];
 
-  // 瓦片方案："xyz" 或 "tms"
+  // Tile scheme: 'xyz' or 'tms'
   scheme?: string;
 
-  // 归属信息
+  // Attribution string
   attribution?: string;
 
-  // 瓦片大小（像素）
+  // Tile size in pixels
   tileSize?: number;
 
-  // TileJSON规范版本
+  // TileJSON specification version
   version?: string;
 
-  // 名称
+  // Human-readable name
   name?: string;
 
-  // 描述
+  // Description text
   description?: string;
 
-  // 矢量图层信息
+  // Vector layer details
   vector_layers?: VectorLayer[];
 }
 
 /**
- * VectorLayer - 矢量图层信息
+ * VectorLayer - Vector layer metadata
  */
 export interface VectorLayer {
   id: string;
@@ -50,7 +50,7 @@ export interface VectorLayer {
 }
 
 /**
- * TileSet 类
+ * TileSet class
  */
 export class TileSet {
   private options: TileSetOptions;
@@ -64,7 +64,7 @@ export class TileSet {
   }
 
   /**
-   * 从选项创建TileSet
+   * Create a TileSet from options
    */
   public static fromOptions(options: TileSetOptions): TileSet {
     const tileSet = new TileSet(options.tiles, options.minzoom, options.maxzoom);
@@ -73,77 +73,77 @@ export class TileSet {
   }
 
   /**
-   * 获取瓦片URLs
+   * Get tile URLs
    */
   public getTiles(): string[] {
     return this.options.tiles;
   }
 
   /**
-   * 设置边界
+   * Set bounds
    */
   public setBounds(bounds: number[]): void {
     this.options.bounds = bounds;
   }
 
   /**
-   * 获取边界
+   * Get bounds
    */
   public getBounds(): number[] | undefined {
     return this.options.bounds;
   }
 
   /**
-   * 设置瓦片方案
+   * Set the tiling scheme
    */
   public setScheme(scheme: string): void {
     this.options.scheme = scheme;
   }
 
   /**
-   * 获取瓦片方案
+   * Get the tiling scheme
    */
   public getScheme(): string | undefined {
     return this.options.scheme;
   }
 
   /**
-   * 设置归属信息
+   * Set attribution text
    */
   public setAttribution(attribution: string): void {
     this.options.attribution = attribution;
   }
 
   /**
-   * 获取归属信息
+   * Get attribution text
    */
   public getAttribution(): string | undefined {
     return this.options.attribution;
   }
 
   /**
-   * 设置瓦片大小
+   * Set tile size
    */
   public setTileSize(tileSize: number): void {
     this.options.tileSize = tileSize;
   }
 
   /**
-   * 获取瓦片大小
+   * Get tile size
    */
   public getTileSize(): number | undefined {
     return this.options.tileSize;
   }
 
   /**
-   * 转换为JSON对象
+   * Convert to a JSON-compatible object
    */
   public toJSON(): TileSetOptions {
     return this.options;
   }
 
   /**
-   * 转换为字符串
+   * Convert to string
    */
   public toString(): string {
     return `TileSet(tiles=${this.options.tiles.length}, minzoom=${this.options.minzoom}, maxzoom=${this.options.maxzoom})`;

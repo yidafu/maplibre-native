@@ -1,24 +1,24 @@
 /**
- * Annotations 模块导出
+ * Annotations module exports
  *
- * 提供地图标注相关的所有类和接口
+ * Re-exports all classes and interfaces related to map annotations
  */
 
-// 基础类
+// Core annotation classes
 export { Annotation } from './Annotation';
 
 export { AnnotationType } from './AnnotationType';
 
-// Icon 相关
-// Icon 封装类，不再直接暴露 NAPI Icon
+// Icon utilities
+// Wrapper around Icon to avoid exposing the raw NAPI object
 export { Icon } from './Icon';
 
 export { IconFactory } from './IconFactory';
 
 export { IconManager } from './IconManager';
 
-// Marker 相关
-// Marker 封装类，不再直接暴露 NAPI Marker
+// Marker utilities
+// Wrapper around Marker to avoid exposing the raw NAPI object
 export { Marker } from './Marker';
 
 export { MarkerOptions } from './MarkerOptions';
@@ -27,14 +27,14 @@ export { MarkerDragState } from './MarkerDragState';
 
 export { MarkerManager } from './MarkerManager';
 
-// InfoWindow 相关
+// InfoWindow utilities
 export { InfoWindow, InfoWindowComponent } from './InfoWindow';
 
 export { InfoWindowAdapter } from './InfoWindowAdapter';
 
 export { InfoWindowManager } from './InfoWindowManager';
 
-// AnnotationView 相关
+// AnnotationView utilities
 export { AnnotationView } from './AnnotationView';
 
 export { AnnotationViewAdapter } from './AnnotationViewAdapter';
@@ -53,7 +53,7 @@ export {
   ViewAnnotationRenderStateParams
 } from './NativeViewAnnotationOverlay';
 
-// 其他标注类型
+// Additional annotation types
 export { Polyline } from './Polyline';
 
 export { Polygon } from './Polygon';

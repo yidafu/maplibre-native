@@ -1,11 +1,10 @@
 /**
- * TransitionOptions - 过渡选项
- * ETS 类实现
+ * TransitionOptions - Transition configuration (ETS implementation)
  */
 
 /**
- * ITransitionOptions - 过渡选项接口
- * 用于对象字面量
+ * ITransitionOptions - Transition options interface
+ * Useful for object literals
  */
 export interface ITransitionOptions {
   duration?: number;
@@ -13,8 +12,8 @@ export interface ITransitionOptions {
 }
 
 /**
- * TransitionOptions - 过渡选项类
- * 用于控制图层属性变化的过渡动画
+ * TransitionOptions - Transition options class
+ * Controls the animation used when layer properties change
  */
 export class TransitionOptions implements ITransitionOptions {
   duration: number;
@@ -26,14 +25,14 @@ export class TransitionOptions implements ITransitionOptions {
   }
 
   /**
-   * 从对象字面量创建 TransitionOptions 实例
+   * Create TransitionOptions from a literal object
    */
   static fromObject(obj: ITransitionOptions): TransitionOptions {
     return new TransitionOptions(obj.duration ?? 300, obj.delay ?? 0);
   }
 
   /**
-   * 转换为对象字面量
+   * Convert to a literal object
    */
   toObject(): ITransitionOptions {
     return {
@@ -43,7 +42,7 @@ export class TransitionOptions implements ITransitionOptions {
   }
 
   /**
-   * 创建过渡选项（静态工厂方法）
+   * Static factory helper
    */
   static create(duration: number = 300, delay: number = 0): TransitionOptions {
     return new TransitionOptions(duration, delay);

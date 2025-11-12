@@ -1,8 +1,8 @@
 /**
- * Style Sources - 数据源模块导出
+ * Style Sources - Module exports
  */
 
-// Source 联合类型
+// Source union type
 export type { Source } from './Source';
 
 export { SourceOptions } from './Source';

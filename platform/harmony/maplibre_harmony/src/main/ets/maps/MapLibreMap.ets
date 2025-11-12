@@ -2731,9 +2731,9 @@ export class MapLibreMap {
 
   /**
    * Add an on-camera-will-change listener
-   * Mirrors Android MapView.addOnCameraWillChangeListener 回调
+   * Mirrors the Android MapView.addOnCameraWillChangeListener callback
    *
-   * @param listener OnCameraWillChangeListener 实例
+   * @param listener OnCameraWillChangeListener instance
    */
   public addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
     if (this.destroyed) {
@@ -2757,7 +2757,7 @@ export class MapLibreMap {
   /**
    * Remove an on-camera-will-change listener
    *
-   * @param listener 待移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
     if (this.destroyed) {
@@ -2772,9 +2772,9 @@ export class MapLibreMap {
 
   /**
    * Add an on-camera-is-changing listener
-   * 在相机连续变化时持续回调
+   * Invoked continuously while the camera is moving
    *
-   * @param listener OnCameraIsChangingListener 实例
+   * @param listener OnCameraIsChangingListener instance
    */
   public addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
     if (this.destroyed) {
@@ -2798,7 +2798,7 @@ export class MapLibreMap {
   /**
    * Remove an on-camera-is-changing listener
    *
-   * @param listener 待移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
     if (this.destroyed) {
@@ -2813,9 +2813,9 @@ export class MapLibreMap {
 
   /**
    * Add an on-camera-did-change listener
-   * 在相机完成变化后回调
+   * Invoked after the camera finishes changing
    *
-   * @param listener OnCameraDidChangeListener 实例
+   * @param listener OnCameraDidChangeListener instance
    */
   public addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
     if (this.destroyed) {
@@ -2839,7 +2839,7 @@ export class MapLibreMap {
   /**
    * Remove an on-camera-did-change listener
    *
-   * @param listener 待移除的监听器
+   * @param listener Listener to remove
    */
   public removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
     if (this.destroyed) {
@@ -3033,7 +3033,7 @@ export class MapLibreMap {
 
   /**
    * Add a will-start-loading-map listener
-   * 地图开始加载时回调（对齐 Android MapView.OnWillStartLoadingMapListener）
+   * Triggered when the map starts loading (mirrors Android MapView.OnWillStartLoadingMapListener)
    */
   public addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
     if (this.destroyed) {
@@ -3070,7 +3070,7 @@ export class MapLibreMap {
 
   /**
    * Add a did-finish-loading-map listener
-   * 地图完成加载时回调（含样式与瓦片）
+   * Triggered when the map finishes loading (style and tiles loaded)
    */
   public addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
     if (this.destroyed) {
@@ -3107,7 +3107,7 @@ export class MapLibreMap {
 
   /**
    * Add a did-fail-loading-map listener
-   * 地图加载失败（网络、样式错误等）时触发
+   * Triggered when the map fails to load (network issues, style errors, etc.)
    */
   public addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
     if (this.destroyed) {
@@ -3146,7 +3146,7 @@ export class MapLibreMap {
 
   /**
    * Add a will-start-rendering-frame listener
-   * 每帧渲染开始前回调
+   * Invoked before each frame begins rendering
    */
   public addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
     if (this.destroyed) {
@@ -3182,7 +3182,7 @@ export class MapLibreMap {
   }
 
   /**
-   * Add a did-finish-rendering-frame listener（简单版）
+   * Add a did-finish-rendering-frame listener (basic version)
    */
   public addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
     if (this.destroyed) {
@@ -3208,7 +3208,7 @@ export class MapLibreMap {
   }
 
   /**
-   * Remove a did-finish-rendering-frame listener（简单版）
+   * Remove a did-finish-rendering-frame listener (basic version)
    */
   public removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
     if (this.destroyed) {
@@ -3222,7 +3222,7 @@ export class MapLibreMap {
   }
 
   /**
-   * Add a did-finish-rendering-frame listener（带统计信息）
+   * Add a did-finish-rendering-frame listener (with rendering stats)
    */
   public addOnDidFinishRenderingFrameWithStatsListener(
     listener: OnDidFinishRenderingFrameWithStatsListener
@@ -3249,7 +3249,7 @@ export class MapLibreMap {
   }
 
   /**
-   * Remove a did-finish-rendering-frame listener（带统计信息）
+   * Remove a did-finish-rendering-frame listener (with rendering stats)
    */
   public removeOnDidFinishRenderingFrameWithStatsListener(
     listener: OnDidFinishRenderingFrameWithStatsListener
@@ -3339,7 +3339,7 @@ export class MapLibreMap {
 // ========== Style lifecycle listeners ==========
 
   /**
-   * Add a did-finish-loading-style listener（无 Style 对象版本）
+   * Add a did-finish-loading-style listener (without Style object)
    */
   public addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
     if (this.destroyed) {
@@ -3376,7 +3376,7 @@ export class MapLibreMap {
 
   /**
    * Add a can-remove-unused-style-image listener
-   * 用于控制样式图片缓存释放
+   * Used to control when cached style images can be released
    */
   public addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
     if (this.destroyed) {
@@ -3416,7 +3416,7 @@ export class MapLibreMap {
 
   /**
    * Add a did-become-idle listener
-   * 当地图完全空闲时触发
+   * Triggered when the map becomes completely idle
    */
   public addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
     if (this.destroyed) {
@@ -3453,7 +3453,7 @@ export class MapLibreMap {
 
   /**
    * Add a source-changed listener
-   * 数据源内容发生变化时回调
+   * Invoked when the content of a source changes
    */
   public addOnSourceChangedListener(listener: OnSourceChangedListener): void {
     if (this.destroyed) {

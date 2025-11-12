@@ -1,20 +1,20 @@
 /**
- * CustomLayer - 自定义渲染图层封装类
+ * CustomLayer - Wrapper for custom rendering layers
  *
- * 对应Android平台: org.maplibre.android.style.layers.CustomLayer
+ * Android counterpart: org.maplibre.android.style.layers.CustomLayer
  *
- * 自定义图层允许开发者使用OpenGL ES直接在地图上渲染内容
+ * Enables developers to render directly on the map using OpenGL ES
  */
 import maplibre from 'libmaplibre.so';
 
 /**
- * RGBA颜色接口
+ * RGBA color interface
  */
 export interface RGBAColor {
-  r: number; // 红色分量 (0.0 - 1.0)
-  g: number; // 绿色分量 (0.0 - 1.0)
-  b: number; // 蓝色分量 (0.0 - 1.0)
-  a: number; // 透明度 (0.0 - 1.0)
+  r: number; // Red component (0.0 - 1.0)
+  g: number; // Green component (0.0 - 1.0)
+  b: number; // Blue component (0.0 - 1.0)
+  a: number; // Alpha component (0.0 - 1.0)
 }
 
 class InternalMarker {
@@ -25,14 +25,14 @@ class InternalMarker {
 }
 
 /**
- * CustomLayer - 自定义渲染图层
+ * CustomLayer - Custom rendering layer
  *
- * 允许开发者通过OpenGL ES在地图上进行自定义渲染
+ * Allows developers to render custom content on the map via OpenGL ES
  *
  * @example
 * ```typescript
  * const customLayer = new CustomLayer('custom-layer');
- * customLayer.setColor(1.0, 0.0, 0.0, 0.5);  // 红色半透明
+ * customLayer.setColor(1.0, 0.0, 0.0, 0.5);  // semi-transparent red
  * map.getStyle().addLayer(customLayer);
  * ```
  */
@@ -98,11 +98,11 @@ export class CustomLayer {
   }
 
   /**
-   * 设置渲染颜色（示例实现专用）
-   * @param r 红色分量 (0.0 - 1.0)
-   * @param g 绿色分量 (0.0 - 1.0)
-   * @param b 蓝色分量 (0.0 - 1.0)
-   * @param a 透明度 (0.0 - 1.0)
+   * Set the render color (example implementation)
+   * @param r Red component (0.0 - 1.0)
+   * @param g Green component (0.0 - 1.0)
+   * @param b Blue component (0.0 - 1.0)
+   * @param a Alpha component (0.0 - 1.0)
    */
   setColor(r: number, g: number, b: number, a: number): CustomLayer {
     this.nativeInstance.setColor(r, g, b, a);
@@ -110,8 +110,8 @@ export class CustomLayer {
   }
 
   /**
-   * 获取当前颜色（示例实现专用）
-   * @returns 颜色数组 [r, g, b, a]
+   * Get the current color (example implementation)
+   * @returns Color array [r, g, b, a]
    */
   getColor(): number[] {
     return this.nativeInstance.getColor();
@@ -119,11 +119,11 @@ export class CustomLayer {
 }
 
 /**
- * 辅助函数：创建 CustomLayer 并设置颜色
+ * Helper: create a CustomLayer with the specified color
  *
- * @param id 图层ID
- * @param color 颜色对象
- * @returns CustomLayer 实例
+ * @param id Layer identifier
+ * @param color Color object
+ * @returns CustomLayer instance
  */
 export function createCustomLayerWithColor(id: string, color: RGBAColor): CustomLayer {
   const layer = new CustomLayer(id);

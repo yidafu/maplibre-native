@@ -1,14 +1,14 @@
 /**
- * MapLibre Native for HarmonyOS - 主导出文件
+ * MapLibre Native for HarmonyOS - Main module export
  *
- * 提供所有公共 API 的统一导出
+ * Provides a unified export surface for all public APIs
  */
 import maplibre from 'libmaplibre.so';
-// 不能导出 maplibre，会破坏封装性
-// 导出 maplibre namespace（供需要访问底层 NAPI 的用户使用）
+// Do not export maplibre directly; keep the encapsulation intact
+// namespace export would expose the NAPI layer for advanced use
 // export { maplibre };
 
-// ========== 核心组件 ==========
+// ========== Core components ==========
 export { MapView } from './mapview/NativeMapView';
 
 export type NativeMapView = maplibre.NativeMapView;
@@ -30,16 +30,16 @@ export { MapLibreMap } from './MapLibreMap';
 
 export { MapLibreMapOptions } from './MapLibreMapOptions';
 
-// ========== 网络配置 ==========
+// ========== Network configuration ==========
 export { NetworkConfiguration } from './network/NetworkConfiguration';
 export type { HttpHeaders } from './network/NetworkConfiguration';
 
-// ========== 存储和资源 ==========
+// ========== Storage and resources ==========
 export { FileSource } from './storage/FileSource';
 export { ResourceTransform, ResourceKind } from './storage/ResourceTransform';
 export type { ResourceTransformCallback } from './storage/ResourceTransform';
 
-// ========== 类型定义 ==========
+// ========== Type definitions ==========
 export {
   OrnamentPosition,
   RenderingRefreshMode,
@@ -50,40 +50,40 @@ export {
 
 export type { Margins, Size } from './types/NativeTypes';
 
-// ========== 调试选项 ==========
+// ========== Debug options ==========
 export { MapDebugOptions } from './types/MapDebugOptions';
 
-// ========== 渲染统计 ==========
+// ========== Rendering statistics ==========
 export { RenderingStats } from './renderer/RenderingStats';
 
-// ========== UI 设置 ==========
+// ========== UI settings ==========
 export { UiSettings, FocalPoint } from './UiSettings';
 
-// ========== 监听器接口 ==========
+// ========== Listener interfaces ==========
 export {
-  // 相机事件
+  // Camera events
   OnCameraWillChangeListener,
   OnCameraIsChangingListener,
   OnCameraDidChangeListener,
 
-  // 地图加载事件
+  // Map loading events
   OnWillStartLoadingMapListener,
   OnDidFinishLoadingMapListener,
   OnDidFailLoadingMapListener,
 
-  // 渲染事件
+  // Rendering events
   OnWillStartRenderingFrameListener,
   OnDidFinishRenderingFrameListener,
   OnDidFinishRenderingFrameWithStatsListener,
   OnWillStartRenderingMapListener,
   OnDidFinishRenderingMapListener,
 
-  // 样式事件
+  // Style events
   OnDidFinishLoadingStyleListener,
   OnStyleImageMissingListener,
   OnCanRemoveUnusedStyleImageListener,
 
-  // 其他事件
+  // Other events
   OnDidBecomeIdleListener,
   OnSourceChangedListener,
   OnPreCompileShaderListener,
@@ -97,10 +97,10 @@ export {
   OnSpriteErrorListener,
   OnSpriteRequestedListener,
 
-  // 地图就绪回调
+  // Map ready callback
   OnMapReadyCallback,
 
-  // 原有监听器
+  // Legacy listeners
   OnMarkerClickListener,
   OnMarkerLongClickListener,
   OnMarkerDragListener,
@@ -111,7 +111,7 @@ export {
   OnStyleLoadErrorListener
 } from './listeners';
 
-// ========== 手势监听器 ==========
+// ========== Gesture listeners ==========
 export {
   OnMoveListener,
   OnScaleListener,
@@ -123,7 +123,7 @@ export {
   OnQuickZoomListener
 } from './gestures/GestureListeners';
 
-// ========== 几何类型 ==========
+// ========== Geometry types ==========
 export { LatLng } from './geometry/LatLng';
 
 export type { ILatLng } from './types/NativeTypes';
@@ -132,20 +132,20 @@ export { LatLngBounds } from './geometry/LatLngBounds';
 
 export { Point, PixelCoordinate, IPixelCoordinate } from './geometry/Point';
 
-export { Point as ScreenPoint } from './geometry/Point'; // 屏幕像素坐标（别名）
+export { Point as ScreenPoint } from './geometry/Point'; // Screen-pixel coordinate alias
 
-export type { ScreenCoordinate } from './geometry/Point'; // 屏幕坐标类型别名
+export type { ScreenCoordinate } from './geometry/Point'; // Screen coordinate alias
 
 export { ProjectedMeters, IProjectedMeters } from './geometry/ProjectedMeters';
 
 export { Rect, IRect } from './geometry/Rect';
 
-// ========== 投影工具 ==========
+// ========== Projection utilities ==========
 export { Projection } from './projection/Projection';
 
 export { VisibleRegion } from './projection/VisibleRegion';
 
-// ========== 离线地图 ==========
+// ========== Offline maps ==========
 export {
   OfflineManager,
   OfflineRegion,
@@ -160,7 +160,7 @@ export type {
   OfflineRegionObserver, OfflineRegionError
 } from './offline';
 
-// ========== 相机 ==========
+// ========== Camera ==========
 export {
   CameraPosition,
   EdgeInsets
@@ -181,7 +181,7 @@ export {
   CameraChangeListener
 } from './camera/CameraListener';
 
-// ========== UI 组件 ==========
+// ========== UI components ==========
 export { CompassView } from './widgets/CompassView';
 
 export { LogoView } from './widgets/LogoView';
@@ -194,7 +194,7 @@ export { AttributionButton, DEFAULT_ATTRIBUTIONS } from './widgets/AttributionBu
 
 export type { AttributionInfo } from './widgets/AttributionButton';
 
-// ========== 标注 ==========
+// ========== Annotations ==========
 export { Marker } from './annotations/Marker';
 
 export { Icon } from './annotations/Icon';
@@ -243,10 +243,10 @@ export {
   ViewAnnotationUpdateOptions
 } from './annotations/ViewAnnotationManager';
 
-// ========== GeoJSON 类型（通过命名空间导出）==========
+// ========== GeoJSON types (namespace export) ==========
 export * from './geojson';
 
-// ========== 样式 (Styling) ==========
+// ========== Styling ==========
 export { Style, StyleBuilder } from './style/Style';
 
 export { Light } from './style/light/Light';
@@ -257,14 +257,14 @@ export { DEFAULT_STYLE_URLS } from './constants/DefaultStyles';
 
 export type { DefaultStyleUrls } from './constants/DefaultStyles';
 
-// 自定义图层 (CustomLayer)
+// Custom layers
 export {
   CustomLayer, createCustomLayerWithColor
 } from './style/layers';
 
 export type { RGBAColor } from './style/layers';
 
-// ========== 图层 ==========
+// ========== Layers ==========
 export {
   FillLayer,
   LineLayer,
@@ -291,7 +291,7 @@ export type {
   StringValue
 } from './style/layers';
 
-// ========== 表达式 ==========
+// ========== Expressions ==========
 export {
   Expression,
   ExpressionLiteral,
@@ -301,7 +301,7 @@ export {
 
 export { ExpressionValue } from './style/expressions';
 
-// ========== 数据源 ==========
+// ========== Data sources ==========
 export {
   GeoJsonSource, VectorSource, RasterSource, RasterDemSource, ImageSource
 } from './style/sources';
@@ -312,7 +312,7 @@ export type {
 
 export { GeoJsonOptions, GeoJsonOptionsBuilder } from './style/sources/GeoJsonOptions';
 
-// ========== 地图快照 ==========
+// ========== Map snapshots ==========
 export {
   MapSnapshotter,
   MapSnapshot,
@@ -323,7 +323,7 @@ export {
   MapSnapshotterObserver
 } from './snapshot';
 
-// ========== 位置组件 ==========
+// ========== Location component ==========
 export {
   LocationComponent,
   LocationComponentOptions,
@@ -348,5 +348,5 @@ export type {
   CompassListener, PermissionRequestResult
 } from './location';
 
-// ========== 地图组件 ==========
+// ========== Map widgets ==========
 export * from './widgets'

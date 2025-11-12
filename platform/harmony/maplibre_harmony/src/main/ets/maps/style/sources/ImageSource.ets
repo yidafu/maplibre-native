@@ -1,5 +1,5 @@
 /**
- * ImageSource - 图片数据源封装类
+ * ImageSource - Wrapper for image sources
  */
 import maplibre from 'libmaplibre.so';
 import { Image } from '../images/Image';
@@ -12,7 +12,7 @@ class InternalMarker {
 }
 
 export class ImageSource {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'ImageSource';
   private nativeInstance: maplibre.ImageSource;
 
@@ -23,7 +23,7 @@ export class ImageSource {
     if (idOrMarker === InternalMarker.INSTANCE && coordsOrNative instanceof Object) {
       this.nativeInstance = coordsOrNative;
     } else if (typeof idOrMarker === 'string') {
-      // ImageSource 只需要 id，coordinates 通过 setCoordinates 设置
+      // ImageSource only requires an id; coordinates are supplied via setCoordinates
       this.nativeInstance = new maplibre.ImageSource(idOrMarker);
     } else {
       throw new Error('Invalid ImageSource constructor arguments');
@@ -57,7 +57,7 @@ export class ImageSource {
   }
 
   setImage(image: Image): ImageSource {
-    // 获取 Image 的 native 实例并传递给 ImageSource
+    // Pass the native Image instance through to the ImageSource
     this.nativeInstance.setImage(image.getNative());
     return this;
   }

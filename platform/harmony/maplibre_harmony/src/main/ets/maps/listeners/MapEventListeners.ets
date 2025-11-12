@@ -1,6 +1,6 @@
 /**
- * 地图事件监听器接口定义
- * 对齐 Android MapView 的所有监听器接口
+ * Map event listener interface definitions
+ * Mirrors the listener interfaces provided by Android MapView
  */
 
 import type {
@@ -24,97 +24,97 @@ import type {
 import type { MapLibreMap } from '../MapLibreMap';
 import type { TileOperation } from '../types/NativeTypes';
 
-// ========== 相机事件监听器 ==========
+// ========== Camera event listeners ==========
 
-/** 相机即将改变的监听器 */
+/** Camera-will-change listener */
 export type OnCameraWillChangeListener = OnCameraWillChangeListenerNAPI;
 
-/** 相机正在改变的监听器 */
+/** Camera-is-changing listener */
 export type OnCameraIsChangingListener = OnCameraIsChangingListenerNAPI;
 
-/** 相机已改变的监听器 */
+/** Camera-did-change listener */
 export type OnCameraDidChangeListener = OnCameraDidChangeListenerNAPI;
 
-// ========== 地图加载事件监听器 ==========
+// ========== Map loading listeners ==========
 
-/** 地图即将开始加载的监听器 */
+/** Map-will-start-loading listener */
 export type OnWillStartLoadingMapListener = OnWillStartLoadingMapListenerNAPI;
 
-/** 地图加载完成的监听器 */
+/** Map-did-finish-loading listener */
 export type OnDidFinishLoadingMapListener = OnDidFinishLoadingMapListenerNAPI;
 
-/** 地图加载失败的监听器 */
+/** Map-did-fail-loading listener */
 export type OnDidFailLoadingMapListener = OnDidFailLoadingMapListenerNAPI;
 
-// ========== 渲染事件监听器 ==========
+// ========== Rendering listeners ==========
 
-/** 帧即将开始渲染的监听器 */
+/** Frame-will-start-rendering listener */
 export type OnWillStartRenderingFrameListener = OnWillStartRenderingFrameListenerNAPI;
 
-/** 帧渲染完成的监听器（简单版本） */
+/** Frame-did-finish-rendering listener (basic version) */
 export type OnDidFinishRenderingFrameListener = OnDidFinishRenderingFrameListenerNAPI;
 
-/** 帧渲染完成的监听器（带统计信息） */
+/** Frame-did-finish-rendering listener (with stats) */
 export type OnDidFinishRenderingFrameWithStatsListener = OnDidFinishRenderingFrameWithStatsListenerNAPI;
 export type RenderingStats = RenderingStatsNAPI;
 
-/** 地图即将开始渲染的监听器 */
+/** Map-will-start-rendering listener */
 export type OnWillStartRenderingMapListener = OnWillStartRenderingMapListenerNAPI;
 
-/** 地图渲染完成的监听器 */
+/** Map-did-finish-rendering listener */
 export type OnDidFinishRenderingMapListener = OnDidFinishRenderingMapListenerNAPI;
 
-// ========== 样式事件监听器 ==========
+// ========== Style listeners ==========
 
-/** 样式加载完成的监听器 */
+/** Style-did-finish-loading listener */
 export type OnDidFinishLoadingStyleListener = OnDidFinishLoadingStyleListenerNAPI;
 
-/** 样式图片缺失的监听器（NAPI 中内联定义，手动声明） */
+/** Style-image-missing listener (declared manually, inline in NAPI) */
 export type OnStyleImageMissingListener = (id: string) => void;
 
-/** 可移除未使用样式图片的监听器 */
+/** Listener that decides whether unused style images can be removed */
 export type OnCanRemoveUnusedStyleImageListener = OnCanRemoveUnusedStyleImageListenerNAPI;
 
-// ========== 其他事件监听器 ==========
+// ========== Other event listeners ==========
 
-/** 地图进入空闲状态的监听器 */
+/** Map-did-become-idle listener */
 export type OnDidBecomeIdleListener = OnDidBecomeIdleListenerNAPI;
 
-/** 数据源改变的监听器 */
+/** Source-changed listener */
 export type OnSourceChangedListener = OnSourceChangedListenerNAPI;
 
-/** 着色器编译前的监听器（NAPI 中内联定义，手动声明） */
+/** Pre-compile-shader listener (declared manually, inline in NAPI) */
 export type OnPreCompileShaderListener = (id: number, type: number, additionalDefines: string) => void;
 
-/** 着色器编译后的监听器（NAPI 中内联定义，手动声明） */
+/** Post-compile-shader listener (declared manually, inline in NAPI) */
 export type OnPostCompileShaderListener = (id: number, type: number, additionalDefines: string) => void;
 
-/** 着色器编译失败的监听器（NAPI 中内联定义，手动声明） */
+/** Shader-compile-failed listener (declared manually, inline in NAPI) */
 export type OnShaderCompileFailedListener = (id: number, type: number, additionalDefines: string) => void;
 
-/** 字形加载完成的监听器（NAPI 中内联定义，手动声明） */
+/** Glyphs-loaded listener (declared manually, inline in NAPI) */
 export type OnGlyphsLoadedListener = (stack: string[], rangeStart: number, rangeEnd: number) => void;
 
-/** 字形加载错误的监听器（NAPI 中内联定义，手动声明） */
+/** Glyphs-error listener (declared manually, inline in NAPI) */
 export type OnGlyphsErrorListener = (stack: string[], rangeStart: number, rangeEnd: number) => void;
 
-/** 字形请求的监听器（NAPI 中内联定义，手动声明） */
+/** Glyphs-requested listener (declared manually, inline in NAPI) */
 export type OnGlyphsRequestedListener = (stack: string[], rangeStart: number, rangeEnd: number) => void;
 
-/** 瓦片操作的监听器（NAPI 中内联定义，手动声明） */
+/** Tile-operation listener (declared manually, inline in NAPI) */
 export type OnTileActionListener = (op: TileOperation, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceID: string) => void;
 
-/** 精灵图加载完成的监听器（NAPI 中内联定义，手动声明） */
+/** Sprite-loaded listener (declared manually, inline in NAPI) */
 export type OnSpriteLoadedListener = (id: string, url: string) => void;
 
-/** 精灵图加载错误的监听器（NAPI 中内联定义，手动声明） */
+/** Sprite-error listener (declared manually, inline in NAPI) */
 export type OnSpriteErrorListener = (id: string, url: string) => void;
 
-/** 精灵图请求的监听器（NAPI 中内联定义，手动声明） */
+/** Sprite-requested listener (declared manually, inline in NAPI) */
 export type OnSpriteRequestedListener = (id: string, url: string) => void;
 
-// ========== Map ready 回调 ==========
+// ========== Map ready callback ==========
 
-/** 地图就绪回调接口（使用 ETS MapLibreMap 类型） */
+/** Map-ready callback (uses the ETS MapLibreMap type) */
 export type OnMapReadyCallback = (mapView: MapLibreMap | null) => void;
 

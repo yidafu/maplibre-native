@@ -1,33 +1,33 @@
 /**
  * MapLibre Layer Layout Properties
- * 图层布局属性类型定义
+ * Layer layout type definitions
  *
- * 根据 MapLibre Style Spec 定义各图层类型的 Layout 属性
+ * Layout property sets for each layer type derived from the MapLibre Style Spec
  * @see https://maplibre.org/maplibre-style-spec/layers/
  */
 
 import type { Expression } from './Expression';
 import type { ExpressionLiteral } from './PropertyTypes';
 /**
- * 可见性类型
+ * Visibility type
  */
 export type Visibility = 'visible' | 'none';
 
 /**
- * 支持 Expression 的属性值类型
+ * Property value that can accept Expressions
  */
 export type DataDrivenProperty<T> = T | Expression | ExpressionLiteral;
 
 // ==================== Background Layer Layout ====================
 
 /**
- * BackgroundLayout - 背景图层布局属性
+ * BackgroundLayout - Background layer layout properties
  *
- * 背景图层只有 visibility 属性
+ * Background layers only expose the visibility property
  */
 export interface BackgroundLayout {
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -36,18 +36,18 @@ export interface BackgroundLayout {
 // ==================== Fill Layer Layout ====================
 
 /**
- * FillLayout - 填充图层布局属性
+ * FillLayout - Fill layer layout properties
  */
 export interface FillLayout {
   /**
-   * 填充排序键
-   * 根据此值对要素进行排序，值越小越先渲染
-   * 支持数据驱动
+   * Fill sort key
+   * Features are rendered in ascending order by this value
+   * Supports data-driven values
    */
   'fill-sort-key'?: DataDrivenProperty<number>;
 
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -56,52 +56,52 @@ export interface FillLayout {
 // ==================== Line Layer Layout ====================
 
 /**
- * 线段端点样式
+ * Line cap style
  */
 export type LineCap = 'butt' | 'round' | 'square';
 
 /**
- * 线段连接样式
+ * Line join style
  */
 export type LineJoin = 'bevel' | 'round' | 'miter';
 
 /**
- * LineLayout - 线图层布局属性
+ * LineLayout - Line layer layout properties
  */
 export interface LineLayout {
   /**
-   * 线段端点样式
+   * Line cap style
    * @default "butt"
    */
   'line-cap'?: DataDrivenProperty<LineCap>;
 
   /**
-   * 线段连接样式
+   * Line join style
    * @default "miter"
    */
   'line-join'?: DataDrivenProperty<LineJoin>;
 
   /**
-   * 用于尖角连接的斜接限制
+   * Miter limit for sharp corners
    * @default 2
    */
   'line-miter-limit'?: DataDrivenProperty<number>;
 
   /**
-   * 用于圆角连接的圆角限制
+   * Round limit for rounded joins
    * @default 1.05
    */
   'line-round-limit'?: DataDrivenProperty<number>;
 
   /**
-   * 线排序键
-   * 根据此值对要素进行排序，值越小越先渲染
-   * 支持数据驱动
+   * Line sort key
+   * Features are rendered in ascending order by this value
+   * Supports data-driven values
    */
   'line-sort-key'?: DataDrivenProperty<number>;
 
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -110,12 +110,12 @@ export interface LineLayout {
 // ==================== Symbol Layer Layout ====================
 
 /**
- * 符号放置方式
+ * Symbol placement mode
  */
 export type SymbolPlacement = 'point' | 'line' | 'line-center';
 
 /**
- * 文本或图标锚点位置
+ * Text or icon anchor positions
  */
 export type Anchor =
   | 'center'
@@ -129,300 +129,300 @@ export type Anchor =
     | 'bottom-right';
 
 /**
- * 文本对齐方式
+ * Text justification modes
  */
 export type TextJustify = 'auto' | 'left' | 'center' | 'right';
 
 /**
- * 旋转对齐方式
+ * Rotation alignment options
  */
 export type RotationAlignment = 'map' | 'viewport' | 'auto';
 
 /**
- * 倾斜对齐方式
+ * Pitch alignment options
  */
 export type PitchAlignment = 'map' | 'viewport' | 'auto';
 
 /**
- * 图标文本适配方式
+ * Icon text-fit modes
  */
 export type IconTextFit = 'none' | 'width' | 'height' | 'both';
 
 /**
- * 文本转换
+ * Text transform modes
  */
 export type TextTransform = 'none' | 'uppercase' | 'lowercase';
 
 /**
- * 符号 Z 顺序
+ * Symbol Z ordering modes
  */
 export type SymbolZOrder = 'auto' | 'viewport-y' | 'source';
 
 /**
- * 重叠方式
+ * Overlap behavior
  */
 export type Overlap = 'never' | 'always' | 'cooperative';
 
 /**
- * SymbolLayout - 符号图层布局属性
+ * SymbolLayout - Symbol layer layout properties
  */
 export interface SymbolLayout {
   /**
-   * 符号放置方式
+   * Symbol placement mode
    * @default "point"
    */
   'symbol-placement'?: SymbolPlacement;
 
   /**
-   * 符号间距（像素）
-   * 仅当 symbol-placement 为 line 时有效
+   * Symbol spacing in pixels
+   * Applies only when symbol-placement is set to line
    * @default 250
    */
   'symbol-spacing'?: number;
 
   /**
-   * 是否避开边缘
+   * Avoid edges
    * @default false
    */
   'symbol-avoid-edges'?: boolean;
 
   /**
-   * 符号排序键
-   * 根据此值对要素进行排序，值越小越先渲染
-   * 支持数据驱动
+   * Symbol sort key
+   * Features are rendered in ascending order by this value
+   * Supports data-driven values
    */
   'symbol-sort-key'?: DataDrivenProperty<number>;
 
   /**
-   * 符号 Z 顺序
+   * Symbol Z order
    * @default "auto"
    */
   'symbol-z-order'?: SymbolZOrder;
 
-  // ---------- Icon 属性 ----------
+  // ---------- Icon properties ----------
 
   /**
-   * 图标重叠方式
+   * Icon overlap mode
    * @default "never"
    */
   'icon-overlap'?: DataDrivenProperty<Overlap>;
 
   /**
-   * 是否忽略图标放置
+   * Ignore icon placement
    * @default false
    */
   'icon-ignore-placement'?: boolean;
 
   /**
-   * 图标是否可选
+   * Icon optional flag
    * @default false
    */
   'icon-optional'?: boolean;
 
   /**
-   * 图标旋转对齐方式
+   * Icon rotation alignment
    * @default "auto"
    */
   'icon-rotation-alignment'?: RotationAlignment;
 
   /**
-   * 图标大小
+   * Icon size
    * @default 1
    */
   'icon-size'?: DataDrivenProperty<number>;
 
   /**
-   * 图标文本适配方式
+   * Icon text-fit mode
    * @default "none"
    */
   'icon-text-fit'?: DataDrivenProperty<IconTextFit>;
 
   /**
-   * 图标文本适配内边距 [上, 右, 下, 左]
+   * Icon text-fit padding [top, right, bottom, left]
    * @default [0, 0, 0, 0]
    */
   'icon-text-fit-padding'?: DataDrivenProperty<[number, number, number, number]>;
 
   /**
-   * 图标图片名称
+   * Icon image name
    */
   'icon-image'?: DataDrivenProperty<string>;
 
   /**
-   * 图标旋转角度（度）
+   * Icon rotation angle in degrees
    * @default 0
    */
   'icon-rotate'?: DataDrivenProperty<number>;
 
   /**
-   * 图标内边距（像素）
+   * Icon padding in pixels
    * @default 2
    */
   'icon-padding'?: DataDrivenProperty<number>;
 
   /**
-   * 防止图标上下颠倒
+   * Keep icon upright
    * @default false
    */
   'icon-keep-upright'?: boolean;
 
   /**
-   * 图标偏移 [x, y]
+   * Icon offset [x, y]
    * @default [0, 0]
    */
   'icon-offset'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 图标锚点位置
+   * Icon anchor position
    * @default "center"
    */
   'icon-anchor'?: DataDrivenProperty<Anchor>;
 
   /**
-   * 图标倾斜对齐方式
+   * Icon pitch alignment
    * @default "auto"
    */
   'icon-pitch-alignment'?: PitchAlignment;
 
-  // ---------- Text 属性 ----------
+  // ---------- Text properties ----------
 
   /**
-   * 文本倾斜对齐方式
+   * Text pitch alignment
    * @default "auto"
    */
   'text-pitch-alignment'?: PitchAlignment;
 
   /**
-   * 文本旋转对齐方式
+   * Text rotation alignment
    * @default "auto"
    */
   'text-rotation-alignment'?: RotationAlignment;
 
   /**
-   * 文本字段
+   * Text field
    */
   'text-field'?: DataDrivenProperty<string>;
 
   /**
-   * 文本字体
+   * Text font family list
    * @default ["HarmonyOS Sans", "HarmonyOS Sans SC", "Noto Sans CJK SC", "Noto Sans", "sans-serif"]
    * @platform Harmony: Uses official HarmonyOS font family names (with spaces), automatically mapped to font files
    */
   'text-font'?: DataDrivenProperty<string[]>;
 
   /**
-   * 文本大小（像素）
+   * Text size in pixels
    * @default 16
    */
   'text-size'?: DataDrivenProperty<number>;
 
   /**
-   * 文本最大宽度（em）
+   * Text maximum width in em
    * @default 10
    */
   'text-max-width'?: DataDrivenProperty<number>;
 
   /**
-   * 文本行高（em）
+   * Text line height in em
    * @default 1.2
    */
   'text-line-height'?: DataDrivenProperty<number>;
 
   /**
-   * 文本字母间距（em）
+   * Text letter spacing in em
    * @default 0
    */
   'text-letter-spacing'?: DataDrivenProperty<number>;
 
   /**
-   * 文本对齐方式
+   * Text justification
    * @default "center"
    */
   'text-justify'?: DataDrivenProperty<TextJustify>;
 
   /**
-   * 文本径向偏移（em）
+   * Text radial offset in em
    * @default 0
    */
   'text-radial-offset'?: DataDrivenProperty<number>;
 
   /**
-   * 文本可变锚点
+   * Text variable anchor choices
    */
   'text-variable-anchor'?: Anchor[];
 
   /**
-   * 文本可变锚点偏移
+   * Text variable anchor offsets
    */
   'text-variable-anchor-offset'?: DataDrivenProperty<[number, number][]>;
 
   /**
-   * 文本锚点位置
+   * Text anchor position
    * @default "center"
    */
   'text-anchor'?: DataDrivenProperty<Anchor>;
 
   /**
-   * 文本最大角度（度）
+   * Text maximum angle in degrees
    * @default 45
    */
   'text-max-angle'?: number;
 
   /**
-   * 文本书写模式
+   * Text writing mode
    */
   'text-writing-mode'?: string[];
 
   /**
-   * 文本旋转角度（度）
+   * Text rotation angle in degrees
    * @default 0
    */
   'text-rotate'?: DataDrivenProperty<number>;
 
   /**
-   * 文本内边距（像素）
+   * Text padding in pixels
    * @default 2
    */
   'text-padding'?: DataDrivenProperty<number>;
 
   /**
-   * 防止文本上下颠倒
+   * Keep text upright
    * @default true
    */
   'text-keep-upright'?: boolean;
 
   /**
-   * 文本转换
+   * Text transform
    * @default "none"
    */
   'text-transform'?: DataDrivenProperty<TextTransform>;
 
   /**
-   * 文本偏移 [x, y]（em）
+   * Text offset [x, y] in em
    * @default [0, 0]
    */
   'text-offset'?: DataDrivenProperty<[number, number]>;
 
   /**
-   * 文本重叠方式
+   * Text overlap mode
    * @default "never"
    */
   'text-overlap'?: DataDrivenProperty<Overlap>;
 
   /**
-   * 是否忽略文本放置
+   * Ignore text placement
    * @default false
    */
   'text-ignore-placement'?: boolean;
 
   /**
-   * 文本是否可选
+   * Optional text flag
    * @default false
    */
   'text-optional'?: boolean;
 
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -431,18 +431,18 @@ export interface SymbolLayout {
 // ==================== Circle Layer Layout ====================
 
 /**
- * CircleLayout - 圆形图层布局属性
+ * CircleLayout - Circle layer layout properties
  */
 export interface CircleLayout {
   /**
-   * 圆形排序键
-   * 根据此值对要素进行排序，值越小越先渲染
-   * 支持数据驱动
+   * Circle sort key
+   * Features are rendered in ascending order by this value
+   * Supports data-driven values
    */
   'circle-sort-key'?: DataDrivenProperty<number>;
 
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -451,11 +451,11 @@ export interface CircleLayout {
 // ==================== Heatmap Layer Layout ====================
 
 /**
- * HeatmapLayout - 热力图图层布局属性
+ * HeatmapLayout - Heatmap layer layout properties
  */
 export interface HeatmapLayout {
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -464,11 +464,11 @@ export interface HeatmapLayout {
 // ==================== Fill-Extrusion Layer Layout ====================
 
 /**
- * FillExtrusionLayout - 填充拉伸图层布局属性
+ * FillExtrusionLayout - Fill extrusion layer layout properties
  */
 export interface FillExtrusionLayout {
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -477,11 +477,11 @@ export interface FillExtrusionLayout {
 // ==================== Raster Layer Layout ====================
 
 /**
- * RasterLayout - 栅格图层布局属性
+ * RasterLayout - Raster layer layout properties
  */
 export interface RasterLayout {
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;
@@ -490,11 +490,11 @@ export interface RasterLayout {
 // ==================== Hillshade Layer Layout ====================
 
 /**
- * HillshadeLayout - 山体阴影图层布局属性
+ * HillshadeLayout - Hillshade layer layout properties
  */
 export interface HillshadeLayout {
   /**
-   * 图层是否可见
+   * Layer visibility
    * @default "visible"
    */
   visibility?: Visibility;

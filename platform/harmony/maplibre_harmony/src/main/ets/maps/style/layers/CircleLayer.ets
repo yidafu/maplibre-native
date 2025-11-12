@@ -1,5 +1,5 @@
 /**
- * CircleLayer - 封装类
+ * CircleLayer - Wrapper class
  */
 import maplibre from 'libmaplibre.so';
 import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
@@ -17,7 +17,7 @@ class InternalMarker {
 }
 
 export class CircleLayer {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'CircleLayer';
   private nativeInstance: maplibre.CircleLayer;
 
@@ -67,8 +67,8 @@ export class CircleLayer {
   }
 
   /**
-   * 设置图层过滤器
-   * @param filter Expression 实例或表达式字面量数组
+   * Configure the layer filter
+   * @param filter Expression instance or expression literal array
    */
   setFilter(filter: Expression<boolean> | ExpressionLiteral): CircleLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
@@ -81,7 +81,7 @@ export class CircleLayer {
     return this;
   }
 
-  // ========== Circle 样式属性方法 ==========
+  // ========== Circle style property helpers ==========
 
   setCircleRadius(radius: PropertyValue<number>): CircleLayer {
     this.nativeInstance.setCircleRadius(convertValue(radius));
@@ -143,13 +143,13 @@ export class CircleLayer {
     return this;
   }
 
-  // ========== 通用属性方法（Android兼容API）==========
+  // ========== Generic property API (Android-compatible) ==========
 
   /**
-   * 设置单个属性
-   * @param propertyName 属性名称（如 'circle-color', 'circle-radius'）
-   * @param value 属性值（常量值或Expression）
-   * @returns this（支持链式调用）
+   * Set a single property
+   * @param propertyName Property key (for example, 'circle-color', 'circle-radius')
+   * @param value Property value (constant or Expression)
+   * @returns this (supports chaining)
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): CircleLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
@@ -157,9 +157,9 @@ export class CircleLayer {
   }
 
   /**
-   * 批量设置属性
-   * @param properties 属性对象，键为属性名，值为属性值
-   * @returns this（支持链式调用）
+   * Set multiple properties in batch
+   * @param properties Map of property names to values
+   * @returns this (supports chaining)
    * @example
    * layer.setProperties({
    *   'circle-color': '#00FF00',
@@ -178,7 +178,7 @@ export class CircleLayer {
     return this;
   }
 
-  // ========== Getter 方法 ==========
+  // ========== Getter helpers ==========
 
   getCircleRadius(): number | undefined {
     return this.nativeInstance.getCircleRadius();

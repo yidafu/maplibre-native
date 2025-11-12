@@ -31,14 +31,14 @@ import type { OnStyleLoadedListener } from '../listeners/OnStyleLoadedListener';
 import type { Style } from '../style/Style';
 
 /**
- * MarkerManager - Marker 管理器
+ * MarkerManager - Marker management facade
  *
- * 基于 GeoJSON Source + SymbolLayer 实现，支持所有高级功能
+ * Implemented with GeoJSON sources plus SymbolLayers to support advanced marker features.
  *
- * 参考:
- * - Android: AnnotationManager + MarkerContainer + IconManager
- *   使用Icon对象引用计数，Marker直接持有Icon
- * - iOS: MLNShapeSource + MLNSymbolStyleLayer
+ * References:
+ * - Android: `AnnotationManager` + `MarkerContainer` + `IconManager`
+ *   (uses icon reference counting with markers owning the icon)
+ * - iOS: `MLNShapeSource` + `MLNSymbolStyleLayer`
  */
 export class MarkerManager {
   private markerLayerManager: MarkerLayerManager;
@@ -47,43 +47,43 @@ export class MarkerManager {
   private infoWindowManager: InfoWindowManager;
   private annotationViewManager: AnnotationViewManager;
   private iconManager: IconManager;
-  // Marker ID -> Marker 映射
+  // Marker ID → Marker
   private markerMap: Map<number, Marker> = new Map();
-  // Marker ID -> Icon 映射（因为NAPI Marker不持有Icon对象引用）
-  // 注意：虽然保留此映射，但IconManager使用Icon对象作为key，确保引用计数正确
+  // Marker ID → Icon (NAPI markers do not retain icon references)
+  // IconManager uses the Icon object as the key to ensure proper ref counting
   private markerIconMap: Map<number, Icon> = new Map();
-  // Marker ID -> InfoWindowStyle 映射（存储每个 Marker 的 InfoWindow 样式配置）
+  // Marker ID → InfoWindowStyle (per-marker InfoWindow configuration)
   private markerInfoWindowStyleMap: Map<number, InfoWindowStyle> = new Map();
-  // 事件监听器
+  // Event listeners
   private onMarkerClickListener: OnMarkerClickListener | null = null;
   private onMarkerLongClickListener: OnMarkerLongClickListener | null = null;
   private onMarkerDragListener: OnMarkerDragListener | null = null;
   private onInfoWindowClickListener: OnInfoWindowClickListener | null = null;
   private onMarkerSelectListener: OnMarkerSelectListener | null = null;
   private infoWindowAdapter: InfoWindowAdapter | null = null;
-  // 拖拽相关
+  // Drag state
   private draggingMarker: Marker | null = null;
   private draggingMarkerId: number | null = null;
 
   /**
-   * 构造函数
+   * Construct a MarkerManager
    *
-   * @param mapLibreMap MapLibreMap 实例
+   * @param mapLibreMap MapLibreMap instance
    */
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
-    // ✅ 使用 MapLibreMap 的 InfoWindowManager（已经设置了 UI 回调）
-    // 而不是创建新的实例（没有回调）
+    // ✅ Reuse the MapLibreMap InfoWindowManager (already wired with UI callbacks)
+    // Instead of creating a new instance that lacks those callbacks
     this.infoWindowManager = mapLibreMap.getInfoWindowManager();
     this.annotationViewManager = mapLibreMap.getAnnotationViewManager();
 
-    // 初始化 IconManager - 传递 ResourceManager 以支持 rawfile 加载
+    // Initialize IconManager with ResourceManager for rawfile support
     const nativeMapView = mapLibreMap.getNativeMapView();
 
-    // 获取 ResourceManager（用于加载 rawfile 资源，如默认图标）
+    // Acquire ResourceManager for rawfile assets (e.g., default icons)
     let iconFactory: IconFactory;
     try {
-      // 从当前组件上下文获取 ResourceManager
+      // Fetch ResourceManager from current component context
       const context = getContext() as common.UIAbilityContext;
       const resourceMgr = context.resourceManager;
       iconFactory = IconFactory.getInstance(resourceMgr);
@@ -94,22 +94,22 @@ export class MarkerManager {
 
     this.iconManager = new IconManager(nativeMapView, iconFactory);
 
-    // 初始化 MarkerLayerManager（GeoJSON + SymbolLayer）
+    // MarkerLayerManager setup (GeoJSON + SymbolLayer)
     this.markerLayerManager = new MarkerLayerManager(mapLibreMap);
 
-    // 设置地图点击事件监听器（GeoJSON + SymbolLayer 模式）
+    // Map gesture listeners (GeoJSON + SymbolLayer mode)
     this.setupMapClickListener();
 
-    // 监听 style 加载事件，自动重新初始化 marker layer
+    // Listen for style reloads to refresh marker layers
     this.setupStyleLoadedListener();
 
   }
 
   /**
-   * 监听 style 加载事件
+   * Register style-loaded listener
    *
-   * 当 style 被重新加载时，之前创建的 layer 和 source 会丢失，
-   * 需要重新初始化 MarkerLayerManager 并恢复所有 markers
+   * Style reloads drop previously created sources/layers, so we must reinitialize the
+   * MarkerLayerManager and restore markers.
    */
   private setupStyleLoadedListener(): void {
     const manager = this;
@@ -118,24 +118,24 @@ export class MarkerManager {
       onStyleLoaded(style: Style | null): void {
         console.warn('[MarkerManager] ⚠️ Style reloaded, reinitializing MarkerLayerManager...');
 
-        // 重新初始化 MarkerLayerManager
+        // Reinitialize MarkerLayerManager
         manager.markerLayerManager.initialize();
 
-        // 重新添加所有 markers
+        // Restore all markers
         if (manager.markerMap.size > 0) {
 
-          // 获取所有 markers（显式类型）
+          // Collect markers explicitly
           const markersToRestore = Array.from<Marker>(manager.markerMap.values());
 
-          // 重新添加到 layer
+          // Re-add to layer
           for (const marker of markersToRestore) {
             manager.markerLayerManager.addMarker(marker, true); // skipUpdate=true
 
-            // 重新创建自定义 Annotation 视图
+            // Recreate custom annotation views
             manager.annotationViewManager.createOrUpdateView(marker);
           }
 
-          // 统一更新 source
+          // Sync source in one shot
           manager.markerLayerManager.updateSource();
 
         }
@@ -146,18 +146,18 @@ export class MarkerManager {
   }
 
   /**
-   * 设置地图点击事件监听器（GeoJSON + SymbolLayer 模式）
+   * Register map interaction listeners (GeoJSON + SymbolLayer mode)
    *
-   * 在 GeoJSON + SymbolLayer 模式下，Marker 不再是独立的对象，
-   * 需要通过地图点击事件 + queryRenderedFeatures 来检测点击的 Marker
+   * Markers are represented by layers, so gesture callbacks combined with
+   * `queryRenderedFeatures` detect interactions.
    *
-   * 参考：
+   * References:
    * - Android: DraggableSymbolsManager (AndroidGesturesManager + MoveGestureDetector)
    * - iOS: UILongPressGestureRecognizer + UIPanGestureRecognizer
    */
   private setupMapClickListener(): void {
 
-    // 点击事件
+    // Tap listener
     class MapClickListenerImpl implements OnMapClickListener {
       manager: MarkerManager;
 
@@ -172,7 +172,7 @@ export class MarkerManager {
 
     this.mapLibreMap.addOnMapClickListener(new MapClickListenerImpl(this));
 
-    // 长按事件（用于拖拽开始）
+    // Long-press listener (start dragging)
     class MapLongClickListenerImpl implements OnMapLongClickListener {
       manager: MarkerManager;
 
@@ -187,7 +187,7 @@ export class MarkerManager {
 
     this.mapLibreMap.addOnMapLongClickListener(new MapLongClickListenerImpl(this));
 
-    // 触摸移动事件（用于拖拽过程）- 参考 Android MoveGestureDetector.onMove
+    // Touch-move listener (drag updates) – mirrors Android MoveGestureDetector.onMove
     class TouchMoveListenerImpl implements OnTouchMoveListener {
       manager: MarkerManager;
 
@@ -202,7 +202,7 @@ export class MarkerManager {
 
     this.mapLibreMap.addOnTouchMoveListener(new TouchMoveListenerImpl(this));
 
-    // 触摸释放事件（用于拖拽结束）- 参考 Android MoveGestureDetector.onMoveEnd + iOS UIGestureRecognizerStateEnded
+    // Touch-up listener (drag end) – mirrors Android onMoveEnd and iOS UIGestureRecognizerStateEnded
     class TouchUpListenerImpl implements OnTouchUpListener {
       manager: MarkerManager;
 
@@ -220,29 +220,29 @@ export class MarkerManager {
   }
 
   /**
-   * 处理地图点击事件
+   * Handle map tap events
    *
-   * 参考 Android AnnotationManager.onTap() 实现
+   * Based on Android `AnnotationManager.onTap()`.
    *
-   * @param x 屏幕 X 坐标（逻辑像素）
-   * @param y 屏幕 Y 坐标（逻辑像素）
-   * @returns true 如果事件被消费
+   * @param x Screen X coordinate (logical pixels)
+   * @param y Screen Y coordinate (logical pixels)
+   * @returns true when the event is consumed
    */
   private handleMapClick(x: number, y: number): boolean {
     try {
       console.info(`[MarkerManager] handleMapClick at (${x}, ${y})`);
       
-      // 查询点击位置的 Marker（坐标转换在 queryRenderedFeaturesForBox 中统一处理）
+      // Locate marker at tap position (queryRenderedFeaturesForBox handles coordinate transforms)
       const marker = this.queryMarkerAtPoint(x, y);
 
       if (marker) {
         console.info(`[MarkerManager] Found marker at click position: ${marker.getTitle()}`);
-        // 触发 Marker 点击事件
+        // Dispatch marker click event
         return this.handleMarkerClick(marker);
       }
 
       console.info(`[MarkerManager] No marker found at click position`);
-      return false; // 没有点击到 Marker，事件未消费
+      return false; // No marker hit; event not consumed
     } catch (error) {
       console.error(`[MarkerManager] Error handling map click: ${error}`);
       return false;
@@ -250,55 +250,53 @@ export class MarkerManager {
   }
 
   /**
-   * 查询指定点位置的 Marker（通过 GeoJSON layer）
+   * Query the marker at a given point (via GeoJSON layer)
    *
-   * 注意：MarkerManager 使用 GeoJSON + SymbolLayer 模式实现 Marker，
-   * 因此需要使用 queryRenderedFeatures 查询 GeoJSON Feature，
-   * 而不是 queryPointAnnotations（仅适用于原生注解系统）
+   * Markers are implemented with GeoJSON + SymbolLayer, so we must query GeoJSON features using
+   * `queryRenderedFeatures` instead of `queryPointAnnotations` (native-only).
    *
-   * 坐标转换在 queryRenderedFeaturesForBox 中统一处理
+   * Coordinate conversion is handled inside `queryRenderedFeaturesForBox`.
    *
-   * 参考 Android AnnotationManager.getMarkerHitFromTouchArea + MarkerHitResolver
+   * Inspired by Android `AnnotationManager.getMarkerHitFromTouchArea` and `MarkerHitResolver`.
    *
-   * @param x 屏幕 X 坐标（逻辑像素）
-   * @param y 屏幕 Y 坐标（逻辑像素）
-   * @returns 找到的 Marker，如果没有则返回 null
+   * @param x Screen X coordinate (logical pixels)
+   * @param y Screen Y coordinate (logical pixels)
+   * @returns Located marker, or null if none
    */
   private queryMarkerAtPoint(x: number, y: number): Marker | null {
-    // 🎯 参考 Android AnnotationManager.getMarkerHitFromTouchArea:
-    // 使用图标最大尺寸的 1.5 倍作为触摸区域
-    // Android 代码:
+    // 🎯 Based on Android AnnotationManager.getMarkerHitFromTouchArea:
+    // Use 1.5× the largest icon dimension as hit area.
+    // Android reference:
     //   int touchSurfaceWidth = (int) (iconManager.getHighestIconHeight() * 1.5);
     //   int touchSurfaceHeight = (int) (iconManager.getHighestIconWidth() * 1.5);
 
-    // 默认触摸区域（逻辑像素） - 参考 Android minimalTouchSize = 32dp
+    // Default hit area in logical pixels (Android minimalTouchSize ≈ 32dp)
     const DEFAULT_TOUCH_SIZE = 48;
     let touchWidth = DEFAULT_TOUCH_SIZE;
     let touchHeight = DEFAULT_TOUCH_SIZE;
 
-    // 使用图标最大尺寸计算自适应触摸区域
-    const iconWidthPhysical = this.iconManager.getHighestIconWidth();   // 物理像素
-    const iconHeightPhysical = this.iconManager.getHighestIconHeight(); // 物理像素
+    // Adapt hit area based on maximum icon size
+    const iconWidthPhysical = this.iconManager.getHighestIconWidth();   // physical pixels
+    const iconHeightPhysical = this.iconManager.getHighestIconHeight(); // physical pixels
 
     if (iconWidthPhysical > 0 || iconHeightPhysical > 0) {
-      // 转换为逻辑像素（触摸区域计算需要使用逻辑像素）
+      // Convert to logical pixels for hit-testing
       const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
       const iconWidthLogical = iconWidthPhysical / pixelRatio;
       const iconHeightLogical = iconHeightPhysical / pixelRatio;
       
-      // 注意：Android 中 width 和 height 交换了，因为 marker 通常是竖直的
+      // Note: Android swaps width/height because markers are usually tall
       touchWidth = Math.max(iconHeightLogical * 1.5, DEFAULT_TOUCH_SIZE);
       touchHeight = Math.max(iconWidthLogical * 1.5, DEFAULT_TOUCH_SIZE);
     }
 
-    // 构建查询矩形（逻辑像素，queryRenderedFeaturesForBox 会处理 DPI 转换）
+    // Build query rectangle in logical pixels (queryRenderedFeaturesForBox handles DPI)
     const left = x - touchWidth;
     const top = y - touchHeight;
     const right = x + touchWidth;
     const bottom = y + touchHeight;
 
-    // 使用 queryRenderedFeaturesForBox 查询 GeoJSON layer 中的 Marker Feature
-    // 坐标转换在 queryRenderedFeaturesForBox 中统一处理
+    // Query GeoJSON layer for marker features (coordinate conversion handled internally)
     const features = this.mapLibreMap.queryRenderedFeaturesForBox(
       left, top, right, bottom,
       [this.markerLayerManager.getLayerId()],
@@ -315,7 +313,7 @@ export class MarkerManager {
       return null;
     }
 
-    // 如果只有一个 Feature，直接返回对应的 Marker
+    // Single feature → return the corresponding marker directly
     if (features.length === 1) {
       const featureId = features[0].id;
       console.info(`[MarkerManager] Single feature - ID: ${featureId}, type: ${typeof featureId}`);
@@ -328,8 +326,8 @@ export class MarkerManager {
       return null;
     }
 
-    // 多个 Feature 时，使用命中测试找到最接近点击点的 Marker
-    // 参考 Android MarkerHitResolver.execute()
+    // Multiple features → resolve closest marker via hit test
+    // See Android MarkerHitResolver.execute()
     const candidateIds: number[] = [];
     for (const feature of features) {
       const featureId = feature.id;
@@ -352,14 +350,14 @@ export class MarkerManager {
   }
 
   /**
-   * 解析多个 Marker 的命中测试，找到最接近点击点的 Marker
+   * Resolve multiple marker hits, returning the closest marker to the touch point
    *
-   * 参考 Android MarkerHitResolver 实现
+   * Mirrors the Android MarkerHitResolver implementation.
    *
-   * @param x 屏幕 X 坐标（逻辑像素）
-   * @param y 屏幕 Y 坐标（逻辑像素）
-   * @param markerIds 候选 Marker ID 数组
-   * @returns 最接近点击点的 Marker，如果没有则返回 null
+   * @param x Screen X coordinate (logical pixels)
+   * @param y Screen Y coordinate (logical pixels)
+   * @param markerIds Candidate marker IDs
+   * @returns Closest marker or null when none match
    */
   private resolveMarkerHit(x: number, y: number, markerIds: number[]): Marker | null {
     console.info(`[MarkerManager] resolveMarkerHit called with ${markerIds.length} candidates at logical (${x}, ${y})`);
@@ -367,8 +365,8 @@ export class MarkerManager {
     let closestMarker: Marker | null = null;
     let maxIntersectionArea = 0;
 
-    // 逻辑像素转换为物理像素（DPI 转换在 PixelCoordinate 中统一处理）
-    // pixelForLatLng 返回物理像素，需要统一坐标系统进行比较
+    // Convert logical to physical pixels (PixelCoordinate centralizes DPI handling)
+    // pixelForLatLng returns physical pixels, so align coordinate systems
     const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
     const physicalPoint = PixelCoordinate.fromLogicalPixels(x, y, pixelRatio);
     console.info(`[MarkerManager] Click point - logical: (${x}, ${y}), physical: (${physicalPoint.x}, ${physicalPoint.y}), pixelRatio: ${pixelRatio}`);
@@ -380,12 +378,12 @@ export class MarkerManager {
         continue;
       }
 
-      // 获取 Marker 的屏幕位置（物理像素，用于点击检测）
+      // Marker screen position in physical pixels (used for hit-testing)
       const position = marker.getPosition();
       const screenPoint = this.mapLibreMap.pixelForLatLngPhysical(position.latitude, position.longitude);
       console.info(`[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") - geo: (${position.latitude}, ${position.longitude}), physical screen: (${screenPoint.x}, ${screenPoint.y})`);
 
-      // 获取图标尺寸
+      // Icon dimensions
       const icon = this.markerIconMap.get(markerId);
       if (!icon) {
         console.warn(`[MarkerManager] Icon not found for marker ID ${markerId}`);
@@ -397,7 +395,7 @@ export class MarkerManager {
       let bitmapHeight = icon.getHeight()
       console.info(`[MarkerManager] Marker ${markerId} - original icon size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
-      // 参考 Android: 最小触摸尺寸 32dp
+      // Enforce minimal touch target (Android reference ≈32dp)
       const minimalTouchSize = 48;
       if (bitmapHeight < minimalTouchSize) {
         bitmapHeight = minimalTouchSize;
@@ -407,34 +405,33 @@ export class MarkerManager {
       }
       console.info(`[MarkerManager] Marker ${markerId} - adjusted touch size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
-      // 获取 Marker 的锚点（默认是底部中心：0.5, 1.0）
-      // 参考 Android: MarkerView 默认锚点是 (0.5f, 1.0f)
-      // anchorU: 水平锚点 (0=左, 0.5=中, 1=右)
-      // anchorV: 垂直锚点 (0=上, 0.5=中, 1=下)
+      // Anchor values: default bottom-center (0.5, 1.0) per Android MarkerView
+      // anchorU: horizontal (0 = left, 0.5 = center, 1 = right)
+      // anchorV: vertical (0 = top, 0.5 = center, 1 = bottom)
       const anchor: MarkerAnchor = marker.getAnchor();
       const anchorU: number = anchor ? anchor.u : 0.5;
       const anchorV: number = anchor ? anchor.v : 1.0;
       console.info(`[MarkerManager] Marker ${markerId} - anchor: (${anchorU}, ${anchorV})`);
 
-      // 构建 Marker 的矩形区域（基于锚点计算）
-      // screenPoint 是锚点在屏幕上的位置
+      // Build marker hit rectangle relative to anchor
+      // screenPoint corresponds to the anchor position on screen
       const markerLeft = screenPoint.x - bitmapWidth * anchorU;
       const markerTop = screenPoint.y - bitmapHeight * anchorV;
       const markerRight = markerLeft + bitmapWidth;
       const markerBottom = markerTop + bitmapHeight;
       console.info(`[MarkerManager] Marker ${markerId} - hit rect (physical): [${markerLeft}, ${markerTop}, ${markerRight}, ${markerBottom}]`);
 
-      // 检查点击点是否在 Marker 矩形内（使用物理像素进行比较）
+      // Check whether click lies inside marker rectangle (physical pixels)
       const isInside = physicalPoint.x >= markerLeft && physicalPoint.x <= markerRight &&
         physicalPoint.y >= markerTop && physicalPoint.y <= markerBottom;
       console.info(`[MarkerManager] Marker ${markerId} - click point (${physicalPoint.x}, ${physicalPoint.y}) isInside: ${isInside}`);
       
       if (isInside) {
-        // 计算交集面积（这里简化为 Marker 矩形面积）
+        // Intersection area (approximated as marker rectangle area)
         const intersectionArea = bitmapWidth * bitmapHeight;
         console.info(`[MarkerManager] Marker ${markerId} - intersection area: ${intersectionArea}, current max: ${maxIntersectionArea}`);
 
-        // 选择交集面积最大的 Marker（最接近点击点）
+        // Pick marker with largest intersection area (closest to tap)
         if (intersectionArea > maxIntersectionArea) {
           maxIntersectionArea = intersectionArea;
           closestMarker = marker;
@@ -453,15 +450,15 @@ export class MarkerManager {
   }
 
   /**
-   * 尝试开始拖拽 Marker（在 Pan 手势开始时调用）
+   * Attempt to begin marker drag (invoked when a pan gesture starts)
    *
-   * @param x 屏幕 X 坐标（逻辑像素）
-   * @param y 屏幕 Y 坐标（逻辑像素）
-   * @returns true 如果有可拖拽的 Marker 并开始拖拽
+   * @param x Screen X coordinate (logical pixels)
+   * @param y Screen Y coordinate (logical pixels)
+   * @returns true when a draggable marker is found and drag begins
    */
   public tryStartDrag(x: number, y: number): boolean {
     try {
-      // 查询当前位置的 Marker（坐标转换在 queryRenderedFeaturesForBox 中统一处理）
+      // Locate marker at touch point (queryRenderedFeaturesForBox handles conversion)
       const marker = this.queryMarkerAtPoint(x, y);
 
       if (!marker || !marker.getDraggable()) {
@@ -470,12 +467,12 @@ export class MarkerManager {
 
       console.info(`[MarkerManager] 🎯 Drag START: marker id=${marker.getId()}`);
 
-      // 开始拖拽
+      // Initiate drag
       this.draggingMarker = marker;
       this.draggingMarkerId = marker.getId();
       this.handleDragStart(marker);
 
-      return true; // 事件被消费
+      return true; // Event consumed
     } catch (error) {
       console.error(`[MarkerManager] Error starting drag: ${error}`);
       return false;
@@ -483,22 +480,22 @@ export class MarkerManager {
   }
 
   /**
-   * 处理地图长按事件（触发 Marker 长按回调）
+   * Handle map long-press (fires marker long-click callback)
    *
-   * @param x 屏幕 X 坐标（逻辑像素）
-   * @param y 屏幕 Y 坐标（逻辑像素）
-   * @returns true 如果事件被消费
+   * @param x Screen X coordinate (logical pixels)
+   * @param y Screen Y coordinate (logical pixels)
+   * @returns true when the event is consumed
    */
   private handleMapLongClick(x: number, y: number): boolean {
     try {
-      // 查询长按位置的 Marker
+      // Locate marker at long-press position
       const marker = this.queryMarkerAtPoint(x, y);
 
       if (!marker) {
         return false;
       }
 
-      // 触发 Marker 长按回调
+      // Invoke marker long-click callback
       if (this.onMarkerLongClickListener) {
         return this.onMarkerLongClickListener.onMarkerLongClick(marker);
       }
@@ -511,35 +508,35 @@ export class MarkerManager {
   }
 
   /**
-   * 处理触摸移动事件（拖拽过程）
+   * Handle touch-move events during dragging
    *
-   * 参考 Android MoveGestureDetector.OnMoveGestureListener.onMove
+   * Mirrors Android `MoveGestureDetector.OnMoveGestureListener.onMove`.
    *
-   * @param x 触摸位置 X 坐标（逻辑像素）
-   * @param y 触摸位置 Y 坐标（逻辑像素）
-   * @returns true 如果事件被消费
+   * @param x Touch X coordinate (logical pixels)
+   * @param y Touch Y coordinate (logical pixels)
+   * @returns true when the drag consumes the event
    */
   private handleTouchMove(x: number, y: number): boolean {
-    // 只有在拖拽过程中才处理触摸移动
+    // Only respond to move events while a drag is active
     if (!this.draggingMarker || !this.draggingMarkerId) {
       return false;
     }
 
     try {
-      // 逻辑像素转换为物理像素（DPI 转换在 PixelCoordinate 中统一处理）
+      // Convert logical pixels to physical (PixelCoordinate centralizes DPI)
       const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
       const screenPoint = PixelCoordinate.fromLogicalPixels(x, y, pixelRatio);
 
-      // 屏幕坐标转换为地理坐标
+      // Convert screen coordinates to geographic coordinates
       const latLng: LatLng = this.mapLibreMap.getProjection().screenLocationToLatLng(screenPoint);
 
-      // 更新 Marker 位置
+      // Update marker position
       this.handleDrag(this.draggingMarker, latLng);
 
-      // 更新 GeoJSON Source（实时更新 Marker 显示位置）
+      // Update GeoJSON source for real-time visual refresh
       this.markerLayerManager.updateMarker(this.draggingMarker);
 
-      return true; // 事件被消费
+      return true; // Event consumed
     } catch (error) {
       console.error(`[MarkerManager] Error handling touch move: ${error}`);
       return false;
@@ -547,35 +544,35 @@ export class MarkerManager {
   }
 
   /**
-   * 处理触摸释放事件（拖拽结束）
+   * Handle touch-up events (end of drag)
    *
-   * 参考：
-   * - Android: MoveGestureDetector.OnMoveGestureListener.onMoveEnd
-   * - iOS: UIPanGestureRecognizer UIGestureRecognizerStateEnded
+   * References:
+   * - Android: `MoveGestureDetector.OnMoveGestureListener.onMoveEnd`
+   * - iOS: `UIPanGestureRecognizer` with `UIGestureRecognizerStateEnded`
    *
-   * @param x 触摸释放位置 X 坐标
-   * @param y 触摸释放位置 Y 坐标
-   * @returns true 如果事件被消费
+   * @param x Release X coordinate
+   * @param y Release Y coordinate
+   * @returns true when the event is consumed
    */
   private handleTouchUp(x: number, y: number): boolean {
-    // 只有在拖拽过程中才处理触摸释放
+    // Only respond if a drag is in progress
     if (!this.draggingMarker || !this.draggingMarkerId) {
       return false;
     }
 
     try {
-      // 结束拖拽
+      // Finish the drag
       this.handleDragEnd(this.draggingMarker);
 
-      // 清除拖拽状态
+      // Clear drag state
       this.draggingMarker = null;
       this.draggingMarkerId = null;
 
-      return true; // 事件被消费
+      return true; // Event consumed
     } catch (error) {
       console.error(`[MarkerManager] Error handling touch up: ${error}`);
 
-      // 清除拖拽状态
+      // Ensure drag state is cleared
       this.draggingMarker = null;
       this.draggingMarkerId = null;
 
@@ -583,28 +580,28 @@ export class MarkerManager {
     }
   }
 
-  // ========== Marker 管理 ==========
+  // ========== Marker management ==========
 
   /**
-   * 添加单个 Marker
+   * Add a single marker
    *
-   * @param options MarkerOptions 实例
-   * @returns Promise<Marker> 创建的 Marker
-   * @throws Error 如果 Marker 创建失败
+   * @param options MarkerOptions instance
+   * @returns Promise resolving to the created marker
+   * @throws Error when marker creation fails
    */
   public async addMarker(options: MarkerOptions): Promise<Marker> {
     try {
-      // 确保 MarkerLayerManager 已初始化
+      // Ensure MarkerLayerManager is initialized
       if (!this.markerLayerManager.isInitialized()) {
         this.markerLayerManager.initialize();
       }
 
-      // 获取Icon对象（优先使用复用标识符）
+      // Fetch icon (prefer reuse identifier)
       let icon: Icon | undefined = options.getIcon();
       const reuseIdentifier = options.getReuseIdentifier();
 
       if (!icon && reuseIdentifier) {
-        // 尝试从复用队列获取图标
+        // Try pulling from icon reuse queue
         const reusedIcon = this.iconManager.dequeueReusableIcon(reuseIdentifier);
         if (reusedIcon) {
           icon = reusedIcon;
@@ -612,7 +609,7 @@ export class MarkerManager {
       }
 
       if (!icon) {
-        // 如果没有设置图标，加载默认图标
+        // Load default icon when none specified
         if (!this.iconManager.iconFactory) {
           throw new Error('[MarkerManager] IconFactory is not initialized');
         }
@@ -620,30 +617,30 @@ export class MarkerManager {
         options.icon(icon);
       }
 
-      // 创建 Marker 对象（getMarker()会将icon.getId()传给NAPI层）
+      // Create marker (getMarker() passes icon id to NAPI)
       const marker = options.getMarker();
 
-      // 添加Icon到IconManager（marker已经设置了iconId）
+      // Register icon with IconManager (marker already references iconId)
       await this.iconManager.addIconToManager(icon);
 
-      // 添加到 MarkerLayerManager
+      // Add to MarkerLayerManager
       const featureId = this.markerLayerManager.addMarker(marker);
 
-      // 设置 ID 和关联
+      // Assign id and register
       marker.setId(featureId);
       marker.setMapLibreMap(this.mapLibreMap);
       this.markerMap.set(featureId, marker);
 
-      // 保存Marker -> Icon映射（因为NAPI Marker只存储iconId字符串）
+      // Store marker → icon mapping (NAPI marker keeps only icon id)
       this.markerIconMap.set(featureId, icon);
 
-      // 保存 InfoWindow 样式配置
+      // Persist InfoWindow style
       const infoWindowStyle = options.getInfoWindowStyle();
       if (infoWindowStyle) {
         this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
       }
 
-      // 创建自定义视图（如果有适配器）
+      // Create custom view if adapter present
       this.annotationViewManager.createOrUpdateView(marker);
 
       return marker;
@@ -655,25 +652,25 @@ export class MarkerManager {
   }
 
   /**
-   * 批量添加 Marker
+   * Add multiple markers at once
    *
-   * @param optionsList MarkerOptions 数组
-   * @returns Promise<Marker[]> 创建的 Marker 数组
-   * @throws Error 如果批量添加失败
+   * @param optionsList Array of MarkerOptions
+   * @returns Promise resolving to created markers
+   * @throws Error when batch creation fails
    */
   public async addMarkers(optionsList: MarkerOptions[]): Promise<Marker[]> {
     try {
-      // 确保 MarkerLayerManager 已初始化
+      // Ensure MarkerLayerManager is initialized
       if (!this.markerLayerManager.isInitialized()) {
         this.markerLayerManager.initialize();
       }
 
-      // 创建 Marker 对象数组，同时加载icons
+      // Build marker array and load icons
       const markers: Marker[] = [];
       const icons: Icon[] = [];
 
       for (const options of optionsList) {
-        // 获取Icon对象（从MarkerOptions）
+        // Obtain icon from options
         let icon = options.getIcon();
         if (!icon) {
           if (!this.iconManager.iconFactory) {
@@ -687,16 +684,16 @@ export class MarkerManager {
 
         const marker = options.getMarker();
 
-        // 添加Icon到IconManager（marker已经设置了iconId）
+        // Register icon with IconManager (marker already references iconId)
         await this.iconManager.addIconToManager(icon);
 
         markers.push(marker);
       }
 
-      // 批量添加到 MarkerLayerManager
+      // Add markers to layer in bulk
       const featureIds = this.markerLayerManager.addMarkers(markers);
 
-      // 设置 ID 并注册
+      // Assign ids and register metadata
       for (let i = 0; i < markers.length; i++) {
         const marker = markers[i];
         const featureId = featureIds[i];
@@ -707,16 +704,16 @@ export class MarkerManager {
         marker.setMapLibreMap(this.mapLibreMap);
         this.markerMap.set(featureId, marker);
 
-        // 保存Marker -> Icon映射
+        // Track marker → icon mapping
         this.markerIconMap.set(featureId, icon);
 
-        // 保存 InfoWindow 样式配置
+        // Store InfoWindow style
         const infoWindowStyle = options.getInfoWindowStyle();
         if (infoWindowStyle) {
           this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
         }
 
-        // 同步创建或更新自定义视图
+        // Create/update custom views in sync
         this.annotationViewManager.createOrUpdateView(marker);
       }
 
@@ -729,9 +726,9 @@ export class MarkerManager {
   }
 
   /**
-   * 移除单个 Marker
+   * Remove a single marker
    *
-   * @param marker 要移除的 Marker
+   * @param marker Marker to remove
    */
   public removeMarker(marker: Marker): void {
     const id = marker.getId();
@@ -739,43 +736,43 @@ export class MarkerManager {
       return;
     }
 
-    // 如果正在显示 InfoWindow，先关闭
+    // Close InfoWindow if visible
     if (marker.isInfoWindowShown()) {
       marker.hideInfoWindow();
     }
 
-    // 如果是选中状态，取消选中
+    // Deselect if currently selected
     if (marker.isSelected()) {
       this.deselectMarker(marker);
     }
 
-    // 清理 Icon（减少引用计数）
-    // 由于NAPI Marker不持有Icon对象，从markerIconMap获取
+    // Cleanup icon (decrement reference count)
+    // NAPI marker does not hold icon reference; fetch from map
     const icon = this.markerIconMap.get(id);
     if (icon) {
       this.iconManager.iconCleanup(icon);
       this.markerIconMap.delete(id);
     }
 
-    // 移除 InfoWindow 样式配置
+    // Remove stored InfoWindow style
     this.markerInfoWindowStyleMap.delete(id);
 
-    // 移除自定义视图
+    // Remove custom view association
     this.annotationViewManager.removeView(marker);
 
-    // 从 MarkerLayerManager 移除
+    // Remove from MarkerLayerManager
     this.markerLayerManager.removeMarker(id);
 
-    // 从管理器移除
+    // Remove from manager registry
     this.markerMap.delete(id);
     marker.setId(-1);
 
   }
 
   /**
-   * 批量移除 Marker
+   * Remove multiple markers
    *
-   * @param markers 要移除的 Marker 数组
+   * @param markers Array of markers to remove
    */
   public removeMarkers(markers: Marker[]): void {
     const ids: number[] = [];
@@ -783,7 +780,7 @@ export class MarkerManager {
     for (const marker of markers) {
       const id = marker.getId();
       if (id !== -1) {
-        // 清理状态
+        // Reset marker UI state
         if (marker.isInfoWindowShown()) {
           marker.hideInfoWindow();
         }
@@ -791,14 +788,14 @@ export class MarkerManager {
           this.selectedMarkers.delete(marker);
         }
 
-        // 清理 Icon
+        // Release icon reference
         const icon = this.markerIconMap.get(id);
         if (icon) {
           this.iconManager.iconCleanup(icon);
           this.markerIconMap.delete(id);
         }
 
-        // 移除自定义视图
+        // Remove custom view
         this.annotationViewManager.removeView(marker);
 
         ids.push(id);
@@ -807,7 +804,7 @@ export class MarkerManager {
       }
     }
 
-    // 批量从 MarkerLayerManager 移除
+    // Remove ids from MarkerLayerManager in bulk
     if (ids.length > 0) {
       this.markerLayerManager.removeMarkers(ids);
     }
@@ -815,11 +812,11 @@ export class MarkerManager {
   }
 
   /**
-   * 更新 Marker
+   * Update a marker
    *
-   * 更新 Marker 的所有属性到地图显示（位置、图标、透明度、旋转等）
+   * Apply all marker properties (position, icon, opacity, rotation, etc.) to the map.
    *
-   * @param marker 要更新的 Marker
+   * @param marker Marker to refresh
    */
   public updateMarker(marker: Marker): void {
     try {
@@ -829,10 +826,10 @@ export class MarkerManager {
         return;
       }
 
-      // 更新 MarkerLayerManager 中的特征（更新 GeoJSON）
+      // Update GeoJSON feature via MarkerLayerManager
       this.markerLayerManager.updateMarkerById(markerId, marker);
 
-      // 同步刷新自定义视图
+      // Sync custom view rendering
       this.annotationViewManager.createOrUpdateView(marker);
 
     } catch (e) {
@@ -842,12 +839,12 @@ export class MarkerManager {
   }
 
   /**
-   * 更新 Marker 的图标
+   * Update a marker's icon
    *
-   * 自动处理旧图标的引用计数和新图标的加载
+   * Automatically handles reference counting for the old icon and loading of the new one.
    *
-   * @param marker 要更新的 Marker
-   * @param newIcon 新的 Icon 实例
+   * @param marker Marker to update
+   * @param newIcon Replacement icon instance
    */
   public async updateMarkerIcon(marker: Marker, newIcon: Icon): Promise<void> {
     try {
@@ -856,19 +853,19 @@ export class MarkerManager {
         throw new Error('Marker not found in manager');
       }
 
-      // 获取旧图标
+      // Retrieve previous icon
       const oldIcon = this.markerIconMap.get(markerId) || null;
 
-      // 使用 IconManager 更新图标（自动处理引用计数）
+      // Update icon via IconManager (handles reference counts)
       await this.iconManager.updateMarkerIcon(marker, oldIcon, newIcon);
 
-      // 更新本地映射
+      // Refresh local mapping
       this.markerIconMap.set(markerId, newIcon);
 
-      // 更新 MarkerLayerManager 中的特征
+      // Update underlying GeoJSON feature
       this.markerLayerManager.updateMarkerById(markerId, marker);
 
-      // 更新自定义视图
+      // Refresh associated custom view
       this.annotationViewManager.createOrUpdateView(marker);
 
     } catch (e) {
@@ -879,67 +876,67 @@ export class MarkerManager {
   }
 
   /**
-   * 清除所有 Marker
+   * Clear all markers
    *
-   * 移除地图上所有的 Marker 并释放相关资源。
+   * Removes every marker from the map and releases related resources.
    *
-   * **重要提示**：
-   * - 此方法会减少所有 Icon 的引用计数
-   * - 当 Icon 的引用计数降为 0 时，Icon 会被自动释放（PixelMap 资源被回收）
-   * - **已释放的 Icon 不能被复用**
-   * - 清除后如需再次添加相同图标的 Marker，必须创建新的 Icon 实例
+   * **Important**:
+   * - This decrements the reference count of all icons
+   * - Icons are freed when their reference count reaches zero (PixelMap is recycled)
+   * - **Freed icons cannot be reused**
+   * - After clearing, create new icon instances before re-adding markers
    *
    * @example
-  * ```typescript
-   * // 清除所有 marker
+   * ```typescript
+   * // Clear all markers
    * markerManager.clear();
    *
-   * // 错误用法：复用旧的 Icon
+   * // Incorrect: reusing a freed icon
    * const oldIcon = marker.getIcon();
-   * const newMarker = new MarkerOptions().position(latLng).icon(oldIcon); // ❌ 错误！
+   * const newMarker = new MarkerOptions().position(latLng).icon(oldIcon); // ❌ Wrong!
    *
-   * // 正确用法：创建新的 Icon
+   * // Correct: obtain a fresh icon
    * const factory = IconFactory.getInstance();
-   * const newIcon = await factory.fromResource($r('app.media.marker')); // ✓ 正确
+   * const newIcon = await factory.fromResource($r('app.media.marker')); // ✓ Correct
    * const newMarker = new MarkerOptions().position(latLng).icon(newIcon);
    * ```
    */
   public clear(): void {
-    // 清理每个marker
+    // Clean up each marker
     for (const marker of this.markerMap.values()) {
       if (marker.isInfoWindowShown()) {
         marker.hideInfoWindow();
       }
 
       // Icon cleanup
-      // 从markerIconMap获取Icon对象（因为NAPI Marker不持有Icon引用）
+      // Obtain icon from map (NAPI marker lacks icon reference)
       const icon = this.markerIconMap.get(marker.getId());
       if (icon) {
-        // iconCleanup使用Icon对象作为key，多个markers共享同一Icon时正确处理
+        // iconCleanup uses Icon object keys to handle shared references
         this.iconManager.iconCleanup(icon);
       }
 
       marker.setId(-1);
     }
 
-    // 清空 MarkerLayerManager
+    // Reset MarkerLayerManager
     this.markerLayerManager.clearMarkers();
 
-    // 清空本地映射
+    // Clear local registries
     this.markerMap.clear();
     this.markerIconMap.clear();
     this.selectedMarkers.clear();
     this.markerInfoWindowStyleMap.clear();
 
-    // 清理自定义视图
+    // Clear custom views
     this.annotationViewManager.clear();
 
   }
 
   /**
-   * 清除所有监听器
-   * 
-   * 移除所有 Marker 相关的事件监听器，防止内存泄漏
+   * Remove all listeners
+   *
+   * Detaches every marker-related listener to prevent leaks.
    */
   public clearAllListeners(): void {
     this.onMarkerClickListener = null;
@@ -950,28 +947,28 @@ export class MarkerManager {
     this.infoWindowAdapter = null;
   }
 
-  // ========== 选中管理 ==========
+  // ========== Selection management ==========
 
   /**
-   * 选中 Marker
+   * Select a marker
    *
-   * @param marker 要选中的 Marker
-   * @param showInfoWindow 是否显示 InfoWindow
+   * @param marker Marker to select
+   * @param showInfoWindow Whether to display the InfoWindow
    */
   public selectMarker(marker: Marker, showInfoWindow: boolean = true): void {
-    // 先取消其他选中的 Marker
+    // Deselect previous selection
     this.deselectMarkers();
 
-    // 选中当前 Marker
+    // Select current marker
     marker.setSelected(true);
     this.selectedMarkers.add(marker);
 
-    // 触发选中监听器
+    // Notify listener
     if (this.onMarkerSelectListener) {
       this.onMarkerSelectListener.onMarkerSelect(marker);
     }
 
-    // 显示 InfoWindow
+    // Display InfoWindow if applicable
     const title = marker.getTitle();
     const snippet = marker.getSnippet();
     console.info(`[MarkerManager] selectMarker - title: "${title}", snippet: "${snippet}", showInfoWindow: ${showInfoWindow}`);
@@ -985,9 +982,9 @@ export class MarkerManager {
   }
 
   /**
-   * 取消选中 Marker
+   * Deselect a marker
    *
-   * @param marker 要取消选中的 Marker
+   * @param marker Marker to deselect
    */
   public deselectMarker(marker: Marker): void {
     if (!this.selectedMarkers.has(marker)) {
@@ -998,21 +995,21 @@ export class MarkerManager {
     marker.hideInfoWindow();
     this.selectedMarkers.delete(marker);
 
-    // 触发取消选中监听器
+    // Notify deselect listener
     if (this.onMarkerSelectListener) {
       this.onMarkerSelectListener.onMarkerDeselect(marker);
     }
   }
 
   /**
-   * 取消所有选中的 Marker
+   * Deselect all markers
    */
   public deselectMarkers(): void {
     for (const marker of this.selectedMarkers) {
       marker.setSelected(false);
       marker.hideInfoWindow();
 
-      // 触发取消选中监听器
+      // Notify deselect listener
       if (this.onMarkerSelectListener) {
         this.onMarkerSelectListener.onMarkerDeselect(marker);
       }
@@ -1021,41 +1018,41 @@ export class MarkerManager {
   }
 
   /**
-   * 获取所有选中的 Marker
+   * Retrieve currently selected markers
    *
-   * @returns 选中的 Marker 数组
+   * @returns Array of selected markers
    */
   public getSelectedMarkers(): Marker[] {
     return Array.from(this.selectedMarkers);
   }
 
-  // ========== 查询 ==========
+  // ========== Query helpers ==========
 
   /**
-   * 根据 ID 获取 Marker
+   * Retrieve marker by id
    *
-   * @param id Marker ID
-   * @returns Marker 实例，如果不存在则返回 null
+   * @param id Marker id
+   * @returns Marker instance or null if absent
    */
   public getMarker(id: number): Marker | null {
     return this.markerMap.get(id) || null;
   }
 
   /**
-   * 获取所有 Marker
+   * Get all markers
    *
-   * @returns Marker 数组
+   * @returns Array of markers
    */
   public getMarkers(): Marker[] {
     return Array.from(this.markerMap.values());
   }
 
-  // ========== 拖拽处理 ==========
+  // ========== Drag handling ==========
 
   /**
-   * 处理拖拽开始
+   * Handle drag start
    *
-   * @param marker 正在拖拽的 Marker
+   * @param marker Marker being dragged
    */
   public handleDragStart(marker: Marker): void {
     if (!marker.getDraggable()) {
@@ -1065,7 +1062,7 @@ export class MarkerManager {
     marker.setDragState(MarkerDragState.Starting);
     this.draggingMarker = marker;
 
-    // 触发事件
+    // Fire callback
     if (this.onMarkerDragListener) {
       this.onMarkerDragListener.onMarkerDragStart(marker);
     }
@@ -1074,29 +1071,29 @@ export class MarkerManager {
   }
 
   /**
-   * 处理拖拽中
+   * Handle drag update
    *
-   * @param marker 正在拖拽的 Marker
-   * @param newPosition 新位置
+   * @param marker Marker being dragged
+   * @param newPosition Updated position
    */
   public handleDrag(marker: Marker, newPosition: LatLng): void {
     if (!marker.getDraggable() || marker.getDragState() !== MarkerDragState.Dragging) {
       return;
     }
 
-    // 更新位置
+    // Update position
     marker.setPosition(newPosition);
 
-    // 触发事件
+    // Fire callback
     if (this.onMarkerDragListener) {
       this.onMarkerDragListener.onMarkerDrag(marker);
     }
   }
 
   /**
-   * 处理拖拽结束
+   * Handle drag end
    *
-   * @param marker 完成拖拽的 Marker
+   * @param marker Marker whose drag finished
    */
   public handleDragEnd(marker: Marker): void {
     if (!marker.getDraggable() || this.draggingMarker !== marker) {
@@ -1105,7 +1102,7 @@ export class MarkerManager {
 
     marker.setDragState(MarkerDragState.Ending);
 
-    // 触发事件
+    // Fire callback
     if (this.onMarkerDragListener) {
       this.onMarkerDragListener.onMarkerDragEnd(marker);
     }
@@ -1115,25 +1112,25 @@ export class MarkerManager {
   }
 
   /**
-   * 获取正在拖拽的 Marker
+   * Get the marker currently being dragged
    *
-   * @returns 正在拖拽的 Marker，如果没有则返回 null
+   * @returns Dragging marker or null if none
    */
   public getDraggingMarker(): Marker | null {
     return this.draggingMarker;
   }
 
-  // ========== 点击处理 ==========
+  // ========== Click handling ==========
 
   /**
-   * 处理 Marker 点击事件
+   * Handle marker tap event
    *
-   * @param marker 被点击的 Marker
-   * @returns true 如果事件被消费
+   * @param marker Marker that was tapped
+   * @returns true if the event was consumed
    */
   public handleMarkerClick(marker: Marker): boolean {
 
-    // 触发点击事件
+    // Invoke click listener
     if (this.onMarkerClickListener) {
       try {
         const consumed = this.onMarkerClickListener.onMarkerClick(marker);
@@ -1147,15 +1144,15 @@ export class MarkerManager {
       console.warn(`[MarkerManager] ⚠️ No onMarkerClickListener set`);
     }
 
-    // 默认行为：选中 Marker 并显示 InfoWindow
+    // Default behavior: select marker and show InfoWindow
     this.selectMarker(marker, true);
     return false;
   }
 
   /**
-   * 处理 InfoWindow 点击事件
+   * Handle InfoWindow tap
    *
-   * @param marker InfoWindow 所属的 Marker
+   * @param marker Marker owning the InfoWindow
    */
   public handleInfoWindowClick(marker: Marker): void {
     if (this.onInfoWindowClickListener) {
@@ -1163,57 +1160,57 @@ export class MarkerManager {
     }
   }
 
-  // ========== 事件监听器设置 ==========
+  // ========== Listener registration ==========
 
   /**
-   * 设置 Marker 点击监听器
+   * Set marker click listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerClickListener(listener: OnMarkerClickListener | null): void {
     this.onMarkerClickListener = listener;
   }
 
   /**
-   * 设置 Marker 长按监听器
+   * Set marker long-click listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerLongClickListener(listener: OnMarkerLongClickListener | null): void {
     this.onMarkerLongClickListener = listener;
   }
 
   /**
-   * 设置 Marker 拖拽监听器
+   * Set marker drag listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerDragListener(listener: OnMarkerDragListener | null): void {
     this.onMarkerDragListener = listener;
   }
 
   /**
-   * 设置 Marker 选中监听器
+   * Set marker selection listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnMarkerSelectListener(listener: OnMarkerSelectListener | null): void {
     this.onMarkerSelectListener = listener;
   }
 
   /**
-   * 获取 Marker 选中监听器
+   * Get marker selection listener
    *
-   * @returns 监听器实例
+   * @returns Listener instance
    */
   public getOnMarkerSelectListener(): OnMarkerSelectListener | null {
     return this.onMarkerSelectListener;
   }
 
   /**
-   * 设置 InfoWindow 点击监听器
+   * Set InfoWindow click listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnInfoWindowClickListener(listener: OnInfoWindowClickListener | null): void {
     this.onInfoWindowClickListener = listener;
@@ -1221,27 +1218,27 @@ export class MarkerManager {
   }
 
   /**
-   * 设置 InfoWindow 关闭监听器
+   * Set InfoWindow close listener
    *
-   * @param listener 监听器实例
+   * @param listener Listener instance
    */
   public setOnInfoWindowCloseListener(listener: OnInfoWindowCloseListener | null): void {
     this.infoWindowManager.setOnCloseListener(listener);
   }
 
   /**
-   * 获取 InfoWindow 关闭监听器
+   * Get InfoWindow close listener
    *
-   * @returns 监听器实例
+   * @returns Listener instance
    */
   public getOnInfoWindowCloseListener(): OnInfoWindowCloseListener | null {
     return this.infoWindowManager.getOnCloseListener();
   }
 
   /**
-   * 设置 InfoWindow 适配器
+   * Set InfoWindow adapter
    *
-   * @param adapter 适配器实例
+   * @param adapter Adapter instance
    */
   public setInfoWindowAdapter(adapter: InfoWindowAdapter | null): void {
     this.infoWindowAdapter = adapter;
@@ -1249,58 +1246,58 @@ export class MarkerManager {
   }
 
   /**
-   * 获取 InfoWindow 适配器
+   * Get InfoWindow adapter
    *
-   * @returns 适配器实例
+   * @returns Adapter instance
    */
   public getInfoWindowAdapter(): InfoWindowAdapter | null {
     return this.infoWindowAdapter;
   }
 
   /**
-   * 设置 AnnotationView 适配器
+   * Set AnnotationView adapter
    *
-   * @param adapter 适配器实例
+   * @param adapter Adapter instance
    */
   public setAnnotationViewAdapter(adapter: AnnotationViewAdapter | null): void {
     this.annotationViewManager.setAdapter(adapter);
   }
 
   /**
-   * 获取 AnnotationView 适配器
+   * Get AnnotationView adapter
    *
-   * @returns 适配器实例
+   * @returns Adapter instance
    */
   public getAnnotationViewAdapter(): AnnotationViewAdapter | null {
     return this.annotationViewManager.getAdapter();
   }
 
   /**
-   * 获取 AnnotationViewManager 实例（供 UI 层使用）
+   * Expose AnnotationViewManager for UI layer
    */
   public getAnnotationViewManager(): AnnotationViewManager {
     return this.annotationViewManager;
   }
 
   /**
-   * 设置 Native MapView（用于坐标转换）
+   * Set native MapView (required for coordinate conversion)
    */
   public setNativeMapView(mapView: object): void {
     this.annotationViewManager.setNativeMapView(mapView as NativeMapView);
   }
 
   /**
-   * 获取 InfoWindowManager 实例（供 UI 层使用）
+   * Expose InfoWindowManager for UI layer
    */
   public getInfoWindowManager(): InfoWindowManager {
     return this.infoWindowManager;
   }
 
   /**
-   * 获取 Marker 的 InfoWindow 样式配置
+   * Get marker InfoWindow style configuration
    *
-   * @param marker Marker 实例
-   * @returns InfoWindowStyle 或 undefined
+   * @param marker Marker instance
+   * @returns InfoWindowStyle or undefined
    */
   public getInfoWindowStyle(marker: Marker): InfoWindowStyle | undefined {
     const id = marker.getId();
@@ -1308,7 +1305,7 @@ export class MarkerManager {
   }
 
   /**
-   * 显示 Marker 的 InfoWindow
+   * Show InfoWindow for marker
    */
   public showInfoWindow(marker: Marker): void {
     try {
@@ -1316,39 +1313,39 @@ export class MarkerManager {
       const snippet = marker.getSnippet();
       console.info(`[MarkerManager] showInfoWindow called for marker - title: "${title}", snippet: "${snippet}"`);
       
-      // 获取 Marker 屏幕坐标（逻辑像素，用于 ArkUI InfoWindow 组件定位）
+      // Marker screen coordinates (logical pixels for ArkUI positioning)
       const pos = marker.getPosition();
       const screenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
       console.info(`[MarkerManager] Marker logical screen position: (${screenPoint.x}, ${screenPoint.y})`);
 
-      // 获取 Marker 图标高度（用于计算 InfoWindow 偏移量）
-      // 参考 Android InfoWindow.java 和 iOS positioningRectForCalloutForAnnotationWithTag
+      // Determine icon height to compute InfoWindow offset
+      // References: Android InfoWindow.java, iOS positioningRectForCalloutForAnnotationWithTag
       const iconId = marker.getIcon();
       const iconHeightPhysical = this.iconManager.getIconHeight(iconId);
       const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
-      // Icon 高度是物理像素，需要转换为逻辑像素
+      // Icon height is physical; convert to logical pixels
       const iconHeightLogical = iconHeightPhysical / pixelRatio;
       console.info(`[MarkerManager] Icon "${iconId}" height: ${iconHeightPhysical}px (physical) = ${iconHeightLogical}px (logical)`);
 
-      // 获取视图尺寸
+      // Retrieve view dimensions
       const viewWidth: number = this.mapLibreMap.getViewWidth();
       const viewHeight: number = this.mapLibreMap.getViewHeight();
       console.info(`[MarkerManager] View dimensions: ${viewWidth}x${viewHeight}`);
 
-      // 获取 InfoWindow 样式，并设置垂直偏移量（参考 Android/iOS 实现）
+      // Load InfoWindow style and configure vertical offset (Android/iOS parity)
       let style = this.getInfoWindowStyle(marker);
       
-      // 参考 Android InfoWindow.java:137-143:
+      // Android InfoWindow.java:137-143:
       // markerHeightOffset = offsetY
       // y = coordinates.y - view.getMeasuredHeight() + offsetY
-      // 
-      // 参考 iOS MLNMapView.mm:5745-5792:
-      // centerPoint = CGPointMake(CGRectGetMidX(positioningRect), CGRectGetMinY(positioningRect))
-      // 即 InfoWindow 定位在 Marker 图标的顶部
       //
-      // 因此 offsetY 应该设置为负的图标高度，将 InfoWindow 从地理坐标点向上偏移到图标顶部
+      // iOS MLNMapView.mm:5745-5792:
+      // centerPoint = CGPointMake(CGRectGetMidX(positioningRect), CGRectGetMinY(positioningRect))
+      // → Position InfoWindow above marker icon
+      //
+      // Hence offsetY should be negative icon height to shift upward
       if (!style) {
-        // 如果没有自定义样式，创建默认样式
+        // Create default style when absent
         style = {};
       }
       if (style.offsetY === undefined && iconHeightLogical > 0) {
@@ -1356,7 +1353,7 @@ export class MarkerManager {
         console.info(`[MarkerManager] Setting offsetY to -${iconHeightLogical} (negative icon height for top positioning)`);
       }
 
-      // 显示 InfoWindow（使用逻辑像素坐标）
+      // Show InfoWindow using logical pixel coordinates
       console.info(`[MarkerManager] Calling InfoWindowManager.show() with offsetY: ${style.offsetY}`);
       this.infoWindowManager.show(marker, viewWidth, viewHeight, screenPoint, style);
       console.info(`[MarkerManager] InfoWindow shown successfully`);
@@ -1367,14 +1364,14 @@ export class MarkerManager {
   }
 
   /**
-   * 隐藏 Marker 的 InfoWindow
+   * Hide a marker's InfoWindow
    */
   public hideInfoWindow(marker: Marker): void {
     this.infoWindowManager.close(marker);
   }
 
   /**
-   * 隐藏所有 InfoWindow
+   * Hide all InfoWindows
    */
   public hideAllInfoWindows(): void {
     this.infoWindowManager.closeAll();

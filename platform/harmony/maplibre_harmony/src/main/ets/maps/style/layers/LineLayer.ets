@@ -1,5 +1,5 @@
 /**
- * LineLayer - 封装类
+ * LineLayer - Wrapper class
  */
 import maplibre, { ExpressionLiteral } from 'libmaplibre.so';
 import type { ExpressionLiteral as NapiExpressionLiteral, PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
@@ -15,7 +15,7 @@ class InternalMarker {
 }
 
 export class LineLayer {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'LineLayer';
   private nativeInstance: maplibre.LineLayer;
 
@@ -65,8 +65,8 @@ export class LineLayer {
   }
 
   /**
-   * 设置图层过滤器
-   * @param filter Expression 实例或表达式字面量数组
+   * Configure the layer filter
+   * @param filter Expression instance or expression literal array
    */
   setFilter(filter: PropertyValue<boolean>): LineLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
@@ -79,7 +79,7 @@ export class LineLayer {
     return this;
   }
 
-  // ========== Line 样式属性方法 ==========
+  // ========== Line style property helpers ==========
 
   setLineColor(color: PropertyValue<string>): LineLayer {
     this.nativeInstance.setLineColor(convertValue(color));
@@ -161,13 +161,13 @@ export class LineLayer {
     return this;
   }
 
-  // ========== 通用属性方法（Android兼容API）==========
+  // ========== Generic property API (Android-compatible) ==========
 
   /**
-   * 设置单个属性
-   * @param propertyName 属性名称（如 'line-color', 'line-width'）
-   * @param value 属性值（常量值或Expression）
-   * @returns this（支持链式调用）
+   * Set a single property
+   * @param propertyName Property key (for example, 'line-color', 'line-width')
+   * @param value Property value (constant or Expression)
+   * @returns this (supports chaining)
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): LineLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
@@ -175,9 +175,9 @@ export class LineLayer {
   }
 
   /**
-   * 批量设置属性
-   * @param properties 属性对象，键为属性名，值为属性值
-   * @returns this（支持链式调用）
+   * Set multiple properties in batch
+   * @param properties Map of property names to values
+   * @returns this (supports chaining)
    * @example
    * layer.setProperties({
    *   'line-color': '#0000FF',
@@ -196,7 +196,7 @@ export class LineLayer {
     return this;
   }
 
-  // ========== Getter 方法 ==========
+  // ========== Getter helpers ==========
 
   getLineColor(): string | undefined {
     return this.nativeInstance.getLineColor();

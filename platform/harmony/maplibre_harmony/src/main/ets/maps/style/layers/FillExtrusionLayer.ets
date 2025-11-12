@@ -1,5 +1,5 @@
 /**
- * FillExtrusionLayer - 封装类
+ * FillExtrusionLayer - Wrapper class
  */
 import maplibre from 'libmaplibre.so';
 import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
@@ -17,7 +17,7 @@ class InternalMarker {
 }
 
 export class FillExtrusionLayer {
-  // 类型标识，用于类型判断（因为 instanceof 在 NAPI 返回的对象上不工作）
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'FillExtrusionLayer';
   private nativeInstance: maplibre.FillExtrusionLayer;
 
@@ -68,8 +68,8 @@ export class FillExtrusionLayer {
   }
 
   /**
-   * 设置图层过滤器
-   * @param filter Expression 实例或表达式字面量数组
+   * Configure the layer filter
+   * @param filter Expression instance or expression literal array
    */
   setFilter(filter: Expression<boolean> | ExpressionLiteral): FillExtrusionLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
@@ -87,7 +87,7 @@ export class FillExtrusionLayer {
     return this;
   }
 
-  // ========== FillExtrusion 样式属性方法 ==========
+  // ========== FillExtrusion style property helpers ==========
 
   setFillExtrusionColor(color: PropertyValue<string>): FillExtrusionLayer {
     this.nativeInstance.setFillExtrusionColor(convertValue(color));
@@ -123,13 +123,13 @@ export class FillExtrusionLayer {
     this.nativeInstance.setFillExtrusionTranslateAnchor(convertValue(anchor) as string);
     return this;
   }
-  // ========== 通用属性方法（Android兼容API）==========
+  // ========== Generic property API (Android-compatible) ==========
 
   /**
-   * 设置单个属性
-   * @param propertyName 属性名称
-   * @param value 属性值（常量值或Expression）
-   * @returns this（支持链式调用）
+   * Set a single property
+   * @param propertyName Property key
+   * @param value Property value (constant or Expression)
+   * @returns this (supports chaining)
    */
   setProperty(propertyName: string, value: PropertyValue<Object>): FillExtrusionLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
@@ -137,9 +137,9 @@ export class FillExtrusionLayer {
   }
 
   /**
-   * 批量设置属性
-   * @param properties 属性对象，键为属性名，值为属性值
-   * @returns this（支持链式调用）
+   * Set multiple properties in batch
+   * @param properties Map of property names to values
+   * @returns this (supports chaining)
    * @example
    * layer.setProperties({
    *   'fill-extrusion-height': 100

@@ -1,8 +1,8 @@
 /**
- * Style Layers - 图层模块导出
+ * Style Layers - Module exports
  */
 
-// 图层类
+// Layer classes
 export { FillLayer } from './FillLayer';
 
 export { LineLayer } from './LineLayer';
@@ -22,7 +22,7 @@ export { HillshadeLayer } from './HillshadeLayer';
 
 export { FillExtrusionLayer } from './FillExtrusionLayer';
 
-// 属性类型
+// Property types
 export { PropertyValue } from './PropertyValue';
 
 export { PaintPropertyValue } from './PaintPropertyValue';
@@ -33,25 +33,25 @@ export { PropertyFactory } from './PropertyFactory';
 
 export { TransitionOptions } from './TransitionOptions';
 
-// Layer 接口类型
+// Layer interface types
 export type { Layer, LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMetadata } from './Layer';
 
-// CustomLayer 类
+// CustomLayer class
 export { CustomLayer, createCustomLayerWithColor } from './CustomLayer';
 
 export type { RGBAColor } from './CustomLayer';
 
-// 属性值类型
+// Property value types
 export type { ColorValue, NumberValue, BooleanValue, StringValue } from './PropertyTypes';
 
-// ==================== Expression 类型 ====================
-// 注意：为避免与现有 Expression 系统冲突，这些类型主要供内部使用
-// 如需使用，请从 './layers/Expression' 直接导入
+// ==================== Expression types ====================
+// Note: To avoid conflicts with the core Expression system, keep these for internal usage.
+// For public use, import directly from './layers/Expression'.
 export type {
   FilterExpression, MapLibreExpression
 } from './Expression';
 
-// ==================== Layout 类型 ====================
+// ==================== Layout types ====================
 export type {
   Visibility,
   DataDrivenProperty,
@@ -77,7 +77,7 @@ export type {
   HillshadeLayout
 } from './LayerLayout';
 
-// ==================== Paint 类型 ====================
+// ==================== Paint types ====================
 export type {
   Color,
   TranslateAnchor,

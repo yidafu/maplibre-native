@@ -1,7 +1,7 @@
 /**
- * Style - 样式管理类封装
+ * Style - Map style management wrapper
  *
- * 封装 NAPI Style 类，避免暴露内部类型
+ * Wraps the NAPI Style class to avoid exposing internal types
  */
 import maplibre from 'libmaplibre.so';
 import { Layer } from './layers/Layer';
@@ -9,14 +9,14 @@ import type { Source } from './sources/Source';
 import type { Icon, LightSpecification, TransitionOptions } from 'libmaplibre.so';
 import { Image } from './images/Image';
 
-// Source 包装类
+// Source wrappers
 import { GeoJsonSource } from './sources/GeoJsonSource';
 import { VectorSource } from './sources/VectorSource';
 import { RasterSource } from './sources/RasterSource';
 import { RasterDemSource } from './sources/RasterDemSource';
 import { ImageSource } from './sources/ImageSource';
 
-// Layer 包装类
+// Layer wrappers
 import { FillLayer } from './layers/FillLayer';
 import { LineLayer } from './layers/LineLayer';
 import { CircleLayer } from './layers/CircleLayer';
@@ -28,7 +28,7 @@ import { HillshadeLayer } from './layers/HillshadeLayer';
 import { FillExtrusionLayer } from './layers/FillExtrusionLayer';
 
 /**
- * 内部标记，防止外部直接构造 Style
+ * Internal marker to prevent constructing Style externally
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -38,16 +38,16 @@ class InternalMarker {
 }
 
 /**
- * Style - 地图样式管理类
+ * Style - Map style management class
  *
- * 通过 MapLibreMap.getStyle() 获取实例
- * 不应该直接构造此类
+ * Obtain an instance via MapLibreMap.getStyle()
+ * Should not be constructed directly
  */
 export class Style {
   private nativeInstance: maplibre.Style;
 
   /**
-   * 私有构造函数，仅允许通过 fromNative 创建
+   * Private constructor, only available through fromNative
    */
   constructor(marker: InternalMarker, nativeInstance: maplibre.Style) {
     if (marker !== InternalMarker.INSTANCE) {
@@ -57,23 +57,23 @@ export class Style {
   }
 
   /**
-   * 从 NAPI 实例创建封装对象（内部使用）
+   * Create the wrapper from a NAPI instance (internal use)
    */
   static fromNative(nativeInstance: maplibre.Style): Style {
     return new Style(InternalMarker.INSTANCE, nativeInstance);
   }
 
   /**
-   * 获取 NAPI 实例（内部使用）
+   * Get the underlying NAPI instance (internal use)
    */
   getNative(): maplibre.Style {
     return this.nativeInstance;
   }
 
-  // ========== 类型转换辅助函数 ==========
+  // ========== Conversion helpers ==========
 
   /**
-   * 将 NAPI Source 对象包装为对应的 ETS Source 类
+   * Wrap a NAPI Source object into the corresponding ETS Source class
    */
   private static wrapSource(nativeSource: Object): Source | null {
     if (!nativeSource) {
@@ -81,11 +81,11 @@ export class Style {
       return null;
     }
 
-    // 使用 _TYPE_ 属性判断类型（因为 instanceof 对 NAPI 返回的普通对象不工作）
+    // Determine the type via the _TYPE_ property (instanceof does not work on NAPI plain objects)
     const sourceObj = nativeSource as Record<string, Object>;
     const napiType = sourceObj._TYPE_ as string;
 
-    // 根据 _TYPE_ 属性匹配对应的 Source 类
+    // Match the Source class by the _TYPE_ property
     if (napiType === GeoJsonSource._TYPE_) {
       return GeoJsonSource.fromNative(nativeSource as maplibre.GeoJsonSource);
     }
@@ -107,7 +107,7 @@ export class Style {
   }
 
   /**
-   * 将 NAPI Layer 对象包装为对应的 ETS Layer 类
+   * Wrap a NAPI Layer object into the corresponding ETS Layer class
    */
   private static wrapLayer(nativeLayer: Object): Layer | null {
     if (!nativeLayer) {
@@ -115,11 +115,11 @@ export class Style {
       return null;
     }
 
-    // 使用 _TYPE_ 属性判断类型（因为 instanceof 对 NAPI 返回的普通对象不工作）
+    // Determine the type via the _TYPE_ property (instanceof does not work on NAPI plain objects)
     const layerObj = nativeLayer as Record<string, Object>;
     const napiType = layerObj._TYPE_ as string;
 
-    // 根据 _TYPE_ 属性匹配对应的 Layer 类
+    // Match the Layer class by the _TYPE_ property
     if (napiType === FillLayer._TYPE_) {
       return FillLayer.fromNative(nativeLayer as maplibre.FillLayer);
     }
@@ -152,49 +152,49 @@ export class Style {
     return null;
   }
 
-  // ========== 基本方法 ==========
+  // ========== Core methods ==========
 
   /**
-   * 获取样式 URI
+   * Get the style URI
    */
   getUri(): string {
     return this.nativeInstance.getUri();
   }
 
   /**
-   * 获取样式 JSON
+   * Get the style JSON
    */
   getJson(): string {
     return this.nativeInstance.getJson();
   }
 
   /**
-   * 样式是否完全加载
+   * Check whether the style has fully loaded
    */
   isFullyLoaded(): boolean {
     return this.nativeInstance.isFullyLoaded();
   }
 
-  // ========== 数据源管理 ==========
+  // ========== Source management ==========
 
   /**
-   * 添加数据源
+   * Add a data source
    *
-   * @param source ETS Source 包装对象
+   * @param source ETS Source wrapper
    */
   addSource(source: Source): void {
     this.nativeInstance.addSource(source.getNative());
   }
 
   /**
-   * 移除数据源
+   * Remove a data source
    */
   removeSource(sourceId: string): boolean {
     return this.nativeInstance.removeSource(sourceId);
   }
 
   /**
-   * 获取指定数据源
+   * Get a specific data source
    */
   getSource(sourceId: string): Source | null {
     const nativeSource = this.nativeInstance.getSource(sourceId);
@@ -205,7 +205,7 @@ export class Style {
   }
 
   /**
-   * 获取所有数据源
+   * Get all data sources
    */
   getSources(): Source[] {
     const nativeSources = this.nativeInstance.getSources();
@@ -214,63 +214,63 @@ export class Style {
       .filter(source => source !== null) as Source[];
   }
 
-  // ========== 图层管理 ==========
+  // ========== Layer management ==========
 
   /**
-   * 添加图层（添加到顶部）
+   * Add a layer (append to the top)
    *
-   * @param layer ETS Layer 包装对象
+   * @param layer ETS Layer wrapper
    */
   addLayer(layer: Layer): void {
     this.nativeInstance.addLayer(layer.getNative());
   }
 
   /**
-   * 在指定图层下方添加图层
+   * Add a layer below a target layer
    *
-   * @param layer ETS Layer 包装对象
-   * @param belowLayerId 参考图层的 ID
+   * @param layer ETS Layer wrapper
+   * @param belowLayerId Reference layer ID
    */
   addLayerBelow(layer: Layer, belowLayerId: string): void {
     this.nativeInstance.addLayerBelow(layer.getNative(), belowLayerId);
   }
 
   /**
-   * 在指定图层上方添加图层
+   * Add a layer above a target layer
    *
-   * @param layer ETS Layer 包装对象
-   * @param aboveLayerId 参考图层的 ID
+   * @param layer ETS Layer wrapper
+   * @param aboveLayerId Reference layer ID
    */
   addLayerAbove(layer: Layer, aboveLayerId: string): void {
     this.nativeInstance.addLayerAbove(layer.getNative(), aboveLayerId);
   }
 
   /**
-   * 在指定索引位置添加图层
+   * Insert a layer at a specific index
    *
-   * @param layer ETS Layer 包装对象
-   * @param index 目标索引位置
+   * @param layer ETS Layer wrapper
+   * @param index Target index
    */
   addLayerAt(layer: Layer, index: number): void {
     this.nativeInstance.addLayerAt(layer.getNative(), index);
   }
 
   /**
-   * 移除指定图层
+   * Remove a layer by ID
    */
   removeLayer(layerId: string): boolean {
     return this.nativeInstance.removeLayer(layerId);
   }
 
   /**
-   * 移除指定索引位置的图层
+   * Remove a layer by index
    */
   removeLayerAt(index: number): boolean {
     return this.nativeInstance.removeLayerAt(index);
   }
 
   /**
-   * 获取指定图层
+   * Get a specific layer
    */
   getLayer(layerId: string): Layer | null {
     const nativeLayer = this.nativeInstance.getLayer(layerId);
@@ -281,7 +281,7 @@ export class Style {
   }
 
   /**
-   * 获取所有图层
+   * Get all layers
    */
   getLayers(): Layer[] {
     const nativeLayers = this.nativeInstance.getLayers();
@@ -290,24 +290,24 @@ export class Style {
       .filter(layer => layer !== null) as Layer[];
   }
 
-  // ========== 图像管理 ==========
+  // ========== Image management ==========
 
   /**
-   * 添加图像
+   * Add an image
    */
   addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void {
     this.nativeInstance.addImage(name, imageData, width, height, sdf);
   }
 
   /**
-   * 异步添加图像（不阻塞UI线程）
+   * Add an image asynchronously (non-blocking for the UI thread)
    */
   addImageAsync(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): Promise<void> {
     return this.nativeInstance.addImageAsync(name, imageData, width, height, sdf);
   }
 
   /**
-   * 异步批量添加图像（不阻塞UI线程）
+   * Add images in batch asynchronously (non-blocking for the UI thread)
    */
   addImagesAsync(images: Image[]): Promise<void> {
     const nativeImages = images.map(img => img.getNative());
@@ -315,57 +315,57 @@ export class Style {
   }
 
   /**
-   * 移除图像
+   * Remove an image
    */
   removeImage(name: string): boolean {
     return this.nativeInstance.removeImage(name);
   }
 
   /**
-   * 获取图像
+   * Get an image
    */
   getImage(name: string): Icon | null {
     const result = this.nativeInstance.getImage(name);
     return result ? (result as Object as Icon) : null;
   }
 
-  // ========== 光照管理 ==========
+  // ========== Lighting management ==========
 
   /**
-   * 获取光照设置
+   * Get the lighting specification
    */
   getLight(): LightSpecification | null {
     return this.nativeInstance.getLight();
   }
 
   /**
-   * 设置光照
+   * Set the lighting configuration
    */
   setLight(lightJson: string): void {
     this.nativeInstance.setLight(lightJson);
   }
 
-  // ========== 过渡效果管理 ==========
+  // ========== Transition management ==========
 
   /**
-   * 获取过渡效果设置
+   * Get the transition settings
    */
   getTransition(): TransitionOptions | null {
     return this.nativeInstance.getTransition() as TransitionOptions | null;
   }
 
   /**
-   * 设置过渡效果
+   * Set the transition settings
    */
   setTransition(transitionJson: string): void {
     this.nativeInstance.setTransition(transitionJson);
   }
 
   /**
-   * 获取指定 ID 的数据源并转换为特定类型
-   * TODO: 实现类型安全的数据源获取
-   * @param sourceId - 数据源 ID
-   * @returns 数据源对象或 null
+   * Get the data source by ID and cast it to a specific type
+   * TODO: Provide type-safe accessors
+   * @param sourceId - Data source ID
+   * @returns Data source instance or null
    */
   getSourceAs<T>(sourceId: string): T | null {
     const source = this.getSource(sourceId);
@@ -374,6 +374,6 @@ export class Style {
 }
 
 /**
- * StyleBuilder - 重新导出 NAPI StyleBuilder
+ * StyleBuilder - Re-export NAPI StyleBuilder
  */
 export { StyleBuilder } from 'libmaplibre.so';

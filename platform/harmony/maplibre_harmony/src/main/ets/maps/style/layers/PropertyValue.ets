@@ -1,9 +1,9 @@
 import { Expression } from '../expressions/Expression';
 
 /**
- * PropertyValue - 图层属性值封装类
+ * PropertyValue - Layer property value wrapper
  *
- * 支持常量值和表达式两种类型的属性值
+ * Supports constant values or Expression-backed values
  */
 export class PropertyValue<T> {
   public name: string;
@@ -17,42 +17,42 @@ export class PropertyValue<T> {
   }
 
   /**
-   * 获取属性名称
+   * Get the property name
    */
   public getName(): string {
     return this.name;
   }
 
   /**
-   * 获取属性值
+   * Retrieve the property value
    */
   public getValue(): T | null {
     return this.value;
   }
 
   /**
-   * 是否是常量值
+   * Determine whether the property represents a constant value
    */
   public isValue(): boolean {
     return this.value !== null && this.expression === null;
   }
 
   /**
-   * 是否是表达式
+   * Determine whether the property is expression-backed
    */
   public isExpression(): boolean {
     return this.expression !== null;
   }
 
   /**
-   * 获取表达式
+   * Retrieve the backing expression
    */
   public getExpression(): Expression<T> | null {
     return this.expression;
   }
 
   /**
-   * 转换为JSON对象
+   * Serialize to a JSON-compatible object
    */
   public toJSON(): Record<string, Object> {
     const obj: Record<string, Object> = {};
@@ -66,7 +66,7 @@ export class PropertyValue<T> {
   }
 
   /**
-   * 转换为字符串
+   * Convert to string representation
    */
   public toString(): string {
     if (this.isValue()) {
