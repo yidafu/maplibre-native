@@ -1,9 +1,9 @@
 /**
- * GeoJSON Types - GeoJSON 类型和类导出
+ * GeoJSON Types - export GeoJSON types and helpers.
  *
- * 提供符合 GeoJSON 规范 (RFC 7946) 的类型定义和实现
+ * Provides type definitions and implementations conforming to the GeoJSON specification (RFC 7946).
  */
-// ==================== GeoJson 对象（向后兼容）====================
+// ==================== GeoJson object (for backward compatibility) ====================
 import {
   feature,
   featureCollection,
@@ -20,9 +20,9 @@ import {
 } from './factory';
 
 /**
- * GeoJson 命名空间类
+ * GeoJson namespace class.
  *
- * 提供 GeoJSON 工厂函数的访问方式
+ * Exposes GeoJSON factory helpers.
  *
  * @example
 * ```typescript
@@ -32,7 +32,7 @@ import {
  * ```
  */
 export class GeoJson {
-  // 小写工厂函数
+  // Lowercase factory functions
   static point = point;
   static lineString = lineString;
   static polygon = polygon;
@@ -47,5 +47,5 @@ export class GeoJson {
   static polygonFeature = polygonFeature;
 }
 
-// 导出了 IPoint IPolygon 接口避免类型冲突
+// Re-export interfaces (IPoint, IPolygon, etc.) to avoid naming conflicts
 export * from './types';

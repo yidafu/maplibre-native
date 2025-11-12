@@ -1,7 +1,7 @@
 /**
- * Polyline - 折线封装类
+ * Polyline - ArkTS wrapper for polyline annotations.
  *
- * 符合 ArkTS 规范的封装实现
+ * Provides an ArkTS-compliant implementation.
  */
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
@@ -9,7 +9,7 @@ import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
 
 /**
- * 原生 Polyline 选项接口（用于 NAPI 层交互）
+ * Native polyline options interface (used for NAPI interop).
  */
 interface NativePolylineOptions {
   points: ILatLng[];
@@ -24,42 +24,42 @@ interface NativePolylineOptions {
 }
 
 /**
- * PolylineOptions - 折线选项接口
+ * PolylineOptions - configuration interface for polylines.
  */
 export interface PolylineOptions {
-  /** 折线 ID（可选） */
+  /** Optional polyline ID. */
   id?: string;
 
-  /** 折线的点坐标数组 */
+  /** Array of polyline points. */
   points: LatLng[];
 
-  /** 线条颜色（可选，默认 #000000） */
+  /** Optional line color (default #000000). */
   color?: string;
 
-  /** 线条宽度（可选，默认 10） */
+  /** Optional line width (default 10). */
   width?: number;
 
-  /** 线条透明度（可选，默认 1.0，范围 0-1） */
+  /** Optional line opacity (default 1.0, range 0-1). */
   alpha?: number;
 
-  /** 是否可见（可选，默认 true） */
+  /** Optional visibility flag (default true). */
   visible?: boolean;
 
-  /** Z 轴顺序（可选，默认 0） */
+  /** Optional z-index (default 0). */
   zIndex?: number;
 
-  /** 线条样式/虚线模式（可选，如 [5, 5] 表示 5px 实线 5px 空白） */
+  /** Optional dash pattern (e.g. [5, 5] means 5 px line, 5 px gap). */
   pattern?: number[] | null;
 
-  /** 连接类型（可选，默认 'round'） */
+  /** Optional join type (default 'round'). */
   jointType?: string;
 
-  /** 端点类型（可选，默认 'round'） */
+  /** Optional cap type (default 'round'). */
   capType?: string;
 }
 
 /**
- * 内部创建标记
+ * Internal constructor tag.
  */
 class InternalPolyline {
   static readonly INSTANCE = new InternalPolyline();
@@ -69,26 +69,25 @@ class InternalPolyline {
 }
 
 /**
- * Polyline 封装类
+ * Polyline wrapper.
  */
 export class Polyline {
   private nativeInstance: maplibre.Polyline;
 
   /**
-   * 构造函数
-   * 支持两种模式：
-   * 1. 从选项创建: new Polyline(options)
-   * 2. 从 NAPI 实例创建（内部使用）: new Polyline(marker, nativeInstance)
+   * Constructor supporting two modes:
+   * 1. Create from options: `new Polyline(options)`
+   * 2. Create from a NAPI instance (internal use): `new Polyline(marker, nativeInstance)`
    */
   constructor(optionsOrPolyline: PolylineOptions | InternalPolyline, nativeInstance?: maplibre.Polyline) {
     if (optionsOrPolyline === InternalPolyline.INSTANCE && nativeInstance) {
-      // 内部模式：从 NAPI 实例创建
+      // Internal mode: construct from NAPI instance
       this.nativeInstance = nativeInstance;
     } else if (typeof optionsOrPolyline === 'object') {
-      // 正常模式：从选项对象创建
+      // Standard mode: construct from options
       const options = optionsOrPolyline as PolylineOptions;
 
-      // 转换 LatLng 对象为原生格式
+      // Convert LatLng objects to native format
       const nativeOptions: NativePolylineOptions = {
         points: options.points.map((p: LatLng): ILatLng => p.toObject()),
         color: options.color || '#000000',
@@ -108,31 +107,31 @@ export class Polyline {
   }
 
   /**
-   * 从 NAPI 实例创建（内部使用）
+   * Construct from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Polyline): Polyline {
     return new Polyline(InternalPolyline.INSTANCE, nativeInstance);
   }
 
   /**
-   * 创建 Polyline（静态工厂方法）
+   * Create a polyline from options (factory helper).
    */
   static createFromOptions(options: PolylineOptions): Polyline {
     return new Polyline(options);
   }
 
   /**
-   * 获取 NAPI 实例（内部使用）
+   * Retrieve the native polyline (internal use).
    */
   getNative(): maplibre.Polyline {
     return this.nativeInstance;
   }
 
-  // ========== Polyline API 方法 ==========
+  // ========== Polyline API ==========
 
   /**
-   * 获取折线的点坐标
-   * @returns 点坐标数组
+   * Get polyline vertices.
+   * @returns Array of points.
    */
   getPoints(): LatLng[] {
     const nativePoints: ILatLng[] = this.nativeInstance.getPoints() as ILatLng[];
@@ -140,9 +139,9 @@ export class Polyline {
   }
 
   /**
-   * 设置折线的点坐标
-   * @param points 点坐标数组
-   * @returns this（支持链式调用）
+   * Set polyline vertices.
+   * @param points Array of points.
+   * @returns `this` for chaining.
    */
   setPoints(points: LatLng[]): Polyline {
     const nativePoints: ILatLng[] = points.map((p: LatLng): ILatLng => p.toObject());
@@ -151,26 +150,26 @@ export class Polyline {
   }
 
   /**
-   * 添加一个点到折线末尾
-   * @param point 点坐标
+   * Add a point to the end of the polyline.
+   * @param point Point to add.
    */
   addPoint(point: LatLng): void {
     this.nativeInstance.addPoint(point.toObject());
   }
 
   /**
-   * 在指定位置插入一个点
-   * @param index 插入位置索引
-   * @param point 点坐标
+   * Insert a point at the specified index.
+   * @param index Target index.
+   * @param point Point to insert.
    */
   insertPoint(index: number, point: LatLng): void {
     this.nativeInstance.insertPoint(index, point.toObject());
   }
 
   /**
-   * 移除指定索引的点
-   * @param index 点索引
-   * @returns 被移除的点坐标，如果索引无效则返回 null
+   * Remove a point by index.
+   * @param index Point index.
+   * @returns Removed point, or null if the index is invalid.
    */
   removePoint(index: number): LatLng | null {
     const nativePoint = this.nativeInstance.removePoint(index);
@@ -182,17 +181,17 @@ export class Polyline {
   }
 
   /**
-   * 获取线条颜色
-   * @returns 颜色字符串
+   * Get line color.
+   * @returns Color string.
    */
   getColor(): string {
     return this.nativeInstance.getColor();
   }
 
   /**
-   * 设置线条颜色
-   * @param color 颜色字符串（如 '#FF0000' 或 'red'）
-   * @returns this（支持链式调用）
+   * Set line color.
+   * @param color Color string (e.g. '#FF0000' or 'red').
+   * @returns `this` for chaining.
    */
   setColor(color: string): Polyline {
     this.nativeInstance.setColor(color);
@@ -200,17 +199,17 @@ export class Polyline {
   }
 
   /**
-   * 获取线条宽度
-   * @returns 宽度值（像素）
+   * Get line width.
+   * @returns Width in pixels.
    */
   getWidth(): number {
     return this.nativeInstance.getWidth();
   }
 
   /**
-   * 设置线条宽度
-   * @param width 宽度值（像素）
-   * @returns this（支持链式调用）
+   * Set line width.
+   * @param width Width in pixels.
+   * @returns `this` for chaining.
    */
   setWidth(width: number): Polyline {
     this.nativeInstance.setWidth(width);
@@ -218,17 +217,17 @@ export class Polyline {
   }
 
   /**
-   * 获取线条透明度
-   * @returns 透明度值（0-1）
+   * Get line opacity.
+   * @returns Opacity value (0-1).
    */
   getAlpha(): number {
     return this.nativeInstance.getAlpha();
   }
 
   /**
-   * 设置线条透明度
-   * @param alpha 透明度值（0-1，0 为完全透明，1 为完全不透明）
-   * @returns this（支持链式调用）
+   * Set line opacity.
+   * @param alpha Opacity (0-1, where 0 is transparent).
+   * @returns `this` for chaining.
    */
   setAlpha(alpha: number): Polyline {
     this.nativeInstance.setAlpha(alpha);
@@ -236,17 +235,17 @@ export class Polyline {
   }
 
   /**
-   * 获取可见性
-   * @returns 是否可见
+   * Get visibility.
+   * @returns Visibility flag.
    */
   getVisible(): boolean {
     return this.nativeInstance.getVisible();
   }
 
   /**
-   * 设置可见性
-   * @param visible 是否可见
-   * @returns this（支持链式调用）
+   * Set visibility.
+   * @param visible Visibility flag.
+   * @returns `this` for chaining.
    */
   setVisible(visible: boolean): Polyline {
     this.nativeInstance.setVisible(visible);
@@ -254,25 +253,25 @@ export class Polyline {
   }
 
   /**
-   * 检查折线是否可见（getVisible 的别名）
-   * @returns 是否可见
+   * Alias for `isVisible`.
+   * @returns Visibility flag.
    */
   isVisible(): boolean {
     return this.getVisible();
   }
 
   /**
-   * 获取 Z-index（Z 轴顺序）
-   * @returns Z-index 值
+   * Get z-index.
+   * @returns Z-index value.
    */
   getZIndex(): number {
     return this.nativeInstance.getZIndex();
   }
 
   /**
-   * 设置 Z-index（Z 轴顺序）
-   * @param zIndex Z-index 值（数值越大，显示层级越高）
-   * @returns this（支持链式调用）
+   * Set z-index.
+   * @param zIndex Z-index value (higher values render on top).
+   * @returns `this` for chaining.
    */
   setZIndex(zIndex: number): Polyline {
     this.nativeInstance.setZIndex(zIndex);
@@ -280,17 +279,17 @@ export class Polyline {
   }
 
   /**
-   * 获取线条样式/虚线模式
-   * @returns 样式数组或 null（如 [5, 5] 表示 5px 实线 5px 空白）
+   * Get line pattern/dash array.
+   * @returns Pattern array or null (e.g. [5, 5] for 5 px line, 5 px gap).
    */
   getPattern(): number[] | null {
     return this.nativeInstance.getPattern();
   }
 
   /**
-   * 设置线条样式/虚线模式
-   * @param pattern 样式数组或 null（如 [5, 5] 表示 5px 实线 5px 空白）
-   * @returns this（支持链式调用）
+   * Set line pattern/dash array.
+   * @param pattern Pattern array or null (e.g. [5, 5] for 5 px line, 5 px gap).
+   * @returns `this` for chaining.
    */
   setPattern(pattern: number[] | null): Polyline {
     this.nativeInstance.setPattern(pattern);
@@ -298,17 +297,17 @@ export class Polyline {
   }
 
   /**
-   * 获取线条连接类型
-   * @returns 连接类型（'round' | 'bevel' | 'miter'）
+   * Get line join type.
+   * @returns Join type ('round' | 'bevel' | 'miter').
    */
   getJointType(): string {
     return this.nativeInstance.getJointType();
   }
 
   /**
-   * 设置线条连接类型
-   * @param jointType 连接类型（'round' | 'bevel' | 'miter'）
-   * @returns this（支持链式调用）
+   * Set line join type.
+   * @param jointType Join type ('round' | 'bevel' | 'miter').
+   * @returns `this` for chaining.
    */
   setJointType(jointType: string): Polyline {
     this.nativeInstance.setJointType(jointType);
@@ -316,34 +315,34 @@ export class Polyline {
   }
 
   /**
-   * 获取线条端点类型
-   * @returns 端点类型（'round' | 'butt' | 'square'）
+   * Get line cap type.
+   * @returns Cap type ('round' | 'butt' | 'square').
    */
   getCapType(): string {
     return this.nativeInstance.getCapType();
   }
 
   /**
-   * 设置线条端点类型
-   * @param capType 端点类型（'round' | 'butt' | 'square'）
-   * @returns this（支持链式调用）
+   * Set line cap type.
+   * @param capType Cap type ('round' | 'butt' | 'square').
+   * @returns `this` for chaining.
    */
   setCapType(capType: string): Polyline {
     this.nativeInstance.setCapType(capType);
     return this;
   }
 
-  // ========== 扩展方法（内部使用）==========
+  // ========== Extended methods (internal use) ==========
 
   /**
-   * 获取 Polyline ID（内部使用）
+   * Get the polyline ID (internal use).
    */
   getId(): number {
     return this.nativeInstance.getId();
   }
 
   /**
-   * 设置 Polyline ID（内部使用）
+   * Set the polyline ID (internal use).
    */
   setId(id: number): Polyline {
     this.nativeInstance.setId(id);
@@ -351,9 +350,9 @@ export class Polyline {
   }
 
   /**
-   * 设置所属的 MapLibreMap（内部使用）
-   * @param map MapLibreMap 实例
-   * @returns this（支持链式调用）
+   * Associate the polyline with a MapLibreMap (internal use).
+   * @param map MapLibreMap instance.
+   * @returns `this` for chaining.
    */
   setMapLibreMap(map: MapLibreMap): Polyline {
     // Note: NAPI setMapLibreMap is called internally
@@ -361,8 +360,8 @@ export class Polyline {
   }
 
   /**
-   * 转换为字符串表示
-   * @returns 字符串表示，包含 ID、点数量和颜色
+   * Convert to string representation.
+   * @returns String containing ID, point count, and color.
    */
   public toString(): string {
     return `Polyline(id=${this.getId()}, points=${this.getPoints().length}, color=${this.getColor()})`;

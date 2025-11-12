@@ -1,6 +1,6 @@
 /**
- * MapLibre Native for HarmonyOS - Layers Index
- * 图层类型定义统一导出
+ * MapLibre Native for HarmonyOS - layers index.
+ * Central export for layer type definitions.
  */
 
 import { BackgroundLayer } from './BackgroundLayer';
@@ -35,8 +35,8 @@ export { FillExtrusionLayer } from './FillExtrusionLayer';
 export { CustomLayer } from './CustomLayer';
 
 /**
- * Layer - 所有图层类型的联合类型
- * 用于 Style API 中的类型安全
+ * Layer - union of all layer types.
+ * Used to preserve type safety in the Style API.
  */
 export type Layer =
   | FillLayer

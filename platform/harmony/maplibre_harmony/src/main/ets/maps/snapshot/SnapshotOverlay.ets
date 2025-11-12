@@ -1,8 +1,8 @@
 /**
- * SnapshotOverlay - 快照覆盖层绘制工具
- * 
- * 提供在快照图像上绘制 Logo 和归属信息的功能
- * 参考 Android 的 MapSnapshotter.addOverlay() 实现
+ * SnapshotOverlay - helper for drawing overlays on map snapshots.
+ *
+ * Provides utilities to draw the MapLibre logo and attribution text on snapshot images.
+ * Mirrors the Android `MapSnapshotter.addOverlay()` pattern.
  */
 
 import image from '@ohos.multimedia.image';
@@ -10,7 +10,7 @@ import { drawing } from '@kit.ArkGraphics2D';
 import { MapSnapshot } from './MapSnapshot';
 
 /**
- * Logo 位置枚举
+ * Logo placement enumeration.
  */
 export enum LogoPosition {
   BOTTOM_LEFT = 0,
@@ -20,7 +20,7 @@ export enum LogoPosition {
 }
 
 /**
- * 归属信息位置枚举
+ * Attribution placement enumeration.
  */
 export enum AttributionPosition {
   BOTTOM_LEFT = 0,
@@ -30,70 +30,70 @@ export enum AttributionPosition {
 }
 
 /**
- * Overlay 配置选项
+ * Overlay configuration options.
  */
 export interface OverlayOptions {
   /**
-   * Logo 位置
-   * 默认：BOTTOM_LEFT
+   * Logo position.
+   * Default: BOTTOM_LEFT.
    */
   logoPosition?: LogoPosition;
   
   /**
-   * 归属信息位置
-   * 默认：BOTTOM_RIGHT
+   * Attribution position.
+   * Default: BOTTOM_RIGHT.
    */
   attributionPosition?: AttributionPosition;
   
   /**
-   * 边距（像素）
-   * 默认：8
+   * Margin in pixels.
+   * Default: 8.
    */
   margin?: number;
   
   /**
-   * Logo 缩放比例
-   * 默认：1.0
+   * Logo scale factor.
+   * Default: 1.0.
    */
   logoScale?: number;
   
   /**
-   * 归属文字大小
-   * 默认：10
+   * Attribution text size.
+   * Default: 10.
    */
   attributionTextSize?: number;
   
   /**
-   * 是否绘制 Logo
-   * 默认：true
+   * Whether to draw the logo.
+   * Default: true.
    */
   drawLogo?: boolean;
   
   /**
-   * 是否绘制归属信息
-   * 默认：true
+   * Whether to draw attribution text.
+   * Default: true.
    */
   drawAttribution?: boolean;
 }
 
 /**
- * SnapshotOverlay 类
- * 
- * 用于在地图快照上绘制 Logo 和归属信息
- * 
+ * SnapshotOverlay class.
+ *
+ * Draws logos and attribution strings onto map snapshots.
+ *
  * @example
  * ```typescript
- * // 自动添加所有覆盖层
+ * // Add default overlay
  * await SnapshotOverlay.addOverlay(snapshot);
  * 
- * // 自定义位置和样式
+ * // Customize placement and style
  * await SnapshotOverlay.addOverlay(snapshot, {
  *   logoPosition: LogoPosition.BOTTOM_RIGHT,
  *   attributionPosition: AttributionPosition.BOTTOM_LEFT,
  *   margin: 12
  * });
  * 
- * // 只绘制 Logo
+ * // Draw the logo only
  * await SnapshotOverlay.drawLogo(snapshot.getImage());
  * ```
  */
@@ -103,12 +103,12 @@ export class SnapshotOverlay {
   private static readonly DEFAULT_TEXT_SIZE = 10;
 
   /**
-   * 在快照上绘制 Logo
-   * 
-   * @param pixelMap 快照图像
-   * @param position Logo 位置
-   * @param margin 边距（像素）
-   * @param scale Logo 缩放比例
+   * Draw the MapLibre logo onto the snapshot.
+   *
+   * @param pixelMap Snapshot image.
+   * @param position Logo placement.
+   * @param margin Margin in pixels.
+   * @param scale Logo scale factor.
    * @returns Promise<void>
    */
   public static async drawLogo(
@@ -117,14 +117,14 @@ export class SnapshotOverlay {
     margin: number = SnapshotOverlay.DEFAULT_MARGIN,
     scale: number = SnapshotOverlay.DEFAULT_LOGO_SCALE
   ): Promise<void> {
-    // TODO: 实现 Logo 绘制
-    // 1. 加载 MapLibre Logo 图片资源
-    // 2. 根据 position 计算绘制位置
-    // 3. 使用 drawing API 绘制到 pixelMap 上
+    // TODO: implement logo drawing
+    // 1. Load MapLibre logo resources.
+    // 2. Compute the drawing position based on `position`.
+    // 3. Use the drawing API to render onto pixelMap.
     
     console.warn('[SnapshotOverlay] drawLogo: Not yet implemented - requires graphics.drawing API');
     
-    // 实现示例（需要根据实际 Logo 资源调整）:
+    // Example implementation (adjust for actual logo resources):
     // const canvas = drawing.Canvas.createCanvas(pixelMap);
     // const imageInfo = await pixelMap.getImageInfo();
     // const logoX = margin;
@@ -133,13 +133,13 @@ export class SnapshotOverlay {
   }
 
   /**
-   * 在快照上绘制归属信息
-   * 
-   * @param pixelMap 快照图像
-   * @param attributions 归属信息数组
-   * @param position 归属信息位置
-   * @param margin 边距（像素）
-   * @param textSize 文字大小
+   * Draw attribution text onto the snapshot.
+   *
+   * @param pixelMap Snapshot image.
+   * @param attributions Attribution strings.
+   * @param position Attribution placement.
+   * @param margin Margin in pixels.
+   * @param textSize Text size.
    * @returns Promise<void>
    */
   public static async drawAttributions(
@@ -153,14 +153,14 @@ export class SnapshotOverlay {
       return;
     }
 
-    // TODO: 实现归属信息绘制
-    // 1. 合并归属信息文本
-    // 2. 根据 position 计算绘制位置
-    // 3. 使用 drawing API 绘制文字到 pixelMap 上
+    // TODO: implement attribution drawing
+    // 1. Merge attribution text.
+    // 2. Compute drawing position based on `position`.
+    // 3. Use the drawing API to place text on the pixelMap.
     
     console.warn('[SnapshotOverlay] drawAttributions: Not yet implemented - requires graphics.drawing API');
     
-    // 实现示例:
+    // Example implementation:
     // const canvas = drawing.Canvas.createCanvas(pixelMap);
     // const text = attributions.join(' | ');
     // const paint = new drawing.Paint();
@@ -169,22 +169,22 @@ export class SnapshotOverlay {
   }
 
   /**
-   * 自动添加所有覆盖层（Logo + 归属信息）
-   * 
-   * 对应 Android: `MapSnapshotter.addOverlay(MapSnapshot)`
-   * 
-   * @param snapshot MapSnapshot 对象
-   * @param options 可选配置
+   * Add both logo and attribution overlays automatically.
+   *
+   * Mirrors Android `MapSnapshotter.addOverlay(MapSnapshot)`.
+   *
+   * @param snapshot MapSnapshot instance.
+   * @param options Optional configuration.
    * @returns Promise<void>
-   * 
+   *
    * @example
    * ```typescript
    * snapshotter.start({
    *   onSnapshotReady: async (snapshot) => {
-   *     // 自动添加 Logo 和归属信息
+   *     // Add both logo and attribution overlays
    *     await SnapshotOverlay.addOverlay(snapshot);
    *     
-   *     // 使用快照
+   *     // Use the snapshot
    *     const pixelMap = snapshot.getImage();
    *   }
    * });
@@ -194,7 +194,7 @@ export class SnapshotOverlay {
     snapshot: MapSnapshot,
     options?: OverlayOptions
   ): Promise<void> {
-    // 使用显式类型定义避免对象字面量错误
+    // Use explicit types to avoid object literal mismatches
     const logoPos: LogoPosition = options?.logoPosition ?? LogoPosition.BOTTOM_LEFT;
     const attrPos: AttributionPosition = options?.attributionPosition ?? AttributionPosition.BOTTOM_RIGHT;
     const margin: number = options?.margin ?? SnapshotOverlay.DEFAULT_MARGIN;
@@ -206,7 +206,7 @@ export class SnapshotOverlay {
     const pixelMap = snapshot.getImage();
 
     try {
-      // 绘制 Logo
+      // Draw the logo overlay.
       if (drawLogo && snapshot.showLogo) {
         await SnapshotOverlay.drawLogo(
           pixelMap,
@@ -216,7 +216,7 @@ export class SnapshotOverlay {
         );
       }
 
-      // 绘制归属信息
+      // Draw attribution overlay.
       if (drawAttribution && snapshot.attributions.length > 0) {
         await SnapshotOverlay.drawAttributions(
           pixelMap,

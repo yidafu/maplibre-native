@@ -2,54 +2,54 @@ import { LocationComponentConstants } from './LocationComponentConstants';
 
 
 /**
- * LocationComponent 配置选项类
- * 用于配置位置组件的外观和行为
+ * LocationComponent options.
+ * Configures the appearance and behavior of the location component.
  */
 export class LocationComponentOptions {
-  // 精度圈配置
+  // Accuracy circle configuration
   accuracyAlpha: number = LocationComponentConstants.ACCURACY_ALPHA_DEFAULT;
   accuracyColor: string = '#4264fb';
-  // 图标资源配置
+  // Icon resource configuration
   foregroundDrawable?: ResourceStr;
   backgroundDrawable?: ResourceStr;
   foregroundDrawableStale?: ResourceStr;
   backgroundDrawableStale?: ResourceStr;
   gpsDrawable?: ResourceStr;
   bearingDrawable?: ResourceStr;
-  // 图标颜色配置
+  // Icon tint configuration
   foregroundTintColor?: string;
   backgroundTintColor?: string;
   foregroundStaleTintColor?: string;
   backgroundStaleTintColor?: string;
   bearingTintColor?: string;
-  // 过期状态配置
+  // Stale-state configuration
   enableStaleState: boolean = true;
   staleStateTimeout: number = LocationComponentConstants.STALE_STATE_DELAY_MS;
-  // 缩放配置
+  // Zoom scaling configuration
   maxZoomIconScale: number = LocationComponentConstants.MAX_ZOOM_ICON_SCALE_DEFAULT;
   minZoomIconScale: number = LocationComponentConstants.MIN_ZOOM_ICON_SCALE_DEFAULT;
-  // 图层位置配置
+  // Layer placement configuration
   layerAbove?: string;
   layerBelow?: string;
-  // 动画配置
+  // Animation configuration
   trackingAnimationDurationMultiplier: number = 1.1;
   compassAnimationEnabled: boolean = true;
   accuracyAnimationEnabled: boolean = true;
-  // 手势管理配置
+  // Gesture management configuration
   trackingGesturesManagement: boolean = false;
   trackingInitialMoveThreshold: number = 50; // vp
   trackingMultiFingerMoveThreshold: number = 50; // vp
 
-  // 脉冲圆圈配置
+  // Pulse circle configuration
   pulseEnabled: boolean = false;
   pulseFadeEnabled: boolean = true;
   pulseColor?: string;
   pulseSingleDuration: number = 2300;
   pulseMaxRadius: number = 35;
   pulseAlpha: number = 1.0;
-  // 阴影配置
+  // Shadow configuration
   elevation: number = 0;
-  // 内边距配置（已废弃，使用 CameraPosition 的 padding）
+  // Padding configuration (deprecated; use CameraPosition padding)
   padding?: number[]; // [left, top, right, bottom]
 
   constructor(builder?: LocationComponentOptionsBuilder) {
@@ -93,14 +93,14 @@ export class LocationComponentOptions {
   }
 
   /**
-   * 创建 Builder 对象
+   * Create a builder.
    */
   static builder(): LocationComponentOptionsBuilder {
     return new LocationComponentOptionsBuilder();
   }
 
   /**
-   * 从当前配置创建 Builder 对象
+   * Create a builder initialized from the current options.
    */
   toBuilder(): LocationComponentOptionsBuilder {
     const builder = new LocationComponentOptionsBuilder();
@@ -142,7 +142,7 @@ export class LocationComponentOptions {
 }
 
 /**
- * LocationComponentOptions 建造者类
+ * Builder for `LocationComponentOptions`.
  */
 export class LocationComponentOptionsBuilder {
   accuracyAlpha?: number;
@@ -354,7 +354,7 @@ export class LocationComponentOptionsBuilder {
   }
 
   build(): LocationComponentOptions {
-    // 验证配置
+    // Validate configuration
     if (this.layerAbove && this.layerBelow) {
       throw new Error('You cannot set both layerAbove and layerBelow options. Choose one or the other.');
     }

@@ -3,43 +3,42 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
 /**
- * 指南针监听器接口
+ * Compass listener interface.
  */
 export interface CompassListener {
   /**
-   * 当指南针方向变化时调用
-   * @param heading 方向角度（度数，0-360，北为0）
+   * Called when the compass heading changes.
+   * @param heading Heading in degrees (0-360, north = 0).
    */
   onCompassChanged(heading: number): void;
 
   /**
-   * 当指南针精度变化时调用
-   * @param accuracy 精度
+   * Called when compass accuracy changes.
+   * @param accuracy Accuracy value.
    */
   onCompassAccuracyChange?(accuracy: number): void;
 }
 
 /**
- * 指南针引擎
- * 基于鸿蒙传感器 API
+ * Compass engine built on the HarmonyOS sensor API.
  */
 export class CompassEngine {
   private static readonly TAG: string = 'CompassEngine';
   private listeners: Set<CompassListener> = new Set();
   private isListening: boolean = false;
   private lastHeading: number = 0;
-  private updateInterval: number = 500; // 更新间隔（毫秒）
+  private updateInterval: number = 500; // Update interval (milliseconds)
   private lastUpdateTime: number = 0;
-  // 平滑滤波参数
+  // Smoothing parameters
   private static readonly SMOOTHING_FACTOR: number = 0.1;
-  // 低通滤波历史值
+  // Low-pass filter history values
   private headingHistory: number[] = [];
   private static readonly HISTORY_SIZE: number = 5;
-  // 变化阈值（度）
+  // Change threshold (degrees)
   private changeThreshold: number = 0.5;
 
   /**
-   * 添加指南针监听器
+   * Add a compass listener.
    */
   addCompassListener(listener: CompassListener): void {
     this.listeners.add(listener);
@@ -50,7 +49,7 @@ export class CompassEngine {
   }
 
   /**
-   * 移除指南针监听器
+   * Remove a compass listener.
    */
   removeCompassListener(listener: CompassListener): void {
     this.listeners.delete(listener);
@@ -61,36 +60,36 @@ export class CompassEngine {
   }
 
   /**
-   * 设置更新间隔
+   * Set the update interval.
    */
   setUpdateInterval(interval: number): void {
     this.updateInterval = interval;
   }
 
   /**
-   * 开始监听指南针
+   * Start listening to compass updates.
    */
   private startListening(): void {
     try {
 
-      // 订阅方向传感器
+      // Subscribe to the orientation sensor
       sensor.on(sensor.SensorId.ORIENTATION, (data: sensor.OrientationResponse) => {
         const now = Date.now();
 
-        // 限制更新频率
+        // Rate limit updates
         if (now - this.lastUpdateTime < this.updateInterval) {
           return;
         }
         this.lastUpdateTime = now;
 
-        // 获取方位角（azimuth）
-        // data.alpha 是绕 Z 轴的旋转角度，范围 0-360
+        // Obtain azimuth
+        // data.alpha is rotation around the Z axis, range 0-360
         let heading = data.alpha;
 
-        // 应用平滑滤波
+        // Apply smoothing filter
         heading = this.smoothHeading(heading);
 
-        // 通知所有监听器（使用可配置的变化阈值）
+        // Notify listeners (respect the configurable change threshold)
         const headingDiff = Math.abs(heading - this.lastHeading);
         const normalizedDiff = headingDiff > 180 ? 360 - headingDiff : headingDiff;
 
@@ -106,7 +105,7 @@ export class CompassEngine {
           });
         }
       }, {
-        interval: this.updateInterval * 1000000 // 转换为纳秒
+        interval: this.updateInterval * 1000000 // Convert to nanoseconds
       });
 
       this.isListening = true;
@@ -117,7 +116,7 @@ export class CompassEngine {
   }
 
   /**
-   * 停止监听指南针
+   * Stop listening to compass updates.
    */
   private stopListening(): void {
     try {
@@ -131,7 +130,7 @@ export class CompassEngine {
   }
 
   /**
-   * 平滑角度变化（改进的低通滤波 + 移动平均）
+   * Smooth heading changes (enhanced low-pass filter + moving average).
    */
   private smoothHeading(newHeading: number): number {
     if (this.lastHeading === 0 && this.headingHistory.length === 0) {
@@ -139,20 +138,20 @@ export class CompassEngine {
       return newHeading;
     }
 
-    // 添加到历史记录
+    // Add to history
     this.headingHistory.push(newHeading);
     if (this.headingHistory.length > CompassEngine.HISTORY_SIZE) {
       this.headingHistory.shift();
     }
 
-    // 计算移动平均（考虑角度跨越 0/360 边界）
+    // Compute moving average (handles wrap-around across 0/360)
     let sum = 0;
     let count = this.headingHistory.length;
 
     for (let i = 0; i < count; i++) {
       let angle = this.headingHistory[i];
 
-      // 调整角度使其相对于第一个值连续
+      // Adjust angles to remain continuous relative to the first value
       if (i > 0) {
         let diff = angle - this.headingHistory[0];
         if (diff > 180) {
@@ -167,7 +166,7 @@ export class CompassEngine {
 
     let average = sum / count;
 
-    // 归一化到 0-360 范围
+    // Normalize to the 0-360 range
     while (average < 0) {
       average += 360;
     }
@@ -179,19 +178,19 @@ export class CompassEngine {
   }
 
   /**
-   * 获取最后的方向角度
+   * Get the latest heading.
    */
   getLastHeading(): number {
     return this.lastHeading;
   }
 
   /**
-   * 检查指南针传感器是否可用
+   * Check whether the compass sensor is available.
    */
   static isCompassAvailable(): boolean {
     try {
-      // 检查方向传感器是否存在
-      // 注意：实际实现可能需要更详细的检查
+      // Check whether the orientation sensor exists
+      // Note: a production implementation may need a more detailed check
       return true;
     } catch (err) {
       hilog.error(DOMAIN, CompassEngine.TAG, `Failed to check compass availability: ${err}`);
@@ -200,7 +199,7 @@ export class CompassEngine {
   }
 
   /**
-   * 停止所有监听
+   * Stop all listeners.
    */
   stopAllListeners(): void {
     this.listeners.clear();
@@ -209,7 +208,7 @@ export class CompassEngine {
   }
 
   /**
-   * 重置状态
+   * Reset internal state.
    */
   private resetState(): void {
     this.lastHeading = 0;
@@ -218,14 +217,14 @@ export class CompassEngine {
   }
 
   /**
-   * 设置变化阈值
+   * Set the change threshold.
    */
   setChangeThreshold(threshold: number): void {
     this.changeThreshold = Math.max(0.1, threshold);
   }
 
   /**
-   * 校准指南针（重置历史数据）
+   * Calibrate the compass (clear history).
    */
   calibrate(): void {
     this.headingHistory = [];

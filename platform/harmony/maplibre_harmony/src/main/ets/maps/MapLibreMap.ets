@@ -1505,7 +1505,7 @@ export class MapLibreMap {
   }
 
   /**
-   * 获取当前地图的快照 PixelMap。
+   * Retrieve the current map snapshot as a PixelMap.
    */
   public snapshot(): Promise<image.PixelMap> {
     if (this.destroyed) {
@@ -2091,12 +2091,12 @@ export class MapLibreMap {
 
   // Images
   /**
-   * 从 PixelMap 注册图像资源
+   * Register an image resource from a PixelMap.
    *
-   * @param name 图像名称
-   * @param pixelMap HarmonyOS PixelMap 对象
-   * @param pixelRatio 像素比，默认 1.0
-   * @param sdf 是否为 SDF 图像
+   * @param name Image identifier.
+   * @param pixelMap HarmonyOS PixelMap instance.
+   * @param pixelRatio Pixel ratio, defaults to 1.0.
+   * @param sdf Whether the image is an SDF asset.
    */
   public addImage(name: string, pixelMap: image.PixelMap, pixelRatio: number = 1.0, sdf: boolean = false): void {
     if (this.destroyed) {

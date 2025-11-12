@@ -1,21 +1,21 @@
 import maplibre from 'libmaplibre.so';
 
-// 使用 NAPI Marker 类型
+// Use the NAPI Marker type
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnInfoWindowCloseListener - InfoWindow 关闭事件监听器
+ * OnInfoWindowCloseListener - InfoWindow close listener.
  *
- * 当 Marker 的 InfoWindow 关闭时触发
+ * Triggered when a marker's InfoWindow closes.
  *
- * 参考:
+ * Reference:
  * - Android: MapLibreMap.OnInfoWindowCloseListener
  */
 export interface OnInfoWindowCloseListener {
   /**
-   * InfoWindow 关闭时调用
+   * Called when the InfoWindow closes.
    *
-   * @param marker InfoWindow 所属的 Marker
+   * @param marker Marker owning the InfoWindow.
    */
   onInfoWindowClose(marker: Marker): void;
 }

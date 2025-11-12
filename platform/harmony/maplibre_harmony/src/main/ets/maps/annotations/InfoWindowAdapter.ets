@@ -1,22 +1,22 @@
 import maplibre from 'libmaplibre.so';
 // import { ComponentContent } from '@kit.ArkUI';
 
-// 使用 NAPI Marker 类型
+// Use the NAPI marker type
 import { Marker } from './Marker';
 
 /**
- * InfoWindowAdapter - InfoWindow 适配器接口
+ * InfoWindowAdapter - InfoWindow adapter interface.
  *
- * 允许开发者自定义 InfoWindow 的显示内容
+ * Allows developers to provide custom InfoWindow content.
  *
- * 参考:
+ * References:
  * - Android: MapLibreMap.InfoWindowAdapter
  *
  * @example
-* ```typescript
+ * ```typescript
  * mapLibreMap.setInfoWindowAdapter({
  *   getInfoWindow: (marker: Marker) => {
- *     // 返回自定义视图
+ *     // Return a custom view
  *     return new ComponentContent(uiContext, wrapBuilder(CustomInfoWindowBuilder), marker);
  *   }
  * });
@@ -24,10 +24,10 @@ import { Marker } from './Marker';
  */
 export interface InfoWindowAdapter {
   /**
-   * 为指定的 Marker 创建自定义 InfoWindow 视图
+   * Create a custom InfoWindow view for the provided marker.
    *
-   * @param marker Marker 实例
-   * @returns 自定义视图组件，如果返回 null 则使用默认 InfoWindow
+   * @param marker Marker instance.
+   * @returns Custom view component; return null to use the default InfoWindow.
    */
   getInfoWindow(marker: Marker): object | null;
 }

@@ -4,31 +4,31 @@ import { InfoWindowManager } from './InfoWindowManager';
 import { Marker } from './Marker';
 
 /**
- * InfoWindow 状态数据
+ * InfoWindow state data.
  */
 export interface InfoWindowState {
-  marker: Marker; // 保留引用用于回调
-  // 以下是用于渲染的数据（避免 @Prop 传递 NAPI 对象的问题）
+  marker: Marker; // Keep a reference for callbacks
+  // Rendering data below (avoids passing NAPI objects through @Prop)
   markerId: number;
   markerTitle: string;
   markerSnippet: string;
   position: InfoWindowPosition;
   style?: InfoWindowStyle;
-  key: string; // 用于 ForEach 的唯一键
+  key: string; // Unique key for ForEach
 }
 
 /**
- * InfoWindowOverlay - InfoWindow 渲染层
+ * InfoWindowOverlay - InfoWindow rendering layer.
  *
- * 作为覆盖层在地图上方渲染所有的 InfoWindow
+ * Renders all InfoWindows as an overlay above the map.
  *
- * 使用方式：
+ * Usage:
  * ```typescript
  * Stack() {
- *   // 地图层
+ *   // Map layer
  *   XComponent(...)
  *
- *   // InfoWindow 层
+ *   // InfoWindow layer
  *   InfoWindowOverlay({ manager: this.infoWindowManager })
  * }
  * ```
@@ -36,14 +36,14 @@ export interface InfoWindowState {
 @Component
 export struct InfoWindowOverlay {
   @Link @Watch('onInfoWindowsChanged') visibleInfoWindows: InfoWindowState[];
-  // 事件回调
+  // Event callbacks
   onInfoWindowClick?: (marker: Marker) => void;
   onInfoWindowLongClick?: (marker: Marker) => void;
   onInfoWindowClose?: (marker: Marker) => void;
   onInfoWindowSizeChanged?: (marker: Marker, width: number, height: number) => void;
 
   /**
-   * InfoWindow 列表变化时的回调
+   * Callback triggered when the InfoWindow list changes.
    */
   onInfoWindowsChanged() {
     console.info(`[InfoWindowOverlay] visibleInfoWindows changed, count: ${this.visibleInfoWindows.length}`);
@@ -51,7 +51,7 @@ export struct InfoWindowOverlay {
 
   build() {
     Stack() {
-      // 渲染所有可见的 InfoWindow
+      // Render every visible InfoWindow
       ForEach(
         this.visibleInfoWindows,
         (infoWindowState: InfoWindowState) => {
@@ -92,7 +92,7 @@ export struct InfoWindowOverlay {
     }
     .width('100%')
     .height('100%')
-    .hitTestBehavior(HitTestMode.None) // 不拦截事件，允许穿透到地图
+    .hitTestBehavior(HitTestMode.None) // Do not intercept events; allow passthrough to the map
   }
 }
 

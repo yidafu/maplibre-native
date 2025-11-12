@@ -1,82 +1,78 @@
 /**
- * OfflineManager - 离线地图管理器类型定义
+ * OfflineManager - offline map manager type definitions.
  *
- * 提供离线地图的全局管理功能
- * 包括区域创建、列表、合并、数据库维护等
+ * Provides global management for offline maps, including region creation/listing/merging and database maintenance.
  */
 
 import type { OfflineRegion } from './OfflineRegion';
 import type { OfflineRegionDefinition } from './OfflineRegionDefinition';
 
 /**
- * 列出离线区域的回调
+ * Callback for listing offline regions.
  *
- * @param result 成功时返回离线区域数组，失败时返回错误消息字符串
+ * @param result Offline region array on success, or an error message string on failure.
  */
 export type ListOfflineRegionsCallback = (result: OfflineRegion[] | string) => void;
 
 /**
- * 创建离线区域的回调
+ * Callback for creating an offline region.
  *
- * @param result 成功时返回新创建的离线区域对象，失败时返回错误消息字符串
+ * @param result Newly created offline region on success, or an error message string on failure.
  */
 export type CreateOfflineRegionCallback = (result: OfflineRegion | string) => void;
 
 /**
- * 获取离线区域的回调
+ * Callback for fetching a single offline region.
  *
- * @param result 成功时返回离线区域对象，不存在时返回 null，失败时返回错误消息字符串
+ * @param result Offline region on success, null if not found, or an error message string on failure.
  */
 export type GetOfflineRegionCallback = (result: OfflineRegion | string | null) => void;
 
 /**
- * 合并离线区域的回调
+ * Callback for merging offline regions.
  *
- * @param result 成功时返回合并后的离线区域数组，失败时返回错误消息字符串
+ * @param result Merged offline region array on success, or an error message string on failure.
  */
 export type MergeOfflineRegionsCallback = (result: OfflineRegion[] | string) => void;
 
 /**
- * 文件源操作回调
+ * Callback for file source operations.
  *
- * @param error 操作成功时为 undefined，失败时为错误消息字符串
+ * @param error Undefined on success, or an error message string on failure.
  */
 export type FileSourceCallback = (error?: string) => void;
 
 /**
- * OfflineManager - 离线地图管理器
+ * OfflineManager - offline map manager.
  *
- * 通过 NAPI 导出，提供离线地图的全局管理功能
- *
- * 主要功能：
- * - 创建和管理离线区域
- * - 数据库维护（压缩、清理、重置）
- * - 缓存管理
- * - 多数据库合并
+ * Exposed via NAPI, providing global management for offline maps:
+ * - Create and manage offline regions.
+ * - Database maintenance (pack, clear, reset).
+ * - Ambient cache management.
+ * - Merge multiple offline databases.
  */
 export class OfflineManager {
   /**
-   * 构造函数
+   * Constructor.
    *
-   * 创建一个离线管理器实例
+   * Creates an offline manager instance.
    *
-   * @param cachePath 数据库缓存路径（完整的文件路径）
-   *                  例如: "/data/storage/el2/base/files/maplibre-offline.db"
+   * @param cachePath Database cache file path (absolute path), e.g. "/data/storage/el2/base/files/maplibre-offline.db".
    *
    * @example
-  * const manager = new OfflineManager(context.filesDir + '/offline.db');
+* const manager = new OfflineManager(context.filesDir + '/offline.db');
    */
   constructor(cachePath: string);
 
   /**
-   * 列出所有离线区域
+   * List all offline regions.
    *
-   * 异步获取数据库中存储的所有离线区域
+   * Fetch every offline region stored in the database asynchronously.
    *
-   * @param callback 回调函数，成功时返回区域数组，失败时返回错误消息
+   * @param callback Receives the region array on success, or an error message string on failure.
    *
    * @example
-  * manager.listOfflineRegions((result) => {
+* manager.listOfflineRegions((result) => {
    *   if (typeof result === 'string') {
    *     console.error('Error:', result);
    *   } else {
@@ -87,18 +83,18 @@ export class OfflineManager {
   listOfflineRegions(callback: ListOfflineRegionsCallback): void;
 
   /**
-   * 创建离线区域
+   * Create an offline region.
    *
-   * 在数据库中创建一个新的离线区域
-   * 创建后需要调用 setDownloadState(ACTIVE) 开始下载
+   * Inserts a new offline region into the database.
+   * Invoke setDownloadState(ACTIVE) afterwards to begin downloading.
    *
-   * @param definition 区域定义，指定地理范围、缩放级别等参数
-   * @param metadata 元数据（ArrayBuffer 格式），存储区域名称、描述等自定义信息
-   * @param callback 回调函数，成功时返回新创建的区域对象，失败时返回错误消息
+   * @param definition Region definition specifying bounds, zoom range, etc.
+   * @param metadata Metadata (ArrayBuffer) storing region name, description, or other custom info.
+   * @param callback Receives the newly created region on success, or an error message on failure.
    *
    * @example
-  * const encoder = new TextEncoder();
-   * const metadata = encoder.encode(JSON.stringify({ name: '北京地区' })).buffer;
+* const encoder = new TextEncoder();
+   * const metadata = encoder.encode(JSON.stringify({ name: 'Beijing Area' })).buffer;
    *
    * manager.createOfflineRegion(definition, metadata, (result) => {
    *   if (typeof result === 'string') {
@@ -116,15 +112,13 @@ export class OfflineManager {
   ): void;
 
   /**
-   * 获取指定 ID 的离线区域
+   * Fetch an offline region by ID.
    *
-   * 根据区域 ID 查询离线区域对象
-   *
-   * @param regionId 区域 ID（创建时生成的唯一标识）
-   * @param callback 回调函数，成功时返回区域对象，不存在时返回 null，失败时返回错误消息
+   * @param regionId Unique region identifier (assigned at creation).
+   * @param callback Receives the region on success, null when not found, or an error message on failure.
    *
    * @example
-  * manager.getOfflineRegion(123, (result) => {
+* manager.getOfflineRegion(123, (result) => {
    *   if (typeof result === 'string') {
    *     console.error('Error:', result);
    *   } else if (result === null) {
@@ -137,16 +131,15 @@ export class OfflineManager {
   getOfflineRegion(regionId: number, callback: GetOfflineRegionCallback): void;
 
   /**
-   * 合并其他数据库的离线区域
+   * Merge offline regions from another database.
    *
-   * 将另一个数据库文件中的离线区域导入到当前数据库
-   * 用于数据迁移或多设备同步
+   * Imports regions from a separate database file into the current database, useful for migration or syncing devices.
    *
-   * @param path 要合并的数据库文件的完整路径
-   * @param callback 回调函数，成功时返回合并后的所有区域，失败时返回错误消息
+   * @param path Absolute path to the database file to merge.
+   * @param callback Receives the merged region list on success, or an error message on failure.
    *
    * @example
-  * manager.mergeOfflineRegions('/path/to/other.db', (result) => {
+* manager.mergeOfflineRegions('/path/to/other.db', (result) => {
    *   if (typeof result === 'string') {
    *     console.error('Merge failed:', result);
    *   } else {
@@ -157,15 +150,15 @@ export class OfflineManager {
   mergeOfflineRegions(path: string, callback: MergeOfflineRegionsCallback): void;
 
   /**
-   * 重置数据库（删除所有数据）
+   * Reset the database (removes all data).
    *
-   * 清空数据库，删除所有离线区域和下载的资源
-   * 警告：此操作不可逆，请谨慎使用
+   * Clears the database, deleting every offline region and downloaded resource.
+   * Warning: irreversible operation.
    *
-   * @param callback 回调函数，成功时 error 为 undefined，失败时为错误消息
+   * @param callback Called with undefined on success or an error message string on failure.
    *
    * @example
-  * manager.resetDatabase((error) => {
+* manager.resetDatabase((error) => {
    *   if (error) {
    *     console.error('Reset failed:', error);
    *   } else {
@@ -176,15 +169,15 @@ export class OfflineManager {
   resetDatabase(callback: FileSourceCallback): void;
 
   /**
-   * 压缩数据库以节省空间
+   * Pack the database to reclaim space.
    *
-   * 执行 VACUUM 操作，回收已删除数据占用的空间
-   * 建议定期执行或在删除大量数据后执行
+   * Executes a VACUUM operation to recover space from deleted data.
+   * Recommended periodically or after removing large datasets.
    *
-   * @param callback 回调函数，成功时 error 为 undefined，失败时为错误消息
+   * @param callback Called with undefined on success or an error message string on failure.
    *
    * @example
-  * manager.packDatabase((error) => {
+* manager.packDatabase((error) => {
    *   if (error) {
    *     console.error('Pack failed:', error);
    *   } else {
@@ -195,25 +188,24 @@ export class OfflineManager {
   packDatabase(callback: FileSourceCallback): void;
 
   /**
-   * 使缓存失效（强制重新验证）
+   * Invalidate the ambient cache (force revalidation).
    *
-   * 标记环境缓存中的所有资源为过期
-   * 下次使用时会重新验证资源的有效性
+   * Marks all ambient cache entries as expired so they are revalidated on next use.
    *
-   * @param callback 回调函数，成功时 error 为 undefined，失败时为错误消息
+   * @param callback Called with undefined on success or an error message string on failure.
    */
   invalidateAmbientCache(callback: FileSourceCallback): void;
 
   /**
-   * 清除环境缓存
+   * Clear the ambient cache.
    *
-   * 删除环境缓存中的所有资源
-   * 注意：这不会影响离线区域中明确下载的资源
+   * Removes every resource stored in the ambient cache.
+   * Note: does not affect resources explicitly downloaded for offline regions.
    *
-   * @param callback 回调函数，成功时 error 为 undefined，失败时为错误消息
+   * @param callback Called with undefined on success or an error message string on failure.
    *
    * @example
-  * manager.clearAmbientCache((error) => {
+* manager.clearAmbientCache((error) => {
    *   if (error) {
    *     console.error('Clear failed:', error);
    *   } else {
@@ -224,16 +216,15 @@ export class OfflineManager {
   clearAmbientCache(callback: FileSourceCallback): void;
 
   /**
-   * 设置最大环境缓存大小
+   * Set the maximum ambient cache size.
    *
-   * 限制环境缓存占用的最大磁盘空间
-   * 超过限制时会自动删除最旧的资源
+   * Limits the disk space used by the ambient cache; oldest resources are evicted when exceeded.
    *
-   * @param size 大小（字节），例如 50 * 1024 * 1024 表示 50MB
-   * @param callback 回调函数，成功时 error 为 undefined，失败时为错误消息
+   * @param size Size in bytes (e.g. 50 * 1024 * 1024 for 50 MB).
+   * @param callback Called with undefined on success or an error message string on failure.
    *
    * @example
-  * // 设置为 50MB
+* // Set to 50 MB
    * manager.setMaximumAmbientCacheSize(50 * 1024 * 1024, (error) => {
    *   if (error) {
    *     console.error('Set size failed:', error);
@@ -243,29 +234,28 @@ export class OfflineManager {
   setMaximumAmbientCacheSize(size: number, callback: FileSourceCallback): void;
 
   /**
-   * 设置离线瓦片数量限制
+   * Set the offline tile count limit.
    *
-   * 限制单个离线区域可以下载的最大瓦片数量
-   * 超过限制时会触发观察者的 mapboxTileCountLimitExceeded 回调
+   * Restricts how many tiles a single offline region may download.
+   * When exceeded, observers receive the mapboxTileCountLimitExceeded callback.
    *
-   * @param limit 限制数量，例如 6000
+   * @param limit Tile limit (e.g. 6000).
    *
    * @example
-  * // 限制为 6000 个瓦片
+* // Limit to 6000 tiles.
    * manager.setOfflineMapboxTileCountLimit(6000);
    */
   setOfflineMapboxTileCountLimit(limit: number): void;
 
   /**
-   * 设置是否自动压缩数据库
+   * Enable or disable automatic database packing.
    *
-   * 启用后，系统会在适当的时候自动执行数据库压缩
-   * 建议启用以保持最佳性能
+   * When enabled, the system performs database packing at suitable times to maintain performance.
    *
-   * @param autopack true 启用自动压缩，false 禁用
+   * @param autopack True to enable automatic packing, false to disable.
    *
    * @example
-  * // 启用自动压缩
+* // Enable automatic packing
    * manager.runPackDatabaseAutomatically(true);
    */
   runPackDatabaseAutomatically(autopack: boolean): void;

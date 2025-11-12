@@ -1,22 +1,22 @@
 
-// 使用 NAPI Marker 类型
+// Use the NAPI Marker type
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnMarkerClickListener - Marker 点击事件监听器
+ * OnMarkerClickListener - marker tap listener.
  *
- * 当用户点击地图上的 Marker 时触发
+ * Triggered when the user taps a marker on the map.
  *
- * 参考:
- * - Android: MapLibreMap.OnMarkerClickListener
- * - iOS: MLNMapViewDelegate didSelectAnnotation
+ * Reference:
+ * - Android: MapLibreMap.OnMarkerClickListener.
+ * - iOS: `MLNMapViewDelegate didSelectAnnotation`.
  */
 export interface OnMarkerClickListener {
   /**
-   * Marker 被点击时调用
+   * Called when a marker is tapped.
    *
-   * @param marker 被点击的 Marker
-   * @returns true 表示事件已被消费，不再传播；false 表示事件继续传播
+   * @param marker The tapped marker.
+   * @returns true to consume the event; false to propagate.
    */
   onMarkerClick(marker: Marker): boolean;
 }

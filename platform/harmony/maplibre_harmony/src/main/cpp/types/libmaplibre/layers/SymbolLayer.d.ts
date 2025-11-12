@@ -1,6 +1,6 @@
 /**
- * MapLibre Native for HarmonyOS - SymbolLayer Type Definitions
- * 符号图层 API (NAPI 类)
+ * MapLibre Native for HarmonyOS - SymbolLayer type definitions.
+ * Symbol layer API (NAPI class).
  */
 
 import type { PropertyValue } from '../LayerPropertyTypes';
@@ -8,668 +8,667 @@ import type { ExpressionLiteral } from '../ExpressionTypes';
 import type { JSONValue } from '../CommonTypes';
 
 /**
- * SymbolLayer - 符号图层
- * 用于渲染图标和文本标注
+ * SymbolLayer - renders icons and text labels.
  */
 export class SymbolLayer {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 创建 SymbolLayer
-   * @param layerId 图层ID
-   * @param sourceId 数据源ID
+   * Create a symbol layer.
+   * @param layerId Layer identifier.
+   * @param sourceId Source identifier.
    */
   constructor(layerId: string, sourceId: string);
 
-  // ==================== 基本方法 ====================
+// ==================== Basic methods ====================
 
   /**
-   * 获取图层ID
+   * Get the layer identifier.
    */
   getId(): string;
 
   /**
-   * 获取图层类型
+   * Get the layer type.
    */
   getType(): string;
 
   /**
-   * 获取数据源ID
+   * Get the source identifier.
    */
   getSourceId(): string;
 
   /**
-   * 设置源图层
-   * @param sourceLayer 源图层名称
-   * @returns this（支持链式调用）
+   * Set the source layer.
+   * @param sourceLayer Source layer name.
+   * @returns this (chainable).
    */
   setSourceLayer(sourceLayer: string): SymbolLayer;
 
   /**
-   * 获取源图层
+   * Get the source layer.
    */
   getSourceLayer(): string;
 
   /**
-   * 设置最小缩放级别
-   * @param minZoom 最小缩放级别
-   * @returns this（支持链式调用）
+   * Set the minimum zoom level.
+   * @param minZoom Minimum zoom.
+   * @returns this (chainable).
    */
   setMinZoom(minZoom: number): SymbolLayer;
 
   /**
-   * 获取最小缩放级别
+   * Get the minimum zoom level.
    */
   getMinZoom(): number;
 
   /**
-   * 设置最大缩放级别
-   * @param maxZoom 最大缩放级别
-   * @returns this（支持链式调用）
+   * Set the maximum zoom level.
+   * @param maxZoom Maximum zoom.
+   * @returns this (chainable).
    */
   setMaxZoom(maxZoom: number): SymbolLayer;
 
   /**
-   * 获取最大缩放级别
+   * Get the maximum zoom level.
    */
   getMaxZoom(): number;
 
-  // ==================== 图标布局属性 ====================
+// ==================== Icon layout properties ====================
 
   /**
-   * 设置图标图片
-   * @param iconImage 图片名称或Expression
-   * @returns this（支持链式调用）
+   * Set the icon image.
+   * @param iconImage Image name or expression.
+   * @returns this (chainable).
    */
   setIconImage(iconImage: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取图标图片
+   * Get the icon image.
    */
   getIconImage(): string;
 
   /**
-   * 设置图标大小
-   * @param size 大小比例或Expression
-   * @returns this（支持链式调用）
+   * Set the icon size.
+   * @param size Size factor or expression.
+   * @returns this (chainable).
    */
   setIconSize(size: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取图标大小
+   * Get the icon size.
    */
   getIconSize(): number;
 
   /**
-   * 设置图标旋转角度
-   * @param rotate 旋转角度（度）或Expression
-   * @returns this（支持链式调用）
+   * Set the icon rotation.
+   * @param rotate Rotation in degrees or expression.
+   * @returns this (chainable).
    */
   setIconRotate(rotate: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取图标旋转角度
+   * Get the icon rotation.
    */
   getIconRotate(): number;
 
   /**
-   * 设置图标偏移
-   * @param offset 偏移量或Expression
-   * @returns this（支持链式调用）
+   * Set the icon offset.
+   * @param offset Offset vector or expression.
+   * @returns this (chainable).
    */
   setIconOffset(offset: PropertyValue<number[]>): SymbolLayer;
 
   /**
-   * 获取图标偏移
+   * Get the icon offset.
    */
   getIconOffset(): number[];
 
   /**
-   * 设置图标锚点
-   * @param anchor 锚点位置或Expression
-   * @returns this（支持链式调用）
+   * Set the icon anchor.
+   * @param anchor Anchor position or expression.
+   * @returns this (chainable).
    */
   setIconAnchor(anchor: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取图标锚点
+   * Get the icon anchor.
    */
   getIconAnchor(): string;
 
   /**
-   * 设置图标是否允许重叠
-   * @param allow 是否允许或Expression
-   * @returns this（支持链式调用）
+   * Set whether icons may overlap.
+   * @param allow Allow flag or expression.
+   * @returns this (chainable).
    */
   setIconAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer;
 
   /**
-   * 获取图标是否允许重叠
+   * Get whether icons may overlap.
    */
   getIconAllowOverlap(): boolean;
 
-  // ==================== 文本布局属性 ====================
+// ==================== Text layout properties ====================
 
   /**
-   * 设置文本内容
-   * @param text 文本内容或Expression
-   * @returns this（支持链式调用）
+   * Set the text field.
+   * @param text Text content or expression.
+   * @returns this (chainable).
    */
   setTextField(text: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取文本内容
+   * Get the text field.
    */
   getTextField(): string;
 
   /**
-   * 设置文本字体
-   * @param font 字体名称或Expression
-   * @returns this（支持链式调用）
+   * Set the text font list.
+   * @param font Font names or expression.
+   * @returns this (chainable).
    */
   setTextFont(font: PropertyValue<string[]>): SymbolLayer;
 
   /**
-   * 获取文本字体
+   * Get the text fonts.
    */
   getTextFont(): string[];
 
   /**
-   * 设置文本大小
-   * @param size 字体大小或Expression
-   * @returns this（支持链式调用）
+   * Set the text size.
+   * @param size Size value or expression.
+   * @returns this (chainable).
    */
   setTextSize(size: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取文本大小
+   * Get the text size.
    */
   getTextSize(): number;
 
   /**
-   * 设置文本最大宽度
-   * @param maxWidth 最大宽度或Expression
-   * @returns this（支持链式调用）
+   * Set the text max width.
+   * @param maxWidth Width value or expression.
+   * @returns this (chainable).
    */
   setTextMaxWidth(maxWidth: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取文本最大宽度
+   * Get the text max width.
    */
   getTextMaxWidth(): number;
 
   /**
-   * 设置文本偏移
-   * @param offset 偏移量或Expression
-   * @returns this（支持链式调用）
+   * Set the text offset.
+   * @param offset Offset vector or expression.
+   * @returns this (chainable).
    */
   setTextOffset(offset: PropertyValue<number[]>): SymbolLayer;
 
   /**
-   * 获取文本偏移
+   * Get the text offset.
    */
   getTextOffset(): number[];
 
   /**
-   * 设置文本锚点
-   * @param anchor 锚点位置或Expression
-   * @returns this（支持链式调用）
+   * Set the text anchor.
+   * @param anchor Anchor position or expression.
+   * @returns this (chainable).
    */
   setTextAnchor(anchor: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取文本锚点
+   * Get the text anchor.
    */
   getTextAnchor(): string;
 
   /**
-   * 设置文本是否允许重叠
-   * @param allow 是否允许或Expression
-   * @returns this（支持链式调用）
+   * Set whether text may overlap.
+   * @param allow Allow flag or expression.
+   * @returns this (chainable).
    */
   setTextAllowOverlap(allow: PropertyValue<boolean>): SymbolLayer;
 
   /**
-   * 获取文本是否允许重叠
+   * Get whether text may overlap.
    */
   getTextAllowOverlap(): boolean;
 
-  // ==================== 图标绘制属性 ====================
+// ==================== Icon paint properties ====================
 
   /**
-   * 设置图标不透明度
-   * @param opacity 不透明度 (0-1) 或 Expression
-   * @returns this（支持链式调用）
+   * Set icon opacity.
+   * @param opacity Opacity (0-1) or expression.
+   * @returns this (chainable).
    */
   setIconOpacity(opacity: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取图标不透明度
+   * Get icon opacity.
    */
   getIconOpacity(): number;
 
   /**
-   * 设置图标颜色
-   * @param color 颜色值或Expression
-   * @returns this（支持链式调用）
+   * Set icon color.
+   * @param color Color value or expression.
+   * @returns this (chainable).
    */
   setIconColor(color: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取图标颜色
+   * Get icon color.
    */
   getIconColor(): string;
 
   /**
-   * 设置图标光晕颜色
-   * @param color 颜色值或Expression
-   * @returns this（支持链式调用）
+   * Set icon halo color.
+   * @param color Color value or expression.
+   * @returns this (chainable).
    */
   setIconHaloColor(color: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取图标光晕颜色
+   * Get icon halo color.
    */
   getIconHaloColor(): string;
 
   /**
-   * 设置图标光晕宽度
-   * @param width 宽度或Expression
-   * @returns this（支持链式调用）
+   * Set icon halo width.
+   * @param width Width value or expression.
+   * @returns this (chainable).
    */
   setIconHaloWidth(width: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取图标光晕宽度
+   * Get icon halo width.
    */
   getIconHaloWidth(): number;
 
-  // ==================== 文本绘制属性 ====================
+// ==================== Text paint properties ====================
 
   /**
-   * 设置文本不透明度
-   * @param opacity 不透明度 (0-1) 或Expression
-   * @returns this（支持链式调用）
+   * Set text opacity.
+   * @param opacity Opacity (0-1) or expression.
+   * @returns this (chainable).
    */
   setTextOpacity(opacity: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取文本不透明度
+   * Get text opacity.
    */
   getTextOpacity(): number;
 
   /**
-   * 设置文本颜色
-   * @param color 颜色值或Expression
-   * @returns this（支持链式调用）
+   * Set text color.
+   * @param color Color value or expression.
+   * @returns this (chainable).
    */
   setTextColor(color: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取文本颜色
+   * Get text color.
    */
   getTextColor(): string;
 
   /**
-   * 设置文本光晕颜色
-   * @param color 颜色值或Expression
-   * @returns this（支持链式调用）
+   * Set text halo color.
+   * @param color Color value or expression.
+   * @returns this (chainable).
    */
   setTextHaloColor(color: PropertyValue<string>): SymbolLayer;
 
   /**
-   * 获取文本光晕颜色
+   * Get text halo color.
    */
   getTextHaloColor(): string;
 
   /**
-   * 设置文本光晕宽度
-   * @param width 宽度或Expression
-   * @returns this（支持链式调用）
+   * Set text halo width.
+   * @param width Width value or expression.
+   * @returns this (chainable).
    */
   setTextHaloWidth(width: PropertyValue<number>): SymbolLayer;
 
   /**
-   * 获取文本光晕宽度
+   * Get text halo width.
    */
   getTextHaloWidth(): number;
 
-  // ==================== 新增图标布局属性 ====================
+// ==================== Additional icon layout properties ====================
 
   /**
-   * 设置图标忽略放置
-   * @returns this（支持链式调用）
+   * Enable icon ignore placement.
+   * @returns this (chainable).
    */
   setIconIgnorePlacement(ignore: boolean): SymbolLayer;
 
   getIconIgnorePlacement(): boolean;
 
   /**
-   * 设置图标可选
-   * @returns this（支持链式调用）
+   * Enable optional icons.
+   * @returns this (chainable).
    */
   setIconOptional(optional: boolean): SymbolLayer;
 
   getIconOptional(): boolean;
 
   /**
-   * 设置图标填充
-   * @returns this（支持链式调用）
+   * Set icon padding.
+   * @returns this (chainable).
    */
   setIconPadding(padding: number): SymbolLayer;
 
   getIconPadding(): number;
 
   /**
-   * 设置防止图标上下颠倒
-   * @returns this（支持链式调用）
+   * Set whether icons keep upright.
+   * @returns this (chainable).
    */
   setIconKeepUpright(keep: boolean): SymbolLayer;
 
   getIconKeepUpright(): boolean;
 
   /**
-   * 设置图标倾斜对齐
-   * @returns this（支持链式调用）
+   * Set icon pitch alignment.
+   * @returns this (chainable).
    */
   setIconPitchAlignment(alignment: string): SymbolLayer;
 
   getIconPitchAlignment(): string;
 
   /**
-   * 设置图标旋转对齐
-   * @returns this（支持链式调用）
+   * Set icon rotation alignment.
+   * @returns this (chainable).
    */
   setIconRotationAlignment(alignment: string): SymbolLayer;
 
   getIconRotationAlignment(): string;
 
   /**
-   * 设置图标文本适配
-   * @returns this（支持链式调用）
+   * Set icon-text fit mode.
+   * @returns this (chainable).
    */
   setIconTextFit(fit: string): SymbolLayer;
 
   getIconTextFit(): string;
 
   /**
-   * 设置图标文本适配填充
-   * @returns this（支持链式调用）
+   * Set icon-text fit padding.
+   * @returns this (chainable).
    */
   setIconTextFitPadding(padding: number[]): SymbolLayer;
 
   getIconTextFitPadding(): number[];
 
   /**
-   * 设置图标平移
-   * @param translate 平移量或 Expression
-   * @returns this（支持链式调用）
+   * Set icon translation.
+   * @param translate Translation vector or expression.
+   * @returns this (chainable).
    */
   setIconTranslate(translate: PropertyValue<number[]>): SymbolLayer;
 
   getIconTranslate(): number[];
 
   /**
-   * 设置图标平移锚点
-   * @returns this（支持链式调用）
+   * Set icon translation anchor.
+   * @returns this (chainable).
    */
   setIconTranslateAnchor(anchor: string): SymbolLayer;
 
   getIconTranslateAnchor(): string;
 
   /**
-   * 设置图标光晕模糊
-   * @param blur 模糊半径或 Expression（像素）
-   * @returns this（支持链式调用）
+   * Set icon halo blur.
+   * @param blur Blur radius or expression (pixels).
+   * @returns this (chainable).
    */
   setIconHaloBlur(blur: PropertyValue<number>): SymbolLayer;
 
   getIconHaloBlur(): number;
 
-  // ==================== 新增文本布局属性 ====================
+// ==================== Additional text layout properties ====================
 
   /**
-   * 设置文本字母间距
-   * @param spacing 字母间距或 Expression
-   * @returns this（支持链式调用）
+   * Set text letter spacing.
+   * @param spacing Spacing value or expression.
+   * @returns this (chainable).
    */
   setTextLetterSpacing(spacing: PropertyValue<number>): SymbolLayer;
 
   getTextLetterSpacing(): number;
 
   /**
-   * 设置文本对齐方式
-   * @param justify 对齐方式或 Expression（'auto' | 'left' | 'center' | 'right'）
-   * @returns this（支持链式调用）
+   * Set text justification.
+   * @param justify Alignment or expression ('auto' | 'left' | 'center' | 'right').
+   * @returns this (chainable).
    */
   setTextJustify(justify: PropertyValue<string>): SymbolLayer;
 
   getTextJustify(): string;
 
   /**
-   * 设置文本径向偏移
-   * @returns this（支持链式调用）
+   * Set text radial offset.
+   * @returns this (chainable).
    */
   setTextRadialOffset(offset: number): SymbolLayer;
 
   getTextRadialOffset(): number;
 
   /**
-   * 设置文本可变锚点
-   * @returns this（支持链式调用）
+   * Set text variable anchors.
+   * @returns this (chainable).
    */
   setTextVariableAnchor(anchors: string[]): SymbolLayer;
 
   getTextVariableAnchor(): string[];
 
   /**
-   * 设置文本可变锚点偏移
-   * @returns this（支持链式调用）
+   * Set text variable anchor offsets.
+   * @returns this (chainable).
    */
   setTextVariableAnchorOffset(offset: number[]): SymbolLayer;
 
   getTextVariableAnchorOffset(): number[];
 
   /**
-   * 设置文本旋转角度
-   * @param rotate 旋转角度或 Expression（度数）
-   * @returns this（支持链式调用）
+   * Set text rotation.
+   * @param rotate Rotation angle or expression (degrees).
+   * @returns this (chainable).
    */
   setTextRotate(rotate: PropertyValue<number>): SymbolLayer;
 
   getTextRotate(): number;
 
   /**
-   * 设置文本填充
-   * @returns this（支持链式调用）
+   * Set text padding.
+   * @returns this (chainable).
    */
   setTextPadding(padding: number): SymbolLayer;
 
   getTextPadding(): number;
 
   /**
-   * 设置防止文本上下颠倒
-   * @returns this（支持链式调用）
+   * Set whether text keeps upright.
+   * @returns this (chainable).
    */
   setTextKeepUpright(keep: boolean): SymbolLayer;
 
   getTextKeepUpright(): boolean;
 
   /**
-   * 设置文本转换
-   * @param transform 转换类型或 Expression（'none' | 'uppercase' | 'lowercase'）
-   * @returns this（支持链式调用）
+   * Set text transform.
+   * @param transform Transform type or expression ('none' | 'uppercase' | 'lowercase').
+   * @returns this (chainable).
    */
   setTextTransform(transform: PropertyValue<string>): SymbolLayer;
 
   getTextTransform(): string;
 
   /**
-   * 设置文本最大角度
-   * @returns this（支持链式调用）
+   * Set text maximum angle.
+   * @returns this (chainable).
    */
   setTextMaxAngle(angle: number): SymbolLayer;
 
   getTextMaxAngle(): number;
 
   /**
-   * 设置文本旋转对齐
-   * @returns this（支持链式调用）
+   * Set text rotation alignment.
+   * @returns this (chainable).
    */
   setTextRotationAlignment(alignment: string): SymbolLayer;
 
   getTextRotationAlignment(): string;
 
   /**
-   * 设置文本倾斜对齐
-   * @returns this（支持链式调用）
+   * Set text pitch alignment.
+   * @returns this (chainable).
    */
   setTextPitchAlignment(alignment: string): SymbolLayer;
 
   getTextPitchAlignment(): string;
 
   /**
-   * 设置文本行高
-   * @param lineHeight 行高或 Expression（em 单位）
-   * @returns this（支持链式调用）
+   * Set text line height.
+   * @param lineHeight Line height value or expression (em units).
+   * @returns this (chainable).
    */
   setTextLineHeight(lineHeight: PropertyValue<number>): SymbolLayer;
 
   getTextLineHeight(): number;
 
   /**
-   * 设置文本书写模式
-   * @returns this（支持链式调用）
+   * Set text writing mode.
+   * @returns this (chainable).
    */
   setTextWritingMode(mode: string[]): SymbolLayer;
 
   getTextWritingMode(): string[];
 
   /**
-   * 设置文本忽略放置
-   * @returns this（支持链式调用）
+   * Enable text ignore placement.
+   * @returns this (chainable).
    */
   setTextIgnorePlacement(ignore: boolean): SymbolLayer;
 
   getTextIgnorePlacement(): boolean;
 
   /**
-   * 设置文本可选
-   * @returns this（支持链式调用）
+   * Enable optional text.
+   * @returns this (chainable).
    */
   setTextOptional(optional: boolean): SymbolLayer;
 
   getTextOptional(): boolean;
 
-  // ==================== 新增文本绘制属性 ====================
+// ==================== Additional text paint properties ====================
 
   /**
-   * 设置文本光晕模糊
-   * @param blur 模糊半径或 Expression（像素）
-   * @returns this（支持链式调用）
+   * Set text halo blur.
+   * @param blur Blur radius or expression (pixels).
+   * @returns this (chainable).
    */
   setTextHaloBlur(blur: PropertyValue<number>): SymbolLayer;
 
   getTextHaloBlur(): number;
 
   /**
-   * 设置文本平移
-   * @param translate 平移量或 Expression（[x, y] 像素）
-   * @returns this（支持链式调用）
+   * Set text translation.
+   * @param translate Translation vector or expression ([x, y] pixels).
+   * @returns this (chainable).
    */
   setTextTranslate(translate: PropertyValue<number[]>): SymbolLayer;
 
   getTextTranslate(): number[];
 
   /**
-   * 设置文本平移锚点
-   * @returns this（支持链式调用）
+   * Set text translation anchor.
+   * @returns this (chainable).
    */
   setTextTranslateAnchor(anchor: string): SymbolLayer;
 
   getTextTranslateAnchor(): string;
 
-  // ==================== 符号通用属性 ====================
+// ==================== Symbol general properties ====================
 
   /**
-   * 设置符号放置方式
-   * @param placement 放置方式或 Expression（'point' | 'line' | 'line-center'）
-   * @returns this（支持链式调用）
+   * Set symbol placement.
+   * @param placement Placement mode or expression ('point' | 'line' | 'line-center').
+   * @returns this (chainable).
    */
   setSymbolPlacement(placement: PropertyValue<string>): SymbolLayer;
 
   getSymbolPlacement(): string;
 
   /**
-   * 设置符号间距
-   * @param spacing 间距或 Expression（像素）
-   * @returns this（支持链式调用）
+   * Set symbol spacing.
+   * @param spacing Spacing value or expression (pixels).
+   * @returns this (chainable).
    */
   setSymbolSpacing(spacing: PropertyValue<number>): SymbolLayer;
 
   getSymbolSpacing(): number;
 
   /**
-   * 设置符号避免边缘
-   * @param avoid 是否避免边缘或 Expression
-   * @returns this（支持链式调用）
+   * Set whether symbols avoid edges.
+   * @param avoid Boolean flag or expression.
+   * @returns this (chainable).
    */
   setSymbolAvoidEdges(avoid: PropertyValue<boolean>): SymbolLayer;
 
   getSymbolAvoidEdges(): boolean;
 
   /**
-   * 设置符号排序键
-   * @returns this（支持链式调用）
+   * Set symbol sort key.
+   * @returns this (chainable).
    */
   setSymbolSortKey(sortKey: number): SymbolLayer;
 
   getSymbolSortKey(): number;
 
   /**
-   * 设置符号Z顺序
-   * @returns this（支持链式调用）
+   * Set symbol Z-order.
+   * @returns this (chainable).
    */
   setSymbolZOrder(zOrder: string): SymbolLayer;
 
   getSymbolZOrder(): string;
 
-  // ==================== 通用 Layer 方法 ====================
+// ==================== Common layer methods ====================
 
   /**
-   * 设置图层可见性
-   * @returns this（支持链式调用）
+   * Set layer visibility.
+   * @returns this (chainable).
    */
   setVisibility(visibility: 'visible' | 'none'): SymbolLayer;
 
   getVisibility(): 'visible' | 'none';
 
   /**
-   * 设置图层过滤器
-   * @param filter 过滤器表达式字面量（JSON 数组格式）
-   * @returns this（支持链式调用）
+   * Set the layer filter.
+   * @param filter Filter expression literal (JSON array form).
+   * @returns this (chainable).
    */
   setFilter(filter: ExpressionLiteral): SymbolLayer;
 
   /**
-   * 获取图层过滤器
-   * @returns 过滤器表达式字面量或 null
+   * Get the layer filter.
+   * @returns Filter expression literal or null.
    */
   getFilter(): ExpressionLiteral | null;
 
   /**
-   * 设置单个属性（通用方法）
-   * @param propertyName 属性名称（如 'icon-image', 'text-field', 'text-color'）
-   * @param value 属性值（常量值或Expression）
+   * Set a single property (generic helper).
+   * @param propertyName Property name (e.g. 'icon-image', 'text-field', 'text-color').
+   * @param value Property value (literal or expression).
    */
   setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
-   * 批量设置属性（通用方法）
-   * @param properties 属性对象，键为属性名，值为属性值
+   * Set multiple properties (generic helper).
+   * @param properties Object whose keys are property names and values are property payloads.
    * @example
    * layer.setProperties({
    *   'icon-image': 'marker',

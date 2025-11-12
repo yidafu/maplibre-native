@@ -1,17 +1,17 @@
 /**
- * LogoView - MapLibre Logo 组件
+ * LogoView - MapLibre logo component.
  *
- * 参考 Android LogoView 和 iOS LogoView 实现
- * 显示 MapLibre 品牌 Logo
+ * Based on the Android and iOS LogoView implementations.
+ * Displays the MapLibre brand logo.
  */
 
 @Component
 export struct LogoView {
-  // Logo 图像资源
+  // Logo image resource.
   @Prop logoImage: Resource = $r('app.media.maplibre_logo_helmet');
-  // 是否启用
+  // Enable flag.
   @Prop logoEnabled: boolean = true;
-  // Logo 尺寸（默认自适应）
+  // Logo dimensions (auto by default).
   @Prop logoWidth: number | string = 'auto';
   @Prop logoHeight: number | string = 'auto';
 

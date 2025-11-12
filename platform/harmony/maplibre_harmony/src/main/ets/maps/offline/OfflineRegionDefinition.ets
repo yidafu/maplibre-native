@@ -1,13 +1,13 @@
 /**
- * OfflineRegionDefinition - 离线区域定义
+ * OfflineRegionDefinition - offline region definition.
  *
- * 从 NAPI 层重新导出类型
+ * Re-exports types from the NAPI layer.
  */
 
 import maplibre from 'libmaplibre.so';
 import type { LatLngBounds } from '../geometry/LatLngBounds';
 
-// 重新导出 NAPI 类型
+// Re-export NAPI types.
 export type {
   OfflineRegionDefinition,
   OfflineTilePyramidRegionDefinition,
@@ -15,7 +15,7 @@ export type {
 } from 'libmaplibre.so';
 
 /**
- * LatLngBoundsLike - 边界对象接口
+ * LatLngBoundsLike - boundary interface.
  */
 interface LatLngBoundsLike {
   north: number;
@@ -25,7 +25,7 @@ interface LatLngBoundsLike {
 }
 
 /**
- * 创建瓦片金字塔区域定义的工厂函数
+ * Factory for creating tile pyramid region definitions.
  */
 export function createTilePyramidRegionDefinition(
   styleURL: string,

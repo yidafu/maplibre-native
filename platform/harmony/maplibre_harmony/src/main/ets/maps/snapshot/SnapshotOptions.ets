@@ -1,7 +1,7 @@
 /**
- * SnapshotOptions - 快照选项
+ * SnapshotOptions - options for map snapshots.
  *
- * 配置 MapSnapshotter 的参数
+ * Configures `MapSnapshotter`.
  */
 
 import { CameraPosition } from '../camera/CameraPosition';
@@ -9,64 +9,64 @@ import { LatLngBounds } from '../geometry/LatLngBounds';
 import { Size } from '../types/NativeTypes';
 
 /**
- * 快照选项接口
+ * Snapshot options interface.
  */
 export interface SnapshotOptions {
   /**
-   * 输出图像尺寸
+   * Output image size.
    */
   size: Size;
 
   /**
-   * 像素比（用于生成高分辨率图像）
-   * 默认：1.0
+   * Pixel ratio (for high-resolution images).
+   * Default: 1.0
    */
   pixelRatio?: number;
 
   /**
-   * 样式 URL
+   * Style URL.
    */
   styleUrl: string;
 
   /**
-   * 样式 JSON（可选，与 styleUrl 二选一）
+   * Style JSON (optional, mutually exclusive with styleUrl).
    */
   styleJson?: string;
 
   /**
-   * 相机位置（可选）
+   * Camera position (optional).
    */
   cameraPosition?: CameraPosition;
 
   /**
-   * 地理边界（可选）
-   * 如果提供，将调整相机以适应此边界
+   * Geographic bounds (optional).
+   * If provided, the camera adjusts to fit the region.
    */
   region?: LatLngBounds;
 
   /**
-   * 是否显示 MapLibre logo
-   * 默认：true
+   * Whether to display the MapLibre logo.
+   * Default: true.
    */
   showLogo?: boolean;
 
   /**
-   * 本地字体族（可选）
+   * Local font family (optional).
    */
   localFontFamily?: string;
 }
 
 /**
- * 快照选项构建器
+ * Builder for snapshot options.
  */
 export class SnapshotOptionsBuilder {
   private options: SnapshotOptions;
 
   /**
-   * 构造函数
+   * Constructor.
    *
-   * @param width 宽度
-   * @param height 高度
+   * @param width Output width.
+   * @param height Output height.
    */
   constructor(width: number, height: number) {
     this.options = {
@@ -78,7 +78,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置像素比
+   * Set pixel ratio.
    */
   withPixelRatio(pixelRatio: number): SnapshotOptionsBuilder {
     this.options.pixelRatio = pixelRatio;
@@ -86,7 +86,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置样式 URL
+   * Set style URL.
    */
   withStyleUrl(styleUrl: string): SnapshotOptionsBuilder {
     this.options.styleUrl = styleUrl;
@@ -94,7 +94,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置样式 JSON
+   * Set style JSON.
    */
   withStyleJson(styleJson: string): SnapshotOptionsBuilder {
     this.options.styleJson = styleJson;
@@ -102,7 +102,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置相机位置
+   * Set camera position.
    */
   withCameraPosition(cameraPosition: CameraPosition): SnapshotOptionsBuilder {
     this.options.cameraPosition = cameraPosition;
@@ -110,7 +110,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置地理边界
+   * Set geographic bounds.
    */
   withRegion(region: LatLngBounds): SnapshotOptionsBuilder {
     this.options.region = region;
@@ -118,7 +118,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置是否显示 logo
+   * Set whether to display the logo.
    */
   withShowLogo(showLogo: boolean): SnapshotOptionsBuilder {
     this.options.showLogo = showLogo;
@@ -126,7 +126,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 设置本地字体族
+   * Set local font family.
    */
   withLocalFontFamily(localFontFamily: string): SnapshotOptionsBuilder {
     this.options.localFontFamily = localFontFamily;
@@ -134,7 +134,7 @@ export class SnapshotOptionsBuilder {
   }
 
   /**
-   * 构建选项对象
+   * Build the snapshot options object.
    */
   build(): SnapshotOptions {
     if (!this.options.styleUrl && !this.options.styleJson) {

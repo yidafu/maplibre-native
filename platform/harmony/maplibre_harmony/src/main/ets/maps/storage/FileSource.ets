@@ -2,7 +2,7 @@ import { Context } from '@kit.AbilityKit';
 import { ResourceTransform, ResourceTransformCallback } from './ResourceTransform';
 
 /**
- * FileSource - 文件源类
+ * FileSource - file source singleton wrapper.
  */
 export class FileSource {
   private static instance: FileSource | null = null;
@@ -13,7 +13,7 @@ export class FileSource {
   }
 
   /**
-   * 获取FileSource实例（单例模式）
+   * Retrieve the FileSource singleton instance.
    */
   public static getInstance(context: Context): FileSource {
     if (!FileSource.instance) {
@@ -23,26 +23,26 @@ export class FileSource {
   }
 
   /**
-   * 获取上下文
+   * Get the stored context.
    */
   public getContext(): Context | null {
     return this.context;
   }
 
   /**
-   * 设置上下文
+   * Update the stored context.
    */
   public setContext(context: Context): void {
     this.context = context;
   }
 
   /**
-   * 设置资源URL转换回调
-   * 
-   * 允许在运行时修改资源请求的URL，用于实现CDN切换、离线资源映射等功能。
-   * 
-   * @param callback - URL转换回调函数，如果传入null则清除回调
-   * 
+   * Configure the resource URL transform callback.
+   *
+   * Allows runtime modification of resource URLs (e.g. CDN switching, offline remapping).
+   *
+   * @param callback URL transform callback; pass null to clear.
+   *
    * @example
    * ```typescript
    * import { FileSource, ResourceKind } from '@ohos/maplibre';

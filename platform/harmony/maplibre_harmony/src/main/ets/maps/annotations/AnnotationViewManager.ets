@@ -56,7 +56,7 @@ export interface AnnotationViewData {
  * Oversees the full lifecycle of custom `AnnotationView` instances with a focus on performance.
  *
  * **Core responsibilities**:
- * - Maintain the Marker → AnnotationView mapping
+ * - Maintain the Marker-to-AnnotationView mapping
  * - Handle view reuse (reuseIdentifier mechanism)
  * - Update view positions when the camera changes
  * - Manage selection state (single-selection mode)
@@ -100,9 +100,9 @@ export class AnnotationViewManager {
   private delegate: AnnotationViewDelegate | null = null;
   // Adapter (retained for backwards compatibility)
   private adapter: AnnotationViewAdapter | null = null;
-  // View data mapping: Marker ID → AnnotationViewData
+  // View data mapping: Marker ID -> AnnotationViewData
   private annotationViews: Map<number, AnnotationViewData> = new Map();
-  // Reuse pool: reuseIdentifier → AnnotationViewData[]
+  // Reuse pool: reuseIdentifier -> AnnotationViewData[]
   private reusePool: Map<string, AnnotationViewData[]> = new Map();
   // Native map view used for coordinate conversion
   private nativeMapView: NativeMapView | null = null;
@@ -243,7 +243,7 @@ export class AnnotationViewManager {
         // Store contentBuilder as customBuilder; actual rendering is handled by AnnotationViewOverlay
         customBuilder = viewConfig.contentBuilder ?? null;
       } else {
-        // Delegate returned null → use default icon
+        // Delegate returned null -> use default icon
         this.removeView(marker);
         return;
       }
@@ -251,7 +251,7 @@ export class AnnotationViewManager {
     // If delegate is absent, try the adapter (legacy path)
     else if (this.adapter) {
       if (!this.adapter.getAnnotationView(marker)) {
-        // Adapter returned null → use default icon
+        // Adapter returned null -> use default icon
         this.removeView(marker);
         return;
       }
@@ -689,7 +689,7 @@ export class AnnotationViewManager {
     // Deselect others (single-selection mode)
     this.selectedAnnotations.forEach(id => {
       const viewData = this.annotationViews.get(id);
-      // 🔒 Guard against null markers to avoid ObservedObject errors
+      // Guard against null markers to avoid ObservedObject errors
       if (viewData && viewData.marker !== null && id !== markerId) {
         this.deselectAnnotation(viewData.marker, animated);
       }
@@ -746,7 +746,7 @@ export class AnnotationViewManager {
     const selectedIds = Array.from(this.selectedAnnotations);
     selectedIds.forEach(id => {
       const viewData = this.annotationViews.get(id);
-      // 🔒 Guard against null markers to avoid ObservedObject errors
+      // Guard against null markers to avoid ObservedObject errors
       if (viewData && viewData.marker !== null) {
         this.deselectAnnotation(viewData.marker, animated);
       }
@@ -760,7 +760,7 @@ export class AnnotationViewManager {
     const selected: Marker[] = [];
     this.selectedAnnotations.forEach(id => {
       const viewData = this.annotationViews.get(id);
-      // 🔒 Guard against null markers to avoid ObservedObject errors
+      // Guard against null markers to avoid ObservedObject errors
       if (viewData && viewData.marker !== null) {
         selected.push(viewData.marker);
       }
@@ -978,7 +978,7 @@ export class AnnotationViewManager {
   public batchUpdatePositions(cameraChanged: boolean = false): void {
     let updateCount = 0;
     this.annotationViews.forEach((viewData, markerId) => {
-      // 🔒 Guard against null markers to avoid ObservedObject errors
+      // Guard against null markers to avoid ObservedObject errors
       if (viewData.marker !== null) {
         const position = this.calculateScreenPosition(viewData.marker);
         viewData.screenX = position.x;
@@ -1028,7 +1028,7 @@ export class AnnotationViewManager {
   /**
    * Get reuse-pool statistics
    *
-   * @returns Map of reuse identifier → pool size
+   * @returns Map of reuse identifier -> pool size
    */
   public getReusePoolStats(): Map<string, number> {
     const stats = new Map<string, number>();

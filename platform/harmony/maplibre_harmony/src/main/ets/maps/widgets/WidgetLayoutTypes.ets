@@ -1,13 +1,13 @@
 /**
- * Widget 布局类型定义
- * 
- * 使用鸿蒙 ArkUI 原生的布局系统
+ * Widget layout type definitions.
+ *
+ * Uses the native HarmonyOS ArkUI layout system.
  */
 
 import { Margins } from '../types/NativeTypes';
 
 /**
- * 2D 偏移量
+ * 2D offset values.
  */
 export interface Offset2D {
   x: number;
@@ -15,27 +15,27 @@ export interface Offset2D {
 }
 
 /**
- * Widget 位置配置
- * 
- * 使用 ArkUI Alignment + Margins 的鸿蒙风格布局
+ * Widget position configuration.
+ *
+ * Harmony-style layout using ArkUI Alignment + Margins.
  */
 export interface WidgetPosition {
-  /** ArkUI 对齐方式 */
+  /** ArkUI alignment. */
   alignment: Alignment;
-  /** 四边边距（vp） */
+  /** Four-side margins (vp). */
   margins: Margins;
-  /** 额外偏移（可选，vp） */
+  /** Additional offset (optional, vp). */
   offset?: Offset2D;
 }
 
 /**
- * Widget 布局辅助类
- * 
- * 提供便捷方法来创建和计算组件位置
+ * Widget layout helper.
+ *
+ * Provides convenience methods to create and compute component positions.
  */
 export class WidgetLayoutHelper {
   /**
-   * 从 Alignment 和 Margins 创建完整的位置配置
+   * Create a full position configuration from Alignment and Margins.
    */
   static createPosition(
     alignment: Alignment,
@@ -46,9 +46,9 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 计算实际的偏移量（Alignment + Margins）
-   * 
-   * 根据 Alignment 自动从 Margins 中选择合适的边距
+   * Compute the effective offset (Alignment + Margins).
+   *
+   * Automatically selects the appropriate margins based on Alignment.
    */
   static calculateOffset(position: WidgetPosition): Offset2D {
     const alignment = position.alignment;
@@ -57,7 +57,7 @@ export class WidgetLayoutHelper {
     let x = offset?.x || 0;
     let y = offset?.y || 0;
     
-    // 根据对齐方式添加边距
+    // Add margins according to the alignment.
     switch (alignment) {
       case Alignment.TopStart:
         x += margins.left;
@@ -101,7 +101,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：左上角
+   * Preset position: top-left.
    */
   static topLeft(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -111,7 +111,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：顶部居中
+   * Preset position: top-center.
    */
   static topCenter(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -121,7 +121,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：右上角
+   * Preset position: top-right.
    */
   static topRight(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -131,7 +131,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：左侧居中
+   * Preset position: center-left.
    */
   static centerLeft(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -141,7 +141,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：完全居中
+   * Preset position: centered.
    */
   static center(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -151,7 +151,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：右侧居中
+   * Preset position: center-right.
    */
   static centerRight(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -161,7 +161,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：左下角
+   * Preset position: bottom-left.
    */
   static bottomLeft(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -171,7 +171,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：底部居中
+   * Preset position: bottom-center.
    */
   static bottomCenter(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -181,7 +181,7 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 预设位置：右下角
+   * Preset position: bottom-right.
    */
   static bottomRight(margins?: Margins): WidgetPosition {
     return WidgetLayoutHelper.createPosition(
@@ -191,9 +191,9 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 向后兼容：从 OrnamentPosition 转换
-   * 
-   * @param position OrnamentPosition 枚举值（0-3）
+   * Backward compatibility: convert from OrnamentPosition.
+   *
+   * @param position OrnamentPosition enum value (0-3).
    * @returns Alignment
    */
   static ornamentPositionToAlignment(position: number): Alignment {
@@ -212,10 +212,10 @@ export class WidgetLayoutHelper {
   }
   
   /**
-   * 向后兼容：将 Alignment 转换回 OrnamentPosition
-   * 
-   * @param alignment Alignment 枚举
-   * @returns OrnamentPosition（0-3），如果无法映射则返回 null
+   * Backward compatibility: convert Alignment back to OrnamentPosition.
+   *
+   * @param alignment Alignment enum value.
+   * @returns OrnamentPosition (0-3), or null if it cannot be mapped.
    */
   static alignmentToOrnamentPosition(alignment: Alignment): number | null {
     switch (alignment) {
@@ -228,7 +228,7 @@ export class WidgetLayoutHelper {
       case Alignment.BottomEnd:
         return 3; // BottomRight
       default:
-        return null; // 不是四个角之一
+        return null; // Not one of the four corners.
     }
   }
 }

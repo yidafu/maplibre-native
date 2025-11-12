@@ -1,54 +1,52 @@
 /**
- * CameraMoveReason - 相机移动原因枚举
- *
- * 用于区分相机移动的触发原因
+ * CameraMoveReason - enumerates reasons the camera moves.
  */
 
 /**
- * 相机移动原因
+ * Reasons for camera movement.
  */
 export enum CameraMoveReason {
   /**
-   * 未知原因
+   * Unknown reason.
    */
   UNKNOWN = 0,
 
   /**
-   * 手势操作（平移、缩放、旋转等）
+   * User gesture (pan, zoom, rotate, etc.).
    */
   GESTURE = 1,
 
   /**
-   * API 调用（jumpTo、setCenter等）
+   * API invocation (e.g. `jumpTo`, `setCenter`).
    */
   API_ANIMATION = 2,
 
   /**
-   * 动画（easeTo、flyTo）
+   * Developer-provided animation (`easeTo`, `flyTo`).
    */
   DEVELOPER_ANIMATION = 3,
 
   /**
-   * 取消动画
+   * Animation cancelled.
    */
   ANIMATION_CANCELLED = 4
 }
 
 /**
- * 获取相机移动原因的描述文本
+ * Get a human-readable description of the camera move reason.
  */
 export function getCameraMoveReasonText(reason: CameraMoveReason): string {
   switch (reason) {
     case CameraMoveReason.GESTURE:
-      return '手势操作';
+      return 'Gesture';
     case CameraMoveReason.API_ANIMATION:
-      return 'API 调用';
+      return 'API animation';
     case CameraMoveReason.DEVELOPER_ANIMATION:
-      return '开发者动画';
+      return 'Developer animation';
     case CameraMoveReason.ANIMATION_CANCELLED:
-      return '动画取消';
+      return 'Animation cancelled';
     default:
-      return '未知原因';
+      return 'Unknown';
   }
 }
 

@@ -1,21 +1,21 @@
 /**
- * CompassVisibility - 指南针可见性模式枚举
+ * CompassVisibility - compass visibility modes.
  *
- * 参考 iOS MLNOrnamentVisibility
+ * Mirrors iOS MLNOrnamentVisibility.
  */
 export enum CompassVisibility {
   /**
-   * 自适应模式：当地图不是正北朝向时显示，正北时隐藏
+   * Adaptive mode: show when the map is not facing north, hide when it is.
    */
   Adaptive = 0,
 
   /**
-   * 总是可见
+   * Always visible.
    */
   Visible = 1,
 
   /**
-   * 总是隐藏
+   * Always hidden.
    */
   Hidden = 2
 }

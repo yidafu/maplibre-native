@@ -1,46 +1,46 @@
 /**
- * 定义相机如何跟踪用户位置的方式
+ * Defines how the camera tracks the user location.
  * Contains the variety of camera modes which determine how the camera will track the user location.
  */
 export class CameraMode {
   /**
-   * 不跟踪位置
+   * Do not track location.
    * No camera tracking.
    */
   static readonly NONE: number = 0x00000008;
   /**
-   * 相机不跟踪位置，但跟踪指南针方向
+   * Camera does not track location but tracks compass bearing.
    * Camera does not track location, but does track compass bearing.
    */
   static readonly NONE_COMPASS: number = 0x00000010;
   /**
-   * 相机不跟踪位置，但跟踪 GPS 方向
+   * Camera does not track location but tracks GPS bearing.
    * Camera does not track location, but does track GPS bearing.
    */
   static readonly NONE_GPS: number = 0x00000016;
   /**
-   * 相机跟踪用户位置
+   * Camera tracks the user location.
    * Camera tracks the user location.
    */
   static readonly TRACKING: number = 0x00000018;
   /**
-   * 相机跟踪用户位置和指南针方向
+  * Camera tracks the user location with bearing from the compass.
    * Camera tracks the user location, with bearing provided by a compass.
    */
   static readonly TRACKING_COMPASS: number = 0x00000020;
   /**
-   * 相机跟踪用户位置和 GPS 方向
+   * Camera tracks the user location with bearing from GPS.
    * Camera tracks the user location, with bearing provided by GPS.
    */
   static readonly TRACKING_GPS: number = 0x00000022;
   /**
-   * 相机跟踪用户位置，方向始终为北（0度）
+   * Camera tracks the user location with a fixed north-facing bearing (0 degrees).
    * Camera tracks the user location, with bearing always set to north (0).
    */
   static readonly TRACKING_GPS_NORTH: number = 0x00000024;
 
   /**
-   * 验证相机模式是否有效
+   * Validate whether the camera mode is supported.
    */
   static isValid(mode: number): boolean {
     return mode === CameraMode.NONE ||
@@ -53,7 +53,7 @@ export class CameraMode {
   }
 
   /**
-   * 判断是否是跟踪模式
+   * Determine whether the mode tracks the user.
    */
   static isTracking(mode: number): boolean {
     return mode === CameraMode.TRACKING ||
@@ -63,7 +63,7 @@ export class CameraMode {
   }
 
   /**
-   * 获取相机模式的名称
+   * Get the camera mode name.
    */
   static getName(mode: number): string {
     switch (mode) {

@@ -1,20 +1,20 @@
 import geoLocationManager from '@ohos.geoLocationManager';
 
 /**
- * 位置引擎请求配置
+ * Location engine request configuration.
  */
 export class LocationEngineRequest {
-  // 更新间隔（毫秒）
+  // Update interval (milliseconds)
   interval: number = 1000;
-  // 最快更新间隔（毫秒）
+  // Fastest update interval (milliseconds)
   fastestInterval: number = 1000;
-  // 最小位移距离（米）
+  // Minimum displacement (meters)
   minDisplacement: number = 0;
-  // 优先级
+  // Priority
   priority: geoLocationManager.LocationRequestPriority = geoLocationManager.LocationRequestPriority.FIRST_FIX;
-  // 场景
+  // Scenario
   scenario: geoLocationManager.LocationRequestScenario = geoLocationManager.LocationRequestScenario.NAVIGATION;
-  // 最大精度
+  // Maximum accuracy
   maxAccuracy: number = 0;
 
   constructor(builder?: LocationEngineRequestBuilder) {
@@ -34,7 +34,7 @@ export class LocationEngineRequest {
 }
 
 /**
- * 位置引擎请求建造者
+ * Builder for `LocationEngineRequest`.
  */
 export class LocationEngineRequestBuilder {
   interval?: number;

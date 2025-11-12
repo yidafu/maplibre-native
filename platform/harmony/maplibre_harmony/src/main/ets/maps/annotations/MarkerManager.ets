@@ -47,12 +47,12 @@ export class MarkerManager {
   private infoWindowManager: InfoWindowManager;
   private annotationViewManager: AnnotationViewManager;
   private iconManager: IconManager;
-  // Marker ID → Marker
+  // Marker ID -> Marker
   private markerMap: Map<number, Marker> = new Map();
-  // Marker ID → Icon (NAPI markers do not retain icon references)
+  // Marker ID -> Icon (NAPI markers do not retain icon references)
   // IconManager uses the Icon object as the key to ensure proper ref counting
   private markerIconMap: Map<number, Icon> = new Map();
-  // Marker ID → InfoWindowStyle (per-marker InfoWindow configuration)
+  // Marker ID -> InfoWindowStyle (per-marker InfoWindow configuration)
   private markerInfoWindowStyleMap: Map<number, InfoWindowStyle> = new Map();
   // Event listeners
   private onMarkerClickListener: OnMarkerClickListener | null = null;
@@ -72,7 +72,7 @@ export class MarkerManager {
    */
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
-    // ✅ Reuse the MapLibreMap InfoWindowManager (already wired with UI callbacks)
+    // Reuse the MapLibreMap InfoWindowManager (already wired with UI callbacks)
     // Instead of creating a new instance that lacks those callbacks
     this.infoWindowManager = mapLibreMap.getInfoWindowManager();
     this.annotationViewManager = mapLibreMap.getAnnotationViewManager();
@@ -116,7 +116,7 @@ export class MarkerManager {
 
     class StyleLoadedListenerImpl implements OnStyleLoadedListener {
       onStyleLoaded(style: Style | null): void {
-        console.warn('[MarkerManager] ⚠️ Style reloaded, reinitializing MarkerLayerManager...');
+        console.warn('[MarkerManager] Warning: style reloaded, reinitializing MarkerLayerManager...');
 
         // Reinitialize MarkerLayerManager
         manager.markerLayerManager.initialize();
@@ -187,7 +187,7 @@ export class MarkerManager {
 
     this.mapLibreMap.addOnMapLongClickListener(new MapLongClickListenerImpl(this));
 
-    // Touch-move listener (drag updates) – mirrors Android MoveGestureDetector.onMove
+    // Touch-move listener (drag updates) - mirrors Android MoveGestureDetector.onMove
     class TouchMoveListenerImpl implements OnTouchMoveListener {
       manager: MarkerManager;
 
@@ -202,7 +202,7 @@ export class MarkerManager {
 
     this.mapLibreMap.addOnTouchMoveListener(new TouchMoveListenerImpl(this));
 
-    // Touch-up listener (drag end) – mirrors Android onMoveEnd and iOS UIGestureRecognizerStateEnded
+    // Touch-up listener (drag end) - mirrors Android onMoveEnd and iOS UIGestureRecognizerStateEnded
     class TouchUpListenerImpl implements OnTouchUpListener {
       manager: MarkerManager;
 
@@ -264,13 +264,13 @@ export class MarkerManager {
    * @returns Located marker, or null if none
    */
   private queryMarkerAtPoint(x: number, y: number): Marker | null {
-    // 🎯 Based on Android AnnotationManager.getMarkerHitFromTouchArea:
-    // Use 1.5× the largest icon dimension as hit area.
+    // Based on Android AnnotationManager.getMarkerHitFromTouchArea:
+    // Use 1.5x the largest icon dimension as hit area.
     // Android reference:
     //   int touchSurfaceWidth = (int) (iconManager.getHighestIconHeight() * 1.5);
     //   int touchSurfaceHeight = (int) (iconManager.getHighestIconWidth() * 1.5);
 
-    // Default hit area in logical pixels (Android minimalTouchSize ≈ 32dp)
+    // Default hit area in logical pixels (Android minimalTouchSize ~32 dp)
     const DEFAULT_TOUCH_SIZE = 48;
     let touchWidth = DEFAULT_TOUCH_SIZE;
     let touchHeight = DEFAULT_TOUCH_SIZE;
@@ -313,7 +313,7 @@ export class MarkerManager {
       return null;
     }
 
-    // Single feature → return the corresponding marker directly
+    // Single feature -> return the corresponding marker directly
     if (features.length === 1) {
       const featureId = features[0].id;
       console.info(`[MarkerManager] Single feature - ID: ${featureId}, type: ${typeof featureId}`);
@@ -326,7 +326,7 @@ export class MarkerManager {
       return null;
     }
 
-    // Multiple features → resolve closest marker via hit test
+    // Multiple features -> resolve closest marker via hit test
     // See Android MarkerHitResolver.execute()
     const candidateIds: number[] = [];
     for (const feature of features) {
@@ -395,7 +395,7 @@ export class MarkerManager {
       let bitmapHeight = icon.getHeight()
       console.info(`[MarkerManager] Marker ${markerId} - original icon size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
-      // Enforce minimal touch target (Android reference ≈32dp)
+      // Enforce minimal touch target (Android reference ~32 dp)
       const minimalTouchSize = 48;
       if (bitmapHeight < minimalTouchSize) {
         bitmapHeight = minimalTouchSize;
@@ -465,7 +465,7 @@ export class MarkerManager {
         return false;
       }
 
-      console.info(`[MarkerManager] 🎯 Drag START: marker id=${marker.getId()}`);
+      console.info(`[MarkerManager] Drag START: marker id=${marker.getId()}`);
 
       // Initiate drag
       this.draggingMarker = marker;
@@ -631,7 +631,7 @@ export class MarkerManager {
       marker.setMapLibreMap(this.mapLibreMap);
       this.markerMap.set(featureId, marker);
 
-      // Store marker → icon mapping (NAPI marker keeps only icon id)
+      // Store marker -> icon mapping (NAPI marker keeps only icon id)
       this.markerIconMap.set(featureId, icon);
 
       // Persist InfoWindow style
@@ -704,7 +704,7 @@ export class MarkerManager {
         marker.setMapLibreMap(this.mapLibreMap);
         this.markerMap.set(featureId, marker);
 
-        // Track marker → icon mapping
+        // Track marker -> icon mapping
         this.markerIconMap.set(featureId, icon);
 
         // Store InfoWindow style
@@ -893,11 +893,11 @@ export class MarkerManager {
    *
    * // Incorrect: reusing a freed icon
    * const oldIcon = marker.getIcon();
-   * const newMarker = new MarkerOptions().position(latLng).icon(oldIcon); // ❌ Wrong!
+   * const newMarker = new MarkerOptions().position(latLng).icon(oldIcon); // Wrong
    *
    * // Correct: obtain a fresh icon
    * const factory = IconFactory.getInstance();
-   * const newIcon = await factory.fromResource($r('app.media.marker')); // ✓ Correct
+   * const newIcon = await factory.fromResource($r('app.media.marker')); // Correct
    * const newMarker = new MarkerOptions().position(latLng).icon(newIcon);
    * ```
    */
@@ -1138,10 +1138,10 @@ export class MarkerManager {
           return true;
         }
       } catch (error) {
-        console.error(`[MarkerManager] ❌ Error in onMarkerClickListener: ${error}`);
+        console.error(`[MarkerManager] Error in onMarkerClickListener: ${error}`);
       }
     } else {
-      console.warn(`[MarkerManager] ⚠️ No onMarkerClickListener set`);
+      console.warn('[MarkerManager] Warning: onMarkerClickListener is not set');
     }
 
     // Default behavior: select marker and show InfoWindow
@@ -1341,7 +1341,7 @@ export class MarkerManager {
       //
       // iOS MLNMapView.mm:5745-5792:
       // centerPoint = CGPointMake(CGRectGetMidX(positioningRect), CGRectGetMinY(positioningRect))
-      // → Position InfoWindow above marker icon
+      // Position InfoWindow above the marker icon
       //
       // Hence offsetY should be negative icon height to shift upward
       if (!style) {

@@ -1,9 +1,9 @@
 /**
- * 位置点击监听器
+ * Listener for location component clicks.
  */
 export interface OnLocationClickListener {
   /**
-   * 当用户点击位置图标时调用
+   * Invoked when the user taps the location indicator.
    */
   onLocationComponentClick(): void;
 }

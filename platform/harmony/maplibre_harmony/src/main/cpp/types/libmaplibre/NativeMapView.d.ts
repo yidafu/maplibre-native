@@ -20,8 +20,8 @@ import type { Light } from './light/Light';
 // ==================== Type Definitions ====================
 
 /**
- * 经纬度坐标接口
- * 注意：LatLng 已改为 ETS 层实现，这里定义为接口以保持类型兼容
+ * Latitude/longitude coordinate interface.
+ * Note: LatLng is implemented in the ETS layer; this interface preserves type compatibility.
  */
 export interface LatLng {
   latitude: number;
@@ -29,8 +29,8 @@ export interface LatLng {
 }
 
 /**
- * 经纬度边界接口
- * 注意：LatLngBounds 在 ETS 层实现，这里定义接口以保持类型兼容
+ * Latitude/longitude bounds interface.
+ * Note: LatLngBounds is implemented in the ETS layer; this interface preserves type compatibility.
  */
 export interface LatLngBounds {
   north: number;
@@ -40,8 +40,8 @@ export interface LatLngBounds {
 }
 
 /**
- * 边距接口
- * 注意：EdgeInsets 在 ETS 层实现，这里定义接口以保持类型兼容
+ * Edge insets interface.
+ * Note: EdgeInsets is implemented in the ETS layer; this interface preserves type compatibility.
  */
 export interface EdgeInsets {
   top: number;
@@ -51,8 +51,8 @@ export interface EdgeInsets {
 }
 
 /**
- * 相机位置接口
- * 注意：CameraPosition 在 ETS 层实现，这里定义接口以保持类型兼容
+ * Camera position interface.
+ * Note: CameraPosition is implemented in the ETS layer; this interface preserves type compatibility.
  */
 export interface CameraPosition {
   target: LatLng;
@@ -62,23 +62,23 @@ export interface CameraPosition {
 }
 
 /**
- * 相机选项接口
- * 用于设置相机参数
+ * Camera options interface.
+ * Used to configure camera parameters.
  */
 export interface CameraOptions {
-  /** 中心点坐标 */
+  /** Center coordinate. */
   center?: LatLng;
 
-  /** 缩放级别 */
+  /** Zoom level. */
   zoom?: number;
 
-  /** 方位角（度） */
+  /** Bearing in degrees. */
   bearing?: number;
 
-  /** 俯仰角（度） */
+  /** Pitch in degrees. */
   pitch?: number;
 
-  /** 边距 */
+  /** Padding. */
   padding?: EdgeInsets;
 }
 
@@ -121,7 +121,7 @@ export type OnDidBecomeIdleListener = () => void;
 export type OnSourceChangedListener = (id: string) => void;
 
 /**
- * 矩形接口（用于查询等操作）
+ * Rectangle interface (used for queries and other operations).
  */
 export interface Rect {
   left: number;
@@ -131,7 +131,7 @@ export interface Rect {
 }
 
 /**
- * 原生 ViewAnnotation 锚点
+ * Native ViewAnnotation anchor.
  */
 export interface NativeViewAnnotationAnchor {
   latitude: number;
@@ -139,7 +139,7 @@ export interface NativeViewAnnotationAnchor {
 }
 
 /**
- * 原生 ViewAnnotation 偏移
+ * Native ViewAnnotation offset.
  */
 export interface NativeViewAnnotationCenterOffset {
   dx: number;
@@ -147,7 +147,7 @@ export interface NativeViewAnnotationCenterOffset {
 }
 
 /**
- * 原生 ViewAnnotation 创建/更新选项
+ * Native ViewAnnotation creation/update options.
  */
 export interface NativeViewAnnotationOptions {
   anchor: NativeViewAnnotationAnchor;
@@ -164,7 +164,7 @@ export interface NativeViewAnnotationOptions {
 }
 
 /**
- * 原生 ViewAnnotation 帧信息
+ * Native ViewAnnotation frame information.
  */
 export interface NativeViewAnnotationFrame {
   id: number;
@@ -186,531 +186,531 @@ export interface NativeViewAnnotationFrame {
 
 /**
  * MapLibre Native Map View
- * 提供地图渲染和交互的底层 C++ 绑定
+ * Provides the underlying C++ bindings for map rendering and interaction.
  */
 export class NativeMapView {
   /**
-   * 查询数据源要素
-   * @param sourceId 数据源 ID
-   * @param sourceLayerIds 源图层 ID 数组
-   * @param filter 过滤表达式
-   * @returns IFeature 数组
+   * Query source features.
+   * @param sourceId Source identifier.
+   * @param sourceLayerIds Array of source layer identifiers.
+   * @param filter Filter expression.
+   * @returns Array of IFeature.
    */
   querySourceFeatures(sourceId: string, sourceLayerIds: string[] | undefined, filter: ExpressionLiteral | undefined): IFeature[]
   
   /**
-   * 创建 NativeMapView 实例
-   * @param cachePath 应用缓存目录路径（必需），推荐使用 context.cacheDir + '/maplibre'
+   * Create a NativeMapView instance.
+   * @param cachePath Required application cache directory path. Suggested value: context.cacheDir + '/maplibre'.
    */
   constructor(cachePath: string);
 
   // ========== View Management ==========
 
   /**
-   * 调整视图大小
-   * @param width 宽度（逻辑像素）
-   * @param height 高度（逻辑像素）
+   * Resize the map view.
+   * @param width Width in logical pixels.
+   * @param height Height in logical pixels.
    */
   resizeView(width: number, height: number): void;
 
   /**
-   * 设置内容边距（对齐 Android API）
-   * @param padding 边距数组 [top, left, bottom, right]（逻辑像素）
+   * Set content padding (aligned with the Android API).
+   * @param padding Padding array [top, left, bottom, right] in logical pixels.
    */
   setContentPadding(padding: number[]): void;
 
   /**
-   * 获取内容边距（对齐 Android API）
-   * @returns 边距数组 [top, left, bottom, right]
+   * Get the current content padding (aligned with the Android API).
+   * @returns Padding array [top, left, bottom, right].
    */
   getContentPadding(): number[];
 
   /**
-   * 获取设备像素比（对齐 Android API）
-   * @returns 像素比（例如：2.0、3.0）
+   * Get the device pixel ratio (aligned with the Android API).
+   * @returns Pixel ratio (for example 2.0 or 3.0).
    */
   getPixelRatio(): number;
 
   /**
-   * 根据设备像素比调整矩形尺寸（对齐 Android API）
-   * @param rectangle 输入矩形
-   * @returns 调整后的矩形
+   * Adjust a rectangle based on the device pixel ratio (aligned with the Android API).
+   * @param rectangle Input rectangle.
+   * @returns Adjusted rectangle.
    */
   getDensityDependantRectangle(rectangle: Rect): Rect;
 
   /**
-   * 设置本地表意文字字体族（对齐 Android/iOS API）
-   * 用于本地渲染 CJK 字符，避免从网络加载大量字形数据
-   * 注意：此操作会重新初始化 Renderer 和重新加载样式
-   * @param fontFamily 字体族名称（如 "HarmonyOS_Sans"），null 表示禁用本地渲染
+   * Configure the local ideograph font family (aligned with the Android/iOS API).
+   * Used to render CJK glyphs locally to avoid downloading large font data sets.
+   * Note: This operation reinitializes the renderer and reloads the style.
+   * @param fontFamily Font family name (for example, "HarmonyOS_Sans"). Null disables the local renderer.
    */
   setLocalIdeographFontFamily(fontFamily: string | null): void;
 
   /**
-   * 获取当前配置的本地表意文字字体族（对齐 Android/iOS API）
-   * @returns 当前配置的字体族名称，null 表示已禁用
+   * Get the currently configured local ideograph font family (aligned with the Android/iOS API).
+   * @returns The configured font family name, or null if disabled.
    */
   getLocalIdeographFontFamily(): string | null;
 
   /**
-   * 设置原生窗口
-   * @param surfaceId Surface ID
+   * Set the native window.
+   * @param surfaceId Surface identifier.
    */
   setNativeWindow(surfaceId: BigInt): void;
 
   /**
-   * 设置原生窗口（带尺寸参数）
-   * @param surfaceId Surface ID
-   * @param width 宽度（逻辑像素）
-   * @param height 高度（逻辑像素）
+   * Set the native window with explicit dimensions.
+   * @param surfaceId Surface identifier.
+   * @param width Width in logical pixels.
+   * @param height Height in logical pixels.
    */
   setNativeWindowWithSize(surfaceId: BigInt, width: number, height: number): void;
 
   /**
-   * 强制重置渲染器与上下文（硬重置）
-   * - 释放当前渲染器/线程
-   * - 清空并重建缓存目录
-   * - 重新创建渲染器与上下文
-   * - 若已绑定窗口则自动重新绑定并恢复尺寸
+   * Force-reset the renderer and rendering context (hard reset).
+   * - Release the current renderer/thread.
+   * - Clear and rebuild the cache directory.
+   * - Recreate the renderer and context.
+   * - Rebind the window and restore its size if already attached.
    */
   hardReset(): void;
 
   /**
-   * 销毁地图实例并释放所有资源
+   * Destroy the map instance and release all resources.
    *
-   * 线程隔离模式下会销毁：
-   * - EGL Context（实例独占）
-   * - EGL Surface（实例独占）
-   * - Render Thread（实例独占）
-   * - Map 对象和相关资源
+   * In thread-isolation mode this releases:
+   * - EGL context (instance-specific).
+   * - EGL surface (instance-specific).
+   * - Render thread (instance-specific).
+   * - Map object and related resources.
    *
-   * 不会销毁：
-   * - EGL Display（进程共享）
+   * Not released:
+   * - EGL display (shared by the process).
    *
-   * 注意：
-   * - 调用后地图实例不可再使用
-   * - 可以安全地多次调用（有防重入保护）
-   * - 建议在组件 aboutToDisappear() 时调用
+   * Notes:
+   * - The map instance becomes unusable after destruction.
+   * - Safe to call multiple times (re-entrancy guard in place).
+   * - Recommended to call during component aboutToDisappear().
    */
   destroy(): void;
 
   /**
-   * 异步销毁地图资源（参考 Android/iOS 模式）
-   * 使用异步回调而不是硬编码等待，防止阻塞主线程
-   * @param callback 销毁完成后的回调函数
+   * Destroy map resources asynchronously (similar to Android/iOS).
+   * Uses an asynchronous callback instead of a blocking wait to avoid blocking the main thread.
+   * @param callback Callback invoked when destruction completes.
    */
   destroyAsync(callback: () => void): void;
 
   // ========== Style Management ==========
 
   /**
-   * 获取当前样式 URL
-   * @returns 样式 URL
+   * Get the current style URL.
+   * @returns Style URL.
    */
   getStyleUrl(): string;
 
   /**
-   * 设置样式 URL
-   * @param url 样式 URL
+   * Set the style URL.
+   * @param url Style URL.
    */
   setStyleUrl(url: string): void;
 
   /**
-   * 获取当前样式 JSON
-   * @returns 样式 JSON 字符串
+   * Get the current style JSON.
+   * @returns Style JSON string.
    */
   getStyleJson(): string;
 
   /**
-   * 设置样式 JSON
-   * @param json 样式 JSON 字符串
+   * Set the style JSON.
+   * @param json Style JSON string.
    */
   setStyleJson(json: string): void;
 
   /**
-   * 获取样式对象
-   * @returns Style 对象，如果样式未加载则返回 null
+   * Get the style object.
+   * @returns Style instance, or null if the style is not loaded.
    */
   getStyle(): Style | null;
 
   /**
-   * 设置经纬度边界
-   * @param bounds 边界对象
+   * Set latitude/longitude bounds.
+   * @param bounds Bounds object.
    */
   setLatLngBounds(bounds: LatLngBounds | null): void;
 
   // ========== Camera Control ==========
 
   /**
-   * 取消所有正在进行的过渡动画
+   * Cancel all active transitions.
    */
   cancelTransitions(): void;
 
   /**
-   * 设置手势进行状态
-   * @param inProgress 是否正在进行手势操作
+   * Set gesture-in-progress state.
+   * @param inProgress Whether gestures are currently active.
    */
   setGestureInProgress(inProgress: boolean): void;
 
   /**
-   * 平移地图
-   * @param dx X 方向偏移量（像素）
-   * @param dy Y 方向偏移量（像素）
-   * @param duration 动画持续时间（毫秒）
+   * Pan the map.
+   * @param dx X-axis offset in pixels.
+   * @param dy Y-axis offset in pixels.
+   * @param duration Animation duration in milliseconds.
    */
   moveBy(dx: number, dy: number, duration: number): void;
 
   /**
-   * 立即跳转到指定相机位置（无动画）
-   * @param angle 方位角（度）
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @param pitch 俯仰角（度）
-   * @param zoom 缩放级别
-   * @param padding 可选的边距数组 [top, left, bottom, right]
+   * Jump to a camera position immediately (without animation).
+   * @param angle Bearing in degrees.
+   * @param latitude Latitude.
+   * @param longitude Longitude.
+   * @param pitch Pitch in degrees.
+   * @param zoom Zoom level.
+   * @param padding Optional padding array [top, left, bottom, right].
    */
   jumpTo(angle: number, latitude: number, longitude: number, pitch: number, zoom: number, padding?: number[]): void;
 
   /**
-   * 平滑过渡到指定相机位置
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
+   * Smoothly transition to a camera position.
+   * @param options Camera options.
+   * @param duration Animation duration in milliseconds.
    */
   easeTo(options: CameraOptions, duration: number): void;
 
   /**
-   * 飞行动画到指定相机位置
-   * @param options 相机选项
-   * @param duration 动画持续时间（毫秒）
+   * Fly the camera to a position.
+   * @param options Camera options.
+   * @param duration Animation duration in milliseconds.
    */
   flyTo(options: CameraOptions, duration: number): void;
 
   // ========== Position and Camera ==========
 
   /**
-   * 获取地图中心点坐标
-   * @returns 经纬度坐标
+   * Get the map center coordinate.
+   * @returns Latitude/longitude coordinate.
    */
   getLatLng(): LatLng;
 
   /**
-   * 设置地图中心点坐标
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @param padding 可选的边距数组
-   * @param duration 可选的动画持续时间（毫秒）
+   * Set the map center coordinate.
+   * @param latitude Latitude.
+   * @param longitude Longitude.
+   * @param padding Optional padding array.
+   * @param duration Optional animation duration in milliseconds.
    */
   setLatLng(latitude: number, longitude: number, padding?: number[], duration?: number): void;
 
   /**
-   * 获取适应经纬度边界的相机配置
-   * @param bounds 边界对象
-   * @param top 上边距
-   * @param left 左边距
-   * @param bottom 下边距
-   * @param right 右边距
-   * @param bearing 可选的方位角
-   * @param tilt 可选的倾斜角
-   * @returns 相机位置对象
+   * Get camera parameters that fit given latitude/longitude bounds.
+   * @param bounds Bounds object.
+   * @param top Top padding.
+   * @param left Left padding.
+   * @param bottom Bottom padding.
+   * @param right Right padding.
+   * @param bearing Optional bearing.
+   * @param tilt Optional tilt.
+   * @returns Camera position object.
    */
   getCameraForLatLngBounds(bounds: LatLngBounds, top: number, left: number, bottom: number, right: number,
     bearing?: number, tilt?: number): CameraPosition;
 
   /**
-   * 获取适应几何对象的相机配置
-   * @param geometry 几何对象
-   * @param top 上边距
-   * @param left 左边距
-   * @param bottom 下边距
-   * @param right 右边距
-   * @param bearing 可选的方位角
-   * @param tilt 可选的倾斜角
-   * @returns 相机位置对象
+   * Get camera parameters that fit a geometry.
+   * @param geometry Geometry object.
+   * @param top Top padding.
+   * @param left Left padding.
+   * @param bottom Bottom padding.
+   * @param right Right padding.
+   * @param bearing Optional bearing.
+   * @param tilt Optional tilt.
+   * @returns Camera position object.
    */
   getCameraForGeometry(geometry: Geometry, top: number, left: number, bottom: number, right: number, bearing?: number,
     tilt?: number): CameraPosition;
 
   /**
-   * 设置网络可达性状态
-   * @param status 是否可达
+   * Configure network reachability.
+   * @param status Whether the network is reachable.
    */
   setReachability(status: boolean): void;
 
   /**
-   * 重置地图位置到初始状态
+   * Reset the map position to its initial value.
    */
   resetPosition(): void;
 
   /**
-   * 获取当前相机位置
-   * @returns 相机位置对象
+   * Get the current camera position.
+   * @returns Camera position object.
    */
   getCameraPosition(): CameraPosition;
 
   // ========== Pitch Control ==========
 
   /**
-   * 获取当前俯仰角
-   * @returns 俯仰角（度）
+   * Get the current pitch.
+   * @returns Pitch in degrees.
    */
   getPitch(): number;
 
   /**
-   * 设置俯仰角
-   * @param pitch 俯仰角（度，0-60）
-   * @param duration 可选的动画持续时间（毫秒）
+   * Set the pitch.
+   * @param pitch Pitch in degrees (0-60).
+   * @param duration Optional animation duration in milliseconds.
    */
   setPitch(pitch: number, duration?: number): void;
 
   /**
-   * 设置最小俯仰角
-   * @param pitch 最小俯仰角（度）
+   * Set the minimum pitch.
+   * @param pitch Minimum pitch in degrees.
    */
   setMinPitch(pitch: number): void;
 
   /**
-   * 获取最小俯仰角
-   * @returns 最小俯仰角（度）
+   * Get the minimum pitch.
+   * @returns Minimum pitch in degrees.
    */
   getMinPitch(): number;
 
   /**
-   * 设置最大俯仰角
-   * @param pitch 最大俯仰角（度）
+   * Set the maximum pitch.
+   * @param pitch Maximum pitch in degrees.
    */
   setMaxPitch(pitch: number): void;
 
   /**
-   * 获取最大俯仰角
-   * @returns 最大俯仰角（度）
+   * Get the maximum pitch.
+   * @returns Maximum pitch in degrees.
    */
   getMaxPitch(): number;
 
   // ========== Zoom Control ==========
 
   /**
-   * 设置缩放级别
-   * @param zoom 缩放级别
-   * @param cx 可选的中心点 X 坐标
-   * @param cy 可选的中心点 Y 坐标
-   * @param duration 可选的动画持续时间（毫秒）
+   * Set the zoom level.
+   * @param zoom Zoom level.
+   * @param cx Optional center X coordinate.
+   * @param cy Optional center Y coordinate.
+   * @param duration Optional animation duration in milliseconds.
    */
   setZoom(zoom: number, cx?: number, cy?: number, duration?: number): void;
 
   /**
-   * 获取当前缩放级别
-   * @returns 缩放级别
+   * Get the current zoom level.
+   * @returns Zoom level.
    */
   getZoom(): number;
 
   /**
-   * 重置缩放级别到默认值
+   * Reset the zoom level to its default value.
    */
   resetZoom(): void;
 
   /**
-   * 设置最小缩放级别
-   * @param zoom 最小缩放级别
+   * Set the minimum zoom level.
+   * @param zoom Minimum zoom level.
    */
   setMinZoom(zoom: number): void;
 
   /**
-   * 获取最小缩放级别
-   * @returns 最小缩放级别
+   * Get the minimum zoom level.
+   * @returns Minimum zoom level.
    */
   getMinZoom(): number;
 
   /**
-   * 设置最大缩放级别
-   * @param zoom 最大缩放级别
+   * Set the maximum zoom level.
+   * @param zoom Maximum zoom level.
    */
   setMaxZoom(zoom: number): void;
 
   /**
-   * 获取最大缩放级别
-   * @returns 最大缩放级别
+   * Get the maximum zoom level.
+   * @returns Maximum zoom level.
    */
   getMaxZoom(): number;
 
   // ========== Rotation and Bearing ==========
 
   /**
-   * 旋转地图
-   * @param sx 起始点 X 坐标
-   * @param sy 起始点 Y 坐标
-   * @param ex 结束点 X 坐标
-   * @param ey 结束点 Y 坐标
-   * @param duration 可选的动画持续时间（毫秒）
+   * Rotate the map.
+   * @param sx Start point X coordinate.
+   * @param sy Start point Y coordinate.
+   * @param ex End point X coordinate.
+   * @param ey End point Y coordinate.
+   * @param duration Optional animation duration in milliseconds.
    */
   rotateBy(sx: number, sy: number, ex: number, ey: number, duration?: number): void;
 
   /**
-   * 设置方位角
-   * @param degrees 方位角（度）
-   * @param duration 可选的动画持续时间（毫秒）
+   * Set the bearing.
+   * @param degrees Bearing in degrees.
+   * @param duration Optional animation duration in milliseconds.
    */
   setBearing(degrees: number, duration?: number): void;
 
   /**
-   * 设置方位角（以指定点为中心）
-   * @param degrees 方位角（度）
-   * @param fx 中心点 X 坐标
-   * @param fy 中心点 Y 坐标
-   * @param duration 可选的动画持续时间（毫秒）
+   * Set the bearing using a custom focal point.
+   * @param degrees Bearing in degrees.
+   * @param fx Focal point X coordinate.
+   * @param fy Focal point Y coordinate.
+   * @param duration Optional animation duration in milliseconds.
    */
   setBearingXY(degrees: number, fx: number, fy: number, duration?: number): void;
 
   /**
-   * 获取当前方位角
-   * @returns 方位角（度）
+   * Get the current bearing.
+   * @returns Bearing in degrees.
    */
   getBearing(): number;
 
   /**
-   * 重置方位角到正北方向（0度）
+   * Reset the bearing to due north (0 degrees).
    */
   resetNorth(): void;
 
   // ========== Coordinate Bounds ==========
 
   /**
-   * 设置可见坐标边界
-   * @param coordinates 坐标数组
-   * @param padding 边距对象
-   * @param direction 方向（度）
-   * @param duration 动画持续时间（毫秒）
+   * Set the visible coordinate bounds.
+   * @param coordinates Coordinate array.
+   * @param padding Padding object.
+   * @param direction Bearing in degrees.
+   * @param duration Animation duration in milliseconds.
    */
   setVisibleCoordinateBounds(coordinates: LatLng[], padding: EdgeInsets, direction: number, duration: number): void;
 
   /**
-   * 获取可见坐标边界
-   * @returns 坐标数组
+   * Get the visible coordinate bounds.
+   * @returns Coordinate array.
    */
   getVisibleCoordinateBounds(): LatLng[];
 
   // ========== Snapshot ==========
 
   /**
-   * 请求一次地图快照，渲染完成后会触发回调。
+   * Request a single map snapshot; the callback triggers after rendering completes.
    */
   scheduleSnapshot(): void;
 
   /**
-   * 注册快照完成回调。
-   * @param listener 回调函数，参数为快照结果对象。
+   * Register a snapshot completion callback.
+   * @param listener Callback that receives the snapshot result.
    */
   addOnSnapshotReadyListener(listener: (result: MapViewSnapshotPayload) => void): void;
 
   /**
-   * 移除快照完成回调。
-   * @param listener 需要移除的回调函数。
+   * Remove the snapshot completion callback.
+   * @param listener Callback to unregister.
    */
   removeOnSnapshotReadyListener(listener: (result: MapViewSnapshotPayload) => void): void;
 
   /**
-   * 注册快照错误回调。
-   * @param listener 回调函数，参数为错误信息。
+   * Register a snapshot error callback.
+   * @param listener Callback that receives the error message.
    */
   addOnSnapshotErrorListener(listener: (message: string) => void): void;
 
   /**
-   * 移除快照错误回调。
-   * @param listener 需要移除的回调函数。
+   * Remove the snapshot error callback.
+   * @param listener Callback to unregister.
    */
   removeOnSnapshotErrorListener(listener: (message: string) => void): void;
 
   // ========== Annotations ==========
 
   /**
-   * 更新标记位置
-   * @param markerId 标记 ID
-   * @param lat 纬度
-   * @param lon 经度
-   * @param iconId 图标 ID
+   * Update a marker position.
+   * @param markerId Marker identifier.
+   * @param lat Latitude.
+   * @param lon Longitude.
+   * @param iconId Icon identifier.
    */
   updateMarker(markerId: number, lat: number, lon: number, iconId: string): void;
 
   /**
-   * 添加标记
-   * @param markers 标记数组
-   * @returns 标记 ID 数组
+   * Add markers.
+   * @param markers Marker array.
+   * @returns Array of marker identifiers.
    */
   addMarkers(markers: Marker[]): number[];
 
   /**
-   * 添加折线
-   * @param polylines 折线数组
-   * @returns 折线 ID 数组
+   * Add polylines.
+   * @param polylines Polyline array.
+   * @returns Array of polyline identifiers.
    */
   addPolylines(polylines: Polyline[]): number[];
 
   /**
-   * 添加多边形
-   * @param polygons 多边形数组
-   * @returns 多边形 ID 数组
+   * Add polygons.
+   * @param polygons Polygon array.
+   * @returns Array of polygon identifiers.
    */
   addPolygons(polygons: Polygon[]): number[];
 
   /**
-   * 添加 ViewAnnotation
-   * @param options 注记配置
-   * @returns 注记 ID，失败返回负数
+   * Add a ViewAnnotation.
+   * @param options Annotation options.
+   * @returns Annotation identifier, negative values indicate failure.
    */
   addViewAnnotation(options: NativeViewAnnotationOptions): number;
 
   /**
-   * 更新 ViewAnnotation
-   * @param annotationId 注记 ID
-   * @param options 注记配置
-   * @returns 是否更新成功
+   * Update a ViewAnnotation.
+   * @param annotationId Annotation identifier.
+   * @param options Annotation options.
+   * @returns Whether the update succeeded.
    */
   updateViewAnnotation(annotationId: number, options: NativeViewAnnotationOptions): boolean;
 
   /**
-   * 移除 ViewAnnotation
-   * @param annotationId 注记 ID
-   * @returns 是否移除成功
+   * Remove a ViewAnnotation.
+   * @param annotationId Annotation identifier.
+   * @returns Whether the annotation was removed.
    */
   removeViewAnnotation(annotationId: number): boolean;
 
   /**
-   * 获取 ViewAnnotation 帧信息
-   * @returns ViewAnnotation 帧数组
+   * Get ViewAnnotation frame information.
+   * @returns Array of ViewAnnotation frames.
    */
   getViewAnnotationFrames(): NativeViewAnnotationFrame[];
 
   /**
-   * 更新折线
-   * @param polyline 折线对象（必须已添加到地图）
+   * Update a polyline.
+   * @param polyline Polyline object (must already exist on the map).
    */
   updatePolyline(polyline: Polyline): void;
 
   /**
-   * 更新多边形
-   * @param polygon 多边形对象（必须已添加到地图）
+   * Update a polygon.
+   * @param polygon Polygon object (must already exist on the map).
    */
   updatePolygon(polygon: Polygon): void;
 
   /**
-   * 移除注记
-   * @param ids 注记 ID 数组
+   * Remove annotations.
+   * @param ids Array of annotation identifiers.
    */
   removeAnnotations(ids: number[]): void;
 
   /**
-   * 添加注记图标
-   * @param symbol 符号名称
-   * @param width 宽度
-   * @param height 高度
-   * @param scale 缩放比例
-   * @param pixels 像素数据
+   * Add an annotation icon.
+   * @param symbol Symbol name.
+   * @param width Width.
+   * @param height Height.
+   * @param scale Scale.
+   * @param pixels Pixel data.
    */
   /**
-   * 添加标注图标（推荐方式）
+   * Add an annotation icon (recommended approach).
    *
-   * 使用 Icon 对象添加图标，性能更好，无需数据拷贝。
+   * Use an Icon instance to avoid extra data copies and improve performance.
    *
-   * @param icon Icon 对象（由 IconFactory 创建）
+   * @param icon Icon instance (created by IconFactory).
    *
    * @example
   * ```typescript
@@ -722,185 +722,185 @@ export class NativeMapView {
   addAnnotationIcon(icon: Icon): void;
 
   /**
-   * 添加标注图标（向后兼容方式）
+   * Add an annotation icon (legacy API).
    *
-   * 使用字节数组添加图标，需要手动转换 PixelMap 为字节数组。
-   * 此方式为向后兼容保留，建议使用 Icon 对象方式。
+   * Use a byte array converted manually from a PixelMap.
+   * Retained for backward compatibility; prefer the Icon-based API.
    *
-   * @param symbol 图标 ID
-   * @param width 宽度（像素）
-   * @param height 高度（像素）
-   * @param scale 缩放比例
-   * @param pixels 像素数据（RGBA 格式的 Uint8Array）
+   * @param symbol Icon identifier.
+   * @param width Width in pixels.
+   * @param height Height in pixels.
+   * @param scale Scale factor.
+   * @param pixels Pixel data in RGBA Uint8Array format.
    */
   addAnnotationIcon(symbol: string, width: number, height: number, scale: number, pixels: Uint8Array): void;
 
   /**
-   * 移除注记图标
-   * @param symbol 符号名称
+   * Remove an annotation icon.
+   * @param symbol Symbol name.
    */
   removeAnnotationIcon(symbol: string): void;
 
   /**
-   * 获取注记符号的顶部偏移像素
-   * @param symbolName 符号名称
-   * @returns 偏移像素值
+   * Get the top offset in pixels for an annotation symbol.
+   * @param symbolName Symbol name.
+   * @returns Offset value in pixels.
    */
   getTopOffsetPixelsForAnnotationSymbol(symbolName: string): number;
 
   // ========== Memory Management ==========
 
   /**
-   * 低内存警告回调
+   * Handle low-memory warnings.
    */
   onLowMemory(): void;
 
   // ========== Debug ==========
 
   /**
-   * 设置调试选项
-   * 使用位掩码来启用多个调试功能
-   * @param debugOptions 调试选项位掩码（MapDebugOptions 枚举值）
+   * Configure debug options.
+   * Uses a bitmask to enable multiple flags.
+   * @param debugOptions Debug options bitmask (MapDebugOptions enum).
    */
   setDebug(debugOptions: number): void;
 
   /**
-   * 获取当前调试选项
-   * @returns 当前启用的调试选项位掩码
+   * Get the current debug options.
+   * @returns Active debug options bitmask.
    */
   getDebug(): number;
 
   /**
-   * 快速开关调试模式（使用默认调试选项组合）
-   * 启用时会显示：瓦片边界、瓦片信息和碰撞框
-   * @param active 是否启用调试模式
+   * Quickly toggle debug mode (uses the default debug preset).
+   * Enables tile borders, tile information, and collision boxes.
+   * @param active Whether to enable debug mode.
    */
   setDebugActive(active: boolean): void;
 
   /**
-   * 检查是否处于调试模式
-   * @returns 是否有任何调试选项被启用
+   * Check whether any debug option is active.
+   * @returns True if at least one debug option is enabled.
    */
   isDebugActive(): boolean;
 
   // ========== Action Journal ==========
 
   /**
-   * 获取操作日志文件列表
-   * @returns 日志文件路径数组
+   * Get the list of action journal log files.
+   * @returns Array of log file paths.
    */
   getActionJournalLogFiles(): string[];
 
   /**
-   * 获取操作日志
-   * @returns 日志条目数组
+   * Get the action journal log entries.
+   * @returns Array of log entries.
    */
   getActionJournalLog(): string[];
 
   /**
-   * 清除操作日志
+   * Clear the action journal log.
    */
   clearActionJournalLog(): void;
 
   // ========== Loading Status ==========
 
   /**
-   * 检查地图是否完全加载
-   * @returns 是否完全加载
+   * Check whether the map is fully loaded.
+   * @returns True if fully loaded.
    */
   isFullyLoaded(): boolean;
 
   // ========== Coordinate Conversion ==========
 
   /**
-   * 获取指定纬度和缩放级别下每个物理像素对应的米数（乘以设备像素比后的像素）
-   * @param latitude 纬度
-   * @param zoom 缩放级别
-   * @returns 每像素米数
+   * Get meters-per-pixel at a latitude and zoom level (after applying the device pixel ratio).
+   * @param latitude Latitude.
+   * @param zoom Zoom level.
+   * @returns Meters per pixel.
    */
   getMetersPerPixelAtLatitude(latitude: number, zoom: number): number;
 
   /**
-   * 将经纬度转换为投影米坐标
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @returns 投影米坐标对象（对象字面量）
+   * Convert latitude/longitude to projected meters.
+   * @param latitude Latitude.
+   * @param longitude Longitude.
+   * @returns Object literal representing the projected meters.
    */
   projectedMetersForLatLng(latitude: number, longitude: number): { northing: number; easting: number; };
 
   /**
-   * 将经纬度转换为物理像素坐标（乘以设备像素比后的值）
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @returns 像素坐标（对象字面量，物理像素）
+   * Convert latitude/longitude to physical pixel coordinates (after applying the device pixel ratio).
+   * @param latitude Latitude.
+   * @param longitude Longitude.
+   * @returns Object literal representing pixel coordinates in physical pixels.
    */
   pixelForLatLng(latitude: number, longitude: number): { x: number; y: number; };
 
   /**
-   * 批量将经纬度转换为物理像素坐标（乘以设备像素比后的值）
-   * @param input 输入经纬度数组 [lat1, lon1, lat2, lon2, ...]
-   * @param output 输出像素坐标数组 [x1, y1, x2, y2, ...]（物理像素）
+   * Bulk convert latitude/longitude values to physical pixel coordinates (after applying the device pixel ratio).
+   * @param input Input latitude/longitude array [lat1, lon1, lat2, lon2, ...].
+   * @param output Output pixel array [x1, y1, x2, y2, ...] in physical pixels.
    */
   pixelsForLatLngs(input: number[], output: number[]): void;
 
   /**
-   * 将投影米坐标转换为经纬度
-   * @param northing 北向坐标
-   * @param easting 东向坐标
-   * @returns 经纬度坐标
+   * Convert projected meters to latitude/longitude.
+   * @param northing Northing.
+   * @param easting Easting.
+   * @returns Latitude/longitude coordinate.
    */
   latLngForProjectedMeters(northing: number, easting: number): LatLng;
 
   /**
-   * 将物理像素坐标转换为经纬度（乘以设备像素比后的值）
-   * @param x X 坐标（物理像素）
-   * @param y Y 坐标（物理像素）
-   * @returns 经纬度坐标
+   * Convert physical pixel coordinates to latitude/longitude (after applying the device pixel ratio).
+   * @param x X coordinate in physical pixels.
+   * @param y Y coordinate in physical pixels.
+   * @returns Latitude/longitude coordinate.
    */
   latLngForPixel(x: number, y: number): LatLng;
 
   /**
-   * 批量将物理像素坐标转换为经纬度（乘以设备像素比后的值）
-   * @param input 输入像素坐标数组 [x1, y1, x2, y2, ...]（物理像素）
-   * @param output 输出经纬度数组 [lat1, lon1, lat2, lon2, ...]
+   * Bulk convert physical pixel coordinates to latitude/longitude (after applying the device pixel ratio).
+   * @param input Input pixel array [x1, y1, x2, y2, ...] in physical pixels.
+   * @param output Output latitude/longitude array [lat1, lon1, lat2, lon2, ...].
    */
   latLngsForPixels(input: number[], output: number[]): void;
 
   // ========== Transitions ==========
 
   /**
-   * 获取转换选项
-   * @returns 转换选项对象（对象字面量）
+   * Get transition options.
+   * @returns Object literal representing transition options.
    */
   getTransitionOptions(): { duration?: number; delay?: number; };
 
   /**
-   * 设置转换选项
-   * @param options 转换选项对象（对象字面量）
+   * Set transition options.
+   * @param options Object literal representing transition options.
    */
   setTransitionOptions(options: { duration?: number; delay?: number; }): void;
 
   // ========== Query ==========
 
   /**
-   * 查询指定点的渲染要素
-   * @param x X 坐标（像素）
-   * @param y Y 坐标（像素）
-   * @param layerIds 可选的图层 ID 数组，为空则查询所有图层
-   * @param filter 可选的过滤表达式
-   * @returns GeoJSON IFeature 数组
+   * Query rendered features at a point.
+   * @param x X coordinate in pixels.
+   * @param y Y coordinate in pixels.
+   * @param layerIds Optional array of layer identifiers; queries all layers when undefined.
+   * @param filter Optional filter expression.
+   * @returns Array of GeoJSON IFeature.
    */
   queryRenderedFeaturesForPoint(x: number, y: number, layerIds?: string[], filter?: ExpressionLiteral): IFeature[];
 
   /**
-   * 查询矩形区域内的渲染要素
-   * @param left 左边界（像素）
-   * @param top 上边界（像素）
-   * @param right 右边界（像素）
-   * @param bottom 下边界（像素）
-   * @param layerIds 可选的图层 ID 数组，为空则查询所有图层
-   * @param filter 可选的过滤表达式
-   * @returns GeoJSON IFeature 数组
+   * Query rendered features within a bounding box.
+   * @param left Left boundary in pixels.
+   * @param top Top boundary in pixels.
+   * @param right Right boundary in pixels.
+   * @param bottom Bottom boundary in pixels.
+   * @param layerIds Optional array of layer identifiers; queries all layers when undefined.
+   * @param filter Optional filter expression.
+   * @returns Array of GeoJSON IFeature.
    */
   queryRenderedFeaturesForBox(left: number, top: number, right: number, bottom: number, layerIds?: string[],
     filter?: ExpressionLiteral): IFeature[];
@@ -908,394 +908,394 @@ export class NativeMapView {
   // ========== Light ==========
 
   /**
-   * 获取光照设置
-   * @returns 光照对象（NAPI Light 实例），如果样式尚未定义光照则返回 null
+   * Get the light configuration.
+   * @returns Light object (NAPI Light instance) or null if not defined in the style.
    */
   getLight(): Light | null;
 
   // ========== Layers ==========
 
   /**
-   * 获取所有图层
-   * @returns 图层数组
+   * Get all layers.
+   * @returns Array of layers.
    */
   getLayers(): Layer[];
 
   /**
-   * 获取指定图层
-   * @param layerId 图层 ID
-   * @returns 图层对象，如果不存在则返回 null
+   * Get a layer by identifier.
+   * @param layerId Layer identifier.
+   * @returns Layer instance or null if not found.
    */
   getLayer(layerId: string): Layer | null;
 
   /**
-   * 添加图层
-   * @param layer 图层对象
+   * Add a layer.
+   * @param layer Layer instance.
    */
   addLayer(layer: Layer): void;
 
   /**
-   * 在指定图层上方添加图层
-   * @param layer 图层对象
-   * @param aboveLayerId 参考图层 ID
+   * Add a layer above another layer.
+   * @param layer Layer instance.
+   * @param aboveLayerId Reference layer identifier.
    */
   addLayerAbove(layer: Layer, aboveLayerId: string): void;
 
   /**
-   * 在指定索引位置添加图层
-   * @param layer 图层对象
-   * @param index 索引位置
+   * Add a layer at a specific index.
+   * @param layer Layer instance.
+   * @param index Target index.
    */
   addLayerAt(layer: Layer, index: number): void;
 
   /**
-   * 移除指定索引位置的图层
-   * @param index 索引位置
-   * @returns 是否成功移除
+   * Remove a layer at a specific index.
+   * @param index Target index.
+   * @returns True if the layer was removed.
    */
   removeLayerAt(index: number): boolean;
 
   /**
-   * 移除图层
-   * @param layer 图层对象
-   * @returns 是否成功移除
+   * Remove a layer.
+   * @param layer Layer instance.
+   * @returns True if the layer was removed.
    */
   removeLayer(layer: Layer): boolean;
 
   // ========== Sources ==========
 
   /**
-   * 获取所有数据源
-   * @returns 数据源数组
+   * Get all sources.
+   * @returns Array of sources.
    */
   getSources(): Source[];
 
   /**
-   * 获取指定数据源
-   * @param sourceId 数据源 ID
-   * @returns 数据源对象，如果不存在则返回 null
+   * Get a source by identifier.
+   * @param sourceId Source identifier.
+   * @returns Source instance or null if not found.
    */
   getSource(sourceId: string): Source | null;
 
   /**
-   * 添加数据源
-   * @param source 数据源对象
+   * Add a source.
+   * @param source Source instance.
    */
   addSource(source: Source): void;
 
   /**
-   * 移除数据源
-   * @param source 数据源对象
-   * @returns 是否成功移除
+   * Remove a source.
+   * @param source Source instance.
+   * @returns True if the source was removed.
    */
   removeSource(source: Source): boolean;
 
   // ========== Images ==========
 
   /**
-   * 添加图像（直接传入 HarmonyOS PixelMap）
-   * @param name 图像名称
-   * @param bitmap PixelMap 位图数据（HarmonyOS PixelMap 对象）
-   * @param pixelRatio 像素比，默认 1.0
-   * @param sdf 是否为 SDF 图像
+   * Add an image directly from a HarmonyOS PixelMap.
+   * @param name Image name.
+   * @param bitmap PixelMap bitmap data (HarmonyOS PixelMap instance).
+   * @param pixelRatio Pixel ratio, defaults to 1.0.
+   * @param sdf Whether the image is an SDF glyph.
    *
    * @remarks
-   * 内部会将 PixelMap 转换为 `PremultipliedImage` 并在渲染线程注册到样式中。
-   * 添加成功后将自动触发地图重绘。
+   * Internally converts the PixelMap to a `PremultipliedImage` and registers it on the render thread.
+   * A successful addition automatically triggers a map repaint.
    */
   addImage(name: string, bitmap: image.PixelMap, pixelRatio: number, sdf: boolean): void;
 
   /**
-   * 批量添加图像
-   * @param images 图像数组（Image 对象数组）
+   * Add multiple images.
+   * @param images Array of Image instances.
    */
   addImages(images: Image[]): void;
 
   /**
-   * 移除图像
-   * @param name 图像名称
+   * Remove an image.
+   * @param name Image name.
    */
   removeImage(name: string): void;
 
   /**
-   * 获取图像
-   * @param name 图像名称
-   * @returns 图像对象，如果不存在则返回 null
+   * Get an image.
+   * @param name Image name.
+   * @returns Icon instance or null if not found.
    */
   getImage(name: string): Icon | null;
 
   // ========== Tile Management ==========
 
   /**
-   * 设置是否启用瓦片预取
-   * @param enable 是否启用
+   * Enable or disable tile prefetching.
+   * @param enable Whether to enable prefetching.
    */
   setPrefetchTiles(enable: boolean): void;
 
   /**
-   * 获取瓦片预取状态
-   * @returns 是否启用预取
+   * Query the tile prefetching state.
+   * @returns True if prefetching is enabled.
    */
   getPrefetchTiles(): boolean;
 
   /**
-   * 设置预取缩放增量
-   * @param delta 缩放增量
+   * Set the prefetch zoom delta.
+   * @param delta Zoom delta.
    */
   setPrefetchZoomDelta(delta: number): void;
 
   /**
-   * 获取预取缩放增量
-   * @returns 缩放增量
+   * Get the prefetch zoom delta.
+   * @returns Zoom delta.
    */
   getPrefetchZoomDelta(): number;
 
   /**
-   * 设置是否启用瓦片缓存
-   * @param enabled 是否启用
+   * Enable or disable the tile cache.
+   * @param enabled Whether to enable caching.
    */
   setTileCacheEnabled(enabled: boolean): void;
 
   /**
-   * 获取瓦片缓存状态
-   * @returns 是否启用缓存
+   * Query the tile cache state.
+   * @returns True if caching is enabled.
    */
   getTileCacheEnabled(): boolean;
 
   // ========== Tile LOD ==========
 
   /**
-   * 设置瓦片 LOD 最小半径
-   * @param radius 最小半径
+   * Set the tile LOD minimum radius.
+   * @param radius Minimum radius.
    */
   setTileLodMinRadius(radius: number): void;
 
   /**
-   * 获取瓦片 LOD 最小半径
-   * @returns 最小半径
+   * Get the tile LOD minimum radius.
+   * @returns Minimum radius.
    */
   getTileLodMinRadius(): number;
 
   /**
-   * 设置瓦片 LOD 缩放比例
-   * @param scale 缩放比例
+   * Set the tile LOD scale.
+   * @param scale Scale factor.
    */
   setTileLodScale(scale: number): void;
 
   /**
-   * 获取瓦片 LOD 缩放比例
-   * @returns 缩放比例
+   * Get the tile LOD scale.
+   * @returns Scale factor.
    */
   getTileLodScale(): number;
 
   /**
-   * 设置瓦片 LOD 俯仰阈值
-   * @param threshold 俯仰阈值
+   * Set the tile LOD pitch threshold.
+   * @param threshold Pitch threshold.
    */
   setTileLodPitchThreshold(threshold: number): void;
 
   /**
-   * 获取瓦片 LOD 俯仰阈值
-   * @returns 俯仰阈值
+   * Get the tile LOD pitch threshold.
+   * @returns Pitch threshold.
    */
   getTileLodPitchThreshold(): number;
 
   /**
-   * 设置瓦片 LOD 缩放偏移
-   * @param shift 缩放偏移
+   * Set the tile LOD zoom shift.
+   * @param shift Zoom shift.
    */
   setTileLodZoomShift(shift: number): void;
 
   /**
-   * 获取瓦片 LOD 缩放偏移
-   * @returns 缩放偏移
+   * Get the tile LOD zoom shift.
+   * @returns Zoom shift.
    */
   getTileLodZoomShift(): number;
 
   // ========== Rendering ==========
 
   /**
-   * 触发地图重绘
+   * Trigger a map repaint.
    */
   triggerRepaint(): void;
 
   /**
-   * 检查是否启用渲染统计视图
-   * @returns 是否启用
+   * Check whether the rendering stats overlay is enabled.
+   * @returns True if enabled.
    */
   isRenderingStatsViewEnabled(): boolean;
 
   /**
-   * 启用或禁用渲染统计视图
-   * @param enabled 是否启用
+   * Enable or disable the rendering stats overlay.
+   * @param enabled Whether to enable the overlay.
    */
   enableRenderingStatsView(enabled: boolean): void;
 
-  // ========== Performance Configuration (参考 Android MapRenderer) ==========
+  // ========== Performance Configuration (aligned with Android MapRenderer) ==========
 
   /**
-   * 设置最大帧率（参考 Android MapView.setMaximumFps）
-   * @param maximumFps 最大帧率，例如 30、60
+   * Set the maximum frames per second (similar to Android MapView.setMaximumFps).
+   * @param maximumFps Maximum FPS, for example 30 or 60.
    */
   setMaximumFps(maximumFps: number): void;
 
   /**
-   * 设置渲染刷新模式（参考 Android MapView.setRenderingRefreshMode）
-   * @param mode 渲染模式：0=CONTINUOUS（持续渲染），1=WHEN_DIRTY（按需渲染）
+   * Set the rendering refresh mode (similar to Android MapView.setRenderingRefreshMode).
+   * @param mode Rendering mode: 0 = CONTINUOUS, 1 = WHEN_DIRTY.
    */
   setRenderingRefreshMode(mode: number): void;
 
   /**
-   * 获取渲染刷新模式（参考 Android MapView.getRenderingRefreshMode）
-   * @returns 当前渲染模式：0=CONTINUOUS，1=WHEN_DIRTY
+   * Get the rendering refresh mode (similar to Android MapView.getRenderingRefreshMode).
+   * @returns Current rendering mode: 0 = CONTINUOUS, 1 = WHEN_DIRTY.
    */
   getRenderingRefreshMode(): number;
 
   /**
-   * 设置 FPS 变化监听器（参考 Android MapView.setOnFpsChangedListener）
-   * 用于实时监控渲染帧率
-   * @param listener FPS 变化回调函数，参数为当前 FPS（每秒帧数），传入 null 则移除监听器
+   * Set the FPS change listener (similar to Android MapView.setOnFpsChangedListener).
+   * Use to monitor rendering frame rate in real time.
+   * @param listener Callback receiving the current FPS; pass null to remove the listener.
    */
   setOnFpsChangedListener(listener: ((fps: number) => void) | null): void;
 
   // ========== Map Lifecycle Listeners ==========
 
   /**
-   * 设置 Map 创建完成回调（对齐 Android onMapViewReady）
+   * Set the map-created callback (aligned with Android onMapViewReady).
    * 
-   * 此回调在 C++ Map 对象创建完成后、样式加载前触发
-   * 用于在样式加载前注册观察者监听器
+   * Triggered after the C++ map object is created and before the style loads.
+   * Use it to register observers before style initialization.
    * 
-   * @param callback 回调函数，当 C++ Map 创建完成时触发，传入 null 则移除监听器
+   * @param callback Callback invoked when the C++ map is ready; pass null to remove.
    */
   setOnMapViewCreatedCallback(callback: (() => void) | null): void;
 
   /**
-   * 设置样式加载完成监听器
-   * @param callback 回调函数，当样式加载完成时触发
+   * Set the style-loaded listener.
+   * @param callback Invoked when the style finishes loading.
    */
   setOnStyleLoadedListener(callback: (() => void) | null): void;
 
   /**
-   * 设置样式加载错误监听器
-   * @param callback 回调函数，当样式加载失败时触发
+   * Set the style-load-error listener.
+   * @param callback Invoked when style loading fails.
    */
   setOnStyleLoadErrorListener(callback: ((error: string) => void) | null): void;
 
   // ========== Camera Listeners ==========
 
   /**
-   * 添加相机空闲监听器
-   * @param callback 回调函数
+   * Add a camera idle listener.
+   * @param callback Callback function.
    */
   addOnCameraIdleListener(callback: () => void): void;
 
   /**
-   * 移除相机空闲监听器
-   * @param callback 回调函数
+   * Remove a camera idle listener.
+   * @param callback Callback function.
    */
   removeOnCameraIdleListener(callback: () => void): void;
 
   /**
-   * 添加相机开始移动监听器
-   * @param callback 回调函数，参数为移动原因
+   * Add a camera-move-start listener.
+   * @param callback Callback function receiving the move reason.
    */
   addOnCameraMoveStartedListener(callback: (reason: number) => void): void;
 
   /**
-   * 移除相机开始移动监听器
-   * @param callback 回调函数
+   * Remove a camera-move-start listener.
+   * @param callback Callback function.
    */
   removeOnCameraMoveStartedListener(callback: (reason: number) => void): void;
 
   /**
-   * 添加相机移动中监听器
-   * @param callback 回调函数
+   * Add a camera-moving listener.
+   * @param callback Callback function.
    */
   addOnCameraMoveListener(callback: () => void): void;
 
   /**
-   * 移除相机移动中监听器
-   * @param callback 回调函数
+   * Remove a camera-moving listener.
+   * @param callback Callback function.
    */
   removeOnCameraMoveListener(callback: () => void): void;
 
   /**
-   * 添加相机移动取消监听器
-   * @param callback 回调函数
+   * Add a camera-move-canceled listener.
+   * @param callback Callback function.
    */
   addOnCameraMoveCanceledListener(callback: () => void): void;
 
   /**
-   * 移除相机移动取消监听器
-   * @param callback 回调函数
+   * Remove a camera-move-canceled listener.
+   * @param callback Callback function.
    */
   removeOnCameraMoveCanceledListener(callback: () => void): void;
 
-  // ========== Android/iOS 风格监听器（新增） ==========
+  // ========== Android/iOS style listeners (new additions) ==========
 
-  // 相机事件监听器
+  // Camera event listeners
   /**
-   * 添加相机即将改变监听器
-   * @param callback 回调函数，参数为是否使用动画
+   * Add a camera-will-change listener.
+   * @param callback Callback receiving whether the change is animated.
    */
   addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void;
 
   removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void;
 
   /**
-   * 添加相机正在改变监听器
-   * @param callback 回调函数
+   * Add a camera-is-changing listener.
+   * @param callback Callback function.
    */
   addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void;
 
   removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void;
 
   /**
-   * 添加相机已改变监听器
-   * @param callback 回调函数，参数为是否使用动画
+   * Add a camera-did-change listener.
+   * @param callback Callback receiving whether the change was animated.
    */
   addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void;
 
   removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void;
 
-  // 地图加载事件监听器
+  // Map loading listeners
   /**
-   * 添加地图即将开始加载监听器
-   * @param callback 回调函数
+   * Add a will-start-loading-map listener.
+   * @param callback Callback function.
    */
   addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void;
 
   removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void;
 
   /**
-   * 添加地图加载完成监听器
-   * @param callback 回调函数
+   * Add a did-finish-loading-map listener.
+   * @param callback Callback function.
    */
   addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void;
 
   removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void;
 
   /**
-   * 添加地图加载失败监听器
-   * @param callback 回调函数，参数为错误信息
+   * Add a did-fail-loading-map listener.
+   * @param callback Callback receiving the error message.
    */
   addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void;
 
   removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void;
 
-  // 渲染事件监听器
+  // Rendering listeners
   /**
-   * 添加帧即将开始渲染监听器
-   * @param callback 回调函数
+   * Add a will-start-rendering-frame listener.
+   * @param callback Callback function.
    */
   addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void;
 
   removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void;
 
   /**
-   * 添加帧渲染完成监听器
-   * @param callback 回调函数，参数为是否完全渲染、编码时间、渲染时间
+   * Add a did-finish-rendering-frame listener.
+   * @param callback Callback receiving whether rendering finished fully and the encoding/rendering timings.
    */
   addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void;
 
@@ -1306,33 +1306,33 @@ export class NativeMapView {
   removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void;
 
   /**
-   * 添加地图即将开始渲染监听器
-   * @param callback 回调函数
+   * Add a will-start-rendering-map listener.
+   * @param callback Callback function.
    */
   addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void;
 
   removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void;
 
   /**
-   * 添加地图渲染完成监听器
-   * @param callback 回调函数，参数为是否完全渲染
+   * Add a did-finish-rendering-map listener.
+   * @param callback Callback receiving whether rendering finished fully.
    */
   addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void;
 
   removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void;
 
-  // 样式事件监听器
+  // Style listeners
   /**
-   * 添加样式加载完成监听器
-   * @param callback 回调函数
+   * Add a did-finish-loading-style listener.
+   * @param callback Callback function.
    */
   addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void;
 
   removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void;
 
   /**
-   * 添加样式图片缺失监听器
-   * @param callback 回调函数，参数为缺失的图片 ID
+   * Add a style-image-missing listener.
+   * @param callback Callback receiving the missing image identifier.
    */
   addOnStyleImageMissingListener(callback: (id: string) => void): void;
 
@@ -1342,100 +1342,100 @@ export class NativeMapView {
 
   removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void;
 
-  // 其他事件监听器
+  // Other listeners
   /**
-   * 添加地图进入空闲状态监听器
-   * @param callback 回调函数
+   * Add a did-become-idle listener.
+   * @param callback Callback function.
    */
   addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void;
 
   removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void;
 
   /**
-   * 添加数据源改变监听器
-   * @param callback 回调函数，参数为数据源 ID
+   * Add a source-changed listener.
+   * @param callback Callback receiving the source identifier.
    */
   addOnSourceChangedListener(listener: OnSourceChangedListener): void;
 
   removeOnSourceChangedListener(listener: OnSourceChangedListener): void;
 
-  // ========== 观察者事件监听器 (Shader, Glyph, Sprite, Tile) ==========
+  // ========== Observer listeners (shader, glyph, sprite, tile) ==========
   
   /**
-   * 添加着色器编译前监听器
-   * @param callback 回调函数，参数为 (shaderId, backendType, defines)
+   * Add a pre-compile-shader listener.
+   * @param callback Callback receiving (shaderId, backendType, defines).
    */
   addOnPreCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
   
   removeOnPreCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
   
   /**
-   * 添加着色器编译后监听器
-   * @param callback 回调函数，参数为 (shaderId, backendType, defines)
+   * Add a post-compile-shader listener.
+   * @param callback Callback receiving (shaderId, backendType, defines).
    */
   addOnPostCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
   
   removeOnPostCompileShaderListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
   
   /**
-   * 添加着色器编译失败监听器
-   * @param callback 回调函数，参数为 (shaderId, backendType, defines)
+   * Add a shader-compile-failed listener.
+   * @param callback Callback receiving (shaderId, backendType, defines).
    */
   addOnShaderCompileFailedListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
   
   removeOnShaderCompileFailedListener(callback: (shaderId: number, backendType: number, defines: string) => void): void;
   
   /**
-   * 添加字形加载完成监听器
-   * @param callback 回调函数，参数为 (fontStack, rangeStart, rangeEnd)
+   * Add a glyphs-loaded listener.
+   * @param callback Callback receiving (fontStack, rangeStart, rangeEnd).
    */
   addOnGlyphsLoadedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
   
   removeOnGlyphsLoadedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
   
   /**
-   * 添加字形加载错误监听器
-   * @param callback 回调函数，参数为 (fontStack, rangeStart, rangeEnd)
+   * Add a glyphs-error listener.
+   * @param callback Callback receiving (fontStack, rangeStart, rangeEnd).
    */
   addOnGlyphsErrorListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
   
   removeOnGlyphsErrorListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
   
   /**
-   * 添加字形请求监听器
-   * @param callback 回调函数，参数为 (fontStack, rangeStart, rangeEnd)
+   * Add a glyphs-requested listener.
+   * @param callback Callback receiving (fontStack, rangeStart, rangeEnd).
    */
   addOnGlyphsRequestedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
   
   removeOnGlyphsRequestedListener(callback: (fontStack: string[], rangeStart: number, rangeEnd: number) => void): void;
   
   /**
-   * 添加 Sprite 加载完成监听器
-   * @param callback 回调函数，参数为 (spriteId, url)
+   * Add a sprite-loaded listener.
+   * @param callback Callback receiving (spriteId, url).
    */
   addOnSpriteLoadedListener(callback: (spriteId: string, url: string) => void): void;
   
   removeOnSpriteLoadedListener(callback: (spriteId: string, url: string) => void): void;
   
   /**
-   * 添加 Sprite 加载错误监听器
-   * @param callback 回调函数，参数为 (spriteId, url)
+   * Add a sprite-error listener.
+   * @param callback Callback receiving (spriteId, url).
    */
   addOnSpriteErrorListener(callback: (spriteId: string, url: string) => void): void;
   
   removeOnSpriteErrorListener(callback: (spriteId: string, url: string) => void): void;
   
   /**
-   * 添加 Sprite 请求监听器
-   * @param callback 回调函数，参数为 (spriteId, url)
+   * Add a sprite-requested listener.
+   * @param callback Callback receiving (spriteId, url).
    */
   addOnSpriteRequestedListener(callback: (spriteId: string, url: string) => void): void;
   
   removeOnSpriteRequestedListener(callback: (spriteId: string, url: string) => void): void;
   
   /**
-   * 添加瓦片操作监听器
-   * @param callback 回调函数，参数为 (operation, x, y, z, wrap, overscaledZ, sourceId)
+   * Add a tile-action listener.
+   * @param callback Callback receiving (operation, x, y, z, wrap, overscaledZ, sourceId).
    */
   addOnTileActionListener(callback: (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => void): void;
   
@@ -1445,39 +1445,39 @@ export class NativeMapView {
 // ==================== MapSnapshotter API ====================
 
 /**
- * 快照选项（NAPI 层）
+ * Snapshot options (NAPI layer).
  */
 export interface SnapshotOptionsNAPI {
-  /** 宽度（像素） */
+  /** Width in pixels. */
   width: number;
 
-  /** 高度（像素） */
+  /** Height in pixels. */
   height: number;
 
-  /** 像素比 */
+  /** Pixel ratio. */
   pixelRatio: number;
 
-  /** 样式 URL */
+  /** Style URL. */
   styleUrl: string;
 
-  /** 样式 JSON（可选） */
+  /** Optional style JSON string. */
   styleJson?: string;
 
-  /** 是否显示 logo */
+  /** Whether to show the logo. */
   showLogo?: boolean;
 
-  /** 本地字体族 */
+  /** Local font family. */
   localFontFamily?: string;
 
-  /** 相机位置（可选，动态添加） */
+  /** Optional camera configuration (added dynamically). */
   camera?: CameraPositionLike;
 
-  /** 区域边界（可选，动态添加） */
+  /** Optional region bounds (added dynamically). */
   region?: LatLngBoundsLike;
 }
 
 /**
- * 像素坐标结果
+ * Pixel coordinate result.
  */
 export interface PixelCoordinateResult {
   x: number;
@@ -1485,7 +1485,7 @@ export interface PixelCoordinateResult {
 }
 
 /**
- * 地理坐标结果
+ * Geographic coordinate result.
  */
 export interface LatLngResult {
   latitude: number;
@@ -1493,59 +1493,59 @@ export interface LatLngResult {
 }
 
 /**
- * MapView 快照回调负载
+ * MapView snapshot callback payload.
  */
 export interface MapViewSnapshotPayload {
-  /** 图像数据（RGBA 格式） */
+  /** Image data in RGBA format. */
   data: ArrayBuffer;
 
-  /** 图像宽度 */
+  /** Image width. */
   width: number;
 
-  /** 图像高度 */
+  /** Image height. */
   height: number;
 
-  /** 像素密度 */
+  /** Pixel ratio. */
   pixelRatio: number;
 }
 
 /**
- * 快照结果（NAPI 层）
+ * Snapshot result (NAPI layer).
  */
 export interface SnapshotResultNAPI {
-  /** 图像数据（RGBA格式） */
+  /** Image data in RGBA format. */
   data: ArrayBuffer;
 
-  /** 图像宽度 */
+  /** Image width. */
   width: number;
 
-  /** 图像高度 */
+  /** Image height. */
   height: number;
 
-  /** 归属信息 */
+  /** Attribution strings. */
   attributions?: string[];
 
   /**
-   * 将地理坐标转换为快照图像上的像素坐标
-   * 
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @returns 图像上的像素坐标
+   * Convert geographic coordinates to pixel coordinates within the snapshot image.
+   *
+   * @param latitude Latitude.
+   * @param longitude Longitude.
+   * @returns Pixel coordinate within the snapshot image.
    */
   pixelForLatLng(latitude: number, longitude: number): PixelCoordinateResult;
 
   /**
-   * 将快照图像上的像素坐标转换为地理坐标
-   * 
-   * @param x 图像上的 X 坐标
-   * @param y 图像上的 Y 坐标
-   * @returns 地理坐标
+   * Convert snapshot pixel coordinates back to geographic coordinates.
+   *
+   * @param x X coordinate in the snapshot.
+   * @param y Y coordinate in the snapshot.
+   * @returns Geographic coordinate.
    */
   latLngForPixel(x: number, y: number): LatLngResult;
 }
 
 /**
- * 相机位置对象（用于 NAPI 传递）
+ * Camera position object (used for NAPI payloads).
  */
 export interface CameraPositionLike {
   target: {
@@ -1558,7 +1558,7 @@ export interface CameraPositionLike {
 }
 
 /**
- * 边界对象（用于 NAPI 传递）
+ * Bounds object (used for NAPI payloads).
  */
 export interface LatLngBoundsLike {
   north: number;
@@ -1568,87 +1568,87 @@ export interface LatLngBoundsLike {
 }
 
 /**
- * MapSnapshotter NAPI 对象
+ * MapSnapshotter NAPI object.
  */
 export interface MapSnapshotterNAPI {
   /**
-   * 开始生成快照
-   * @param callback 回调函数，接收单个参数：
-   *                 - 错误时为 string（错误消息）
-   *                 - 成功时为 SnapshotResultNAPI（结果对象）
+   * Start generating a snapshot.
+   * @param callback Receives one parameter:
+   *                 - string error message on failure.
+   *                 - SnapshotResultNAPI on success.
    */
   start(callback: (param: string | SnapshotResultNAPI | null) => void): void;
 
   /**
-   * 取消快照生成
+   * Cancel snapshot generation.
    */
   cancel(): void;
 
   /**
-   * 设置样式 URL
-   * @param styleUrl 样式 URL
+   * Set the style URL.
+   * @param styleUrl Style URL.
    */
   setStyleUrl(styleUrl: string): void;
 
   /**
-   * 设置样式 JSON
-   * @param styleJson 样式 JSON 字符串
+   * Set the style JSON.
+   * @param styleJson Style JSON string.
    */
   setStyleJson(styleJson: string): void;
 
   /**
-   * 设置相机位置
-   * @param position 相机位置对象（普通对象，非类实例）
+   * Set the camera position.
+   * @param position Plain object describing the camera position.
    */
   setCameraPosition(position: CameraPositionLike): void;
 
   /**
-   * 设置区域边界
-   * @param bounds 边界对象（普通对象，非类实例）
+   * Set the region bounds.
+   * @param bounds Plain object describing the bounds.
    */
   setRegion(bounds: LatLngBoundsLike): void;
 
   /**
-   * 设置快照尺寸
-   * @param width 宽度
-   * @param height 高度
+   * Set the snapshot size.
+   * @param width Width.
+   * @param height Height.
    */
   setSize(width: number, height: number): void;
 
   /**
-   * 设置观察者
-   * @param observer 观察者对象，传 null 可清除观察者
+   * Set the snapshot observer.
+   * @param observer Observer instance; pass null to clear.
    */
   setObserver(observer: MapSnapshotterObserver | null): void;
 
   /**
-   * 获取图层
-   * @param layerId 图层ID
-   * @returns 图层对象，如果不存在则返回 null
+   * Get a layer.
+   * @param layerId Layer identifier.
+   * @returns Layer instance or null if not found.
    */
   getLayer(layerId: string): Layer | null;
 
   /**
-   * 获取数据源
-   * @param sourceId 数据源ID
-   * @returns 数据源对象，如果不存在则返回 null
+   * Get a source.
+   * @param sourceId Source identifier.
+   * @returns Source instance or null if not found.
    */
   getSource(sourceId: string): Source | null;
 
   /**
-   * 添加图片到快照样式
-   * @param name 图片名称
-   * @param imageData 图片数据
-   * @param sdf 是否为 SDF 图标
+   * Add an image to the snapshot style.
+   * @param name Image name.
+   * @param imageData Image data.
+   * @param sdf Whether the image is an SDF icon.
    */
   addImage(name: string, imageData: ArrayBuffer | Uint8Array, sdf: boolean): void;
 }
 
 /**
- * 创建 MapSnapshotter 实例
+ * Create a MapSnapshotter instance.
  *
- * @param options 快照选项
- * @returns MapSnapshotter NAPI 对象
+ * @param options Snapshot options.
+ * @returns MapSnapshotter NAPI object.
  */
 export function createMapSnapshotter(options: SnapshotOptionsNAPI): MapSnapshotterNAPI;
 

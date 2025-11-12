@@ -1,32 +1,32 @@
 /**
- * AttributionButton - 版权归属按钮组件
+ * AttributionButton - attribution button component.
  *
- * 对应 Android 的 AttributionDialogManager 和 iOS 的 MLNAttributionButton
- * 显示地图数据来源和版权信息
+ * Mirrors Android AttributionDialogManager and iOS MLNAttributionButton.
+ * Displays map data sources and copyright information.
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { promptAction } from '@kit.ArkUI';
 /**
- * 归属信息项
+ * Attribution entry.
  */
 export interface AttributionInfo {
   /**
-   * 标题
+   * Title.
    */
   title: string;
 
   /**
-   * URL 链接（可选）
+   * URL link (optional).
    */
   url?: string;
 }
 
 /**
- * AttributionButton 组件
+ * AttributionButton component.
  *
- * 使用示例：
+ * Usage example:
  * ```typescript
  * AttributionButton({
  *   isEnabled: true,
@@ -36,7 +36,7 @@ export interface AttributionInfo {
  *     { title: '© OpenStreetMap contributors', url: 'https://www.openstreetmap.org/copyright' }
  *   ],
  *   onAttributionClick: (attribution) => {
- *     // 处理点击事件
+ *     // Handle click events.
  *   }
  * })
  * ```
@@ -44,46 +44,46 @@ export interface AttributionInfo {
 @Component
 export struct AttributionButton {
   /**
-   * 是否启用
+   * Whether the button is enabled.
    */
   @Prop isEnabled: boolean = true;
   /**
-   * 图标颜色
+   * Icon color.
    */
   @Prop tintColor: string = '#000000';
   /**
-   * 图标大小（vp）
+   * Icon size (vp).
    */
   @Prop iconSize: number = 24;
   /**
-   * 归属信息列表
+   * Attribution list.
    */
   @Prop attributions: AttributionInfo[] = [
     { title: '© MapLibre', url: 'https://maplibre.org' },
     { title: '© OpenStreetMap contributors', url: 'https://www.openstreetmap.org/copyright' }
   ];
   /**
-   * 点击归属信息的回调
+   * Callback for attribution item clicks.
    */
   onAttributionClick?: (attribution: AttributionInfo) => void;
   /**
-   * 自定义点击处理
-   * 如果提供，将覆盖默认行为
+   * Custom click handler.
+   * Overrides the default behavior when provided.
    */
   onButtonClick?: () => void;
 
   build() {
-    // 使用 Stack 确保图标是圆形背景
+    // Use Stack to ensure the icon has a circular background.
     Stack() {
       if (this.isEnabled) {
-        // 圆形背景
+        // Circular background.
         Circle()
           .width(this.iconSize + 8)
           .height(this.iconSize + 8)
           .fill(Color.White)
           .opacity(0.8)
 
-        // "i" 图标
+        // "i" icon.
         Text('i')
           .fontSize(this.iconSize - 6)
           .fontColor(this.tintColor)
@@ -97,10 +97,10 @@ export struct AttributionButton {
     .onClick(() => {
       if (this.isEnabled) {
         if (this.onButtonClick) {
-          // 使用自定义点击处理
+          // Use the custom click handler.
           this.onButtonClick();
         } else {
-          // 默认行为：显示归属信息
+          // Default behavior: display attribution details.
           this.showAttributionDialog();
         }
       }
@@ -108,7 +108,7 @@ export struct AttributionButton {
   }
 
   /**
-   * 显示归属信息对话框
+   * Display the attribution dialog.
    */
   private showAttributionDialog(): void {
     try {
@@ -121,10 +121,10 @@ export struct AttributionButton {
         return;
       }
 
-      // 构建选项列表 (最多显示6个)
+      // Build the options list (show up to six entries).
       const options = this.attributions.slice(0, 6).map(attr => attr.title);
 
-      // 显示操作菜单
+      // Present the action menu.
       const buttons: promptAction.Button[] = options.map((title) => {
         const button: promptAction.Button = {
           text: title,
@@ -146,10 +146,10 @@ export struct AttributionButton {
           const selectedAttribution = this.attributions[result.index];
 
           if (this.onAttributionClick) {
-            // 调用外部回调
+            // Invoke the external callback.
             this.onAttributionClick(selectedAttribution);
           } else {
-            // 默认行为：如果有 URL，显示提示
+            // Default behavior: show a prompt when a URL is available.
             if (selectedAttribution.url) {
               promptAction.showToast({
                 message: `Visit: ${selectedAttribution.url}`,
@@ -170,7 +170,7 @@ export struct AttributionButton {
 }
 
 /**
- * 默认的归属信息
+ * Default attribution entries.
  */
 export const DEFAULT_ATTRIBUTIONS: AttributionInfo[] = [
   {

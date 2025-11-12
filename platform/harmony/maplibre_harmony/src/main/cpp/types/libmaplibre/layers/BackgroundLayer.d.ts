@@ -1,76 +1,75 @@
 /**
- * MapLibre Native for HarmonyOS - BackgroundLayer Type Definitions
- * 背景图层 API (NAPI 类)
+ * MapLibre Native for HarmonyOS - BackgroundLayer type definitions.
+ * Background layer API (NAPI class).
  */
 
 import type { ColorValue, ExpressionType, NumberValue, StringValue, PropertyValue } from '../LayerPropertyTypes';
 import type { JSONValue } from '../CommonTypes';
 
 /**
- * BackgroundLayer - 背景图层
- * 用于渲染地图背景
+ * BackgroundLayer - renders the map background.
  */
 export class BackgroundLayer {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 创建背景图层
-   * @param layerId 图层 ID
+   * Create a background layer.
+   * @param layerId Layer identifier.
    */
   constructor(layerId: string);
 
   /**
-   * 设置背景颜色
-   * @param color 颜色值或Expression
+   * Set the background color.
+   * @param color Color value or expression.
    */
   setBackgroundColor(color: PropertyValue<string>): this;
 
   /**
-   * 设置背景不透明度
-   * @param opacity 不透明度或Expression（0.0 - 1.0）
+   * Set the background opacity.
+   * @param opacity Opacity value or expression (0.0 - 1.0).
    */
   setBackgroundOpacity(opacity: PropertyValue<number>): this;
 
   /**
-   * 设置背景图案
-   * @param pattern 图案名称或Expression
+   * Set the background pattern.
+   * @param pattern Pattern name or expression.
    */
   setBackgroundPattern(pattern: PropertyValue<string>): this;
 
   /**
-   * 获取背景颜色
-   * @returns 颜色字符串，如果是表达式则返回 undefined
+   * Get the background color.
+   * @returns Color string, or undefined if defined via expression.
    */
   getBackgroundColor(): string | undefined;
 
   /**
-   * 获取背景不透明度
-   * @returns 不透明度值，如果是表达式则返回 undefined
+   * Get the background opacity.
+   * @returns Opacity value, or undefined if defined via expression.
    */
   getBackgroundOpacity(): number | undefined;
 
   /**
-   * 获取图层 ID
+   * Get the layer identifier.
    */
   getId(): string;
 
   /**
-   * 获取图层类型
+   * Get the layer type.
    */
   getType(): string;
 
   /**
-   * 设置图层可见性
+   * Set layer visibility.
    */
   setVisibility(visibility: 'visible' | 'none'): this;
 
   getVisibility(): 'visible' | 'none';
 
   /**
-   * 设置最小/最大缩放级别
+   * Configure minimum/maximum zoom levels.
    */
   setMinZoom(zoom: number): this;
 
@@ -81,15 +80,15 @@ export class BackgroundLayer {
   getMaxZoom(): number;
 
   /**
-   * 设置单个属性（通用方法）
-   * @param propertyName 属性名称（如 'background-color', 'background-opacity'）
-   * @param value 属性值（常量值或Expression）
+   * Set a single property (generic helper).
+   * @param propertyName Property key (e.g., 'background-color', 'background-opacity').
+   * @param value Property value (literal or expression).
    */
   setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
-   * 批量设置属性（通用方法）
-   * @param properties 属性对象，键为属性名，值为属性值
+   * Set multiple properties (generic helper).
+   * @param properties Object whose keys are property names and values are property payloads.
    * @example
    * layer.setProperties({
    *   'background-color': '#F0E9E1',

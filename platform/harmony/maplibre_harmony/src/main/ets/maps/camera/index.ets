@@ -1,5 +1,5 @@
 /**
- * Camera - 相机系统导出
+ * Camera API exports.
  */
 
 export { CameraPosition, EdgeInsets, CameraOptions } from './CameraPosition';

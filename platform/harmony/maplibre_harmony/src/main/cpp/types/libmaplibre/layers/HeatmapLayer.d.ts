@@ -1,6 +1,6 @@
 /**
- * MapLibre Native for HarmonyOS - HeatmapLayer Type Definitions
- * 热力图层 API (NAPI 类)
+ * MapLibre Native for HarmonyOS - HeatmapLayer type definitions.
+ * Heatmap layer API (NAPI class).
  */
 
 import type { PropertyValue } from '../LayerPropertyTypes';
@@ -8,72 +8,71 @@ import type { ExpressionLiteral } from '../ExpressionTypes';
 import type { JSONValue } from '../CommonTypes';
 
 /**
- * HeatmapLayer - 热力图层
- * 用于渲染密度热力图
+ * HeatmapLayer - density heatmap renderer.
  *
- * Note: 此为简化实现，完整功能待后续补充
+ * Note: simplified implementation; full feature set will be added later.
  */
 export class HeatmapLayer {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 创建热力图层
-   * @param layerId 图层 ID
-   * @param sourceId 数据源 ID
+   * Create a heatmap layer.
+   * @param layerId Layer identifier.
+   * @param sourceId Source identifier.
    */
   constructor(layerId: string, sourceId: string);
 
   /**
-   * 设置热力图半径
-   * @param radius 半径或Expression
+   * Set heatmap radius.
+   * @param radius Radius value or expression.
    */
   setHeatmapRadius(radius: PropertyValue<number>): this;
 
   /**
-   * 设置热力图权重
-   * @param weight 权重值或Expression（用于计算每个点对热力图的贡献）
+   * Set heatmap weight.
+   * @param weight Weight value or expression (controls each point's contribution).
    */
   setHeatmapWeight(weight: PropertyValue<number>): this;
 
   /**
-   * 设置热力图强度
-   * @param intensity 强度值或Expression
+   * Set heatmap intensity.
+   * @param intensity Intensity value or expression.
    */
   setHeatmapIntensity(intensity: PropertyValue<number>): this;
 
   /**
-   * 设置热力图不透明度
-   * @param opacity 不透明度或Expression（0.0 - 1.0）
+   * Set heatmap opacity.
+   * @param opacity Opacity value or expression (0.0 - 1.0).
    */
   setHeatmapOpacity(opacity: PropertyValue<number>): this;
 
   /**
-   * 获取图层 ID
+   * Get the layer identifier.
    */
   getId(): string;
 
   /**
-   * 获取图层类型
+   * Get the layer type.
    */
   getType(): string;
 
   /**
-   * 获取数据源 ID
+   * Get the source identifier.
    */
   getSourceId(): string;
 
   /**
-   * 设置图层可见性
+   * Set layer visibility.
    */
   setVisibility(visibility: 'visible' | 'none'): this;
 
   getVisibility(): 'visible' | 'none';
 
   /**
-   * 设置最小/最大缩放级别
+   * Configure minimum/maximum zoom levels.
    */
   setMinZoom(zoom: number): this;
 
@@ -84,34 +83,34 @@ export class HeatmapLayer {
   getMaxZoom(): number;
 
   /**
-   * 设置源图层
+   * Set the source layer.
    */
   setSourceLayer(sourceLayer: string): this;
 
   getSourceLayer(): string;
 
   /**
-   * 设置图层过滤器
-   * @param filter 过滤器表达式字面量（JSON 数组格式）
+   * Set the layer filter.
+   * @param filter Filter expression literal (JSON array form).
    */
   setFilter(filter: ExpressionLiteral): this;
 
   /**
-   * 获取图层过滤器
-   * @returns 过滤器表达式字面量或 null
+   * Get the layer filter.
+   * @returns Filter expression literal or null.
    */
   getFilter(): ExpressionLiteral | null;
 
-  // ==================== 新增属性 ====================
+// ==================== Extended properties ====================
 
   /**
-   * 设置热力图颜色渐变（仅支持 Expression）
-   * 必须使用 heatmap-density 表达式
+   * Configure the heatmap color ramp (expression only).
+   * Requires the heatmap-density expression.
    *
-   * @param color 颜色表达式（通常使用 interpolate 表达式）
+   * @param color Color expression (typically interpolate).
    *
    * @example
-  * ```typescript
+   * ```typescript
    * layer.setHeatmapColor([
    *   "interpolate",
    *   ["linear"],
@@ -128,20 +127,20 @@ export class HeatmapLayer {
   setHeatmapColor(color: ExpressionLiteral): this;
 
   /**
-   * 获取热力图颜色渐变表达式
-   * @returns 颜色表达式，如果未设置则返回 undefined
+   * Get the heatmap color expression.
+   * @returns Color expression, or undefined when unset.
    */
   getHeatmapColor(): ExpressionLiteral | undefined;
   /**
-   * 设置单个属性（通用方法）
-   * @param propertyName 属性名称
-   * @param value 属性值（常量值或Expression）
+   * Set a single property (generic helper).
+   * @param propertyName Property name.
+   * @param value Property value (literal or expression).
    */
   setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
-   * 批量设置属性（通用方法）
-   * @param properties 属性对象，键为属性名，值为属性值
+   * Set multiple properties (generic helper).
+   * @param properties Object whose keys are property names and values are property payloads.
    * @example
    * layer.setProperties({
    *   'heatmap-radius': 30, 'heatmap-weight': 1

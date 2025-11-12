@@ -1,29 +1,29 @@
 import maplibre from 'libmaplibre.so';
 
-// 使用 NAPI Marker 类型
+// Use the NAPI Marker type
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnMarkerSelectListener - Marker 选中状态变化监听器
+ * OnMarkerSelectListener - marker selection listener.
  *
- * 当 Marker 被选中或取消选中时触发
+ * Triggered when a marker is selected or deselected.
  *
- * 参考:
- * - Android: 类似功能通过 OnMarkerClickListener 实现
- * - iOS: mapView:didSelectAnnotation: 和 mapView:didDeselectAnnotation:
+ * Reference:
+ * - Android: similar behavior via OnMarkerClickListener.
+ * - iOS: `mapView:didSelectAnnotation:` and `mapView:didDeselectAnnotation:`.
  */
 export interface OnMarkerSelectListener {
   /**
-   * Marker 被选中时调用
+   * Called when a marker is selected.
    *
-   * @param marker 被选中的 Marker
+   * @param marker Selected marker.
    */
   onMarkerSelect(marker: Marker): void;
 
   /**
-   * Marker 被取消选中时调用
+   * Called when a marker is deselected.
    *
-   * @param marker 被取消选中的 Marker
+   * @param marker Deselected marker.
    */
   onMarkerDeselect(marker: Marker): void;
 }

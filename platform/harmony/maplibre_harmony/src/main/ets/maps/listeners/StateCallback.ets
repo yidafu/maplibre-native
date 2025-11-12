@@ -1,5 +1,5 @@
 /**
- * StateCallback - 状态回调接口
+ * StateCallback - state callback interface.
  */
 export interface StateCallback {
   onMapReady(): void;

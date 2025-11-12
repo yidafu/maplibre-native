@@ -1,7 +1,7 @@
 /**
- * Polygon - 多边形封装类
+ * Polygon - ArkTS wrapper for polygon annotations.
  *
- * 符合 ArkTS 规范的封装实现
+ * Provides an ArkTS-compliant implementation.
  */
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
@@ -9,7 +9,7 @@ import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
 
 /**
- * 原生 Polygon 选项接口（用于 NAPI 层交互）
+ * Native polygon options interface (used for NAPI interop).
  */
 interface NativePolygonOptions {
   points: ILatLng[];
@@ -23,42 +23,42 @@ interface NativePolygonOptions {
   zIndex: number;
 }
 /**
- * PolygonOptions - 多边形选项接口
+ * PolygonOptions - configuration interface for polygons.
  */
 export interface PolygonOptions {
-  /** 多边形 ID（可选） */
+  /** Optional polygon ID. */
   id?: string;
 
-  /** 多边形的点坐标数组 */
+  /** Array of polygon vertices. */
   points: LatLng[];
 
-  /** 孔洞数组（可选） */
+  /** Optional array of holes. */
   holes?: LatLng[][];
 
-  /** 填充颜色（可选，默认 #000000） */
+  /** Optional fill color (default #000000). */
   fillColor?: string;
 
-  /** 描边颜色（可选，默认 #000000） */
+  /** Optional stroke color (default #000000). */
   strokeColor?: string;
 
-  /** 描边宽度（可选，默认 1） */
+  /** Optional stroke width (default 1). */
   strokeWidth?: number;
 
-  /** 填充透明度（可选，默认 0.5，范围 0-1） */
+  /** Optional fill opacity (default 0.5, range 0-1). */
   fillAlpha?: number;
 
-  /** 描边透明度（可选，默认 1.0，范围 0-1） */
+  /** Optional stroke opacity (default 1.0, range 0-1). */
   strokeAlpha?: number;
 
-  /** 是否可见（可选，默认 true） */
+  /** Optional visibility flag (default true). */
   visible?: boolean;
 
-  /** Z 轴顺序（可选，默认 0） */
+  /** Optional z-index (default 0). */
   zIndex?: number;
 }
 
 /**
- * 内部创建标记
+ * Internal constructor tag.
  */
 class InternalPolygon {
   static readonly INSTANCE = new InternalPolygon();
@@ -68,26 +68,25 @@ class InternalPolygon {
 }
 
 /**
- * Polygon 封装类
+ * Polygon wrapper.
  */
 export class Polygon {
   private nativeInstance: maplibre.Polygon;
 
   /**
-   * 构造函数
-   * 支持两种模式：
-   * 1. 从选项创建: new Polygon(options)
-   * 2. 从 NAPI 实例创建（内部使用）: new Polygon(marker, nativeInstance)
+   * Constructor supporting two modes:
+   * 1. Create from options: `new Polygon(options)`
+   * 2. Create from a NAPI instance (internal use): `new Polygon(marker, nativeInstance)`
    */
   constructor(optionsOrPolygon: PolygonOptions | InternalPolygon, nativeInstance?: maplibre.Polygon) {
     if (optionsOrPolygon === InternalPolygon.INSTANCE && nativeInstance) {
-      // 内部模式：从 NAPI 实例创建
+      // Internal mode: construct from NAPI instance
       this.nativeInstance = nativeInstance;
     } else if (typeof optionsOrPolygon === 'object') {
-      // 正常模式：从选项对象创建
+      // Standard mode: construct from options
       const options = optionsOrPolygon as PolygonOptions;
 
-      // 转换 LatLng 对象为原生格式
+      // Convert LatLng objects to native format
       const nativeOptions: NativePolygonOptions = {
         points: options.points.map((p: LatLng): ILatLng => p.toObject()),
         holes: options.holes ? options.holes.map((hole: LatLng[]): ILatLng[] =>
@@ -109,31 +108,31 @@ export class Polygon {
   }
 
   /**
-   * 从 NAPI 实例创建（内部使用）
+   * Construct from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Polygon): Polygon {
     return new Polygon(InternalPolygon.INSTANCE, nativeInstance);
   }
 
   /**
-   * 创建 Polygon（静态工厂方法）
+   * Create a polygon from options (factory helper).
    */
   static createFromOptions(options: PolygonOptions): Polygon {
     return new Polygon(options);
   }
 
   /**
-   * 获取 NAPI 实例（内部使用）
+   * Retrieve the native polygon (internal use).
    */
   getNative(): maplibre.Polygon {
     return this.nativeInstance;
   }
 
-  // ========== Polygon API 方法 ==========
+  // ========== Polygon API ==========
 
   /**
-   * 获取多边形的点坐标
-   * @returns 点坐标数组
+   * Get polygon vertices.
+   * @returns Array of points.
    */
   getPoints(): LatLng[] {
     const nativePoints: ILatLng[] = this.nativeInstance.getPoints() as ILatLng[];
@@ -141,9 +140,9 @@ export class Polygon {
   }
 
   /**
-   * 设置多边形的点坐标
-   * @param points 点坐标数组
-   * @returns this（支持链式调用）
+   * Set polygon vertices.
+   * @param points Array of points.
+   * @returns `this` for chaining.
    */
   setPoints(points: LatLng[]): Polygon {
     const nativePoints: ILatLng[] = points.map((p: LatLng): ILatLng => p.toObject());
@@ -152,26 +151,26 @@ export class Polygon {
   }
 
   /**
-   * 添加一个点到多边形
-   * @param point 点坐标
+   * Add a point to the polygon.
+   * @param point Point to add.
    */
   addPoint(point: LatLng): void {
     this.nativeInstance.addPoint(point.toObject());
   }
 
   /**
-   * 在指定位置插入一个点
-   * @param index 插入位置索引
-   * @param point 点坐标
+   * Insert a point at the specified index.
+   * @param index Target index.
+   * @param point Point to insert.
    */
   insertPoint(index: number, point: LatLng): void {
     this.nativeInstance.insertPoint(index, point.toObject());
   }
 
   /**
-   * 移除指定索引的点
-   * @param index 点索引
-   * @returns 被移除的点坐标，如果索引无效则返回 null
+   * Remove a point by index.
+   * @param index Point index.
+   * @returns Removed point or null if the index is invalid.
    */
   removePoint(index: number): LatLng | null {
     const nativePoint = this.nativeInstance.removePoint(index);
@@ -183,8 +182,8 @@ export class Polygon {
   }
 
   /**
-   * 获取孔洞列表
-   * @returns 孔洞数组，每个孔洞是一个点坐标数组
+   * Get polygon holes.
+   * @returns Array of holes, each represented by an array of points.
    */
   getHoles(): LatLng[][] {
     const nativeHoles: ILatLng[][] = this.nativeInstance.getHoles() as ILatLng[][];
@@ -194,9 +193,9 @@ export class Polygon {
   }
 
   /**
-   * 设置孔洞列表
-   * @param holes 孔洞数组
-   * @returns this（支持链式调用）
+   * Set polygon holes.
+   * @param holes Array of holes.
+   * @returns `this` for chaining.
    */
   setHoles(holes: LatLng[][]): Polygon {
     const nativeHoles: ILatLng[][] = holes.map((hole: LatLng[]): ILatLng[] =>
@@ -207,8 +206,8 @@ export class Polygon {
   }
 
   /**
-   * 添加一个孔洞
-   * @param hole 孔洞点坐标数组
+   * Add a hole.
+   * @param hole Hole represented as points.
    */
   addHole(hole: LatLng[]): void {
     const nativeHole: ILatLng[] = hole.map((p: LatLng): ILatLng => p.toObject());
@@ -216,9 +215,9 @@ export class Polygon {
   }
 
   /**
-   * 移除指定索引的孔洞
-   * @param index 孔洞索引
-   * @returns 被移除的孔洞点坐标数组，如果索引无效则返回 null
+   * Remove a hole by index.
+   * @param index Hole index.
+   * @returns Removed hole or null if the index is invalid.
    */
   removeHole(index: number): LatLng[] | null {
     const nativeHole = this.nativeInstance.removeHole(index);
@@ -230,17 +229,17 @@ export class Polygon {
   }
 
   /**
-   * 获取填充颜色
-   * @returns 颜色字符串
+   * Get fill color.
+   * @returns Color string.
    */
   getFillColor(): string {
     return this.nativeInstance.getFillColor();
   }
 
   /**
-   * 设置填充颜色
-   * @param color 颜色字符串（如 '#FF0000' 或 'red'）
-   * @returns this（支持链式调用）
+   * Set fill color.
+   * @param color Color string (e.g. '#FF0000' or 'red').
+   * @returns `this` for chaining.
    */
   setFillColor(color: string): Polygon {
     this.nativeInstance.setFillColor(color);
@@ -248,17 +247,17 @@ export class Polygon {
   }
 
   /**
-   * 获取描边颜色
-   * @returns 颜色字符串
+   * Get stroke color.
+   * @returns Color string.
    */
   getStrokeColor(): string {
     return this.nativeInstance.getStrokeColor();
   }
 
   /**
-   * 设置描边颜色
-   * @param color 颜色字符串（如 '#FF0000' 或 'red'）
-   * @returns this（支持链式调用）
+   * Set stroke color.
+   * @param color Color string (e.g. '#FF0000' or 'red').
+   * @returns `this` for chaining.
    */
   setStrokeColor(color: string): Polygon {
     this.nativeInstance.setStrokeColor(color);
@@ -266,17 +265,17 @@ export class Polygon {
   }
 
   /**
-   * 获取描边宽度
-   * @returns 宽度值（像素）
+   * Get stroke width.
+   * @returns Width in pixels.
    */
   getStrokeWidth(): number {
     return this.nativeInstance.getStrokeWidth();
   }
 
   /**
-   * 设置描边宽度
-   * @param width 宽度值（像素）
-   * @returns this（支持链式调用）
+   * Set stroke width.
+   * @param width Width in pixels.
+   * @returns `this` for chaining.
    */
   setStrokeWidth(width: number): Polygon {
     this.nativeInstance.setStrokeWidth(width);
@@ -284,17 +283,17 @@ export class Polygon {
   }
 
   /**
-   * 获取填充透明度
-   * @returns 透明度值（0-1）
+   * Get fill opacity.
+   * @returns Opacity value (0-1).
    */
   getFillAlpha(): number {
     return this.nativeInstance.getFillAlpha();
   }
 
   /**
-   * 设置填充透明度
-   * @param alpha 透明度值（0-1，0 为完全透明，1 为完全不透明）
-   * @returns this（支持链式调用）
+   * Set fill opacity.
+   * @param alpha Opacity (0-1, where 0 is transparent).
+   * @returns `this` for chaining.
    */
   setFillAlpha(alpha: number): Polygon {
     this.nativeInstance.setFillAlpha(alpha);
@@ -302,17 +301,17 @@ export class Polygon {
   }
 
   /**
-   * 获取描边透明度
-   * @returns 透明度值（0-1）
+   * Get stroke opacity.
+   * @returns Opacity value (0-1).
    */
   getStrokeAlpha(): number {
     return this.nativeInstance.getStrokeAlpha();
   }
 
   /**
-   * 设置描边透明度
-   * @param alpha 透明度值（0-1，0 为完全透明，1 为完全不透明）
-   * @returns this（支持链式调用）
+   * Set stroke opacity.
+   * @param alpha Opacity (0-1, where 0 is transparent).
+   * @returns `this` for chaining.
    */
   setStrokeAlpha(alpha: number): Polygon {
     this.nativeInstance.setStrokeAlpha(alpha);
@@ -320,17 +319,17 @@ export class Polygon {
   }
 
   /**
-   * 获取可见性
-   * @returns 是否可见
+   * Get visibility.
+   * @returns Visibility flag.
    */
   getVisible(): boolean {
     return this.nativeInstance.getVisible();
   }
 
   /**
-   * 设置可见性
-   * @param visible 是否可见
-   * @returns this（支持链式调用）
+   * Set visibility.
+   * @param visible Visibility flag.
+   * @returns `this` for chaining.
    */
   setVisible(visible: boolean): Polygon {
     this.nativeInstance.setVisible(visible);
@@ -338,42 +337,42 @@ export class Polygon {
   }
 
   /**
-   * 检查多边形是否可见（getVisible 的别名）
-   * @returns 是否可见
+   * Alias for `isVisible`.
+   * @returns Visibility flag.
    */
   isVisible(): boolean {
     return this.getVisible();
   }
 
   /**
-   * 获取 Z-index（Z 轴顺序）
-   * @returns Z-index 值
+   * Get z-index.
+   * @returns Z-index value.
    */
   getZIndex(): number {
     return this.nativeInstance.getZIndex();
   }
 
   /**
-   * 设置 Z-index（Z 轴顺序）
-   * @param zIndex Z-index 值（数值越大，显示层级越高）
-   * @returns this（支持链式调用）
+   * Set z-index.
+   * @param zIndex Z-index value (higher values render on top).
+   * @returns `this` for chaining.
    */
   setZIndex(zIndex: number): Polygon {
     this.nativeInstance.setZIndex(zIndex);
     return this;
   }
 
-  // ========== 扩展方法（内部使用）==========
+  // ========== Extended methods (internal use) ==========
 
   /**
-   * 获取 Polygon ID（内部使用）
+   * Get the polygon ID (internal use).
    */
   getId(): number {
     return this.nativeInstance.getId();
   }
 
   /**
-   * 设置 Polygon ID（内部使用）
+   * Set the polygon ID (internal use).
    */
   setId(id: number): Polygon {
     this.nativeInstance.setId(id);
@@ -381,9 +380,9 @@ export class Polygon {
   }
 
   /**
-   * 设置所属的 MapLibreMap（内部使用）
-   * @param map MapLibreMap 实例
-   * @returns this（支持链式调用）
+   * Associate the polygon with a MapLibreMap (internal use).
+   * @param map MapLibreMap instance.
+   * @returns `this` for chaining.
    */
   setMapLibreMap(map: MapLibreMap): Polygon {
     // this.nativeInstance.setMapLibreMap(map);
@@ -391,8 +390,8 @@ export class Polygon {
   }
 
   /**
-   * 转换为字符串表示
-   * @returns 字符串表示，包含 ID、点数量和孔洞数量
+   * Convert to string representation.
+   * @returns String with ID, point count, and hole count.
    */
   public toString(): string {
     return `Polygon(id=${this.getId()}, points=${this.getPoints().length}, holes=${this.getHoles().length})`;

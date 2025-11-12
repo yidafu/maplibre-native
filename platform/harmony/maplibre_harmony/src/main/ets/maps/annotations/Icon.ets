@@ -1,12 +1,12 @@
 /**
- * Icon - 图标封装类
+ * Icon - icon wrapper class.
  *
- * 符合 ArkTS 规范的封装实现
+ * ArkTS-compliant wrapper around the native icon implementation.
  */
 import maplibre from 'libmaplibre.so';
 import image from '@ohos.multimedia.image';
 /**
- * 内部创建标记
+ * Internal marker used to distinguish the native-construction path.
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -16,16 +16,15 @@ class InternalMarker {
 }
 
 /**
- * Icon 封装类
+ * Icon wrapper.
  */
 export class Icon {
   private nativeInstance: maplibre.Icon;
 
   /**
-   * 构造函数
-   * 支持两种模式：
-   * 1. 从图标数据创建: new Icon(id, pixelMap, scale)
-   * 2. 从 NAPI 实例创建（内部使用）: new Icon(marker, nativeInstance)
+   * Constructor supporting two modes:
+   * 1. Create from icon data: `new Icon(id, pixelMap, scale)`
+   * 2. Create from NAPI instance (internal use): `new Icon(marker, nativeInstance)`
    */
   constructor(
     idOrMarker: string | InternalMarker,
@@ -33,10 +32,10 @@ export class Icon {
     scale?: number
   ) {
     if (idOrMarker === InternalMarker.INSTANCE && pixelMapOrNative instanceof Object) {
-      // 内部模式：从 NAPI 实例创建
+      // Internal mode: construct from NAPI instance
       this.nativeInstance = pixelMapOrNative as maplibre.Icon;
     } else if (typeof idOrMarker === 'string' && pixelMapOrNative) {
-      // 正常模式：从图标数据创建
+      // Standard mode: construct from icon data
       this.nativeInstance = new maplibre.Icon(idOrMarker, pixelMapOrNative as image.PixelMap, scale);
     } else {
       throw new Error('Invalid Icon constructor arguments');
@@ -44,66 +43,66 @@ export class Icon {
   }
 
   /**
-   * 从 NAPI 实例创建（内部使用）
+   * Create from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Icon): Icon {
     return new Icon(InternalMarker.INSTANCE, nativeInstance);
   }
 
   /**
-   * 内部创建方法（供 IconFactory 使用）
+   * Internal creation helper (used by `IconFactory`).
    */
   static createInternal(id: string, pixelMap: image.PixelMap, scale?: number): Icon {
     return new Icon(id, pixelMap, scale);
   }
 
   /**
-   * 获取 NAPI 实例（内部使用）
+   * Retrieve the underlying NAPI instance (internal use).
    */
   getNative(): maplibre.Icon {
     return this.nativeInstance;
   }
 
   /**
-   * 获取图标 ID
+   * Get the icon ID.
    */
   getId(): string {
     return this.nativeInstance.getId();
   }
 
   /**
-   * 获取图标缩放比例
+   * Get the icon scale factor.
    */
   getScale(): number {
     return this.nativeInstance.getScale();
   }
 
   /**
-   * 获取图标宽度
+   * Get the icon width.
    */
   getWidth(): number {
     return this.nativeInstance.getWidth();
   }
 
   /**
-   * 获取图标高度
+   * Get the icon height.
    */
   getHeight(): number {
     return this.nativeInstance.getHeight();
   }
 
   /**
-   * 检查图标是否已释放（内部使用）
+   * Check whether the icon has been released (internal use).
    */
   isReleased(): boolean {
-    // IconManager 需要的方法
+    // Required by IconManager
     return false;
   }
 
   /**
-   * 释放图标资源（内部使用）
+   * Release icon resources (internal use).
    */
   release(): void {
-    // IconManager 需要的方法
+    // Required by IconManager
   }
 }

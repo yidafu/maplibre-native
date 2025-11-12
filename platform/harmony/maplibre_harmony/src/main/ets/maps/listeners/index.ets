@@ -1,10 +1,10 @@
 /**
- * Listeners 模块导出
+ * Listener module exports.
  *
- * 提供地图事件监听器接口
+ * Provides map event listener interfaces.
  */
 
-// 原有的监听器
+// Core listeners
 export { OnMarkerClickListener } from './OnMarkerClickListener';
 
 export { OnMarkerLongClickListener } from './OnMarkerLongClickListener';
@@ -21,31 +21,31 @@ export { OnStyleLoadedListener } from './OnStyleLoadedListener';
 
 export { OnStyleLoadErrorListener } from './OnStyleLoadErrorListener';
 
-// 地图事件监听器（对齐 Android/iOS API）
+// Map event listeners (aligned with Android/iOS APIs)
 export {
-  // 相机事件
+  // Camera events
   OnCameraWillChangeListener,
   OnCameraIsChangingListener,
   OnCameraDidChangeListener,
 
-  // 地图加载事件
+  // Map loading events
   OnWillStartLoadingMapListener,
   OnDidFinishLoadingMapListener,
   OnDidFailLoadingMapListener,
 
-  // 渲染事件
+  // Rendering events
   OnWillStartRenderingFrameListener,
   OnDidFinishRenderingFrameListener,
   OnDidFinishRenderingFrameWithStatsListener,
   OnWillStartRenderingMapListener,
   OnDidFinishRenderingMapListener,
 
-  // 样式事件
+  // Style events
   OnDidFinishLoadingStyleListener,
   OnStyleImageMissingListener,
   OnCanRemoveUnusedStyleImageListener,
 
-  // 其他事件
+  // Misc events
   OnDidBecomeIdleListener,
   OnSourceChangedListener,
   OnPreCompileShaderListener,
@@ -59,11 +59,11 @@ export {
   OnSpriteErrorListener,
   OnSpriteRequestedListener,
 
-  // 地图就绪回调
+  // Map ready callback
   OnMapReadyCallback
 } from './MapEventListeners';
 
-// 回调接口
+// Additional callbacks
 export { OnFpsChangedListener } from './OnFpsChangedListener';
 
 export { StateCallback } from './StateCallback';

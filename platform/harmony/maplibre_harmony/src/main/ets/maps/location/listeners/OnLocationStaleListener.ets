@@ -1,10 +1,10 @@
 /**
- * 位置过期状态监听器
+ * Listener for stale location state changes.
  */
 export interface OnLocationStaleListener {
   /**
-   * 当位置变为过期状态时调用
-   * @param isStale 是否过期
+   * Invoked when the location becomes stale.
+   * @param isStale Whether the location is stale.
    */
   onStaleStateChange(isStale: boolean): void;
 }

@@ -1,50 +1,50 @@
 /**
- * PolygonManager - Polygon 管理器
+ * PolygonManager - polygon manager.
  *
- * 负责 Polygon 的添加、更新、删除和查询
+ * Handles polygon creation, updates, deletion, and queries.
  *
- * 架构说明：
- * - 使用原生注解系统（通过 nativeMapView.addPolygons）
- * - 查询使用 queryShapeAnnotations API
- * - 与 MarkerManager 的 GeoJSON 模式不同
+ * Architecture:
+ * - Uses the native annotation system (`nativeMapView.addPolygons`)
+ * - Queries run via the `queryShapeAnnotations` API
+ * - Differs from `MarkerManager`, which uses a GeoJSON-based approach
  *
- * 参考 Android PolygonContainer 实现
+ * Reference: Android `PolygonContainer` implementation.
  */
 import type { MapLibreMap } from '../MapLibreMap';
 import { Polygon, PolygonOptions } from './Polygon';
 import { Rect } from '../geometry/Rect';
 
 /**
- * PolygonManager 类
+ * PolygonManager class.
  *
- * 管理地图上所有的 Polygon 注解（原生注解系统）
+ * Manages all polygon annotations on the map via the native annotation system.
  */
 export class PolygonManager {
   private mapLibreMap: MapLibreMap;
-  // Polygon ID -> Polygon 映射
+  // Polygon ID -> Polygon mapping
   private polygonMap: Map<number, Polygon> = new Map();
 
   /**
-   * 构造函数
+   * Constructor.
    *
-   * @param mapLibreMap MapLibreMap 实例
+   * @param mapLibreMap MapLibreMap instance.
    */
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
   }
 
   /**
-   * 添加单个 Polygon
+   * Add a single polygon.
    *
-   * @param options PolygonOptions 实例
-   * @returns 创建的 Polygon
+   * @param options PolygonOptions instance.
+   * @returns Created polygon.
    */
   public addPolygon(options: PolygonOptions): Polygon {
     try {
-      // 创建 Polygon 对象
+      // Create polygon object
       const polygon = new Polygon(options);
 
-      // 调用 native 方法添加（返回 ID 数组）
+      // Invoke native API (returns an array of IDs)
       const ids = this.mapLibreMap.getNativeMapView().addPolygons([polygon]);
 
       if (ids.length > 0) {
@@ -61,23 +61,23 @@ export class PolygonManager {
   }
 
   /**
-   * 批量添加 Polygon
+   * Add multiple polygons.
    *
-   * @param optionsList PolygonOptions 数组
-   * @returns 创建的 Polygon 数组
+   * @param optionsList Array of PolygonOptions.
+   * @returns Array of created polygons.
    */
   public addPolygons(optionsList: PolygonOptions[]): Polygon[] {
     try {
-      // 创建 Polygon 对象数组
+      // Create polygon objects
       const polygons: Polygon[] = [];
       for (const options of optionsList) {
         polygons.push(new Polygon(options));
       }
 
-      // 批量添加到地图
+      // Add them to the map in batch
       const ids = this.mapLibreMap.getNativeMapView().addPolygons(polygons);
 
-      // 设置 ID 并注册
+      // Assign IDs and register them
       for (let i = 0; i < polygons.length; i++) {
         const polygon = polygons[i];
         const id = ids[i];
@@ -93,9 +93,9 @@ export class PolygonManager {
   }
 
   /**
-   * 移除单个 Polygon
+   * Remove a single polygon.
    *
-   * @param polygon 要移除的 Polygon
+   * @param polygon Polygon to remove.
    */
   public removePolygon(polygon: Polygon): void {
     const id = polygon.getId();
@@ -108,9 +108,9 @@ export class PolygonManager {
   }
 
   /**
-   * 批量移除 Polygon
+   * Remove polygons in batch.
    *
-   * @param polygons 要移除的 Polygon 数组
+   * @param polygons Polygons to remove.
    */
   public removePolygons(polygons: Polygon[]): void {
     const ids: number[] = [];
@@ -129,9 +129,9 @@ export class PolygonManager {
   }
 
   /**
-   * 更新 Polygon
+   * Update an existing polygon.
    *
-   * @param polygon 要更新的 Polygon
+   * @param polygon Polygon to update.
    */
   public updatePolygon(polygon: Polygon): void {
     const id = polygon.getId();
@@ -144,7 +144,7 @@ export class PolygonManager {
   }
 
   /**
-   * 清除所有 Polygon
+   * Remove all polygons.
    */
   public clear(): void {
     const ids = Array.from(this.polygonMap.keys());
@@ -155,9 +155,9 @@ export class PolygonManager {
   }
 
   /**
-   * 获取所有 Polygon
+   * Get all polygons.
    *
-   * @returns Polygon 数组
+   * @returns Array of polygons.
    */
   public getPolygons(): Polygon[] {
     return Array.from(this.polygonMap.values());

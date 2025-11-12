@@ -1,191 +1,191 @@
 import type { LatLng } from '../NativeMapView';
 
 /**
- * 折线选项接口
+ * Polyline options.
  */
 export interface PolylineOptions {
-  /** 折线的点坐标数组 */
+  /** Polyline vertices. */
   points: LatLng[];
 
-  /** 线条颜色（可选，默认 #000000） */
+  /** Optional line color (default #000000). */
   color?: string;
 
-  /** 线条宽度（可选，默认 10） */
+  /** Optional line width (default 10). */
   width?: number;
 
-  /** 线条透明度（可选，默认 1.0，范围 0-1） */
+  /** Optional line alpha (default 1.0, range 0-1). */
   alpha?: number;
 
-  /** 是否可见（可选，默认 true） */
+  /** Optional visibility flag (default true). */
   visible?: boolean;
 
-  /** Z 轴顺序（可选，默认 0） */
+  /** Optional Z-index (default 0). */
   zIndex?: number;
 
-  /** 线条样式/虚线模式（可选，如 [5, 5] 表示 5px 实线 5px 空白） */
+  /** Optional pattern (for example [5, 5] for 5px dash, 5px gap). */
   pattern?: number[] | null;
 
-  /** 连接类型（可选，默认 'round'，可选值：'round' | 'bevel' | 'miter'） */
+  /** Optional joint type (default 'round'; accepts 'round' | 'bevel' | 'miter'). */
   jointType?: string;
 
-  /** 端点类型（可选，默认 'round'，可选值：'round' | 'butt' | 'square'） */
+  /** Optional cap type (default 'round'; accepts 'round' | 'butt' | 'square'). */
   capType?: string;
 }
 
 /**
- * Polyline - 折线标注类（NAPI 对象）
+ * Polyline - polyline annotation (NAPI object).
  *
- * 用于在地图上显示折线标注，支持颜色、宽度、样式等
+ * Renders polyline overlays with configurable color, width, and dash patterns.
  */
 export class Polyline {
   /**
-   * 构造函数
-   * @param options 折线选项
+   * Constructor.
+   * @param options Polyline options.
    */
   constructor(options: PolylineOptions);
 
   /**
-   * 获取折线的点坐标
-   * @returns 点坐标数组
+   * Get polyline vertices.
+   * @returns Coordinate array.
    */
   getPoints(): LatLng[];
 
   /**
-   * 设置折线的点坐标
-   * @param points 点坐标数组
+   * Set polyline vertices.
+   * @param points Coordinate array.
    */
   setPoints(points: LatLng[]): void;
 
   /**
-   * 添加一个点到折线末尾
-   * @param point 点坐标
+   * Append a vertex to the end.
+   * @param point Coordinate.
    */
   addPoint(point: LatLng): void;
 
   /**
-   * 在指定位置插入一个点
-   * @param index 插入位置索引
-   * @param point 点坐标
+   * Insert a vertex at an index.
+   * @param index Target index.
+   * @param point Coordinate.
    */
   insertPoint(index: number, point: LatLng): void;
 
   /**
-   * 移除指定索引的点
-   * @param index 点索引
-   * @returns 被移除的点坐标，如果索引无效则返回 null
+   * Remove a vertex.
+   * @param index Vertex index.
+   * @returns Removed coordinate, or null when invalid.
    */
   removePoint(index: number): LatLng | null;
 
   /**
-   * 获取线条颜色
-   * @returns 颜色字符串
+   * Get the line color.
+   * @returns CSS color string.
    */
   getColor(): string;
 
   /**
-   * 设置线条颜色
-   * @param color 颜色字符串（如 '#FF0000' 或 'red'）
+   * Set the line color.
+   * @param color CSS color string (for example '#FF0000' or 'red').
    */
   setColor(color: string): void;
 
   /**
-   * 获取线条宽度
-   * @returns 宽度值（像素）
+   * Get the line width.
+   * @returns Width in pixels.
    */
   getWidth(): number;
 
   /**
-   * 设置线条宽度
-   * @param width 宽度值（像素）
+   * Set the line width.
+   * @param width Width in pixels.
    */
   setWidth(width: number): void;
 
   /**
-   * 获取线条透明度
-   * @returns 透明度值（0-1）
+   * Get the line alpha.
+   * @returns Alpha value (0-1).
    */
   getAlpha(): number;
 
   /**
-   * 设置线条透明度
-   * @param alpha 透明度值（0-1，0 为完全透明，1 为完全不透明）
+   * Set the line alpha.
+   * @param alpha Alpha value (0-1, where 0 is fully transparent and 1 is opaque).
    */
   setAlpha(alpha: number): void;
 
   /**
-   * 获取可见性
-   * @returns 是否可见
+   * Get the visibility state.
+   * @returns True when visible.
    */
   getVisible(): boolean;
 
   /**
-   * 设置可见性
-   * @param visible 是否可见
+   * Set the visibility.
+   * @param visible True to display.
    */
   setVisible(visible: boolean): void;
 
   /**
-   * 获取 Z-index（Z 轴顺序）
-   * @returns Z-index 值
+   * Get the Z-index.
+   * @returns Z-index value.
    */
   getZIndex(): number;
 
   /**
-   * 设置 Z-index（Z 轴顺序）
-   * @param zIndex Z-index 值（数值越大，显示层级越高）
+   * Set the Z-index.
+   * @param zIndex Z-order value (higher values render above lower ones).
    */
   setZIndex(zIndex: number): void;
 
   /**
-   * 获取线条样式/虚线模式
-   * @returns 样式数组或 null（如 [5, 5] 表示 5px 实线 5px 空白）
+   * Get the dash pattern.
+   * @returns Pattern array or null (for example [5, 5]).
    */
   getPattern(): number[] | null;
 
   /**
-   * 设置线条样式/虚线模式
-   * @param pattern 样式数组或 null（如 [5, 5] 表示 5px 实线 5px 空白）
+   * Set the dash pattern.
+   * @param pattern Pattern array or null (for example [5, 5]).
    */
   setPattern(pattern: number[] | null): void;
 
   /**
-   * 获取线条连接类型
-   * @returns 连接类型（'round' | 'bevel' | 'miter'）
+   * Get the joint type.
+   * @returns Joint type ('round' | 'bevel' | 'miter').
    */
   getJointType(): string;
 
   /**
-   * 设置线条连接类型
-   * @param jointType 连接类型（'round' | 'bevel' | 'miter'）
+   * Set the joint type.
+   * @param jointType Joint type ('round' | 'bevel' | 'miter').
    */
   setJointType(jointType: string): void;
 
   /**
-   * 获取线条端点类型
-   * @returns 端点类型（'round' | 'butt' | 'square'）
+   * Get the cap type.
+   * @returns Cap type ('round' | 'butt' | 'square').
    */
   getCapType(): string;
 
   /**
-   * 设置线条端点类型
-   * @param capType 端点类型（'round' | 'butt' | 'square'）
+   * Set the cap type.
+   * @param capType Cap type ('round' | 'butt' | 'square').
    */
   setCapType(capType: string): void;
 
   /**
-   * 获取折线 ID
-   * @returns ID 数值
+   * Get the polyline identifier.
+   * @returns Identifier value.
    */
   getId(): number;
 
   /**
-   * 设置折线 ID（内部使用）
+   * Set the polyline identifier (internal use).
    * @internal
-   * @param id ID 数值
+   * @param id Identifier.
    */
   setId(id: number): void;
 
-  // 注意：setMapLibreMap 是内部实现细节，不在公开 API 中暴露
-  // ETS 层的 Polyline 封装类会处理 MapLibreMap 的关联
+  // Note: setMapLibreMap is an internal detail and not part of the public API.
+  // ETS polyline wrappers handle the association with MapLibreMap.
 }
 

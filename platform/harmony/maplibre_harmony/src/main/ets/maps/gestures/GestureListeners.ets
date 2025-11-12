@@ -1,242 +1,242 @@
 /**
- * 手势监听器接口定义
+ * Gesture listener interface definitions.
  *
- * 参考 Android MapGestureDetector 和 iOS MLNMapView 的手势监听器设计
+ * Inspired by Android `MapGestureDetector` and iOS `MLNMapView` gesture listener designs.
  */
 
 /**
- * 平移手势监听器
- * 当用户单指拖动地图时触发
+ * Pan gesture listener.
+ * Triggered when the user drags the map with one finger.
  */
 export interface OnMoveListener {
   /**
-   * 平移手势开始
+   * Pan gesture begins.
    */
   onMoveBegin(): void;
 
   /**
-   * 平移手势进行中
-   * @param distanceX X 轴移动距离（像素）
-   * @param distanceY Y 轴移动距离（像素）
+   * Pan gesture in progress.
+   * @param distanceX Movement along the X axis (pixels).
+   * @param distanceY Movement along the Y axis (pixels).
    */
   onMove(distanceX: number, distanceY: number): void;
 
   /**
-   * 平移手势结束
+   * Pan gesture ends.
    */
   onMoveEnd(): void;
 }
 
 /**
- * 缩放手势监听器
- * 当用户双指捏合或张开时触发
+ * Scale gesture listener.
+ * Triggered when the user pinches or spreads two fingers.
  */
 export interface OnScaleListener {
   /**
-   * 缩放手势开始
-   * @param focalX 缩放中心点 X 坐标
-   * @param focalY 缩放中心点 Y 坐标
+   * Scale gesture begins.
+   * @param focalX Focal point X coordinate.
+   * @param focalY Focal point Y coordinate.
    */
   onScaleBegin(focalX: number, focalY: number): void;
 
   /**
-   * 缩放手势进行中
-   * @param scaleFactor 缩放因子（>1 表示放大，<1 表示缩小）
-   * @param focalX 缩放中心点 X 坐标
-   * @param focalY 缩放中心点 Y 坐标
+   * Scale gesture in progress.
+   * @param scaleFactor Scale factor (>1 to zoom in, <1 to zoom out).
+   * @param focalX Focal point X coordinate.
+   * @param focalY Focal point Y coordinate.
    */
   onScale(scaleFactor: number, focalX: number, focalY: number): void;
 
   /**
-   * 缩放手势结束
+   * Scale gesture ends.
    */
   onScaleEnd(): void;
 }
 
 /**
- * 旋转手势监听器
- * 当用户双指旋转时触发
+ * Rotate gesture listener.
+ * Triggered when the user rotates with two fingers.
  */
 export interface OnRotateListener {
   /**
-   * 旋转手势开始
-   * @param focalX 旋转中心点 X 坐标
-   * @param focalY 旋转中心点 Y 坐标
+   * Rotate gesture begins.
+   * @param focalX Rotation focal point X coordinate.
+   * @param focalY Rotation focal point Y coordinate.
    */
   onRotateBegin(focalX: number, focalY: number): void;
 
   /**
-   * 旋转手势进行中
-   * @param rotationDelta 旋转角度增量（度）
-   * @param focalX 旋转中心点 X 坐标
-   * @param focalY 旋转中心点 Y 坐标
+   * Rotate gesture in progress.
+   * @param rotationDelta Rotation delta (degrees).
+   * @param focalX Rotation focal point X coordinate.
+   * @param focalY Rotation focal point Y coordinate.
    */
   onRotate(rotationDelta: number, focalX: number, focalY: number): void;
 
   /**
-   * 旋转手势结束
+   * Rotate gesture ends.
    */
   onRotateEnd(): void;
 }
 
 /**
- * 地图点击监听器
+ * Map tap listener.
  */
 export interface OnMapClickListener {
   /**
-   * 地图单击事件
-   * @param x 点击位置 X 坐标
-   * @param y 点击位置 Y 坐标
-   * @returns 是否消费该事件
+   * Map tap event.
+   * @param x Tap position X coordinate.
+   * @param y Tap position Y coordinate.
+   * @returns Whether the event was consumed.
    */
   onMapClick(x: number, y: number): boolean;
 }
 
 /**
- * 地图长按监听器
+ * Map long-press listener.
  */
 export interface OnMapLongClickListener {
   /**
-   * 地图长按事件
-   * @param x 长按位置 X 坐标
-   * @param y 长按位置 Y 坐标
-   * @returns 是否消费该事件
+   * Map long-press event.
+   * @param x Long-press position X coordinate.
+   * @param y Long-press position Y coordinate.
+   * @returns Whether the event was consumed.
    */
   onMapLongClick(x: number, y: number): boolean;
 }
 
 /**
- * 双击监听器（预留扩展）
+ * Double-tap listener (reserved for future extensions).
  */
 export interface OnDoubleTapListener {
   /**
-   * 地图双击事件
-   * @param x 双击位置 X 坐标
-   * @param y 双击位置 Y 坐标
-   * @returns 是否消费该事件
+   * Map double-tap event.
+   * @param x Double-tap position X coordinate.
+   * @param y Double-tap position Y coordinate.
+   * @returns Whether the event was consumed.
    */
   onDoubleTap(x: number, y: number): boolean;
 }
 
 /**
- * 快速滑动监听器（预留扩展）
+ * Fling listener (reserved for future extensions).
  */
 export interface OnFlingListener {
   /**
-   * 快速滑动事件
-   * @param velocityX X 轴速度
-   * @param velocityY Y 轴速度
+   * Fling event.
+   * @param velocityX Velocity along the X axis.
+   * @param velocityY Velocity along the Y axis.
    */
   onFling(velocityX: number, velocityY: number): void;
 }
 
 /**
- * 双指点击监听器（预留扩展）
+ * Two-finger tap listener (reserved for future extensions).
  */
 export interface OnTwoFingerTapListener {
   /**
-   * 双指点击事件
-   * @param x 点击位置 X 坐标
-   * @param y 点击位置 Y 坐标
+   * Two-finger tap event.
+   * @param x Tap position X coordinate.
+   * @param y Tap position Y coordinate.
    */
   onTwoFingerTap(x: number, y: number): void;
 }
 
 /**
- * 倾斜手势监听器
- * 当用户双指上下拖动改变地图俯仰角度时触发
+ * Tilt gesture listener.
+ * Triggered when the user drags two fingers vertically to adjust pitch.
  */
 export interface OnTiltListener {
   /**
-   * 倾斜手势开始
+   * Tilt gesture begins.
    */
   onTiltBegin(): void;
 
   /**
-   * 倾斜手势进行中
-   * @param pitch 当前俯仰角度（度，0-60）
+   * Tilt gesture in progress.
+   * @param pitch Current pitch angle (degrees, 0-60).
    */
   onTilt(pitch: number): void;
 
   /**
-   * 倾斜手势结束
+   * Tilt gesture ends.
    */
   onTiltEnd(): void;
 }
 
 /**
- * Shove 手势监听器（Android 命名）
- * 当用户双指上下拖动改变地图俯仰角度时触发
- * 等同于 OnTiltListener，提供 Android 风格的命名以保持兼容性
+ * Shove gesture listener (Android naming).
+ * Triggered when the user drags two fingers vertically to adjust pitch.
+ * Equivalent to `OnTiltListener`, provided for Android-style compatibility.
  *
- * 参考 Android MapLibreMap.OnShoveListener
+ * Reference: Android `MapLibreMap.OnShoveListener`.
  */
 export interface OnShoveListener {
   /**
-   * Shove 手势开始
+   * Shove gesture begins.
    */
   onShoveBegin(): void;
 
   /**
-   * Shove 手势进行中
-   * @param pitch 当前俯仰角度（度，0-60）
+   * Shove gesture in progress.
+   * @param pitch Current pitch angle (degrees, 0-60).
    */
   onShove(pitch: number): void;
 
   /**
-   * Shove 手势结束
+   * Shove gesture ends.
    */
   onShoveEnd(): void;
 }
 
 /**
- * Quick Zoom 监听器
- * 当用户双击并拖动进行快速缩放时触发
+ * Quick Zoom listener.
+ * Triggered when the user double-taps and drags to zoom quickly.
  */
 export interface OnQuickZoomListener {
   /**
-   * Quick Zoom 开始
+   * Quick Zoom begins.
    */
   onQuickZoomBegin(): void;
 
   /**
-   * Quick Zoom 进行中
-   * @param zoom 当前缩放级别
+   * Quick Zoom in progress.
+   * @param zoom Current zoom level.
    */
   onQuickZoom(zoom: number): void;
 
   /**
-   * Quick Zoom 结束
+   * Quick Zoom ends.
    */
   onQuickZoomEnd(): void;
 }
 
 /**
- * 触摸移动监听器
- * 当用户手指在屏幕上移动时触发（不区分单指还是多指）
- * 用于实现 Marker 拖拽等需要连续跟踪触摸位置的功能
+ * Touch move listener.
+ * Triggered whenever a finger moves on screen (regardless of finger count).
+ * Useful for marker dragging or other continuous touch tracking.
  */
 export interface OnTouchMoveListener {
   /**
-   * 触摸移动事件
-   * @param x 当前触摸位置 X 坐标（屏幕坐标）
-   * @param y 当前触摸位置 Y 坐标（屏幕坐标）
-   * @returns 是否消费该事件（如果返回 true，将阻止其他监听器接收）
+   * Touch move event.
+   * @param x Current touch X coordinate (screen coordinates).
+   * @param y Current touch Y coordinate (screen coordinates).
+   * @returns Whether the event was consumed (returning true prevents other listeners from receiving it).
    */
   onTouchMove(x: number, y: number): boolean;
 }
 
 /**
- * 触摸释放监听器
- * 当用户手指离开屏幕时触发
- * 用于实现 Marker 拖拽结束等需要检测触摸结束的功能
+ * Touch release listener.
+ * Triggered when the finger lifts from the screen.
+ * Useful for marker drag completion or other touch-end detection.
  */
 export interface OnTouchUpListener {
   /**
-   * 触摸释放事件
-   * @param x 触摸释放位置 X 坐标（屏幕坐标）
-   * @param y 触摸释放位置 Y 坐标（屏幕坐标）
-   * @returns 是否消费该事件（如果返回 true，将阻止其他监听器接收）
+   * Touch release event.
+   * @param x Release position X coordinate (screen coordinates).
+   * @param y Release position Y coordinate (screen coordinates).
+   * @returns Whether the event was consumed (returning true prevents other listeners from receiving it).
    */
   onTouchUp(x: number, y: number): boolean;
 }

@@ -5,19 +5,19 @@ import bundleManager from '@ohos.bundle.bundleManager';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
 /**
- * 位置权限管理器
- * 提供完善的权限检查、请求和状态管理
+ * Location permission manager.
+ * Provides helpers for checking, requesting, and tracking permission state.
  */
 export class PermissionManager {
   private static readonly TAG: string = 'PermissionManager';
-  // 位置权限列表
+  // Location permission list
   private static readonly LOCATION_PERMISSIONS: Permissions[] = [
     'ohos.permission.APPROXIMATELY_LOCATION' as Permissions,
     'ohos.permission.LOCATION' as Permissions
   ];
 
   /**
-   * 检查是否已授予位置权限
+   * Check whether location permissions are granted.
    */
   static async checkLocationPermission(context: Context): Promise<boolean> {
     try {
@@ -25,7 +25,7 @@ export class PermissionManager {
       const bundleInfo = await bundleManager.getBundleInfoForSelf(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
       const tokenID = bundleInfo.appInfo.accessTokenId;
 
-      // 检查所有位置权限
+      // Verify each required permission
       for (const permission of PermissionManager.LOCATION_PERMISSIONS) {
         const grantStatus = await atManager.checkAccessToken(tokenID, permission);
         if (grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_GRANTED) {
@@ -42,7 +42,7 @@ export class PermissionManager {
   }
 
   /**
-   * 请求位置权限
+   * Request location permissions.
    */
   static async requestLocationPermission(context: Context): Promise<PermissionRequestResult> {
     try {
@@ -59,7 +59,7 @@ export class PermissionManager {
         permanentlyDenied: false
       };
 
-      // 检查授权结果
+      // Inspect grant results
       if (requestResult && requestResult.permissions && requestResult.authResults) {
         for (let i = 0; i < requestResult.permissions.length; i++) {
           const permission = requestResult.permissions[i];
@@ -74,7 +74,7 @@ export class PermissionManager {
         }
       }
 
-      // 检查是否永久拒绝
+      // Evaluate potential permanent denial
       if (result.deniedPermissions.length > 0) {
         result.permanentlyDenied = await PermissionManager.isPermanentlyDenied(context, result.deniedPermissions[0]);
       }
@@ -92,19 +92,19 @@ export class PermissionManager {
   }
 
   /**
-   * 检查权限是否被永久拒绝
+   * Determine whether a permission has been permanently denied.
    */
   private static async isPermanentlyDenied(context: Context, permission: Permissions): Promise<boolean> {
     try {
-      // 再次检查权限状态
+      // Re-check the permission state
       const atManager = abilityAccessCtrl.createAtManager();
       const bundleInfo = await bundleManager.getBundleInfoForSelf(bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT);
       const tokenID = bundleInfo.appInfo.accessTokenId;
 
       const grantStatus = await atManager.checkAccessToken(tokenID, permission);
 
-      // 如果状态是 PERMISSION_DENIED，可能是永久拒绝
-      // 注意：鸿蒙系统中没有直接的"永久拒绝"概念，这里简化处理
+      // Treat PERMISSION_DENIED as potentially permanent
+      // Note: HarmonyOS does not expose a strict "permanent denial" concept; simplified handling
       return grantStatus === abilityAccessCtrl.GrantStatus.PERMISSION_DENIED;
     } catch (err) {
       hilog.error(DOMAIN, PermissionManager.TAG, `Failed to check permanent denial: ${JSON.stringify(err)}`);
@@ -113,26 +113,26 @@ export class PermissionManager {
   }
 
   /**
-   * 获取权限提示消息
+   * Get the rationale message shown before requesting permission.
    */
   static getPermissionRationale(): string {
-    return '定位权限用于在地图上显示您的当前位置，帮助您更好地使用地图功能。';
+    return 'Location permission lets the map display your current position and improves the overall experience.';
   }
 
   /**
-   * 获取永久拒绝后的提示消息
+   * Get the message displayed after a permanent denial.
    */
   static getPermanentlyDeniedMessage(): string {
-    return '定位权限已被拒绝，请前往系统设置中手动授予权限。';
+    return 'Location permission was denied. Please grant it manually in system settings.';
   }
 
   /**
-   * 检查位置服务是否开启
+   * Check whether location services are enabled.
    */
   static async isLocationServiceEnabled(): Promise<boolean> {
     try {
-      // 注意：实际实现需要检查系统位置服务状态
-      // 这里简化处理，返回 true
+      // Note: production code should verify the system location service state
+      // Simplified for now—always returns true
       return true;
     } catch (err) {
       hilog.error(DOMAIN, PermissionManager.TAG, `Failed to check location service: ${JSON.stringify(err)}`);
@@ -142,19 +142,19 @@ export class PermissionManager {
 }
 
 /**
- * 权限请求结果
+ * Result of a permission request.
  */
 export interface PermissionRequestResult {
-  // 是否授予权限
+  // Whether any permission was granted
   granted: boolean;
 
-  // 被拒绝的权限列表
+  // List of denied permissions
   deniedPermissions: Array<Permissions>;
 
-  // 是否永久拒绝
+  // Whether the permission is permanently denied
   permanentlyDenied: boolean;
 
-  // 错误信息（如果有）
+  // Optional error information
   error?: BusinessError;
 }
 

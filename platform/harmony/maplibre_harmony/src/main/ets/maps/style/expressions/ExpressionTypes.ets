@@ -1,16 +1,16 @@
 /**
- * ExpressionTypes - Expression 系统的类型定义和接口
+ * ExpressionTypes - type definitions and interfaces for the expression system.
  *
- * 直接从 libmaplibre.so 重新导出类型
+ * Re-exports core types from `libmaplibre.so`.
  */
 
-// 从 libmaplibre.so 重新导出核心表达式类型
+// Re-export core expression types from libmaplibre.
 export type {
   ExpressionValue, ExpressionLiteral, PropertyValue
 } from 'libmaplibre.so';
 
 /**
- * Collator 选项
+ * Collator options.
  */
 export interface CollatorOptions {
   caseSensitive?: boolean;
@@ -19,7 +19,7 @@ export interface CollatorOptions {
 }
 
 /**
- * Format 选项
+ * Format options.
  */
 export interface FormatOptions {
   fontScale?: number;
@@ -28,7 +28,7 @@ export interface FormatOptions {
 }
 
 /**
- * Number Format 选项
+ * Number format options.
  */
 export interface NumberFormatOptions {
   locale?: string;

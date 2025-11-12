@@ -1,46 +1,46 @@
 /**
- * OfflineRegion 辅助工具函数
+ * OfflineRegion helper utilities.
  *
- * 为 NAPI OfflineRegion 类提供辅助方法
+ * Provides helper methods for the NAPI OfflineRegion class.
  */
 
 import type maplibre from 'libmaplibre.so';
 import { DownloadState as OfflineRegionDownloadState } from './OfflineRegionStatus';
 
 /**
- * OfflineRegion 辅助工具函数
+ * OfflineRegion helper functions.
  */
 export class OfflineRegionHelper {
   /**
-   * 开始下载
+   * Start downloading.
    */
   static download(region: maplibre.OfflineRegion): void {
     region.setDownloadState(OfflineRegionDownloadState.ACTIVE);
   }
 
   /**
-   * 暂停下载
+   * Pause downloading.
    */
   static pause(region: maplibre.OfflineRegion): void {
     region.setDownloadState(OfflineRegionDownloadState.INACTIVE);
   }
 
   /**
-   * 恢复下载
+   * Resume downloading.
    */
   static resume(region: maplibre.OfflineRegion): void {
     region.setDownloadState(OfflineRegionDownloadState.ACTIVE);
   }
 
   /**
-   * 获取 ID
+   * Retrieve the region ID.
    */
   static getId(region: maplibre.OfflineRegion): number {
     return region.id;
   }
 
   /**
-   * 获取元数据
+   * Retrieve metadata.
    */
   static getMetadata(region: maplibre.OfflineRegion): ArrayBuffer {
     return region.metadata;

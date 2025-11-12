@@ -5,7 +5,7 @@ import { LatLng } from '../geometry/LatLng';
 import { Marker } from './Marker';
 
 // Constants (aligned with iOS/mbgl)
-const PITCH_MAX_DEGREES = 60; // mbgl::util::PITCH_MAX ≈ 60 degrees
+const PITCH_MAX_DEGREES = 60; // mbgl::util::PITCH_MAX is approximately 60 degrees
 const DEFAULT_VIEW_SIZE = 40;
 
 /**
@@ -24,7 +24,7 @@ export enum DragState {
 /**
  * Center offset
  *
- * Adjusts the view’s center relative to the marker position.
+ * Adjusts the view's center relative to the marker position.
  * Positive values shift right/down; negative values shift left/up.
  */
 export interface CenterOffset {
@@ -73,28 +73,28 @@ export interface AnnotationViewProtocol {
  * Enables ArkTS components to render marker visuals, offering rich customization and interaction.
  *
  * **Key features**:
- * - ✅ Custom content via `@BuilderParam`
- * - ✅ Selection management (tap to toggle)
- * - ✅ Drag support (long-press to start)
- * - ✅ View reuse (`reuseIdentifier`)
- * - ✅ Distance-based scaling (`scalesWithViewingDistance`)
- * - ✅ Camera-aligned rotation (`rotatesToMatchCamera`)
- * - ✅ Smooth animations
+ * - Custom content via `@BuilderParam`
+ * - Selection management (tap to toggle)
+ * - Drag support (long-press to start)
+ * - View reuse (`reuseIdentifier`)
+ * - Distance-based scaling (`scalesWithViewingDistance`)
+ * - Camera-aligned rotation (`rotatesToMatchCamera`)
+ * - Smooth animations
  *
  * **Reference implementations**:
  * - iOS: `MLNAnnotationView` (UIView subclass with full view hierarchy)
  * - Android: Custom layout XML or View
  *
  * **Lifecycle**:
- * 1. Creation – obtained from delegate or reuse pool
- * 2. `aboutToAppear` – initialize position and transforms
- * 3. Update – respond to camera changes
- * 4. `prepareForReuse` – reset mutable state for reuse
- * 5. Destroy – remove from map
+ * 1. Creation - obtained from delegate or reuse pool
+ * 2. `aboutToAppear` - initialize position and transforms
+ * 3. Update - respond to camera changes
+ * 4. `prepareForReuse` - reset mutable state for reuse
+ * 5. Destroy - remove from map
  *
  * **Usage example**:
  * ```typescript
- * // Basic usage – default icon
+ * // Basic usage - default icon
  * AnnotationView({
  *   marker: myMarker,
  *   reuseIdentifier: "default-pin",
@@ -102,7 +102,7 @@ export interface AnnotationViewProtocol {
  *   screenY: 200
  * })
  * 
- * // Advanced usage – custom content
+* // Advanced usage – custom content
  * AnnotationView({
  *   marker: myMarker,
  *   reuseIdentifier: "custom-pin",
@@ -415,7 +415,7 @@ export struct AnnotationView {
     const pitchIntensity = Math.min(1.0, pitch / PITCH_MAX_DEGREES);
 
     // Compute pitch-adjusted scale
-    // Range: 1.0 (no pitch) → 0.0 (max pitch at horizon)
+    // Range: 1.0 (no pitch) -> 0.0 (max pitch at horizon)
     const pitchAdjustedScale = 1.0 - (maxScaleReduction * pitchIntensity);
 
     // Avoid shrinking below a reasonable size

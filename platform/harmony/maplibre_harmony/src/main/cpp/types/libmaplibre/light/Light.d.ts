@@ -1,94 +1,94 @@
 import type { LightSpecification, TransitionOptions } from '../CommonTypes';
 
 /**
- * Light - 样式光照控制类
+ * Light - style lighting controller.
  *
- * 与 Android/iOS 的 Light API 对齐，提供光照 anchor、position、color、intensity 以及过渡动画设置能力。
- * 通过 Style.getLight() 或 MapLibreMap.getLight() 获取实例，禁止直接构造。
+ * Mirrors the Android/iOS Light API, exposing anchor, position, color, intensity, and transition configuration.
+ * Retrieve instances via Style.getLight() or MapLibreMap.getLight(); do not construct directly.
  */
 export class Light {
   /**
-   * 获取光照锚点
-   * @returns 'map' 或 'viewport'
+   * Get the light anchor.
+   * @returns 'map' or 'viewport'.
    */
   getAnchor(): 'map' | 'viewport';
 
   /**
-   * 设置光照锚点
-   * @param anchor 'map' 或 'viewport'
+   * Set the light anchor.
+   * @param anchor 'map' or 'viewport'.
    */
   setAnchor(anchor: 'map' | 'viewport'): void;
 
   /**
-   * 获取光照位置（球坐标）
-   * @returns 包含 radial、azimuthal、polar 的对象，单位与 MapLibre Style 规范一致
+   * Get the light position in spherical coordinates.
+   * @returns Object with radial, azimuthal, and polar values (same units as MapLibre style spec).
    */
   getPosition(): { radial: number; azimuthal: number; polar: number };
 
   /**
-   * 设置光照位置（球坐标）
-   * @param position 可为对象 { radial, azimuthal, polar } 或长度 ≥2 的数组 [radial, azimuthal, polar?]
+   * Set the light position in spherical coordinates.
+   * @param position Object { radial, azimuthal, polar } or array [radial, azimuthal, polar?].
    */
   setPosition(position: { radial: number; azimuthal: number; polar?: number } | number[]): void;
 
   /**
-   * 获取位置过渡动画
-   * @returns 过渡配置（毫秒）
+   * Get the position transition.
+   * @returns Transition configuration (milliseconds).
    */
   getPositionTransition(): TransitionOptions;
 
   /**
-   * 设置位置过渡动画
-   * @param duration 持续时间（毫秒）
-   * @param delay 延迟（毫秒）
+   * Set the position transition.
+   * @param duration Duration in milliseconds.
+   * @param delay Delay in milliseconds.
    */
   setPositionTransition(duration: number, delay: number): void;
 
   /**
-   * 获取光照颜色
-   * @returns CSS 颜色字符串
+   * Get the light color.
+   * @returns CSS color string.
    */
   getColor(): string;
 
   /**
-   * 设置光照颜色
-   * @param color CSS 颜色字符串
+   * Set the light color.
+   * @param color CSS color string.
    */
   setColor(color: string): void;
 
   /**
-   * 获取颜色过渡动画
+   * Get the color transition.
    */
   getColorTransition(): TransitionOptions;
 
   /**
-   * 设置颜色过渡动画
-   * @param duration 持续时间（毫秒）
-   * @param delay 延迟（毫秒）
+   * Set the color transition.
+   * @param duration Duration in milliseconds.
+   * @param delay Delay in milliseconds.
    */
   setColorTransition(duration: number, delay: number): void;
 
   /**
-   * 获取光照强度
-   * @returns 光照强度（0-1）
+   * Get the light intensity.
+   * @returns Intensity (0-1).
    */
   getIntensity(): number;
 
   /**
-   * 设置光照强度
-   * @param intensity 光照强度（0-1）
+   * Set the light intensity.
+   * @param intensity Intensity (0-1).
    */
   setIntensity(intensity: number): void;
 
   /**
-   * 获取强度过渡动画
+   * Get the intensity transition.
    */
   getIntensityTransition(): TransitionOptions;
 
   /**
-   * 设置强度过渡动画
-   * @param duration 持续时间（毫秒）
-   * @param delay 延迟（毫秒）
+   * Set the intensity transition.
+   * @param duration Duration in milliseconds.
+   * @param delay Delay in milliseconds.
    */
   setIntensityTransition(duration: number, delay: number): void;
 

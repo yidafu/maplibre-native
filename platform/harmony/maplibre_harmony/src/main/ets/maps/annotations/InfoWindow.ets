@@ -453,7 +453,7 @@ export class InfoWindow {
     // Arrow centered by default
     let arrowOffsetX = 0;
 
-    // 🔧 Arrow alignment: keep arrow pointing at marker (or offset anchor)
+    // Arrow alignment helper: keep arrow pointing at the marker (or offset anchor)
     const arrowWidth = 20; // Arrow width
     const maxArrowOffset = (width / 2) - (arrowWidth / 2) - 4; // Prevent arrow from leaving bounds
     const infoWindowCenterX = x + (width / 2);
@@ -486,7 +486,7 @@ export class InfoWindow {
  */
 @Component
 export struct InfoWindowComponent {
-  // ⚠️ Important: do not expose @Prop marker: Marker (NAPI objects don't traverse @Prop)
+  // Important: do not expose @Prop marker: Marker (NAPI objects do not traverse @Prop)
   // Instead pass marker data fields
   @Prop markerId: number = 0;
   @Prop markerTitle: string = '';

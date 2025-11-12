@@ -1,13 +1,13 @@
 /**
- * GeoJSON 类型定义
+ * GeoJSON type definitions.
  *
- * 符合 GeoJSON 规范 (RFC 7946) 的类型定义
+ * Defines types that conform to the GeoJSON specification (RFC 7946).
  * 
- * 注意：所有类型都从 libmaplibre.so 重新导出（已使用 I 前缀避免命名冲突）。
- * 这确保了 ETS 层和 C++ 层的类型定义完全一致。
+ * Note: all types are re-exported from libmaplibre.so (prefixed with `I` to avoid naming collisions),
+ * ensuring ETS and C++ type definitions remain in sync.
  */
 
-// ==================== 从 libmaplibre.so 导出所有 GeoJSON 类型 ====================
+// ==================== Re-export GeoJSON types from libmaplibre.so ====================
 
 import type {
   Position,
@@ -25,7 +25,7 @@ import type {
   IFeatureCollection
 } from 'libmaplibre.so';
 
-// ==================== 重新导出所有类型 ====================
+// ==================== Re-export all types ====================
 
 export type { Position, Position2D, Position3D };
 

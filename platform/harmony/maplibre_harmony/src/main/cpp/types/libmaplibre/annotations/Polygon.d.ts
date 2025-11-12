@@ -1,196 +1,196 @@
 import type { LatLng } from '../NativeMapView';
 
 /**
- * 多边形选项接口
+ * Polygon options.
  */
 export interface PolygonOptions {
-  /** 多边形的点坐标数组 */
+  /** Polygon vertices. */
   points: LatLng[];
 
-  /** 孔洞数组（可选） */
+  /** Optional array of holes. */
   holes?: LatLng[][];
 
-  /** 填充颜色（可选） */
+  /** Optional fill color. */
   fillColor?: string;
 
-  /** 描边颜色（可选） */
+  /** Optional stroke color. */
   strokeColor?: string;
 
-  /** 描边宽度（可选） */
+  /** Optional stroke width. */
   strokeWidth?: number;
 
-  /** 填充透明度（可选，0-1） */
+  /** Optional fill alpha (0-1). */
   fillAlpha?: number;
 
-  /** 描边透明度（可选，0-1） */
+  /** Optional stroke alpha (0-1). */
   strokeAlpha?: number;
 
-  /** 是否可见（可选） */
+  /** Optional visibility flag. */
   visible?: boolean;
 
-  /** Z 轴顺序（可选） */
+  /** Optional Z-index. */
   zIndex?: number;
 }
 
 /**
- * Polygon - 多边形标注类（NAPI 对象）
+ * Polygon - polygon annotation (NAPI object).
  *
- * 用于在地图上显示多边形标注，支持填充、描边、孔洞等
+ * Renders polygon overlays with support for fill, stroke, and holes.
  */
 export class Polygon {
   /**
-   * 构造函数
-   * @param options 多边形选项
+   * Constructor.
+   * @param options Polygon options.
    */
   constructor(options: PolygonOptions);
 
   /**
-   * 获取多边形的点坐标
-   * @returns 点坐标数组
+   * Get polygon vertices.
+   * @returns Array of coordinates.
    */
   getPoints(): LatLng[];
 
   /**
-   * 设置多边形的点坐标
-   * @param points 点坐标数组
+   * Set polygon vertices.
+   * @param points Coordinate array.
    */
   setPoints(points: LatLng[]): void;
 
   /**
-   * 添加一个点
-   * @param point 点坐标
+   * Append a vertex.
+   * @param point Coordinate.
    */
   addPoint(point: LatLng): void;
 
   /**
-   * 在指定位置插入一个点
-   * @param index 插入位置
-   * @param point 点坐标
+   * Insert a vertex at an index.
+   * @param index Target index.
+   * @param point Coordinate.
    */
   insertPoint(index: number, point: LatLng): void;
 
   /**
-   * 移除指定索引的点
-   * @param index 点索引
-   * @returns 被移除的点坐标，如果索引无效则返回 null
+   * Remove a vertex.
+   * @param index Vertex index.
+   * @returns Removed coordinate, or null if the index is invalid.
    */
   removePoint(index: number): LatLng | null;
 
   /**
-   * 获取孔洞列表
-   * @returns 孔洞数组，每个孔洞是一个点坐标数组
+   * Get polygon holes.
+   * @returns Array of holes, each a coordinate array.
    */
   getHoles(): LatLng[][];
 
   /**
-   * 设置孔洞列表
-   * @param holes 孔洞数组
+   * Set polygon holes.
+   * @param holes Hole array.
    */
   setHoles(holes: LatLng[][]): void;
 
   /**
-   * 添加一个孔洞
-   * @param hole 孔洞点坐标数组
+   * Append a hole.
+   * @param hole Coordinate array.
    */
   addHole(hole: LatLng[]): void;
 
   /**
-   * 移除指定索引的孔洞
-   * @param index 孔洞索引
-   * @returns 被移除的孔洞点坐标数组，如果索引无效则返回 null
+   * Remove a hole.
+   * @param index Hole index.
+   * @returns Removed hole coordinates, or null if the index is invalid.
    */
   removeHole(index: number): LatLng[] | null;
 
   /**
-   * 获取填充颜色
+   * Get the fill color.
    */
   getFillColor(): string;
 
   /**
-   * 设置填充颜色
-   * @param color 颜色字符串
+   * Set the fill color.
+   * @param color CSS color string.
    */
   setFillColor(color: string): void;
 
   /**
-   * 获取描边颜色
+   * Get the stroke color.
    */
   getStrokeColor(): string;
 
   /**
-   * 设置描边颜色
-   * @param color 颜色字符串
+   * Set the stroke color.
+   * @param color CSS color string.
    */
   setStrokeColor(color: string): void;
 
   /**
-   * 获取描边宽度
+   * Get the stroke width.
    */
   getStrokeWidth(): number;
 
   /**
-   * 设置描边宽度
-   * @param width 宽度值
+   * Set the stroke width.
+   * @param width Width value.
    */
   setStrokeWidth(width: number): void;
 
   /**
-   * 获取填充透明度
+   * Get the fill alpha.
    */
   getFillAlpha(): number;
 
   /**
-   * 设置填充透明度
-   * @param alpha 透明度值 (0-1)
+   * Set the fill alpha.
+   * @param alpha Alpha value (0-1).
    */
   setFillAlpha(alpha: number): void;
 
   /**
-   * 获取描边透明度
+   * Get the stroke alpha.
    */
   getStrokeAlpha(): number;
 
   /**
-   * 设置描边透明度
-   * @param alpha 透明度值 (0-1)
+   * Set the stroke alpha.
+   * @param alpha Alpha value (0-1).
    */
   setStrokeAlpha(alpha: number): void;
 
   /**
-   * 获取可见性
+   * Get the visibility flag.
    */
   getVisible(): boolean;
 
   /**
-   * 设置可见性
-   * @param visible 是否可见
+   * Set the visibility.
+   * @param visible True to display.
    */
   setVisible(visible: boolean): void;
 
   /**
-   * 获取 Z-index
+   * Get the Z-index.
    */
   getZIndex(): number;
 
   /**
-   * 设置 Z-index
-   * @param zIndex Z 轴顺序
+   * Set the Z-index.
+   * @param zIndex Z-order value.
    */
   setZIndex(zIndex: number): void;
 
   /**
-   * 获取 ID
+   * Get the identifier.
    */
   getId(): number;
 
   /**
-   * 设置 ID（内部使用）
+   * Set the identifier (internal use).
    * @internal
-   * @param id ID 数值
+   * @param id Identifier.
    */
   setId(id: number): void;
 
-  // 注意：setMapLibreMap 是内部实现细节，不在公开 API 中暴露
-  // ETS 层的 Polygon 封装类会处理 MapLibreMap 的关联
+  // Note: setMapLibreMap is an internal detail and not part of the public API.
+  // ETS polygon wrappers manage MapLibreMap associations.
 }
 

@@ -214,7 +214,7 @@ export class IconManager {
    * @throws Error If the icon has already been released.
    *
    * @example
-   * ```typescript
+  * ```typescript
    * const icon = await iconFactory.fromResource($r('app.media.marker'));
    * marker.setIcon(icon.getId());
    * await iconManager.addIconToManager(icon);  // Register for lifecycle management
@@ -400,7 +400,7 @@ export class IconManager {
    * @param iconOrId Icon instance or icon ID string.
    *
    * @example
-   * ```typescript
+  * ```typescript
    * // Option 1: pass an Icon instance
    * iconManager.iconCleanup(icon);
    *
@@ -622,7 +622,7 @@ export class IconManager {
    * - References to released icons become invalid.
    *
    * @example
-   * ```typescript
+  * ```typescript
    * // Clean up when the map is destroyed
    * onDestroy() {
    *   iconManager.cleanup();

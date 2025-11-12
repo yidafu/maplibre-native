@@ -1,50 +1,50 @@
 /**
- * PolylineManager - Polyline 管理器
+ * PolylineManager - polyline manager.
  *
- * 负责 Polyline 的添加、更新、删除和查询
+ * Handles polyline creation, updates, deletion, and queries.
  *
- * 架构说明：
- * - 使用原生注解系统（通过 nativeMapView.addPolylines）
- * - 查询使用 queryShapeAnnotations API
- * - 与 MarkerManager 的 GeoJSON 模式不同
+ * Architecture:
+ * - Uses the native annotation system (`nativeMapView.addPolylines`)
+ * - Queries run via the `queryShapeAnnotations` API
+ * - Differs from `MarkerManager`, which uses a GeoJSON-based approach
  *
- * 参考 Android PolylineContainer 实现
+ * Reference: Android `PolylineContainer` implementation.
  */
 import type { MapLibreMap } from '../MapLibreMap';
 import { Polyline, PolylineOptions } from './Polyline';
 import { Rect } from '../geometry/Rect';
 
 /**
- * PolylineManager 类
+ * PolylineManager class.
  *
- * 管理地图上所有的 Polyline 注解（原生注解系统）
+ * Manages all polyline annotations on the map via the native annotation system.
  */
 export class PolylineManager {
   private mapLibreMap: MapLibreMap;
-  // Polyline ID -> Polyline 映射
+  // Polyline ID -> Polyline mapping
   private polylineMap: Map<number, Polyline> = new Map();
 
   /**
-   * 构造函数
+   * Constructor.
    *
-   * @param mapLibreMap MapLibreMap 实例
+   * @param mapLibreMap MapLibreMap instance.
    */
   constructor(mapLibreMap: MapLibreMap) {
     this.mapLibreMap = mapLibreMap;
   }
 
   /**
-   * 添加单个 Polyline
+   * Add a single polyline.
    *
-   * @param options PolylineOptions 实例
-   * @returns 创建的 Polyline
+   * @param options PolylineOptions instance.
+   * @returns Created polyline.
    */
   public addPolyline(options: PolylineOptions): Polyline {
     try {
-      // 创建 Polyline 对象
+      // Create polyline object
       const polyline = new Polyline(options);
 
-      // 调用 native 方法添加（返回 ID 数组）
+      // Invoke native API (returns an array of IDs)
       const ids = this.mapLibreMap.getNativeMapView().addPolylines([polyline]);
 
       if (ids.length > 0) {
@@ -61,23 +61,23 @@ export class PolylineManager {
   }
 
   /**
-   * 批量添加 Polyline
+   * Add polylines in batch.
    *
-   * @param optionsList PolylineOptions 数组
-   * @returns 创建的 Polyline 数组
+   * @param optionsList Array of PolylineOptions.
+   * @returns Array of created polylines.
    */
   public addPolylines(optionsList: PolylineOptions[]): Polyline[] {
     try {
-      // 创建 Polyline 对象数组
+      // Create polyline objects
       const polylines: Polyline[] = [];
       for (const options of optionsList) {
         polylines.push(new Polyline(options));
       }
 
-      // 批量添加到地图
+      // Add them to the map in batch
       const ids = this.mapLibreMap.getNativeMapView().addPolylines(polylines);
 
-      // 设置 ID 并注册
+      // Assign IDs and register them
       for (let i = 0; i < polylines.length; i++) {
         const polyline = polylines[i];
         const id = ids[i];
@@ -93,9 +93,9 @@ export class PolylineManager {
   }
 
   /**
-   * 移除单个 Polyline
+   * Remove a single polyline.
    *
-   * @param polyline 要移除的 Polyline
+   * @param polyline Polyline to remove.
    */
   public removePolyline(polyline: Polyline): void {
     const id = polyline.getId();
@@ -108,9 +108,9 @@ export class PolylineManager {
   }
 
   /**
-   * 批量移除 Polyline
+   * Remove polylines in batch.
    *
-   * @param polylines 要移除的 Polyline 数组
+   * @param polylines Polylines to remove.
    */
   public removePolylines(polylines: Polyline[]): void {
     const ids: number[] = [];
@@ -129,9 +129,9 @@ export class PolylineManager {
   }
 
   /**
-   * 更新 Polyline
+   * Update an existing polyline.
    *
-   * @param polyline 要更新的 Polyline
+   * @param polyline Polyline to update.
    */
   public updatePolyline(polyline: Polyline): void {
     const id = polyline.getId();
@@ -144,7 +144,7 @@ export class PolylineManager {
   }
 
   /**
-   * 清除所有 Polyline
+   * Remove all polylines.
    */
   public clear(): void {
     const ids = Array.from(this.polylineMap.keys());
@@ -155,9 +155,9 @@ export class PolylineManager {
   }
 
   /**
-   * 获取所有 Polyline
+   * Get all polylines.
    *
-   * @returns Polyline 数组
+   * @returns Array of polylines.
    */
   public getPolylines(): Polyline[] {
     return Array.from(this.polylineMap.values());

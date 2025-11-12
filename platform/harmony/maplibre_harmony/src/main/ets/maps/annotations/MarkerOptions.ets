@@ -4,24 +4,23 @@ import { LatLng } from '../geometry/LatLng';
 import { Marker, NativeMarkerOptions } from './Marker';
 
 /**
- * MarkerOptions - Marker 构建器类
+ * MarkerOptions - builder for configuring markers.
  *
- * 使用构建器模式创建 Marker，支持链式调用
- * 构建完成后通过 getMarker() 创建 NAPI Marker 实例
+ * Provides a fluent API for constructing markers; call `getMarker()` to produce the native marker.
  *
- * 参考:
+ * References:
  * - Android: org.maplibre.android.annotations.MarkerOptions
  *
  * @example
-* ```typescript
+ * ```typescript
  * const iconFactory = IconFactory.getInstance();
  * const customIcon = await iconFactory.fromResource($r('app.media.marker'));
  *
- * // 注意：必须使用 new maplibre.LatLng() 创建位置
+ * // Use `new maplibre.LatLng()` when setting the position
  * const marker = new MarkerOptions()
  *   .position(new maplibre.LatLng(39.9042, 116.4074))
- *   .title("北京")
- *   .snippet("中国首都")
+ *   .title('Beijing')
+ *   .snippet('Capital of China')
  *   .draggable(true)
  *   .icon(customIcon)
  *   .rotation(45)
@@ -41,16 +40,16 @@ export class MarkerOptions {
   private _alpha: number = 1.0;
   private _rotation: number = 0;
   private _zIndex: number = 0;
-  // InfoWindow 配置
+  // InfoWindow configuration
   private _infoWindowStyle?: InfoWindowStyle;
   private _infoWindowOffsetX: number = 0;
   private _infoWindowOffsetY: number = 0;
 
   /**
-   * 设置 Marker 的位置
+   * Set the marker position.
    *
-   * @param position Marker 的地理位置
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param position Geographic location of the marker.
+   * @returns `this` for chaining.
    */
   public position(position: LatLng): MarkerOptions {
     this._position = position;
@@ -58,10 +57,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的标题
+   * Set the marker title.
    *
-   * @param title 标题文本
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param title Title text.
+   * @returns `this` for chaining.
    */
   public title(title: string): MarkerOptions {
     this._title = title;
@@ -69,10 +68,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的描述信息
+   * Set the marker snippet.
    *
-   * @param snippet 描述文本
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param snippet Description text.
+   * @returns `this` for chaining.
    */
   public snippet(snippet: string): MarkerOptions {
     this._snippet = snippet;
@@ -80,10 +79,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的图标
+   * Set a custom icon.
    *
-   * @param icon Icon 对象
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param icon Icon instance.
+   * @returns `this` for chaining.
    */
   public icon(icon: Icon): MarkerOptions {
     this._icon = icon;
@@ -91,11 +90,11 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的图标和复用标识符
+   * Set the icon along with a reuse identifier.
    *
-   * @param icon Icon 对象
-   * @param reuseIdentifier 复用标识符
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param icon Icon instance.
+   * @param reuseIdentifier Reuse identifier.
+   * @returns `this` for chaining.
    */
   public iconWithIdentifier(icon: Icon, reuseIdentifier: string): MarkerOptions {
     this._icon = icon;
@@ -104,12 +103,12 @@ export class MarkerOptions {
   }
 
   /**
-   * 通过复用标识符设置图标
+   * Select an icon by reuse identifier.
    *
-   * 注意：需要确保 IconManager 中已存在该标识符的图标
+   * Note: ensure the icon is already registered with `IconManager`.
    *
-   * @param reuseIdentifier 复用标识符
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param reuseIdentifier Reuse identifier.
+   * @returns `this` for chaining.
    */
   public iconFromReusableIdentifier(reuseIdentifier: string): MarkerOptions {
     this._reuseIdentifier = reuseIdentifier;
@@ -117,10 +116,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 是否可拖拽
+   * Set whether the marker is draggable.
    *
-   * @param draggable true 表示可拖拽
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param draggable `true` to allow dragging.
+   * @returns `this` for chaining.
    */
   public draggable(draggable: boolean): MarkerOptions {
     this._draggable = draggable;
@@ -128,10 +127,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 是否可见
+   * Set marker visibility.
    *
-   * @param visible true 表示可见
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param visible `true` when visible.
+   * @returns `this` for chaining.
    */
   public visible(visible: boolean): MarkerOptions {
     this._visible = visible;
@@ -139,10 +138,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的透明度
+   * Set marker opacity.
    *
-   * @param alpha 透明度（0.0 - 1.0）
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param alpha Opacity range 0.0-1.0.
+   * @returns `this` for chaining.
    */
   public alpha(alpha: number): MarkerOptions {
     this._alpha = Math.max(0, Math.min(1, alpha));
@@ -150,10 +149,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的旋转角度
+   * Set marker rotation.
    *
-   * @param rotation 旋转角度（度）
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param rotation Rotation in degrees.
+   * @returns `this` for chaining.
    */
   public rotation(rotation: number): MarkerOptions {
     this._rotation = rotation;
@@ -161,12 +160,12 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 Marker 的 Z 轴顺序
+   * Set the marker z-index.
    *
-   * Z 值越大，Marker 显示越靠前
+   * Higher values render above lower values.
    *
-   * @param zIndex Z 轴顺序
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param zIndex Z-order value.
+   * @returns `this` for chaining.
    */
   public zIndex(zIndex: number): MarkerOptions {
     this._zIndex = zIndex;
@@ -174,16 +173,16 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 InfoWindow 的样式配置
+   * Configure the InfoWindow style.
    *
-   * @param style InfoWindow 样式
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param style InfoWindow style definition.
+   * @returns `this` for chaining.
    *
    * @example
-  * ```typescript
+   * ```typescript
    * new MarkerOptions()
    *   .position(latLng)
-   *   .title('标题')
+   *   .title('Location')
    *   .infoWindowStyle({
    *     backgroundColor: '#2196F3',
    *     titleFontColor: Color.White,
@@ -193,7 +192,7 @@ export class MarkerOptions {
    */
   public infoWindowStyle(style: InfoWindowStyle): MarkerOptions {
     this._infoWindowStyle = style;
-    // 如果样式中包含偏移量，也设置到偏移量字段
+    // Copy offsets from style when provided
     if (style.offsetX !== undefined) {
       this._infoWindowOffsetX = style.offsetX;
     }
@@ -204,10 +203,10 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 InfoWindow 的 X 轴偏移量
+   * Set the InfoWindow X-axis offset.
    *
-   * @param offsetX X 轴偏移量（像素）
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param offsetX Offset in pixels.
+   * @returns `this` for chaining.
    */
   public infoWindowOffsetX(offsetX: number): MarkerOptions {
     this._infoWindowOffsetX = offsetX;
@@ -215,128 +214,128 @@ export class MarkerOptions {
   }
 
   /**
-   * 设置 InfoWindow 的 Y 轴偏移量
+   * Set the InfoWindow Y-axis offset.
    *
-   * @param offsetY Y 轴偏移量（像素）
-   * @returns MarkerOptions 实例（支持链式调用）
+   * @param offsetY Offset in pixels.
+   * @returns `this` for chaining.
    */
   public infoWindowOffsetY(offsetY: number): MarkerOptions {
     this._infoWindowOffsetY = offsetY;
     return this;
   }
 
-  // ========== Getter 方法 ==========
+  // ========== Getters ==========
 
   /**
-   * 获取位置
+   * Get the configured position.
    */
   public getPosition(): LatLng | null {
     return this._position;
   }
 
   /**
-   * 获取标题
+   * Get the configured title.
    */
   public getTitle(): string | undefined {
     return this._title;
   }
 
   /**
-   * 获取描述
+   * Get the configured snippet.
    */
   public getSnippet(): string | undefined {
     return this._snippet;
   }
 
   /**
-   * 获取图标
+   * Get the configured icon.
    */
   public getIcon(): Icon | undefined {
     return this._icon;
   }
 
   /**
-   * 获取复用标识符
+   * Get the configured reuse identifier.
    */
   public getReuseIdentifier(): string | undefined {
     return this._reuseIdentifier;
   }
 
   /**
-   * 是否可拖拽
+   * Determine whether the marker is draggable.
    */
   public isDraggable(): boolean {
     return this._draggable;
   }
 
   /**
-   * 是否可见
+   * Determine whether the marker is visible.
    */
   public isVisible(): boolean {
     return this._visible;
   }
 
   /**
-   * 获取透明度
+   * Get the configured opacity.
    */
   public getAlpha(): number {
     return this._alpha;
   }
 
   /**
-   * 获取旋转角度
+   * Get the configured rotation.
    */
   public getRotation(): number {
     return this._rotation;
   }
 
   /**
-   * 获取 Z 轴顺序
+   * Get the configured z-index.
    */
   public getZIndex(): number {
     return this._zIndex;
   }
 
   /**
-   * 获取 InfoWindow 样式配置
+   * Get the InfoWindow style.
    */
   public getInfoWindowStyle(): InfoWindowStyle | undefined {
     return this._infoWindowStyle;
   }
 
   /**
-   * 获取 InfoWindow X 轴偏移量
+   * Get the InfoWindow X offset.
    */
   public getInfoWindowOffsetX(): number {
     return this._infoWindowOffsetX;
   }
 
   /**
-   * 获取 InfoWindow Y 轴偏移量
+   * Get the InfoWindow Y offset.
    */
   public getInfoWindowOffsetY(): number {
     return this._infoWindowOffsetY;
   }
 
   /**
-   * 创建 Marker 实例
+   * Create the marker instance.
    *
-   * @returns Marker 封装类实例
-   * @throws Error 如果未设置位置
+   * @returns Wrapped marker.
+   * @throws Error When position is not set.
    */
   public getMarker(): Marker {
     if (this._position === null) {
       throw new Error('Marker position must be set');
     }
 
-    // 构建 options 对象
+    // Build the native options object
     const options: NativeMarkerOptions = {
-      position: this._position.toObject()  // 传递对象字面量
+      position: this._position.toObject()  // Pass a literal object
     };
 
-    // 添加可选属性
+    // Apply optional properties
     if (this._icon !== undefined) {
-      // 🔧 传递 Icon ID 字符串 (NAPI 层期望字符串，不是对象)
+      // Pass the icon ID string (NAPI expects a string, not the wrapper object)
       options.icon = this._icon.getId();
     }
     if (this._title !== undefined) {
@@ -361,10 +360,10 @@ export class MarkerOptions {
       options.zIndex = this._zIndex;
     }
 
-    // [MarkerDebug] 记录 Marker 创建信息
-    const iconStatus = this._icon ? `"${this._icon.getId()}"` : 'null (⚠️ 可能导致不可见)';
+    // [MarkerDebug] Log marker creation info
+    const iconStatus = this._icon ? `"${this._icon.getId()}"` : 'null (warning: marker may be invisible)';
 
-    // 创建 Marker 封装类实例
+    // Create the Marker wrapper instance
     return Marker.createFromOptions(options);
   }
 }

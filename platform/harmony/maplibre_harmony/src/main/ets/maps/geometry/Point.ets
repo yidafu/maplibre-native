@@ -1,11 +1,11 @@
 /**
- * Point/PixelCoordinate - 像素坐标
- * ETS 类实现
+ * Point/PixelCoordinate - screen coordinate helper.
+ * ETS class implementation.
  */
 
 /**
- * IPixelCoordinate - 像素坐标接口
- * 用于对象字面量
+ * IPixelCoordinate - interface for pixel coordinates.
+ * Suitable for object literals.
  */
 export interface IPixelCoordinate {
   x: number;
@@ -13,8 +13,8 @@ export interface IPixelCoordinate {
 }
 
 /**
- * PixelCoordinate - 像素坐标类
- * 表示屏幕上的一个点
+ * PixelCoordinate - pixel coordinate class.
+ * Represents a point on screen.
  */
 export class PixelCoordinate implements IPixelCoordinate {
   x: number;
@@ -26,14 +26,14 @@ export class PixelCoordinate implements IPixelCoordinate {
   }
 
   /**
-   * 从对象字面量创建 PixelCoordinate 实例
+   * Create a PixelCoordinate from an object literal.
    */
   static fromObject(obj: IPixelCoordinate): PixelCoordinate {
     return new PixelCoordinate(obj.x, obj.y);
   }
 
   /**
-   * 转换为对象字面量
+   * Convert to an object literal.
    */
   toObject(): IPixelCoordinate {
     return {
@@ -43,38 +43,38 @@ export class PixelCoordinate implements IPixelCoordinate {
   }
 
   /**
-   * 创建像素坐标（静态工厂方法）
+   * Create a pixel coordinate (static factory method).
    */
   static create(x: number, y: number): PixelCoordinate {
     return new PixelCoordinate(x, y);
   }
 
   /**
-   * 从逻辑像素创建物理像素坐标
+   * Create a physical pixel coordinate from logical pixels.
    *
-   * 统一处理 DPI 转换
+   * Centralizes DPI conversion.
    *
-   * @param x 逻辑像素 X 坐标
-   * @param y 逻辑像素 Y 坐标
-   * @param pixelRatio 像素比率（DPI）
-   * @returns 物理像素坐标
+   * @param x Logical pixel X.
+   * @param y Logical pixel Y.
+   * @param pixelRatio Pixel ratio (DPI).
+   * @returns Physical pixel coordinate.
    */
   static fromLogicalPixels(x: number, y: number, pixelRatio: number): PixelCoordinate {
     return new PixelCoordinate(x * pixelRatio, y * pixelRatio);
   }
 
   /**
-   * 转换为物理像素
+   * Convert to physical pixels.
    *
-   * @param pixelRatio 像素比率（DPI）
-   * @returns 新的物理像素坐标
+   * @param pixelRatio Pixel ratio (DPI).
+   * @returns New physical pixel coordinate.
    */
   toPhysicalPixels(pixelRatio: number): PixelCoordinate {
     return new PixelCoordinate(this.x * pixelRatio, this.y * pixelRatio);
   }
 
   /**
-   * 计算到另一个点的距离
+   * Compute the distance to another point.
    */
   distanceTo(other: PixelCoordinate): number {
     const dx = this.x - other.x;
@@ -83,7 +83,7 @@ export class PixelCoordinate implements IPixelCoordinate {
   }
 
   /**
-   * 计算与另一个点的中点
+   * Compute the midpoint to another point.
    */
   midpoint(other: PixelCoordinate): PixelCoordinate {
     return new PixelCoordinate(
@@ -93,8 +93,8 @@ export class PixelCoordinate implements IPixelCoordinate {
   }
 }
 
-// Point 是 PixelCoordinate 的别名，用于 ArkTS 代码
+// Point is an alias of PixelCoordinate for ArkTS usage.
 export type Point = PixelCoordinate;
 
-export type ScreenCoordinate = PixelCoordinate; // 屏幕坐标别名
+export type ScreenCoordinate = PixelCoordinate; // Screen coordinate alias
 

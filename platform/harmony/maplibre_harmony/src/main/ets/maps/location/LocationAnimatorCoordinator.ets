@@ -1,28 +1,28 @@
 import { createLatLng, LatLng } from '../geometry/LatLng';
 
 /**
- * 位置动画协调器
- * 负责协调位置、方向、精度等属性的平滑动画
+ * Location animation coordinator.
+ * Orchestrates smooth animation for position, bearing, accuracy, and related properties.
  */
 export class LocationAnimatorCoordinator {
   private static readonly TAG: string = 'LocationAnimatorCoordinator';
-  // 当前动画值
+  // Current animated values
   private currentLatitude: number = 0;
   private currentLongitude: number = 0;
   private currentBearing: number = 0;
   private currentAccuracy: number = 0;
-  // 目标值
+  // Target values
   private targetLatitude: number = 0;
   private targetLongitude: number = 0;
   private targetBearing: number = 0;
   private targetAccuracy: number = 0;
-  // 动画参数
-  private animationDuration: number = 750; // 毫秒
+  // Animation parameters
+  private animationDuration: number = 750; // Milliseconds
   private trackingAnimationDurationMultiplier: number = 1.1;
-  // 动画定时器
+  // Animation timer
   private animationTimer?: number;
   private isAnimating: boolean = false;
-  // 回调
+  // Callback
   private onLocationUpdate?: (location: LatLng, bearing: number, accuracy: number) => void;
 
   constructor(onLocationUpdate?: (location: LatLng, bearing: number, accuracy: number) => void) {
@@ -30,23 +30,23 @@ export class LocationAnimatorCoordinator {
   }
 
   /**
-   * 设置跟踪动画时长倍数
+   * Configure the tracking animation duration multiplier.
    */
   setTrackingAnimationDurationMultiplier(multiplier: number): void {
     this.trackingAnimationDurationMultiplier = multiplier;
   }
 
   /**
-   * 动画更新位置
+   * Animate a location update.
    */
   animateLocationUpdate(location: LatLng, bearing: number, accuracy: number, animate: boolean = true): void {
-    // 设置目标值
+    // Apply target values
     this.targetLatitude = location.latitude;
     this.targetLongitude = location.longitude;
     this.targetBearing = bearing;
     this.targetAccuracy = accuracy;
 
-    // 如果不需要动画，直接设置
+    // Bypass animation if requested
     if (!animate) {
       this.currentLatitude = location.latitude;
       this.currentLongitude = location.longitude;
@@ -57,7 +57,7 @@ export class LocationAnimatorCoordinator {
       return;
     }
 
-    // 如果当前位置未初始化，直接设置
+    // If current state is uninitialized, apply directly
     if (this.currentLatitude === 0 && this.currentLongitude === 0) {
       this.currentLatitude = location.latitude;
       this.currentLongitude = location.longitude;
@@ -68,12 +68,12 @@ export class LocationAnimatorCoordinator {
       return;
     }
 
-    // 开始动画
+    // Begin animation
     this.startAnimation();
   }
 
   /**
-   * 开始动画
+   * Start animation.
    */
   private startAnimation(): void {
     if (this.isAnimating) {
@@ -84,7 +84,7 @@ export class LocationAnimatorCoordinator {
     const startTime = Date.now();
     const duration = this.animationDuration * this.trackingAnimationDurationMultiplier;
 
-    // 记录起始值
+    // Capture starting values
     const startLat = this.currentLatitude;
     const startLng = this.currentLongitude;
     const startBearing = this.currentBearing;
@@ -95,23 +95,23 @@ export class LocationAnimatorCoordinator {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1.0);
 
-      // 使用缓动函数
+      // Apply easing
       const eased = this.easeInOutQuad(progress);
 
-      // 插值计算当前值
+      // Interpolate current values
       this.currentLatitude = this.lerp(startLat, this.targetLatitude, eased);
       this.currentLongitude = this.lerp(startLng, this.targetLongitude, eased);
       this.currentAccuracy = this.lerp(startAccuracy, this.targetAccuracy, eased);
 
-      // 角度插值需要特殊处理（处理跨越 0/360 边界的情况）
+      // Angle interpolation requires special handling for wrap-around
       this.currentBearing = this.lerpAngle(startBearing, this.targetBearing, eased);
 
-      // 通知更新
+      // Notify observers
       this.notifyUpdate();
 
-      // 继续动画或结束
+      // Continue animation or finish
       if (progress < 1.0) {
-        this.animationTimer = setTimeout(animate, 16); // 约 60 FPS
+        this.animationTimer = setTimeout(animate, 16); // ~60 FPS
       } else {
         this.isAnimating = false;
         this.animationTimer = undefined;
@@ -122,7 +122,7 @@ export class LocationAnimatorCoordinator {
   }
 
   /**
-   * 停止动画
+   * Stop the animation.
    */
   stopAnimation(): void {
     if (this.animationTimer) {
@@ -133,19 +133,19 @@ export class LocationAnimatorCoordinator {
   }
 
   /**
-   * 线性插值
+   * Linear interpolation.
    */
   private lerp(start: number, end: number, t: number): number {
     return start + (end - start) * t;
   }
 
   /**
-   * 角度插值（处理跨越 0/360 边界）
+   * Angle interpolation (handles wrap-around across 0/360).
    */
   private lerpAngle(start: number, end: number, t: number): number {
     let diff = end - start;
 
-    // 处理跨越边界
+    // Handle wrap-around
     if (diff > 180) {
       diff -= 360;
     } else if (diff < -180) {
@@ -154,7 +154,7 @@ export class LocationAnimatorCoordinator {
 
     let result = start + diff * t;
 
-    // 归一化到 0-360
+    // Normalize to 0-360
     if (result < 0) {
       result += 360;
     } else if (result >= 360) {
@@ -165,14 +165,14 @@ export class LocationAnimatorCoordinator {
   }
 
   /**
-   * 缓动函数：ease-in-out-quad
+   * Ease-in-out-quad easing function.
    */
   private easeInOutQuad(t: number): number {
     return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
 
   /**
-   * 通知更新
+   * Notify observers with the current values.
    */
   private notifyUpdate(): void {
     if (this.onLocationUpdate) {
@@ -182,28 +182,28 @@ export class LocationAnimatorCoordinator {
   }
 
   /**
-   * 获取当前位置
+   * Get the current location.
    */
   getCurrentLocation(): LatLng {
     return createLatLng(this.currentLatitude, this.currentLongitude);
   }
 
   /**
-   * 获取当前方向
+   * Get the current bearing.
    */
   getCurrentBearing(): number {
     return this.currentBearing;
   }
 
   /**
-   * 获取当前精度
+   * Get the current accuracy.
    */
   getCurrentAccuracy(): number {
     return this.currentAccuracy;
   }
 
   /**
-   * 清理资源
+   * Clean up resources.
    */
   dispose(): void {
     this.stopAnimation();

@@ -1,5 +1,5 @@
 /**
- * ViewCallback - 视图回调接口
+ * ViewCallback - view callback interface.
  */
 export interface ViewCallback {
   onMapReady(): void;

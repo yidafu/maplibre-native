@@ -1,7 +1,7 @@
 import { LatLng } from './LatLng';
 
 /**
- * LatLngBounds - 经纬度边界类
+ * LatLngBounds - latitude/longitude bounds helper.
  */
 export class LatLngBounds {
   public north: number;
@@ -10,20 +10,20 @@ export class LatLngBounds {
   public west: number;
 
   /**
-   * 构造函数 - 支持两种模式：
-   * 1. 传入4个数字参数: new LatLngBounds(north, east, south, west)
-   * 2. 传入2个 LatLng 对象: new LatLngBounds(southwest, northeast)
+   * Constructor supporting two modes:
+   * 1. Provide four numeric arguments: `new LatLngBounds(north, east, south, west)`
+   * 2. Provide two `LatLng` objects: `new LatLngBounds(southwest, northeast)`
    */
   constructor(northOrSouthwest: number | LatLng, eastOrNortheast: number | LatLng, south?: number, west?: number) {
     if (typeof northOrSouthwest === 'number' && typeof eastOrNortheast === 'number' &&
       typeof south === 'number' && typeof west === 'number') {
-      // 模式1: 4个数字参数
+      // Mode 1: four numeric arguments
       this.north = northOrSouthwest;
       this.east = eastOrNortheast;
       this.south = south;
       this.west = west;
     } else if (northOrSouthwest instanceof LatLng && eastOrNortheast instanceof LatLng) {
-      // 模式2: 2个 LatLng 对象 (southwest, northeast)
+      // Mode 2: two LatLng objects (southwest, northeast)
       const southwest = northOrSouthwest;
       const northeast = eastOrNortheast;
       this.south = southwest.latitude;
@@ -36,11 +36,11 @@ export class LatLngBounds {
   }
 
   /**
-   * 从两个点创建边界
+   * Create bounds from two points.
    *
-   * @param northeast 东北角点（纬度更大、经度更大的点）
-   * @param southwest 西南角点（纬度更小、经度更小的点）
-   * @returns LatLngBounds 边界对象
+   * @param northeast Northeast point (greater latitude and longitude).
+   * @param southwest Southwest point (smaller latitude and longitude).
+   * @returns LatLngBounds instance.
    *
    * @example
   * ```typescript
@@ -50,7 +50,7 @@ export class LatLngBounds {
    * ```
    */
   public static fromLatLngs(northeast: LatLng, southwest: LatLng): LatLngBounds {
-    // 验证参数
+    // Validate arguments
     if (northeast.latitude < southwest.latitude) {
       throw new Error(`Invalid bounds: northeast latitude (${northeast.latitude}) must be >= southwest latitude (${southwest.latitude})`);
     }
@@ -62,7 +62,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 从点数组创建边界
+   * Create bounds from an array of points.
    */
   public static fromLatLngArray(latLngs: LatLng[]): LatLngBounds {
     if (latLngs.length === 0) {
@@ -85,21 +85,21 @@ export class LatLngBounds {
   }
 
   /**
-   * 获取东北角
+   * Get the northeast corner.
    */
   public getNortheast(): LatLng {
     return LatLng.create(this.north, this.east);
   }
 
   /**
-   * 获取西南角
+   * Get the southwest corner.
    */
   public getSouthwest(): LatLng {
     return LatLng.create(this.south, this.west);
   }
 
   /**
-   * 获取中心点
+   * Get the center point.
    */
   public getCenter(): LatLng {
     return LatLng.create(
@@ -109,7 +109,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 检查点是否在边界内
+   * Check whether a point is inside the bounds.
    */
   public contains(latLng: LatLng): boolean {
     return latLng.latitude >= this.south && latLng.latitude <= this.north &&
@@ -117,7 +117,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 检查边界是否包含另一个边界
+   * Check whether the bounds contains another bounds.
    */
   public containsBounds(other: LatLngBounds): boolean {
     return this.north >= other.north && this.south <= other.south &&
@@ -125,7 +125,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 检查边界是否与另一个边界相交
+   * Check whether the bounds intersects another bounds.
    */
   public intersects(other: LatLngBounds): boolean {
     return !(this.south > other.north || this.north < other.south ||
@@ -133,7 +133,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 扩展边界以包含点
+   * Extend the bounds to include a point.
    */
   public extend(latLng: LatLng): LatLngBounds {
     return new LatLngBounds(
@@ -145,7 +145,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 扩展边界以包含另一个边界
+   * Extend the bounds to include another bounds.
    */
   public extendBounds(other: LatLngBounds): LatLngBounds {
     return new LatLngBounds(
@@ -157,7 +157,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 检查边界是否有效
+   * Check whether the bounds is valid.
    */
   public isValid(): boolean {
     return this.north >= this.south && this.east >= this.west &&
@@ -168,7 +168,7 @@ export class LatLngBounds {
   }
 
   /**
-   * 转换为字符串
+   * Convert to string.
    */
   public toString(): string {
     return `LatLngBounds(${this.north}, ${this.east}, ${this.south}, ${this.west})`;

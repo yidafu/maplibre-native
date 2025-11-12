@@ -1,8 +1,8 @@
 /**
- * OfflineManager - 离线地图管理器
+ * OfflineManager - offline map manager.
  *
- * 单例类，管理所有离线地图区域的创建、列表和删除
- * 对应 Android 的 OfflineManager 和 iOS 的 MLNOfflineStorage
+ * Singleton class that manages creation, listing, and deletion of offline regions.
+ * Mirrors Android OfflineManager and iOS MLNOfflineStorage.
  */
 
 import maplibre from 'libmaplibre.so';
@@ -12,51 +12,51 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
 /**
- * 合并离线区域回调
- * 对应 Android: MergeOfflineRegionsCallback
+ * Merge offline regions callback.
+ * Matches Android MergeOfflineRegionsCallback.
  */
 export interface MergeOfflineRegionsCallback {
   /**
-   * 合并成功时调用
-   * @param offlineRegions 合并后的离线区域列表
+   * Called when the merge succeeds.
+   * @param offlineRegions Merged offline regions.
    */
   onMerge(offlineRegions: OfflineRegion[]): void;
 
   /**
-   * 合并失败时调用
-   * @param error 错误消息
+   * Called when the merge fails.
+   * @param error Error message.
    */
   onError(error: string): void;
 }
 
 /**
- * 文件源操作回调
- * 对应 Android: FileSourceCallback
+ * File source operation callback.
+ * Matches Android FileSourceCallback.
  */
 export interface FileSourceCallback {
   /**
-   * 操作成功时调用
+   * Called when the operation succeeds.
    */
   onSuccess(): void;
 
   /**
-   * 操作失败时调用
-   * @param message 错误消息
+   * Called when the operation fails.
+   * @param message Error message.
    */
   onError(message: string): void;
 }
 /**
- * OfflineManager 类
+ * OfflineManager class.
  *
- * 使用示例：
+ * Usage example:
  * ```typescript
- * // 获取实例
+ * // Obtain the instance.
  * const offlineManager = OfflineManager.getInstance(context);
  *
- * // 列出所有离线区域
+ * // List all offline regions.
  * const regions = await offlineManager.listOfflineRegions();
  *
- * // 创建新的离线区域
+ * // Create a new offline region.
  * const definition = new OfflineTilePyramidRegionDefinition(
  *   styleURL,
  *   bounds,
@@ -67,23 +67,23 @@ export interface FileSourceCallback {
  * const metadata = new TextEncoder().encode('My offline map').buffer;
  * const region = await offlineManager.createOfflineRegion(definition, metadata);
  *
- * // 开始下载
+ * // Start downloading.
  * region.download();
  * ```
  */
 export class OfflineManager {
   private static instance: OfflineManager | null = null;
-  private nativeManager: maplibre.OfflineManager; // NAPI 对象
+  private nativeManager: maplibre.OfflineManager; // NAPI object.
   private context: common.UIAbilityContext;
 
   /**
-   * 私有构造函数（单例模式）
+   * Private constructor (singleton pattern).
    */
   private constructor(context: common.UIAbilityContext) {
     this.context = context;
 
     try {
-      // 创建 NAPI 离线管理器实例
+      // Create the NAPI offline manager instance.
       const dbPath = context.cacheDir + '/maplibre-offline.db';
       this.nativeManager = new maplibre.OfflineManager(dbPath);
     } catch (error) {
@@ -94,10 +94,10 @@ export class OfflineManager {
   }
 
   /**
-   * 获取单例实例
+   * Retrieve the singleton instance.
    *
-   * @param context 应用上下文
-   * @returns OfflineManager 实例
+   * @param context Application context.
+   * @returns OfflineManager instance.
    */
   public static getInstance(context: common.UIAbilityContext): OfflineManager {
     if (!OfflineManager.instance) {
@@ -107,20 +107,20 @@ export class OfflineManager {
   }
 
   /**
-   * 列出所有离线区域
+   * List all offline regions.
    *
-   * @returns Promise<OfflineRegion[]> 离线区域列表（封装类型）
+   * @returns Promise<OfflineRegion[]> Wrapped offline regions.
    */
   public async listOfflineRegions(): Promise<OfflineRegion[]> {
     return new Promise((resolve, reject) => {
       try {
         this.nativeManager.listOfflineRegions((result: maplibre.OfflineRegion[] | string) => {
           if (typeof result === 'string') {
-            // 错误情况
+            // Error case.
             hilog.error(DOMAIN, 'OfflineManager', `Failed to list offline regions: ${result}`);
             reject(new Error(result));
           } else {
-            // 成功情况 - 转换为封装类型
+            // Success case - convert to wrapper type.
             const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
             resolve(wrappedRegions);
           }
@@ -134,11 +134,11 @@ export class OfflineManager {
   }
 
   /**
-   * 创建离线区域
+   * Create an offline region.
    *
-   * @param definition 区域定义
-   * @param metadata 元数据（可选，用于存储自定义信息如区域名称）
-   * @returns Promise<OfflineRegion> 创建的离线区域（封装类型）
+   * @param definition Region definition.
+   * @param metadata Metadata (optional, e.g. region name).
+   * @returns Promise<OfflineRegion> Wrapped offline region.
    */
   public async createOfflineRegion(
     definition: maplibre.OfflineTilePyramidRegionDefinition,
@@ -156,7 +156,7 @@ export class OfflineManager {
               hilog.error(DOMAIN, 'OfflineManager', `Failed to create offline region: ${result}`);
               reject(new Error(result));
             } else {
-              // 转换为封装类型
+              // Convert to wrapper type.
               const wrappedRegion = OfflineRegion.fromNative(result);
               resolve(wrappedRegion);
             }
@@ -171,14 +171,14 @@ export class OfflineManager {
   }
 
   /**
-   * 删除离线区域
+   * Delete an offline region.
    *
-   * @param region 要删除的离线区域（封装类型）
+   * @param region Offline region to remove (wrapped type).
    */
   public async deleteOfflineRegion(region: OfflineRegion): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // 直接调用封装类的方法
+        // Invoke the wrapper method directly.
         region.delete((error?: string) => {
           if (error) {
             reject(new Error(error));
@@ -194,11 +194,11 @@ export class OfflineManager {
   }
 
   /**
-   * 设置离线地图瓦片数量限制
+   * Set the offline tile count limit.
    *
-   * 用于防止下载过多数据
+   * Helps prevent downloading excessive data.
    *
-   * @param limit 最大瓦片数量（0 表示无限制）
+   * @param limit Maximum tile count (0 means unlimited).
    */
   public setOfflineMapboxTileCountLimit(limit: number): void {
     try {
@@ -211,10 +211,10 @@ export class OfflineManager {
   }
 
   /**
-   * 重置数据库
+   * Reset the database.
    *
-   * 删除所有离线区域和缓存数据
-   * ⚠️ 警告：此操作不可逆
+   * Removes all offline regions and cached data.
+   * Warning: this operation is irreversible.
    */
   public async resetDatabase(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -237,9 +237,9 @@ export class OfflineManager {
   }
 
   /**
-   * 清理缓存
+   * Clear the ambient cache.
    *
-   * 删除不属于任何离线区域的缓存数据
+   * Removes cached data that does not belong to any offline region.
    */
   public async clearAmbientCache(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -261,14 +261,14 @@ export class OfflineManager {
   }
 
   /**
-   * 设置最大环境缓存大小
+   * Set the maximum ambient cache size.
    *
-   * @param size 最大大小（字节）
+   * @param size Maximum size in bytes.
    */
   public setMaximumAmbientCacheSize(size: number): void {
     try {
       this.nativeManager.setMaximumAmbientCacheSize(size, () => {
-        // 回调
+        // Callback placeholder.
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -278,7 +278,7 @@ export class OfflineManager {
   }
 
   /**
-   * 使环境缓存失效
+   * Invalidate the ambient cache.
    */
   public async invalidateAmbientCache(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -300,29 +300,29 @@ export class OfflineManager {
   }
 
   /**
-   * 从辅助数据库合并离线区域到主数据库
+   * Merge offline regions from a secondary database into the primary database.
    *
-   * 对应 Android: OfflineManager.mergeOfflineRegions(String, MergeOfflineRegionsCallback)
+   * Mirrors Android OfflineManager.mergeOfflineRegions(String, MergeOfflineRegionsCallback).
    *
-   * **功能说明**：
-   * - 自动升级辅助数据库架构
-   * - 相同区域会被合并为一个
-   * - 检查瓦片数量限制
-   * - 处理文件权限问题
+   * **Capabilities**:
+   * - Automatically upgrades the secondary database schema.
+   * - Merges identical regions into a single entry.
+   * - Checks tile count limits.
+   * - Handles file permission issues.
    *
-   * **使用场景**：
-   * - 导入其他设备的离线数据
-   * - 批量分发预下载的离线地图
-   * - 合并多个离线包
+   * **Use cases**:
+   * - Import offline data from other devices.
+   * - Distribute pre-downloaded offline maps in batches.
+   * - Combine multiple offline packages.
    *
-   * @param path 辅助数据库文件路径
-   * @returns Promise<OfflineRegion[]> 合并后的区域列表
+   * @param path Secondary database file path.
+   * @returns Promise<OfflineRegion[]> List of merged regions.
    *
    * @example
    * ```typescript
    * const offlineManager = OfflineManager.getInstance(context);
    * const mergedRegions = await offlineManager.mergeOfflineRegions('/path/to/secondary.db');
-   * console.log(`合并了 ${mergedRegions.length} 个离线区域`);
+   * console.log(`Merged ${mergedRegions.length} offline regions`);
    * ```
    */
   public async mergeOfflineRegions(path: string): Promise<OfflineRegion[]> {
@@ -330,11 +330,11 @@ export class OfflineManager {
       try {
         this.nativeManager.mergeOfflineRegions(path, (result: maplibre.OfflineRegion[] | string) => {
           if (typeof result === 'string') {
-            // 错误情况
+            // Error case.
             hilog.error(DOMAIN, 'OfflineManager', `Failed to merge offline regions: ${result}`);
             reject(new Error(result));
           } else {
-            // 成功情况 - 转换为封装类型
+            // Success case - convert to wrapper type.
             const wrappedRegions = result.map(nativeRegion => OfflineRegion.fromNative(nativeRegion));
             hilog.info(DOMAIN, 'OfflineManager', `Successfully merged ${wrappedRegions.length} offline regions`);
             resolve(wrappedRegions);
@@ -349,19 +349,19 @@ export class OfflineManager {
   }
 
   /**
-   * 打包数据库文件，压缩并回收空间
+   * Pack the database file to compress and reclaim space.
    *
-   * 对应 Android: OfflineManager.packDatabase(FileSourceCallback)
+   * Mirrors Android OfflineManager.packDatabase(FileSourceCallback).
    *
-   * **功能说明**：
-   * - 执行 VACUUM 操作压缩数据库
-   * - 回收删除区域后的空间
-   * - 有性能影响，建议在后台执行
+   * **Capabilities**:
+   * - Executes VACUUM to compact the database.
+   * - Reclaims space freed after region deletions.
+   * - Impacts performance; recommended for background execution.
    *
-   * **使用场景**：
-   * - 删除离线区域后回收空间
-   * - 定期数据库维护
-   * - 优化存储性能
+   * **Use cases**:
+   * - Reclaim space after deleting offline regions.
+   * - Perform periodic database maintenance.
+   * - Optimize storage performance.
    *
    * @returns Promise<void>
    *
@@ -369,10 +369,10 @@ export class OfflineManager {
    * ```typescript
    * const offlineManager = OfflineManager.getInstance(context);
    *
-   * // 删除区域后打包数据库
+   * // Pack the database after deleting regions.
    * await offlineManager.deleteOfflineRegion(region);
    * await offlineManager.packDatabase();
-   * console.log('数据库已压缩');
+   * console.log('Database compressed');
    * ```
    */
   public async packDatabase(): Promise<void> {
@@ -396,36 +396,36 @@ export class OfflineManager {
   }
 
   /**
-   * 设置是否自动打包数据库
+   * Configure whether to pack the database automatically.
    *
-   * 对应 Android: OfflineManager.runPackDatabaseAutomatically(Boolean)
+   * Mirrors Android OfflineManager.runPackDatabaseAutomatically(Boolean).
    *
-   * **功能说明**：
-   * - 默认启用（true）
-   * - 在删除区域或清除缓存后自动压缩数据库
-   * - 禁用后需要手动调用 packDatabase()
+   * **Capabilities**:
+   * - Enabled by default (true).
+   * - Automatically compresses the database after deletions or cache clears.
+   * - When disabled, packDatabase() must be called manually.
    *
-   * **性能考虑**：
-   * - 自动打包会在删除操作后增加延迟
-   * - 禁用后可以批量操作完再手动打包，提高性能
+   * **Performance considerations**:
+   * - Auto-packing introduces latency after deletion operations.
+   * - Disabling it allows batching operations before manually packing, improving performance.
    *
-   * @param autopack 是否自动打包
+   * @param autopack Whether to enable automatic packing.
    *
    * @example
    * ```typescript
    * const offlineManager = OfflineManager.getInstance(context);
    *
-   * // 批量删除时禁用自动打包
+   * // Disable auto-pack during batch deletions.
    * offlineManager.runPackDatabaseAutomatically(false);
    *
    * for (const region of regionsToDelete) {
    *   await offlineManager.deleteOfflineRegion(region);
    * }
    *
-   * // 手动打包一次
+   * // Manually pack once.
    * await offlineManager.packDatabase();
    *
-   * // 恢复自动打包
+   * // Re-enable auto-pack.
    * offlineManager.runPackDatabaseAutomatically(true);
    * ```
    */

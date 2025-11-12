@@ -1,20 +1,20 @@
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnMarkerLongClickListener - Marker 长按事件监听器
+ * OnMarkerLongClickListener - marker long-press listener.
  *
- * 当用户长按地图上的 Marker 时触发
+ * Triggered when the user long-presses a marker on the map.
  *
- * 参考:
- * - Android: 类似 View.OnLongClickListener 的模式
- * - iOS: UILongPressGestureRecognizer
+ * Reference:
+ * - Android: similar to `View.OnLongClickListener`.
+ * - iOS: `UILongPressGestureRecognizer`.
  */
 export interface OnMarkerLongClickListener {
   /**
-   * Marker 被长按时调用
+   * Called when a marker is long-pressed.
    *
-   * @param marker 被长按的 Marker
-   * @returns true 表示事件已被消费，不再传播；false 表示事件继续传播
+   * @param marker The pressed marker.
+   * @returns true to consume the event; false to propagate.
    */
   onMarkerLongClick(marker: Marker): boolean;
 }

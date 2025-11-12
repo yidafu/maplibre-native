@@ -1,15 +1,15 @@
 /**
- * 相机跟踪状态变更监听器
+ * Listener for camera tracking state changes.
  */
 export interface OnCameraTrackingChangedListener {
   /**
-   * 当相机跟踪模式变更时调用
-   * @param currentMode 当前相机模式
+   * Invoked when the camera tracking mode changes.
+   * @param currentMode Current camera mode.
    */
   onCameraTrackingChanged(currentMode: number): void;
 
   /**
-   * 当用户手势操作导致相机跟踪被取消时调用
+   * Invoked when user gestures dismiss camera tracking.
    */
   onCameraTrackingDismissed?(): void;
 }

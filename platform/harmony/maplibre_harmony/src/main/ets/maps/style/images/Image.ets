@@ -1,47 +1,47 @@
 import maplibre from 'libmaplibre.so';
 
 /**
- * ImageOptions - 图片选项接口
+ * ImageOptions - image configuration interface.
  */
 export interface ImageOptions {
-  /** 图片名称，用于在样式中引用 */
+  /** Image name used in style references. */
   name: string;
-  /** 图片宽度（像素） */
+  /** Image width in pixels. */
   width: number;
-  /** 图片高度（像素） */
+  /** Image height in pixels. */
   height: number;
-  /** 像素比例，默认 1.0 */
+  /** Pixel ratio, defaults to 1.0. */
   pixelRatio?: number;
   /** 
-   * 是否为 SDF (Signed Distance Field) 图片
-   * SDF 图片可以通过样式动态改变颜色，常用于图标
-   * 默认 false
+   * Whether the image is SDF (Signed Distance Field).
+   * SDF assets allow style-driven color changes, common for icons.
+   * Default false.
    */
   sdf?: boolean;
-  /** 图片数据（RGBA 格式，预乘 alpha） */
+  /** Image data (RGBA, premultiplied alpha). */
   data: Uint8Array;
   /**
-   * 可拉伸区域（水平方向）- 9-patch 风格
-   * 数组格式：[start1, end1, start2, end2, ...]，单位为像素
-   * 例如：[25, 55, 85, 115] 表示 25-55 和 85-115 两个区域可拉伸
+   * Stretchable regions (horizontal) - 9-patch style.
+   * Array format: [start1, end1, start2, end2, ...] in pixels.
+   * Example: [25, 55, 85, 115] marks two stretchable ranges.
    */
   stretchX?: number[];
   /**
-   * 可拉伸区域（垂直方向）- 9-patch 风格
-   * 数组格式：[start1, end1, start2, end2, ...]，单位为像素
-   * 例如：[25, 100] 表示 25-100 区域可拉伸
+   * Stretchable regions (vertical) - 9-patch style.
+   * Array format: [start1, end1, start2, end2, ...] in pixels.
+   * Example: [25, 100] marks a stretchable band from 25-100.
    */
   stretchY?: number[];
   /**
-   * 内容区域（用于文本放置）
-   * 数组格式：[left, top, right, bottom]，单位为像素
-   * 定义了拉伸后文本应该显示在哪个区域内
+   * Content region (for text placement).
+   * Array format: [left, top, right, bottom] in pixels.
+   * Defines the text area after stretching.
    */
   content?: number[];
 }
 
 /**
- * ImageSize - 图片尺寸接口
+ * ImageSize - image dimensions interface.
  */
 export interface ImageSize {
   width: number;
@@ -49,7 +49,7 @@ export interface ImageSize {
 }
 
 /**
- * InternalMarker - 内部标记类，用于控制实例化
+ * InternalMarker - sentinel class controlling instantiation.
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -59,20 +59,19 @@ class InternalMarker {
 }
 
 /**
- * Image - 图片包装类
+ * Image - wrapper around the NAPI Image object.
  *
- * 这是一个封装类，包装了 NAPI Image 对象，提供类型安全的接口。
- * 遵循封装原则，不直接暴露 NAPI 对象给最终用户。
+ * Provides a type-safe façade and keeps the native object encapsulated.
  */
 export class Image {
   private nativeInstance: maplibre.Image;
 
   /**
-   * 构造函数
-   * @param options - 图片选项
+   * Constructor.
+   * @param options Image creation options.
    */
   constructor(options: ImageOptions) {
-    // 验证必需参数
+    // Validate required fields.
     if (!options.name || options.name.trim() === '') {
       throw new Error('Image name is required');
     }
@@ -89,7 +88,7 @@ export class Image {
       throw new Error('Image data is required');
     }
 
-    // 验证数据大小 (RGBA = 4 bytes per pixel)
+    // Validate data size (RGBA = 4 bytes per pixel).
     const expectedSize = options.width * options.height * 4;
     if (options.data.byteLength !== expectedSize) {
       throw new Error(
@@ -97,22 +96,22 @@ export class Image {
       );
     }
 
-    // 验证 stretchX（如果提供）
+    // Validate stretchX (if provided).
     if (options.stretchX && options.stretchX.length % 2 !== 0) {
       throw new Error('stretchX must contain pairs of values [start, end, ...]');
     }
 
-    // 验证 stretchY（如果提供）
+    // Validate stretchY (if provided).
     if (options.stretchY && options.stretchY.length % 2 !== 0) {
       throw new Error('stretchY must contain pairs of values [start, end, ...]');
     }
 
-    // 验证 content（如果提供）
+    // Validate content (if provided).
     if (options.content && options.content.length !== 4) {
       throw new Error('content must contain exactly 4 values [left, top, right, bottom]');
     }
 
-    // 创建 native Image 实例
+    // Create native Image instance.
     try {
       this.nativeInstance = new maplibre.Image({
         name: options.name,
@@ -131,7 +130,7 @@ export class Image {
   }
 
   /**
-   * 获取 native 实例（供内部使用，如 Style.addImage）
+   * Access the native instance (internal use, e.g., `Style.addImage`).
    * @internal
    */
   getNative(): maplibre.Image {
@@ -139,73 +138,73 @@ export class Image {
   }
 
   /**
-   * 获取图片名称
+   * Get the image name.
    */
   getName(): string {
     return this.nativeInstance.getName();
   }
 
   /**
-   * 获取宽度
+   * Get the width.
    */
   getWidth(): number {
     return this.nativeInstance.getWidth();
   }
 
   /**
-   * 获取高度
+   * Get the height.
    */
   getHeight(): number {
     return this.nativeInstance.getHeight();
   }
 
   /**
-   * 获取像素比
+   * Get the pixel ratio.
    */
   getPixelRatio(): number {
     return this.nativeInstance.getPixelRatio();
   }
 
   /**
-   * 是否为SDF图片
+   * Determine whether the image uses SDF.
    */
   isSdf(): boolean {
     return this.nativeInstance.getSdf();
   }
 
   /**
-   * 获取图片数据
+   * Get the raw image data.
    */
   getData(): Uint8Array | null {
     return this.nativeInstance.getData();
   }
 
   /**
-   * 获取水平拉伸区域
-   * @returns 拉伸区域数组 [start1, end1, start2, end2, ...] 或 null
+   * Get horizontal stretch regions.
+   * @returns Array [start1, end1, ...] or null.
    */
   getStretchX(): number[] | null {
     return this.nativeInstance.getStretchX();
   }
 
   /**
-   * 获取垂直拉伸区域
-   * @returns 拉伸区域数组 [start1, end1, start2, end2, ...] 或 null
+   * Get vertical stretch regions.
+   * @returns Array [start1, end1, ...] or null.
    */
   getStretchY(): number[] | null {
     return this.nativeInstance.getStretchY();
   }
 
   /**
-   * 获取内容区域（用于文本放置）
-   * @returns 内容区域 [left, top, right, bottom] 或 null
+   * Get the content region used for text placement.
+   * @returns `[left, top, right, bottom]` or null.
    */
   getContent(): number[] | null {
     return this.nativeInstance.getContent();
   }
 
   /**
-   * 获取图片尺寸
+   * Get the image dimensions.
    */
   getSize(): ImageSize {
     return {
@@ -215,7 +214,7 @@ export class Image {
   }
 
   /**
-   * 比较两个图片是否相等（基于元数据）
+   * Compare two images by metadata.
    */
   equals(other: Image): boolean {
     if (!other) {
@@ -230,7 +229,7 @@ export class Image {
   }
 
   /**
-   * 转换为字符串
+   * Convert to string.
    */
   toString(): string {
     const sdfStr = this.isSdf() ? ', sdf' : '';

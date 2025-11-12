@@ -1,14 +1,14 @@
 /**
- * TooManyIconsException - 图标数量超限异常
+ * TooManyIconsException - icon count overflow exception.
  *
- * 当创建的图标数量超过系统允许的最大值时抛出此异常。
- * 这通常发生在 Icon ID 计数器溢出时。
+ * Thrown when the number of created icons exceeds the system limit.
+ * Typically occurs when the icon ID counter overflows.
  *
- * 参考:
+ * Reference:
  * - Android: org.maplibre.android.exceptions.TooManyIconsException
  *
  * @example
-* ```typescript
+ * ```typescript
  * try {
  *   const icon = iconFactory.fromPixelMap(pixelMap);
  * } catch (error) {
@@ -20,9 +20,9 @@
  */
 export class TooManyIconsException extends Error {
   /**
-   * 构造函数
+   * Constructor.
    *
-   * @param message 错误消息（可选）
+   * @param message Optional error message.
    */
   constructor(message?: string) {
     super(message || 'Too many icons created. Maximum icon count exceeded.');

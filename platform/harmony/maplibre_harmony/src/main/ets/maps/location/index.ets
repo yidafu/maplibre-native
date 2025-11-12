@@ -1,19 +1,19 @@
 /**
- * LocationComponent API 导出
+ * LocationComponent API exports.
  */
 
-// 主类
+// Main class
 export { LocationComponent } from './LocationComponent';
 
-// 配置类
+// Configuration classes
 export { LocationComponentOptions, LocationComponentOptionsBuilder } from './LocationComponentOptions';
 
-// 模式枚举
+// Mode enums
 export { RenderMode } from './modes/RenderMode';
 
 export { CameraMode } from './modes/CameraMode';
 
-// 位置引擎
+// Location engine
 export { LocationEngine } from './engine/LocationEngine';
 
 export { LocationEngineCallback } from './engine/LocationEngineCallback';
@@ -22,10 +22,10 @@ export { LocationEngineRequest, LocationEngineRequestBuilder } from './engine/Lo
 
 export { HarmonyLocationEngine } from './engine/HarmonyLocationEngine';
 
-// 指南针引擎
+// Compass engine
 export { CompassEngine, CompassListener } from './CompassEngine';
 
-// 监听器
+// Listeners
 export { OnLocationClickListener } from './listeners/OnLocationClickListener';
 
 export { OnCameraTrackingChangedListener } from './listeners/OnCameraTrackingChangedListener';
@@ -34,12 +34,12 @@ export { OnRenderModeChangedListener } from './listeners/OnRenderModeChangedList
 
 export { OnLocationStaleListener } from './listeners/OnLocationStaleListener';
 
-// 常量
+// Constants
 export { LocationComponentConstants } from './LocationComponentConstants';
 
-// 权限管理
+// Permission management
 export { PermissionManager, PermissionRequestResult } from './PermissionManager';
 
-// 性能监控
+// Performance monitoring
 export { PerformanceMonitor } from './PerformanceMonitor';
 

@@ -1,10 +1,10 @@
 /**
- * 渲染模式变更监听器
+ * Listener for render mode changes.
  */
 export interface OnRenderModeChangedListener {
   /**
-   * 当渲染模式变更时调用
-   * @param currentMode 当前渲染模式
+   * Invoked when the render mode changes.
+   * @param currentMode Current render mode.
    */
   onRenderModeChanged(currentMode: number): void;
 }

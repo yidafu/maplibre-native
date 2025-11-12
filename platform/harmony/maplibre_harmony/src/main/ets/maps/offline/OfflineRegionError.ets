@@ -1,13 +1,13 @@
 /**
- * OfflineRegionError - 离线区域错误
+ * OfflineRegionError - offline region error.
  *
- * 从 NAPI 层重新导出
+ * Re-exported from the NAPI layer.
  */
 
-// 重新导出 NAPI 接口
+// Re-export the NAPI interface.
 export type { OfflineRegionError } from 'libmaplibre.so';
 
-// 重新导出错误原因枚举（如果有的话）
+// Re-export error reasons (when provided).
 export enum OfflineRegionErrorReason {
   Unknown = 'unknown',
   Network = 'network',

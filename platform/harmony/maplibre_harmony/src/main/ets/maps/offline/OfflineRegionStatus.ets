@@ -1,13 +1,13 @@
 /**
- * OfflineRegionStatus - 离线区域状态
+ * OfflineRegionStatus - offline region status.
  *
- * 从 NAPI 层重新导出
+ * Re-exported from the NAPI layer.
  */
 
 import maplibre from 'libmaplibre.so';
 
-// 重新导出 NAPI 枚举和接口
+// Re-export NAPI enums and interfaces.
 export { OfflineRegionStatus } from 'libmaplibre.so';
 
-// 导出 DownloadState 枚举
+// Export the DownloadState enum.
 export { DownloadState } from 'libmaplibre.so';

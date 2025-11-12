@@ -27,9 +27,9 @@ class InternalMarker {
 }
 
 /**
- * Light - 样式光照控制类（与 Android/iOS 接口一致）
+ * Light - style lighting controller (API parity with Android/iOS).
  *
- * 通过 Style.getLight() / MapLibreMap.getLight() 获取实例
+ * Obtain via `Style.getLight()` or `MapLibreMap.getLight()`.
  */
 export class Light {
   static readonly _TYPE_: string = 'Light';
@@ -143,8 +143,8 @@ export class Light {
 }
 
 /**
- * LightOptions - 光照选项接口（向后兼容）
+ * LightOptions - legacy alias for backward compatibility.
  *
- * @deprecated 请使用 Light 或 LightSpecification 类型
+ * @deprecated Use `Light` or `LightSpecification` instead.
  */
 export type LightOptions = LightSpecification;

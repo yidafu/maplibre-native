@@ -1,7 +1,7 @@
 /**
- * Offline - 离线地图模块
+ * Offline - offline map module.
  *
- * 导出离线地图相关的类和接口
+ * Exports offline map-related classes and interfaces.
  */
 
 export { OfflineManager } from './OfflineManager';

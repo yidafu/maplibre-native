@@ -1,9 +1,9 @@
 /**
- * StyleBuilder - 样式构建器
- * 
- * 参考 Android Style.Builder 实现，提供批量配置图层和数据源的能力
- * 确保所有 Layout 属性在 SymbolBucket 创建前正确设置，消除时序问题
- * 
+ * StyleBuilder - style configuration helper.
+ *
+ * Inspired by Android `Style.Builder`, it batches source/layer additions and
+ * guarantees layout properties are set before `SymbolBucket` creation to avoid timing issues.
+ *
  * @example
  * ```typescript
  * new StyleBuilder()
@@ -22,16 +22,16 @@ import type { Source } from './sources/Source';
 import type { Layer } from './layers/Layer';
 
 /**
- * 图层配置类
+ * Layer configuration container.
  */
 class LayerConfig {
-  /** 图层实例 */
+  /** Layer instance. */
   layer: Layer;
-  /** 在指定图层之前插入 */
+  /** Insert before a specific layer ID. */
   beforeId?: string;
-  /** 在指定图层之后插入 */
+  /** Insert after a specific layer ID. */
   afterId?: string;
-  /** 在指定索引位置插入 */
+  /** Insert at a specific index. */
   atIndex?: number;
 
   constructor(layer: Layer, beforeId?: string, afterId?: string, atIndex?: number) {
@@ -43,7 +43,7 @@ class LayerConfig {
 }
 
 /**
- * 统计信息类
+ * Statistics tracker.
  */
 class StyleBuilderStats {
   sources: number = 0;
@@ -52,18 +52,18 @@ class StyleBuilderStats {
 }
 
 /**
- * 图像配置类
+ * Image configuration descriptor.
  */
 class ImageConfig {
-  /** 图像 ID */
+  /** Image identifier. */
   id: string;
-  /** 图像数据 */
+  /** Image data. */
   image: ArrayBuffer | Uint8Array;
-  /** 图像宽度 */
+  /** Image width. */
   width: number;
-  /** 图像高度 */
+  /** Image height. */
   height: number;
-  /** 是否为 SDF 图像 */
+  /** Whether the image is SDF. */
   sdf?: boolean;
 
   constructor(id: string, image: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean) {
@@ -76,27 +76,25 @@ class ImageConfig {
 }
 
 /**
- * StyleBuilder - 样式构建器类
- * 
- * 提供声明式的样式配置方式，确保所有组件按正确顺序添加
+ * StyleBuilder - declarative style builder ensuring consistent ordering.
  */
 export class StyleBuilder {
-  /** 数据源映射 */
+  /** Source map keyed by source ID. */
   private sources: Map<string, Source> = new Map();
   
-  /** 图层配置数组 */
+  /** Layer configuration list. */
   private layers: LayerConfig[] = [];
   
-  /** 图像配置数组 */
+  /** Image configuration list. */
   private images: ImageConfig[] = [];
   
-  /** 是否已构建 */
+  /** Indicates whether build() has been executed. */
   private built: boolean = false;
 
   /**
-   * 添加数据源
-   * @param source 数据源实例
-   * @returns 返回 this 以支持链式调用
+   * Add a data source.
+   * @param source Source instance.
+   * @returns This builder for chaining.
    */
   public withSource(source: Source): StyleBuilder {
     this.checkNotBuilt();
@@ -108,9 +106,9 @@ export class StyleBuilder {
   }
 
   /**
-   * 批量添加数据源
-   * @param sources 数据源数组
-   * @returns 返回 this 以支持链式调用
+   * Add multiple data sources.
+   * @param sources Source array.
+   * @returns This builder for chaining.
    */
   public withSources(...sources: Source[]): StyleBuilder {
     this.checkNotBuilt();
@@ -121,9 +119,9 @@ export class StyleBuilder {
   }
 
   /**
-   * 添加图层
-   * @param layer 图层实例（所有属性应已设置完成）
-   * @returns 返回 this 以支持链式调用
+   * Add a layer.
+   * @param layer Layer instance (all properties should be preconfigured).
+   * @returns This builder for chaining.
    */
   public withLayer(layer: Layer): StyleBuilder {
     this.checkNotBuilt();
@@ -132,9 +130,9 @@ export class StyleBuilder {
   }
 
   /**
-   * 批量添加图层
-   * @param layers 图层数组
-   * @returns 返回 this 以支持链式调用
+   * Add multiple layers.
+   * @param layers Layer array.
+   * @returns This builder for chaining.
    */
   public withLayers(...layers: Layer[]): StyleBuilder {
     this.checkNotBuilt();
@@ -145,10 +143,10 @@ export class StyleBuilder {
   }
 
   /**
-   * 在指定图层之前添加图层
-   * @param layer 图层实例
-   * @param beforeLayerId 参考图层 ID
-   * @returns 返回 this 以支持链式调用
+   * Insert a layer before another layer.
+   * @param layer Layer instance.
+   * @param beforeLayerId Reference layer ID.
+   * @returns This builder for chaining.
    */
   public withLayerBefore(layer: Layer, beforeLayerId: string): StyleBuilder {
     this.checkNotBuilt();
@@ -157,10 +155,10 @@ export class StyleBuilder {
   }
 
   /**
-   * 在指定图层之后添加图层
-   * @param layer 图层实例
-   * @param afterLayerId 参考图层 ID
-   * @returns 返回 this 以支持链式调用
+   * Insert a layer after another layer.
+   * @param layer Layer instance.
+   * @param afterLayerId Reference layer ID.
+   * @returns This builder for chaining.
    */
   public withLayerAfter(layer: Layer, afterLayerId: string): StyleBuilder {
     this.checkNotBuilt();
@@ -169,10 +167,10 @@ export class StyleBuilder {
   }
 
   /**
-   * 在指定索引位置添加图层
-   * @param layer 图层实例
-   * @param index 索引位置
-   * @returns 返回 this 以支持链式调用
+   * Insert a layer at a specific index.
+   * @param layer Layer instance.
+   * @param index Target index.
+   * @returns This builder for chaining.
    */
   public withLayerAt(layer: Layer, index: number): StyleBuilder {
     this.checkNotBuilt();
@@ -181,13 +179,13 @@ export class StyleBuilder {
   }
 
   /**
-   * 添加图像资源
-   * @param id 图像 ID
-   * @param image 图像数据（ArrayBuffer 或 Uint8Array）
-   * @param width 图像宽度
-   * @param height 图像高度
-   * @param sdf 是否为 SDF 图像
-   * @returns 返回 this 以支持链式调用
+   * Add an image resource.
+   * @param id Image identifier.
+   * @param image Image data (`ArrayBuffer` or `Uint8Array`).
+   * @param width Image width.
+   * @param height Image height.
+   * @param sdf Whether the image is SDF.
+   * @returns This builder for chaining.
    */
   public withImage(
     id: string,
@@ -202,22 +200,22 @@ export class StyleBuilder {
   }
 
   /**
-   * 构建并应用样式
-   * @param map 地图实例
-   * @returns Promise，在所有组件添加完成后 resolve
+   * Build and apply the style.
+   * @param map Map instance.
+   * @returns Promise resolved after all components are added.
    */
   public async build(map: MapLibreMap): Promise<void> {
     this.checkNotBuilt();
     this.built = true;
 
     try {
-      // 1. 添加图像资源
+      // 1. Add images.
       await this.addImages(map);
 
-      // 2. 添加数据源
+      // 2. Add sources.
       await this.addSources(map);
 
-      // 3. 添加图层
+      // 3. Add layers.
       await this.addLayers(map);
 
       console.info(`✅ StyleBuilder: Successfully built style with ${this.sources.size} sources, ${this.layers.length} layers, ${this.images.length} images`);
@@ -229,7 +227,7 @@ export class StyleBuilder {
   }
 
   /**
-   * 添加图像资源
+   * Add all configured images.
    */
   private async addImages(map: MapLibreMap): Promise<void> {
     const style = map.getStyle();
@@ -255,7 +253,7 @@ export class StyleBuilder {
   }
 
   /**
-   * 添加数据源
+   * Add all configured sources.
    */
   private async addSources(map: MapLibreMap): Promise<void> {
     this.sources.forEach((source, sourceId) => {
@@ -268,14 +266,14 @@ export class StyleBuilder {
       }
     });
 
-    // 给数据源一点时间注册
+    // Allow sources time to register.
     if (this.sources.size > 0) {
       await this.delay(50);
     }
   }
 
   /**
-   * 添加图层
+   * Add all configured layers.
    */
   private async addLayers(map: MapLibreMap): Promise<void> {
     for (const config of this.layers) {
@@ -283,19 +281,19 @@ export class StyleBuilder {
         const layerId = this.getLayerId(config.layer);
         
         if (config.beforeId) {
-          // 在指定图层之前添加
+          // Insert before a specific layer.
           map.addLayerAbove(config.layer, config.beforeId);
           console.info(`✅ Added layer ${layerId} before ${config.beforeId}`);
         } else if (config.afterId) {
-          // 在指定图层之后添加
+          // Insert after a specific layer.
           map.addLayerAbove(config.layer, config.afterId);
           console.info(`✅ Added layer ${layerId} after ${config.afterId}`);
         } else if (config.atIndex !== undefined) {
-          // 在指定位置添加
+          // Insert at an explicit index.
           map.addLayerAt(config.layer, config.atIndex);
           console.info(`✅ Added layer ${layerId} at index ${config.atIndex}`);
         } else {
-          // 默认添加到最后
+          // Append to the end.
           map.addLayer(config.layer);
           console.info(`✅ Added layer: ${layerId}`);
         }
@@ -308,7 +306,7 @@ export class StyleBuilder {
   }
 
   /**
-   * 检查是否已构建
+   * Ensure the builder has not been finalized.
    */
   private checkNotBuilt(): void {
     if (this.built) {
@@ -317,18 +315,18 @@ export class StyleBuilder {
   }
 
   /**
-   * 延迟函数
+   * Helper delay.
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
-   * 获取数据源 ID
+   * Get a source ID.
    */
   private getSourceId(source: Source): string | null {
     try {
-      // Source 都有 getId() 方法
+      // Sources expose getId().
       return source.getId();
     } catch (error) {
       console.error('Error getting source ID:', error);
@@ -337,11 +335,11 @@ export class StyleBuilder {
   }
 
   /**
-   * 获取图层 ID
+   * Get a layer ID.
    */
   private getLayerId(layer: Layer): string {
     try {
-      // Layer 都有 getId() 方法
+      // Layers expose getId().
       return layer.getId();
     } catch (error) {
       console.error('Error getting layer ID:', error);
@@ -350,7 +348,7 @@ export class StyleBuilder {
   }
 
   /**
-   * 获取当前配置的统计信息
+   * Retrieve current configuration statistics.
    */
   public getStats(): StyleBuilderStats {
     const stats = new StyleBuilderStats();
@@ -361,7 +359,7 @@ export class StyleBuilder {
   }
 
   /**
-   * 清空所有配置（用于重置）
+   * Clear all configuration (reset).
    */
   public clear(): void {
     this.sources.clear();

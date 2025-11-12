@@ -1,5 +1,5 @@
 /**
- * Expression 系统导出
+ * Expression system exports.
  */
 
 export {
@@ -13,9 +13,9 @@ export { PropertyValue as NativePropertyValue, ExpressionValue } from 'libmaplib
 
 export { FormatEntry, FormatOption, NumberFormatOption } from './FormatEntry';
 export type { PropertyValue } from './Expression'
-// 向后兼容性别名
-// Interpolator、Stop、CollatorExpression 已整合到 Expression 类中
-// 请使用以下方法代替：
+// Backward-compatible aliases.
+// Interpolator, Stop, and CollatorExpression are now part of Expression.
+// Use the replacements below:
 // - Interpolator.linear() -> Expression.linear()
 // - Interpolator.exponential() -> Expression.exponential()
 // - Interpolator.cubicBezier() -> Expression.cubicBezier()

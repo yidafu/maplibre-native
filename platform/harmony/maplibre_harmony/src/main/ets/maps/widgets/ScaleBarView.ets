@@ -1,72 +1,72 @@
 /**
- * ScaleBarView - 比例尺组件
+ * ScaleBarView - scale bar component.
  *
- * 参考 Android 和 iOS MLNScaleBar 实现
- * 根据缩放级别和纬度动态显示地图比例
+ * Inspired by Android and iOS MLNScaleBar implementations.
+ * Dynamically displays map scale based on zoom level and latitude.
  */
 
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
-// 常量定义
+// Constants.
 const METERS_PER_FOOT = 0.3048;
 const FEET_PER_METER = 3.28084;
 const MIN_BAR_WIDTH_DP = 30;
 const BAR_HEIGHT_DP = 4;
 
 /**
- * 比例尺单位系统
+ * Scale bar unit system.
  */
 export enum ScaleBarUnit {
-  Metric = 0, // 公制（米/千米）
-  Imperial = 1 // 英制（英尺/英里）
+  Metric = 0, // Metric (meters/kilometers).
+  Imperial = 1 // Imperial (feet/miles).
 }
 
 /**
- * 比例尺显示行配置
+ * Scale bar row configuration.
  */
 interface ScaleBarRow {
-  distance: number; // 显示的距离
-  numberOfBars: number; // 条数
-  label: string; // 显示文本
+  distance: number; // Displayed distance.
+  numberOfBars: number; // Number of segments.
+  label: string; // Label text.
 }
 
 @Component
 export struct ScaleBarView {
-  // 是否启用
+  // Whether the scale bar is enabled.
   @Prop isEnabled: boolean = true;
-  // 每个像素代表的米数（由外部传入）
+  // Meters represented per pixel (provided externally).
   @Prop @Watch('onMetersPerPixelChanged') metersPerPixel: number = 0;
-  // 单位系统
+  // Unit system.
   @Prop unitSystem: ScaleBarUnit = ScaleBarUnit.Metric;
-  // 是否使用深色样式
+  // Whether to use dark styling.
   @Prop useDarkStyles: boolean = false;
-  // 主色和次色
+  // Primary and secondary colors.
   @Prop primaryColor: string = '#122D11';
   @Prop secondaryColor: string = '#F7F7F7';
-  // 最大宽度（像素）
+  // Maximum width (pixels).
   @Prop maxWidth: number = 200;
-  // 当前计算出的比例尺行
+  // Currently selected scale bar row.
   @State private currentRow: ScaleBarRow | null = null;
-  // 条形宽度
+  // Width of each bar segment.
   @State private barWidth: number = 0;
 
   /**
-   * 监听 metersPerPixel 变化
+   * Watch for metersPerPixel changes.
    */
   onMetersPerPixelChanged(): void {
     this.recalculate();
   }
 
   /**
-   * 组件初始化
+   * Component initialization.
    */
   aboutToAppear(): void {
     this.recalculate();
   }
 
   /**
-   * 更新比例尺
-   * @param metersPerPixel 每像素米数
+   * Update the scale bar.
+   * @param metersPerPixel Meters per pixel.
    */
   update(metersPerPixel: number): void {
     this.metersPerPixel = metersPerPixel;
@@ -74,7 +74,7 @@ export struct ScaleBarView {
   }
 
   /**
-   * 重新计算比例尺
+   * Recalculate the scale bar.
    */
   private recalculate(): void {
 
@@ -91,16 +91,16 @@ export struct ScaleBarView {
 
     const maxDistance = this.maxWidth * unitsPerPixel;
 
-    // 选择合适的比例尺行
+    // Select a suitable scale bar row.
     const row = this.selectPreferredRow(maxDistance);
 
     if (row) {
-      // 计算实际宽度
+      // Compute the actual width.
       const actualWidth = row.distance / unitsPerPixel;
 
       if (actualWidth >= MIN_BAR_WIDTH_DP) {
         this.currentRow = row;
-        // 计算每个条的宽度
+        // Compute the width of each segment.
         this.barWidth = Math.floor(actualWidth / row.numberOfBars);
       } else {
         hilog.warn(DOMAIN, 'ScaleBarView',
@@ -114,13 +114,13 @@ export struct ScaleBarView {
   }
 
   /**
-   * 选择合适的比例尺行
-   * @param maxDistance 最大距离
+   * Select a suitable scale bar row.
+   * @param maxDistance Maximum distance.
    */
   private selectPreferredRow(maxDistance: number): ScaleBarRow | null {
     const rows = this.getPredefinedRows();
 
-    // 找到第一个小于等于最大距离的行
+    // Find the first row that does not exceed the maximum distance.
     for (const row of rows) {
       if (row.distance <= maxDistance) {
         return row;
@@ -131,13 +131,13 @@ export struct ScaleBarView {
   }
 
   /**
-   * 获取预定义的比例尺行
+   * Retrieve predefined scale bar rows.
    */
   private getPredefinedRows(): ScaleBarRow[] {
     if (this.unitSystem === ScaleBarUnit.Metric) {
-      // 公制（米/千米）
+      // Metric (meters/kilometers).
       return [
-        // 千米级别
+        // Kilometer scale.
         { distance: 200000, numberOfBars: 4, label: '200 km' },
         { distance: 100000, numberOfBars: 4, label: '100 km' },
         { distance: 50000, numberOfBars: 5, label: '50 km' },
@@ -146,7 +146,7 @@ export struct ScaleBarView {
         { distance: 5000, numberOfBars: 5, label: '5 km' },
         { distance: 2000, numberOfBars: 4, label: '2 km' },
         { distance: 1000, numberOfBars: 4, label: '1 km' },
-        // 米级别
+        // Meter scale.
         { distance: 500, numberOfBars: 5, label: '500 m' },
         { distance: 200, numberOfBars: 4, label: '200 m' },
         { distance: 100, numberOfBars: 4, label: '100 m' },
@@ -158,10 +158,10 @@ export struct ScaleBarView {
         { distance: 1, numberOfBars: 4, label: '1 m' },
       ];
     } else {
-      // 英制（英尺/英里）
+      // Imperial (feet/miles).
       const FEET_PER_MILE = 5280;
       return [
-        // 英里级别
+        // Mile scale.
         { distance: 100 * FEET_PER_MILE, numberOfBars: 4, label: '100 mi' },
         { distance: 50 * FEET_PER_MILE, numberOfBars: 5, label: '50 mi' },
         { distance: 20 * FEET_PER_MILE, numberOfBars: 4, label: '20 mi' },
@@ -169,7 +169,7 @@ export struct ScaleBarView {
         { distance: 5 * FEET_PER_MILE, numberOfBars: 5, label: '5 mi' },
         { distance: 2 * FEET_PER_MILE, numberOfBars: 4, label: '2 mi' },
         { distance: 1 * FEET_PER_MILE, numberOfBars: 4, label: '1 mi' },
-        // 英尺级别
+        // Foot scale.
         { distance: 5000, numberOfBars: 5, label: '5000 ft' },
         { distance: 2000, numberOfBars: 4, label: '2000 ft' },
         { distance: 1000, numberOfBars: 4, label: '1000 ft' },
@@ -184,21 +184,21 @@ export struct ScaleBarView {
   }
 
   /**
-   * 获取条的颜色
+   * Determine the color of a segment.
    */
   private getBarColor(index: number): string {
     return index % 2 === 0 ? this.primaryColor : this.secondaryColor;
   }
 
   /**
-   * 获取文本颜色（带描边效果）
+   * Determine the text color (with stroke effect).
    */
   private getTextColor(): string {
     return this.useDarkStyles ? '#FFFFFF' : '#000000';
   }
 
   /**
-   * 获取文本描边颜色
+   * Determine the text stroke color.
    */
   private getTextStrokeColor(): string {
     return this.useDarkStyles ? '#000000' : '#FFFFFF';
@@ -210,7 +210,7 @@ export struct ScaleBarView {
         this.buildScaleBar()
       }
     } else {
-      // 返回空容器，避免影响布局（不占空间）
+      // Return an empty container to avoid affecting layout.
       Column().width(0).height(0)
     }
   }
@@ -218,7 +218,7 @@ export struct ScaleBarView {
   @Builder
   buildScaleBar() {
     Column() {
-      // 文本标签
+      // Text labels.
       Row() {
         Text('0')
           .fontSize(8)
@@ -233,7 +233,7 @@ export struct ScaleBarView {
           .width(this.barWidth)
           .textAlign(TextAlign.Start)
 
-        // 中间空白
+        // Middle spacer.
         Row().layoutWeight(1)
 
         Text(this.currentRow!.label)
@@ -249,11 +249,11 @@ export struct ScaleBarView {
           .width(this.barWidth)
           .textAlign(TextAlign.End)
       }
-      .width(this.barWidth * this.currentRow!.numberOfBars + this.barWidth) // 额外宽度用于标签
+      .width(this.barWidth * this.currentRow!.numberOfBars + this.barWidth) // Extra width reserved for labels.
       .height(12)
       .margin({ bottom: 2 })
 
-      // 比例尺条
+      // Scale bar segments.
       Stack() {
         Row() {
           ForEach(

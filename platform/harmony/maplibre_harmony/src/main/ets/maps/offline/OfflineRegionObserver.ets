@@ -1,8 +1,8 @@
 /**
- * OfflineRegionObserver - 离线区域观察者
+ * OfflineRegionObserver - offline region observer.
  *
- * 从 NAPI 层重新导出
+ * Re-exported from the NAPI layer.
  */
 
-// 重新导出 NAPI 接口
+// Re-export the NAPI interface.
 export type { OfflineRegionObserver } from 'libmaplibre.so';

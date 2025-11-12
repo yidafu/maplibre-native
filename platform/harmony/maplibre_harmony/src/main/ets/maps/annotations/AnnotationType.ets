@@ -1,21 +1,21 @@
 /**
- * AnnotationType - 标注类型枚举
+ * AnnotationType - enumeration of supported annotation types.
  *
- * 定义地图上支持的标注类型
+ * Defines the annotation kinds available on the map.
  */
 export enum AnnotationType {
   /**
-   * 点标注（Marker）
+   * Point annotation (marker).
    */
   MARKER = 'marker',
 
   /**
-   * 折线标注（Polyline）
+   * Polyline annotation.
    */
   POLYLINE = 'polyline',
 
   /**
-   * 多边形标注（Polygon）
+   * Polygon annotation.
    */
   POLYGON = 'polygon'
 }

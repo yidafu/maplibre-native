@@ -1,69 +1,69 @@
 /**
- * MapSnapshot - 地图快照结果类型定义
- * 
- * 对应 Android 的 MapSnapshot
+ * MapSnapshot - map snapshot result type definitions.
+ *
+ * Mirrors Android's MapSnapshot.
  */
 
 import { LatLng } from './NativeMapView';
 
 /**
- * MapSnapshot 接口
- * 
- * 快照结果对象，包含图像数据和坐标转换功能
+ * MapSnapshot interface.
+ *
+ * Snapshot result object that contains image data and coordinate conversion helpers.
  */
 export interface MapSnapshot {
   /**
-   * 图像数据（ArrayBuffer 格式，RGBA）
+   * Image data (ArrayBuffer, RGBA).
    */
   data: ArrayBuffer;
   
   /**
-   * 图像宽度（像素）
+   * Image width in pixels.
    */
   width: number;
   
   /**
-   * 图像高度（像素）
+   * Image height in pixels.
    */
   height: number;
   
   /**
-   * 像素比
+   * Pixel ratio.
    */
   pixelRatio: number;
   
   /**
-   * 归属信息数组
+   * Attribution strings.
    */
   attributions?: string[];
   
   /**
-   * 将地理坐标转换为快照图像上的像素坐标
-   * 
-   * 对应 Android: `MapSnapshot.pixelForLatLng(LatLng)`
-   * 
-   * @param latitude 纬度
-   * @param longitude 经度
-   * @returns 图像上的像素坐标 {x, y}
+   * Convert geographic coordinates to snapshot pixel coordinates.
+   *
+   * Matches Android's `MapSnapshot.pixelForLatLng(LatLng)`.
+   *
+   * @param latitude Latitude.
+   * @param longitude Longitude.
+   * @returns Pixel coordinate {x, y}.
    */
   pixelForLatLng(latitude: number, longitude: number): { x: number; y: number; };
   
   /**
-   * 将快照图像上的像素坐标转换为地理坐标
-   * 
-   * 对应 Android: `MapSnapshot.latLngForPixel(PointF)`
-   * 
-   * @param x 图像上的 X 坐标
-   * @param y 图像上的 Y 坐标
-   * @returns 地理坐标
+   * Convert snapshot pixel coordinates to geographic coordinates.
+   *
+   * Matches Android's `MapSnapshot.latLngForPixel(PointF)`.
+   *
+   * @param x Pixel X coordinate.
+   * @param y Pixel Y coordinate.
+   * @returns Geographic coordinate.
    */
   latLngForPixel(x: number, y: number): LatLng;
 }
 
 /**
- * SnapshotResult - 快照结果类型（NAPI 返回）
- * 
- * @deprecated 使用 MapSnapshot 替代
+ * SnapshotResult - snapshot result type (NAPI return).
+ *
+ * @deprecated Use MapSnapshot instead.
  */
 export type SnapshotResultNAPI = MapSnapshot;
 

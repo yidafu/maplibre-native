@@ -2,35 +2,35 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
 /**
- * LocationComponent 性能监控工具
- * 用于追踪和优化性能瓶颈
+ * Performance monitor for `LocationComponent`.
+ * Tracks and helps diagnose potential performance bottlenecks.
  */
 export class PerformanceMonitor {
   private static readonly TAG: string = 'LocationPerformance';
   private static enabled: boolean = false;
-  // 性能指标
+  // Collected metrics
   private static metrics: Map<string, PerformanceMetric> = new Map();
-  // 帧率计算
+  // Frame rate calculation
   private static frameCount: number = 0;
   private static lastFpsTime: number = 0;
   private static currentFps: number = 0;
 
   /**
-   * 启用性能监控
+   * Enable performance monitoring.
    */
   static enable(): void {
     PerformanceMonitor.enabled = true;
   }
 
   /**
-   * 禁用性能监控
+   * Disable performance monitoring.
    */
   static disable(): void {
     PerformanceMonitor.enabled = false;
   }
 
   /**
-   * 开始计时
+   * Start timing a labeled operation.
    */
   static startTiming(label: string): void {
     if (!PerformanceMonitor.enabled) {
@@ -51,7 +51,7 @@ export class PerformanceMonitor {
   }
 
   /**
-   * 结束计时
+   * Finish timing a labeled operation.
    */
   static endTiming(label: string): void {
     if (!PerformanceMonitor.enabled) {
@@ -70,14 +70,14 @@ export class PerformanceMonitor {
     metric.maxTime = Math.max(metric.maxTime, duration);
     metric.avgTime = metric.totalTime / metric.count;
 
-    if (duration > 16) { // 超过一帧时间（60fps）
+    if (duration > 16) { // Exceeds one frame at 60 FPS
       hilog.warn(DOMAIN, PerformanceMonitor.TAG,
         `Slow operation: ${label} took ${duration.toFixed(2)}ms`);
     }
   }
 
   /**
-   * 记录帧
+   * Record a rendered frame.
    */
   static recordFrame(): void {
     if (!PerformanceMonitor.enabled) {
@@ -92,32 +92,32 @@ export class PerformanceMonitor {
       PerformanceMonitor.frameCount = 0;
       PerformanceMonitor.lastFpsTime = now;
 
-      if (PerformanceMonitor.currentFps < 50) { // 低于 50 FPS 警告
+      if (PerformanceMonitor.currentFps < 50) { // Warn when FPS drops below 50
         hilog.warn(DOMAIN, PerformanceMonitor.TAG, `Low FPS detected: ${PerformanceMonitor.currentFps}`);
       }
     }
   }
 
   /**
-   * 获取当前 FPS
+   * Get the current FPS.
    */
   static getCurrentFps(): number {
     return PerformanceMonitor.currentFps;
   }
 
   /**
-   * 记录内存使用
+   * Record memory usage (placeholder).
    */
   static recordMemoryUsage(label: string): void {
     if (!PerformanceMonitor.enabled) {
       return;
     }
 
-    // 注意：鸿蒙可能没有直接的内存 API，这里简化处理
+    // Note: HarmonyOS may not expose a direct memory API—simplified placeholder
   }
 
   /**
-   * 打印性能报告
+   * Print a performance report.
    */
   static printReport(): void {
     if (!PerformanceMonitor.enabled || PerformanceMonitor.metrics.size === 0) {
@@ -132,7 +132,7 @@ export class PerformanceMonitor {
   }
 
   /**
-   * 重置统计
+   * Reset collected statistics.
    */
   static reset(): void {
     PerformanceMonitor.metrics.clear();
@@ -142,7 +142,7 @@ export class PerformanceMonitor {
   }
 
   /**
-   * 测量函数执行时间
+   * Measure synchronous function duration.
    */
   static measure<T>(label: string, fn: () => T): T {
     if (!PerformanceMonitor.enabled) {
@@ -158,7 +158,7 @@ export class PerformanceMonitor {
   }
 
   /**
-   * 测量异步函数执行时间
+   * Measure asynchronous function duration.
    */
   static async measureAsync<T>(label: string, fn: () => Promise<T>): Promise<T> {
     if (!PerformanceMonitor.enabled) {
@@ -175,7 +175,7 @@ export class PerformanceMonitor {
 }
 
 /**
- * 性能指标接口
+ * Performance metric structure.
  */
 interface PerformanceMetric {
   label: string;

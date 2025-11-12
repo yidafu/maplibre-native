@@ -1,23 +1,23 @@
 /**
- * NativeTypes - 原生类型和辅助类型导出
+ * NativeTypes - native type exports and helper types.
  *
- * 1. 导出 NAPI 提供的 maplibre namespace
- * 2. 提供辅助类型定义（用于测试页面和应用开发）
+ * 1. Expose the NAPI-provided maplibre namespace.
+ * 2. Provide helper type definitions (for test pages and app development).
  */
 
 import maplibre from 'libmaplibre.so';
 
-// 不允许导出 maplibre，原生方法必要在ets里转发一道（或者重新导出）
-// ========== 导出 maplibre namespace ==========
+// Do not export maplibre directly; native methods must be proxied in ETS (or re-exported).
+// ========== Export maplibre namespace ==========
 // export { maplibre };
 
-// ========== 辅助类型定义 ==========
+// ========== Helper type definitions ==========
 
 /**
- * 经纬度接口（坐标点类型）
- * 
- * 用于表示地理坐标，支持对象字面量和 LatLng 类实例
- * 
+ * Latitude/longitude interface (coordinate type).
+ *
+ * Represents geographic coordinates and supports object literals and LatLng instances.
+ *
  * @example
  * ```typescript
  * const position: ILatLng = { latitude: 39.9, longitude: 116.4 };
@@ -27,9 +27,9 @@ import maplibre from 'libmaplibre.so';
 export type ILatLng = maplibre.LatLng;
 
 /**
- * 矩形字面量接口
- * 
- * 表示屏幕矩形区域，坐标系为屏幕像素坐标
+ * Rectangle literal interface.
+ *
+ * Represents a screen rectangle in screen pixel coordinates.
  */
 export interface RectangleLiteral {
   left: number;
@@ -39,10 +39,10 @@ export interface RectangleLiteral {
 }
 
 /**
- * 尺寸接口
- * 
- * 表示宽度和高度，单位为像素
- * 
+ * Size interface.
+ *
+ * Represents width and height in pixels.
+ *
  * @example
  * ```typescript
  * const mapSize: Size = { width: 800, height: 600 };
@@ -54,11 +54,10 @@ export interface Size {
 }
 
 /**
- * 边距接口
- * 
- * 表示四边的内边距，单位为像素（vp）
- * 用于配置UI组件相对于容器边缘的偏移量
- * 
+ * Padding interface.
+ *
+ * Represents inner spacing on four sides in pixels (vp) and configures UI component offsets relative to the container.
+ *
  * @example
  * ```typescript
  * const padding: Padding = { top: 10, left: 10, bottom: 10, right: 10 };
@@ -72,19 +71,19 @@ export interface Padding {
 }
 
 /**
- * 边距接口（别名）
- * 
- * 与 Padding 功能相同，提供更语义化的命名
- * 用于UI组件（Compass、Logo、ScaleBar、Attribution）的边距配置
+ * Margins interface (alias).
+ *
+ * Provides a more semantic name for the same structure as Padding.
+ * Used to configure margins for UI components (Compass, Logo, ScaleBar, Attribution).
  */
 export type Margins = Padding;
 
 /**
- * 从数组创建 Margins 对象
- * 
- * @param arr 边距数组 [left, top, right, bottom]
- * @returns Margins 对象
- * 
+ * Create a Margins object from an array.
+ *
+ * @param arr Margin array [left, top, right, bottom].
+ * @returns Margins object.
+ *
  * @example
  * ```typescript
  * const margins = createMargins([10, 20, 10, 20]);
@@ -101,11 +100,11 @@ export function createMargins(arr: number[]): Margins {
 }
 
 /**
- * 从单个值创建统一的 Margins 对象
- * 
- * @param value 统一的边距值
- * @returns Margins 对象
- * 
+ * Create a uniform Margins object from a single value.
+ *
+ * @param value Uniform margin value.
+ * @returns Margins object.
+ *
  * @example
  * ```typescript
  * const margins = createUniformMargins(10);
@@ -122,11 +121,11 @@ export function createUniformMargins(value: number): Margins {
 }
 
 /**
- * 合并两个 Margins 对象（第二个覆盖第一个）
- * 
- * @param base 基础 Margins
- * @param override 覆盖的 Margins（仅覆盖非 undefined 的值）
- * @returns 合并后的 Margins 对象
+ * Merge two Margins objects (the second overrides the first).
+ *
+ * @param base Base Margins.
+ * @param override Overriding Margins (only non-undefined values overwrite).
+ * @returns Merged Margins object.
  */
 export function mergeMargins(base: Margins, override: Partial<Margins>): Margins {
   return {
@@ -138,7 +137,7 @@ export function mergeMargins(base: Margins, override: Partial<Margins>): Margins
 }
 
 /**
- * 相机选项字面量接口（用于测试页面）
+ * Camera options literal interface (used for test pages).
  */
 export interface CameraOptionsLiteral {
   center?: ILatLng;
@@ -148,71 +147,71 @@ export interface CameraOptionsLiteral {
   padding?: Padding;
 }
 
-// ========== 从 types.ets 合并的类型定义 ==========
+// ========== Merged type definitions from types.ets ==========
 
 /**
- * 装饰物位置枚举（对齐 Android MLNOrnamentPosition 和 iOS MLNOrnamentPosition）
- * 用于配置 Compass、Logo、ScaleBar、Attribution 等 UI 组件的位置
+ * Ornament position enum (aligned with Android MLNOrnamentPosition and iOS MLNOrnamentPosition).
+ * Configures positions for UI components such as Compass, Logo, ScaleBar, and Attribution.
  */
 export enum OrnamentPosition {
-  /** 放置在地图左上角 */
+  /** Positioned at the top-left of the map. */
   TopLeft = 0,
-  /** 放置在地图右上角 */
+  /** Positioned at the top-right of the map. */
   TopRight = 1,
-  /** 放置在地图左下角 */
+  /** Positioned at the bottom-left of the map. */
   BottomLeft = 2,
-  /** 放置在地图右下角 */
+  /** Positioned at the bottom-right of the map. */
   BottomRight = 3
 }
 
 
 /**
- * 渲染刷新模式（对齐 Android MapRenderer.RenderingRefreshMode）
+ * Rendering refresh mode (aligned with Android MapRenderer.RenderingRefreshMode).
  */
 export enum RenderingRefreshMode {
-  /** 持续渲染模式 - 每帧都渲染，适合动画场景 */
+  /** Continuous rendering mode - renders every frame, suited for animations. */
   CONTINUOUS = 0,
-  /** 按需渲染模式 - 只在需要时渲染，节省性能 */
+  /** On-demand rendering mode - renders only when needed to save performance. */
   WHEN_DIRTY = 1
 }
 
 /**
- * 瓦片操作枚举（对齐 Android TileOperation）
+ * Tile operation enum (aligned with Android TileOperation).
  */
 export enum TileOperation {
-  /** 瓦片被添加 */
+  /** Tile added. */
   Added = 0,
-  /** 瓦片被更新 */
+  /** Tile updated. */
   Updated = 1,
-  /** 瓦片被移除 */
+  /** Tile removed. */
   Removed = 2
 }
 
 /**
- * 用户位置跟踪模式（对齐 iOS MLNUserTrackingMode）
+ * User location tracking mode (aligned with iOS MLNUserTrackingMode).
  */
 export enum UserTrackingMode {
-  /** 不跟踪用户位置 */
+  /** Do not track user location. */
   None = 0,
-  /** 跟随用户位置，用户平移地图时退出该模式 */
+  /** Follow user location; exit when the user pans the map. */
   Follow = 1,
-  /** 跟随用户位置和方向（指南针方向），用户旋转地图时退回到 Follow 模式 */
+  /** Follow user location and heading (compass direction); revert to Follow when the user rotates the map. */
   FollowWithHeading = 2,
-  /** 跟随用户位置和航向（移动方向），用户旋转地图时退回到 Follow 模式 */
+  /** Follow user location and course (movement direction); revert to Follow when the user rotates the map. */
   FollowWithCourse = 3
 }
 
 /**
- * 相机移动原因（对齐 Android OnCameraMoveStartedListener）
+ * Camera move reason (aligned with Android OnCameraMoveStartedListener).
  */
 export enum CameraMoveReason {
-  /** 未知原因 */
+  /** Unknown reason. */
   Unknown = 0,
-  /** 程序化 API 调用 */
+  /** Programmatic API call. */
   API_ANIMATION = 1,
-  /** 用户手势操作 */
+  /** User gesture interaction. */
   API_GESTURE = 2,
-  /** 开发者调用的动画 */
+  /** Developer-triggered animation. */
   DEVELOPER_ANIMATION = 3
 }
 

@@ -1,12 +1,11 @@
 /**
- * CameraPosition - 相机位置
- * 简化为 interface 实现，符合 ArkTS 规范
+ * CameraPosition - camera position interfaces.
+ * Simplified to ArkTS interfaces.
  */
 import { LatLng } from '../geometry/LatLng';
 
 /**
- * EdgeInsets - 边距接口
- * 表示矩形的内边距
+ * EdgeInsets - represents padding around a rectangle.
  */
 export interface EdgeInsets {
   top: number;
@@ -16,48 +15,46 @@ export interface EdgeInsets {
 }
 
 /**
- * CameraPosition - 相机位置接口
- * 表示地图相机的位置和方向
+ * CameraPosition - describes map camera position and orientation.
  * 
  * @example
  * ```typescript
  * const position: CameraPosition = {
  *   target: { latitude: 39.9, longitude: 116.4 },
  *   zoom: 15,
- *   bearing: 30,  // 方向角度（0-360度，0表示正北）
- *   tilt: 45      // 倾斜角度（0-60度，0表示垂直俯视）
+ *   bearing: 30,  // Bearing angle (0-360 degrees, 0 = north)
+ *   tilt: 45      // Tilt angle (0-60 degrees, 0 = straight down)
  * };
  * ```
  */
 export interface CameraPosition {
-  /** 目标位置（经纬度） */
+  /** Target location (latitude/longitude). */
   target: LatLng;
-  /** 缩放级别 */
+  /** Zoom level. */
   zoom: number;
-  /** 方向角度（0-360度，0表示正北） */
+  /** Bearing angle (0-360, 0 = north). */
   bearing: number;
-  /** 倾斜角度（0-60度，0表示垂直俯视） */
+  /** Tilt angle (0-60, 0 = straight down). */
   tilt: number;
 }
 
 /**
- * CameraOptions - 相机选项接口
- * 用于设置相机参数（与 NAPI CameraOptions 接口兼容）
+ * CameraOptions - configuration for camera parameters (compatible with NAPI CameraOptions).
  */
 export interface CameraOptions {
-  /** 中心点坐标 */
+  /** Center coordinate. */
   center?: LatLng;
 
-  /** 缩放级别 */
+  /** Zoom level. */
   zoom?: number;
 
-  /** 方位角（度） */
+  /** Bearing angle (degrees). */
   bearing?: number;
 
-  /** 俯仰角/倾斜角（度） */
+  /** Pitch/tilt angle (degrees). */
   pitch?: number;
 
-  /** 边距 */
+  /** Padding around the viewport. */
   padding?: EdgeInsets;
 }
 

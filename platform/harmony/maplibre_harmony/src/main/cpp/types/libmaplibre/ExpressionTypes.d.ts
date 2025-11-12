@@ -1,13 +1,13 @@
 /**
- * Expression 类型定义
+ * Expression type definitions.
  *
- * 定义 MapLibre Expression 的所有具体类型
+ * Enumerates all MapLibre expression variants.
  * @see https://maplibre.org/maplibre-style-spec/expressions/
  */
 
 /**
- * ExpressionValue - Expression 中的值类型
- * 可以是字面量值或嵌套表达式
+ * ExpressionValue - value type used inside expressions.
+ * Accepts literals or nested expressions.
  *
  * @see https://maplibre.org/maplibre-style-spec/expressions/
  */
@@ -21,7 +21,7 @@ export type ExpressionValue =
     | ExpressionValue[];
 
 /**
- * 插值类型
+ * Interpolation type.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#interpolate
  */
 export type InterpolationType =
@@ -30,7 +30,7 @@ export type InterpolationType =
     | ["cubic-bezier", number, number, number, number];
 
 /**
- * 比较运算符表达式
+ * Comparison operator expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#decision
  */
 export type ComparisonExpression =
@@ -42,7 +42,7 @@ export type ComparisonExpression =
     | ["<=", ExpressionValue, ExpressionValue];
 
 /**
- * 逻辑运算符表达式
+ * Logical operator expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#decision
  */
 export type LogicalExpression =
@@ -51,7 +51,7 @@ export type LogicalExpression =
     | ["!", ExpressionValue];
 
 /**
- * 查找运算符表达式
+ * Lookup operator expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#lookup
  */
 export type LookupExpression =
@@ -64,7 +64,7 @@ export type LookupExpression =
     | ["length", ExpressionValue];
 
 /**
- * 数学运算符表达式
+ * Mathematical operator expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#math
  */
 export type MathExpression =
@@ -92,7 +92,7 @@ export type MathExpression =
     | ["floor", ExpressionValue];
 
 /**
- * 条件表达式
+ * Conditional expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#decision
  */
 export type ConditionalExpression =
@@ -101,7 +101,7 @@ export type ConditionalExpression =
     | ["coalesce", ...ExpressionValue[]];
 
 /**
- * 插值表达式
+ * Interpolation expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#ramps-scales-curves
  */
 export type InterpolationExpression =
@@ -111,7 +111,7 @@ export type InterpolationExpression =
     | ["step", ExpressionValue, ...ExpressionValue[]];
 
 /**
- * 类型转换表达式
+ * Type conversion expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#types
  */
 export type TypeExpression =
@@ -128,7 +128,7 @@ export type TypeExpression =
     | ["object", ExpressionValue];
 
 /**
- * 字符串运算符表达式
+ * String operator expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#string
  */
 export type StringExpression =
@@ -137,7 +137,7 @@ export type StringExpression =
     | ["upcase", ExpressionValue];
 
 /**
- * 颜色表达式
+ * Color expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#color
  */
 export type ColorExpression =
@@ -146,7 +146,7 @@ export type ColorExpression =
     | ["to-rgba", ExpressionValue];
 
 /**
- * 特殊数据表达式
+ * Feature data expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#feature-data
  */
 export type FeatureDataExpression =
@@ -156,7 +156,7 @@ export type FeatureDataExpression =
     | ["id"];
 
 /**
- * 特殊上下文表达式
+ * Context expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/
  */
 export type ContextExpression =
@@ -166,7 +166,7 @@ export type ContextExpression =
     | ["accumulated"];
 
 /**
- * 变量绑定表达式
+ * Variable binding expressions.
  * @see https://maplibre.org/maplibre-style-spec/expressions/#variable-binding
  */
 export type VariableExpression =
@@ -174,35 +174,35 @@ export type VariableExpression =
     | ["var", string];
 
 /**
- * ExpressionLiteral - Expression 字面量类型
- * 表示 MapLibre Expression 的 JSON 数组格式
+ * ExpressionLiteral - expression literal type.
+ * Represents the JSON array form of a MapLibre expression.
  *
- * 这是所有具体表达式类型的联合类型
+ * Union of all concrete expression types.
  *
- * 格式：[operator, ...arguments]
- * - operator: 表达式操作符字符串（如 "get", "interpolate", "case" 等）
- * - arguments: 字面量值或嵌套表达式
+ * Format: [operator, ...arguments]
+ * - operator: expression operator string (for example "get", "interpolate", "case").
+ * - arguments: literal values or nested expressions.
  *
  * @see https://maplibre.org/maplibre-style-spec/expressions/
  *
  * @example
-* // 数据表达式 - 获取属性
+* // Feature data expression - retrieve a property.
  * ["get", "propertyName"]
  *
  * @example
-* // 相机表达式 - 缩放插值
+* // Camera expression - interpolate over zoom level.
  * ["interpolate", ["linear"], ["zoom"], 0, 0, 10, 100]
  *
  * @example
-* // 决策表达式 - 条件判断
+* // Decision expression - conditional branch.
  * ["case", ["==", ["get", "type"], "restaurant"], "red", "blue"]
  *
  * @example
-* // 数学表达式 - 算术运算
+* // Mathematical expression - arithmetic operation.
  * ["*", ["get", "population"], 0.5]
  *
  * @example
-* // 颜色表达式
+* // Color expression.
  * ["rgb", 255, 0, 0]
  */
 export type ExpressionLiteral =

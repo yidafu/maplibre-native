@@ -1,6 +1,6 @@
 /**
- * MapLibre Native for HarmonyOS - FillExtrusionLayer Type Definitions
- * 3D填充拉伸图层 API (NAPI 类)
+ * MapLibre Native for HarmonyOS - FillExtrusionLayer type definitions.
+ * 3D fill-extrusion layer API (NAPI class).
  */
 
 import type { PropertyValue } from '../LayerPropertyTypes';
@@ -8,102 +8,102 @@ import type { ExpressionLiteral } from '../ExpressionTypes';
 import type { JSONValue } from '../CommonTypes';
 
 /**
- * FillExtrusionLayer - 3D 填充拉伸图层
- * 用于渲染 3D 建筑物等拉伸效果
+ * FillExtrusionLayer - 3D fill extrusion layer.
+ * Renders extruded surfaces such as buildings.
  *
- * Note: 此为简化实现，完整功能待后续补充
+ * Note: simplified implementation; full feature set will be added later.
  */
 export class FillExtrusionLayer {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 创建3D填充拉伸图层
-   * @param layerId 图层 ID
-   * @param sourceId 数据源 ID
+   * Create a 3D fill extrusion layer.
+   * @param layerId Layer identifier.
+   * @param sourceId Source identifier.
    */
   constructor(layerId: string, sourceId: string);
 
   /**
-   * 设置拉伸高度
-   * @param height 高度或Expression
+   * Set extrusion height.
+   * @param height Height value or expression.
    */
   setFillExtrusionHeight(height: PropertyValue<number>): this;
 
   /**
-   * 设置拉伸基准高度
-   * @param base 基准高度或Expression
+   * Set extrusion base height.
+   * @param base Base height value or expression.
    */
   setFillExtrusionBase(base: PropertyValue<number>): this;
 
   /**
-   * 设置拉伸颜色
-   * @param color 颜色值或Expression
+   * Set extrusion color.
+   * @param color Color value or expression.
    */
   setFillExtrusionColor(color: PropertyValue<string>): this;
 
   /**
-   * 设置拉伸不透明度
-   * @param opacity 不透明度或Expression（0.0 - 1.0）
+   * Set extrusion opacity.
+   * @param opacity Opacity value or expression (0.0 - 1.0).
    */
   setFillExtrusionOpacity(opacity: PropertyValue<number>): this;
 
   /**
-   * 设置拉伸图案
-   * @param pattern 图案名称或 Expression
+   * Set extrusion pattern.
+   * @param pattern Pattern name or expression.
    *
    * @example
   * ```typescript
-   * // 使用图案名称
+   * // Use a static pattern name.
    * layer.setFillExtrusionPattern('building-pattern');
    *
-   * // 使用 Expression
+   * // Use an expression.
    * layer.setFillExtrusionPattern(['get', 'pattern_name']);
    * ```
    */
   setFillExtrusionPattern(pattern: PropertyValue<string>): this;
 
   /**
-   * 设置拉伸平移（用于偏移 3D 建筑物的位置）
-   * @param translate 平移量 [x, y]（像素）或 Expression
+   * Set extrusion translation (offset 3D objects).
+   * @param translate Translation [x, y] in pixels or expression.
    *
    * @example
   * ```typescript
-   * // 固定平移
+   * // Constant translation.
    * layer.setFillExtrusionTranslate([10, 20]);
    *
-   * // 使用 Expression（数据驱动）
+   * // Data-driven translation via expression.
    * layer.setFillExtrusionTranslate(['literal', [5, 10]]);
    * ```
    */
   setFillExtrusionTranslate(translate: PropertyValue<[number, number]>): this;
 
   /**
-   * 获取图层 ID
+   * Get the layer identifier.
    */
   getId(): string;
 
   /**
-   * 获取图层类型
+   * Get the layer type.
    */
   getType(): string;
 
   /**
-   * 获取数据源 ID
+   * Get the source identifier.
    */
   getSourceId(): string;
 
   /**
-   * 设置图层可见性
+   * Set layer visibility.
    */
   setVisibility(visibility: 'visible' | 'none'): this;
 
   getVisibility(): 'visible' | 'none';
 
   /**
-   * 设置最小/最大缩放级别
+   * Configure minimum/maximum zoom levels.
    */
   setMinZoom(zoom: number): this;
 
@@ -114,54 +114,54 @@ export class FillExtrusionLayer {
   getMaxZoom(): number;
 
   /**
-   * 设置源图层
+   * Set the source layer.
    */
   setSourceLayer(sourceLayer: string): this;
 
   getSourceLayer(): string;
 
   /**
-   * 设置图层过滤器
-   * @param filter 过滤器表达式字面量（JSON 数组格式）
+   * Set the layer filter.
+   * @param filter Filter expression literal (JSON array form).
    */
   setFilter(filter: ExpressionLiteral): this;
 
   /**
-   * 获取图层过滤器
-   * @returns 过滤器表达式字面量或 null
+   * Get the layer filter.
+   * @returns Filter expression literal or null.
    */
   getFilter(): ExpressionLiteral | null;
 
-  // ==================== 新增属性 ====================
+// ==================== Extended properties ====================
 
   /**
-   * 设置填充挤出平移锚点
-   * @param anchor 'map' | 'viewport'
+   * Set the extrusion translation anchor.
+   * @param anchor 'map' | 'viewport'.
    */
   setFillExtrusionTranslateAnchor(anchor: string): this;
 
   getFillExtrusionTranslateAnchor(): string | undefined;
 
   /**
-   * 设置垂直渐变效果
-   * @param gradient 是否启用垂直渐变或 Expression
+   * Enable or disable the vertical gradient.
+   * @param gradient Boolean flag or expression.
    */
   setFillExtrusionVerticalGradient(gradient: PropertyValue<boolean>): this;
 
   getFillExtrusionVerticalGradient(): boolean | undefined;
   /**
-   * 设置单个属性（通用方法）
-   * @param propertyName 属性名称
-   * @param value 属性值（常量值或Expression）
+   * Set a single property (generic helper).
+   * @param propertyName Property name.
+   * @param value Property value (literal or expression).
    */
   setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
-   * 批量设置属性（通用方法）
-   * @param properties 属性对象，键为属性名，值为属性值
+   * Set multiple properties (generic helper).
+   * @param properties Object whose keys are property names and values are property payloads.
    * @example
    * layer.setProperties({
-   *   'fill-extrusion-height': 100, 'fill-extrusion-color': '#FF0000
+   *   'fill-extrusion-height': 100, 'fill-extrusion-color': '#FF0000'
    * });
    */
   setProperties(properties: Record<string, PropertyValue<JSONValue>>): this;

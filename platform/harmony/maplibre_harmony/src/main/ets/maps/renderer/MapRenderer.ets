@@ -1,5 +1,5 @@
 /**
- * MapRenderer 选项接口
+ * MapRenderer options interface.
  */
 export interface MapRendererOptions {
   renderingRefreshMode?: number;
@@ -7,7 +7,7 @@ export interface MapRendererOptions {
 }
 
 /**
- * MapRenderer - 地图渲染器类
+ * MapRenderer - map renderer helper.
  */
 export class MapRenderer {
   public renderingRefreshMode: number;
@@ -20,35 +20,35 @@ export class MapRenderer {
   }
 
   /**
-   * 获取渲染刷新模式
+   * Get the rendering refresh mode.
    */
   public getRenderingRefreshMode(): number {
     return this.renderingRefreshMode;
   }
 
   /**
-   * 设置渲染刷新模式
+   * Set the rendering refresh mode.
    */
   public setRenderingRefreshMode(mode: number): void {
     this.renderingRefreshMode = mode;
   }
 
   /**
-   * 获取最大帧率
+   * Get the maximum FPS.
    */
   public getMaximumFps(): number {
     return this.maximumFps;
   }
 
   /**
-   * 设置最大帧率
+   * Set the maximum FPS.
    */
   public setMaximumFps(fps: number): void {
     this.maximumFps = Math.max(1, fps);
   }
 
   /**
-   * 转换为字符串
+   * Convert to string.
    */
   public toString(): string {
     return `MapRenderer(mode=${this.renderingRefreshMode}, maxFps=${this.maximumFps})`;

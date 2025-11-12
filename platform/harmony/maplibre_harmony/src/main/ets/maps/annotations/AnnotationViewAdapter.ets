@@ -93,7 +93,7 @@ class DelegateAdapter implements AnnotationViewDelegate {
     const reuseIdentifier = this.adapter.getReuseIdentifier?.(marker) ?? marker.getIcon() ?? 'default';
 
     // Note: adapter returns plain object; cannot convert to Builder directly
-    // Provide minimal config—actual rendering handled elsewhere
+    // Provide minimal config - actual rendering handled elsewhere
     const config: AnnotationViewConfig = {
       reuseIdentifier: reuseIdentifier,
       // customView cannot currently be converted into a contentBuilder

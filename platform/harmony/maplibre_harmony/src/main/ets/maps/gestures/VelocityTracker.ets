@@ -1,8 +1,8 @@
 /**
- * 速度跟踪器
+ * Velocity tracker.
  *
- * 用于计算手势的速度，支持平滑算法以减少抖动
- * 参考 iOS MBGLPanGesture 的速度计算实现
+ * Computes gesture speed with smoothing to reduce jitter.
+ * Inspired by the iOS MBGLPanGesture velocity calculation.
  */
 
 export class VelocitySample {
@@ -28,67 +28,67 @@ export class Velocity {
 }
 
 /**
- * 速度跟踪器类
+ * Velocity tracker implementation.
  *
- * 使用指数移动平均（EMA）算法平滑速度计算：
+ * Uses an exponential moving average (EMA) to smooth velocity:
  * velocity_new = (delta / time) * 0.9 + velocity_old * 0.1
  */
 export class VelocityTracker {
-  // 位置样本历史记录
+  // History of position samples
   private samples: VelocitySample[] = [];
-  // 最大样本数量（保留最近的N个样本）
+  // Maximum number of samples (keep most recent entries)
   private maxSamples: number = 5;
-  // 当前平滑后的速度
+  // Current smoothed velocity
   private smoothVelocity: Velocity = new Velocity(0, 0);
-  // EMA 平滑因子（新值权重）
+  // EMA smoothing factor (weight of new value)
   private readonly SMOOTH_FACTOR = 0.9;
 
   /**
-   * 添加一个位置样本
-   * @param x X 坐标
-   * @param y Y 坐标
-   * @param time 时间戳（毫秒）
+   * Add a position sample.
+   * @param x X coordinate.
+   * @param y Y coordinate.
+   * @param time Timestamp in milliseconds.
    */
   addSample(x: number, y: number, time: number): void {
-    // 添加新样本
+    // Add new sample
     const sample = new VelocitySample(x, y, time);
     this.samples.push(sample);
 
-    // 限制样本数量
+    // Enforce sample limit
     if (this.samples.length > this.maxSamples) {
-      this.samples.shift(); // 移除最旧的样本
+      this.samples.shift(); // Remove oldest sample
     }
 
-    // 如果有足够的样本，计算速度
+    // Calculate velocity when enough samples exist
     if (this.samples.length >= 2) {
       this.calculateVelocity();
     }
   }
 
   /**
-   * 计算当前速度（使用平滑算法）
+   * Calculate current velocity using smoothing.
    */
   private calculateVelocity(): void {
     if (this.samples.length < 2) {
       return;
     }
 
-    // 使用最近的两个样本计算瞬时速度
+    // Compute instantaneous velocity from latest two samples
     const current = this.samples[this.samples.length - 1];
     const previous = this.samples[this.samples.length - 2];
 
     const deltaTime = current.time - previous.time;
 
-    // 避免除以零
+    // Avoid division by zero
     if (deltaTime <= 0) {
       return;
     }
 
-    // 计算瞬时速度（像素/秒）
+    // Instantaneous velocity (pixels per second)
     const instantVx = ((current.x - previous.x) / deltaTime) * 1000;
     const instantVy = ((current.y - previous.y) / deltaTime) * 1000;
 
-    // 使用 EMA 平滑速度
+    // Smooth velocity with EMA
     // velocity_new = instantVelocity * 0.9 + velocity_old * 0.1
     this.smoothVelocity.vx = instantVx * this.SMOOTH_FACTOR +
       this.smoothVelocity.vx * (1 - this.SMOOTH_FACTOR);
@@ -97,16 +97,16 @@ export class VelocityTracker {
   }
 
   /**
-   * 获取当前平滑后的速度
-   * @returns 速度对象 {vx, vy}，单位：像素/秒
+   * Get the smoothed velocity.
+   * @returns Velocity {vx, vy} in pixels per second.
    */
   getVelocity(): Velocity {
     return new Velocity(this.smoothVelocity.vx, this.smoothVelocity.vy);
   }
 
   /**
-   * 获取速度大小（标量）
-   * @returns 速度大小，单位：像素/秒
+   * Get scalar speed.
+   * @returns Speed in pixels per second.
    */
   getSpeed(): number {
     return Math.sqrt(
@@ -116,7 +116,7 @@ export class VelocityTracker {
   }
 
   /**
-   * 重置跟踪器
+   * Reset the tracker.
    */
   reset(): void {
     this.samples = [];
@@ -124,14 +124,14 @@ export class VelocityTracker {
   }
 
   /**
-   * 检查是否有足够的数据来计算速度
+   * Determine whether there is enough data to compute velocity.
    */
   hasEnoughData(): boolean {
     return this.samples.length >= 2;
   }
 
   /**
-   * 获取样本数量
+   * Get current sample count.
    */
   getSampleCount(): number {
     return this.samples.length;

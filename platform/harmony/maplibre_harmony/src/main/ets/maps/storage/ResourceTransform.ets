@@ -1,17 +1,17 @@
 /**
- * ResourceTransform - URL转换管理类
- * 
- * 提供URL转换功能，允许开发者在运行时拦截和修改地图资源请求的URL。
- * 
- * 参考实现：
- * - Android: FileSource.setResourceTransform()
- * - iOS: MLNOfflineStorageDelegate.offlineStorage:URLForResourceOfKind:withURL:
- * 
- * 使用示例：
+ * ResourceTransform - URL transform manager.
+ *
+ * Intercepts and rewrites resource request URLs at runtime.
+ *
+ * References:
+ * - Android: `FileSource.setResourceTransform()`
+ * - iOS: `MLNOfflineStorageDelegate.offlineStorage:URLForResourceOfKind:withURL:`
+ *
+ * Usage example:
  * ```typescript
  * import { ResourceTransform, ResourceKind } from '@ohos/maplibre';
  * 
- * // 将Mapbox CDN切换到自定义CDN
+ * // Switch Mapbox CDN to a custom CDN
  * ResourceTransform.setCallback((kind, url) => {
  *   if (url.includes('api.mapbox.com')) {
  *     return url.replace('api.mapbox.com', 'my-cdn.example.com');
@@ -19,75 +19,73 @@
  *   return url;
  * });
  * 
- * // 清除转换回调
+ * // Clear the transform callback
  * ResourceTransform.clearCallback();
  * ```
  * 
- * 注意事项：
- * 1. 回调应尽快返回，避免阻塞请求线程
- * 2. 回调在资源请求前同步执行
- * 3. 返回空字符串或undefined将使用原URL
- * 4. 回调中的异常会被捕获，并使用原URL
- * 5. 配置对所有地图实例全局生效
+ * Notes:
+ * 1. The callback should return quickly to avoid blocking the request thread.
+ * 2. The callback runs synchronously before each resource request.
+ * 3. Returning an empty string or `undefined` keeps the original URL.
+ * 4. Exceptions thrown in the callback are caught and the original URL is used.
+ * 5. The configuration applies globally to all map instances.
  */
 
 import maplibre from 'libmaplibre.so';
 
 /**
- * 资源类型枚举
- * 
- * 对应mbgl::Resource::Kind
+ * Resource kind enumeration.
+ *
+ * Mirrors `mbgl::Resource::Kind`.
  */
 export enum ResourceKind {
-  /** 未知资源类型 */
+  /** Unknown resource type. */
   Unknown = 0,
-  /** 样式文件 (.json) */
+  /** Style JSON. */
   Style = 1,
-  /** 数据源定义 */
+  /** Source definition. */
   Source = 2,
-  /** 地图瓦片 */
+  /** Map tile. */
   Tile = 3,
-  /** 字体字形 */
+  /** Glyphs. */
   Glyphs = 4,
-  /** 精灵图片 */
+  /** Sprite image. */
   SpriteImage = 5,
-  /** 精灵JSON定义 */
+  /** Sprite JSON definition. */
   SpriteJSON = 6,
-  /** 图片资源 */
+  /** Raster image resource. */
   Image = 7
 }
 
 /**
- * URL转换回调函数类型
- * 
- * @param kind - 资源类型
- * @param url - 原始URL
- * @returns 转换后的URL，如果返回空字符串则使用原URL
+ * URL transform callback type.
+ *
+ * @param kind Resource type.
+ * @param url Original URL.
+ * @returns Transformed URL; return empty string to keep the original.
  */
 export type ResourceTransformCallback = (kind: ResourceKind, url: string) => string;
 
 /**
- * ResourceTransform - URL转换管理类
- * 
- * 提供静态方法管理全局URL转换配置
+ * ResourceTransform - URL transform manager (static helpers).
  */
 export class ResourceTransform {
   /**
-   * 设置URL转换回调
-   * 
-   * 该回调将在每次发起资源请求前被调用，允许修改请求的URL。
-   * 
-   * @param callback - URL转换回调函数
-   * @throws 如果callback不是函数则抛出错误
-   * 
+   * Register a URL transform callback.
+   *
+   * Called before each resource request, allowing URL rewriting.
+   *
+   * @param callback Transform callback.
+   * @throws Error when callback is not a function.
+   *
    * @example
    * ```typescript
-   * // CDN切换
+   * // CDN switching
    * ResourceTransform.setCallback((kind, url) => {
    *   return url.replace('mapbox.com', 'my-cdn.com');
    * });
    * 
-   * // 离线资源映射
+   * // Offline resource remapping
    * ResourceTransform.setCallback((kind, url) => {
    *   if (kind === ResourceKind.Tile) {
    *     return `file:///data/tiles/${extractTileId(url)}.mvt`;
@@ -95,7 +93,7 @@ export class ResourceTransform {
    *   return url;
    * });
    * 
-   * // 添加认证参数
+   * // Append auth parameters
    * ResourceTransform.setCallback((kind, url) => {
    *   const separator = url.includes('?') ? '&' : '?';
    *   return `${url}${separator}token=${getAuthToken()}`;
@@ -107,18 +105,18 @@ export class ResourceTransform {
       throw new Error('Callback must be a function');
     }
 
-    // 包装回调，确保返回值是字符串
+    // Wrap the callback to ensure a string result.
     const wrappedCallback = (kind: number, url: string): string => {
       try {
         const result = callback(kind as ResourceKind, url);
         
-        // 如果回调返回undefined、null或非字符串，返回原URL
+        // Fall back to the original URL when the callback returns undefined, null, or a non-string.
         if (result === undefined || result === null || typeof result !== 'string') {
           console.warn('ResourceTransform: Callback returned invalid value, using original URL');
           return url;
         }
         
-        // 如果返回空字符串，返回原URL
+        // Empty string also falls back to the original URL.
         if (result.length === 0) {
           return url;
         }
@@ -131,15 +129,15 @@ export class ResourceTransform {
       }
     };
 
-    // 调用NAPI接口
+    // Call the NAPI bridge.
     maplibre.setResourceTransformCallback(wrappedCallback);
   }
 
   /**
-   * 清除URL转换回调
-   * 
-   * 清除后，所有资源请求将使用原始URL，不进行转换。
-   * 
+   * Clear the URL transform callback.
+   *
+   * After clearing, resource requests use the original URLs without modification.
+   *
    * @example
    * ```typescript
    * ResourceTransform.clearCallback();
@@ -150,10 +148,10 @@ export class ResourceTransform {
   }
 
   /**
-   * 检查是否设置了转换回调
-   * 
-   * @returns 如果设置了回调返回true，否则返回false
-   * 
+   * Check whether a transform callback is registered.
+   *
+   * @returns True when a callback is registered; otherwise false.
+   *
    * @example
    * ```typescript
    * if (ResourceTransform.hasCallback()) {

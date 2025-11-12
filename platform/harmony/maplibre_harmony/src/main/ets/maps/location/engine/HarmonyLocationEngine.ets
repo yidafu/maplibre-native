@@ -6,8 +6,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../../constants/HiLogConstants';
 
 /**
- * 鸿蒙位置引擎实现
- * 基于 @ohos.geoLocationManager
+ * HarmonyOS location engine implementation built upon `@ohos.geoLocationManager`.
  */
 export class HarmonyLocationEngine implements LocationEngine {
   private static readonly TAG: string = 'HarmonyLocationEngine';
@@ -15,21 +14,21 @@ export class HarmonyLocationEngine implements LocationEngine {
   private callbacks: Map<LocationEngineCallback, boolean> = new Map();
   private isListening: boolean = false;
   private currentRequest?: LocationEngineRequest;
-  // 节流控制
+  // Throttling control
   private lastLocationTime: number = 0;
-  private minUpdateInterval: number = 100; // 最小更新间隔（毫秒）
+  private minUpdateInterval: number = 100; // Minimum interval in milliseconds
 
-  // 错误重试
+  // Error retry
   private retryCount: number = 0;
   private maxRetries: number = 3;
-  private retryDelay: number = 2000; // 重试延迟（毫秒）
+  private retryDelay: number = 2000; // Retry delay in milliseconds
 
   private constructor() {
-    // 私有构造函数，使用单例模式
+    // Private constructor for singleton usage
   }
 
   /**
-   * 获取单例实例
+   * Obtain the singleton instance.
    */
   static getInstance(): HarmonyLocationEngine {
     if (!HarmonyLocationEngine.instance) {
@@ -39,23 +38,23 @@ export class HarmonyLocationEngine implements LocationEngine {
   }
 
   /**
-   * 请求位置更新
+   * Request location updates.
    */
   requestLocationUpdates(request: LocationEngineRequest, callback: LocationEngineCallback): void {
     try {
 
-      // 保存回调
+      // Register callback
       this.callbacks.set(callback, true);
 
-      // 如果已经在监听，直接返回
+      // If already listening, return early
       if (this.isListening) {
         return;
       }
 
-      // 保存请求配置
+      // Store request configuration
       this.currentRequest = request;
 
-      // 检查位置服务是否开启
+      // Ensure location services are enabled
       if (!geoLocationManager.isLocationEnabled()) {
         const error = new Error('Location service is disabled');
         hilog.error(DOMAIN, HarmonyLocationEngine.TAG, 'Location service is disabled');
@@ -65,28 +64,28 @@ export class HarmonyLocationEngine implements LocationEngine {
         return;
       }
 
-      // 创建位置请求配置
+      // Build the location request
       const locationRequest: geoLocationManager.LocationRequest = {
         priority: request.priority,
         scenario: request.scenario,
-        timeInterval: Math.floor(request.interval / 1000), // 转换为秒
+        timeInterval: Math.floor(request.interval / 1000), // Convert to seconds
         distanceInterval: request.minDisplacement,
         maxAccuracy: request.maxAccuracy
       };
 
-      // 开始监听位置变化
+      // Start listening for location changes
       geoLocationManager.on('locationChange', locationRequest, (location: geoLocationManager.Location) => {
-        // 节流处理：限制更新频率
+        // Throttle updates to respect the minimum interval
         const now = Date.now();
         if (now - this.lastLocationTime < this.minUpdateInterval) {
           return;
         }
         this.lastLocationTime = now;
 
-        // 重置重试计数
+        // Reset retry count
         this.retryCount = 0;
 
-        // 通知所有回调
+        // Notify all callbacks
         this.callbacks.forEach((_, callback) => {
           try {
             callback.onSuccess(location);
@@ -102,7 +101,7 @@ export class HarmonyLocationEngine implements LocationEngine {
       hilog.error(DOMAIN, HarmonyLocationEngine.TAG, `Failed to request location updates: ${err}`);
       const error = err instanceof Error ? err : new Error(String(err));
 
-      // 尝试重试
+      // Attempt retry if possible
       if (this.retryCount < this.maxRetries) {
         this.retryCount++;
         hilog.warn(DOMAIN, HarmonyLocationEngine.TAG,
@@ -118,15 +117,15 @@ export class HarmonyLocationEngine implements LocationEngine {
   }
 
   /**
-   * 移除位置更新监听
+   * Remove location update listener.
    */
   removeLocationUpdates(callback: LocationEngineCallback): void {
     try {
 
-      // 移除回调
+      // Remove callback
       this.callbacks.delete(callback);
 
-      // 如果没有回调了，停止监听
+      // Stop listening when no callbacks remain
       if (this.callbacks.size === 0 && this.isListening) {
         geoLocationManager.off('locationChange');
         this.isListening = false;
@@ -137,12 +136,12 @@ export class HarmonyLocationEngine implements LocationEngine {
   }
 
   /**
-   * 获取最后已知位置
+   * Retrieve the last known location.
    */
   getLastLocation(callback: LocationEngineCallback): void {
     try {
 
-      // 检查位置服务是否开启
+      // Verify that location services are enabled
       if (!geoLocationManager.isLocationEnabled()) {
         const error = new Error('Location service is disabled');
         hilog.error(DOMAIN, HarmonyLocationEngine.TAG, 'Location service is disabled');
@@ -150,7 +149,7 @@ export class HarmonyLocationEngine implements LocationEngine {
         return;
       }
 
-      // 获取最后位置
+      // Obtain the last location
       try {
         const location = geoLocationManager.getLastLocation();
         if (location) {
@@ -172,12 +171,12 @@ export class HarmonyLocationEngine implements LocationEngine {
   }
 
   /**
-   * 检查是否有位置权限
+   * Check whether location permission is available.
    */
   static hasLocationPermission(): boolean {
     try {
       const permissions = ['ohos.permission.APPROXIMATELY_LOCATION', 'ohos.permission.LOCATION'];
-      // 注意：实际权限检查需要使用 abilityAccessCtrl，这里简化处理
+      // Note: proper permission handling should use abilityAccessCtrl; simplified here
       return geoLocationManager.isLocationEnabled();
     } catch (err) {
       hilog.error(DOMAIN, HarmonyLocationEngine.TAG, `Failed to check location permission: ${err}`);
@@ -186,7 +185,7 @@ export class HarmonyLocationEngine implements LocationEngine {
   }
 
   /**
-   * 停止所有位置更新
+   * Stop all location updates.
    */
   stopAllUpdates(): void {
     try {
@@ -202,14 +201,14 @@ export class HarmonyLocationEngine implements LocationEngine {
   }
 
   /**
-   * 设置最小更新间隔（节流）
+   * Set the minimum update interval (throttling).
    */
   setMinUpdateInterval(interval: number): void {
-    this.minUpdateInterval = Math.max(100, interval); // 最小 100ms
+    this.minUpdateInterval = Math.max(100, interval); // Minimum 100 ms
   }
 
   /**
-   * 设置最大重试次数
+   * Set the maximum retry count.
    */
   setMaxRetries(maxRetries: number): void {
     this.maxRetries = Math.max(0, maxRetries);

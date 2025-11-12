@@ -1,15 +1,15 @@
 /**
- * MapSnapshot - 地图快照结果
+ * MapSnapshot - snapshot result container.
  *
- * 包含生成的快照图像和元数据
- * 
- * **平台对照**：
- * - Android: `MapSnapshot` 类
- * - iOS: `MLNMapSnapshot` 类
- * 
- * **坐标转换功能**：
- * - `pixelForLatLng()` - 在快照图像上定位地理坐标（新增）
- * - `latLngForPixel()` - 从快照图像坐标获取地理坐标（新增）
+ * Holds the rendered snapshot image and accompanying metadata.
+ *
+ * **Platform equivalents**:
+ * - Android: `MapSnapshot`
+ * - iOS: `MLNMapSnapshot`
+ *
+ * **Coordinate conversion helpers**:
+ * - `pixelForLatLng()` - locate geographic coordinates on the snapshot image.
+ * - `latLngForPixel()` - convert pixel coordinates on the snapshot back to geographic coordinates.
  */
 
 import image from '@ohos.multimedia.image';
@@ -22,40 +22,40 @@ import { LatLng } from '../geometry/LatLng';
 import { Point, PixelCoordinate } from '../geometry/Point';
 
 /**
- * 地图快照类
+ * Wrapper for map snapshots.
  *
- * 对应 Android 的 MapSnapshot 和 iOS 的快照结果
+ * Mirrors Android `MapSnapshot` and the iOS snapshot result.
  */
 export class MapSnapshot {
   /**
-   * 快照图像
+   * Snapshot image.
    */
   public readonly image: image.PixelMap;
   /**
-   * 图像宽度（像素）
+   * Image width (pixels).
    */
   public readonly width: number;
   /**
-   * 图像高度（像素）
+   * Image height (pixels).
    */
   public readonly height: number;
   /**
-   * 归属信息列表
+   * Attribution strings.
    */
   public readonly attributions: string[];
   /**
-   * 是否显示 logo
+   * Whether to draw the logo.
    */
   public readonly showLogo: boolean;
   
   /**
-   * Native 快照对象（用于坐标转换）
+   * Native snapshot object (used for coordinate conversion).
    * @private
    */
   private nativeSnapshot: SnapshotResultNAPI | null = null;
 
   /**
-   * 构造函数
+   * Constructor.
    */
   constructor(
     image: image.PixelMap,
@@ -74,35 +74,34 @@ export class MapSnapshot {
   }
 
   /**
-   * 获取图像
+   * Retrieve the snapshot image.
    */
   public getImage(): image.PixelMap {
     return this.image;
   }
 
   /**
-   * 获取归属信息
+   * Retrieve attribution strings.
    */
   public getAttributions(): string[] {
     return this.attributions;
   }
 
   /**
-   * 计算地理坐标在快照图像上的像素位置
-   * 
-   * 对应 Android: `MapSnapshot.pixelForLatLng(LatLng)`
-   * 
-   * 用于在快照图像上绘制覆盖物（如标记、文字等）时定位元素位置。
-   * 
-   * @param latLng 地理坐标
-   * @returns 快照图像上的像素坐标
-   * 
+   * Project a geographic location to pixel coordinates on the snapshot.
+   *
+   * Android equivalent: `MapSnapshot.pixelForLatLng(LatLng)`.
+   * Useful when drawing overlays (markers, labels, etc.) on the snapshot.
+   *
+   * @param latLng Geographic coordinate.
+   * @returns Pixel coordinate within the snapshot image.
+   *
    * @example
    * ```typescript
    * const snapshot = await getSnapshot();
    * const markerPos = new LatLng(39.9, 116.4);
    * const pixelPos = snapshot.pixelForLatLng(markerPos);
-   * // 在 pixelPos 位置绘制标记
+   * // Draw marker at pixelPos
    * ```
    */
   public pixelForLatLng(latLng: LatLng): Point {
@@ -111,7 +110,7 @@ export class MapSnapshot {
     }
 
     try {
-      // 调用 native 方法
+      // Invoke native conversion
       const result: PixelCoordinateResult = this.nativeSnapshot.pixelForLatLng(latLng.latitude, latLng.longitude);
       return new PixelCoordinate(result.x, result.y);
     } catch (err) {
@@ -122,21 +121,20 @@ export class MapSnapshot {
   }
 
   /**
-   * 计算快照图像上的像素位置对应的地理坐标
-   * 
-   * 对应 Android: `MapSnapshot.latLngForPixel(PointF)`
-   * 
-   * 用于识别用户在快照图像上点击的位置对应的地理坐标。
-   * 
-   * @param point 快照图像上的像素坐标
-   * @returns 地理坐标
-   * 
+   * Convert a pixel coordinate back to a geographic coordinate.
+   *
+   * Android equivalent: `MapSnapshot.latLngForPixel(PointF)`.
+   * Useful when mapping user clicks on the snapshot to geographic coordinates.
+   *
+   * @param point Pixel coordinate on the snapshot image.
+   * @returns Geographic coordinate.
+   *
    * @example
    * ```typescript
    * const snapshot = await getSnapshot();
    * const clickPoint = new Point(100, 200);
    * const latLng = snapshot.latLngForPixel(clickPoint);
-   * console.log('点击位置:', latLng.latitude, latLng.longitude);
+   * console.log('Clicked at:', latLng.latitude, latLng.longitude);
    * ```
    */
   public latLngForPixel(point: Point): LatLng {
@@ -145,7 +143,7 @@ export class MapSnapshot {
     }
 
     try {
-      // 调用 native 方法
+      // Invoke native conversion
       const result: LatLngResult = this.nativeSnapshot.latLngForPixel(point.x, point.y);
       return new LatLng(result.latitude, result.longitude);
     } catch (err) {
@@ -156,7 +154,7 @@ export class MapSnapshot {
   }
 
   /**
-   * 转换为字符串
+   * Convert to string.
    */
   public toString(): string {
     return `MapSnapshot{size=${this.width}x${this.height}, ` +

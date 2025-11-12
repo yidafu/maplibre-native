@@ -1,8 +1,8 @@
 
 /**
- * GeoJSON 工厂函数
+ * GeoJSON factory utilities.
  *
- * 提供便捷的工厂函数来创建 GeoJSON 接口对象（普通对象）
+ * Provides convenience factory methods for creating GeoJSON interface objects (plain objects).
  */
 import type {
     Position,
@@ -18,13 +18,13 @@ import type {
     Geometry
 } from './types';
 import type { JSONValue } from 'libmaplibre.so';
-// ==================== Geometry 工厂函数 ====================
+// ==================== Geometry factory functions ====================
 
 /**
- * 创建 Point 对象
+ * Create a Point object.
  *
- * @param coordinates 坐标 [longitude, latitude] 或 [longitude, latitude, altitude]
- * @returns IPoint 对象
+ * @param coordinates Coordinates [longitude, latitude] or [longitude, latitude, altitude].
+ * @returns IPoint object.
  *
  * @example
 * ```typescript
@@ -39,10 +39,10 @@ export function point(coordinates: Position): IPoint {
 }
 
 /**
- * 创建 LineString 对象
+ * Create a LineString object.
  *
- * @param coordinates 坐标数组
- * @returns ILineString 对象
+ * @param coordinates Array of coordinates.
+ * @returns ILineString object.
  *
  * @example
 * ```typescript
@@ -60,15 +60,15 @@ export function lineString(coordinates: Position[]): ILineString {
 }
 
 /**
- * 创建 Polygon 对象
+ * Create a Polygon object.
  *
- * @param coordinates 坐标数组（第一个数组是外环，其余是内环）
- * @returns IPolygon 对象
+ * @param coordinates Coordinate array (first array is outer ring, remaining arrays are inner rings).
+ * @returns IPolygon object.
  *
  * @example
 * ```typescript
  * const poly = polygon([
- *   [ // 外环
+*   [ // Outer ring
  *     [116.3, 39.8],
  *     [116.5, 39.8],
  *     [116.5, 40.0],
@@ -86,10 +86,10 @@ export function polygon(coordinates: Position[][]): IPolygon {
 }
 
 /**
- * 创建 MultiPoint 对象
+ * Create a MultiPoint object.
  *
- * @param coordinates 坐标数组
- * @returns IMultiPoint 对象
+ * @param coordinates Array of coordinates.
+ * @returns IMultiPoint object.
  *
  * @example
 * ```typescript
@@ -108,10 +108,10 @@ export function multiPoint(coordinates: Position[]): IMultiPoint {
 }
 
 /**
- * 创建 MultiLineString 对象
+ * Create a MultiLineString object.
  *
- * @param coordinates 坐标数组
- * @returns IMultiLineString 对象
+ * @param coordinates Array of coordinate arrays.
+ * @returns IMultiLineString object.
  *
  * @example
 * ```typescript
@@ -129,18 +129,18 @@ export function multiLineString(coordinates: Position[][]): IMultiLineString {
 }
 
 /**
- * 创建 MultiPolygon 对象
+ * Create a MultiPolygon object.
  *
- * @param coordinates 坐标数组
- * @returns IMultiPolygon 对象
+ * @param coordinates Array of polygon coordinate arrays.
+ * @returns IMultiPolygon object.
  *
  * @example
 * ```typescript
  * const multiPoly = multiPolygon([
- *   [ // 第一个多边形
+*   [ // First polygon
  *     [[116.3, 39.8], [116.5, 39.8], [116.5, 40.0], [116.3, 40.0], [116.3, 39.8]]
  *   ],
- *   [ // 第二个多边形
+*   [ // Second polygon
  *     [[121.4, 31.1], [121.6, 31.1], [121.6, 31.3], [121.4, 31.3], [121.4, 31.1]]
  *   ]
  * ]);
@@ -154,10 +154,10 @@ export function multiPolygon(coordinates: Position[][][]): IMultiPolygon {
 }
 
 /**
- * 创建 GeometryCollection 对象
+ * Create a GeometryCollection object.
  *
- * @param geometries Geometry 对象数组
- * @returns IGeometryCollection 对象
+ * @param geometries Array of geometry objects.
+ * @returns IGeometryCollection object.
  *
  * @example
 * ```typescript
@@ -174,10 +174,10 @@ export function geometryCollection(geometries: Geometry[]): IGeometryCollection 
   };
 }
 
-// ==================== Feature 工厂函数 ====================
+// ==================== Feature factory functions ====================
 
 /**
- * Feature 选项接口
+ * Feature options interface.
  */
 export interface CreateFeatureOptions {
   id?: string | number;
@@ -186,10 +186,10 @@ export interface CreateFeatureOptions {
 }
 
 /**
- * 创建 Feature 对象
+ * Create a Feature object.
  *
- * @param options Feature 选项
- * @returns IFeature 对象
+ * @param options Feature options.
+ * @returns IFeature object.
  *
  * @example
 * ```typescript
@@ -203,12 +203,12 @@ export interface CreateFeatureOptions {
 export function feature(options: CreateFeatureOptions): IFeature;
 
 /**
- * 创建 Feature 对象（简化版本）
+ * Create a Feature object (convenience overload).
  *
- * @param geometry Geometry 对象
- * @param properties 属性对象（可选）
- * @param id Feature ID（可选）
- * @returns IFeature 对象
+ * @param geometry Geometry object.
+ * @param properties Properties object (optional).
+ * @param id Feature ID (optional).
+ * @returns IFeature object.
  *
  * @example
 * ```typescript
@@ -221,16 +221,16 @@ export function feature(
   id?: string | number
 ): IFeature;
 
-// 实现
+// Implementation
 export function feature(
   optionsOrGeometry: CreateFeatureOptions | Geometry,
   properties?: Record<string, JSONValue>,
   id?: string | number
 ): IFeature {
-  // ArkTS 不支持 'in' 操作符，通过检查属性是否存在来判断
+  // ArkTS does not support the 'in' operator; check property existence explicitly.
   const maybeGeometry = optionsOrGeometry as Geometry;
   if (maybeGeometry.type !== undefined && typeof maybeGeometry.type === 'string') {
-    // 第二种重载：geometry, properties, id
+    // Overload: geometry, properties, id
     return {
       type: 'Feature',
       id,
@@ -238,7 +238,7 @@ export function feature(
       properties: (properties || {}) as Record<string, JSONValue>
     };
   } else {
-    // 第一种重载：options 对象
+    // Overload: options object
     const opts = optionsOrGeometry as CreateFeatureOptions;
     return {
       type: 'Feature',
@@ -250,10 +250,10 @@ export function feature(
 }
 
 /**
- * 创建 FeatureCollection 对象
+ * Create a FeatureCollection object.
  *
- * @param features Feature 对象数组
- * @returns IFeatureCollection 对象
+ * @param features Array of Feature objects.
+ * @returns IFeatureCollection object.
  *
  * @example
 * ```typescript
@@ -270,15 +270,15 @@ export function featureCollection(features: IFeature[]): IFeatureCollection {
   };
 }
 
-// ==================== 便捷组合函数 ====================
+// ==================== Convenience helpers ====================
 
 /**
- * 创建带有 Point 几何的 Feature
+ * Create a Feature with Point geometry.
  *
- * @param coordinates 坐标
- * @param properties 属性
- * @param id Feature ID
- * @returns IFeature 对象
+ * @param coordinates Coordinates.
+ * @param properties Properties.
+ * @param id Feature ID.
+ * @returns IFeature object.
  *
  * @example
 * ```typescript
@@ -294,12 +294,12 @@ export function pointFeature(
 }
 
 /**
- * 创建带有 LineString 几何的 Feature
+ * Create a Feature with LineString geometry.
  *
- * @param coordinates 坐标数组
- * @param properties 属性
- * @param id Feature ID
- * @returns IFeature 对象
+ * @param coordinates Coordinate array.
+ * @param properties Properties.
+ * @param id Feature ID.
+ * @returns IFeature object.
  *
  * @example
 * ```typescript
@@ -315,12 +315,12 @@ export function lineStringFeature(
 }
 
 /**
- * 创建带有 Polygon 几何的 Feature
+ * Create a Feature with Polygon geometry.
  *
- * @param coordinates 坐标数组
- * @param properties 属性
- * @param id Feature ID
- * @returns IFeature 对象
+ * @param coordinates Coordinate array.
+ * @param properties Properties.
+ * @param id Feature ID.
+ * @returns IFeature object.
  *
  * @example
 * ```typescript

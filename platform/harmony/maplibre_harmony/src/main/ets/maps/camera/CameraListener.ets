@@ -1,89 +1,89 @@
 /**
- * CameraListener - 相机监听器接口
+ * CameraListener - camera listener interfaces.
  *
- * 监听地图相机的各种状态变化
+ * Observe various map camera state changes.
  */
 
 import { CameraMoveReason } from './CameraMoveReason';
 
 /**
- * 相机空闲监听器
- * 当相机停止移动（所有动画和手势结束）时触发
+ * Listener for when the camera becomes idle.
+ * Triggered after all animations and gestures complete.
  */
 export interface OnCameraIdleListener {
   /**
-   * 相机已停止移动
+   * Called when the camera stops moving.
    */
   onCameraIdle(): void;
 }
 
 /**
- * 相机开始移动监听器
- * 当相机开始移动时触发
+ * Listener for when the camera starts moving.
+ * Triggered as soon as movement begins.
  */
 export interface OnCameraMoveStartedListener {
   /**
-   * 相机开始移动
-   * @param reason 移动原因
+   * Called when the movement begins.
+   * @param reason Reason for camera movement.
    */
   onCameraMoveStarted(reason: CameraMoveReason): void;
 }
 
 /**
- * 相机移动中监听器
- * 在相机移动过程中频繁触发
+ * Listener for intermediate camera movement.
+ * Invoked repeatedly while the camera is moving.
  */
 export interface OnCameraMoveListener {
   /**
-   * 相机正在移动
+   * Called while the camera is in motion.
    */
   onCameraMove(): void;
 }
 
 /**
- * 相机移动取消监听器
- * 当相机动画被中断或取消时触发
+ * Listener for when camera movement is cancelled.
+ * Triggered when animations are interrupted or cancelled.
  */
 export interface OnCameraMoveCanceledListener {
   /**
-   * 相机移动已取消
+   * Called when camera movement is cancelled.
    */
   onCameraMoveCanceled(): void;
 }
 
 /**
- * 动画完成监听器
- * 当 flyTo 或 easeTo 动画完成时触发
+ * Listener for animation completion.
+ * Triggered when `flyTo` or `easeTo` completes.
  */
 export interface OnAnimationFinishedListener {
   /**
-   * 动画已完成
+   * Called when the animation finishes.
    */
   onAnimationFinished(): void;
 }
 
 /**
- * 组合相机监听器
- * 包含所有相机事件的监听器
+ * Composite camera listener.
+ * Includes callbacks for all camera events.
  */
 export interface CameraChangeListener {
   /**
-   * 相机开始移动
+   * Called when the camera starts moving.
    */
   onCameraMoveStarted?(reason: CameraMoveReason): void;
 
   /**
-   * 相机正在移动
+   * Called while the camera is moving.
    */
   onCameraMove?(): void;
 
   /**
-   * 相机停止移动
+   * Called when the camera stops moving.
    */
   onCameraIdle?(): void;
 
   /**
-   * 相机移动取消
+   * Called when camera movement is cancelled.
    */
   onCameraMoveCanceled?(): void;
 }

@@ -1,69 +1,67 @@
 /**
- * 栅格瓦片数据源选项
+ * Raster tile source options.
  */
 export interface RasterSourceOptions {
-  /** 瓦片 URL */
+  /** Tile URL template. */
   url?: string;
 
-  /** 瓦片 URL 列表 */
+  /** Explicit tile URL list. */
   tiles?: string[];
 
-  /** 最小缩放级别 */
+  /** Minimum zoom level. */
   minzoom?: number;
 
-  /** 最大缩放级别 */
+  /** Maximum zoom level. */
   maxzoom?: number;
 
-  /** 瓦片大小 */
+  /** Tile size. */
   tileSize?: number;
 
-  /** 瓦片坐标系统 */
+  /** Tile scheme. */
   scheme?: 'xyz' | 'tms';
 }
 
 /**
- * RasterSource - 栅格瓦片数据源
- *
- * 用于加载栅格瓦片图像
+ * RasterSource - loads raster tile imagery.
  */
 export class RasterSource {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 构造栅格瓦片数据源
-   * @param id 数据源 ID
-   * @param options 可选配置
+   * Construct a raster tile source.
+   * @param id Source identifier.
+   * @param options Optional configuration.
    */
   constructor(id: string, options?: RasterSourceOptions);
 
   /**
-   * 获取数据源 ID
+   * Get the source identifier.
    */
   getId(): string;
 
   /**
-   * 获取原生指针（内部使用）
+   * Reserved for internal native pointer access.
    */
 
   /**
-   * 获取瓦片 URL
+   * Get the tile URL.
    */
   getUrl(): string;
 
   /**
-   * 设置瓦片 URL
-   * @param url 瓦片 URL
-   * @returns this（支持链式调用）
+   * Set the tile URL.
+   * @param url Tile URL template.
+   * @returns this (chainable).
    */
   setUrl(url: string): this;
 
   /**
-   * 设置瓦片大小
-   * @param tileSize 瓦片大小（像素）
-   * @returns this（支持链式调用）
+   * Set tile size in pixels.
+   * @param tileSize Tile size (pixels).
+   * @returns this (chainable).
    */
   setTileSize(tileSize: number): this;
 }

@@ -1,5 +1,5 @@
 /**
- * Offline - 离线地图模块类型定义
+ * Offline module type exports.
  */
 
 export * from './OfflineManager';

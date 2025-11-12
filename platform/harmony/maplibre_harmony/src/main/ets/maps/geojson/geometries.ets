@@ -1,7 +1,7 @@
 /**
- * Geometry 工厂函数
+ * Geometry factory helpers.
  *
- * 提供便捷的 Geometry 对象创建方法
+ * Provides convenient methods for creating Geometry objects.
  */
 import type {
   Geometry,
@@ -16,10 +16,10 @@ import type {
 } from './types';
 
 /**
- * 创建 Point 几何对象
+ * Create a Point geometry.
  *
- * @param coordinates 坐标 [longitude, latitude] 或 [longitude, latitude, altitude]
- * @returns Point 对象
+ * @param coordinates Coordinates [longitude, latitude] or [longitude, latitude, altitude].
+ * @returns Point object.
  *
  * @example
 * ```typescript
@@ -34,10 +34,10 @@ export function Point(coordinates: Position): IPoint {
 }
 
 /**
- * 创建 LineString 几何对象
+ * Create a LineString geometry.
  *
- * @param coordinates 坐标数组
- * @returns LineString 对象
+ * @param coordinates Coordinate array.
+ * @returns LineString object.
  *
  * @example
 * ```typescript
@@ -55,15 +55,15 @@ export function LineString(coordinates: Position[]): ILineString {
 }
 
 /**
- * 创建 Polygon 几何对象
+ * Create a Polygon geometry.
  *
- * @param coordinates 坐标数组（第一个数组是外环，其余是内环）
- * @returns Polygon 对象
+ * @param coordinates Coordinate array (first array is outer ring, remaining arrays are inner rings).
+ * @returns Polygon object.
  *
  * @example
 * ```typescript
  * const polygon = Polygon([
- *   [ // 外环
+*   [ // Outer ring
  *     [116.3, 39.8],
  *     [116.5, 39.8],
  *     [116.5, 40.0],
@@ -81,10 +81,10 @@ export function Polygon(coordinates: Position[][]): IPolygon {
 }
 
 /**
- * 创建 MultiPoint 几何对象
+ * Create a MultiPoint geometry.
  *
- * @param coordinates 坐标数组
- * @returns MultiPoint 对象
+ * @param coordinates Coordinate array.
+ * @returns MultiPoint object.
  *
  * @example
 * ```typescript
@@ -103,10 +103,10 @@ export function MultiPoint(coordinates: Position[]): IMultiPoint {
 }
 
 /**
- * 创建 MultiLineString 几何对象
+ * Create a MultiLineString geometry.
  *
- * @param coordinates 坐标数组
- * @returns MultiLineString 对象
+ * @param coordinates Coordinate array.
+ * @returns MultiLineString object.
  *
  * @example
 * ```typescript
@@ -124,18 +124,18 @@ export function MultiLineString(coordinates: Position[][]): IMultiLineString {
 }
 
 /**
- * 创建 MultiPolygon 几何对象
+ * Create a MultiPolygon geometry.
  *
- * @param coordinates 坐标数组
- * @returns MultiPolygon 对象
+ * @param coordinates Coordinate array.
+ * @returns MultiPolygon object.
  *
  * @example
 * ```typescript
  * const multiPolygon = MultiPolygon([
- *   [ // 第一个多边形
+*   [ // First polygon
  *     [[116.3, 39.8], [116.5, 39.8], [116.5, 40.0], [116.3, 40.0], [116.3, 39.8]]
  *   ],
- *   [ // 第二个多边形
+*   [ // Second polygon
  *     [[121.4, 31.1], [121.6, 31.1], [121.6, 31.3], [121.4, 31.3], [121.4, 31.1]]
  *   ]
  * ]);
@@ -149,10 +149,10 @@ export function MultiPolygon(coordinates: Position[][][]): IMultiPolygon {
 }
 
 /**
- * 创建 GeometryCollection 几何对象
+ * Create a GeometryCollection.
  *
- * @param geometries Geometry 对象数组
- * @returns GeometryCollection 对象
+ * @param geometries Array of Geometry objects.
+ * @returns GeometryCollection object.
  *
  * @example
 * ```typescript

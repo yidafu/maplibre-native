@@ -1,76 +1,62 @@
 /**
- * OfflineRegionStatus - 离线区域状态类型定义
+ * OfflineRegionStatus - offline region status type definitions.
  *
- * 提供离线区域的下载进度和状态信息
+ * Conveys download progress and status information for an offline region.
  */
 
 /**
- * 离线区域状态
- *
- * 包含下载进度、资源统计等详细信息
+ * Offline region status details, including download progress and resource counts.
  */
 export interface OfflineRegionStatus {
   /**
-   * 下载状态
-   * 0 = INACTIVE（未激活/暂停）
-   * 1 = ACTIVE（活动/下载中）
+   * Download state (0 = INACTIVE, 1 = ACTIVE).
    */
   downloadState: number;
 
   /**
-   * 已完成的资源数量
-   * 包括瓦片和其他资源（如字体、图标等）
+   * Number of completed resources (tiles plus ancillary assets such as fonts and sprites).
    */
   completedResourceCount: number;
 
   /**
-   * 已完成资源的总大小（字节）
-   * 可用于显示已下载数据量
+   * Total size of completed resources in bytes (useful for displaying downloaded data volume).
    */
   completedResourceSize: number;
 
   /**
-   * 已完成的瓦片数量
-   * 仅统计地图瓦片
+   * Completed tile count (map tiles only).
    */
   completedTileCount: number;
 
   /**
-   * 已完成瓦片的总大小（字节）
-   * 瓦片通常占据大部分下载量
+   * Total size of completed tiles in bytes (typically the bulk of the download).
    */
   completedTileSize: number;
 
   /**
-   * 所需资源的总数量
-   * 估计需要下载的总资源数
-   * 注意：这是一个估计值，可能会随下载进度调整
+   * Total required resource count (estimated; may adjust as downloads progress).
    */
   requiredResourceCount: number;
 
   /**
-   * 所需瓦片的总数量
-   * 估计需要下载的总瓦片数
+   * Total required tile count (estimated number of tiles to download).
    */
   requiredTileCount: number;
 
   /**
-   * 所需资源数量是否精确
-   * true: requiredResourceCount 是精确值
-   * false: requiredResourceCount 是估计值，可能会变化
+   * Whether the required resource count is precise.
+   * true indicates an exact count; false means the value is an estimate.
    */
   requiredResourceCountIsPrecise: boolean;
 
   /**
-   * 是否完成下载
-   * true: 所有资源已下载完成
-   * false: 还有资源未下载
+   * Completion flag (true when all resources are downloaded).
    */
   complete: boolean;
 }
 
 /**
- * 下载进度计算辅助函数（供参考）
+ * Example helper for computing download progress percentage.
  *
  * @example
 * const progress = status.requiredResourceCount > 0

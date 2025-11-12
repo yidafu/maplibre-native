@@ -15,8 +15,8 @@ import common from '@ohos.app.ability.common';
 import image from '@ohos.multimedia.image';
 
 /**
- * 位置图层控制器
- * 负责管理位置相关的地图图层
+ * Location layer controller.
+ * Manages map layers related to user location.
  */
 export class LocationLayerController {
   private static readonly TAG: string = 'LocationLayerController';
@@ -24,12 +24,12 @@ export class LocationLayerController {
   private options: LocationComponentOptions;
   private renderMode: number = RenderMode.NORMAL;
   private renderModeChangedListener?: OnRenderModeChangedListener;
-  // 位置数据
+  // Location data
   private currentLocation?: LatLng;
   private bearing: number = 0;
   private accuracy: number = 0;
   private isStale: boolean = false;
-  // 图层是否已添加
+  // Layer state
   private layersAdded: boolean = false;
   private isHidden: boolean = true;
 
@@ -39,25 +39,25 @@ export class LocationLayerController {
   }
 
   /**
-   * 初始化组件
+   * Initialize the controller.
    */
   async initializeComponents(style: Style): Promise<void> {
     this.style = style;
 
-    // 加载定位图标
+    // Load location icons
     await this.loadLocationIcons();
 
-    // 添加图层
+    // Add layers
     this.addLayers();
 
-    // 初始化时隐藏
+    // Hide layers initially if required
     if (this.isHidden) {
       this.hide();
     }
   }
 
   /**
-   * 加载定位图标到 Style
+   * Load location icons into the style.
    */
   private async loadLocationIcons(): Promise<void> {
     if (!this.style) {
@@ -65,17 +65,17 @@ export class LocationLayerController {
     }
 
     try {
-      // 获取 ResourceManager
+      // Obtain the ResourceManager
       const context = getContext() as common.UIAbilityContext;
       const resMgr = context.resourceManager;
 
-      // 加载前景图标
+      // Load foreground icon
       await this.loadIcon(resMgr, 'maplibre_location_icon_foreground.png', LocationComponentConstants.FOREGROUND_ICON);
       
-      // 加载背景图标
+      // Load background icon
       await this.loadIcon(resMgr, 'maplibre_location_icon_background.png', LocationComponentConstants.BACKGROUND_ICON);
       
-      // 加载方向图标
+      // Load bearing icon
       await this.loadIcon(resMgr, 'maplibre_location_icon_bearing.png', LocationComponentConstants.BEARING_ICON);
 
       hilog.info(DOMAIN, LocationLayerController.TAG, 'Location icons loaded successfully');
@@ -85,42 +85,42 @@ export class LocationLayerController {
   }
 
   /**
-   * 加载单个图标
+   * Load a single icon.
    */
   private async loadIcon(resMgr: resourceManager.ResourceManager, fileName: string, iconName: string): Promise<void> {
     try {
-      // 从 rawfile 目录加载图片
+      // Load binary data from the rawfile directory
       const uint8Array = await resMgr.getRawFileContent(fileName);
       hilog.info(DOMAIN, LocationLayerController.TAG, `Loading icon: ${fileName}, size: ${uint8Array.byteLength} bytes`);
 
-      // 创建 ImageSource
+      // Create an ImageSource
       const imageSource = image.createImageSource(uint8Array.buffer);
       if (!imageSource) {
         throw new Error('Failed to create ImageSource');
       }
 
-      // 解码为 PixelMap
+      // Decode to a PixelMap
       const pixelMap = await imageSource.createPixelMap({
         desiredPixelFormat: image.PixelMapFormat.RGBA_8888
       });
 
-      // 获取图片信息
+      // Retrieve image metadata
       const imageInfo = await pixelMap.getImageInfo();
       const width = imageInfo.size.width;
       const height = imageInfo.size.height;
       hilog.info(DOMAIN, LocationLayerController.TAG, `Icon ${iconName}: ${width}x${height}`);
 
-      // 读取 RGBA 数据
+      // Read RGBA pixel data
       const pixelBytes = new ArrayBuffer(width * height * 4);
       await pixelMap.readPixelsToBuffer(pixelBytes);
 
-      // 添加图标到样式
+      // Add the icon to the style
       if (this.style) {
         this.style.addImage(iconName, pixelBytes, width, height, false);
         hilog.info(DOMAIN, LocationLayerController.TAG, `Icon ${iconName} added to style successfully`);
       }
 
-      // 清理资源
+      // Release intermediate resources
       imageSource.release();
       pixelMap.release();
     } catch (err) {
@@ -130,7 +130,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 添加图层到地图
+   * Add layers to the map.
    */
   private addLayers(): void {
     if (!this.style || this.layersAdded) {
@@ -138,7 +138,7 @@ export class LocationLayerController {
     }
 
     try {
-      // 创建数据源
+      // Create the data source
       const sourceFeature: IFeature = {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [0, 0] },
@@ -151,49 +151,49 @@ export class LocationLayerController {
       geoJsonSource.setGeoJson(JSON.stringify(sourceFeature));
       this.style.addSource(geoJsonSource);
 
-      // 添加精度圈图层
+      // Add accuracy circle layer
       const accuracyLayer = new CircleLayer(
         LocationComponentConstants.ACCURACY_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       this.style.addLayer(accuracyLayer);
 
-      // 添加背景图标图层（白色圆圈，最大）
+      // Add background icon layer (white circle, largest)
       const backgroundLayer = new SymbolLayer(
         LocationComponentConstants.BACKGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       backgroundLayer.setIconImage(LocationComponentConstants.BACKGROUND_ICON);
-      backgroundLayer.setIconSize(0.5);  // 调整图标大小
+      backgroundLayer.setIconSize(0.5);  // Adjust icon size
       backgroundLayer.setIconAllowOverlap(true);
       backgroundLayer.setIconIgnorePlacement(true);
       this.style.addLayer(backgroundLayer);
 
-      // 添加前景图标图层（蓝色圆点，中等）
+      // Add foreground icon layer (blue dot, medium)
       const foregroundLayer = new SymbolLayer(
         LocationComponentConstants.FOREGROUND_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       foregroundLayer.setIconImage(LocationComponentConstants.FOREGROUND_ICON);
-      foregroundLayer.setIconSize(0.35);  // 比背景小
+      foregroundLayer.setIconSize(0.35);  // Smaller than the background
       foregroundLayer.setIconAllowOverlap(true);
       foregroundLayer.setIconIgnorePlacement(true);
       this.style.addLayer(foregroundLayer);
 
-      // 添加方向图标图层（蓝色箭头）
+      // Add bearing icon layer (blue arrow)
       const bearingLayer = new SymbolLayer(
         LocationComponentConstants.BEARING_LAYER,
         LocationComponentConstants.LOCATION_SOURCE
       );
       bearingLayer.setIconImage(LocationComponentConstants.BEARING_ICON);
-      bearingLayer.setIconSize(0.4);  // 箭头大小
+      bearingLayer.setIconSize(0.4);  // Arrow size
       bearingLayer.setIconAllowOverlap(true);
       bearingLayer.setIconIgnorePlacement(true);
       this.style.addLayer(bearingLayer);
 
       this.layersAdded = true;
 
-      // 应用初始样式
+      // Apply initial styling
       this.styleAccuracy();
       this.updateIconStyles();
 
@@ -203,7 +203,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 移除图层
+   * Remove layers from the map.
    */
   removeLayers(): void {
     if (!this.style || !this.layersAdded) {
@@ -224,7 +224,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 更新位置
+   * Update location data.
    */
   updateLocation(location: LatLng, bearing: number, accuracy: number): void {
     this.currentLocation = location;
@@ -236,7 +236,7 @@ export class LocationLayerController {
     }
 
     try {
-      // 更新数据源位置
+      // Update source coordinates
       const sourceFeature: IFeature = {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [location.longitude, location.latitude] },
@@ -248,10 +248,10 @@ export class LocationLayerController {
         source.setGeoJson(JSON.stringify(sourceFeature));
       }
 
-      // 更新精度圈
+      // Update accuracy circle
       this.updateAccuracyRadius(accuracy);
 
-      // 更新方向
+      // Update bearing indicator
       this.updateBearing(bearing);
 
     } catch (err) {
@@ -260,7 +260,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 更新精度圈半径
+   * Update the accuracy circle radius.
    */
   private updateAccuracyRadius(accuracy: number): void {
     if (!this.style) {
@@ -270,8 +270,8 @@ export class LocationLayerController {
     try {
       const layer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
       if (layer && layer instanceof CircleLayer) {
-        // 根据精度值设置圆圈半径（需要考虑地图缩放级别）
-        // 这里简化处理，实际应该根据纬度和缩放级别计算
+        // Determine circle radius based on accuracy (zoom/latitude adjustments omitted for brevity)
+        // Production code should calculate using latitude and zoom level
         const radiusInPixels = Math.max(accuracy / 2, 10);
         // layer.setProperties({ 'circle-radius': radiusInPixels });
       }
@@ -281,7 +281,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 更新方向角度
+   * Update the bearing angle.
    */
   private updateBearing(bearing: number): void {
     if (!this.style) {
@@ -299,7 +299,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 设置渲染模式
+   * Set the render mode.
    */
   setRenderMode(mode: number): void {
     if (!RenderMode.isValid(mode)) {
@@ -320,7 +320,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 更新图标样式
+   * Update icon styling.
    */
   private updateIconStyles(): void {
     if (!this.style || !this.layersAdded) {
@@ -328,18 +328,18 @@ export class LocationLayerController {
     }
 
     try {
-      // 根据渲染模式显示/隐藏不同的图层
+      // Toggle layers based on render mode
       const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
       const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
       const bearingLayer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
 
       if (this.renderMode === RenderMode.NORMAL) {
-        // 普通模式：只显示前景和背景
+        // Normal mode: show foreground and background only
         if (foregroundLayer && foregroundLayer instanceof SymbolLayer) foregroundLayer.setVisibility('visible');
         if (backgroundLayer && backgroundLayer instanceof SymbolLayer) backgroundLayer.setVisibility('visible');
         if (bearingLayer && bearingLayer instanceof SymbolLayer) bearingLayer.setVisibility('none');
       } else if (this.renderMode === RenderMode.COMPASS || this.renderMode === RenderMode.GPS) {
-        // 指南针/GPS 模式：显示所有图层包括方向箭头
+        // Compass/GPS mode: show all layers including the bearing arrow
         if (foregroundLayer && foregroundLayer instanceof SymbolLayer) foregroundLayer.setVisibility('visible');
         if (backgroundLayer && backgroundLayer instanceof SymbolLayer) backgroundLayer.setVisibility('visible');
         if (bearingLayer && bearingLayer instanceof SymbolLayer) bearingLayer.setVisibility('visible');
@@ -350,7 +350,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 应用样式配置
+   * Apply styling options.
    */
   applyStyle(options: LocationComponentOptions): void {
     this.options = options;
@@ -359,7 +359,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 设置精度圈样式
+   * Configure accuracy circle styling.
    */
   private styleAccuracy(): void {
     if (!this.style || !this.layersAdded) {
@@ -380,7 +380,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 设置过期状态
+   * Update stale-state visuals.
    */
   setStale(isStale: boolean): void {
     if (this.isStale === isStale) {
@@ -389,12 +389,12 @@ export class LocationLayerController {
 
     this.isStale = isStale;
 
-    // 更新图标为过期状态的图标
+    // Switch to stale-state icons
     this.updateIconStyles();
   }
 
   /**
-   * 显示位置图层
+   * Show location layers.
    */
   show(): void {
     if (!this.isHidden) {
@@ -408,25 +408,25 @@ export class LocationLayerController {
     }
 
     try {
-      // 设置精度圈图层为可见
+      // Make accuracy layer visible
       const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
       if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
         accuracyLayer.setVisibility('visible');
       }
 
-      // 设置背景图层为可见
+      // Make background layer visible
       const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
       if (backgroundLayer && backgroundLayer instanceof SymbolLayer) {
         backgroundLayer.setVisibility('visible');
       }
 
-      // 设置前景图层为可见
+      // Make foreground layer visible
       const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
       if (foregroundLayer && foregroundLayer instanceof SymbolLayer) {
         foregroundLayer.setVisibility('visible');
       }
 
-      // 方向图层的可见性由 updateIconStyles() 根据渲染模式控制
+      // Bearing layer visibility is handled in updateIconStyles()
       this.updateIconStyles();
 
     } catch (err) {
@@ -435,7 +435,7 @@ export class LocationLayerController {
   }
 
   /**
-   * 隐藏位置图层
+   * Hide location layers.
    */
   hide(): void {
     if (this.isHidden) {
@@ -449,25 +449,25 @@ export class LocationLayerController {
     }
 
     try {
-      // 设置精度圈图层为不可见
+      // Hide accuracy layer
       const accuracyLayer = this.style.getLayer(LocationComponentConstants.ACCURACY_LAYER);
       if (accuracyLayer && accuracyLayer instanceof CircleLayer) {
         accuracyLayer.setVisibility('none');
       }
 
-      // 设置背景图层为不可见
+      // Hide background layer
       const backgroundLayer = this.style.getLayer(LocationComponentConstants.BACKGROUND_LAYER);
       if (backgroundLayer && backgroundLayer instanceof SymbolLayer) {
         backgroundLayer.setVisibility('none');
       }
 
-      // 设置前景图层为不可见
+      // Hide foreground layer
       const foregroundLayer = this.style.getLayer(LocationComponentConstants.FOREGROUND_LAYER);
       if (foregroundLayer && foregroundLayer instanceof SymbolLayer) {
         foregroundLayer.setVisibility('none');
       }
 
-      // 设置方向图层为不可见
+      // Hide bearing layer
       const bearingLayer = this.style.getLayer(LocationComponentConstants.BEARING_LAYER);
       if (bearingLayer && bearingLayer instanceof SymbolLayer) {
         bearingLayer.setVisibility('none');
@@ -479,14 +479,14 @@ export class LocationLayerController {
   }
 
   /**
-   * 获取当前渲染模式
+   * Get the current render mode.
    */
   getRenderMode(): number {
     return this.renderMode;
   }
 
   /**
-   * 获取当前位置
+   * Get the current location.
    */
   getCurrentLocation(): LatLng | undefined {
     return this.currentLocation;

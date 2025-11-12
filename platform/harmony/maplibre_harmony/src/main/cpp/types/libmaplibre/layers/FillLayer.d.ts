@@ -1,6 +1,6 @@
 /**
- * MapLibre Native for HarmonyOS - FillLayer Type Definitions
- * 填充图层 API (NAPI 类)
+ * MapLibre Native for HarmonyOS - FillLayer type definitions.
+ * Fill layer API (NAPI class).
  */
 
 import type { PropertyValue } from '../LayerPropertyTypes';
@@ -8,150 +8,149 @@ import type { ExpressionLiteral } from '../ExpressionTypes';
 import type { JSONValue } from '../CommonTypes';
 
 /**
- * FillLayer - 填充图层
- * 用于渲染多边形区域
+ * FillLayer - renders polygon areas.
  */
 export class FillLayer {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 创建填充图层
-   * @param layerId 图层 ID
-   * @param sourceId 数据源 ID
+   * Create a fill layer.
+   * @param layerId Layer identifier.
+   * @param sourceId Source identifier.
    */
   constructor(layerId: string, sourceId: string);
 
   /**
-   * 设置填充颜色
-   * @param color 颜色值或Expression
+   * Set fill color.
+   * @param color Color value or expression.
    */
   setFillColor(color: PropertyValue<string>): this;
 
   /**
-   * 设置填充不透明度
-   * @param opacity 不透明度或Expression（0.0 - 1.0）
+   * Set fill opacity.
+   * @param opacity Opacity value or expression (0.0 - 1.0).
    */
   setFillOpacity(opacity: PropertyValue<number>): this;
 
   /**
-   * 设置填充轮廓颜色
-   * @param color 颜色值或Expression
+   * Set fill outline color.
+   * @param color Color value or expression.
    */
   setFillOutlineColor(color: PropertyValue<string>): this;
 
   /**
-   * 设置填充图案
-   * @param pattern 图案名称或Expression
+   * Set fill pattern.
+   * @param pattern Pattern name or expression.
    */
   setFillPattern(pattern: PropertyValue<string>): this;
 
   /**
-   * 设置填充抗锯齿
-   * @param antialias 是否启用抗锯齿或Expression
+   * Enable or disable fill antialiasing.
+   * @param antialias Boolean flag or expression.
    */
   setFillAntialias(antialias: PropertyValue<boolean>): this;
 
   /**
-   * 设置填充平移
-   * @param translate 平移量或Expression
+   * Set fill translation.
+   * @param translate Translation vector or expression.
    */
   setFillTranslate(translate: PropertyValue<number[]>): this;
 
   /**
-   * 获取填充颜色
+   * Get fill color.
    */
   getFillColor(): string | undefined;
 
   /**
-   * 获取填充不透明度
+   * Get fill opacity.
    */
   getFillOpacity(): number | undefined;
 
   /**
-   * 获取图层 ID
+   * Get the layer identifier.
    */
   getId(): string;
 
   /**
-   * 获取图层类型
+   * Get the layer type.
    */
   getType(): string;
 
   /**
-   * 获取数据源 ID
+   * Get the source identifier.
    */
   getSourceId(): string;
 
   /**
-   * 设置图层可见性
-   * @param visibility 可见性
+   * Set layer visibility.
+   * @param visibility Visibility state.
    */
   setVisibility(visibility: 'visible' | 'none'): this;
 
   getVisibility(): 'visible' | 'none';
 
   /**
-   * 设置最小缩放级别
+   * Set minimum zoom level.
    */
   setMinZoom(zoom: number): this;
 
   getMinZoom(): number;
 
   /**
-   * 设置最大缩放级别
+   * Set maximum zoom level.
    */
   setMaxZoom(zoom: number): this;
 
   getMaxZoom(): number;
 
   /**
-   * 设置源图层
+   * Set the source layer.
    */
   setSourceLayer(sourceLayer: string): this;
 
   getSourceLayer(): string;
 
   /**
-   * 设置图层过滤器
-   * @param filter 过滤器表达式字面量（JSON 数组格式）
+   * Set the layer filter.
+   * @param filter Filter expression literal (JSON array form).
    */
   setFilter(filter: ExpressionLiteral): this;
 
   /**
-   * 获取图层过滤器
-   * @returns 过滤器表达式字面量或 null
+   * Get the layer filter.
+   * @returns Filter expression literal or null.
    */
   getFilter(): ExpressionLiteral | null;
 
   /**
-   * 设置填充平移锚点
-   * @param anchor 'map' | 'viewport' 或Expression
+   * Set fill translation anchor.
+   * @param anchor 'map' | 'viewport' or expression.
    */
   setFillTranslateAnchor(anchor: PropertyValue<string>): this;
 
   getFillTranslateAnchor(): string | undefined;
 
   /**
-   * 设置填充排序键
-   * @param sortKey 排序键或Expression
+   * Set fill sort key.
+   * @param sortKey Sort key value or expression.
    */
   setFillSortKey(sortKey: PropertyValue<number>): this;
 
   getFillSortKey(): number | undefined;
 
   /**
-   * 设置单个属性（通用方法）
-   * @param propertyName 属性名称（如 'fill-color', 'fill-opacity'）
-   * @param value 属性值（常量值或Expression）
+   * Set a single property (generic helper).
+   * @param propertyName Property name (for example 'fill-color', 'fill-opacity').
+   * @param value Property value (literal or expression).
    */
   setProperty(propertyName: string, value: PropertyValue<JSONValue>): this;
 
   /**
-   * 批量设置属性（通用方法）
-   * @param properties 属性对象，键为属性名，值为属性值
+   * Set multiple properties (generic helper).
+   * @param properties Object whose keys are property names and values are property payloads.
    * @example
    * layer.setProperties({
    *   'fill-color': '#FF0000',

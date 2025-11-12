@@ -1,5 +1,5 @@
 /**
- * OnFpsChangedListener - 帧率变化监听器接口
+ * OnFpsChangedListener - frame rate change listener.
  */
 export interface OnFpsChangedListener {
   onFpsChanged(fps: number): void;

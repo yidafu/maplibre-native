@@ -1,94 +1,94 @@
 /**
- * VisibleRegion - 地图可见区域
+ * VisibleRegion - map visible region.
  *
- * 表示地图当前视口的可见区域，包含屏幕四个角对应的地理坐标和边界。
- * 
- * **平台对照**：
- * - Android: `VisibleRegion` 类
- * - iOS: `visibleCoordinateBounds` 属性
- * 
- * **坐标系统**：
- * - topLeft: 屏幕左上角（远左角）
- * - topRight: 屏幕右上角（远右角）
- * - bottomLeft: 屏幕左下角（近左角）
- * - bottomRight: 屏幕右下角（近右角）
- * 
+ * Represents the visible region of the current viewport, including coordinates for the four screen corners and the encompassing bounds.
+ *
+ * **Platform references**:
+ * - Android: `VisibleRegion`
+ * - iOS: `visibleCoordinateBounds`
+ *
+ * **Coordinate system**:
+ * - topLeft: upper-left (far left)
+ * - topRight: upper-right (far right)
+ * - bottomLeft: lower-left (near left)
+ * - bottomRight: lower-right (near right)
+ *
  * @example
  * ```typescript
  * const projection = map.getProjection();
  * const visibleRegion = projection.getVisibleRegion();
- * console.log('可见区域左上角:', visibleRegion.topLeft);
- * console.log('可见边界:', visibleRegion.latLngBounds);
+ * console.log('Visible top left:', visibleRegion.topLeft);
+ * console.log('Visible bounds:', visibleRegion.latLngBounds);
  * ```
  */
 import { LatLng } from '../geometry/LatLng';
 import { LatLngBounds } from '../geometry/LatLngBounds';
 
 /**
- * VisibleRegion 类
+ * VisibleRegion class.
  *
- * 对应 Android 的 VisibleRegion 和 iOS 的 coordinate bounds
+ * Mirrors Android `VisibleRegion` and iOS coordinate bounds.
  */
 export class VisibleRegion {
   /**
-   * 屏幕左上角的地理坐标（远左角）
-   * 对应 Android: topLeft
+   * Geographic coordinate at the upper-left corner (far left).
+   * Matches Android `topLeft`.
    */
   public readonly topLeft: LatLng;
   
   /**
-   * 屏幕右上角的地理坐标（远右角）
-   * 对应 Android: topRight
+   * Geographic coordinate at the upper-right corner (far right).
+   * Matches Android `topRight`.
    */
   public readonly topRight: LatLng;
   
   /**
-   * 屏幕左下角的地理坐标（近左角）
-   * 对应 Android: bottomLeft
+   * Geographic coordinate at the lower-left corner (near left).
+   * Matches Android `bottomLeft`.
    */
   public readonly bottomLeft: LatLng;
   
   /**
-   * 屏幕右下角的地理坐标（近右角）
-   * 对应 Android: bottomRight
+   * Geographic coordinate at the lower-right corner (near right).
+   * Matches Android `bottomRight`.
    */
   public readonly bottomRight: LatLng;
   
   /**
-   * 包含整个可见区域的最小边界
-   * 对应 Android: latLngBounds
+   * Bounds enclosing the entire visible region.
+   * Matches Android `latLngBounds`.
    */
   public readonly latLngBounds: LatLngBounds;
 
-  // 兼容旧命名（向后兼容）
+  // Backwards-compatible accessors.
   /**
-   * @deprecated 使用 bottomLeft 替代
+   * @deprecated Use `bottomLeft` instead.
    */
   public get nearLeft(): LatLng { return this.bottomLeft; }
   
   /**
-   * @deprecated 使用 bottomRight 替代
+   * @deprecated Use `bottomRight` instead.
    */
   public get nearRight(): LatLng { return this.bottomRight; }
   
   /**
-   * @deprecated 使用 topLeft 替代
+   * @deprecated Use `topLeft` instead.
    */
   public get farLeft(): LatLng { return this.topLeft; }
   
   /**
-   * @deprecated 使用 topRight 替代
+   * @deprecated Use `topRight` instead.
    */
   public get farRight(): LatLng { return this.topRight; }
 
   /**
-   * 构造函数（Android 风格命名）
+   * Constructor (Android-style naming).
    *
-   * @param topLeft 屏幕左上角坐标
-   * @param topRight 屏幕右上角坐标
-   * @param bottomLeft 屏幕左下角坐标
-   * @param bottomRight 屏幕右下角坐标
-   * @param latLngBounds 边界对象
+   * @param topLeft Upper-left coordinate.
+   * @param topRight Upper-right coordinate.
+   * @param bottomLeft Lower-left coordinate.
+   * @param bottomRight Lower-right coordinate.
+   * @param latLngBounds Bounding region.
    */
   constructor(
     topLeft: LatLng,
@@ -105,36 +105,35 @@ export class VisibleRegion {
   }
 
   /**
-   * 判断指定坐标是否在可见区域内
+   * Check whether a coordinate lies within the visible region.
    *
-   * @param latLng 要检查的坐标
-   * @returns 是否在可见区域内
+   * @param latLng Coordinate to check.
+   * @returns True if the coordinate is inside the region.
    */
   public contains(latLng: LatLng): boolean {
     return this.latLngBounds.contains(latLng);
   }
 
   /**
-   * 获取可见区域的四个角点坐标数组
-   * 对应 Android API
-   * 
-   * @returns 按 [topLeft, topRight, bottomRight, bottomLeft] 顺序排列的角点数组
+   * Retrieve all four corner coordinates (Android API parity).
+   *
+   * @returns Array ordered as [topLeft, topRight, bottomRight, bottomLeft].
    */
   public getCorners(): LatLng[] {
     return [this.topLeft, this.topRight, this.bottomRight, this.bottomLeft];
   }
 
   /**
-   * 获取可见区域的中心点坐标
-   * 
-   * @returns 可见区域的中心点地理坐标
+   * Get the geographic center of the visible region.
+   *
+   * @returns Center coordinate.
    */
   public getCenter(): LatLng {
     return this.latLngBounds.getCenter();
   }
 
   /**
-   * 转换为字符串表示
+   * Convert to a string representation.
    */
   public toString(): string {
     return `VisibleRegion{` +
@@ -146,7 +145,7 @@ export class VisibleRegion {
   }
 
   /**
-   * 判断两个可见区域是否相等
+   * Compare two visible regions.
    */
   public equals(other: VisibleRegion): boolean {
     if (!other) {

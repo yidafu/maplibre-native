@@ -1,8 +1,8 @@
 /**
- * MapSnapshotter - 地图快照器
+ * MapSnapshotter - map snapshot generator.
  *
- * 用于在后台渲染地图并生成图像
- * 对应 Android 的 MapSnapshotter 和 iOS 的 MLNMapSnapshotter
+ * Renders the map off-thread and produces pixel map snapshots.
+ * Mirrors Android `MapSnapshotter` and iOS `MLNMapSnapshotter`.
  */
 
 import maplibre, {
@@ -28,35 +28,35 @@ import { DOMAIN } from '../../constants/HiLogConstants';
 export type { MapSnapshotterObserver } from 'libmaplibre.so';
 
 /**
- * 快照就绪回调
+ * Snapshot completion callback.
  */
 export interface SnapshotReadyCallback {
   /**
-   * 快照完成时调用
+   * Called when snapshot generation completes.
    *
-   * @param snapshot 快照对象
+   * @param snapshot Snapshot result.
    */
   onSnapshotReady(snapshot: MapSnapshot): void;
 }
 
 /**
- * 错误处理回调
+ * Error callback for snapshot generation.
  */
 export interface SnapshotErrorHandler {
   /**
-   * 发生错误时调用
+   * Invoked when an error occurs.
    *
-   * @param error 错误消息
+   * @param error Error message.
    */
   onError(error: string): void;
 }
 
 /**
- * MapSnapshotter 类
+ * Snapshotter class.
  *
- * 使用示例：
+ * Usage example:
  * ```typescript
- * // 1. 创建选项
+ * // 1. Prepare options
  * const options: SnapshotOptions = {
  *   size: { width: 1080, height: 1920 },
  *   pixelRatio: 3.0,
@@ -70,18 +70,18 @@ export interface SnapshotErrorHandler {
  *   showLogo: true
  * };
  *
- * // 2. 创建快照器
+ * // 2. Create snapshotter
  * const snapshotter = new MapSnapshotter(options);
  *
- * // 3. 开始生成快照
+ * // 3. Start generating the snapshot
  * snapshotter.start({
  *   onSnapshotReady: (snapshot) => {
  *     const pixelMap = snapshot.getImage();
- *     // 使用 pixelMap
+ *     // Use pixelMap
  *   }
  * }, {
  *   onError: (error) => {
- *     console.error(`快照失败: ${error}`);
+ *     console.error(`Snapshot failed: ${error}`);
  *   }
  * });
  * ```
@@ -93,15 +93,15 @@ export class MapSnapshotter {
   private observer: NativeMapSnapshotterObserver | null = null;
 
   /**
-   * 构造函数
+   * Constructor.
    *
-   * @param options 快照选项
+   * @param options Snapshot options.
    */
   constructor(options: SnapshotOptions) {
     this.options = options;
 
     try {
-      // 准备 NAPI 选项对象
+      // Prepare NAPI options
       const napiOptions: SnapshotOptionsNAPI = {
         width: options.size.width,
         height: options.size.height,
@@ -112,7 +112,7 @@ export class MapSnapshotter {
         localFontFamily: options.localFontFamily || ''
       };
 
-      // 如果提供了相机位置，转换为普通对象并添加到选项中
+      // If a camera position is provided, convert it to a plain object
       if (options.cameraPosition) {
         const cameraData: CameraPositionLike = {
           target: {
@@ -126,7 +126,7 @@ export class MapSnapshotter {
         napiOptions.camera = cameraData;
       }
 
-      // 如果提供了区域，转换为普通对象并添加到选项中
+      // If a region is provided, convert it to a plain object
       if (options.region) {
         const regionData: LatLngBoundsLike = {
           north: options.region.north,
@@ -137,7 +137,7 @@ export class MapSnapshotter {
         napiOptions.region = regionData;
       }
 
-      // 创建 native snapshotter
+      // Instantiate the native snapshotter
       this.nativeSnapshotter = maplibre.createMapSnapshotter(napiOptions);
 
     } catch (error) {
@@ -147,10 +147,10 @@ export class MapSnapshotter {
   }
 
   /**
-   * 开始生成快照
+   * Start generating the snapshot.
    *
-   * @param callback 完成回调
-   * @param errorHandler 错误处理回调（可选）
+   * @param callback Completion callback.
+   * @param errorHandler Optional error handler.
    */
   public start(
     callback: SnapshotReadyCallback,
@@ -171,14 +171,14 @@ export class MapSnapshotter {
     }
 
     try {
-      // 包装回调以处理单参数回调（ThreadSafeCallback 的限制）
-      // Native 层使用 ThreadSafeCallback 会传递单个参数：
-      // - 错误时传递 error 字符串
-      // - 成功时传递 result 对象
+      // Wrap the callback to accommodate the single-argument ThreadSafeCallback contract.
+      // Native layer passes a single value:
+      // - On error: an error string.
+      // - On success: a result object.
       this.nativeSnapshotter.start((param: string | SnapshotResultNAPI | null) => {
-        // 判断参数类型
+        // Determine parameter type.
         if (typeof param === 'string') {
-          // 错误：param 是错误消息字符串
+          // Error: param is an error message string.
           hilog.error(DOMAIN, 'MapSnapshotter', `Snapshot error: ${param}`);
           if (errorHandler) {
             errorHandler.onError(param);
@@ -196,17 +196,17 @@ export class MapSnapshotter {
           return;
         }
 
-        // 从 native 结果创建 PixelMap
+        // Create a PixelMap from the native result.
         this.createPixelMapFromNativeResult(result)
           .then(pixelMap => {
-            // 创建 MapSnapshot 对象，传递 native 对象以支持坐标转换
+            // Construct MapSnapshot, preserving the native object for coordinate conversions.
             const snapshot = new MapSnapshot(
               pixelMap,
               result.width,
               result.height,
               result.attributions || [],
               this.options.showLogo !== false,
-              result  // 传递 native 快照对象
+              result  // Pass native snapshot object
             );
 
             callback.onSnapshotReady(snapshot);
@@ -228,7 +228,7 @@ export class MapSnapshotter {
   }
 
   /**
-   * 取消快照生成
+   * Cancel snapshot generation.
    */
   public cancel(): void {
     if (!this.nativeSnapshotter) {
@@ -245,7 +245,7 @@ export class MapSnapshotter {
   }
 
   /**
-   * 设置样式 URL
+   * Set the style URL.
    */
   public setStyleUrl(styleUrl: string): void {
     if (!this.nativeSnapshotter) {
@@ -264,7 +264,7 @@ export class MapSnapshotter {
   }
 
   /**
-   * 设置样式 JSON
+   * Set the style JSON.
    */
   public setStyleJson(styleJson: string): void {
     if (!this.nativeSnapshotter) {
@@ -283,14 +283,14 @@ export class MapSnapshotter {
   }
 
   /**
-   * 获取样式 URL
+   * Get the current style URL.
    */
   public getStyleUrl(): string {
     return this.options.styleUrl;
   }
 
   /**
-   * 设置相机位置
+   * Configure the camera position.
    */
   public setCameraPosition(cameraPosition: CameraPosition): void {
     if (!this.nativeSnapshotter) {
@@ -299,7 +299,7 @@ export class MapSnapshotter {
     }
 
     try {
-      // 将 CameraPosition 转换为普通对象以传递给 native 代码
+      // Convert CameraPosition to a plain object before passing to native code.
       const cameraData: CameraPositionLike = {
         target: {
           latitude: cameraPosition.target.latitude,
@@ -319,14 +319,14 @@ export class MapSnapshotter {
   }
 
   /**
-   * 获取相机位置
+   * Retrieve the configured camera position.
    */
   public getCameraPosition(): CameraPosition | undefined {
     return this.options.cameraPosition;
   }
 
   /**
-   * 设置区域
+   * Configure the geographic region.
    */
   public setRegion(region: LatLngBounds): void {
     if (!this.nativeSnapshotter) {
@@ -335,7 +335,7 @@ export class MapSnapshotter {
     }
 
     try {
-      // 将 LatLngBounds 转换为普通对象
+      // Convert LatLngBounds to a plain object.
       const regionData: LatLngBoundsLike = {
         north: region.north,
         south: region.south,
@@ -352,7 +352,7 @@ export class MapSnapshotter {
   }
 
   /**
-   * 设置快照尺寸
+   * Set the snapshot dimensions.
    */
   public setSize(width: number, height: number): void {
     if (!this.nativeSnapshotter) {
@@ -371,8 +371,8 @@ export class MapSnapshotter {
   }
 
   /**
-   * 设置观察者
-   * @param observer 观察者对象，传 null 可清除观察者
+   * Configure the observer.
+   * @param observer Observer instance; pass null to clear it.
    */
   public setObserver(observer: NativeMapSnapshotterObserver | null): void {
     if (!this.nativeSnapshotter) {
@@ -397,19 +397,19 @@ export class MapSnapshotter {
   }
 
   /**
-   * 获取区域
+   * Retrieve the configured region.
    */
   public getRegion(): LatLngBounds | undefined {
     return this.options.region;
   }
 
   /**
-   * 获取图层（样式加载完成后可用）
-   * 
-   * 对应 Android: `MapSnapshotter.getLayer(String)`
-   * 
-   * @param layerId 图层ID
-   * @returns 图层对象，如果不存在则返回 null
+   * Get a layer (available once the style finishes loading).
+   *
+   * Mirrors Android `MapSnapshotter.getLayer(String)`.
+   *
+   * @param layerId Layer identifier.
+   * @returns Layer instance, or null when missing.
    */
   public getLayer(layerId: string): Layer | null {
     if (!this.nativeSnapshotter) {
@@ -426,12 +426,12 @@ export class MapSnapshotter {
   }
 
   /**
-   * 获取数据源（样式加载完成后可用）
-   * 
-   * 对应 Android: `MapSnapshotter.getSource(String)`
-   * 
-   * @param sourceId 数据源ID
-   * @returns 数据源对象，如果不存在则返回 null
+   * Get a source (available once the style finishes loading).
+   *
+   * Mirrors Android `MapSnapshotter.getSource(String)`.
+   *
+   * @param sourceId Source identifier.
+   * @returns Source instance, or null when missing.
    */
   public getSource(sourceId: string): Source | null {
     if (!this.nativeSnapshotter) {
@@ -448,16 +448,16 @@ export class MapSnapshotter {
   }
 
   /**
-   * 添加图片到快照样式
-   * 
-   * 对应 Android: `MapSnapshotter.addImage(String, Bitmap, boolean)`
-   * 
-   * 应在 onDidFinishLoadingStyle 回调中调用
-   * 
-   * @param name 图片名称
-   * @param imageData 图片数据（ImageBitmap 或 ArrayBuffer）
-   * @param sdf 是否为 SDF（Signed Distance Field）图片
-   * 
+   * Add an image to the snapshot style.
+   *
+   * Mirrors Android `MapSnapshotter.addImage(String, Bitmap, boolean)`.
+   *
+   * Should be invoked inside `onDidFinishLoadingStyle`.
+   *
+   * @param name Image identifier.
+   * @param imageData Image data (`ImageBitmap` or `ArrayBuffer`).
+   * @param sdf Whether the image is an SDF (Signed Distance Field) sprite.
+   *
    * @example
    * ```typescript
    * snapshotter.setObserver({
@@ -486,10 +486,10 @@ export class MapSnapshotter {
   }
 
   /**
-   * 从 native 结果创建 PixelMap
+   * Create a PixelMap from the native result.
    *
-   * @param result Native 返回的结果对象
-   * @returns Promise<PixelMap>
+   * @param result Native result object.
+   * @returns Promise resolving to a PixelMap.
    */
   private async createPixelMapFromNativeResult(result: SnapshotResultNAPI): Promise<image.PixelMap> {
     return new Promise((resolve, reject) => {
@@ -504,7 +504,7 @@ export class MapSnapshotter {
           isHdr: false
         };
 
-        // 从 ArrayBuffer 创建 PixelMap
+        // Create PixelMap from the ArrayBuffer.
         image.createPixelMap(result.data, imageInfo, (err, pixelMap) => {
           if (err) {
             reject(err);

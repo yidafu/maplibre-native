@@ -1,6 +1,6 @@
 /**
- * MapLibre Native for HarmonyOS - Sources Index
- * 数据源类型定义统一导出
+ * MapLibre Native for HarmonyOS - sources index.
+ * Central export for source type definitions.
  */
 
 import { GeoJsonSource } from './GeoJsonSource';
@@ -20,8 +20,7 @@ export { RasterDemSource, RasterDemSourceOptions } from './RasterDemSource';
 export { ImageSource } from './ImageSource';
 
 /**
- * Source - 所有数据源类型的联合类型
- * 用于 Style API 中的类型安全
+ * Source - union of all source types used by the Style API.
  */
 export type Source =
   | GeoJsonSource

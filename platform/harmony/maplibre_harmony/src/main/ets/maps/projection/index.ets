@@ -1,7 +1,5 @@
 /**
- * Projection - 坐标投影模块
- *
- * 导出投影相关的类和接口
+ * Projection module: exports projection-related classes and helpers.
  */
 
 export { Projection } from './Projection';

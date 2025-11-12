@@ -1,21 +1,21 @@
 import maplibre from 'libmaplibre.so';
 
-// 使用 NAPI Marker 类型
+// Use the NAPI Marker type
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnInfoWindowLongClickListener - InfoWindow 长按事件监听器
+ * OnInfoWindowLongClickListener - InfoWindow long-press listener.
  *
- * 当用户长按 Marker 的 InfoWindow 时触发
+ * Triggered when the user long-presses a marker's InfoWindow.
  *
- * 参考:
+ * Reference:
  * - Android: MapLibreMap.OnInfoWindowLongClickListener
  */
 export interface OnInfoWindowLongClickListener {
   /**
-   * InfoWindow 被长按时调用
+   * Called when the InfoWindow is long-pressed.
    *
-   * @param marker InfoWindow 所属的 Marker
+   * @param marker Marker that owns the InfoWindow.
    */
   onInfoWindowLongClick(marker: Marker): void;
 }

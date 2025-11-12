@@ -1,26 +1,26 @@
 /**
- * 定义用户位置在地图上的渲染方式
+ * Defines how the user's location is rendered on the map.
  * Contains the variety of ways the user location can be rendered on the map.
  */
 export class RenderMode {
   /**
-   * 基础跟踪模式，显示用户位置点，忽略方向
+   * Basic tracking that shows the user position point and ignores bearing.
    * Basic tracking is enabled, bearing ignored.
    */
   static readonly NORMAL: number = 0x00000012;
   /**
-   * 跟踪用户位置，方向由指南针提供
+   * Track the user location with bearing supplied by the compass.
    * Tracking the user location with bearing considered from a CompassEngine.
    */
   static readonly COMPASS: number = 0x00000004;
   /**
-   * 跟踪用户位置，方向由 GPS 提供
+   * Track the user location with bearing supplied by GPS.
    * Tracking the user location with bearing considered from Location.
    */
   static readonly GPS: number = 0x00000008;
 
   /**
-   * 验证渲染模式是否有效
+   * Validate whether the render mode is supported.
    */
   static isValid(mode: number): boolean {
     return mode === RenderMode.NORMAL ||
@@ -29,7 +29,7 @@ export class RenderMode {
   }
 
   /**
-   * 获取渲染模式的名称
+   * Get the render mode name.
    */
   static getName(mode: number): string {
     switch (mode) {

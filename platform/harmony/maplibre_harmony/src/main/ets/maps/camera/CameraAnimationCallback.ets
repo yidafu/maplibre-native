@@ -1,48 +1,48 @@
 /**
- * CameraAnimationCallback - 相机动画回调接口
+ * CameraAnimationCallback - camera animation callback interface.
  *
- * 用于监听相机动画的完成和取消事件
- * 对应 Android 的 CancelableCallback 和 iOS 的 completion handler
+ * Listens for camera animation completion or cancellation events.
+ * Mirrors Android's `CancelableCallback` and the iOS completion handler.
  */
 
 /**
- * 相机动画回调接口
+ * Camera animation callback interface.
  */
 export interface CameraAnimationCallback {
   /**
-   * 动画完成时调用
+   * Invoked when the animation finishes.
    */
   onFinish(): void;
 
   /**
-   * 动画取消时调用（可选）
+   * Invoked when the animation is cancelled (optional).
    */
   onCancel?(): void;
 }
 
 /**
- * 简化的完成回调类型
+ * Simplified completion callback type.
  */
 export type OnFinishCallback = () => void;
 
 /**
- * 动画选项接口（扩展用）
+ * Animation options interface (for future extensions).
  */
 export interface AnimationOptions {
   /**
-   * 动画持续时间（毫秒）
+   * Animation duration (milliseconds).
    */
   duration: number;
 
   /**
-   * 完成回调（可选）
+   * Completion callback (optional).
    */
   callback?: CameraAnimationCallback;
 }
 
 /**
- * CameraAnimationCallback 实现类
- * 用于避免对象字面量类型错误
+ * Concrete implementation of CameraAnimationCallback.
+ * Helps avoid type mismatches when using object literals.
  */
 export class CameraAnimationCallbackImpl implements CameraAnimationCallback {
   private finishFn: () => void;
@@ -65,7 +65,7 @@ export class CameraAnimationCallbackImpl implements CameraAnimationCallback {
 }
 
 /**
- * 创建 CameraAnimationCallback 的工厂函数
+ * Factory helper to create CameraAnimationCallback instances.
  */
 export function createAnimationCallback(
   onFinish: () => void,

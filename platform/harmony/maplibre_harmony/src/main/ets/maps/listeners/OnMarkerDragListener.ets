@@ -1,35 +1,35 @@
 
-// 使用 NAPI Marker 类型
+// Use the NAPI Marker type
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnMarkerDragListener - Marker 拖拽事件监听器
+ * OnMarkerDragListener - marker drag listener.
  *
- * 当用户拖拽 Marker 时触发
+ * Triggered when the user drags a marker.
  *
- * 参考:
- * - iOS: MLNAnnotationView drag state changes
- * - Android: DraggableSymbolsManager
+ * Reference:
+ * - iOS: `MLNAnnotationView` drag state changes.
+ * - Android: `DraggableSymbolsManager`.
  */
 export interface OnMarkerDragListener {
   /**
-   * Marker 开始拖拽时调用
+   * Called when marker dragging begins.
    *
-   * @param marker 正在被拖拽的 Marker
+   * @param marker Marker currently being dragged.
    */
   onMarkerDragStart(marker: Marker): void;
 
   /**
-   * Marker 拖拽过程中持续调用
+   * Called repeatedly while the marker is being dragged.
    *
-   * @param marker 正在被拖拽的 Marker
+   * @param marker Marker currently being dragged.
    */
   onMarkerDrag(marker: Marker): void;
 
   /**
-   * Marker 拖拽结束时调用
+   * Called when marker dragging ends.
    *
-   * @param marker 完成拖拽的 Marker
+   * @param marker Marker that finished dragging.
    */
   onMarkerDragEnd(marker: Marker): void;
 }

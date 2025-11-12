@@ -1,7 +1,7 @@
 /**
- * Snapshot - 地图快照模块
+ * Snapshot module exports.
  *
- * 导出快照相关的类和接口
+ * Re-exports snapshot utilities and interfaces.
  */
 
 export { MapSnapshotter, SnapshotReadyCallback, SnapshotErrorHandler, MapSnapshotterObserver } from './MapSnapshotter';

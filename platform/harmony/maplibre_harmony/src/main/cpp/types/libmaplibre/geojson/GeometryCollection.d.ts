@@ -1,13 +1,13 @@
 import type { Geometry } from './Geometry';
 
 /**
- * GeometryCollection - GeoJSON GeometryCollection 几何体接口
- * 
- * 表示一个 GeoJSON GeometryCollection 对象，包含多个不同类型的几何体。
- * C++ 层返回的是符合此结构的普通 JavaScript 对象（对象字面量）。
- * 
- * 规范参考：RFC 7946 (GeoJSON)
- * 
+ * GeometryCollection - GeoJSON geometry collection interface.
+ *
+ * Represents a GeoJSON GeometryCollection containing multiple geometries of different types.
+ * The C++ layer returns plain JavaScript objects matching this shape.
+ *
+ * Specification: RFC 7946 (GeoJSON)
+ *
  * @example
  * ```typescript
  * const geometryCollection: GeometryCollection = {
@@ -42,13 +42,13 @@ import type { Geometry } from './Geometry';
  */
 export interface GeometryCollection {
   /**
-   * GeoJSON 对象类型，固定为 "GeometryCollection"
+   * GeoJSON object type, always "GeometryCollection".
    */
   type: 'GeometryCollection';
 
   /**
-   * 几何体数组
-   * 可以包含任意类型的 GeoJSON 几何体对象
+   * Array of geometries.
+   * May contain any GeoJSON geometry type.
    */
   geometries: Geometry[];
 }

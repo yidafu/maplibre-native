@@ -1,13 +1,13 @@
 /**
- * OnStyleLoadErrorListener - 样式加载错误监听器
+ * OnStyleLoadErrorListener - style load failure listener.
  *
- * 当地图样式加载失败时触发
+ * Triggered when the map style fails to load.
  */
 export interface OnStyleLoadErrorListener {
   /**
-   * 样式加载失败回调
+   * Callback invoked upon style load failure.
    *
-   * @param error 错误信息描述
+   * @param error Error description.
    */
   onStyleLoadError(error: string): void;
 }

@@ -1,7 +1,7 @@
 /**
- * Marker - 标注封装类
+ * Marker - ArkTS wrapper for map markers.
  *
- * 符合 ArkTS 规范的封装实现
+ * Provides an ArkTS-friendly interface around the native marker implementation.
  */
 import maplibre from 'libmaplibre.so';
 import type { MarkerOptions as NAPIMarkerOptions } from 'libmaplibre.so';
@@ -10,7 +10,7 @@ import type { ILatLng } from '../types/NativeTypes';
 import type { MapLibreMap } from '../MapLibreMap';
 
 /**
- * 锚点接口
+ * Marker anchor interface.
  */
 export interface MarkerAnchor {
   u: number;
@@ -18,8 +18,8 @@ export interface MarkerAnchor {
 }
 
 /**
- * 原生 Marker 选项接口（用于 NAPI 层交互）
- * 兼容 NAPI 层的 MarkerOptions，但 position 使用 ILatLng
+ * Native marker options (for NAPI interop).
+ * Compatible with the NAPI `MarkerOptions`, but uses `ILatLng` for position.
  */
 export interface NativeMarkerOptions {
   position: ILatLng;
@@ -35,7 +35,7 @@ export interface NativeMarkerOptions {
 }
 
 /**
- * 内部创建标记
+ * Internal marker tag used for native construction.
  */
 class InternalMarker {
   static readonly INSTANCE = new InternalMarker();
@@ -45,28 +45,27 @@ class InternalMarker {
 }
 
 /**
- * Marker 封装类
+ * Marker wrapper.
  */
 export class Marker {
   private nativeInstance: maplibre.Marker;
-  private _id: number = 0; // 存储 Marker ID（由 MarkerManager 设置）
-  private _map: MapLibreMap | null = null; // 存储所属的 MapLibreMap
-  private _selected: boolean = false; // 存储选中状态
-  private _dragState: number = 0; // 存储拖拽状态
+  private _id: number = 0; // Marker ID (set by MarkerManager)
+  private _map: MapLibreMap | null = null; // Owning MapLibreMap instance
+  private _selected: boolean = false; // Selection state cache
+  private _dragState: number = 0; // Drag state cache
 
   /**
-   * 构造函数
-   * 支持两种模式：
-   * 1. 从选项创建: new Marker(options)
-   * 2. 从 NAPI 实例创建（内部使用）: new Marker(marker, nativeInstance)
+   * Constructor supporting two modes:
+   * 1. Create from options: `new Marker(options)`
+  * 2. Create from a native instance (internal use): `new Marker(marker, nativeInstance)`
    */
   constructor(optionsOrMarker: NativeMarkerOptions | InternalMarker, nativeInstance?: maplibre.Marker) {
     if (optionsOrMarker === InternalMarker.INSTANCE && nativeInstance) {
-      // 内部模式：从 NAPI 实例创建
+      // Internal mode: construct from a NAPI instance
       this.nativeInstance = nativeInstance;
     } else if (typeof optionsOrMarker === 'object') {
-      // 正常模式：从选项对象创建
-      // 转换为 NAPI 层期望的 MarkerOptions 类型
+      // Standard mode: construct from an options object
+      // Convert to the NAPI MarkerOptions structure
       const opts = optionsOrMarker as NativeMarkerOptions;
       const napiOptions: NAPIMarkerOptions = {
         position: opts.position,
@@ -87,27 +86,27 @@ export class Marker {
   }
 
   /**
-   * 从 NAPI 实例创建（内部使用）
+   * Construct from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Marker): Marker {
     return new Marker(InternalMarker.INSTANCE, nativeInstance);
   }
 
   /**
-   * 创建 Marker（静态工厂方法）
+   * Create a marker from options (factory helper).
    */
   static createFromOptions(options: NativeMarkerOptions): Marker {
     return new Marker(options);
   }
 
   /**
-   * 获取 NAPI 实例（内部使用）
+   * Retrieve the native marker (internal use).
    */
   getNative(): maplibre.Marker {
     return this.nativeInstance;
   }
 
-  // ========== Marker API 方法 ==========
+  // ========== Marker API ==========
 
   getPosition(): LatLng {
     const pos = this.nativeInstance.getPosition();
@@ -205,7 +204,7 @@ export class Marker {
   }
 
   showInfoWindow(): void {
-    // 通过 MapLibreMap 显示 InfoWindow（ETS 层实现）
+    // Display the InfoWindow via MapLibreMap (ETS layer implementation)
     if (this._map) {
       this._map.showInfoWindow(this);
     } else {
@@ -214,14 +213,14 @@ export class Marker {
   }
 
   hideInfoWindow(): void {
-    // 通过 MapLibreMap 隐藏 InfoWindow（ETS 层实现）
+    // Hide the InfoWindow via MapLibreMap (ETS layer implementation)
     if (this._map) {
       this._map.hideInfoWindow(this);
     }
   }
 
   isInfoWindowShown(): boolean {
-    // 通过 InfoWindowManager 检查状态
+    // Query InfoWindow state via InfoWindowManager
     if (this._map) {
       const infoWindow = this._map.getInfoWindowManager().get(this);
       return infoWindow ? infoWindow.isShown() : false;
@@ -229,17 +228,17 @@ export class Marker {
     return false;
   }
 
-  // ========== 扩展方法（MarkerManager 需要的）==========
+  // ========== Extended methods used by MarkerManager ==========
 
   /**
-   * 获取 Marker ID（内部使用）
+   * Get the marker ID (internal use).
    */
   getId(): number {
     return this._id;
   }
 
   /**
-   * 设置 Marker ID（内部使用）
+   * Set the marker ID (internal use).
    */
   setId(id: number): Marker {
     this._id = id;
@@ -247,7 +246,7 @@ export class Marker {
   }
 
   /**
-   * 设置所属的 MapLibreMap（内部使用）
+   * Associate the marker with a MapLibreMap (internal use).
    */
   setMapLibreMap(map: MapLibreMap): Marker {
     this._map = map;
@@ -255,7 +254,7 @@ export class Marker {
   }
 
   /**
-   * 设置选中状态（内部使用）
+   * Set the selection state (internal use).
    */
   setSelected(selected: boolean): Marker {
     this._selected = selected;
@@ -263,14 +262,14 @@ export class Marker {
   }
 
   /**
-   * 获取拖拽状态（内部使用）
+   * Get the drag state (internal use).
    */
   getDragState(): number {
     return this._dragState;
   }
 
   /**
-   * 设置拖拽状态（内部使用）
+   * Set the drag state (internal use).
    */
   setDragState(state: number): Marker {
     this._dragState = state;
@@ -278,30 +277,30 @@ export class Marker {
   }
 
   /**
-   * 移除 Marker（内部使用）
+   * Remove the marker (internal use).
    */
   remove(): void {
-    // MarkerManager 使用的内部方法
+    // Placeholder for MarkerManager usage
   }
 
   /**
-   * 动画移动到指定位置
+   * Animate the marker to a target position.
    */
   animateToPosition(position: LatLng, duration: number): void {
-    // 动画方法
+    // Animation hook
   }
 
   /**
-   * 动画改变透明度
+   * Animate marker opacity.
    */
   animateAlpha(alpha: number, duration: number): void {
-    // 动画方法
+    // Animation hook
   }
 
   /**
-   * 动画旋转
+   * Animate marker rotation.
    */
   animateRotation(rotation: number, duration: number): void {
-    // 动画方法
+    // Animation hook
   }
 }

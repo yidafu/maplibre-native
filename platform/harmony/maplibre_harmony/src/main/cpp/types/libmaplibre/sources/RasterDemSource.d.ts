@@ -1,68 +1,66 @@
 /**
- * RasterDemSourceOptions - 栅格 DEM 数据源选项
+ * RasterDemSourceOptions - raster DEM source options.
  */
 export interface RasterDemSourceOptions {
-  /** 瓦片 URL */
+  /** Tile URL template. */
   url?: string;
 
-  /** 瓦片 URL 列表 */
+  /** Explicit tile URL list. */
   tiles?: string[];
 
-  /** 最小缩放级别 */
+  /** Minimum zoom level. */
   minzoom?: number;
 
-  /** 最大缩放级别 */
+  /** Maximum zoom level. */
   maxzoom?: number;
 
-  /** 瓦片大小 */
+  /** Tile size. */
   tileSize?: number;
 
-  /** 瓦片坐标系统 */
+  /** Tile scheme. */
   scheme?: 'xyz' | 'tms';
 
-  /** DEM 编码方式 */
+  /** DEM encoding. */
   encoding?: 'mapbox' | 'terrarium';
 }
 
 /**
- * RasterDemSource - 栅格 DEM 数据源
- *
- * 用于加载数字高程模型数据
+ * RasterDemSource - loads digital elevation model (DEM) data.
  */
 export class RasterDemSource {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 构造栅格 DEM 数据源
-   * @param id 数据源 ID
-   * @param options 可选配置
+   * Construct a raster DEM source.
+   * @param id Source identifier.
+   * @param options Optional configuration.
    */
   constructor(id: string, options?: RasterDemSourceOptions);
 
   /**
-   * 获取数据源 ID
+   * Get the source identifier.
    */
   getId(): string;
 
   /**
-   * 获取原生指针（内部使用）
+   * Reserved for internal native pointer access.
    */
 
   /**
-   * 获取数据 URL
+   * Get the data URL.
    */
   getUrl(): string;
 
   /**
-   * 设置数据 URL
-   * @param url 数据 URL
-   * @returns this（支持链式调用）
+   * Set the data URL.
+   * @param url Data URL.
+   * @returns this (chainable).
    */
   setUrl(url: string): this;
 
-  /** 设置瓦片大小（像素） */
+  /** Set tile size in pixels. */
   setTileSize(tileSize: number): this;
 }

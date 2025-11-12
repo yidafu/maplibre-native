@@ -1,19 +1,19 @@
 /**
- * MultiPolygon - GeoJSON MultiPolygon 几何体接口
- * 
- * 表示一个 GeoJSON MultiPolygon 对象，包含多个多边形。
- * C++ 层返回的是符合此结构的普通 JavaScript 对象（对象字面量）。
- * 
- * 规范参考：RFC 7946 (GeoJSON)
- * 
+ * MultiPolygon - GeoJSON MultiPolygon interface.
+ *
+ * Represents a GeoJSON MultiPolygon containing multiple polygons.
+ * The C++ layer returns plain JavaScript objects matching this structure.
+ *
+ * Specification: RFC 7946 (GeoJSON)
+ *
  * @example
  * ```typescript
  * const multiPolygon: MultiPolygon = {
  *   type: 'MultiPolygon',
  *   coordinates: [
- *     // 第一个多边形
+ *     // First polygon
  *     [
- *       // 外环
+ *       // Outer ring
  *       [
  *         [116.4, 39.9],
  *         [116.5, 39.9],
@@ -22,7 +22,7 @@
  *         [116.4, 39.9]
  *       ]
  *     ],
- *     // 第二个多边形
+ *     // Second polygon
  *     [
  *       [
  *         [121.4, 31.2],
@@ -38,13 +38,12 @@
  */
 export interface MultiPolygon {
   /**
-   * GeoJSON 对象类型，固定为 "MultiPolygon"
+   * GeoJSON object type, always "MultiPolygon".
    */
   type: 'MultiPolygon';
 
   /**
-   * 坐标数组
-   * 由多个 Polygon 的坐标数组组成
+   * Coordinate array composed of multiple Polygon coordinate arrays.
    */
   coordinates: number[][][][];
 }

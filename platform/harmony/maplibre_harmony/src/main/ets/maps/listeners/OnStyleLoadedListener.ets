@@ -1,15 +1,15 @@
 import { Style } from '../style/Style';
 
 /**
- * OnStyleLoadedListener - 样式加载完成监听器
+ * OnStyleLoadedListener - style load completion listener.
  *
- * 当地图样式加载完成后触发，此时可以安全地操作样式相关的资源
+ * Triggered when the map style has finished loading; safe to manipulate style resources afterwards.
  */
 export interface OnStyleLoadedListener {
   /**
-   * 样式加载完成回调
+   * Callback invoked once the style is loaded.
    *
-   * @param style 已加载的样式对象（可能为 null，表示使用 NativeMapView 直接操作）
+   * @param style Loaded style object (may be null if working directly with NativeMapView).
    */
   onStyleLoaded(style: Style | null): void;
 }

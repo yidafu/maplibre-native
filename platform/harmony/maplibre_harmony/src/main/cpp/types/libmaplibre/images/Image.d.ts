@@ -1,115 +1,112 @@
 /**
- * ImageOptions - 图片选项接口
+ * ImageOptions - image option interface.
  */
 export interface ImageOptions {
-  /** 图片名称（必需） */
+  /** Image name (required). */
   name: string;
 
-  /** 图片宽度（必需，像素） */
+  /** Image width in pixels (required). */
   width: number;
 
-  /** 图片高度（必需，像素） */
+  /** Image height in pixels (required). */
   height: number;
 
-  /** RGBA 图片数据（必需，预乘 alpha） */
+  /** RGBA image data (required, premultiplied alpha). */
   data: Uint8Array;
 
-  /** 像素比率（可选，默认 1.0） */
+  /** Pixel ratio (optional, defaults to 1.0). */
   pixelRatio?: number;
 
-  /** 是否为 SDF（Signed Distance Field）图片（可选，默认 false） */
+  /** Whether the image is an SDF (Signed Distance Field) asset (optional, defaults to false). */
   sdf?: boolean;
 
   /**
-   * 水平拉伸区域（可选）
-   * 格式：[start1, end1, start2, end2, ...]
-   * 每对值定义一个可拉伸区域
+   * Optional horizontal stretch regions.
+   * Format: [start1, end1, start2, end2, ...]; each pair defines a stretchable segment.
    */
   stretchX?: number[];
 
   /**
-   * 垂直拉伸区域（可选）
-   * 格式：[start1, end1, start2, end2, ...]
-   * 每对值定义一个可拉伸区域
+   * Optional vertical stretch regions.
+   * Format: [start1, end1, start2, end2, ...]; each pair defines a stretchable segment.
    */
   stretchY?: number[];
 
   /**
-   * 内容区域（可选）
-   * 格式：[left, top, right, bottom]
-   * 定义文本或图标可以放置的区域
+   * Optional content inset.
+   * Format: [left, top, right, bottom]; defines where text or icons can be placed.
    */
   content?: number[];
 }
 
 /**
- * Image - 地图样式图片类
+ * Image - map style image class.
  *
- * 用于在地图样式中添加自定义图片，支持：
- * - 基本图片显示
- * - SDF（Signed Distance Field）图片用于动态着色
- * - 可拉伸图片（类似 9-patch）
- * - 内容区域定义
+ * Adds custom images to map styles, supporting:
+ * - Basic image rendering.
+ * - SDF images for runtime recoloring.
+ * - Stretchable images (similar to nine-patch).
+ * - Content area definitions.
  */
 export class Image {
   /**
-   * 构造函数
-   * @param options - 图片选项
-   * @throws 如果参数无效
+   * Constructor.
+   * @param options Image options.
+   * @throws Throws when arguments are invalid.
    */
   constructor(options: ImageOptions);
 
   /**
-   * 获取图片名称
-   * @returns 图片名称
+   * Get the image name.
+   * @returns Image name.
    */
   getName(): string;
 
   /**
-   * 获取图片宽度
-   * @returns 宽度（像素）
+   * Get the image width.
+   * @returns Width in pixels.
    */
   getWidth(): number;
 
   /**
-   * 获取图片高度
-   * @returns 高度（像素）
+   * Get the image height.
+   * @returns Height in pixels.
    */
   getHeight(): number;
 
   /**
-   * 获取像素比率
-   * @returns 像素比率
+   * Get the pixel ratio.
+   * @returns Pixel ratio.
    */
   getPixelRatio(): number;
 
   /**
-   * 检查是否为 SDF 图片
-   * @returns true 如果是 SDF 图片
+   * Check whether the image is SDF.
+   * @returns True if this is an SDF image.
    */
   getSdf(): boolean;
 
   /**
-   * 获取图片数据
-   * @returns RGBA 图片数据的副本，如果不可用则返回 null
+   * Get the image data.
+   * @returns Copy of the RGBA buffer, or null when unavailable.
    */
   getData(): Uint8Array | null;
 
   /**
-   * 获取水平拉伸区域
-   * @returns 拉伸区域数组 [start1, end1, start2, end2, ...]，如果未设置则返回 null
+   * Get horizontal stretch regions.
+   * @returns Array [start1, end1, start2, end2, ...], or null if unset.
    */
   getStretchX(): number[] | null;
 
   /**
-   * 获取垂直拉伸区域
-   * @returns 拉伸区域数组 [start1, end1, start2, end2, ...]，如果未设置则返回 null
+   * Get vertical stretch regions.
+   * @returns Array [start1, end1, start2, end2, ...], or null if unset.
    */
   getStretchY(): number[] | null;
 
   /**
-   * 获取内容区域
-   * @returns 内容区域 [left, top, right, bottom]，如果未设置则返回 null
+   * Get the content inset.
+   * @returns Array [left, top, right, bottom], or null if unset.
    */
   getContent(): number[] | null;
 }

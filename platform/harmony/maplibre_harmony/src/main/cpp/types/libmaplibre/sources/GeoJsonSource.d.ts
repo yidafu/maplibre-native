@@ -3,25 +3,22 @@ import type { JSONValue } from '../CommonTypes';
 import type { IFeature, IFeatureCollection } from '../geojson';
 
 /**
- * 聚类属性配置
+ * Cluster property configuration for custom aggregate attributes.
  *
- * 用于在聚类时计算自定义聚合属性
- *
- * 格式：`{ "propertyName": [operatorExpression, mapExpression] }`
- *
- * - operatorExpression: 聚合操作符（如 "+", "max", "min" 等）或完整的聚合表达式
- * - mapExpression: 从单个点提取值的 Expression
+ * Format: `{ "propertyName": [operatorExpression, mapExpression] }`
+ * - operatorExpression: aggregate operator (e.g. "+", "max", "min") or a full aggregate expression.
+ * - mapExpression: expression extracting a value from an individual point.
  *
  * @example
 * ```typescript
  * {
- *   // 计算最大值
+ *   // Compute the maximum value.
  *   "max": [["max", ["accumulated"], ["get", "sum"]], ["get", "mag"]],
  *
- *   // 简单求和
+ *   // Simple sum.
  *   "sum": ["+", ["get", "value"]],
  *
- *   // 计算是否有任何点满足条件
+ *   // Check whether any point satisfies a condition.
  *   "hasSpecial": ["any", ["==", ["get", "type"], "special"]]
  * }
  * ```
@@ -29,44 +26,40 @@ import type { IFeature, IFeatureCollection } from '../geojson';
 export type ClusterProperties = Record<string, [ExpressionLiteral | string, ExpressionLiteral]>;
 
 /**
- * GeoJSON 数据源选项
+ * GeoJSON source options.
  */
 export interface GeoJsonOptions {
-  /** 最小缩放级别 */
+  /** Minimum zoom level. */
   minzoom?: number;
 
-  /** 最大缩放级别 */
+  /** Maximum zoom level. */
   maxzoom?: number;
 
-  /** 瓦片缓冲区大小 */
+  /** Tile buffer size. */
   buffer?: number;
 
-  /** 简化容差 */
+  /** Simplification tolerance. */
   tolerance?: number;
 
-  /** 是否启用聚类 */
+  /** Enable clustering. */
   cluster?: boolean;
 
-  /** 聚类半径（默认 50） */
+  /** Cluster radius (default 50). */
   clusterRadius?: number;
 
-  /** 聚类最大缩放级别 */
+  /** Cluster maximum zoom. */
   clusterMaxZoom?: number;
 
-  /** 聚类最小点数（默认 2） */
+  /** Cluster minimum point count (default 2). */
   clusterMinPoints?: number;
 
   /**
-   * 聚类属性 - 使用 Expression 计算聚合属性
+   * Cluster properties computed via expressions.
    *
-   * 支持在聚类时计算自定义属性，可用于：
-   * - 计算聚类中的最大/最小值
-   * - 求和、平均值
-   * - 检查是否满足某些条件
-   *
-   * 每个属性定义为：`[operatorExpr, mapExpr]`
-   * - operatorExpr: 聚合操作符或表达式数组
-   * - mapExpr: 从单个要素提取值的表达式数组
+   * Enables custom aggregations such as min/max, sums/averages, or conditional checks.
+   * Each entry follows `[operatorExpr, mapExpr]`.
+   * - operatorExpr: aggregate operator or expression array.
+   * - mapExpr: expression extracting a value from a feature.
    *
    * @example
   * ```typescript
@@ -81,29 +74,29 @@ export interface GeoJsonOptions {
    */
   clusterProperties?: ClusterProperties;
 
-  /** 是否计算线段度量 */
+  /** Enable line metrics. */
   lineMetrics?: boolean;
 
-  /** 是否生成要素 ID */
+  /** Generate feature IDs. */
   generateId?: boolean;
 
-  /** 提升 ID 属性 */
+  /** Promote ID attribute. */
   promoteId?: string;
 }
 
 /**
- * GeoJSON 坐标位置类型（兼容所有几何体）
+ * GeoJSON coordinate position type (compatible with all geometries).
  */
-export type Position = number[]; // [lng, lat] 或 [lng, lat, altitude]
+export type Position = number[]; // [lng, lat] or [lng, lat, altitude]
 
 /**
- * GeoJSON 坐标类型（联合类型，涵盖所有几何体）
+ * GeoJSON coordinate union covering all geometries.
  */
 export type Coordinates = Position | Position[] | Position[][] | Position[][][];
 
 /**
- * GeoJSON 几何体接口（简化版，用于数据传递）
- * 注意：完整的几何体类型请使用 geojson 模块中的 NAPI 类
+ * Simplified GeoJSON geometry interface for data interchange.
+ * For full geometry types use the geojson module's NAPI classes.
  */
 export interface Geometry {
   type: 'Point' | 'LineString' | 'Polygon' | 'MultiPoint' | 'MultiLineString' | 'MultiPolygon' | 'GeometryCollection';
@@ -111,8 +104,8 @@ export interface Geometry {
 }
 
 /**
- * GeoJSON Feature 接口（简化版，用于数据传递）
- * 注意：完整的 Feature 类型请使用 geojson 模块中的 NAPI 类
+ * Simplified GeoJSON Feature interface for data interchange.
+ * For full Feature types use the geojson module's NAPI classes.
  */
 export interface Feature {
   type: 'Feature';
@@ -122,120 +115,110 @@ export interface Feature {
 }
 
 /**
- * GeoJSON 数据类型（支持多种格式）
+ * GeoJSON data input types (multiple formats supported).
  */
 export type GeoJsonData = string | Geometry | IFeature | IFeatureCollection | object;
 
 /**
- * GeoJsonSource - GeoJSON 数据源
- *
- * 支持点、线、面等矢量要素，支持聚类功能
+ * GeoJsonSource - GeoJSON data source supporting vector features and clustering.
  */
 export class GeoJsonSource {
   /**
-   * 类型标识，用于 ETS 层的类型判断
+   * Type token used for ETS-side type checks.
    */
   _TYPE_?: string;
 
   /**
-   * 构造 GeoJSON 数据源
-   * @param id 数据源 ID
-   * @param options 可选配置
+   * Construct a GeoJSON source.
+   * @param id Source identifier.
+   * @param options Optional configuration.
    */
   constructor(id: string, options?: GeoJsonOptions);
 
   /**
-   * 获取数据源 ID
+   * Get the source identifier.
    */
   getId(): string;
 
   /**
-   * 设置 GeoJSON 数据（异步）
-   * 支持多种数据格式：
-   * - GeoJSON 字符串
-   * - Geometry 对象 (Point, LineString, Polygon, etc.)
-   * - Feature 对象
-   * - FeatureCollection 对象
-   * @param data GeoJSON 数据
-   * @returns this（支持链式调用）
+   * Set GeoJSON data asynchronously.
+   * Accepts GeoJSON strings, Geometry objects, Feature objects, or FeatureCollections.
+   * @param data GeoJSON payload.
+   * @returns this (chainable).
    */
   setGeoJson(data: GeoJsonData): this;
 
   /**
-   * 设置 GeoJSON 数据（同步）
-   * 支持多种数据格式：
-   * - GeoJSON 字符串
-   * - Geometry 对象 (Point, LineString, Polygon, etc.)
-   * - Feature 对象
-   * - FeatureCollection 对象
-   * @param data GeoJSON 数据
-   * @returns this（支持链式调用）
+   * Set GeoJSON data synchronously.
+   * Accepts GeoJSON strings, Geometry objects, Feature objects, or FeatureCollections.
+   * @param data GeoJSON payload.
+   * @returns this (chainable).
    */
   setGeoJsonSync(data: GeoJsonData): this;
 
   /**
-   * 从 URL 加载 GeoJSON 数据
-   * @param url GeoJSON 数据 URL
-   * @returns this（支持链式调用）
+   * Load GeoJSON data from a URL.
+   * @param url GeoJSON data URL.
+   * @returns this (chainable).
    */
   setUrl(url: string): this;
 
-  /** 设置瓦片生成的最大缩放级别 */
+  /** Set the maximum zoom level for tile generation. */
   setMaxZoom(maxZoom: number): this;
 
-  /** 设置瓦片缓冲区大小（像素） */
+  /** Set the tile buffer size in pixels. */
   setBuffer(buffer: number): this;
 
-  /** 设置几何简化容差 */
+  /** Set geometry simplification tolerance. */
   setTolerance(tolerance: number): this;
 
-  /** 启用或禁用线段度量 */
+  /** Enable or disable line metrics. */
   setLineMetrics(lineMetrics: boolean): this;
 
-  /** 启用或禁用聚类 */
+  /** Enable or disable clustering. */
   setCluster(cluster: boolean): this;
 
-  /** 设置聚类半径（像素） */
+  /** Set cluster radius in pixels. */
   setClusterRadius(clusterRadius: number): this;
 
-  /** 设置聚类的最大缩放级别 */
+  /** Set the maximum zoom used during clustering. */
   setClusterMaxZoom(clusterMaxZoom: number): this;
 
-  /** 设置聚类的最小点数 */
+  /** Set the minimum number of points required to form a cluster. */
   setClusterMinPoints(clusterMinPoints: number): this;
 
   /**
-   * 获取数据 URL
+   * Get the data URL.
    */
   getUrl(): string;
 
   /**
-   * 查询数据源要素
-   * @param filter 可选过滤表达式（Expression 数组格式）
-   * @returns IFeature 数组
+   * Query source features.
+   * @param filter Optional filter expression.
+   * @returns Array of IFeature.
    */
   querySourceFeatures(filter?: ExpressionLiteral): IFeature[];
 
   /**
-   * 获取聚类的子项
-   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 IFeature
-   * @returns 子 IFeature 数组
+   * Retrieve children of a cluster.
+   * @param clusterId Cluster ID or an IFeature containing cluster_id.
+   * @returns Array of child IFeature.
    */
   getClusterChildren(clusterId: number | IFeature): IFeature[];
 
   /**
-   * 获取聚类的叶子节点
-   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 IFeature
-   * @param limit 限制数量，默认 10
-   * @param offset 偏移量，默认 0
-   * @returns 叶子 IFeature 数组
+   * Retrieve cluster leaves.
+   * @param clusterId Cluster ID or IFeature containing cluster_id.
+   * @param limit Maximum leaf count (default 10).
+   * @param offset Offset into the leaf set (default 0).
+   * @returns Array of leaf IFeature.
    */
   getClusterLeaves(clusterId: number | IFeature, limit?: number, offset?: number): IFeature[];
 
   /**
-   * 获取聚类展开的缩放级别
-   * @param clusterId 聚类 ID 或包含 cluster_id 属性的 IFeature
-   * @returns 目标缩放级别
+   * Get the expansion zoom for a cluster.
+   * @param clusterId Cluster ID or IFeature containing cluster_id.
+   * @returns Target zoom level.
    */
   getClusterExpansionZoom(clusterId: number | IFeature): number;
 }

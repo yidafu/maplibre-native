@@ -1,8 +1,8 @@
 /**
- * MapLibre Native for HarmonyOS - Style API Type Definitions
- * 地图样式管理 API (NAPI 对象)
+ * MapLibre Native for HarmonyOS - Style API type definitions.
+ * Map style management API (NAPI object).
  *
- * 重构为面向对象接口，与 Android/iOS 架构保持一致
+ * Refactored as an object-oriented interface aligned with the Android/iOS design.
  */
 
 import type { Layer } from './layers';
@@ -12,194 +12,194 @@ import type { LightSpecification } from './CommonTypes';
 import type { Light } from './light/Light';
 
 /**
- * Style - 地图样式管理类
+ * Style - map style manager.
  *
- * 通过 MapLibreMap.getStyle() 获取实例
- * 不应该直接构造此类
+ * Obtain via MapLibreMap.getStyle().
+ * Should not be constructed directly.
  */
 export class Style {
   /**
-   * 获取样式 URI
-   * @returns 样式 URI
+   * Get the style URI.
+   * @returns Style URI.
    */
   getUri(): string;
 
   /**
-   * 获取样式 JSON
-   * @returns 样式 JSON 字符串
+   * Get the style JSON.
+   * @returns Style JSON string.
    */
   getJson(): string;
 
   /**
-   * 样式是否完全加载
-   * @returns true 如果样式已加载完成
+   * Check whether the style is fully loaded.
+   * @returns True when loading has completed.
    */
   isFullyLoaded(): boolean;
 
-  // ========== 数据源管理 ==========
+  // ========== Source management ==========
 
   /**
-   * 添加数据源
-   * @param source 数据源对象（GeoJsonSource、VectorSource、RasterSource 等 NAPI 对象）
+   * Add a source.
+   * @param source Source object (GeoJsonSource, VectorSource, RasterSource, etc.).
    */
   addSource(source: Source): void;
 
   /**
-   * 移除数据源
-   * @param sourceId 数据源 ID
-   * @returns 是否成功
+   * Remove a source.
+   * @param sourceId Source identifier.
+   * @returns True if the source was removed.
    */
   removeSource(sourceId: string): boolean;
 
   /**
-   * 获取指定数据源
-   * @param sourceId 数据源 ID
-   * @returns 数据源对象（GeoJsonSource、VectorSource 等），如果不存在则返回 null
+   * Retrieve a source by identifier.
+   * @param sourceId Source identifier.
+   * @returns Source instance (GeoJsonSource, VectorSource, etc.) or null if missing.
    */
   getSource(sourceId: string): Source | null;
 
   /**
-   * 获取所有数据源
-   * @returns 数据源数组（包含所有已添加的数据源）
+   * Get all sources.
+   * @returns Array containing every registered source.
    */
   getSources(): Source[];
 
-  // ========== 图层管理 ==========
+  // ========== Layer management ==========
 
   /**
-   * 添加图层（添加到顶部）
-   * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
+   * Add a layer (appended to the top).
+   * @param layer Layer object (FillLayer, LineLayer, CircleLayer, etc.).
    */
   addLayer(layer: Layer): void;
 
   /**
-   * 在指定图层下方添加图层
-   * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
-   * @param belowLayerId 参考图层 ID（新图层将添加到此图层下方）
+   * Add a layer below another layer.
+   * @param layer Layer object.
+   * @param belowLayerId Reference layer identifier; the new layer is inserted below it.
    */
   addLayerBelow(layer: Layer, belowLayerId: string): void;
 
   /**
-   * 在指定图层上方添加图层
-   * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
-   * @param aboveLayerId 参考图层 ID（新图层将添加到此图层上方）
+   * Add a layer above another layer.
+   * @param layer Layer object.
+   * @param aboveLayerId Reference layer identifier; the new layer is inserted above it.
    */
   addLayerAbove(layer: Layer, aboveLayerId: string): void;
 
   /**
-   * 在指定索引位置添加图层
-   * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等 NAPI 对象）
-   * @param index 索引位置
+   * Insert a layer at a specific index.
+   * @param layer Layer object.
+   * @param index Destination index.
    */
   addLayerAt(layer: Layer, index: number): void;
 
   /**
-   * 移除指定图层
-   * @param layerId 图层 ID
-   * @returns 是否成功
+   * Remove a layer by identifier.
+   * @param layerId Layer identifier.
+   * @returns True if the layer was removed.
    */
   removeLayer(layerId: string): boolean;
 
   /**
-   * 移除指定索引位置的图层
-   * @param index 索引位置
-   * @returns 是否成功
+   * Remove a layer at an index.
+   * @param index Target index.
+   * @returns True if the layer was removed.
    */
   removeLayerAt(index: number): boolean;
 
   /**
-   * 获取指定图层
-   * @param layerId 图层 ID
-   * @returns 图层对象（FillLayer、LineLayer 等），如果不存在则返回 null
+   * Retrieve a layer by identifier.
+   * @param layerId Layer identifier.
+   * @returns Layer instance (FillLayer, LineLayer, etc.) or null when missing.
    */
   getLayer(layerId: string): Layer | null;
 
   /**
-   * 获取所有图层
-   * @returns 图层数组（包含所有已添加的图层）
+   * Get all layers.
+   * @returns Array containing every registered layer.
    */
   getLayers(): Layer[];
 
-  // ========== 图像管理 ==========
+  // ========== Image management ==========
 
   /**
-   * 添加图像到样式
-   * @param name 图像名称
-   * @param imageData 图像数据（ArrayBuffer 或 Uint8Array，RGBA 格式）
-   * @param width 图像宽度（像素）
-   * @param height 图像高度（像素）
-   * @param sdf 是否为 SDF (Signed Distance Field) 图像，默认 false
+   * Add an image to the style.
+   * @param name Image name.
+   * @param imageData Image data (ArrayBuffer or Uint8Array, RGBA format).
+   * @param width Pixel width.
+   * @param height Pixel height.
+   * @param sdf Whether this is an SDF (signed distance field) image; defaults to false.
    */
   addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void;
 
   /**
-   * 异步添加图像到样式（不阻塞UI线程）
-   * @param name 图像名称
-   * @param imageData 图像数据（ArrayBuffer 或 Uint8Array，RGBA 格式）
-   * @param width 图像宽度（像素）
-   * @param height 图像高度（像素）
-   * @param sdf 是否为 SDF (Signed Distance Field) 图像，默认 false
-   * @returns Promise<void> 完成时resolve
+   * Add an image asynchronously (non-blocking).
+   * @param name Image name.
+   * @param imageData Image data (ArrayBuffer or Uint8Array, RGBA format).
+   * @param width Pixel width.
+   * @param height Pixel height.
+   * @param sdf Whether this is an SDF image; defaults to false.
+   * @returns Promise<void> resolved on completion.
    */
   addImageAsync(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): Promise<void>;
 
   /**
-   * 异步批量添加图像到样式（不阻塞UI线程）
-   * @param images 图像对象数组
-   * @returns Promise<void> 完成时resolve
+   * Add multiple images asynchronously (non-blocking).
+   * @param images Array of image objects.
+   * @returns Promise<void> resolved on completion.
    */
   addImagesAsync(images: Image[]): Promise<void>;
 
   /**
-   * 从样式中移除图像
-   * @param name 图像名称
-   * @returns 是否成功移除
+   * Remove an image from the style.
+   * @param name Image name.
+   * @returns True if the image was removed.
    */
   removeImage(name: string): boolean;
 
   /**
-   * 获取图像对象
-   * @param name 图像名称
-   * @returns 图像对象，如果不存在则返回 null
+   * Retrieve an image.
+   * @param name Image name.
+   * @returns Image object, or null if missing.
    */
   getImage(name: string): Image | null;
 
-  // ========== 光照管理 ==========
+  // ========== Lighting ==========
 
   /**
-   * 获取光照设置
-   * @returns 光照对象（Light NAPI 实例），如果不存在则返回 null
+   * Get the lighting configuration.
+   * @returns Light instance (NAPI) or null if undefined.
    */
   getLight(): Light | null;
 
   /**
-   * 设置光照
-   * @param light 光照对象或光照配置
+   * Set the lighting configuration.
+   * @param light Light instance or specification.
    */
   setLight(light: Light | LightSpecification): void;
 
-  // ========== 过渡效果管理 ==========
+  // ========== Transition handling ==========
 
   /**
-   * 获取过渡效果设置
-   * @returns 过渡选项对象（包含 duration、delay 等属性），如果不存在则返回 null
+   * Get transition options.
+   * @returns Transition object (duration, delay, etc.) or null when unavailable.
    */
   getTransition(): { duration?: number; delay?: number } | null;
 
   /**
-   * 设置过渡效果
-   * @param transitionJson 过渡效果 JSON 配置字符串
+   * Set transition options.
+   * @param transitionJson Transition configuration JSON.
    */
   setTransition(transitionJson: string): void;
 }
 
 /**
- * StyleBuilder - 样式构建器
+ * StyleBuilder - style builder.
  *
- * 使用 Builder 模式构建地图样式
+ * Builds map styles via the builder pattern.
  *
  * @example
-* ```typescript
+ * ```typescript
  * const builder = new maplibre.StyleBuilder()
  *     .fromUri("https://demotiles.maplibre.org/style.json")
  *     .withSource(mySource)
@@ -209,55 +209,55 @@ export class Style {
  */
 export class StyleBuilder {
   /**
-   * 构造一个新的样式构建器
+   * Construct a new style builder.
    */
   constructor();
 
   /**
-   * 从 URI 加载样式
+   * Load style data from a URI.
    *
-   * URI 可以是：
-   * - http://... 或 https://... - 从网络加载
-   * - file://... - 从本地文件加载
-   * - resource://... - 从资源文件加载
+   * Supported schemes include:
+   * - http://... or https://... for network resources.
+   * - file://... for local files.
+   * - resource://... for packaged resources.
    *
-   * @param uri 样式 URI
-   * @returns this 支持链式调用
+   * @param uri Style URI.
+   * @returns this (chainable).
    */
   fromUri(uri: string): this;
 
   /**
-   * 从 JSON 字符串加载样式
-   * @param json 样式 JSON 字符串
-   * @returns this 支持链式调用
+   * Load style data from a JSON string.
+   * @param json Style JSON string.
+   * @returns this (chainable).
    */
   fromJson(json: string): this;
 
   /**
-   * 添加数据源（样式加载完成后添加）
-   * @param source 数据源对象（GeoJsonSource、VectorSource、RasterSource 等）
-   * @returns this 支持链式调用
+   * Append a source (to be added after the style loads).
+   * @param source Source object (GeoJsonSource, VectorSource, RasterSource, etc.).
+   * @returns this (chainable).
    */
   withSource(source: Source): this;
 
   /**
-   * 添加图层（样式加载完成后添加）
-   * @param layer 图层对象（FillLayer、LineLayer、CircleLayer 等）
-   * @returns this 支持链式调用
+   * Append a layer (added after the style loads).
+   * @param layer Layer object (FillLayer, LineLayer, CircleLayer, etc.).
+   * @returns this (chainable).
    */
   withLayer(layer: Layer): this;
 
   /**
-   * 添加图像（样式加载完成后添加）
-   * @param image 图像对象（包含名称、数据等完整信息）
-   * @returns this 支持链式调用
+   * Append an image (added after the style loads).
+   * @param image Image object containing name, data, and metadata.
+   * @returns this (chainable).
    */
   withImage(image: Image): this;
 
   /**
-   * 设置过渡选项
-   * @param options 过渡选项对象（包含 duration、delay 等属性）
-   * @returns this 支持链式调用
+   * Configure transition options.
+   * @param options Transition options (duration, delay, etc.).
+   * @returns this (chainable).
    */
   withTransitionOptions(options: { duration?: number; delay?: number }): this;
 }

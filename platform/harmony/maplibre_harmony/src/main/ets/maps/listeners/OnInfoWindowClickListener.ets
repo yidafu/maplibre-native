@@ -1,21 +1,21 @@
 import maplibre from 'libmaplibre.so';
 
-// 使用 NAPI Marker 类型
+// Use the NAPI Marker type
 import { Marker } from '../annotations/Marker';
 
 /**
- * OnInfoWindowClickListener - InfoWindow 点击事件监听器
+ * OnInfoWindowClickListener - InfoWindow click listener.
  *
- * 当用户点击 Marker 的 InfoWindow 时触发
+ * Triggered when the user taps a marker's InfoWindow.
  *
- * 参考:
+ * Reference:
  * - Android: MapLibreMap.OnInfoWindowClickListener
  */
 export interface OnInfoWindowClickListener {
   /**
-   * InfoWindow 被点击时调用
+   * Called when the InfoWindow is tapped.
    *
-   * @param marker InfoWindow 所属的 Marker
+   * @param marker Marker owning the InfoWindow.
    */
   onInfoWindowClick(marker: Marker): void;
 }

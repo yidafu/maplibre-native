@@ -1,11 +1,11 @@
 /**
- * ProjectedMeters - 投影米坐标
- * ETS 类实现
+ * ProjectedMeters - projected meter coordinates.
+ * ETS class implementation.
  */
 
 /**
- * IProjectedMeters - 投影米坐标接口
- * 用于对象字面量
+ * IProjectedMeters - interface for projected meter coordinates.
+ * Suitable for object literals.
  */
 export interface IProjectedMeters {
   northing: number;
@@ -13,8 +13,8 @@ export interface IProjectedMeters {
 }
 
 /**
- * ProjectedMeters - 投影米坐标类
- * 表示投影坐标系中的坐标（单位：米）
+ * ProjectedMeters - projected meter coordinate class.
+ * Represents coordinates in a projected coordinate system (unit: meters).
  */
 export class ProjectedMeters implements IProjectedMeters {
   northing: number;
@@ -26,14 +26,14 @@ export class ProjectedMeters implements IProjectedMeters {
   }
 
   /**
-   * 从对象字面量创建 ProjectedMeters 实例
+   * Create a ProjectedMeters instance from an object literal.
    */
   static fromObject(obj: IProjectedMeters): ProjectedMeters {
     return new ProjectedMeters(obj.northing, obj.easting);
   }
 
   /**
-   * 转换为对象字面量
+   * Convert to an object literal.
    */
   toObject(): IProjectedMeters {
     return {
@@ -43,14 +43,14 @@ export class ProjectedMeters implements IProjectedMeters {
   }
 
   /**
-   * 创建投影米坐标（静态工厂方法）
+   * Create projected meter coordinates (static factory method).
    */
   static create(northing: number, easting: number): ProjectedMeters {
     return new ProjectedMeters(northing, easting);
   }
 
   /**
-   * 计算到另一个点的距离
+   * Compute the distance to another point.
    */
   distanceTo(other: ProjectedMeters): number {
     const dx = this.easting - other.easting;

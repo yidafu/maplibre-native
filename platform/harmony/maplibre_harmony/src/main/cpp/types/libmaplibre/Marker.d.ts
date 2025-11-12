@@ -1,375 +1,375 @@
 import { Icon } from './Icon';
 
 /**
- * Marker - 地图标记点
+ * Marker - map annotation point.
  *
- * 表示地图上的一个点标注，可以显示图标、标题和描述信息
+ * Represents a point annotation that can display icons, titles, and snippets.
  *
- * 此类由 C++ NAPI 层实现，ETS 层直接使用
+ * Implemented in the C++ NAPI layer and consumed directly from ETS.
  *
- * 参考:
+ * References:
  * - Android: org.maplibre.android.annotations.Marker
  * - iOS: MLNPointAnnotation
  */
 export class Marker {
   /**
-   * 构造函数
+   * Constructor.
    *
-   * @param options Marker 选项
+   * @param options Marker options.
    */
   constructor(options: MarkerOptions);
 
-  // Getter 方法
+  // Getter methods
 
   /**
-   * 获取 Marker 的位置
+   * Get the marker position.
    *
-   * @returns LatLng 位置对象
+   * @returns LatLng coordinate.
    */
   getPosition(): LatLng;
 
   /**
-   * 获取 Marker 的图标 ID
+   * Get the marker icon identifier.
    *
-   * @returns 图标 ID 或 null
+   * @returns Icon identifier or null.
    */
   getIcon(): string | null;
 
   /**
-   * 获取 Marker 的标题
+   * Get the marker title.
    *
-   * @returns 标题文本
+   * @returns Title text.
    */
   getTitle(): string;
 
   /**
-   * 获取 Marker 的描述信息
+   * Get the marker snippet.
    *
-   * @returns 描述文本
+   * @returns Snippet text.
    */
   getSnippet(): string;
 
   /**
-   * 获取 Marker 的 annotation ID
+   * Get the marker annotation identifier.
    *
-   * @returns annotation ID（如果未添加到地图则为 -1）
+   * @returns Annotation ID (or -1 if not added to the map).
    */
   getId(): number;
 
   /**
-   * 获取 Marker 是否可见
+   * Determine whether the marker is visible.
    *
-   * @returns true 表示可见
+   * @returns True when visible.
    */
   getVisible(): boolean;
 
   /**
-   * 获取 Marker 的透明度
+   * Get the marker alpha value.
    *
-   * @returns 透明度值 (0.0 - 1.0)
+   * @returns Alpha value (0.0 - 1.0).
    */
   getAlpha(): number;
 
   /**
-   * 获取 Marker 的旋转角度
+   * Get the marker rotation.
    *
-   * @returns 旋转角度（度）
+   * @returns Rotation in degrees.
    */
   getRotation(): number;
 
   /**
-   * 获取 Marker 是否可拖拽
+   * Determine whether the marker is draggable.
    *
-   * @returns true 表示可拖拽
+   * @returns True when draggable.
    */
   getDraggable(): boolean;
 
   /**
-   * 获取 Marker 的 Z 轴顺序
+   * Get the marker Z-index.
    *
-   * @returns Z 轴顺序值
+   * @returns Z-index value.
    */
   getZIndex(): number;
 
-  // Setter 方法
+  // Setter methods
 
   /**
-   * 设置 Marker 的位置
+   * Set the marker position.
    *
-   * @param position LatLng 位置对象
-   * @returns this（支持链式调用）
+   * @param position LatLng coordinate.
+   * @returns this (chainable).
    */
   setPosition(position: LatLng): Marker;
 
   /**
-   * 设置 Marker 的图标
+   * Set the marker icon.
    *
-   * 支持两种方式：
-   * 1. Icon 对象：推荐方式，由 IconFactory 创建的 NAPI Icon 对象（性能更好）
-   * 2. 图标 ID 字符串：向后兼容方式，需要先通过 addAnnotationIcon 添加图标资源
+   * Supports two input forms:
+   * 1. Icon instance (recommended): NAPI icon created via IconFactory (best performance).
+   * 2. Icon identifier string (legacy): requires calling addAnnotationIcon beforehand.
    *
-   * @param icon Icon 对象或图标 ID 字符串（null 表示清除图标）
-   * @returns this（支持链式调用）
+   * @param icon Icon instance or icon identifier (null removes the icon).
+   * @returns this (chainable).
    *
    * @example
-  * ```typescript
-   * // 推荐：使用 Icon 对象
+   * ```typescript
+   * // Recommended: use an Icon instance.
    * const factory = IconFactory.getInstance();
    * const icon = await factory.fromResource($r('app.media.marker'));
    * marker.setIcon(icon);
    *
-   * // 向后兼容：使用字符串 ID
+   * // Legacy: use a string identifier.
    * marker.setIcon('my-icon-id');
    * ```
    */
   setIcon(icon: Icon | string | null): Marker;
 
   /**
-   * 设置 Marker 的标题
+   * Set the marker title.
    *
-   * @param title 标题文本
-   * @returns this（支持链式调用）
+   * @param title Title text.
+   * @returns this (chainable).
    */
   setTitle(title: string): Marker;
 
   /**
-   * 设置 Marker 的描述信息
+   * Set the marker snippet.
    *
-   * @param snippet 描述文本
-   * @returns this（支持链式调用）
+   * @param snippet Snippet text.
+   * @returns this (chainable).
    */
   setSnippet(snippet: string): Marker;
 
   /**
-   * 设置 Marker 是否可见
+   * Set marker visibility.
    *
-   * @param visible true 表示可见
-   * @returns this（支持链式调用）
+   * @param visible True when visible.
+   * @returns this (chainable).
    */
   setVisible(visible: boolean): Marker;
 
   /**
-   * 设置 Marker 的透明度
+   * Set the marker alpha.
    *
-   * @param alpha 透明度值 (0.0 - 1.0)
-   * @returns this（支持链式调用）
+   * @param alpha Alpha value (0.0 - 1.0).
+   * @returns this (chainable).
    */
   setAlpha(alpha: number): Marker;
 
   /**
-   * 设置 Marker 的旋转角度
+   * Set the marker rotation.
    *
-   * @param rotation 旋转角度（度）
-   * @returns this（支持链式调用）
+   * @param rotation Rotation in degrees.
+   * @returns this (chainable).
    */
   setRotation(rotation: number): Marker;
 
   /**
-   * 设置 Marker 是否可拖拽
+   * Set whether the marker is draggable.
    *
-   * @param draggable true 表示可拖拽
-   * @returns this（支持链式调用）
+   * @param draggable True when draggable.
+   * @returns this (chainable).
    */
   setDraggable(draggable: boolean): Marker;
 
   /**
-   * 设置 Marker 的 Z 轴顺序
+   * Set the marker Z-index.
    *
-   * @param zIndex Z 轴顺序值
-   * @returns this（支持链式调用）
+   * @param zIndex Z-index value.
+   * @returns this (chainable).
    */
   setZIndex(zIndex: number): Marker;
 
   /**
-   * 从地图移除此 Marker
+   * Mark the marker as removed from the map.
    *
-   * 注意：此方法只标记 Marker 为已移除状态
-   * 实际的移除操作需要调用 MapLibreMap.removeMarker()
+   * Note: this only flags the marker as removed.
+   * The actual removal requires calling MapLibreMap.removeMarker().
    */
   remove(): void;
 
   // InfoWindow methods
 
   /**
-   * 显示 InfoWindow
+   * Show the info window.
    */
   showInfoWindow(): void;
 
   /**
-   * 隐藏 InfoWindow
+   * Hide the info window.
    */
   hideInfoWindow(): void;
 
   /**
-   * InfoWindow 是否正在显示
+   * Determine whether the info window is visible.
    */
   isInfoWindowShown(): boolean;
 
   // Selection methods
 
   /**
-   * Marker 是否被选中
+   * Check whether the marker is selected.
    */
   isSelected(): boolean;
 
   /**
-   * 设置 Marker 选中状态
-   * @returns this（支持链式调用）
+   * Set marker selection state.
+   * @returns this (chainable).
    */
   setSelected(selected: boolean): Marker;
 
   // Drag state methods
 
   /**
-   * 获取拖拽状态
-   * 0=None, 1=Start, 2=Drag, 3=End
+   * Get the drag state.
+   * 0 = None, 1 = Start, 2 = Drag, 3 = End.
    */
   getDragState(): number;
 
   /**
-   * 设置拖拽状态
-   * @returns this（支持链式调用）
+   * Set the drag state.
+   * @returns this (chainable).
    */
   setDragState(state: number): Marker;
 
   // Internal methods (used by MarkerManager)
 
   /**
-   * 设置 annotation ID（内部使用）
+   * Assign the annotation ID (internal use).
    * @internal
-   * @returns this（支持链式调用）
+   * @returns this (chainable).
    */
   setId(id: number): Marker;
 
-  // 注意：setMapLibreMap 是内部实现细节，不在公开 API 中暴露
-  // ETS 层的 Marker 封装类会处理 MapLibreMap 的关联
+  // Note: setMapLibreMap is an internal detail and not part of the public API.
+  // ETS marker wrappers manage the association with MapLibreMap.
 
   // Animation methods
 
   /**
-   * 动画移动到指定位置
+   * Animate the marker to a target position.
    *
-   * @param targetPosition 目标位置
-   * @param duration 动画持续时间（毫秒）
-   * @param onComplete 动画完成回调（可选）
+   * @param targetPosition Target coordinate.
+   * @param duration Duration in milliseconds.
+   * @param onComplete Optional completion callback.
    */
   animateToPosition(targetPosition: LatLng, duration: number, onComplete?: () => void): void;
 
   /**
-   * 透明度渐变动画
+   * Animate marker alpha.
    *
-   * @param targetAlpha 目标透明度 (0.0-1.0)
-   * @param duration 动画持续时间（毫秒）
-   * @param onComplete 动画完成回调（可选）
+   * @param targetAlpha Target alpha (0.0-1.0).
+   * @param duration Duration in milliseconds.
+   * @param onComplete Optional completion callback.
    */
   animateAlpha(targetAlpha: number, duration: number, onComplete?: () => void): void;
 
   /**
-   * 旋转动画
+   * Animate marker rotation.
    *
-   * @param targetRotation 目标旋转角度（度）
-   * @param duration 动画持续时间（毫秒）
-   * @param onComplete 动画完成回调（可选）
+   * @param targetRotation Target rotation in degrees.
+   * @param duration Duration in milliseconds.
+   * @param onComplete Optional completion callback.
    */
   animateRotation(targetRotation: number, duration: number, onComplete?: () => void): void;
 
   // Anchor methods
 
   /**
-   * 获取锚点
+   * Get the anchor.
    *
-   * @returns 锚点对象 { u: number, v: number }
+   * @returns Anchor object { u: number, v: number }.
    */
   getAnchor(): { u: number, v: number };
 
   /**
-   * 设置锚点
+   * Set the anchor.
    *
-   * 锚点决定图标相对于 Marker 位置的对齐方式
-   * (0.5, 1.0) 表示底部中心对齐（默认值）
-   * (0.0, 0.0) 表示左上角对齐
-   * (1.0, 1.0) 表示右下角对齐
+   * The anchor determines how the icon aligns relative to the marker position.
+   * (0.5, 1.0) means bottom-center alignment (default).
+   * (0.0, 0.0) means top-left alignment.
+   * (1.0, 1.0) means bottom-right alignment.
    *
-   * @param u 水平锚点（0.0 - 1.0）
-   * @param v 垂直锚点（0.0 - 1.0）
-   * @returns this（支持链式调用）
+   * @param u Horizontal anchor (0.0 - 1.0).
+   * @param v Vertical anchor (0.0 - 1.0).
+   * @returns this (chainable).
    */
   setAnchor(u: number, v: number): Marker;
 }
 
 /**
- * MarkerOptions - Marker 构造选项接口
+ * MarkerOptions - constructor options.
  */
 export interface MarkerOptions {
   /**
-   * Marker 的地理位置（必需）
+   * Marker geographic position (required).
    */
   position: LatLng;
 
   /**
-   * 图标 ID（可选）
+   * Icon identifier (optional).
    *
-   * 如果不设置，Marker 将不可见
-   * 需要先通过 addAnnotationIcon() 添加图标资源
+   * If omitted, the marker is invisible.
+   * Requires addAnnotationIcon() to register the resource first.
    */
   icon?: string;
 
   /**
-   * 标题（可选）
+   * Title (optional).
    */
   title?: string;
 
   /**
-   * 描述信息（可选）
+   * Snippet text (optional).
    */
   snippet?: string;
 
   /**
-   * 是否可见（可选，默认 true）
+   * Visibility flag (optional, default true).
    */
   visible?: boolean;
 
   /**
-   * 透明度（可选，默认 1.0）
-   * 范围：0.0（完全透明）- 1.0（完全不透明）
+   * Alpha value (optional, default 1.0).
+   * Range: 0.0 fully transparent – 1.0 fully opaque.
    */
   alpha?: number;
 
   /**
-   * 旋转角度（可选，默认 0）
-   * 单位：度
+   * Rotation (optional, default 0).
+   * Unit: degrees.
    */
   rotation?: number;
 
   /**
-   * 是否可拖拽（可选，默认 false）
+   * Draggable flag (optional, default false).
    */
   draggable?: boolean;
 
   /**
-   * Z 轴顺序（可选，默认 0）
-   * 值越大，显示越靠前
+   * Z-index (optional, default 0).
+   * Higher values render above lower ones.
    */
   zIndex?: number;
 
   /**
-   * 锚点（可选，默认 {u: 0.5, v: 1.0}）
-   * 决定图标相对于 Marker 位置的对齐方式
+   * Anchor (optional, default {u: 0.5, v: 1.0}).
+   * Controls icon alignment relative to the marker position.
    */
   anchor?: { u: number, v: number };
 }
 
 /**
- * LatLng - 地理坐标
+ * LatLng - geographic coordinate.
  */
 export interface LatLng {
   /**
-   * 纬度
+   * Latitude.
    */
   latitude: number;
 
   /**
-   * 经度
+   * Longitude.
    */
   longitude: number;
 }
