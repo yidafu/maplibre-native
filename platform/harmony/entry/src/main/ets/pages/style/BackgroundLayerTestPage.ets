@@ -5,14 +5,34 @@ import { BackgroundLayer, MapLibreMap, MapView } from 'maplibre_harmony';
  * 参考 Android BackgroundLayer 测试
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
+import image from '@ohos.multimedia.image';
+import { common } from '@kit.AbilityKit';
+
+class BackgroundPatternResource {
+  readonly name: string;
+  readonly filename: string;
+  readonly label: string;
+
+  constructor(name: string, filename: string, label: string) {
+    this.name = name;
+    this.filename = filename;
+    this.label = label;
+  }
+}
 
 @Entry
 @Component
 struct BackgroundLayerTestPage {
   private mapController: MapLibreMap | null = null;
   @State private currentStyleIndex: number = 0;
-  private readonly STYLES = [DEFAULT_STYLE_URLS.streets, DEFAULT_STYLE_URLS.bright];
+  private readonly STYLES: string[] = [DEFAULT_STYLE_URLS.streets, DEFAULT_STYLE_URLS.bright];
+  private readonly PATTERN_RESOURCES: BackgroundPatternResource[] = [
+    new BackgroundPatternResource('background-watermark', 'background_pattern_watermark.png', '水印'),
+    new BackgroundPatternResource('background-random', 'background_pattern_random.png', '随机')
+  ];
+  private patternImagesLoaded: boolean = false;
+  private patternIndex: number = 0;
   
   build() {
     Column() {
@@ -81,6 +101,11 @@ struct BackgroundLayerTestPage {
           .fontSize(14)
           .layoutWeight(1)
           .onClick(() => this.changeBackgroundOpacity())
+        
+        Button('背景图案')
+          .fontSize(14)
+          .layoutWeight(1)
+          .onClick(() => { void this.changeBackgroundPattern(); })
       }
       
       Text('显示模式')
@@ -126,6 +151,8 @@ struct BackgroundLayerTestPage {
       const newStyleUrl = this.STYLES[this.currentStyleIndex];
       
       this.mapController.setStyleUrl(newStyleUrl);
+      this.patternImagesLoaded = false;
+      this.patternIndex = 0;
       showToast(`正在切换到样式 ${this.currentStyleIndex + 1}`);
     } catch (error) {
       showToast(`切换样式失败: ${error}`);
@@ -173,6 +200,106 @@ struct BackgroundLayerTestPage {
     } catch (error) {
       showToast(`更改透明度失败: ${error}`);
     }
+  }
+
+  private async ensureBackgroundPatternsLoaded(): Promise<boolean> {
+    if (!this.mapController) {
+      showToast('地图未初始化');
+      return false;
+    }
+
+    if (this.patternImagesLoaded) {
+      return true;
+    }
+
+    const map = this.mapController;
+    const style = map.getStyle();
+    if (!style) {
+      showToast('样式未加载');
+      return false;
+    }
+
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const resourceMgr = context.resourceManager;
+
+      for (const pattern of this.PATTERN_RESOURCES) {
+        if (style.getImage(pattern.name)) {
+          continue;
+        }
+
+        const rawResult = await resourceMgr.getRawFileContent(pattern.filename);
+        if (!(rawResult instanceof Uint8Array)) {
+          console.error(`加载背景图案失败: ${pattern.filename} 返回类型异常`);
+          continue;
+        }
+        const rawContent: Uint8Array = rawResult;
+        const arrayBuffer = new ArrayBuffer(rawContent.byteLength);
+        const bufferView = new Uint8Array(arrayBuffer);
+        bufferView.set(rawContent);
+        const imageSource = image.createImageSource(arrayBuffer);
+        let pixelMap: image.PixelMap | null = null;
+        try {
+          pixelMap = await imageSource.createPixelMap({
+            desiredPixelFormat: image.PixelMapFormat.RGBA_8888
+          });
+        } finally {
+          imageSource.release();
+        }
+
+        if (!pixelMap) {
+          console.error(`加载背景图案失败: ${pattern.filename} PixelMap 创建失败`);
+          continue;
+        }
+
+        try {
+          map.addImage(pattern.name, pixelMap, 1.0, false);
+        } finally {
+          pixelMap.release();
+        }
+      }
+
+      this.patternImagesLoaded = true;
+      return true;
+    } catch (error) {
+      console.error('加载背景图案失败:', error);
+      showToast(`加载背景图案失败: ${error}`);
+      return false;
+    }
+  }
+
+  private async changeBackgroundPattern(): Promise<void> {
+    if (!this.mapController) return;
+
+    const style = this.mapController.getStyle();
+    if (!style) {
+      showToast('样式未加载');
+      return;
+    }
+
+    const loaded = await this.ensureBackgroundPatternsLoaded();
+    if (!loaded) {
+      return;
+    }
+
+    if (this.PATTERN_RESOURCES.length === 0) {
+      showToast('未配置背景图案');
+      return;
+    }
+
+    const pattern = this.PATTERN_RESOURCES[this.patternIndex % this.PATTERN_RESOURCES.length];
+    this.patternIndex = (this.patternIndex + 1) % this.PATTERN_RESOURCES.length;
+
+    const layers = this.mapController.getLayers();
+    for (const layer of layers) {
+      if (layer instanceof BackgroundLayer) {
+        layer.setBackgroundPattern(pattern.name);
+        showToast(`背景图案: ${pattern.label}`);
+        return;
+      }
+    }
+
+    showToast('未找到背景图层');
   }
 
   // 重置视图

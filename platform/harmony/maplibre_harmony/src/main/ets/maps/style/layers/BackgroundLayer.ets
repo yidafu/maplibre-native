@@ -44,9 +44,17 @@ export class BackgroundLayer {
     return this.nativeInstance.getId();
   }
 
+  getType(): string {
+    return this.nativeInstance.getType();
+  }
+
   setVisibility(visibility: 'visible' | 'none'): BackgroundLayer {
     this.nativeInstance.setVisibility(visibility);
     return this;
+  }
+
+  getVisibility(): 'visible' | 'none' {
+    return this.nativeInstance.getVisibility();
   }
 
   setMinZoom(zoom: number): BackgroundLayer {
@@ -54,9 +62,17 @@ export class BackgroundLayer {
     return this;
   }
 
+  getMinZoom(): number {
+    return this.nativeInstance.getMinZoom();
+  }
+
   setMaxZoom(zoom: number): BackgroundLayer {
     this.nativeInstance.setMaxZoom(zoom);
     return this;
+  }
+
+  getMaxZoom(): number {
+    return this.nativeInstance.getMaxZoom();
   }
 
   setBackgroundColor(color: PropertyValue<string>): BackgroundLayer {
@@ -91,7 +107,7 @@ export class BackgroundLayer {
    * @param value Property value (constant or Expression)
    * @returns this (supports chaining)
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): BackgroundLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): BackgroundLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
@@ -105,7 +121,7 @@ export class BackgroundLayer {
    *   'background-color': '#F0E9E1'
    * });
    */
-  setProperties(properties: Record<string, PropertyValue<Object>>): BackgroundLayer {
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): BackgroundLayer {
     const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
