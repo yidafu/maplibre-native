@@ -710,14 +710,18 @@ export class MapGestureDetector {
     this.shouldIgnoreTilt = true;
 
     // Initialize scale state
-    if (this.mapController && this.mapController.getZoom) {
-      this.initialZoom = this.mapController.getZoom();
-      this.currentZoomLevel = this.initialZoom; // 🔑 Cache initial zoom; avoid frequent getZoom() calls later.
-      hilog.info(DOMAIN, TAG, `   initialZoom=${this.initialZoom.toFixed(2)}`);
+    const zoomValue: number | undefined = (this.mapController && this.mapController.getZoom)
+      ? this.mapController.getZoom()
+      : undefined;
+
+    if (typeof zoomValue === 'number' && !isNaN(zoomValue)) {
+      this.initialZoom = zoomValue;
+      this.currentZoomLevel = zoomValue; // 🔑 Cache initial zoom; avoid frequent getZoom() calls later.
+      hilog.info(DOMAIN, TAG, `   initialZoom=${zoomValue.toFixed(2)}`);
     } else {
       this.initialZoom = 0;
       this.currentZoomLevel = 0;
-      hilog.warn(DOMAIN, TAG, `   ⚠️ mapController or getZoom not available`);
+      hilog.warn(DOMAIN, TAG, `   ⚠️ mapController.getZoom unavailable or invalid (${zoomValue})`);
     }
 
     // Reset velocity tracker

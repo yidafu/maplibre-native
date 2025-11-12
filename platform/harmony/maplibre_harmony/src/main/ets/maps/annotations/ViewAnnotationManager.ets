@@ -296,7 +296,7 @@ export class ViewAnnotationManager {
     if (!this.nativeMapView) {
       console.warn('[ViewAnnotationManager] removeViewAnnotation: native map view is not available');
       this.entries.delete(id);
-      this.refreshRenderStates();
+      this.removeRenderStateById(id);
       return false;
     }
 
@@ -305,7 +305,7 @@ export class ViewAnnotationManager {
       const removed = typeof rawResult === 'boolean' ? rawResult : false;
       this.entries.delete(id);
       console.info(`[ViewAnnotationManager] removeViewAnnotation: entry ${id} removed, total entries=${this.entries.size}`);
-      this.refreshRenderStates();
+      this.removeRenderStateById(id);
       if (!removed) {
         console.warn(`[ViewAnnotationManager] removeViewAnnotation: native returned ${rawResult}`);
       }
@@ -314,7 +314,7 @@ export class ViewAnnotationManager {
       const reason = error instanceof Error ? error.message : `${error}`;
       console.error(`[ViewAnnotationManager] removeViewAnnotation failed: ${reason}`);
       this.entries.delete(id);
-      this.refreshRenderStates();
+      this.removeRenderStateById(id);
       return false;
     }
   }
@@ -338,7 +338,8 @@ export class ViewAnnotationManager {
         console.error(`[ViewAnnotationManager] clear failed: ${reason}`);
       }
     }
-    this.refreshRenderStates();
+    this.renderStates = [];
+    this.notifyRenderCallback();
   }
 
   /**
@@ -352,19 +353,18 @@ export class ViewAnnotationManager {
    * Pulls frame data from native and recomputes ArkUI render states.
    */
   refreshRenderStates(): void {
-    // TODO: temporarily disable heavy refresh logic for diagnostics.
-    /* if (!this.nativeMapView) {
+    if (!this.nativeMapView) {
       this.renderStates = [];
       this.notifyRenderCallback();
       return;
     }
 
-    console.info(`[ViewAnnotationManager] refreshRenderStates: start, pixelRatio=${this.pixelRatio}`);
-
     let frames: NativeViewAnnotationFrame[] = [];
     try {
       const rawFrames = this.nativeMapView.getViewAnnotationFrames();
-      frames = Array.isArray(rawFrames) ? rawFrames as NativeViewAnnotationFrame[] : [];
+      if (Array.isArray(rawFrames)) {
+        frames = rawFrames;
+      }
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
       console.error(`[ViewAnnotationManager] refreshRenderStates failed: ${reason}`);
@@ -372,8 +372,6 @@ export class ViewAnnotationManager {
       this.notifyRenderCallback();
       return;
     }
-
-    console.info(`[ViewAnnotationManager] refreshRenderStates: received ${frames.length} native frames`);
 
     const safeRatio = this.pixelRatio > 0 ? this.pixelRatio : 1;
     const nextStates: ViewAnnotationRenderState[] = [];
@@ -385,25 +383,27 @@ export class ViewAnnotationManager {
         return;
       }
 
-      const frameRatio = frame.pixelRatio > 0 ? frame.pixelRatio : safeRatio;
-      const logicalWidth = frame.width / frameRatio;
-      const logicalHeight = frame.height / frameRatio;
-      const logicalX = frame.x / frameRatio;
-      const logicalY = frame.y / frameRatio;
-      const positionX = logicalX - logicalWidth * entry.anchorU;
-      const positionY = logicalY - logicalHeight * entry.anchorV;
+      const format = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
+      const frameRatio = this.resolveFramePixelRatio(frame.pixelRatio, safeRatio, frame.id);
+      const logicalWidth = frame.width > 0 ? frame.width / frameRatio : (entry.width ?? 0);
+      const logicalHeight = frame.height > 0 ? frame.height / frameRatio : (entry.height ?? 0);
+      const frameLogicalX = frame.x / frameRatio;
+      const frameLogicalY = frame.y / frameRatio;
+      const frameOffsetX = Number.isFinite(frame.offsetX) ? frame.offsetX / frameRatio : 0;
+      const frameOffsetY = Number.isFinite(frame.offsetY) ? frame.offsetY / frameRatio : 0;
+      const centerOffsetX = entry.centerOffset?.dx ?? 0;
+      const centerOffsetY = entry.centerOffset?.dy ?? 0;
+      const anchorU = entry.anchorU ?? 0.5;
+      const anchorV = entry.anchorV ?? 1.0;
 
-      const anchorLat = entry.anchor?.latitude;
-      const anchorLng = entry.anchor?.longitude;
-      const anchorLatText = anchorLat !== undefined ? anchorLat.toFixed(6) : 'n/a';
-      const anchorLngText = anchorLng !== undefined ? anchorLng.toFixed(6) : 'n/a';
-      const offsetDx = entry.centerOffset?.dx ?? 0;
-      const offsetDy = entry.centerOffset?.dy ?? 0;
+      const positionX = frameLogicalX - logicalWidth * anchorU + frameOffsetX + centerOffsetX;
+      const positionY = frameLogicalY - logicalHeight * anchorV + frameOffsetY + centerOffsetY;
+
       console.info(
-        `[ViewAnnotationManager] refreshRenderStates: frame ${frame.id} anchor=(${anchorLatText}, ${anchorLngText}) ` +
-        `nativePos=(${frame.x}, ${frame.y}) logicalPos=(${logicalX.toFixed(2)}, ${logicalY.toFixed(2)}) ` +
-        `offset=(${offsetDx}, ${offsetDy}) size=(${logicalWidth.toFixed(2)} x ${logicalHeight.toFixed(2)}) ` +
-        `position=(${positionX.toFixed(2)}, ${positionY.toFixed(2)}) scale=${frame.scale} rotation=${frame.rotation}`
+        `[ViewAnnotationManager] frame=${frame.id} raw=(${format(frame.x)}, ${format(frame.y)}) ` +
+        `pixelRatio(raw=${format(frame.pixelRatio)}, resolved=${format(frameRatio)}) ` +
+        `logical=(${format(frameLogicalX)}, ${format(frameLogicalY)}) size=(${format(logicalWidth)}, ${format(logicalHeight)}) ` +
+        `offset=(${format(frameOffsetX)}, ${format(frameOffsetY)}) position=(${format(positionX)}, ${format(positionY)})`
       );
 
       nextStates.push(new ViewAnnotationRenderState({
@@ -412,9 +412,9 @@ export class ViewAnnotationManager {
         positionY,
         width: logicalWidth,
         height: logicalHeight,
-        scale: frame.scale,
-        rotation: frame.rotation,
-        opacity: frame.opacity,
+        scale: Number.isFinite(frame.scale) && frame.scale > 0 ? frame.scale : 1,
+        rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
+        opacity: this.normalizeOpacity(frame.opacity),
         visible: entry.visible && frame.visible,
         builder: entry.builder,
         zIndex: entry.zIndex
@@ -422,8 +422,35 @@ export class ViewAnnotationManager {
     });
 
     this.renderStates = nextStates;
-    console.info(`[ViewAnnotationManager] refreshRenderStates: computed ${this.renderStates.length} render states`);
-    this.notifyRenderCallback(); */
+    this.notifyRenderCallback();
+  }
+
+  private resolveFramePixelRatio(frameRatio: number, fallback: number, frameId: number): number {
+    const safeFallback = fallback > 0 ? fallback : 1;
+    if (!Number.isFinite(frameRatio) || frameRatio <= 0) {
+      return safeFallback;
+    }
+
+    const MAX_RATIO_MULTIPLIER = 4;
+    const MIN_RATIO_MULTIPLIER = 0.25;
+    if (frameRatio > safeFallback * MAX_RATIO_MULTIPLIER || frameRatio < safeFallback * MIN_RATIO_MULTIPLIER) {
+      console.warn(`[ViewAnnotationManager] resolveFramePixelRatio: frame ${frameId} pixelRatio ${frameRatio.toFixed(2)} out of expected range, fallback=${safeFallback.toFixed(2)}`);
+      return safeFallback;
+    }
+    return frameRatio;
+  }
+
+  private normalizeOpacity(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 1;
+    }
+    if (value <= 0) {
+      return 0;
+    }
+    if (value >= 1) {
+      return 1;
+    }
+    return value;
   }
 
   private notifyRenderCallback(): void {
@@ -431,6 +458,18 @@ export class ViewAnnotationManager {
       console.info(`[ViewAnnotationManager] notifyRenderCallback: emitting ${this.renderStates.length} states`);
       this.renderCallback(this.renderStates.slice());
     }
+  }
+
+  private removeRenderStateById(id: number): void {
+    if (this.renderStates.length === 0) {
+      return;
+    }
+    const nextStates = this.renderStates.filter((state) => state.id !== id);
+    if (nextStates.length === this.renderStates.length) {
+      return;
+    }
+    this.renderStates = nextStates;
+    this.notifyRenderCallback();
   }
 
   private buildNativeOptions(source: ViewAnnotationAddOptions | ViewAnnotationEntry): NativeViewAnnotationOptions {

@@ -48,9 +48,97 @@ function renderAnnotationContent(builder: () => void): void {
 @Component
 export struct NativeViewAnnotationOverlay {
   @Link @Watch('onFramesChanged') frames: ViewAnnotationRenderState[];
+  @State private renderFrames: ViewAnnotationRenderState[] = [];
+  @State private frameVersionById: Map<number, number> = new Map<number, number>();
+  private readonly POSITION_EPSILON: number = 0.1;
+  private readonly SIZE_EPSILON: number = 0.1;
+  private readonly SCALE_EPSILON: number = 0.01;
+  private readonly ROTATION_EPSILON: number = 0.01;
+  private readonly OPACITY_EPSILON: number = 0.01;
+
+  aboutToAppear(): void {
+    this.syncRenderFrames(this.frames);
+  }
 
   private onFramesChanged(): void {
-    console.info(`[NativeViewAnnotationOverlay] frames changed, count: ${this.frames?.length ?? 0}`);
+    this.syncRenderFrames(this.frames);
+  }
+
+  private syncRenderFrames(source: ViewAnnotationRenderState[] | undefined): void {
+    const nextFrames: ViewAnnotationRenderState[] = (source ?? []).map((state) => new ViewAnnotationRenderState({
+      id: state.id,
+      positionX: state.positionX,
+      positionY: state.positionY,
+      width: state.width,
+      height: state.height,
+      scale: state.scale,
+      rotation: state.rotation,
+      opacity: state.opacity,
+      visible: state.visible,
+      builder: state.builder,
+      zIndex: state.zIndex
+    }));
+    const previousById: Map<number, ViewAnnotationRenderState> = new Map<number, ViewAnnotationRenderState>();
+    this.renderFrames.forEach((state) => {
+      previousById.set(state.id, state);
+    });
+
+    const updatedVersionMap: Map<number, number> = new Map<number, number>();
+    this.frameVersionById.forEach((value, key) => {
+      updatedVersionMap.set(key, value);
+    });
+
+    let hasChange: boolean = nextFrames.length !== this.renderFrames.length;
+    const updatedFrames: ViewAnnotationRenderState[] = [];
+
+    nextFrames.forEach((state) => {
+      const previous = previousById.get(state.id);
+      if (previous && this.areStatesEquivalent(previous, state)) {
+        updatedFrames.push(previous);
+        return;
+      }
+
+      hasChange = true;
+      let currentVersion = updatedVersionMap.get(state.id);
+      if (currentVersion === undefined) {
+        currentVersion = 0;
+      }
+      updatedVersionMap.set(state.id, currentVersion + 1);
+      updatedFrames.push(state);
+    });
+
+    if (updatedVersionMap.size > updatedFrames.length) {
+      const validIds: Set<number> = new Set<number>();
+      updatedFrames.forEach((state) => {
+        validIds.add(state.id);
+      });
+
+      const idsToRemove: number[] = [];
+      updatedVersionMap.forEach((_value, key) => {
+        if (!validIds.has(key)) {
+          idsToRemove.push(key);
+        }
+      });
+
+      idsToRemove.forEach((key) => {
+        updatedVersionMap.delete(key);
+        hasChange = true;
+      });
+    }
+
+    if (!hasChange) {
+      return;
+    }
+
+    this.renderFrames = updatedFrames;
+    this.frameVersionById = updatedVersionMap;
+  }
+
+  private toLength(value: number): Length {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return `${value}vp`;
   }
 
   private clampOpacity(value: number): number {
@@ -80,19 +168,46 @@ export struct NativeViewAnnotationOverlay {
     return value;
   }
 
+  private logRenderState(state: ViewAnnotationRenderState): void {
+    const formatNumber = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
+    console.info(
+      `[NativeViewAnnotationOverlay] render id=${state.id} ` +
+      `position=(${formatNumber(state.positionX)}, ${formatNumber(state.positionY)}) ` +
+      `size=(${formatNumber(state.width)}, ${formatNumber(state.height)}) ` +
+      `scale=${formatNumber(state.scale)} rotation=${formatNumber(state.rotation)}`
+    );
+  }
+
+  private numbersClose(first: number, second: number, epsilon: number): boolean {
+    if (!Number.isFinite(first) || !Number.isFinite(second)) {
+      return first === second;
+    }
+    return Math.abs(first - second) <= epsilon;
+  }
+
+  private areStatesEquivalent(previous: ViewAnnotationRenderState, next: ViewAnnotationRenderState): boolean {
+    return this.numbersClose(previous.positionX, next.positionX, this.POSITION_EPSILON) &&
+      this.numbersClose(previous.positionY, next.positionY, this.POSITION_EPSILON) &&
+      this.numbersClose(previous.width, next.width, this.SIZE_EPSILON) &&
+      this.numbersClose(previous.height, next.height, this.SIZE_EPSILON) &&
+      this.numbersClose(previous.scale, next.scale, this.SCALE_EPSILON) &&
+      this.numbersClose(previous.rotation, next.rotation, this.ROTATION_EPSILON) &&
+      this.numbersClose(previous.opacity, next.opacity, this.OPACITY_EPSILON) &&
+      previous.visible === next.visible &&
+      previous.builder === next.builder &&
+      previous.zIndex === next.zIndex;
+  }
+
   build(): void {
-    Stack() {
-      ForEach(this.frames ?? [], (item: ViewAnnotationRenderState) => {
-        if (!item.visible) {
-          Blank()
-            .hitTestBehavior(HitTestMode.None);
-        } else {
-          Stack() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      ForEach(this.renderFrames, (item: ViewAnnotationRenderState) => {
+        if (item.visible) {
+          Column() {
             renderAnnotationContent(item.builder);
           }
-          .width(item.width > 0 ? item.width : 'auto')
-          .height(item.height > 0 ? item.height : 'auto')
-          .position({ x: item.positionX, y: item.positionY })
+          .width(item.width > 0 ? this.toLength(item.width) : 'auto')
+          .height(item.height > 0 ? this.toLength(item.height) : 'auto')
+          .position({ x: this.toLength(item.positionX), y: this.toLength(item.positionY) })
           .opacity(this.clampOpacity(item.opacity))
           .scale({
             x: this.sanitizeScale(item.scale),
@@ -108,10 +223,17 @@ export struct NativeViewAnnotationOverlay {
           .zIndex(item.zIndex ?? 0)
           .hitTestBehavior(HitTestMode.Transparent);
         }
-      }, (item: ViewAnnotationRenderState) => `view-annotation-${item.id}`);
+      }, (item: ViewAnnotationRenderState) => {
+        let version = this.frameVersionById.get(item.id);
+        if (version === undefined) {
+          version = 0;
+        }
+        return `view-annotation-${item.id}-v${version}`;
+      });
     }
     .width('100%')
     .height('100%')
+    .clip(true)
     .hitTestBehavior(HitTestMode.Transparent);
   }
 }
