@@ -45,8 +45,16 @@ export class LineLayer {
     return this.nativeInstance.getId();
   }
 
+  getType(): string {
+    return this.nativeInstance.getType();
+  }
+
   getSourceId(): string {
     return this.nativeInstance.getSourceId();
+  }
+
+  getSourceLayer(): string {
+    return this.nativeInstance.getSourceLayer();
   }
 
   setVisibility(visibility: 'visible' | 'none'): LineLayer {
@@ -54,14 +62,26 @@ export class LineLayer {
     return this;
   }
 
+  getVisibility(): 'visible' | 'none' {
+    return this.nativeInstance.getVisibility();
+  }
+
   setMinZoom(zoom: number): LineLayer {
     this.nativeInstance.setMinZoom(zoom);
     return this;
   }
 
+  getMinZoom(): number {
+    return this.nativeInstance.getMinZoom();
+  }
+
   setMaxZoom(zoom: number): LineLayer {
     this.nativeInstance.setMaxZoom(zoom);
     return this;
+  }
+
+  getMaxZoom(): number {
+    return this.nativeInstance.getMaxZoom();
   }
 
   /**
@@ -72,6 +92,10 @@ export class LineLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
     this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
+  }
+
+  getFilter(): ExpressionLiteral | null {
+    return this.nativeInstance.getFilter();
   }
 
   setSourceLayer(sourceLayer: string): LineLayer {
@@ -169,7 +193,7 @@ export class LineLayer {
    * @param value Property value (constant or Expression)
    * @returns this (supports chaining)
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): LineLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): LineLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
@@ -185,7 +209,7 @@ export class LineLayer {
    *   'line-dasharray': [2, 4]
    * });
    */
-  setProperties(properties: Record<string, PropertyValue<Object>>): LineLayer {
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): LineLayer {
     const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {

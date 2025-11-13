@@ -48,8 +48,16 @@ export class FillExtrusionLayer {
     return this.nativeInstance.getId();
   }
 
+  getType(): string {
+    return this.nativeInstance.getType();
+  }
+
   getSourceId(): string {
     return this.nativeInstance.getSourceId();
+  }
+
+  getSourceLayer(): string {
+    return this.nativeInstance.getSourceLayer();
   }
 
   setVisibility(visibility: 'visible' | 'none'): FillExtrusionLayer {
@@ -57,14 +65,26 @@ export class FillExtrusionLayer {
     return this;
   }
 
+  getVisibility(): 'visible' | 'none' {
+    return this.nativeInstance.getVisibility();
+  }
+
   setMinZoom(zoom: number): FillExtrusionLayer {
     this.nativeInstance.setMinZoom(zoom);
     return this;
   }
 
+  getMinZoom(): number {
+    return this.nativeInstance.getMinZoom();
+  }
+
   setMaxZoom(zoom: number): FillExtrusionLayer {
     this.nativeInstance.setMaxZoom(zoom);
     return this;
+  }
+
+  getMaxZoom(): number {
+    return this.nativeInstance.getMaxZoom();
   }
 
   /**
@@ -77,6 +97,10 @@ export class FillExtrusionLayer {
     return this;
   }
 
+  getFilter(): ExpressionLiteral | null {
+    return this.nativeInstance.getFilter();
+  }
+
   setSourceLayer(sourceLayer: string): FillExtrusionLayer {
     this.nativeInstance.setSourceLayer(sourceLayer);
     return this;
@@ -85,6 +109,10 @@ export class FillExtrusionLayer {
   setFillExtrusionVerticalGradient(gradient: PropertyValue<boolean>): FillExtrusionLayer {
     this.nativeInstance.setFillExtrusionVerticalGradient(convertValue(gradient));
     return this;
+  }
+
+  getFillExtrusionVerticalGradient(): boolean | undefined {
+    return this.nativeInstance.getFillExtrusionVerticalGradient();
   }
 
   // ========== FillExtrusion style property helpers ==========
@@ -123,6 +151,10 @@ export class FillExtrusionLayer {
     this.nativeInstance.setFillExtrusionTranslateAnchor(convertValue(anchor) as string);
     return this;
   }
+
+  getFillExtrusionTranslateAnchor(): string | undefined {
+    return this.nativeInstance.getFillExtrusionTranslateAnchor();
+  }
   // ========== Generic property API (Android-compatible) ==========
 
   /**
@@ -131,7 +163,7 @@ export class FillExtrusionLayer {
    * @param value Property value (constant or Expression)
    * @returns this (supports chaining)
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): FillExtrusionLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): FillExtrusionLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
@@ -145,7 +177,7 @@ export class FillExtrusionLayer {
    *   'fill-extrusion-height': 100
    * });
    */
-  setProperties(properties: Record<string, PropertyValue<Object>>): FillExtrusionLayer {
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): FillExtrusionLayer {
     const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {

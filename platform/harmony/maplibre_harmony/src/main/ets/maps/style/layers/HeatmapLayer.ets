@@ -46,8 +46,16 @@ export class HeatmapLayer {
     return this.nativeInstance.getId();
   }
 
+  getType(): string {
+    return this.nativeInstance.getType();
+  }
+
   getSourceId(): string {
     return this.nativeInstance.getSourceId();
+  }
+
+  getSourceLayer(): string {
+    return this.nativeInstance.getSourceLayer();
   }
 
   setVisibility(visibility: 'visible' | 'none'): HeatmapLayer {
@@ -55,14 +63,26 @@ export class HeatmapLayer {
     return this;
   }
 
+  getVisibility(): 'visible' | 'none' {
+    return this.nativeInstance.getVisibility();
+  }
+
   setMinZoom(zoom: number): HeatmapLayer {
     this.nativeInstance.setMinZoom(zoom);
     return this;
   }
 
+  getMinZoom(): number {
+    return this.nativeInstance.getMinZoom();
+  }
+
   setMaxZoom(zoom: number): HeatmapLayer {
     this.nativeInstance.setMaxZoom(zoom);
     return this;
+  }
+
+  getMaxZoom(): number {
+    return this.nativeInstance.getMaxZoom();
   }
 
   /**
@@ -73,6 +93,10 @@ export class HeatmapLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
     this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
+  }
+
+  getFilter(): ExpressionLiteral | null {
+    return this.nativeInstance.getFilter();
   }
 
   setSourceLayer(sourceLayer: string): HeatmapLayer {
@@ -102,6 +126,10 @@ export class HeatmapLayer {
     return this;
   }
 
+  getHeatmapColor(): ExpressionLiteral | undefined {
+    return this.nativeInstance.getHeatmapColor();
+  }
+
   setHeatmapOpacity(opacity: PropertyValue<number>): HeatmapLayer {
     this.nativeInstance.setHeatmapOpacity(convertValue(opacity));
     return this;
@@ -114,7 +142,7 @@ export class HeatmapLayer {
    * @param value Property value (constant or Expression)
    * @returns this (supports chaining)
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): HeatmapLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): HeatmapLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
@@ -128,7 +156,7 @@ export class HeatmapLayer {
    *   'heatmap-radius': 30
    * });
    */
-  setProperties(properties: Record<string, PropertyValue<Object>>): HeatmapLayer {
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): HeatmapLayer {
     const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {

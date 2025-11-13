@@ -510,7 +510,7 @@ export class SymbolLayer {
    * Set text maximum angle.
    * @returns this (chainable).
    */
-  setTextMaxAngle(angle: number): SymbolLayer;
+  setTextMaxAngle(angle: PropertyValue<number>): SymbolLayer;
 
   getTextMaxAngle(): number;
 
@@ -624,7 +624,7 @@ export class SymbolLayer {
    * Set symbol sort key.
    * @returns this (chainable).
    */
-  setSymbolSortKey(sortKey: number): SymbolLayer;
+  setSymbolSortKey(sortKey: PropertyValue<number>): SymbolLayer;
 
   getSymbolSortKey(): number;
 

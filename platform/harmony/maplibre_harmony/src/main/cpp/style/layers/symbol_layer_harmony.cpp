@@ -2229,7 +2229,7 @@ napi_value SymbolLayerNAPI::SetSymbolSortKey(napi_env env, napi_callback_info in
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
+    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::SymbolLayer, float>(
         env, layerObj->getLayer(), argv[0], "symbol-sort-key",
         &mbgl::style::SymbolLayer::setSymbolSortKey
     );

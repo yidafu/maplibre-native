@@ -46,8 +46,16 @@ export class HillshadeLayer {
     return this.nativeInstance.getId();
   }
 
+  getType(): string {
+    return this.nativeInstance.getType();
+  }
+
   getSourceId(): string {
     return this.nativeInstance.getSourceId();
+  }
+
+  getSourceLayer(): string {
+    return this.nativeInstance.getSourceLayer();
   }
 
   setVisibility(visibility: 'visible' | 'none'): HillshadeLayer {
@@ -55,14 +63,26 @@ export class HillshadeLayer {
     return this;
   }
 
+  getVisibility(): 'visible' | 'none' {
+    return this.nativeInstance.getVisibility();
+  }
+
   setMinZoom(zoom: number): HillshadeLayer {
     this.nativeInstance.setMinZoom(zoom);
     return this;
   }
 
+  getMinZoom(): number {
+    return this.nativeInstance.getMinZoom();
+  }
+
   setMaxZoom(zoom: number): HillshadeLayer {
     this.nativeInstance.setMaxZoom(zoom);
     return this;
+  }
+
+  getMaxZoom(): number {
+    return this.nativeInstance.getMaxZoom();
   }
 
   /**
@@ -73,6 +93,10 @@ export class HillshadeLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
     this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
+  }
+
+  getFilter(): ExpressionLiteral | null {
+    return this.nativeInstance.getFilter();
   }
 
   setSourceLayer(sourceLayer: string): HillshadeLayer {
@@ -99,7 +123,7 @@ export class HillshadeLayer {
    * @param value Property value (constant or Expression)
    * @returns this (supports chaining)
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): HillshadeLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): HillshadeLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
@@ -113,7 +137,7 @@ export class HillshadeLayer {
    *   'hillshade-exaggeration': 0.5
    * });
    */
-  setProperties(properties: Record<string, PropertyValue<Object>>): HillshadeLayer {
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): HillshadeLayer {
     const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {

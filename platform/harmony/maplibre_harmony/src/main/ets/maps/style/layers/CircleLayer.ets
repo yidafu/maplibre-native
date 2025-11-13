@@ -47,8 +47,16 @@ export class CircleLayer {
     return this.nativeInstance.getId();
   }
 
+  getType(): string {
+    return this.nativeInstance.getType();
+  }
+
   getSourceId(): string {
     return this.nativeInstance.getSourceId();
+  }
+
+  getSourceLayer(): string {
+    return this.nativeInstance.getSourceLayer();
   }
 
   setVisibility(visibility: 'visible' | 'none'): CircleLayer {
@@ -56,14 +64,26 @@ export class CircleLayer {
     return this;
   }
 
+  getVisibility(): 'visible' | 'none' {
+    return this.nativeInstance.getVisibility();
+  }
+
   setMinZoom(zoom: number): CircleLayer {
     this.nativeInstance.setMinZoom(zoom);
     return this;
   }
 
+  getMinZoom(): number {
+    return this.nativeInstance.getMinZoom();
+  }
+
   setMaxZoom(zoom: number): CircleLayer {
     this.nativeInstance.setMaxZoom(zoom);
     return this;
+  }
+
+  getMaxZoom(): number {
+    return this.nativeInstance.getMaxZoom();
   }
 
   /**
@@ -74,6 +94,10 @@ export class CircleLayer {
     const filterArray = filter instanceof Expression ? filter.toArray() : filter;
     this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
     return this;
+  }
+
+  getFilter(): ExpressionLiteral | null {
+    return this.nativeInstance.getFilter();
   }
 
   setSourceLayer(sourceLayer: string): CircleLayer {
@@ -151,7 +175,7 @@ export class CircleLayer {
    * @param value Property value (constant or Expression)
    * @returns this (supports chaining)
    */
-  setProperty(propertyName: string, value: PropertyValue<Object>): CircleLayer {
+  setProperty(propertyName: string, value: PropertyValue<JSONValue>): CircleLayer {
     this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
     return this;
   }
@@ -167,7 +191,7 @@ export class CircleLayer {
    *   'circle-stroke-width': 2
    * });
    */
-  setProperties(properties: Record<string, PropertyValue<Object>>): CircleLayer {
+  setProperties(properties: Record<string, PropertyValue<JSONValue>>): CircleLayer {
     const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
     const keys = Object.keys(properties);
     for (let i = 0; i < keys.length; i++) {
