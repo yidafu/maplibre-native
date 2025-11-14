@@ -282,32 +282,39 @@ Add to your module's `oh-package.json5`:
 ### Basic Map
 
 ```typescript
-import { NativeMapView, MapLibreMap, CameraPosition } from 'maplibre-harmony';
+import { MapView, MapLibreMap, DEFAULT_STYLE_URLS, LatLng } from 'maplibre_harmony';
 
 @Entry
 @Component
 struct MapPage {
-  private mapInstance?: MapLibreMap;
+  private mapController: MapLibreMap | null = null;
+  @State private isMapReady: boolean = false;
+
+  aboutToDisappear(): void {
+    if (this.mapController) {
+      this.mapController.destroy();
+      this.mapController = null;
+    }
+  }
 
   build() {
     Column() {
-      NativeMapView({
-        styleUrl: 'https://demotiles.maplibre.org/style.json',
-        cameraPosition: new CameraPosition(
-          116.397128, // longitude
-          39.916527,  // latitude
-          12,         // zoom
-          0,          // bearing
-          0           // tilt
-        ),
-        onMapReady: (map: MapLibreMap) => {
-          this.mapInstance = map;
-          console.log('Map is ready!');
+      MapView({
+        styleUrl: DEFAULT_STYLE_URLS.streets,
+        initialLatitude: 39.916527,
+        initialLongitude: 116.397128,
+        initialZoom: 12,
+        onMapReady: (map: MapLibreMap): void => {
+          this.mapController = map;
+          this.isMapReady = true;
+          console.info('[MapPage] Map ready');
         }
       })
         .width('100%')
-        .height('100%')
+        .height('100%');
     }
+    .width('100%')
+    .height('100%');
   }
 }
 ```
@@ -315,103 +322,147 @@ struct MapPage {
 ### Adding Markers
 
 ```typescript
-import { MarkerOptions, LatLng } from 'maplibre-harmony';
+import { MapLibreMap, Marker, MarkerOptions, LatLng } from 'maplibre_harmony';
 
-// Add a marker with custom options
-const marker = this.mapInstance?.addMarker(
-  new MarkerOptions()
-    .position(new LatLng(39.916527, 116.397128))
-    .title('Beijing')
-    .snippet('Capital of China')
-);
+async function addMarkerExample(map: MapLibreMap): Promise<void> {
+  const marker = await map.addMarker(
+    new MarkerOptions()
+      .position(new LatLng(39.916527, 116.397128))
+      .title('Beijing')
+      .snippet('Capital of China')
+  );
 
-// Add marker click listener
-marker?.setOnMarkerClickListener({
-  onMarkerClick: (clickedMarker) => {
-    console.log('Marker clicked:', clickedMarker.getTitle());
-    return true; // consume the event
-  }
-});
+  map.setOnMarkerClickListener({
+    onMarkerClick: (clickedMarker: Marker): boolean => {
+      console.info(`Marker clicked: ${clickedMarker.getTitle()}`);
+      return false; // false keeps the default InfoWindow visible
+    }
+  });
+
+  marker.showInfoWindow();
+}
 ```
 
 ### Camera Animations
 
 ```typescript
-import { CameraUpdateFactory } from 'maplibre-harmony';
+import { MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
 
-// Animate to a new position
-this.mapInstance?.animateCamera(
-  CameraUpdateFactory.newLatLngZoom(
-    new LatLng(31.230416, 121.473701),
-    14
-  ),
-  1000, // duration in milliseconds
-  {
-    onFinish: () => console.log('Animation finished'),
-    onCancel: () => console.log('Animation cancelled')
-  }
-);
+function animateToShanghai(map: MapLibreMap): void {
+  const target: CameraPosition = {
+    target: new LatLng(31.230416, 121.473701),
+    zoom: 14,
+    bearing: 0,
+    tilt: 0
+  };
 
-// Fly to with easing
-this.mapInstance?.flyTo(
-  CameraUpdateFactory.newCameraPosition(
-    new CameraPosition(121.473701, 31.230416, 15, 45, 60)
-  )
-);
+  map.animateCamera(target, 1000, {
+    onFinish: () => console.info('Animation finished'),
+    onCancel: () => console.info('Animation cancelled')
+  });
+
+  map.flyTo(
+    {
+      center: new LatLng(121.473701, 31.230416),
+      zoom: 15,
+      bearing: 45,
+      pitch: 60
+    },
+    1500,
+    {
+      onFinish: () => console.info('Fly animation finished')
+    }
+  );
+}
 ```
 
 ### Event Listeners
 
 ```typescript
-// Map click listener
-this.mapInstance?.addOnMapClickListener({
-  onMapClick: (latLng: LatLng) => {
-    console.log('Map clicked at:', latLng.latitude, latLng.longitude);
+import {
+  MapLibreMap,
+  LatLng,
+  OnMapClickListener,
+  OnCameraMoveListener,
+  OnDidFinishLoadingStyleListener
+} from 'maplibre_harmony';
+
+class MapClickLogger implements OnMapClickListener {
+  private map: MapLibreMap;
+
+  constructor(map: MapLibreMap) {
+    this.map = map;
+  }
+
+  onMapClick(x: number, y: number): boolean {
+    const latLng: LatLng = this.map.latLngForPixel(x, y);
+    console.info(`Tap at: ${latLng.latitude}, ${latLng.longitude}`);
     return false;
   }
-});
+}
 
-// Camera change listener
-this.mapInstance?.addOnCameraMoveListener({
-  onCameraMove: () => {
-    const position = this.mapInstance?.getCameraPosition();
-    console.log('Camera moved to:', position);
-  }
-});
+class CameraMoveLogger implements OnCameraMoveListener {
+  private map: MapLibreMap;
 
-// Style load listener
-this.mapInstance?.addOnStyleLoadedListener({
-  onStyleLoaded: () => {
-    console.log('Style loaded, ready to add layers');
+  constructor(map: MapLibreMap) {
+    this.map = map;
   }
-});
+
+  onCameraMove(): void {
+    const position = this.map.getCameraPosition();
+    if (position) {
+      console.info(`Camera -> zoom: ${position.zoom}, bearing: ${position.bearing}`);
+    }
+  }
+}
+
+class StyleLoadedLogger implements OnDidFinishLoadingStyleListener {
+  onDidFinishLoadingStyle(): void {
+    console.info('Style loaded, ready to add layers');
+  }
+}
+
+function registerListeners(map: MapLibreMap): void {
+  map.addOnMapClickListener(new MapClickLogger(map));
+  map.addOnCameraMoveListener(new CameraMoveLogger(map));
+  map.addOnDidFinishLoadingStyleListener(new StyleLoadedLogger());
+}
 ```
 
 ### Runtime Styling
 
 ```typescript
-// Add a GeoJSON source
-this.mapInstance?.getStyle()?.addSource('my-source', {
-  type: 'geojson',
-  data: {
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: [116.397128, 39.916527]
-    }
-  }
-});
+import { MapLibreMap, GeoJsonSource, CircleLayer } from 'maplibre_harmony';
 
-// Add a circle layer
-this.mapInstance?.getStyle()?.addLayer({
-  id: 'my-layer',
-  type: 'circle',
-  source: 'my-source',
-  paint: {
-    'circle-radius': 10,
-    'circle-color': '#FF0000'
+function addCircleLayer(map: MapLibreMap): void {
+  const style = map.getStyle();
+  if (!style) {
+    console.warn('Style is not ready');
+    return;
   }
-});
+
+  const source = GeoJsonSource.fromGeoJson('poi-source', JSON.stringify({
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [116.397128, 39.916527]
+        },
+        properties: {
+          name: 'Beijing'
+        }
+      }
+    ]
+  }));
+  style.addSource(source);
+
+  const circleLayer = CircleLayer.create('poi-layer', 'poi-source')
+    .setCircleRadius(10)
+    .setCircleColor('#FF0000');
+  style.addLayer(circleLayer);
+}
 ```
 
 ## API Quick Reference
