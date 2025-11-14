@@ -53,6 +53,15 @@ export {
   ViewAnnotationRenderStateParams
 } from './NativeViewAnnotationOverlay';
 
+export {
+  ViewAnnotationBuilderContext,
+  ViewAnnotationWrappedBuilder,
+  ViewAnnotationRenderCallback,
+  DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER,
+  DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
+  INFO_WINDOW_VIEW_NAME
+} from './ViewAnnotationTypes';
+
 // Additional annotation types
 export { Polyline } from './Polyline';
 

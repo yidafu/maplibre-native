@@ -1,7 +1,3 @@
-import maplibre from 'libmaplibre.so';
-// import { ComponentContent } from '@kit.ArkUI';
-
-// Use the NAPI marker type
 import { Marker } from './Marker';
 
 /**
@@ -15,21 +11,26 @@ import { Marker } from './Marker';
  * @example
  * ```typescript
  * mapLibreMap.setInfoWindowAdapter({
- *   getInfoWindow: (marker: Marker) => {
- *     // Return a custom view
- *     return new ComponentContent(uiContext, wrapBuilder(CustomInfoWindowBuilder), marker);
+ *   getInfoWindow: (marker: Marker) => () => {
+ *     Column() {
+ *       Text(marker.getTitle())
+ *         .fontSize(16)
+ *         .fontColor(Color.White)
+ *     }
+ *     .padding(12)
+ *     .backgroundColor('#6200EE')
+ *     .borderRadius(8)
  *   }
  * });
+ * ```
  * ```
  */
 export interface InfoWindowAdapter {
   /**
-   * Create a custom InfoWindow view for the provided marker.
+   * Create a custom InfoWindow builder for the provided marker.
    *
    * @param marker Marker instance.
-   * @returns Custom view component; return null to use the default InfoWindow.
+   * @returns ArkUI builder; return null to use the default InfoWindow.
    */
-  getInfoWindow(marker: Marker): object | null;
+  getInfoWindow(marker: Marker): (() => void) | null;
 }
-
-

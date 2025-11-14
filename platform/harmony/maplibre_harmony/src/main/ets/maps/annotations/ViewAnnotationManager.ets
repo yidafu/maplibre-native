@@ -9,8 +9,15 @@ import {
 } from './NativeViewAnnotationTypes';
 import { ViewAnnotationRenderState } from './NativeViewAnnotationOverlay';
 import { CenterOffset } from './AnnotationView';
-
-type ViewAnnotationBuilder = () => void;
+import {
+  ViewAnnotationBuilderContext,
+  DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
+  DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER
+} from './ViewAnnotationTypes';
+import type {
+  ViewAnnotationRenderCallback,
+  ViewAnnotationWrappedBuilder
+} from './ViewAnnotationTypes';
 
 interface PartialNativeOptionFlags {
   visible?: boolean;
@@ -27,7 +34,9 @@ interface PartialNativeOptionFlags {
  */
 export interface ViewAnnotationAddOptions {
   anchor: LatLng;
-  builder: ViewAnnotationBuilder;
+  wrappedBuilder?: WrappedBuilder<[ViewAnnotationBuilderContext]>;
+  // renderCallback: ViewAnnotationRenderCallback;
+  viewName?: string;
   width?: number;
   height?: number;
   centerOffset?: CenterOffset;
@@ -48,7 +57,9 @@ export interface ViewAnnotationAddOptions {
  */
 export interface ViewAnnotationUpdateOptions {
   anchor?: LatLng;
-  builder?: ViewAnnotationBuilder | null;
+  wrappedBuilder?: WrappedBuilder<[ViewAnnotationBuilderContext]> | null;
+  renderCallback?: ViewAnnotationRenderCallback | null;
+  viewName?: string;
   width?: number;
   height?: number;
   centerOffset?: CenterOffset | null;
@@ -67,7 +78,9 @@ export interface ViewAnnotationUpdateOptions {
 interface ViewAnnotationEntry {
   id: number;
   anchor: LatLng;
-  builder: ViewAnnotationBuilder;
+  wrappedBuilder: WrappedBuilder<[ViewAnnotationBuilderContext]>;
+  // renderCallback: ViewAnnotationRenderCallback;
+  viewName: string;
   width?: number;
   height?: number;
   centerOffset?: CenterOffset;
@@ -136,12 +149,7 @@ export class ViewAnnotationManager {
       console.warn('[ViewAnnotationManager] addViewAnnotation: native map view is not available');
       return -1;
     }
-
-    const builder = options.builder;
-    if (!builder) {
-      console.error('[ViewAnnotationManager] addViewAnnotation: builder is required');
-      return -1;
-    }
+    const wrappedBuilder = options.wrappedBuilder ?? DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER;
 
     const anchor = options.anchor;
     if (!anchor) {
@@ -162,7 +170,8 @@ export class ViewAnnotationManager {
       const entry: ViewAnnotationEntry = {
         id,
         anchor,
-        builder,
+        wrappedBuilder,
+        viewName: options.viewName ?? DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
         width: options.width,
         height: options.height,
         centerOffset: options.centerOffset,
@@ -208,12 +217,16 @@ export class ViewAnnotationManager {
       entry.anchor = options.anchor;
     }
 
-    if (options.builder !== undefined) {
-      if (options.builder === null) {
-        console.warn('[ViewAnnotationManager] updateViewAnnotation: builder cannot be null');
+    if (options.wrappedBuilder !== undefined) {
+      if (options.wrappedBuilder === null) {
+        console.warn('[ViewAnnotationManager] updateViewAnnotation: wrappedBuilder cannot be null');
       } else {
-        entry.builder = options.builder;
+        entry.wrappedBuilder = options.wrappedBuilder;
       }
+    }
+
+    if (options.viewName !== undefined) {
+      entry.viewName = options.viewName ?? DEFAULT_VIEW_ANNOTATION_VIEW_NAME;
     }
 
     if (options.width !== undefined) {
@@ -416,7 +429,8 @@ export class ViewAnnotationManager {
         rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
         opacity: this.normalizeOpacity(frame.opacity),
         visible: entry.visible && frame.visible,
-        builder: entry.builder,
+        wrappedBuilder: entry.wrappedBuilder,
+        viewName: entry.viewName,
         zIndex: entry.zIndex
       }));
     });
@@ -548,4 +562,5 @@ export class ViewAnnotationManager {
     return 1;
   }
 }
+
 

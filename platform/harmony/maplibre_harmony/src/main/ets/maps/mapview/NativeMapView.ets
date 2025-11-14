@@ -9,9 +9,8 @@ import { MapLibreMap } from '../MapLibreMap';
 import { Marker } from '../annotations/Marker';
 import { AnnotationViewData } from '../annotations/AnnotationViewManager';
 import { AnnotationViewOverlay } from '../annotations/AnnotationViewOverlay';
-import { InfoWindowOverlay, InfoWindowState } from '../annotations/InfoWindowOverlay';
-import { InfoWindowPosition } from '../annotations/InfoWindow';
 import { NativeViewAnnotationOverlay, ViewAnnotationRenderState } from '../annotations/NativeViewAnnotationOverlay';
+import { ViewAnnotationBuilderContext } from '../annotations/ViewAnnotationTypes';
 import { NativeViewAnnotationOptions, NativeViewAnnotationFrame } from '../annotations/NativeViewAnnotationTypes';
 import { LatLng } from '../geometry/LatLng';
 import { UiSettings } from '../UiSettings';
@@ -94,7 +93,6 @@ export struct MapView {
   @State private uiSettingsVersion: number = 0;
   @State private scaleBarMetersPerPixel: number = 0;
   // InfoWindow state management
-  @State private visibleInfoWindows: InfoWindowState[] = [];
   // AnnotationView state management
   @State private visibleAnnotationViews: AnnotationViewData[] = [];
   private lastViewAnnotationSnapshot: Map<number, string> = new Map();
@@ -236,10 +234,6 @@ export struct MapView {
           // ⚠️ Important: configure InfoWindowManager callbacks before onMapReady
           // Mirrors Android/iOS: user callbacks should run after internal setup
           // Prevent race conditions: if the user adds and taps markers in onMapReady, callbacks must already exist
-          console.info(`[NativeMapView] Setting up InfoWindow callbacks before onMapReady...`);
-          this.setupInfoWindowCallbacks();
-          console.info(`[NativeMapView] InfoWindow callbacks setup completed`);
-
           // Style finished loading, fire onMapReady
           const callback = this.getOnMapReadyCallback();
           if (callback) {
@@ -343,10 +337,7 @@ export struct MapView {
         controllerWithUnregister.unregisterFromGlobalMap?.();
       }
 
-      // 6. Reset InfoWindow state
-      this.visibleInfoWindows = [];
-
-      // 7. Reset AnnotationView state
+      // 6. Reset AnnotationView state
       this.visibleAnnotationViews = [];
       this.controller.clearViewAnnotationRenderCallback();
       this.logViewAnnotationStateChanges([]);
@@ -474,116 +465,6 @@ export struct MapView {
         return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - scale bar height - bottom margin
       default:
         return margins.top; // Default top alignment (same as TopLeft)
-    }
-  }
-
-  /**
-   * Configure InfoWindowManager UI callbacks
-   */
-  setupInfoWindowCallbacks(): void {
-    console.info(`[NativeMapView] setupInfoWindowCallbacks called`);
-    try {
-      const mapLibreMap = this.controller.getMapLibreMapInstance();
-      console.info(`[NativeMapView] MapLibreMap instance: ${mapLibreMap ? 'exists' : 'null'}`);
-      if (!mapLibreMap) {
-        hilog.warn(DOMAIN, 'NativeMapView', 'MapLibreMap instance not available for InfoWindow setup');
-        return;
-      }
-
-      const infoWindowManager = mapLibreMap.getInfoWindowManager();
-      console.info(`[NativeMapView] InfoWindowManager instance: ${infoWindowManager ? 'exists' : 'null'}`);
-
-      // Show InfoWindow
-      infoWindowManager.setOnShowUICallback((marker: Marker, position: InfoWindowPosition) => {
-        console.info(`[NativeMapView] onShowUICallback triggered for marker: ${marker.getTitle()}, position: (${position.x}, ${position.y})`);
-        console.info(`[NativeMapView] Marker details - ID: ${marker.getId()}, title: "${marker.getTitle()}", snippet: "${marker.getSnippet()}"`);
-        console.info(`[NativeMapView] Position details - x: ${position.x}, y: ${position.y}, arrowOffsetX: ${position.arrowOffsetX}`);
-        
-        const existingIndex = this.visibleInfoWindows.findIndex(
-          item => item.marker.getId() === marker.getId()
-        );
-
-        const style = mapLibreMap.getMarkerManager().getInfoWindowStyle(marker);
-        console.info(`[NativeMapView] InfoWindow style: ${style ? 'exists' : 'null'}`);
-
-        const newState: InfoWindowState = {
-          marker: marker, // Keep reference for callbacks
-          markerId: marker.getId(),
-          markerTitle: marker.getTitle(),
-          markerSnippet: marker.getSnippet(),
-          position: position,
-          style: style,
-          key: `infowindow-${marker.getId()}-${Date.now()}`
-        };
-
-        if (existingIndex >= 0) {
-          console.info(`[NativeMapView] Updating existing InfoWindow at index ${existingIndex}`);
-          this.visibleInfoWindows[existingIndex] = newState;
-        } else {
-          console.info(`[NativeMapView] Adding new InfoWindow, total will be: ${this.visibleInfoWindows.length + 1}`);
-          this.visibleInfoWindows.push(newState);
-        }
-        
-        console.info(`[NativeMapView] visibleInfoWindows updated, count: ${this.visibleInfoWindows.length}`);
-        console.info(`[NativeMapView] Last added state - marker title: "${newState.marker.getTitle()}", position: (${newState.position.x}, ${newState.position.y})`);
-      });
-
-      // Hide InfoWindow
-      infoWindowManager.setOnHideUICallback((marker: Marker) => {
-        const index = this.visibleInfoWindows.findIndex(
-          item => item.marker.getId() === marker.getId()
-        );
-        if (index >= 0) {
-          this.visibleInfoWindows.splice(index, 1);
-        }
-      });
-
-      // Update InfoWindow position
-      infoWindowManager.setOnUpdateUICallback((marker: Marker, position: InfoWindowPosition) => {
-        console.info(`[NativeMapView] setOnUpdateUICallback called for marker: ${marker.getTitle()}, new position: (${position.x}, ${position.y})`);
-        const index = this.visibleInfoWindows.findIndex(
-          item => item.marker.getId() === marker.getId()
-        );
-        if (index >= 0) {
-          // 🔧 Key fix: create a new array reference to trigger @State change detection
-          // ArkUI @State detects reference changes, not internal property changes
-          // Use slice() to create a shallow copy and replace the specific element
-          const newArray = this.visibleInfoWindows.slice();
-          const oldItem = newArray[index];
-          // 🔧 Key fix: update the key to force ForEach re-render
-          // ForEach relies on keys to decide whether to update components
-          // Append a timestamp so each position change triggers re-rendering
-          const newKey = `${oldItem.markerId}_${Date.now()}`;
-          newArray[index] = {
-            marker: oldItem.marker,
-            markerId: oldItem.markerId,
-            markerTitle: oldItem.markerTitle,
-            markerSnippet: oldItem.markerSnippet,
-            position: { x: position.x, y: position.y, arrowOffsetX: position.arrowOffsetX },
-            style: oldItem.style,
-            key: newKey
-          };
-          this.visibleInfoWindows = newArray;
-          console.info(`[NativeMapView] InfoWindow position updated in @State array: (${position.x}, ${position.y}), new key: ${newKey}`);
-        } else {
-          console.warn(`[NativeMapView] setOnUpdateUICallback - marker not found in visibleInfoWindows: ${marker.getTitle()}`);
-        }
-      });
-
-      console.info(`[NativeMapView] InfoWindow callbacks set successfully`);
-
-      // ========== Configure AnnotationView callbacks ==========
-      const annotationViewManager = mapLibreMap.getMarkerManager().getAnnotationViewManager();
-
-      // Observe AnnotationView data changes to refresh the UI
-      // Note: AnnotationViewManager currently lacks callbacks, so updates run during camera movement
-      // This behavior is implemented inside the camera listener
-
-    } catch (error) {
-      this.logNativeMapViewError('Failed to setup InfoWindow/AnnotationView callbacks', error);
-      const errorStack = this.getErrorStack(error);
-      const errorMsg = this.getErrorMessage(error);
-      console.error(`[NativeMapView] Error details: ${errorStack ?? errorMsg}`);
     }
   }
 
@@ -796,66 +677,6 @@ export struct MapView {
         .height('100%')
         .hitTestBehavior(HitTestMode.Transparent)
 
-      // InfoWindow overlay - renders every InfoWindow
-      InfoWindowOverlay({
-        visibleInfoWindows: this.visibleInfoWindows,
-        onInfoWindowClick: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getInfoWindowManager().triggerClick(marker);
-            }
-          } catch (error) {
-            this.logNativeMapViewError('InfoWindow click error', error);
-          }
-        },
-        onInfoWindowLongClick: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getInfoWindowManager().triggerLongClick(marker);
-            }
-          } catch (error) {
-            this.logNativeMapViewError('InfoWindow long click error', error);
-          }
-        },
-        onInfoWindowClose: (marker: Marker) => {
-          try {
-            marker.hideInfoWindow();
-          } catch (error) {
-            this.logNativeMapViewError('InfoWindow close error', error);
-          }
-        },
-        onInfoWindowSizeChanged: (marker: Marker, width: number, height: number) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              const infoWindowManager = mapLibreMap.getInfoWindowManager();
-              const infoWindow = infoWindowManager.get(marker);
-              if (infoWindow) {
-                const oldWidth = infoWindow.getWidth();
-                const oldHeight = infoWindow.getHeight();
-                const EPSILON = 0.1;
-                if (Math.abs(width - oldWidth) < EPSILON && Math.abs(height - oldHeight) < EPSILON) {
-                  return;
-                }
-                console.info(`[NativeMapView] InfoWindow size changed: ${oldWidth}x${oldHeight} -> ${width}x${height}, updating position`);
-                infoWindow.setSize(width, height);
-                const pos = marker.getPosition();
-                const screenPoint = mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
-                console.info(`[NativeMapView] Recalculating position with actual size, marker pos: (${screenPoint.x}, ${screenPoint.y})`);
-                const viewWidth = mapLibreMap.getViewWidth();
-                const viewHeight = mapLibreMap.getViewHeight();
-                infoWindow.update(viewWidth, viewHeight, screenPoint);
-                console.info(`[NativeMapView] InfoWindow position updated after size change`);
-              }
-            }
-          } catch (error) {
-            this.logNativeMapViewError('InfoWindow size changed error', error);
-          }
-        }
-      })
-
       // Declarative child rendering (Marker, Source, Layer, etc.)
       if (this.children) {
         this.children()
@@ -971,8 +792,6 @@ export struct MapView {
    */
   setMapLibreMap(mapLibreMap: MapLibreMap): void {
     this.controller.setMapLibreMapInstance(mapLibreMap);
-    // Set InfoWindow callbacks immediately
-    this.setupInfoWindowCallbacks();
   }
 
   /**

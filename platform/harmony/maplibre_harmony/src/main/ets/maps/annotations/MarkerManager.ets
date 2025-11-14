@@ -19,6 +19,7 @@ import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
 import type { InfoWindowStyle } from './InfoWindow';
 import type { Icon } from './Icon';
+import type { CenterOffset } from './AnnotationView';
 import type { Marker, MarkerAnchor } from './Marker';
 import common from '@ohos.app.ability.common';
 import type {
@@ -1304,6 +1305,66 @@ export class MarkerManager {
     return this.markerInfoWindowStyleMap.get(id);
   }
 
+  private cloneInfoWindowStyle(source?: InfoWindowStyle): InfoWindowStyle {
+    const clone: InfoWindowStyle = {};
+    if (!source) {
+      return clone;
+    }
+
+    if (source.backgroundColor !== undefined) {
+      clone.backgroundColor = source.backgroundColor;
+    }
+    if (source.borderRadius !== undefined) {
+      clone.borderRadius = source.borderRadius;
+    }
+    if (source.shadowRadius !== undefined) {
+      clone.shadowRadius = source.shadowRadius;
+    }
+    if (source.shadowColor !== undefined) {
+      clone.shadowColor = source.shadowColor;
+    }
+    if (source.titleFontSize !== undefined) {
+      clone.titleFontSize = source.titleFontSize;
+    }
+    if (source.titleFontColor !== undefined) {
+      clone.titleFontColor = source.titleFontColor;
+    }
+    if (source.snippetFontSize !== undefined) {
+      clone.snippetFontSize = source.snippetFontSize;
+    }
+    if (source.snippetFontColor !== undefined) {
+      clone.snippetFontColor = source.snippetFontColor;
+    }
+    if (source.padding !== undefined) {
+      clone.padding = source.padding;
+    }
+    if (source.maxWidth !== undefined) {
+      clone.maxWidth = source.maxWidth;
+    }
+    if (source.animated !== undefined) {
+      clone.animated = source.animated;
+    }
+    if (source.leftAccessoryBuilder !== undefined) {
+      clone.leftAccessoryBuilder = source.leftAccessoryBuilder;
+    }
+    if (source.rightAccessoryBuilder !== undefined) {
+      clone.rightAccessoryBuilder = source.rightAccessoryBuilder;
+    }
+    if (source.showCloseButton !== undefined) {
+      clone.showCloseButton = source.showCloseButton;
+    }
+    if (source.thumbnailImage !== undefined) {
+      clone.thumbnailImage = source.thumbnailImage;
+    }
+    if (source.offsetX !== undefined) {
+      clone.offsetX = source.offsetX;
+    }
+    if (source.offsetY !== undefined) {
+      clone.offsetY = source.offsetY;
+    }
+    return clone;
+  }
+
   /**
    * Show InfoWindow for marker
    */
@@ -1312,51 +1373,33 @@ export class MarkerManager {
       const title = marker.getTitle();
       const snippet = marker.getSnippet();
       console.info(`[MarkerManager] showInfoWindow called for marker - title: "${title}", snippet: "${snippet}"`);
-      
-      // Marker screen coordinates (logical pixels for ArkUI positioning)
-      const pos = marker.getPosition();
-      const screenPoint = this.mapLibreMap.pixelForLatLng(pos.latitude, pos.longitude);
-      console.info(`[MarkerManager] Marker logical screen position: (${screenPoint.x}, ${screenPoint.y})`);
 
-      // Determine icon height to compute InfoWindow offset
-      // References: Android InfoWindow.java, iOS positioningRectForCalloutForAnnotationWithTag
       const iconId = marker.getIcon();
       const iconHeightPhysical = this.iconManager.getIconHeight(iconId);
       const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
-      // Icon height is physical; convert to logical pixels
       const iconHeightLogical = iconHeightPhysical / pixelRatio;
       console.info(`[MarkerManager] Icon "${iconId}" height: ${iconHeightPhysical}px (physical) = ${iconHeightLogical}px (logical)`);
 
-      // Retrieve view dimensions
-      const viewWidth: number = this.mapLibreMap.getViewWidth();
-      const viewHeight: number = this.mapLibreMap.getViewHeight();
-      console.info(`[MarkerManager] View dimensions: ${viewWidth}x${viewHeight}`);
-
-      // Load InfoWindow style and configure vertical offset (Android/iOS parity)
-      let style = this.getInfoWindowStyle(marker);
-      
-      // Android InfoWindow.java:137-143:
-      // markerHeightOffset = offsetY
-      // y = coordinates.y - view.getMeasuredHeight() + offsetY
-      //
-      // iOS MLNMapView.mm:5745-5792:
-      // centerPoint = CGPointMake(CGRectGetMidX(positioningRect), CGRectGetMinY(positioningRect))
-      // Position InfoWindow above the marker icon
-      //
-      // Hence offsetY should be negative icon height to shift upward
-      if (!style) {
-        // Create default style when absent
-        style = {};
-      }
+      const style = this.cloneInfoWindowStyle(this.getInfoWindowStyle(marker));
       if (style.offsetY === undefined && iconHeightLogical > 0) {
         style.offsetY = -iconHeightLogical;
         console.info(`[MarkerManager] Setting offsetY to -${iconHeightLogical} (negative icon height for top positioning)`);
       }
 
-      // Show InfoWindow using logical pixel coordinates
-      console.info(`[MarkerManager] Calling InfoWindowManager.show() with offsetY: ${style.offsetY}`);
-      this.infoWindowManager.show(marker, viewWidth, viewHeight, screenPoint, style);
-      console.info(`[MarkerManager] InfoWindow shown successfully`);
+      const centerOffset: CenterOffset = {
+        dx: style.offsetX ?? 0,
+        dy: style.offsetY ?? 0
+      };
+
+      console.info(`[MarkerManager] Calling InfoWindowManager.show() with centerOffset=(${centerOffset.dx}, ${centerOffset.dy})`);
+      this.infoWindowManager.show(marker, {
+        style: style,
+        centerOffset: centerOffset,
+        anchorU: 0.5,
+        anchorV: 1.0,
+        zIndex: marker.getZIndex()
+      });
+      console.info('[MarkerManager] InfoWindow shown successfully');
 
     } catch (error) {
       console.error(`[MarkerManager] Failed to show InfoWindow: ${error.message}`);

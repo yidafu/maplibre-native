@@ -164,18 +164,3 @@ export struct AnnotationViewOverlay {
   }
 }
 
-/**
- * Helper: wrap a parameterized Builder so it can be used dynamically
- *
- * Converts a Builder with parameters into a no-arg Builder for AnnotationView
- *
- * @param builder Builder function
- * @param params Parameter object
- * @returns Wrapped no-argument Builder
- */
-export function wrapBuilderWithParams<T>(builder: (params: T) => void, params: T): () => void {
-  return () => {
-    builder(params);
-  };
-}
-

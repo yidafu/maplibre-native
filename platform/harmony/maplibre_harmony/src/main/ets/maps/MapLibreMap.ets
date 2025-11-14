@@ -244,6 +244,7 @@ export class MapLibreMap {
     // Set the NativeMapView for AnnotationViewManager
     this.annotationViewManager.setNativeMapView(nativeMapView);
     this.viewAnnotationManager.setNativeMapView(nativeMapView);
+    this.infoWindowManager.setViewAnnotationManager(this.viewAnnotationManager);
     this.viewAnnotationManager.updatePixelRatio(this.readPixelRatioSafe(nativeMapView));
     this.viewAnnotationManager.setRenderCallback((states: ViewAnnotationRenderState[]) => {
       if (this.viewAnnotationRenderCallback) {
@@ -338,17 +339,6 @@ export class MapLibreMap {
     console.info('[MapLibreMap] onUpdateRegionChange - updating UI elements');
     
     // Update InfoWindow positions
-    this.infoWindowManager.updatePositions(
-      this.viewWidth,
-      this.viewHeight,
-      (marker: Marker) => {
-        const pos = marker.getPosition();
-        const screenPos = this.pixelForLatLng(pos.latitude, pos.longitude);
-        console.info(`[MapLibreMap] Marker "${marker.getTitle()}" - LatLng: (${pos.latitude}, ${pos.longitude}) -> Screen: (${screenPos.x}, ${screenPos.y})`);
-        return screenPos;
-      }
-    );
-
     this.annotationViewManager.updatePositionsWithProjector((marker: Marker) => {
       const position = marker.getPosition();
       return this.pixelForLatLng(position.latitude, position.longitude);

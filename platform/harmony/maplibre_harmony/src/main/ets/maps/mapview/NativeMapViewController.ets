@@ -101,7 +101,7 @@ export function registerMapLibreMap(
 
     // Wire up compass update callback
     mapLibreMap.onCompassUpdate = (bearing: number) => {
-      controller.updateCompassBearing();
+      controller.updateCompassBearing(bearing);
     };
 
     // Wire up scale bar update callback
@@ -112,7 +112,7 @@ export function registerMapLibreMap(
     // Trigger an immediate update so compass and scale bar have correct initial values
     try {
       const bearing = mapLibreMap.getBearing();
-      controller.updateCompassBearing();
+      controller.updateCompassBearing(bearing);
 
       const latLng = mapLibreMap.getLatLng();
       const metersPerPixel = mapLibreMap.getMetersPerPixelAtLatitude(latLng.latitude);
@@ -162,6 +162,8 @@ export class NativeMapViewController extends XComponentController implements Nat
   // UI component state hooks
   private compassBearingUpdateCallback?: (bearing: number) => void;
   private uiSettingsUpdateCallback?: () => void;
+  private lastCompassBearing: number = 0;
+  private isDestroying: boolean = false;
   // ========== Listener management ==========
 
   // Camera event listeners
@@ -207,6 +209,7 @@ export class NativeMapViewController extends XComponentController implements Nat
   onSurfaceCreated(surfaceId: string): void {
 
     hilog.warn(DOMAIN, "NativeMapView", `🌟 onSurfaceCreated START - surfaceId: ${surfaceId}`);
+    this.isDestroying = false;
     this.surfaceId = surfaceId;
 
     try {
@@ -265,7 +268,8 @@ export class NativeMapViewController extends XComponentController implements Nat
 
       // Register camera listener to update compass and annotation views
       this.nativeMapView.addOnCameraMoveListener(() => {
-        this.updateCompassBearing();
+        // TODO: need bearing parameter
+        this.updateCompassBearing(0.0);
         this.updateAnnotationViews();
       });
 
@@ -598,7 +602,8 @@ export class NativeMapViewController extends XComponentController implements Nat
       });
 
       // Perform initial compass update
-      this.updateCompassBearing();
+      // TODO: need bearing parameter
+      this.updateCompassBearing(0);
 
       // ⚠️ Note: onMapReady callback moved to OnDidFinishLoadingStyleListener
       // Ensures the style is fully loaded before firing, preventing "Style not loaded" errors
@@ -670,6 +675,7 @@ export class NativeMapViewController extends XComponentController implements Nat
    */
   onSurfaceDestroyed(surfaceId: string): void {
 
+    this.isDestroying = true;
     if (this.nativeMapView) {
       try {
         // Run full resource cleanup routine
@@ -689,6 +695,7 @@ export class NativeMapViewController extends XComponentController implements Nat
    */
   private cleanupMapResources(): void {
     try {
+      this.isDestroying = true;
 
       // 1. Stop rendering operations
       if (this.nativeMapView) {
@@ -730,6 +737,7 @@ export class NativeMapViewController extends XComponentController implements Nat
   cleanupResources(): void {
     try {
 
+      this.isDestroying = true;
       if (this.nativeMapView) {
         // Clean up map resources
         this.cleanupMapResources();
@@ -1135,14 +1143,39 @@ export class NativeMapViewController extends XComponentController implements Nat
   /**
    * Update compass bearing
    */
-  updateCompassBearing(): void {
-    if (this.nativeMapView && this.isInitialized && this.compassBearingUpdateCallback) {
+  updateCompassBearing(bearing: number): void {
+    if (this.isDestroying) {
+      return;
+    }
+
+    if (!this.compassBearingUpdateCallback) {
+      return;
+    }
+
+    let resolvedBearing: number | undefined;
+
+    if (typeof bearing === 'number' && Number.isFinite(bearing)) {
+      this.lastCompassBearing = bearing;
+      resolvedBearing = bearing;
+    } else if (Number.isFinite(this.lastCompassBearing)) {
+      resolvedBearing = this.lastCompassBearing;
+    }
+
+    if (resolvedBearing === undefined && this.nativeMapView && this.isInitialized) {
       try {
-        const bearing: number = this.nativeMapView.getBearing();
-        this.compassBearingUpdateCallback(bearing);
+        const nativeBearing: number = this.nativeMapView.getBearing();
+        if (Number.isFinite(nativeBearing)) {
+          this.lastCompassBearing = nativeBearing;
+          resolvedBearing = nativeBearing;
+        }
       } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to update compass bearing: ${error}`);
+        hilog.error(DOMAIN, 'NativeMapView', `Failed to query compass bearing: ${error}`);
+        return;
       }
+    }
+
+    if (resolvedBearing !== undefined) {
+      this.compassBearingUpdateCallback(resolvedBearing);
     }
   }
 

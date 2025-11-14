@@ -1,18 +1,5 @@
-import { Point } from '../geometry/Point';
-// import { ComponentContent } from '@kit.ArkUI';
-
-// Use NAPI Marker type
 import { Marker } from './Marker';
-
-/**
- * InfoWindow position payload
- */
-export interface InfoWindowPosition {
-  x: number; // Screen X coordinate
-  y: number; // Screen Y coordinate
-  arrowOffsetX: number; // Arrow offset relative to center
-}
-
+import { CenterOffset } from './AnnotationView';
 /**
  * InfoWindow size info
  */
@@ -36,18 +23,12 @@ export interface InfoWindowStyle {
   padding?: number;
   maxWidth?: number;
   animated?: boolean;
-
-  // Accessory view support (mirrors iOS MLNCalloutView)
-  leftAccessoryBuilder?: () => void; // @Builder for custom left accessory
-  rightAccessoryBuilder?: () => void; // @Builder for custom right accessory
-
-  // Additional features
-  showCloseButton?: boolean; // Whether to display close button
-  thumbnailImage?: ResourceStr; // Thumbnail displayed left of title
-
-  // InfoWindow offsets
-  offsetX?: number; // X-axis offset (pixels)
-  offsetY?: number; // Y-axis offset (pixels)
+  leftAccessoryBuilder?: () => void;
+  rightAccessoryBuilder?: () => void;
+  showCloseButton?: boolean;
+  thumbnailImage?: ResourceStr;
+  offsetX?: number;
+  offsetY?: number;
 }
 
 const DEFAULT_INFO_WINDOW_STYLE: InfoWindowStyle = {
@@ -55,461 +36,324 @@ const DEFAULT_INFO_WINDOW_STYLE: InfoWindowStyle = {
 };
 
 /**
- * InfoWindow - Information window component
- *
- * Displays marker details using a Popup component.
- *
- * References:
- * - Android: InfoWindow.java
- * - iOS: MLNCalloutView
+ * Layout options applied to the underlying ViewAnnotation entry.
+ */
+export interface InfoWindowLayoutOptions {
+  centerOffset?: CenterOffset;
+  anchorU?: number;
+  anchorV?: number;
+  zIndex?: number;
+}
+
+/**
+ * Builder context used when constructing ArkUI content for the InfoWindow.
+ */
+export interface InfoWindowBuildContext {
+  onWindowClick?: () => void;
+  onLongClick?: () => void;
+  onClose?: () => void;
+  onSizeChanged?: (width: number, height: number) => void;
+  customContentBuilder?: (() => void) | null;
+}
+
+export interface InfoWindowRenderContext {
+  onWindowClick?: () => void;
+  onLongClick?: () => void;
+  onClose?: () => void;
+  onSizeChanged?: (width: number, height: number) => void;
+}
+
+@Builder
+function  renderBuilderContent(builder: () => void) {
+  builder()
+}
+/**
+ * InfoWindow - ViewAnnotation-backed InfoWindow descriptor.
  */
 export class InfoWindow {
-  private marker: Marker;
-  private customView: object | null = null;
-  private _isShown: boolean = false;
-  private _width: number = 0;
-  private _height: number = 0;
-  // Position and offsets
-  private offsetX: number = 0;
-  private offsetY: number = 0;
-  private markerHeightOffset: number = 0;
-  private markerWidthOffset: number = 0;
-  private viewWidthOffset: number = 0;
-  private viewHeightOffset: number = 0;
-  private screenPosition: InfoWindowPosition | null = null;
-  // Style configuration
-  private style: InfoWindowStyle = {
-    showCloseButton: DEFAULT_INFO_WINDOW_STYLE.showCloseButton,
+  private readonly marker: Marker;
+  private style: InfoWindowStyle;
+  private width: number = 0;
+  private height: number = 0;
+  private annotationId: number = -1;
+  private visible: boolean = false;
+  private layoutOptions: InfoWindowLayoutOptions = {
+    centerOffset: undefined,
+    anchorU: 0.5,
+    anchorV: 1.0,
+    zIndex: undefined
   };
-  // Callbacks to inform external consumers about visibility changes
-  private onShowCallback?: (marker: Marker, position: InfoWindowPosition) => void;
-  private onCloseCallback?: (marker: Marker) => void;
-  private onUpdateCallback?: (marker: Marker, position: InfoWindowPosition) => void;
 
   constructor(marker: Marker, style?: InfoWindowStyle) {
     this.marker = marker;
-    this.setStyle(style ?? {});
+    this.style = this.mergeStyle(style ?? {});
   }
 
-  /**
-   * Assign show callback
-   */
-  public setOnShowCallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
-    this.onShowCallback = callback;
-  }
-
-  /**
-   * Assign close callback
-   */
-  public setOnCloseCallback(callback: (marker: Marker) => void): void {
-    this.onCloseCallback = callback;
-  }
-
-  /**
-   * Assign update callback
-   */
-  public setOnUpdateCallback(callback: (marker: Marker, position: InfoWindowPosition) => void): void {
-    this.onUpdateCallback = callback;
-  }
-
-  /**
-   * Configure offset
-   */
-  public setOffset(offsetX: number, offsetY: number): void {
-    this.offsetX = offsetX;
-    this.offsetY = offsetY;
-  }
-
-  /**
-   * Set InfoWindow size
-   */
-  public setSize(width: number, height: number): void {
-    this._width = width;
-    this._height = height;
-  }
-
-  /**
-   * Get InfoWindow width
-   */
-  public getWidth(): number {
-    return this._width;
-  }
-
-  /**
-   * Get InfoWindow height
-   */
-  public getHeight(): number {
-    return this._height;
-  }
-
-  /**
-   * Apply style
-   */
-  public setStyle(style: InfoWindowStyle): void {
-    const mergedStyle: InfoWindowStyle = {};
-
-    if (style.backgroundColor !== undefined) {
-      mergedStyle.backgroundColor = style.backgroundColor;
-    }
-    if (style.borderRadius !== undefined) {
-      mergedStyle.borderRadius = style.borderRadius;
-    }
-    if (style.shadowRadius !== undefined) {
-      mergedStyle.shadowRadius = style.shadowRadius;
-    }
-    if (style.shadowColor !== undefined) {
-      mergedStyle.shadowColor = style.shadowColor;
-    }
-    if (style.titleFontSize !== undefined) {
-      mergedStyle.titleFontSize = style.titleFontSize;
-    }
-    if (style.titleFontColor !== undefined) {
-      mergedStyle.titleFontColor = style.titleFontColor;
-    }
-    if (style.snippetFontSize !== undefined) {
-      mergedStyle.snippetFontSize = style.snippetFontSize;
-    }
-    if (style.snippetFontColor !== undefined) {
-      mergedStyle.snippetFontColor = style.snippetFontColor;
-    }
-    if (style.padding !== undefined) {
-      mergedStyle.padding = style.padding;
-    }
-    if (style.maxWidth !== undefined) {
-      mergedStyle.maxWidth = style.maxWidth;
-    }
-    if (style.animated !== undefined) {
-      mergedStyle.animated = style.animated;
-    }
-    if (style.leftAccessoryBuilder !== undefined) {
-      mergedStyle.leftAccessoryBuilder = style.leftAccessoryBuilder;
-    }
-    if (style.rightAccessoryBuilder !== undefined) {
-      mergedStyle.rightAccessoryBuilder = style.rightAccessoryBuilder;
-    }
-    if (style.thumbnailImage !== undefined) {
-      mergedStyle.thumbnailImage = style.thumbnailImage;
-    }
-    if (style.offsetX !== undefined) {
-      mergedStyle.offsetX = style.offsetX;
-    }
-    if (style.offsetY !== undefined) {
-      mergedStyle.offsetY = style.offsetY;
-    }
-
-    if (style.showCloseButton !== undefined) {
-      mergedStyle.showCloseButton = style.showCloseButton;
-    } else {
-      mergedStyle.showCloseButton = DEFAULT_INFO_WINDOW_STYLE.showCloseButton;
-    }
-
-    this.style = mergedStyle;
-
-    if (mergedStyle.offsetX !== undefined) {
-      this.offsetX = mergedStyle.offsetX;
-    }
-    if (mergedStyle.offsetY !== undefined) {
-      this.offsetY = mergedStyle.offsetY;
-    }
-  }
-
-  /**
-   * Retrieve current style
-   */
-  public getStyle(): InfoWindowStyle {
-    return this.style;
-  }
-
-  /**
-   * Show the InfoWindow
-   * @param screenWidth Screen width (for boundary checks)
-   * @param screenHeight Screen height (for boundary checks)
-   * @param markerScreenPosition Marker screen position
-   */
-  public show(screenWidth: number, screenHeight: number, markerScreenPosition: Point): void {
-    if (this._isShown) {
-      console.info(`[InfoWindow] Already shown, skipping`);
-      return;
-    }
-
-    console.info(`[InfoWindow] show() called, calculating position...`);
-
-    // Compute position
-    const position = this.calculateScreenPosition(
-      markerScreenPosition,
-      screenWidth,
-      screenHeight
-    );
-
-    this.screenPosition = position;
-    this._isShown = true;
-    // Avoid recursive calls: marker state handled in MarkerManager.selectMarker()
-
-    console.info(`[InfoWindow] Position calculated: (${position.x}, ${position.y}), calling onShowCallback...`);
-
-    // Notify UI layer to display
-    if (this.onShowCallback) {
-      console.info(`[InfoWindow] onShowCallback exists, invoking...`);
-      this.onShowCallback(this.marker, position);
-      console.info(`[InfoWindow] onShowCallback completed`);
-    } else {
-      console.warn(`[InfoWindow] onShowCallback is null or undefined!`);
-    }
-  }
-
-  /**
-   * Close InfoWindow
-   */
-  public close(): void {
-    if (!this._isShown) {
-      return;
-    }
-
-    this._isShown = false;
-    // Avoid recursion: marker state maintained by MarkerManager
-
-    // Notify UI layer to hide
-    if (this.onCloseCallback) {
-      this.onCloseCallback(this.marker);
-    }
-  }
-
-  /**
-   * Update InfoWindow position
-   * @param screenWidth Screen width
-   * @param screenHeight Screen height
-   * @param markerScreenPosition Marker screen position
-   */
-  public update(screenWidth: number, screenHeight: number, markerScreenPosition: Point): void {
-    if (!this._isShown) {
-      console.info(`[InfoWindow] update() skipped - InfoWindow not shown`);
-      return;
-    }
-
-    console.info(`[InfoWindow] update() called - recalculating position with size: ${this._width}x${this._height}`);
-
-    // Recompute position
-    const position = this.calculateScreenPosition(
-      markerScreenPosition,
-      screenWidth,
-      screenHeight
-    );
-
-    this.screenPosition = position;
-    console.info(`[InfoWindow] New position calculated: (${position.x}, ${position.y}), arrowOffsetX: ${position.arrowOffsetX}`);
-
-    // Notify UI layer to refresh
-    if (this.onUpdateCallback) {
-      console.info(`[InfoWindow] Calling onUpdateCallback to update UI position`);
-      this.onUpdateCallback(this.marker, position);
-      console.info(`[InfoWindow] onUpdateCallback completed`);
-    } else {
-      console.warn(`[InfoWindow] onUpdateCallback is null/undefined!`);
-    }
-  }
-
-  /**
-   * Determine whether InfoWindow is visible
-   */
-  public isShown(): boolean {
-    return this._isShown;
-  }
-
-  /**
-   * Set custom view
-   */
-  public setCustomView(view: object | null): void {
-    this.customView = view;
-  }
-
-  /**
-   * Get custom view
-   */
-  public getCustomView(): object | null {
-    return this.customView;
-  }
-
-  /**
-   * Retrieve associated marker
-   */
   public getMarker(): Marker {
     return this.marker;
   }
 
-  /**
-   * Get InfoWindow title
-   */
-  public getTitle(): string {
-    return this.marker.getTitle();
+  public getStyle(): InfoWindowStyle {
+    return this.style;
   }
 
-  /**
-   * Get InfoWindow snippet
-   */
-  public getSnippet(): string {
-    return this.marker.getSnippet();
+  public setStyle(style: InfoWindowStyle): void {
+    this.style = this.mergeStyle(style);
+    this.width = 0;
+    this.height = 0;
   }
 
-  /**
-   * Get current screen position
-   */
-  public getScreenPosition(): InfoWindowPosition | null {
-    return this.screenPosition;
+  public setLayoutOptions(options: InfoWindowLayoutOptions): void {
+    this.layoutOptions = {
+      centerOffset: options.centerOffset ? { dx: options.centerOffset.dx, dy: options.centerOffset.dy } : undefined,
+      anchorU: options.anchorU ?? this.layoutOptions.anchorU ?? 0.5,
+      anchorV: options.anchorV ?? this.layoutOptions.anchorV ?? 1.0,
+      zIndex: options.zIndex ?? undefined
+    };
   }
 
-  /**
-   * Estimate InfoWindow size
-   *
-   * Approximate dimensions before actual rendering using content and style.
-   *
-   * @returns Estimated width/height (physical pixels)
-   */
-  private estimateSize(): InfoWindowSize {
+  public getLayoutOptions(): InfoWindowLayoutOptions {
+    return {
+      centerOffset: this.layoutOptions.centerOffset ? { dx: this.layoutOptions.centerOffset.dx, dy: this.layoutOptions.centerOffset.dy } : undefined,
+      anchorU: this.layoutOptions.anchorU,
+      anchorV: this.layoutOptions.anchorV,
+      zIndex: this.layoutOptions.zIndex
+    };
+  }
+
+  public setAnnotationId(id: number): void {
+    this.annotationId = id;
+  }
+
+  public getAnnotationId(): number {
+    return this.annotationId;
+  }
+
+  public resetAnnotation(): void {
+    this.annotationId = -1;
+    this.visible = false;
+  }
+
+  public setVisible(visible: boolean): void {
+    this.visible = visible;
+  }
+
+  public isShown(): boolean {
+    return this.visible;
+  }
+
+  public updateSize(width: number, height: number): boolean {
+    if (width <= 0 || height <= 0) {
+      return false;
+    }
+    const WIDTH_EPSILON = 0.1;
+    const HEIGHT_EPSILON = 0.1;
+    const widthChanged = Math.abs(width - this.width) > WIDTH_EPSILON;
+    const heightChanged = Math.abs(height - this.height) > HEIGHT_EPSILON;
+    if (!(widthChanged || heightChanged)) {
+      return false;
+    }
+    this.width = width;
+    this.height = height;
+    return true;
+  }
+
+  public getWidth(): number {
+    return this.width;
+  }
+
+  public getHeight(): number {
+    return this.height;
+  }
+
+  public estimateSize(): InfoWindowSize {
     const title = this.marker.getTitle() || '';
     const snippet = this.marker.getSnippet() || '';
-    
-    // Pull configuration from style
     const titleFontSize = this.style.titleFontSize ?? 16;
     const snippetFontSize = this.style.snippetFontSize ?? 14;
     const padding = this.style.padding ?? 12;
-    
-    // Estimate width based on text length and font size
-    // Use 0.7 as average character width factor (mixed languages)
     const titleWidth = title.length * titleFontSize * 0.7;
     const snippetWidth = snippet ? snippet.length * snippetFontSize * 0.6 : 0;
     const maxTextWidth = Math.max(titleWidth, snippetWidth);
-    
-    // Extra width if thumbnail present
-    const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;  // 32px icon + 8px margin
+    const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;
     const showCloseButton = this.style.showCloseButton !== false;
-    const closeButtonWidth = showCloseButton ? 36 : 0; // 28 button + 8 margin
-
-    // Estimated width = text width + padding + thumbnail/close button
-    const estimatedWidth = Math.max(
-      maxTextWidth + padding * 2 + thumbnailWidth + closeButtonWidth,
-      80  // Minimum width for visual balance
-    );
-    
-    // Enforce max width
+    const closeButtonWidth = showCloseButton ? 36 : 0;
+    const estimatedWidth = Math.max(maxTextWidth + padding * 2 + thumbnailWidth + closeButtonWidth, 80);
     const maxWidth = this.style.maxWidth ?? 240;
     const width = Math.min(estimatedWidth, maxWidth);
-    
-    // Estimate height based on content rows
-    const titleHeight = title ? titleFontSize + 8 : 0;  // Title line + spacing
-    const snippetHeight = snippet ? snippetFontSize + 4 : 0;  // Snippet line + spacing
-    const arrowHeight = 10;  // Arrow height
+    const titleHeight = title ? titleFontSize + 8 : 0;
+    const snippetHeight = snippet ? snippetFontSize + 4 : 0;
+    const arrowHeight = 10;
     const closeButtonHeight = showCloseButton ? 32 : 0;
-    
-    const estimatedHeight = 
-      closeButtonHeight +
-      titleHeight +
-      snippetHeight +
-      padding * 2 + 
-      arrowHeight;
-    
+    const estimatedHeight = closeButtonHeight + titleHeight + snippetHeight + padding * 2 + arrowHeight;
     return {
       width: width,
       height: estimatedHeight
     };
   }
 
-  /**
-   * Calculate InfoWindow screen position
-   * Mirrors Android InfoWindow.java positioning logic.
-   *
-   * @param markerScreenPosition Marker screen coordinates
-   * @param screenWidth Screen width
-   * @param screenHeight Screen height
-   * @returns Computed position info
-   */
-  private calculateScreenPosition(
-    markerScreenPosition: Point,
-    screenWidth: number,
-    screenHeight: number
-  ): InfoWindowPosition {
-    // Use estimated size if unknown (first render)
-    let width = this._width;
-    let height = this._height;
-    
-    if (width === 0 || height === 0) {
-      const estimated = this.estimateSize();
-      width = estimated.width;
-      height = estimated.height;
-      console.info(`[InfoWindow] Using estimated size: ${width}x${height}`);
+  private mergeStyle(style: InfoWindowStyle): InfoWindowStyle {
+    const merged: InfoWindowStyle = {};
+
+    if (style.backgroundColor !== undefined) {
+      merged.backgroundColor = style.backgroundColor;
     }
-    
-    // Default position: centered above marker
-    let x = markerScreenPosition.x - (width / 2) + this.offsetX;
-    let y = markerScreenPosition.y - height + this.offsetY;
-
-    // Store offsets for future updates
-    this.markerHeightOffset = this.offsetY;
-    this.markerWidthOffset = -this.offsetX;
-
-    // Calculate view offsets
-    this.viewWidthOffset = x - markerScreenPosition.x - this.offsetX;
-    this.viewHeightOffset = -height + this.offsetY;
-
-    // Arrow centered by default
-    let arrowOffsetX = 0;
-
-    // Arrow alignment helper: keep arrow pointing at the marker (or offset anchor)
-    const arrowWidth = 20; // Arrow width
-    const maxArrowOffset = (width / 2) - (arrowWidth / 2) - 4; // Prevent arrow from leaving bounds
-    const infoWindowCenterX = x + (width / 2);
-    const markerAnchorX = markerScreenPosition.x;
-
-    arrowOffsetX = markerAnchorX - infoWindowCenterX;
-
-    if (arrowOffsetX > maxArrowOffset) {
-      arrowOffsetX = maxArrowOffset;
-    } else if (arrowOffsetX < -maxArrowOffset) {
-      arrowOffsetX = -maxArrowOffset;
+    if (style.borderRadius !== undefined) {
+      merged.borderRadius = style.borderRadius;
+    }
+    if (style.shadowRadius !== undefined) {
+      merged.shadowRadius = style.shadowRadius;
+    }
+    if (style.shadowColor !== undefined) {
+      merged.shadowColor = style.shadowColor;
+    }
+    if (style.titleFontSize !== undefined) {
+      merged.titleFontSize = style.titleFontSize;
+    }
+    if (style.titleFontColor !== undefined) {
+      merged.titleFontColor = style.titleFontColor;
+    }
+    if (style.snippetFontSize !== undefined) {
+      merged.snippetFontSize = style.snippetFontSize;
+    }
+    if (style.snippetFontColor !== undefined) {
+      merged.snippetFontColor = style.snippetFontColor;
+    }
+    if (style.padding !== undefined) {
+      merged.padding = style.padding;
+    }
+    if (style.maxWidth !== undefined) {
+      merged.maxWidth = style.maxWidth;
+    }
+    if (style.animated !== undefined) {
+      merged.animated = style.animated;
+    }
+    if (style.leftAccessoryBuilder !== undefined) {
+      merged.leftAccessoryBuilder = style.leftAccessoryBuilder;
+    }
+    if (style.rightAccessoryBuilder !== undefined) {
+      merged.rightAccessoryBuilder = style.rightAccessoryBuilder;
+    }
+    if (style.thumbnailImage !== undefined) {
+      merged.thumbnailImage = style.thumbnailImage;
+    }
+    if (style.offsetX !== undefined) {
+      merged.offsetX = style.offsetX;
+    }
+    if (style.offsetY !== undefined) {
+      merged.offsetY = style.offsetY;
     }
 
-    return {
-      x: x,
-      y: y,
-      arrowOffsetX: arrowOffsetX
-    };
+    merged.showCloseButton = style.showCloseButton !== undefined
+      ? style.showCloseButton
+      : DEFAULT_INFO_WINDOW_STYLE.showCloseButton;
+
+    return merged;
+  }
+}
+
+@Builder
+export function RenderDefaultInfoWindow(infoWindow: InfoWindow, context: InfoWindowRenderContext, notifySizeChanged: (width: number, height: number) => void): void {
+  DefaultInfoWindowHost({
+    marker: infoWindow.getMarker(),
+    style: infoWindow.getStyle(),
+    context: context,
+    notifySizeChanged: notifySizeChanged
+  });
+}
+
+@Builder
+export function RenderCustomInfoWindow(context: InfoWindowRenderContext, notifySizeChanged: (width: number, height: number) => void, builder: () => void): void {
+  CustomInfoWindowHost({
+    context: context,
+    notifySizeChanged: notifySizeChanged,
+    contentBuilder: () => {
+      builder();
+    }
+  });
+}
+
+@Component
+struct CustomInfoWindowHost {
+  @Prop context: InfoWindowRenderContext;
+  @Prop notifySizeChanged: (width: number, height: number) => void;
+  @BuilderParam contentBuilder: () => void;
+
+  build() {
+    Column() {
+      renderBuilderContent(this.contentBuilder)
+    }
+    .onClick(() => {
+      this.context.onWindowClick?.();
+    })
+    .gesture(
+      LongPressGesture({ repeat: false })
+        .onAction(() => {
+          this.context.onLongClick?.();
+        })
+    )
+    .onAreaChange((_oldValue: Area, newValue: Area) => {
+      const measuredWidth = Number(newValue.width);
+      const measuredHeight = Number(newValue.height);
+      if (measuredWidth > 0 && measuredHeight > 0) {
+        this.notifySizeChanged(measuredWidth, measuredHeight);
+      }
+    });
+  }
+}
+
+@Component
+struct DefaultInfoWindowHost {
+  @Prop marker: Marker;
+  @Prop style: InfoWindowStyle;
+  @Prop context: InfoWindowRenderContext;
+  @Prop notifySizeChanged: (width: number, height: number) => void;
+
+  build() {
+    InfoWindowComponent({
+      markerId: this.marker.getId(),
+      markerTitle: this.marker.getTitle(),
+      markerSnippet: this.marker.getSnippet(),
+      arrowOffsetX: 0,
+      customStyle: this.style,
+      onWindowClick: () => {
+        this.context.onWindowClick?.();
+      },
+      onLongClick: () => {
+        this.context.onLongClick?.();
+      },
+      onClose: () => {
+        this.context.onClose?.();
+      },
+      onSizeChanged: (width: number, height: number) => {
+        this.notifySizeChanged(width, height);
+      }
+    });
   }
 }
 
 /**
- * InfoWindowComponent - InfoWindow UI component
- *
- * Renders marker info via Popup with dynamic arrow, custom styling, animations, and accessory views.
- *
- * References:
- * - Android: InfoWindow with custom views
- * - iOS: MLNCalloutView with accessory views
+ * InfoWindowComponent - Default InfoWindow UI component.
  */
 @Component
 export struct InfoWindowComponent {
-  // Important: do not expose @Prop marker: Marker (NAPI objects do not traverse @Prop)
-  // Instead pass marker data fields
   @Prop markerId: number = 0;
   @Prop markerTitle: string = '';
   @Prop markerSnippet: string = '';
-  @Prop arrowOffsetX: number = 0; // Arrow offset relative to center
-  @Prop customContent: object | null = null;
+  @Prop arrowOffsetX: number = 0;
   @Prop customStyle: InfoWindowStyle | null = null;
-  @State windowOpacity: number = 0; // Animation helper (renamed to avoid conflicts)
-  @State windowScale: number = 0.8; // Animation helper (renamed to avoid conflicts)
-  @BuilderParam leftAccessoryBuilder?: () => void; // Left accessory view
-  @BuilderParam rightAccessoryBuilder?: () => void; // Right accessory view
-  onWindowClick?: () => void; // Renamed to avoid CustomComponent.onClick conflict
+  @State windowOpacity: number = 0;
+  @State windowScale: number = 0.8;
+  @BuilderParam leftAccessoryBuilder?: () => void;
+  @BuilderParam rightAccessoryBuilder?: () => void;
+  onWindowClick?: () => void;
   onLongClick?: () => void;
   onClose?: () => void;
-  onSizeChanged?: (width: number, height: number) => void; // Size change callback
+  onSizeChanged?: (width: number, height: number) => void;
 
   aboutToAppear() {
-    console.info(`[InfoWindowComponent] aboutToAppear - marker title: "${this.markerTitle}", snippet: "${this.markerSnippet}"`);
-    console.info(`[InfoWindowComponent] arrowOffsetX: ${this.arrowOffsetX}`);
-    // Play show animation
     const animated = this.customStyle?.animated !== false;
     if (animated) {
-      // animation replaces deprecated animateTo
       this.windowOpacity = 1;
       this.windowScale = 1;
     } else {
@@ -525,7 +369,9 @@ export struct InfoWindowComponent {
           if (this.leftAccessoryBuilder || this.customStyle?.leftAccessoryBuilder) {
             Column() {
               if (this.leftAccessoryBuilder) {
-                this.leftAccessoryBuilder()
+                this.leftAccessoryBuilder();
+              } else if (this.customStyle?.leftAccessoryBuilder) {
+                this.customStyle.leftAccessoryBuilder();
               }
             }
             .margin({ right: 8 })
@@ -568,7 +414,9 @@ export struct InfoWindowComponent {
           if (this.rightAccessoryBuilder || this.customStyle?.rightAccessoryBuilder) {
             Column() {
               if (this.rightAccessoryBuilder) {
-                this.rightAccessoryBuilder()
+                this.rightAccessoryBuilder();
+              } else if (this.customStyle?.rightAccessoryBuilder) {
+                this.customStyle.rightAccessoryBuilder();
               }
             }
           }
@@ -632,14 +480,12 @@ export struct InfoWindowComponent {
           }
         })
     )
-    .onAreaChange((oldValue: Area, newValue: Area) => {
+    .onAreaChange((_oldValue: Area, newValue: Area) => {
       const width = Number(newValue.width);
       const height = Number(newValue.height);
       if (this.onSizeChanged && width > 0 && height > 0) {
-        console.info(`[InfoWindowComponent] Size measured: ${width}x${height}`);
         this.onSizeChanged(width, height);
       }
     })
   }
 }
-

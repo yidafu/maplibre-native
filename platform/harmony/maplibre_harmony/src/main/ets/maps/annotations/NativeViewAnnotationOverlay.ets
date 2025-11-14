@@ -1,3 +1,6 @@
+import type { ViewAnnotationWrappedBuilder } from './ViewAnnotationTypes';
+import { ViewAnnotationBuilderContext, InfoWindowBuilderContext, INFO_WINDOW_VIEW_NAME } from './ViewAnnotationTypes';
+
 export interface ViewAnnotationRenderStateParams {
   id: number;
   positionX: number;
@@ -8,7 +11,8 @@ export interface ViewAnnotationRenderStateParams {
   rotation: number;
   opacity: number;
   visible: boolean;
-  builder: () => void;
+  wrappedBuilder: ViewAnnotationWrappedBuilder;
+  viewName: string;
   zIndex?: number;
 }
 
@@ -22,7 +26,8 @@ export class ViewAnnotationRenderState {
   rotation: number;
   opacity: number;
   visible: boolean;
-  builder: () => void;
+  wrappedBuilder: ViewAnnotationWrappedBuilder;
+  viewName: string;
   zIndex?: number;
 
   constructor(params: ViewAnnotationRenderStateParams) {
@@ -35,14 +40,24 @@ export class ViewAnnotationRenderState {
     this.rotation = params.rotation;
     this.opacity = params.opacity;
     this.visible = params.visible;
-    this.builder = params.builder;
+    this.wrappedBuilder = params.wrappedBuilder;
+    this.viewName = params.viewName;
     this.zIndex = params.zIndex;
   }
 }
 
+@Component
+struct ViewAnnotationContentHost {
+  @BuilderParam builder: () => void;
+
+  build() {
+    this.builder();
+  }
+}
+
 @Builder
-function renderAnnotationContent(builder: () => void): void {
-  builder();
+function renderAnnotationContent(wrappedBuilder: ViewAnnotationWrappedBuilder, ctx: ViewAnnotationBuilderContext) {
+  wrappedBuilder.builder(ctx);
 }
 
 @Component
@@ -75,7 +90,8 @@ export struct NativeViewAnnotationOverlay {
       rotation: state.rotation,
       opacity: state.opacity,
       visible: state.visible,
-      builder: state.builder,
+      wrappedBuilder: state.wrappedBuilder,
+      viewName: state.viewName,
       zIndex: state.zIndex
     }));
     const previousById: Map<number, ViewAnnotationRenderState> = new Map<number, ViewAnnotationRenderState>();
@@ -172,9 +188,9 @@ export struct NativeViewAnnotationOverlay {
     const formatNumber = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
     console.info(
       `[NativeViewAnnotationOverlay] render id=${state.id} ` +
-      `position=(${formatNumber(state.positionX)}, ${formatNumber(state.positionY)}) ` +
-      `size=(${formatNumber(state.width)}, ${formatNumber(state.height)}) ` +
-      `scale=${formatNumber(state.scale)} rotation=${formatNumber(state.rotation)}`
+        `position=(${formatNumber(state.positionX)}, ${formatNumber(state.positionY)}) ` +
+        `size=(${formatNumber(state.width)}, ${formatNumber(state.height)}) ` +
+        `scale=${formatNumber(state.scale)} rotation=${formatNumber(state.rotation)}`
     );
   }
 
@@ -187,42 +203,61 @@ export struct NativeViewAnnotationOverlay {
 
   private areStatesEquivalent(previous: ViewAnnotationRenderState, next: ViewAnnotationRenderState): boolean {
     return this.numbersClose(previous.positionX, next.positionX, this.POSITION_EPSILON) &&
-      this.numbersClose(previous.positionY, next.positionY, this.POSITION_EPSILON) &&
-      this.numbersClose(previous.width, next.width, this.SIZE_EPSILON) &&
-      this.numbersClose(previous.height, next.height, this.SIZE_EPSILON) &&
-      this.numbersClose(previous.scale, next.scale, this.SCALE_EPSILON) &&
-      this.numbersClose(previous.rotation, next.rotation, this.ROTATION_EPSILON) &&
-      this.numbersClose(previous.opacity, next.opacity, this.OPACITY_EPSILON) &&
+    this.numbersClose(previous.positionY, next.positionY, this.POSITION_EPSILON) &&
+    this.numbersClose(previous.width, next.width, this.SIZE_EPSILON) &&
+    this.numbersClose(previous.height, next.height, this.SIZE_EPSILON) &&
+    this.numbersClose(previous.scale, next.scale, this.SCALE_EPSILON) &&
+    this.numbersClose(previous.rotation, next.rotation, this.ROTATION_EPSILON) &&
+    this.numbersClose(previous.opacity, next.opacity, this.OPACITY_EPSILON) &&
       previous.visible === next.visible &&
-      previous.builder === next.builder &&
+      previous.wrappedBuilder === next.wrappedBuilder &&
       previous.zIndex === next.zIndex;
+  }
+
+  private createBuilderContext(state: ViewAnnotationRenderState): ViewAnnotationBuilderContext {
+    let ctx: ViewAnnotationBuilderContext;
+    if (state.viewName === INFO_WINDOW_VIEW_NAME) {
+      ctx = new InfoWindowBuilderContext();
+    } else {
+      ctx = new ViewAnnotationBuilderContext();
+    }
+    ctx.annotationId = state.id;
+    ctx.viewName = state.viewName;
+    return ctx;
+  }
+
+  @Builder
+  private renderAnnotationItem(item: ViewAnnotationRenderState): void {
+    if (item.visible) {
+      Column() {
+        renderAnnotationContent(item.wrappedBuilder, this.createBuilderContext(item));
+      }
+      .width(item.width > 0 ? this.toLength(item.width) : 'auto')
+      .height(item.height > 0 ? this.toLength(item.height) : 'auto')
+      .position({ x: this.toLength(item.positionX), y: this.toLength(item.positionY) })
+      .opacity(this.clampOpacity(item.opacity))
+      .scale({
+        x: this.sanitizeScale(item.scale),
+        y: this.sanitizeScale(item.scale),
+        centerX: '50%',
+        centerY: '100%'
+      })
+      .rotate({
+        angle: this.sanitizeRotation(item.rotation),
+        centerX: '50%',
+        centerY: '100%'
+      })
+      .zIndex(item.zIndex ?? 0)
+      .hitTestBehavior(HitTestMode.Transparent);
+
+      // context.clearPayload();
+    }
   }
 
   build(): void {
     Stack({ alignContent: Alignment.TopStart }) {
       ForEach(this.renderFrames, (item: ViewAnnotationRenderState) => {
-        if (item.visible) {
-          Column() {
-            renderAnnotationContent(item.builder);
-          }
-          .width(item.width > 0 ? this.toLength(item.width) : 'auto')
-          .height(item.height > 0 ? this.toLength(item.height) : 'auto')
-          .position({ x: this.toLength(item.positionX), y: this.toLength(item.positionY) })
-          .opacity(this.clampOpacity(item.opacity))
-          .scale({
-            x: this.sanitizeScale(item.scale),
-            y: this.sanitizeScale(item.scale),
-            centerX: '50%',
-            centerY: '100%'
-          })
-          .rotate({
-            angle: this.sanitizeRotation(item.rotation),
-            centerX: '50%',
-            centerY: '100%'
-          })
-          .zIndex(item.zIndex ?? 0)
-          .hitTestBehavior(HitTestMode.Transparent);
-        }
+        this.renderAnnotationItem(item);
       }, (item: ViewAnnotationRenderState) => {
         let version = this.frameVersionById.get(item.id);
         if (version === undefined) {
