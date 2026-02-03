@@ -285,7 +285,7 @@ struct NewAPIFeaturesTestPage {
   }
 
   /**
-   * 加载测试图标
+   * 加载测试图标（示例：通过 MapLibreMap.addImage 直接使用 PixelMap）
    */
   private async loadMarkerIcon(): Promise<void> {
     try {
@@ -298,19 +298,14 @@ struct NewAPIFeaturesTestPage {
         desiredPixelFormat: image.PixelMapFormat.RGBA_8888
       });
       imageSource.release();
-
-      const imageInfo = await pixelMap.getImageInfo();
-      const width = imageInfo.size.width;
-      const height = imageInfo.size.height;
-
-      const pixelBytes = new ArrayBuffer(width * height * 4);
-      await pixelMap.readPixelsToBuffer(pixelBytes);
-
-      const style = this.mapController!.getStyle();
-      if (style) {
-        style.addImage('test-marker', pixelBytes, width, height, false);
+      if (!this.mapController) {
+        pixelMap.release();
+        return;
       }
 
+      this.mapController.addImage('test-marker', pixelMap, 1.0, false);
+      console.info('✅ 已通过 MapLibreMap.addImage 注册 PixelMap 图标');
+      showToast('已通过 PixelMap 注册图标');
       pixelMap.release();
     } catch (error) {
       console.error('加载图标失败:', error);

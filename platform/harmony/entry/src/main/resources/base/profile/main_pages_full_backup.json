@@ -22,6 +22,8 @@
     "pages/annotation/MarkerClickTestPage",
     "pages/annotation/RemoveMarkerTestPage",
     "pages/annotation/AnnotationViewTestPage",
+    "pages/annotation/AnnotationViewMarkerStaticTestPage",
+    "pages/annotation/AnnotationViewReuseTestPage",
     "pages/annotation/IconTestPage",
     "pages/annotation/PolygonTestPage",
     "pages/annotation/PolylinePolygonTestPage",

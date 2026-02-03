@@ -12,18 +12,19 @@ import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } fr
 struct DynamicInfoWindowAdapterTestPage {
   private mapController: MapLibreMap | null = null;
   @State private updateCount: number = 0;
+  private readonly INFO_WINDOW_COLORS: string[] = ['#6200EE', '#03DAC5', '#BB86FC', '#018786'];
   
   build() {
     Column() {
-    TestPageLayout({
-      title: 'Dynamic InfoWindow',
-      description: '动态更新信息窗口内容',
-      showActionBar: true,
-      mapContent: (): void => this.buildMapContent(),
-      actionButtons: (): void => this.buildActionButtons()
-    })
-      .width('100%')
-      .height('100%')
+      TestPageLayout({
+        title: 'Dynamic InfoWindow',
+        description: '动态更新信息窗口内容',
+        showActionBar: true,
+        mapContent: (): void => this.buildMapContent(),
+        actionButtons: (): void => this.buildActionButtons()
+      })
+        .width('100%')
+        .height('100%')
     }
   }
 
@@ -58,19 +59,13 @@ struct DynamicInfoWindowAdapterTestPage {
       constructor(page: DynamicInfoWindowAdapterTestPage) {
         this.page = page;
       }
-      
-      getInfoWindow(marker: Marker): ESObject {
-        const colors = ['#6200EE', '#03DAC5', '#BB86FC', '#018786']
-        const randomColor = colors[this.page.updateCount % colors.length]
-        
-        const viewData: Record<string, Object> = {
-          'title': `${marker.getTitle()} [${this.page.updateCount}]`,
-          'snippet': `更新次数: ${this.page.updateCount}`,
-          'backgroundColor': randomColor,
-          'titleColor': '#FFFFFF',
-          'snippetColor': '#E0E0E0'
+
+      getInfoWindow(marker: Marker): (() => void) | null {
+        const color = this.page.INFO_WINDOW_COLORS[this.page.updateCount % this.page.INFO_WINDOW_COLORS.length];
+
+        return () => {
+          this.page.renderDynamicInfoWindow(marker, this.page.updateCount, color);
         };
-        return viewData as ESObject;
       }
     }
     
@@ -109,5 +104,32 @@ struct DynamicInfoWindowAdapterTestPage {
         this.updateCount = 0;
         showToast('计数已重置');
       })
+  }
+
+  @Builder
+  private renderDynamicInfoWindow(marker: Marker, count: number, backgroundColor: string) {
+    Column({ space: 8 }) {
+      Text(`${marker.getTitle()} [${count}]`)
+        .fontSize(18)
+        .fontColor('#FFFFFF')
+        .fontWeight(FontWeight.Bold)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis });
+
+      Text(`更新次数: ${count}`)
+        .fontSize(14)
+        .fontColor('#E0E0E0')
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis });
+    }
+    .padding({ left: 16, right: 16, top: 12, bottom: 12 })
+    .backgroundColor(backgroundColor)
+    .borderRadius(12)
+    .shadow({
+      radius: 10,
+      color: 'rgba(0, 0, 0, 0.28)',
+      offsetX: 0,
+      offsetY: 6
+    })
   }
 }

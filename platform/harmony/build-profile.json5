@@ -7,11 +7,11 @@
         "material": {
           "certpath": "/Users/yidafu/.ohos/config/default_harmony_nJ7d6HPs-SHwnJt3MksMiCgoAfkL6_89mU5q8OdRL_E=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001A88C6EF9B019FECEAEB6F7647ADC70F189543BCF3BC86E6D641AA2B85E412DDF03B21822E0871",
+          "keyPassword": "0000001BC4B1EAF8E56E54AC8580F9B8E3AB230B7CD0CA57CF2547B3B75CD43D8060196DE8B079D14BDFAC",
           "profile": "/Users/yidafu/.ohos/config/default_harmony_nJ7d6HPs-SHwnJt3MksMiCgoAfkL6_89mU5q8OdRL_E=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "/Users/yidafu/.ohos/config/default_harmony_nJ7d6HPs-SHwnJt3MksMiCgoAfkL6_89mU5q8OdRL_E=.p12",
-          "storePassword": "0000001AB651D5F456739E174CFB1BACFBE266EC32C088315CE11C4AD363F38ED0015BC47544E5C52972"
+          "storePassword": "0000001BDC9CFBE1269CCFF0CE313D1F532A60D1976BCF01AE93AEF645E8EEF81FF1E2864F6B750E65ABAD"
         }
       }
     ],

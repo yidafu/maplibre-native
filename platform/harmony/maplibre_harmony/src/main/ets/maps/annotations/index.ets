@@ -4,6 +4,9 @@
  * Re-exports all classes and interfaces related to map annotations
  */
 
+// ViewAnnotation utilities
+export * from './ViewAnnotationUtils';
+
 // Core annotation classes
 export { Annotation } from './Annotation';
 

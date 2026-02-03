@@ -16,7 +16,6 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import { MapLibreMap, MapView } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG  } from '../common/TestUtils';
 import { image } from '@kit.ImageKit';
-import { componentSnapshot } from '@kit.ArkUI';
 import { ImageSaveUtil } from '../../utils/ImageSaveUtil';
 
 @Entry
@@ -26,7 +25,6 @@ struct SnapshotBasicTestPage {
   @State private hasSnapshot: boolean = false;
   @State private snapshotCount: number = 0;
   @State private lastSnapshotSize: string = '';
-  private mapComponentId: string = 'map-snapshot-view';
   private currentPixelMap: image.PixelMap | null = null;
   
   aboutToDisappear() {
@@ -56,11 +54,9 @@ struct SnapshotBasicTestPage {
     
     try {
       showToast('正在截图...');
-      
-      // 使用 ArkUI 的 componentSnapshot API 截图
-      // 需要给 NativeMapView 设置一个 ID
-      const pixelMap = await componentSnapshot.get(this.mapComponentId);
-      
+
+      const pixelMap = await this.mapController.snapshot();
+
       if (pixelMap) {
         const imageInfo = await pixelMap.getImageInfo();
         this.lastSnapshotSize = `${imageInfo.size.width} x ${imageInfo.size.height}`;
@@ -70,6 +66,9 @@ struct SnapshotBasicTestPage {
         showToast(`截图成功! ${this.lastSnapshotSize}`);
         
         // 保存当前的 pixelMap，以便用户选择保存时使用
+        if (this.currentPixelMap) {
+          this.currentPixelMap.release();
+        }
         this.currentPixelMap = pixelMap;
         
         // 弹出对话框询问用户是否保存
@@ -271,8 +270,7 @@ struct SnapshotBasicTestPage {
       initialZoom: 10
     })
       .width('100%')
-      .height('100%')
-      .id(this.mapComponentId);
+      .height('100%');
   }
   
   build() {

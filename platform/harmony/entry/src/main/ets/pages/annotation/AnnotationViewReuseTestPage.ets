@@ -4,6 +4,10 @@ import {
   ViewAnnotationManager,
   ViewAnnotationUpdateOptions
 } from 'maplibre_harmony/src/main/ets/maps/annotations/ViewAnnotationManager';
+import {
+  ViewAnnotationBuilderContext,
+  DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER
+} from 'maplibre_harmony/src/main/ets/maps/annotations/ViewAnnotationTypes';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, formatLatLngObject } from '../common/TestUtils';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -19,6 +23,8 @@ const CARD_HEIGHT = 168;
 const CARD_OFFSET_Y = -72;
 const ANCHOR_ALIGNMENT_U = 0.5;
 const ANCHOR_ALIGNMENT_V = 1.0;
+const BADGE_VIEW_NAME = 'annotation_badge_view';
+const CARD_VIEW_NAME = 'annotation_card_view';
 
 type AnnotationKind = 'badge' | 'card';
 
@@ -353,6 +359,16 @@ struct AnnotationViewReuseTestPage {
   }
 
   private buildAddOptions(record: ViewAnnotationRecord): ViewAnnotationAddOptions {
+    const viewName = record.type === 'badge' ? BADGE_VIEW_NAME : CARD_VIEW_NAME;
+
+    const renderCallback = (): void => {
+      if (record.type === 'badge') {
+        renderBadgeContent(record);
+      } else {
+        renderCardContent(record);
+      }
+    };
+
     return {
       anchor: record.anchor,
       width: record.width,
@@ -366,13 +382,13 @@ struct AnnotationViewReuseTestPage {
       anchorU: record.anchorU,
       anchorV: record.anchorV,
       zIndex: record.zIndex,
-      builder: record.type === 'badge'
-        ? () => this.renderBadgeContent(record)
-        : () => this.renderCardContent(record)
+      viewName: viewName,
+      wrappedBuilder: DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER,
     };
   }
 
   private buildUpdateOptions(record: ViewAnnotationRecord): ViewAnnotationUpdateOptions {
+    const viewName = record.type === 'badge' ? BADGE_VIEW_NAME : CARD_VIEW_NAME;
     return {
       anchor: record.anchor,
       width: record.width,
@@ -385,7 +401,8 @@ struct AnnotationViewReuseTestPage {
       rotatesWithCamera: record.rotatesWithCamera,
       anchorU: record.anchorU,
       anchorV: record.anchorV,
-      zIndex: record.zIndex
+      zIndex: record.zIndex,
+      viewName: viewName
     };
   }
 
@@ -435,79 +452,88 @@ struct AnnotationViewReuseTestPage {
     this.statusMessage = message;
   }
 
-  @Builder
-  private renderBadgeContent(record: ViewAnnotationRecord): void {
-    Column({ space: 6 }) {
-      Text(record.title)
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(Color.White);
-
-      Text(`位置: ${formatLatLngObject(record.anchor, 4)}`)
-        .fontSize(11)
-        .fontColor('rgba(255,255,255,0.9)');
-
-      Text(`ID: ${record.id}`)
-        .fontSize(10)
-        .fontColor('rgba(255,255,255,0.8)');
-    }
-    .padding(12)
-    .backgroundColor('rgba(30, 136, 229, 0.95)')
-    .borderRadius(12)
-    .shadow({
-      radius: 6,
-      color: 'rgba(0, 0, 0, 0.35)',
-      offsetX: 0,
-      offsetY: 2
-    });
-  }
-
-  @Builder
-  private renderCardContent(record: ViewAnnotationRecord): void {
-    Column({ space: 10 }) {
-      Text(record.title)
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Color.Black);
-
-      Text(`位置: ${formatLatLngObject(record.anchor, 4)}`)
-        .fontSize(12)
-        .fontColor('rgba(0,0,0,0.75)');
-
-      if (record.description) {
-        Text(record.description)
-          .fontSize(12)
-          .fontColor('rgba(0,0,0,0.65)');
-      }
-
-      Row({ space: 12 }) {
-        Button('居中查看')
-          .type(ButtonType.Capsule)
-          .fontSize(12)
-          .onClick(() => this.focusOnAnnotation(record.id));
-
-        Button('移除')
-          .type(ButtonType.Capsule)
-          .fontSize(12)
-          .onClick(() => this.removeAnnotationById(record.id));
-      };
-    }
-    .padding(16)
-    .backgroundColor('rgba(250, 250, 250, 0.95)')
-    .borderRadius(16)
-    .shadow({
-      radius: 10,
-      color: 'rgba(0, 0, 0, 0.2)',
-      offsetX: 0,
-      offsetY: 4
-    });
-  }
-
   private generateRandomPosition(center: LatLng): LatLng {
     const latOffset = (Math.random() - 0.5) * 2 * MAX_RANDOM_OFFSET;
     const lngOffset = (Math.random() - 0.5) * 2 * MAX_RANDOM_OFFSET;
     return new LatLng(center.latitude + latOffset, center.longitude + lngOffset);
   }
+
 }
 
 
+// @Builder
+@Builder
+function renderBadgeContent(record: ViewAnnotationRecord): void {
+  Column({ space: 6 }) {
+    Text(record.title)
+      .fontSize(14)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(Color.White);
+
+    Text(`位置: ${formatLatLngObject(record.anchor, 4)}`)
+      .fontSize(11)
+      .fontColor('rgba(255,255,255,0.9)');
+
+    Text(`ID: ${record.id}`)
+      .fontSize(10)
+      .fontColor('rgba(255,255,255,0.8)');
+  }
+  .padding(12)
+  .backgroundColor('rgba(30, 136, 229, 0.95)')
+  .borderRadius(12)
+  .shadow({
+    radius: 6,
+    color: 'rgba(0, 0, 0, 0.35)',
+    offsetX: 0,
+    offsetY: 2
+  });
+}
+
+@Builder
+function renderCardContent(record: ViewAnnotationRecord): void {
+  Column({ space: 10 }) {
+    Text(record.title)
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(Color.Black);
+
+    Text(`位置: ${formatLatLngObject(record.anchor, 4)}`)
+      .fontSize(12)
+      .fontColor('rgba(0,0,0,0.75)');
+
+    if (record.description) {
+      Text(record.description)
+        .fontSize(12)
+        .fontColor('rgba(0,0,0,0.65)');
+    }
+
+    Row({ space: 12 }) {
+      Button('居中查看')
+        .type(ButtonType.Capsule)
+        .fontSize(12)
+        // .onClick(() => this.focusOnAnnotation(record.id));
+
+      Button('移除')
+        .type(ButtonType.Capsule)
+        .fontSize(12)
+        // .onClick(() => this.removeAnnotationById(record.id));
+    };
+  }
+  .padding(16)
+  .backgroundColor('rgba(250, 250, 250, 0.95)')
+  .borderRadius(16)
+  .shadow({
+    radius: 10,
+    color: 'rgba(0, 0, 0, 0.2)',
+    offsetX: 0,
+    offsetY: 4
+  });
+}
+@Builder
+function  executor (_ctx: ViewAnnotationBuilderContext, record: ViewAnnotationRecord): void {
+  if (record.type === 'badge') {
+    renderBadgeContent(record);
+  } else {
+    renderCardContent(record);
+  }
+};

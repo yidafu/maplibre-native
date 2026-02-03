@@ -1,4 +1,4 @@
-import {LatLng, NativeMapView} from 'maplibre_harmony';
+import { LatLng, NativeMapView, MapLibreMap } from 'maplibre_harmony';
 /**
  * TestPageExample - TestPageLayout 使用示例
  * 
@@ -17,8 +17,8 @@ struct TestPageExample {
   @State markerCount: number = 0;
   @State mapReady: boolean = false;
   @State statusMessage: string = '等待操作...';
-  
   private mapView: NativeMapView | null = null;
+  private mapLibreMap: MapLibreMap | null = null;
 
   /**
    * 地图区域构建器
@@ -179,7 +179,8 @@ struct TestPageExample {
    */
   private onMapReady(map: MapLibreMap): void {
     if (map) {
-      // this.mapView = this.mapView;
+      this.mapLibreMap = map;
+      this.mapView = map.getNativeMapView();
       this.mapReady = true;
       this.statusMessage = '✅ 地图加载成功';
       hilog.info(DOMAIN, 'TestPageExample', 'Map ready');

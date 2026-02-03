@@ -146,61 +146,81 @@ struct LightTestPage {
     if (!this.mapView) return;
     
     try {
-      const light: Record<string, Object> = this.mapView.getLight() as Record<string, Object>;
+      const light = this.mapView.getLight();
       
       if (light) {
         // 解析光照属性
         let info = '光照配置信息:\n\n';
         
         // Anchor（参照系）
-        const anchor = light.anchor as string | undefined;
+        const anchor = light.getAnchor();
         if (anchor !== undefined) {
           info += `Anchor: ${anchor}\n`;
           info += `  (${anchor === 'map' ? '地图' : '视口'}参照系)\n\n`;
         }
         
         // Position（位置）
-        const position = light.position as number[] | undefined;
+        const position = light.getPosition();
         if (position) {
           info += `Position:\n`;
-          if (Array.isArray(position) && position.length >= 3) {
-            info += `  方位角: ${position[0]}°\n`;
-            info += `  极角: ${position[1]}°\n`;
-            info += `  距离: ${position[2]}\n\n`;
-          } else {
-            info += `  ${JSON.stringify(position)}\n\n`;
-          }
+          info += `  方位角: ${position.azimuthal}°\n`;
+          info += `  极角: ${position.polar}°\n`;
+          info += `  距离: ${position.radial}\n\n`;
         }
         
         // Color（颜色）
-        const color = light.color as string | undefined;
+        const color = light.getColor();
         if (color !== undefined) {
           info += `Color: ${color}\n\n`;
         }
         
         // Intensity（强度）
-        const intensity = light.intensity as number | undefined;
+        const intensity = light.getIntensity();
         if (intensity !== undefined) {
           info += `Intensity: ${intensity}\n\n`;
         }
         
-        // 其他属性
-        const otherProps = Object.keys(light).filter(
-          key => !['anchor', 'position', 'color', 'intensity'].includes(key)
-        );
-        
-        if (otherProps.length > 0) {
-          info += '其他属性:\n';
-          otherProps.forEach((key: string) => {
-            const value: Object = light[key] as Object;
-            info += `  ${key}: ${JSON.stringify(value)}\n`;
-          });
+        // Transition 信息
+        const positionTransition = light.getPositionTransition();
+        if (positionTransition && (positionTransition.duration !== undefined || positionTransition.delay !== undefined)) {
+          info += 'Position Transition:\n';
+          if (positionTransition.duration !== undefined) {
+            info += `  Duration: ${positionTransition.duration}ms\n`;
+          }
+          if (positionTransition.delay !== undefined) {
+            info += `  Delay: ${positionTransition.delay}ms\n`;
+          }
+          info += '\n';
+        }
+
+        const colorTransition = light.getColorTransition();
+        if (colorTransition && (colorTransition.duration !== undefined || colorTransition.delay !== undefined)) {
+          info += 'Color Transition:\n';
+          if (colorTransition.duration !== undefined) {
+            info += `  Duration: ${colorTransition.duration}ms\n`;
+          }
+          if (colorTransition.delay !== undefined) {
+            info += `  Delay: ${colorTransition.delay}ms\n`;
+          }
+          info += '\n';
+        }
+
+        const intensityTransition = light.getIntensityTransition();
+        if (intensityTransition && (intensityTransition.duration !== undefined || intensityTransition.delay !== undefined)) {
+          info += 'Intensity Transition:\n';
+          if (intensityTransition.duration !== undefined) {
+            info += `  Duration: ${intensityTransition.duration}ms\n`;
+          }
+          if (intensityTransition.delay !== undefined) {
+            info += `  Delay: ${intensityTransition.delay}ms\n`;
+          }
+          info += '\n';
         }
         
         this.lightInfo = info;
         this.statusMessage = '✅ 已获取光照信息';
         
-        hilog.info(DOMAIN, 'LightTestPage', `Light info: ${JSON.stringify(light)}`);
+        hilog.info(DOMAIN, 'LightTestPage', `Light info: ${JSON.stringify(light.getPosition())}`);
       } else {
         this.lightInfo = '⚠️ 当前样式没有光照配置';
         this.statusMessage = '获取完成（无光照配置）';

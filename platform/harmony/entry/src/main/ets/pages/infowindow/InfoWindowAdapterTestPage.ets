@@ -12,6 +12,7 @@ import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } fr
 struct InfoWindowAdapterTestPage {
   private mapController: MapLibreMap | null = null;
   @State private useCustomAdapter: boolean = false;
+  private readonly INFO_WINDOW_COLORS: string[] = ['#6200EE', '#03DAC5', '#BB86FC', '#018786'];
   
   build() {
     Column() {
@@ -54,7 +55,7 @@ struct InfoWindowAdapterTestPage {
       { name: '北京', latLng: TEST_LOCATIONS.beijing },
       { name: '上海', latLng: TEST_LOCATIONS.shanghai },
       { name: '广州', latLng: TEST_LOCATIONS.guangzhou }
-    ]
+    ];
     
     const options: MarkerOptions[] = cities.map((city, index) => 
       new MarkerOptions()
@@ -68,23 +69,59 @@ struct InfoWindowAdapterTestPage {
 
   private setupCustomAdapter(map: MapLibreMap): void {
     class CustomAdapter implements InfoWindowAdapter {
-      getInfoWindow(marker: Marker): ESObject {
-        // 返回自定义视图数据
-        const viewData: Record<string, Object> = {
-          'title': `🏙️ ${marker.getTitle()}`,
-          'subtitle': `📍 ${marker.getSnippet()}`,
-          'icon': '🗺️',
-          'backgroundColor': '#6200EE',
-          'titleColor': '#FFFFFF',
-          'snippetColor': '#E0E0E0'
+      page: InfoWindowAdapterTestPage;
+
+      constructor(page: InfoWindowAdapterTestPage) {
+        this.page = page;
+      }
+
+      getInfoWindow(marker: Marker): (() => void) | null {
+        const colorIndex = marker.getTitle() ? marker.getTitle().length % this.page.INFO_WINDOW_COLORS.length : 0;
+        const backgroundColor = this.page.INFO_WINDOW_COLORS[colorIndex];
+        return () => {
+          this.page.renderInfoWindow(marker, backgroundColor);
         };
-        return viewData as ESObject;
       }
     }
     
     if (this.useCustomAdapter) {
-      map.setInfoWindowAdapter(new CustomAdapter());
+      map.setInfoWindowAdapter(new CustomAdapter(this));
     }
+  }
+
+  @Builder
+  private renderInfoWindow(marker: Marker, backgroundColor: string) {
+    Column() {
+      Row({ space: 8 }) {
+        Text('🗺️')
+          .fontSize(20)
+
+        Column({ space: 4 }) {
+          Text(`🏙️ ${marker.getTitle()}`)
+            .fontSize(18)
+            .fontWeight(FontWeight.Medium)
+            .fontColor('#FFFFFF')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+
+          Text(`📍 ${marker.getSnippet()}`)
+            .fontSize(14)
+            .fontColor('#E0E0E0')
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+      }
+      .alignItems(VerticalAlign.Center)
+    }
+    .padding(12)
+    .backgroundColor(backgroundColor)
+    .borderRadius(12)
+    .shadow({
+      radius: 8,
+      color: 'rgba(0, 0, 0, 0.25)',
+      offsetX: 0,
+      offsetY: 4
+    })
   }
 
   @Builder

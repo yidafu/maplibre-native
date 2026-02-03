@@ -1,9 +1,13 @@
-import { LatLng, MapLibreMap, MapView } from 'maplibre_harmony';
+import { LatLng, MapLibreMap, MapView, Marker, MarkerOptions } from 'maplibre_harmony';
 import {
   ViewAnnotationAddOptions,
   ViewAnnotationManager,
   ViewAnnotationUpdateOptions
 } from 'maplibre_harmony/src/main/ets/maps/annotations/ViewAnnotationManager';
+import {
+  ViewAnnotationBuilderContext,
+  DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER
+} from 'maplibre_harmony/src/main/ets/maps/annotations/ViewAnnotationTypes';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, formatLatLngObject } from '../common/TestUtils';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -16,6 +20,7 @@ const CARD_HEIGHT = 140;
 const CARD_CENTER_OFFSET_Y = -56;
 const ANCHOR_ALIGNMENT_U = 0.5;
 const ANCHOR_ALIGNMENT_V = 1.0;
+const STATIC_CARD_VIEW_NAME = 'annotation_static_card';
 
 @Entry
 @Component
@@ -31,6 +36,7 @@ struct AnnotationViewMarkerStaticTestPage {
   private annotationId: number = -1;
   private currentAnchor: LatLng = TEST_LOCATIONS.beijing;
   private viewVisible: boolean = true;
+  private infoWindowMarker: Marker | null = null;
 
   aboutToDisappear() {
     hilog.info(DOMAIN, 'AnnotationViewBasic', 'aboutToDisappear');
@@ -46,6 +52,14 @@ struct AnnotationViewMarkerStaticTestPage {
     this.annotationId = -1;
 
     if (this.mapLibreMap) {
+      if (this.infoWindowMarker) {
+        try {
+          this.mapLibreMap.removeMarker(this.infoWindowMarker);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : JSON.stringify(error);
+          hilog.error(DOMAIN, 'AnnotationViewBasic', `removeMarker failed: ${reason}`);
+        }
+      }
       this.mapLibreMap.destroy();
       this.mapLibreMap = null;
     }
@@ -53,6 +67,7 @@ struct AnnotationViewMarkerStaticTestPage {
       this.viewAnnotationManager.clear();
       this.viewAnnotationManager = null;
     }
+    this.infoWindowMarker = null;
   }
 
   build() {
@@ -106,6 +121,18 @@ struct AnnotationViewMarkerStaticTestPage {
         Button('随机移动视图')
           .type(ButtonType.Capsule)
           .onClick(() => this.moveAnnotation());
+      };
+
+      Row({ space: 12 }) {
+        Button('显示 InfoWindow')
+          .type(ButtonType.Capsule)
+          .onClick(() => {
+            this.openInfoWindow();
+          });
+
+        Button('关闭 InfoWindow')
+          .type(ButtonType.Capsule)
+          .onClick(() => this.closeInfoWindow());
       };
 
       Row({ space: 12 }) {
@@ -178,6 +205,7 @@ struct AnnotationViewMarkerStaticTestPage {
 
     this.focusInitialCamera(map);
     this.createOrUpdateAnnotation();
+    await this.setupInfoWindowDemo(map);
   };
 
   private createOrUpdateAnnotation(): void {
@@ -232,7 +260,8 @@ struct AnnotationViewMarkerStaticTestPage {
       anchorU: ANCHOR_ALIGNMENT_U,
       anchorV: ANCHOR_ALIGNMENT_V,
       zIndex: 10,
-      builder: () => this.renderAnnotationContent()
+      viewName: STATIC_CARD_VIEW_NAME,
+      wrappedBuilder: wrapBuilder<[ViewAnnotationBuilderContext]>(renderAnnotationContent),
     };
   }
 
@@ -249,7 +278,8 @@ struct AnnotationViewMarkerStaticTestPage {
       rotatesWithCamera: this.rotateEnabled,
       anchorU: ANCHOR_ALIGNMENT_U,
       anchorV: ANCHOR_ALIGNMENT_V,
-      zIndex: 10
+      zIndex: 10,
+      viewName: STATIC_CARD_VIEW_NAME
     };
   }
 
@@ -337,6 +367,43 @@ struct AnnotationViewMarkerStaticTestPage {
     this.statusMessage = message;
   }
 
+  private async setupInfoWindowDemo(map: MapLibreMap): Promise<void> {
+    try {
+      const markerOptions = new MarkerOptions()
+        .position(this.currentAnchor)
+        .title('默认 InfoWindow')
+        .snippet('基于 wrapBuilder 的渲染示例');
+
+      const marker = await map.addMarker(markerOptions);
+      this.infoWindowMarker = marker;
+      map.selectMarker(marker, true);
+      this.updateStatus('✅ 默认 InfoWindow 已显示');
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : JSON.stringify(error);
+      hilog.error(DOMAIN, 'AnnotationViewBasic', `setupInfoWindowDemo failed: ${reason}`);
+    }
+  }
+
+  private async openInfoWindow(): Promise<void> {
+    if (!this.mapLibreMap) {
+      return;
+    }
+    if (!this.infoWindowMarker) {
+      await this.setupInfoWindowDemo(this.mapLibreMap);
+      return;
+    }
+    this.mapLibreMap.selectMarker(this.infoWindowMarker, true);
+    this.updateStatus('✅ 默认 InfoWindow 已显示');
+  }
+
+  private closeInfoWindow(): void {
+    if (!this.mapLibreMap || !this.infoWindowMarker) {
+      return;
+    }
+    this.mapLibreMap.deselectMarker(this.infoWindowMarker);
+    this.updateStatus('⭕ InfoWindow 已关闭');
+  }
+
   @Builder
   private renderAnnotationContent(): void {
     Column({ space: 10 }) {
@@ -401,3 +468,56 @@ struct AnnotationViewMarkerStaticTestPage {
 
 
 
+
+@Builder
+function renderAnnotationContent(ctx: ViewAnnotationBuilderContext): void {
+  Column({ space: 10 }) {
+    Text('ViewAnnotation Demo')
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(Color.White)
+      .width('100%');
+
+    Text(`坐标: ${formatLatLngObject(LatLng.create(0, 0), 4)}`)
+      .fontSize(12)
+      .fontColor('rgba(255,255,255,0.9)')
+      .width('100%');
+
+    Text(false ? '选中状态: ✅' : '选中状态: ❌')
+      .fontSize(12)
+      .fontColor('rgba(255,255,255,0.9)')
+      .width('100%');
+
+    Row({ space: 12 }) {
+      Button('刷新内容')
+        .type(ButtonType.Capsule)
+        .fontSize(12)
+        .onClick(() => {
+          // this.viewAnnotationManager?.refreshRenderStates();
+          // promptAction.showToast({
+          //   message: '已刷新视图内容',
+          //   duration: 1200
+          // });
+        });
+
+      Button('提示')
+        .type(ButtonType.Capsule)
+        .fontSize(12)
+        .onClick(() => {
+          promptAction.showToast({
+            message: '来自 ViewAnnotation 的事件',
+            duration: 1500
+          });
+        });
+    };
+  }
+  .padding(16)
+  .backgroundColor('rgba(30, 136, 229, 0.92)')
+  .borderRadius(16)
+  .shadow({
+    radius: 10,
+    color: 'rgba(0, 0, 0, 0.4)',
+    offsetX: 0,
+    offsetY: 4
+  });
+}

@@ -1,5 +1,17 @@
 import type { ViewAnnotationWrappedBuilder } from './ViewAnnotationTypes';
-import { ViewAnnotationBuilderContext, InfoWindowBuilderContext, INFO_WINDOW_VIEW_NAME } from './ViewAnnotationTypes';
+import { ViewAnnotationBuilderContext, INFO_WINDOW_VIEW_NAME } from './ViewAnnotationTypes';
+import {
+  POSITION_EPSILON,
+  SIZE_EPSILON,
+  SCALE_EPSILON,
+  ROTATION_EPSILON,
+  OPACITY_EPSILON,
+  toLength,
+  clampOpacity,
+  sanitizeScale,
+  sanitizeRotation,
+  numbersClose
+} from './ViewAnnotationUtils';
 
 export interface ViewAnnotationRenderStateParams {
   id: number;
@@ -65,11 +77,6 @@ export struct NativeViewAnnotationOverlay {
   @Link @Watch('onFramesChanged') frames: ViewAnnotationRenderState[];
   @State private renderFrames: ViewAnnotationRenderState[] = [];
   @State private frameVersionById: Map<number, number> = new Map<number, number>();
-  private readonly POSITION_EPSILON: number = 0.1;
-  private readonly SIZE_EPSILON: number = 0.1;
-  private readonly SCALE_EPSILON: number = 0.01;
-  private readonly ROTATION_EPSILON: number = 0.01;
-  private readonly OPACITY_EPSILON: number = 0.01;
 
   aboutToAppear(): void {
     this.syncRenderFrames(this.frames);
@@ -150,65 +157,14 @@ export struct NativeViewAnnotationOverlay {
     this.frameVersionById = updatedVersionMap;
   }
 
-  private toLength(value: number): Length {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return `${value}vp`;
-  }
-
-  private clampOpacity(value: number): number {
-    if (!Number.isFinite(value)) {
-      return 1;
-    }
-    if (value <= 0) {
-      return 0;
-    }
-    if (value >= 1) {
-      return 1;
-    }
-    return value;
-  }
-
-  private sanitizeScale(value: number): number {
-    if (!Number.isFinite(value) || value <= 0) {
-      return 1;
-    }
-    return value;
-  }
-
-  private sanitizeRotation(value: number): number {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return value;
-  }
-
-  private logRenderState(state: ViewAnnotationRenderState): void {
-    const formatNumber = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
-    console.info(
-      `[NativeViewAnnotationOverlay] render id=${state.id} ` +
-        `position=(${formatNumber(state.positionX)}, ${formatNumber(state.positionY)}) ` +
-        `size=(${formatNumber(state.width)}, ${formatNumber(state.height)}) ` +
-        `scale=${formatNumber(state.scale)} rotation=${formatNumber(state.rotation)}`
-    );
-  }
-
-  private numbersClose(first: number, second: number, epsilon: number): boolean {
-    if (!Number.isFinite(first) || !Number.isFinite(second)) {
-      return first === second;
-    }
-    return Math.abs(first - second) <= epsilon;
-  }
-
   private areStatesEquivalent(previous: ViewAnnotationRenderState, next: ViewAnnotationRenderState): boolean {
-    return this.numbersClose(previous.positionX, next.positionX, this.POSITION_EPSILON) &&
-    this.numbersClose(previous.positionY, next.positionY, this.POSITION_EPSILON) &&
-    this.numbersClose(previous.width, next.width, this.SIZE_EPSILON) &&
-    this.numbersClose(previous.height, next.height, this.SIZE_EPSILON) &&
-    this.numbersClose(previous.scale, next.scale, this.SCALE_EPSILON) &&
-    this.numbersClose(previous.rotation, next.rotation, this.ROTATION_EPSILON) &&
-    this.numbersClose(previous.opacity, next.opacity, this.OPACITY_EPSILON) &&
+    return numbersClose(previous.positionX, next.positionX, POSITION_EPSILON) &&
+      numbersClose(previous.positionY, next.positionY, POSITION_EPSILON) &&
+      numbersClose(previous.width, next.width, SIZE_EPSILON) &&
+      numbersClose(previous.height, next.height, SIZE_EPSILON) &&
+      numbersClose(previous.scale, next.scale, SCALE_EPSILON) &&
+      numbersClose(previous.rotation, next.rotation, ROTATION_EPSILON) &&
+      numbersClose(previous.opacity, next.opacity, OPACITY_EPSILON) &&
       previous.visible === next.visible &&
       previous.wrappedBuilder === next.wrappedBuilder &&
       previous.zIndex === next.zIndex;
@@ -234,25 +190,23 @@ export struct NativeViewAnnotationOverlay {
       Column() {
         renderAnnotationContent(item.wrappedBuilder, this.createBuilderContext(item));
       }
-      .width(item.width > 0 ? this.toLength(item.width) : 'auto')
-      .height(item.height > 0 ? this.toLength(item.height) : 'auto')
-      .position({ x: this.toLength(item.positionX), y: this.toLength(item.positionY) })
-      .opacity(this.clampOpacity(item.opacity))
+      .width(item.width > 0 ? toLength(item.width) : 'auto')
+      .height(item.height > 0 ? toLength(item.height) : 'auto')
+      .position({ x: toLength(item.positionX), y: toLength(item.positionY) })
+      .opacity(clampOpacity(item.opacity))
       .scale({
-        x: this.sanitizeScale(item.scale),
-        y: this.sanitizeScale(item.scale),
+        x: sanitizeScale(item.scale),
+        y: sanitizeScale(item.scale),
         centerX: '50%',
         centerY: '100%'
       })
       .rotate({
-        angle: this.sanitizeRotation(item.rotation),
+        angle: sanitizeRotation(item.rotation),
         centerX: '50%',
         centerY: '100%'
       })
       .zIndex(item.zIndex ?? 0)
       .hitTestBehavior(HitTestMode.Transparent);
-
-      // context.clearPayload();
     }
   }
 
