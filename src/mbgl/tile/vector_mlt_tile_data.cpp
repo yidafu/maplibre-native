@@ -91,7 +91,7 @@ struct PointConverter {
     GeometryCoordinate operator()(const mlt::Coordinate& coord) const { return convert(scale, coord); }
     GeometryCoordinates operator()(const mlt::CoordVec& coords) const {
         GeometryCoordinates result(coords.size());
-        std::ranges::transform(coords, result.begin(), *this);
+        std::transform(coords.begin(), coords.end(), result.begin(), *this);
         return result;
     }
 };
@@ -119,7 +119,7 @@ const GeometryCollection& VectorMLTTileFeature::getGeometries() const {
             case GeometryType::POLYGON: {
                 const auto& geom = static_cast<const mlt::geometry::Polygon&>(geometry);
                 lines.emplace(geom.getRings().size());
-                std::ranges::transform(geom.getRings(), lines->begin(), convert);
+                std::transform(geom.getRings().begin(), geom.getRings().end(), lines->begin(), convert);
                 if (!geometry.getTriangles().empty()) {
                     lines->setTriangles(tile, geometry.getTriangles());
                 }
@@ -128,7 +128,7 @@ const GeometryCollection& VectorMLTTileFeature::getGeometries() const {
             case GeometryType::MULTILINESTRING: {
                 const auto& geom = static_cast<const mlt::geometry::MultiLineString&>(geometry);
                 lines.emplace(geom.getLineStrings().size());
-                std::ranges::transform(geom.getLineStrings(), lines->begin(), convert);
+                std::transform(geom.getLineStrings().begin(), geom.getLineStrings().end(), lines->begin(), convert);
                 break;
             }
             case GeometryType::MULTIPOLYGON: {
@@ -140,7 +140,7 @@ const GeometryCollection& VectorMLTTileFeature::getGeometries() const {
                         return a + b.size();
                     }));
                 for (const auto& poly : polygons) {
-                    std::ranges::transform(poly, std::back_inserter(*lines), convert);
+                    std::transform(poly.begin(), poly.end(), std::back_inserter(*lines), convert);
                 }
                 if (!geometry.getTriangles().empty()) {
                     lines->setTriangles(tile, geometry.getTriangles());
@@ -213,7 +213,7 @@ std::vector<std::string> VectorMLTTileData::layerNames() const {
     }
     if (tile) {
         std::vector<std::string> result(tile->getLayers().size());
-        std::ranges::transform(tile->getLayers(), result.begin(), [](const auto& layer) { return layer.getName(); });
+        std::transform(tile->getLayers().begin(), tile->getLayers().end(), result.begin(), [](const auto& layer) { return layer.getName(); });
         return result;
     }
     return {};

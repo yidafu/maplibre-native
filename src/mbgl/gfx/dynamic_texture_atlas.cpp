@@ -251,7 +251,7 @@ void DynamicTextureAtlas::removeTextures(const std::vector<TextureHandle>& textu
         dynamicTexture->removeTexture(texHandle);
     }
     if (dynamicTexture->isEmpty()) {
-        auto iterator = std::ranges::find(dynamicTextures, dynamicTexture);
+        auto iterator = std::find(dynamicTextures.begin(), dynamicTextures.end(), dynamicTexture);
         if (iterator != dynamicTextures.end()) {
             dynamicTextures.erase(iterator);
         }

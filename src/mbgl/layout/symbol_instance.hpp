@@ -5,7 +5,7 @@
 #include <mbgl/style/layers/symbol_layer_properties.hpp>
 #include <mbgl/util/bitmask_operations.hpp>
 
-#include <source_location>
+//#include <source_location>
 
 #ifndef MLN_SYMBOL_GUARDS
 #define MLN_SYMBOL_GUARDS 1

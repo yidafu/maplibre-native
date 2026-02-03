@@ -587,8 +587,7 @@ void RenderOrchestrator::queryRenderedSymbols(std::unordered_map<std::string, st
     };
 
     std::unordered_map<std::string, const RenderLayer*> crossTileSymbolIndexLayers;
-    std::ranges::copy_if(
-        layers, std::inserter(crossTileSymbolIndexLayers, crossTileSymbolIndexLayers.begin()), hasCrossTileIndex);
+    std::copy_if(layers.begin(), layers.end(), std::inserter(crossTileSymbolIndexLayers, crossTileSymbolIndexLayers.begin()), hasCrossTileIndex);
 
     if (crossTileSymbolIndexLayers.empty()) {
         return;
@@ -603,7 +602,7 @@ void RenderOrchestrator::queryRenderedSymbols(std::unordered_map<std::string, st
     // Although symbol query is global, symbol results are only sortable within
     // a bucket For a predictable global sort renderItems, we sort the buckets
     // based on their corresponding tile position
-    std::ranges::sort(bucketQueryData, [](const RetainedQueryData& a, const RetainedQueryData& b) {
+    std::sort(bucketQueryData.begin(), bucketQueryData.end(), [](const RetainedQueryData& a, const RetainedQueryData& b) {
         return std::tie(a.tileID.canonical.z, a.tileID.canonical.y, a.tileID.wrap, a.tileID.canonical.x) <
                std::tie(b.tileID.canonical.z, b.tileID.canonical.y, b.tileID.wrap, b.tileID.canonical.x);
     });
@@ -618,7 +617,7 @@ void RenderOrchestrator::queryRenderedSymbols(std::unordered_map<std::string, st
 
         for (auto layer : bucketSymbols) {
             auto& resultFeatures = resultsByLayer[layer.first];
-            std::ranges::move(layer.second, std::inserter(resultFeatures, resultFeatures.end()));
+            std::copy(layer.second.begin(), layer.second.end(), std::inserter(resultFeatures, resultFeatures.end()));
         }
     }
 }
@@ -647,7 +646,7 @@ std::vector<Feature> RenderOrchestrator::queryRenderedFeatures(
         if (RenderSource* renderSource = getRenderSource(sourceID)) {
             auto sourceResults = renderSource->queryRenderedFeatures(
                 geometry, transformState, filteredLayers, options, projMatrix);
-            std::ranges::move(sourceResults, std::inserter(resultsByLayer, resultsByLayer.begin()));
+            std::copy(sourceResults.begin(), sourceResults.end(), std::inserter(resultsByLayer, resultsByLayer.begin()));
         }
     }
 
@@ -989,7 +988,7 @@ void RenderOrchestrator::processChanges() {
 }
 
 bool RenderOrchestrator::addRenderTarget(RenderTargetPtr renderTarget) {
-    auto it = std::ranges::find(renderTargets, renderTarget);
+    auto it = std::find(renderTargets.begin(), renderTargets.end(), renderTarget);
     if (it == renderTargets.end()) {
         renderTargets.emplace_back(renderTarget);
         return true;
@@ -999,7 +998,7 @@ bool RenderOrchestrator::addRenderTarget(RenderTargetPtr renderTarget) {
 }
 
 bool RenderOrchestrator::removeRenderTarget(const RenderTargetPtr& renderTarget) {
-    auto it = std::ranges::find(renderTargets, renderTarget);
+    auto it = std::find(renderTargets.begin(), renderTargets.end(), renderTarget);
     if (it != renderTargets.end()) {
         renderTargets.erase(it);
         return true;

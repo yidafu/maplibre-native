@@ -23,7 +23,7 @@ public:
     
     // Register NAPI bindings
     static napi_value Init(napi_env env, napi_value exports);
-static napi_value New(napi_env env, napi_callback_info info);
+    static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native object
     static napi_value CreateInstance(napi_env env, mbgl::style::RasterDEMSource* sourcePtr);
     
@@ -35,6 +35,7 @@ static napi_value New(napi_env env, napi_callback_info info);
     
     // Setters
     static napi_value SetUrl(napi_env env, napi_callback_info info);
+    static napi_value SetTileSize(napi_env env, napi_callback_info info);
     
     // Internal helpers
     std::string getId() const { return id; }

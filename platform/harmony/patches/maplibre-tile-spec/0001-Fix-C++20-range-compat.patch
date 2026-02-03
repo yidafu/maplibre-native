@@ -1,0 +1,109 @@
+diff --git a/cpp/include/mlt/geometry_vector.hpp b/cpp/include/mlt/geometry_vector.hpp
+index 379243a..42d2cb0 100644
+--- a/cpp/include/mlt/geometry_vector.hpp
++++ b/cpp/include/mlt/geometry_vector.hpp
+@@ -163,7 +163,7 @@ struct FlatGpuVector : public GpuVector {
+ 
+     bool containsPolygonGeometry() const noexcept override {
+         // TODO: cache?  types can't change
+-        return std::ranges::any_of(geometryTypes, [](const auto type) {
++        return std::any_of(geometryTypes.begin(), geometryTypes.end(), [](const auto type) {
+             return type == GeometryType::POLYGON || type == GeometryType::MULTIPOLYGON;
+         });
+     }
+@@ -258,7 +258,7 @@ struct FlatGeometryVector : public CpuVector {
+ 
+     bool containsPolygonGeometry() const noexcept override {
+         // TODO: cache?  types can't change
+-        return std::ranges::any_of(geometryTypes, [](const auto type) {
++        return std::any_of(geometryTypes.begin(), geometryTypes.end(), [](const auto type) {
+             return type == GeometryType::POLYGON || type == GeometryType::MULTIPOLYGON;
+         });
+     }
+diff --git a/cpp/include/mlt/json.hpp b/cpp/include/mlt/json.hpp
+index 2a652fa..6ac7923 100644
+--- a/cpp/include/mlt/json.hpp
++++ b/cpp/include/mlt/json.hpp
+@@ -35,23 +35,16 @@ inline json buildArray(std::size_t reservedSize) {
+ 
+ /// Add to a json array the result of a function applied to each element in a range
+ template <typename TRange, typename TFunc>
+-    requires requires(TFunc f, typename std::ranges::range_rvalue_reference_t<TRange> v) {
+-        { f(v) } -> std::same_as<json>;
+-    }
+ inline json append(TRange sourceRange, json&& array, TFunc transform) {
+     assert(array.is_array());
+-    std::ranges::transform(
+-        std::forward<TRange>(sourceRange), std::back_inserter(array), std::forward<TFunc>(transform));
++    std::transform(sourceRange.begin(), sourceRange.end(), std::back_inserter(array), std::forward<TFunc>(transform));
+     return std::move(array);
+ }
+ 
+ /// Convert a collection range into a json array by applying the given function to each element
+ template <typename TRange, typename TFunc>
+-    requires requires(TFunc f, typename std::ranges::range_rvalue_reference_t<TRange> v) {
+-        { f(v) } -> std::same_as<json>;
+-    }
+ inline json buildArray(TRange sourceRange, TFunc transform) {
+-    return append(sourceRange, buildArray(std::ranges::size(sourceRange)), std::forward<TFunc>(transform));
++    return append(sourceRange, buildArray(static_cast<std::size_t>(std::distance(sourceRange.begin(), sourceRange.end()))), std::forward<TFunc>(transform));
+ }
+ #pragma endregion JSON utils
+ 
+@@ -285,7 +278,7 @@ inline json toJSON(const Layer& layer, const Feature& feature, const Projection&
+ 
+ inline json toJSON(const Layer& layer, const TileCoordinate& tileCoord, bool geoJSON) {
+     const auto projection = Projection{layer.getExtent(), tileCoord};
+-    const auto features = std::ranges::views::all(layer.getFeatures());
++    const auto& features = layer.getFeatures();
+     return {{"name", layer.getName()},
+             {"extent", layer.getExtent()},
+             {"features", detail::buildArray(features, [&](const auto& feature) {
+@@ -294,7 +287,7 @@ inline json toJSON(const Layer& layer, const TileCoordinate& tileCoord, bool geo
+ }
+ 
+ inline json toJSON(const MapLibreTile& tile, const TileCoordinate& tileCoord, bool geoJSON) {
+-    const auto layers = std::ranges::views::all(tile.getLayers());
++    const auto& layers = tile.getLayers();
+     return {
+         {"layers", detail::buildArray(layers, [&](const auto& layer) { return toJSON(layer, tileCoord, geoJSON); })},
+     };
+diff --git a/cpp/include/mlt/polyfill.hpp b/cpp/include/mlt/polyfill.hpp
+index 4b8ae68..1027ac6 100644
+--- a/cpp/include/mlt/polyfill.hpp
++++ b/cpp/include/mlt/polyfill.hpp
+@@ -18,7 +18,7 @@ template <std::integral T>
+ constexpr T byteswap(T value) noexcept {
+     static_assert(std::has_unique_object_representations_v<T>, "T may not have padding bits");
+     auto value_representation = std::bit_cast<std::array<std::byte, sizeof(T)>>(value);
+-    std::ranges::reverse(value_representation);
++    std::reverse(value_representation.begin(), value_representation.end());
+     return std::bit_cast<T>(value_representation);
+ }
+ #endif
+diff --git a/cpp/include/mlt/tile.hpp b/cpp/include/mlt/tile.hpp
+index 6821df1..9ee316e 100644
+--- a/cpp/include/mlt/tile.hpp
++++ b/cpp/include/mlt/tile.hpp
+@@ -18,7 +18,7 @@ public:
+     const std::vector<Layer>& getLayers() const noexcept { return layers; }
+ 
+     const Layer* getLayer(const std::string_view& name) const noexcept {
+-        auto hit = std::ranges::find_if(layers, [&](const auto& layer) { return layer.getName() == name; });
++        auto hit = std::find_if(layers.begin(), layers.end(), [&](const auto& layer) { return layer.getName() == name; });
+         return (hit != layers.end()) ? &*hit : nullptr;
+     }
+ 
+diff --git a/cpp/src/mlt/geometry_vector.cpp b/cpp/src/mlt/geometry_vector.cpp
+index ae7108a..97eb0dd 100644
+--- a/cpp/src/mlt/geometry_vector.cpp
++++ b/cpp/src/mlt/geometry_vector.cpp
+@@ -100,7 +100,7 @@ void GeometryVector::applyTriangles(Geometry& geom,
+ #if !defined(NDEBUG) && false
+         // Expect the tessellated indexes to reference the entire range of vertices.
+         // The Java implementation of Earcut makes this fail, so it's disabled for now.
+-        const auto limits = std::ranges::minmax_element(&indexBuffer[indexBufferOffset],
++        const auto limits = std::minmax_element(&indexBuffer[indexBufferOffset],
+                                                         &indexBuffer[indexBufferOffset + (3 * numTriangles)]);
+         assert(*limits.min == 0 && *limits.max == totalVertices - 1);
+ #endif

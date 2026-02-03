@@ -93,7 +93,7 @@ AnnotationIDs Renderer::getAnnotationIDs(const std::vector<Feature>& features) c
     }
     AnnotationIDs ids;
     ids.reserve(set.size());
-    std::ranges::move(set, std::back_inserter(ids));
+    std::copy(set.begin(), set.end(), std::back_inserter(ids));
     return ids;
 }
 

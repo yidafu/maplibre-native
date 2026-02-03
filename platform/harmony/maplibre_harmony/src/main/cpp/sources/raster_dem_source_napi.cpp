@@ -2,6 +2,8 @@
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
+#include <mbgl/util/tileset.hpp>
+#include <mbgl/util/range.hpp>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -44,6 +46,7 @@ napi_value RasterDemSourceNAPI::Init(napi_env env, napi_value exports) {
         { "getId", nullptr, GetId, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "getUrl", nullptr, GetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setUrl", nullptr, SetUrl, nullptr, nullptr, nullptr, napi_default, nullptr },
+        { "setTileSize", nullptr, SetTileSize, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
     
     napi_value cons;
@@ -91,11 +94,83 @@ napi_value RasterDemSourceNAPI::New(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // RasterDEMSource requires urlOrTileset, tileSize, and options arguments
-        // Use an empty string and default values
-        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset = std::string("");
+        // Parse options argument using NapiArgs
+        std::string url = "";
+        std::vector<std::string> tiles;
         uint16_t tileSize = 512;
-        std::optional<mbgl::style::RasterDEMOptions> options = std::nullopt;
+        uint8_t minzoom = 0;
+        uint8_t maxzoom = 22;
+        std::optional<mbgl::style::SourceOptions> options = std::nullopt;
+
+        // Get options object using NapiArgs
+        napi_value optionsObj = napiArgs.GetObject(1, "options");
+        if (!napiArgs.HasError() && optionsObj) {
+            // Read url
+            url = napiArgs.GetStringProperty(optionsObj, "url", "");
+            if (!url.empty()) {
+                Logger::info("RasterDemSourceNAPI", "RasterDemSource URL: %s", url.c_str());
+            }
+
+            // Read tiles array using NapiArgs helpers
+            napi_value tilesValue;
+            napi_status status = napi_get_named_property(env, optionsObj, "tiles", &tilesValue);
+            if (status == napi_ok) {
+                uint32_t length = napiArgs.GetArrayLength(tilesValue);
+                for (uint32_t i = 0; i < length; i++) {
+                    std::string tileStr = napiArgs.GetArrayElementString(tilesValue, i, "");
+                    if (!tileStr.empty()) {
+                        tiles.push_back(tileStr);
+                    }
+                }
+                if (!tiles.empty()) {
+                    Logger::info("RasterDemSourceNAPI", "RasterDemSource tiles count: %zu", tiles.size());
+                }
+            }
+
+            // Read tileSize
+            int32_t tileSizeInt = napiArgs.GetInt32Property(optionsObj, "tileSize", 0);
+            if (tileSizeInt > 0) {
+                tileSize = static_cast<uint16_t>(tileSizeInt);
+                Logger::info("RasterDemSourceNAPI", "RasterDemSource tileSize: %d", tileSize);
+            }
+
+            // Read minzoom
+            minzoom = static_cast<uint8_t>(napiArgs.GetInt32Property(optionsObj, "minzoom", 0));
+
+            // Read maxzoom
+            maxzoom = static_cast<uint8_t>(napiArgs.GetInt32Property(optionsObj, "maxzoom", 22));
+
+            // Read encoding
+            std::string encoding = napiArgs.GetStringProperty(optionsObj, "encoding", "");
+            if (!encoding.empty()) {
+                mbgl::style::SourceOptions sourceOpts;
+                if (encoding == "mapbox") {
+                    sourceOpts.rasterEncoding = mbgl::Tileset::RasterEncoding::Mapbox;
+                } else if (encoding == "terrarium") {
+                    sourceOpts.rasterEncoding = mbgl::Tileset::RasterEncoding::Terrarium;
+                }
+                options = sourceOpts;
+                Logger::info("RasterDemSourceNAPI", "RasterDemSource encoding: %s", encoding.c_str());
+            }
+        }
+
+        // Create the RasterDEMSource
+        // Prefer the tiles array; fall back to the URL when tiles are absent
+        mbgl::variant<std::string, mbgl::Tileset> urlOrTileset;
+        if (!tiles.empty()) {
+            mbgl::Tileset tileset;
+            tileset.tiles = tiles;
+            tileset.zoomRange = mbgl::Range<uint8_t>(minzoom, maxzoom);
+            if (options && options->rasterEncoding) {
+                tileset.rasterEncoding = *options->rasterEncoding;
+            }
+            urlOrTileset = std::move(tileset);
+            Logger::info("RasterDemSourceNAPI", "RasterDemSource using Tileset with %zu tiles", tiles.size());
+        } else {
+            urlOrTileset = url;
+            Logger::info("RasterDemSourceNAPI", "RasterDemSource using URL: %s", url.c_str());
+        }
+
         auto source = std::make_unique<mbgl::style::RasterDEMSource>(
             sourceId,
             std::move(urlOrTileset),
@@ -277,6 +352,39 @@ napi_value RasterDemSourceNAPI::SetUrl(napi_env env, napi_callback_info info) {
         napi_throw_error(env, nullptr, e.what());
     }
     
+    return nullptr;
+}
+
+napi_value RasterDemSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return nullptr;
+
+    napi_value jsThis = args.This();
+    RasterDemSourceNAPI* sourceNapi = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&sourceNapi));
+
+    if (!sourceNapi) {
+        napi_throw_error(env, nullptr, "Invalid source wrapper");
+        return nullptr;
+    }
+
+    auto* source = sourceNapi->getSource();
+    if (!source) {
+        napi_throw_error(env, nullptr, "Invalid source");
+        return nullptr;
+    }
+
+    uint32_t tileSize = args.GetUint32(0, "tileSize");
+    if (args.HasError()) return nullptr;
+
+    if (tileSize == 0 || tileSize > 1024) {
+        napi_throw_error(env, nullptr, "Invalid tile size (must be between 1 and 1024)");
+        return nullptr;
+    }
+
+    Logger::info("RasterDemSourceNAPI", "SetTileSize not supported - tile size is immutable after source creation");
+    napi_throw_error(env, nullptr, "RasterDemSource does not support changing tile size after creation. Please recreate the source with the desired tile size.");
     return nullptr;
 }
 

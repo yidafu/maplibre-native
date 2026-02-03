@@ -153,11 +153,11 @@ SymbolLayout::SymbolLayout(const BucketParameters& parameters,
         auto modes = layout->get<TextWritingMode>();
         // Remove duplicates and preserve order.
         std::set<style::TextWritingModeType> seen;
-        auto end = std::ranges::remove_if(modes, [&seen, this](const auto& placementMode) {
+        auto end = std::remove_if(modes.begin(), modes.end(), [&seen, this](const auto& placementMode) {
                        allowVerticalPlacement = allowVerticalPlacement ||
                                                 placementMode == style::TextWritingModeType::Vertical;
                        return !seen.insert(placementMode).second;
-                   }).begin();
+                   });
         modes.erase(end, modes.end());
         placementModes = std::move(modes);
     }

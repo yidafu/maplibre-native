@@ -736,6 +736,146 @@ bool NapiArgs::IsNullOrUndefined(size_t index) {
     return (type == napi_null || type == napi_undefined);
 }
 
+// ========== Array Helper Method Implementations ==========
+
+uint32_t NapiArgs::GetArrayLength(napi_value array) {
+    if (!array) {
+        return 0;
+    }
+
+    uint32_t length = 0;
+    napi_status status = napi_get_array_length(env_, array, &length);
+
+    if (status != napi_ok) {
+        return 0;
+    }
+
+    return length;
+}
+
+std::string NapiArgs::GetArrayElementString(napi_value array, uint32_t index, const std::string& defaultValue) {
+    if (!array) {
+        return defaultValue;
+    }
+
+    napi_value element;
+    napi_status status = napi_get_element(env_, array, index, &element);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    napi_valuetype type;
+    status = napi_typeof(env_, element, &type);
+
+    if (status != napi_ok || type != napi_string) {
+        return defaultValue;
+    }
+
+    size_t length = 0;
+    status = napi_get_value_string_utf8(env_, element, nullptr, 0, &length);
+
+    if (status != napi_ok || length == 0) {
+        return defaultValue;
+    }
+
+    std::string result(length, '\0');
+    status = napi_get_value_string_utf8(env_, element, &result[0], length + 1, &length);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    return result;
+}
+
+int32_t NapiArgs::GetArrayElementInt32(napi_value array, uint32_t index, int32_t defaultValue) {
+    if (!array) {
+        return defaultValue;
+    }
+
+    napi_value element;
+    napi_status status = napi_get_element(env_, array, index, &element);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    napi_valuetype type;
+    status = napi_typeof(env_, element, &type);
+
+    if (status != napi_ok || type != napi_number) {
+        return defaultValue;
+    }
+
+    int32_t result = 0;
+    status = napi_get_value_int32(env_, element, &result);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    return result;
+}
+
+double NapiArgs::GetArrayElementDouble(napi_value array, uint32_t index, double defaultValue) {
+    if (!array) {
+        return defaultValue;
+    }
+
+    napi_value element;
+    napi_status status = napi_get_element(env_, array, index, &element);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    napi_valuetype type;
+    status = napi_typeof(env_, element, &type);
+
+    if (status != napi_ok || type != napi_number) {
+        return defaultValue;
+    }
+
+    double result = 0.0;
+    status = napi_get_value_double(env_, element, &result);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    return result;
+}
+
+bool NapiArgs::GetArrayElementBool(napi_value array, uint32_t index, bool defaultValue) {
+    if (!array) {
+        return defaultValue;
+    }
+
+    napi_value element;
+    napi_status status = napi_get_element(env_, array, index, &element);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    napi_valuetype type;
+    status = napi_typeof(env_, element, &type);
+
+    if (status != napi_ok || type != napi_boolean) {
+        return defaultValue;
+    }
+
+    bool result = false;
+    status = napi_get_value_bool(env_, element, &result);
+
+    if (status != napi_ok) {
+        return defaultValue;
+    }
+
+    return result;
+}
+
 } // namespace napi
 } // namespace harmony
 } // namespace mbgl

@@ -256,6 +256,47 @@ public:
      */
     bool GetBoolProperty(napi_value obj, const char* key, bool defaultValue = false);
 
+    // ========== Array helper methods ==========
+
+    /**
+     * Get the length of an array.
+     * @param array The array value
+     * @return Array length, or 0 on failure
+     */
+    uint32_t GetArrayLength(napi_value array);
+
+    /**
+     * Get a string element from an array.
+     * @param array The array value
+     * @param index Element index
+     * @param defaultValue Value to return on failure
+     */
+    std::string GetArrayElementString(napi_value array, uint32_t index, const std::string& defaultValue = "");
+
+    /**
+     * Get an int32 element from an array.
+     * @param array The array value
+     * @param index Element index
+     * @param defaultValue Value to return on failure
+     */
+    int32_t GetArrayElementInt32(napi_value array, uint32_t index, int32_t defaultValue = 0);
+
+    /**
+     * Get a double element from an array.
+     * @param array The array value
+     * @param index Element index
+     * @param defaultValue Value to return on failure
+     */
+    double GetArrayElementDouble(napi_value array, uint32_t index, double defaultValue = 0.0);
+
+    /**
+     * Get a bool element from an array.
+     * @param array The array value
+     * @param index Element index
+     * @param defaultValue Value to return on failure
+     */
+    bool GetArrayElementBool(napi_value array, uint32_t index, bool defaultValue = false);
+
 private:
     napi_env env_;
     napi_value thisObj_;  // Stores the `this` object

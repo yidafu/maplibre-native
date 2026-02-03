@@ -194,7 +194,7 @@ void BufferResource::update(const void* newData, std::size_t updateSize, std::si
         version = VersionType{} + 1;
 
         if (bufferWindowSize) {
-            std::ranges::fill(bufferWindowVersions, VersionType{});
+            std::fill(bufferWindowVersions.begin(), bufferWindowVersions.end(), VersionType{});
         }
     }
 
