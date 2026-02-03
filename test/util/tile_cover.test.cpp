@@ -78,9 +78,8 @@ TEST(TileCover, PitchOverAllowedByContentInsets) {
     // Top padding of 376 leads to capped pitch. See Transform::getMaxPitchForEdgeInsets.
     EXPECT_LE(transform.getPitch() + 0.001, util::deg2rad(60));
 
-    EXPECT_EQ(
-        (std::vector<OverscaledTileID>{{3, 4, 3}, {3, 3, 3}, {3, 4, 4}, {3, 3, 4}, {3, 4, 2}, {3, 5, 3}, {3, 5, 2}}),
-        util::tileCover({transform.getState()}, 3));
+    EXPECT_EQ((std::vector<OverscaledTileID>{{3, 4, 3}, {3, 3, 3}, {3, 4, 4}, {3, 3, 4}}),
+              util::tileCover({transform.getState()}, 3));
 }
 
 TEST(TileCover, PitchWithLargerResultSet) {
@@ -96,23 +95,23 @@ TEST(TileCover, PitchWithLargerResultSet) {
                          .withBearing(-142.2630000003529176)
                          .withPitch(60.0));
 
-    auto cover = util::tileCover({transform.getState()}, 5);
+    auto cover = util::tileCover({.transformState = transform.getState()}, 5);
     // Returned vector has above 100 elements, we check first 16 as there is a
     // plan to return lower LOD for distant tiles.
     EXPECT_EQ((std::vector<OverscaledTileID>{{5, 15, 16},
                                              {5, 15, 17},
                                              {5, 14, 16},
-                                             {5, 14, 17},
                                              {5, 16, 16},
-                                             {5, 16, 17},
                                              {5, 15, 15},
+                                             {5, 14, 17},
+                                             {5, 16, 17},
                                              {5, 14, 15},
-                                             {5, 15, 18},
-                                             {5, 14, 18},
                                              {5, 16, 15},
+                                             {5, 15, 18},
                                              {5, 13, 16},
-                                             {5, 13, 17},
+                                             {5, 14, 18},
                                              {5, 16, 18},
+                                             {5, 13, 17},
                                              {5, 13, 18},
                                              {5, 15, 19}}),
               (std::vector<OverscaledTileID>{cover.begin(), cover.begin() + 16}));
@@ -389,10 +388,10 @@ TEST(TileCover, GeomPolygon) {
 
     auto results = util::tileCover(polygon, 8);
 
-    EXPECT_NE(std::find(results.begin(), results.end(), UnwrappedTileID{8, 134, 87}), results.end());
-    EXPECT_NE(std::find(results.begin(), results.end(), UnwrappedTileID{8, 139, 87}), results.end());
+    EXPECT_NE(std::ranges::find(results, UnwrappedTileID{8, 134, 87}), results.end());
+    EXPECT_NE(std::ranges::find(results, UnwrappedTileID{8, 139, 87}), results.end());
     // Should have a hole
-    EXPECT_EQ(std::find(results.begin(), results.end(), UnwrappedTileID{8, 136, 87}), results.end());
+    EXPECT_EQ(std::ranges::find(results, UnwrappedTileID{8, 136, 87}), results.end());
 }
 
 TEST(TileCover, GeomMultiPolygon) {
@@ -414,9 +413,9 @@ TEST(TileCover, GeomMultiPolygon) {
     auto results = util::tileCover(multiPolygon, 8);
 
     EXPECT_EQ(424u, results.size());
-    EXPECT_NE(std::find(results.begin(), results.end(), UnwrappedTileID{8, 139, 87}), results.end());
-    EXPECT_NE(std::find(results.begin(), results.end(), UnwrappedTileID{8, 136, 87}), results.end());
-    EXPECT_NE(std::find(results.begin(), results.end(), UnwrappedTileID{8, 174, 94}), results.end());
+    EXPECT_NE(std::ranges::find(results, UnwrappedTileID{8, 139, 87}), results.end());
+    EXPECT_NE(std::ranges::find(results, UnwrappedTileID{8, 136, 87}), results.end());
+    EXPECT_NE(std::ranges::find(results, UnwrappedTileID{8, 174, 94}), results.end());
 }
 
 TEST(TileCover, GeomSanFranciscoPoly) {

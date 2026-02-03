@@ -12,7 +12,6 @@
 #import <Foundation/Foundation.h>
 
 #include <mbgl/interface/native_apple_interface.h>
-
 #include <mutex>
 #include <chrono>
 
@@ -33,7 +32,7 @@ public:
     }
 
     void notify(const Response& response_) {
-        std::lock_guard<std::mutex> lock(mutex);
+        std::scoped_lock lock(mutex);
         if (!cancelled) {
             response = response_;
             async.send();
@@ -41,7 +40,7 @@ public:
     }
 
     void cancel() {
-        std::lock_guard<std::mutex> lock(mutex);
+        std::scoped_lock lock(mutex);
         cancelled = true;
     }
 
@@ -292,10 +291,23 @@ std::unique_ptr<AsyncRequest> HTTPFileSource::request(const Resource& resource, 
 
         assert(session);
 
+        if ([networkManager.delegate respondsToSelector:@selector(willSendRequest:)]) {
+            req = [networkManager.delegate willSendRequest:req];
+        }
+
         request->task = [session
             dataTaskWithRequest:req
               completionHandler:^(NSData* data, NSURLResponse* res, NSError* error) {
                 session = nil;
+
+                if ([networkManager.delegate respondsToSelector:@selector(didReceiveResponse:)]) {
+                    MLNInternalNetworkResponse *networkResponse = [MLNInternalNetworkResponse responseWithData:data urlResponse:res error:error];
+                    networkResponse = [networkManager.delegate didReceiveResponse:networkResponse];
+                    data = networkResponse.data;
+                    res = networkResponse.response;
+                    error = networkResponse.error;
+                }
+
 
                 if (error && [error code] == NSURLErrorCancelled) {
                     [MLNNativeNetworkManager.sharedManager cancelDownloadEventForResponse:res];

@@ -5,7 +5,9 @@
 #include <mbgl/style/layers/symbol_layer_properties.hpp>
 #include <mbgl/util/bitmask_operations.hpp>
 
-#if !defined(MLN_SYMBOL_GUARDS)
+#include <source_location>
+
+#ifndef MLN_SYMBOL_GUARDS
 #define MLN_SYMBOL_GUARDS 1
 #endif
 
@@ -17,7 +19,7 @@
 
 // A temporary shim for partial C++20 support
 #if MLN_SYMBOL_GUARDS
-#if defined(__clang__)
+#ifdef __clang__
 #if __cplusplus <= 201703L || !__has_builtin(__builtin_source_location)
 namespace std {
 struct source_location {

@@ -1,5 +1,105 @@
 # Changelog MapLibre Native for Android
 
+## 12.3.1
+
+- Fix issue caused by frustum offset when map is resized [#4015](https://github.com/maplibre/maplibre-native/pull/4015).
+
+## 12.3.0
+
+### ✨ Features and improvements
+
+- Implemented synchronous update for GeoJSON source ([#3968](https://github.com/maplibre/maplibre-native/pull/3968)).
+
+### 🐞 Bug fixes
+
+- Cancel pending style request when loading style JSON ([#3989](https://github.com/maplibre/maplibre-native/pull/3989)).
+
+## 12.2.2
+
+### 🐞 Bug fixes
+
+- Fix crash due to pure virtual function call v2 ([#3996](https://github.com/maplibre/maplibre-native/pull/3996)).
+
+## 12.2.1
+
+### 🐞 Bug fixes
+
+- Fix crash due to pure virtual function call ([#3979](https://github.com/maplibre/maplibre-native/pull/3979)).
+
+## 12.2.0
+
+### ✨ Features and improvements
+
+- Allow setting frustum offset to not render edges of the screen ([#3676](https://github.com/maplibre/maplibre-native/pull/3676)).
+
+### 🐞 Bug fixes
+
+- Fix LineBucket::addGeometry() empty coordinates. ([#2959](https://github.com/maplibre/maplibre-native/pull/2959)).
+- Use deprecated readParcelable on Tiramisu to avoid crash ([#3950](https://github.com/maplibre/maplibre-native/pull/3950)).
+- Handle `BufferResource::version` overflow ([#3962](https://github.com/maplibre/maplibre-native/pull/3962)).
+
+## 12.1.3
+
+- Disable `UnsatisfiedLinkError` during local tests ([#3942](https://github.com/maplibre/maplibre-native/pull/3942)
+
+## 12.1.2
+
+- Update to latest MLT submodule ([#3945](https://github.com/maplibre/maplibre-native/pull/3945)).
+
+## 12.1.0
+
+### ✨ Features and improvements
+
+- Add support for parsing MLT-format vector tile sources ([#3246](https://github.com/maplibre/maplibre-native/pull/3246)).
+- Throw exception on `System.loadLibrary` fail ([#3916](https://github.com/maplibre/maplibre-native/pull/3916)).
+- Release allocated compass Bitmap as soon as possible ([#3889](https://github.com/maplibre/maplibre-native/pull/3889)).
+- Apply symbol shader changes from JS  for Metal, Vulkan, and OpenGL ([#3873](https://github.com/maplibre/maplibre-native/pull/3873)).
+- Improve CMake build setup Harfbuzz and Freetype deps ([#3879](https://github.com/maplibre/maplibre-native/pull/3879)).
+
+### 🐞 Bug fixes
+
+- [vulkan] Prevent member variable shadowing in `mbgl::vulkan::ShaderProgram` ([#3886](https://github.com/maplibre/maplibre-native/pull/3886)).
+- Add padding support to MapSnapshotter Android ([#3882](https://github.com/maplibre/maplibre-native/pull/3882)).
+- Fix `requestRenderAndNotify` continuous callback ([#3913](https://github.com/maplibre/maplibre-native/pull/3913)).
+- Add null check to Projection.getContentPadding() ([#3937](https://github.com/maplibre/maplibre-native/pull/3937)).
+- Assume CustomGeometrySource is cancelled when peer is null ([#3933](https://github.com/maplibre/maplibre-native/pull/3933)).
+- Use weak pointer for core layer ([#3931](https://github.com/maplibre/maplibre-native/pull/3931)).
+
+## 12.0.1
+
+### ✨ Features and improvements
+
+- Make Android snapshotter support hiding the attribution ([#3878](https://github.com/maplibre/maplibre-native/pull/3878)).
+
+### 🐞 Bug fixes
+
+- Handle style builder exceptions ([#3855](https://github.com/maplibre/maplibre-native/pull/3855)).
+- Add query annotation timeout ([#3874](https://github.com/maplibre/maplibre-native/pull/3874)).
+
+## 12.0.0
+
+### ✨ Features and improvements
+
+- 💥 Breaking: Bump minimum Android SDK version from 21 to 23 ([#3849](https://github.com/maplibre/maplibre-native/pull/3849)).
+
+### 🐞 Bug fixes
+
+- Manually free bound resources ([#3831](https://github.com/maplibre/maplibre-native/pull/3831)).
+- Fix misplaced LineOffset and LineGapWidth ([#3840](https://github.com/maplibre/maplibre-native/pull/3840)).
+- Fix crash in camera position ([#3847](https://github.com/maplibre/maplibre-native/pull/3847)).
+
+## 11.13.5
+
+### ✨ Features and improvements
+
+- Apply just the changes from the MLT branch which aren't really part of that work ([#3793](https://github.com/maplibre/maplibre-native/pull/3793)).
+
+### 🐞 Bug fixes
+
+- Add weak pointer handling ([#3763](https://github.com/maplibre/maplibre-native/pull/3763)).
+
+- Fix onSprite call on bad references ([#3805](https://github.com/maplibre/maplibre-native/pull/3805)).
+
 ## 11.13.1
 
 ### ✨ Features and improvements
