@@ -366,9 +366,9 @@ struct AnnotationViewReuseTestPage {
       anchorU: record.anchorU,
       anchorV: record.anchorV,
       zIndex: record.zIndex,
-      builder: record.type === 'badge'
-        ? () => this.renderBadgeContent(record)
-        : () => this.renderCardContent(record)
+      // builder: record.type === 'badge'
+      //   ? () => this.renderBadgeContent(record)
+      //   : () => this.renderCardContent(record)
     };
   }
 

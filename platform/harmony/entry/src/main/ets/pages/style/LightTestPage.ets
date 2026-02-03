@@ -1,4 +1,4 @@
-import {  MapLibreMap, MapView , NativeMapView} from 'maplibre_harmony';
+import { MapLibreMap, MapView } from 'maplibre_harmony';
 /**
  * LightTestPage - 光照系统测试页面
  * 
@@ -18,7 +18,7 @@ struct LightTestPage {
   @State mapReady: boolean = false;
   @State lightInfo: string = '';
   
-  private mapView: NativeMapView | null = null;
+  private mapView: MapLibreMap | null = null;
 
   /**
    * 地图区域构建器
@@ -144,63 +144,38 @@ struct LightTestPage {
    */
   private getLightInfo(): void {
     if (!this.mapView) return;
-    
+
     try {
-      const light: Record<string, Object> = this.mapView.getLight() as Record<string, Object>;
-      
+      const light = this.mapView.getLight();
+
       if (light) {
-        // 解析光照属性
+        // 使用 Light 类的 getter 方法获取光照属性
         let info = '光照配置信息:\n\n';
-        
+
         // Anchor（参照系）
-        const anchor = light.anchor as string | undefined;
-        if (anchor !== undefined) {
-          info += `Anchor: ${anchor}\n`;
-          info += `  (${anchor === 'map' ? '地图' : '视口'}参照系)\n\n`;
-        }
-        
+        const anchor = light.getAnchor();
+        info += `Anchor: ${anchor}\n`;
+        info += `  (${anchor === 'map' ? '地图' : '视口'}参照系)\n\n`;
+
         // Position（位置）
-        const position = light.position as number[] | undefined;
-        if (position) {
-          info += `Position:\n`;
-          if (Array.isArray(position) && position.length >= 3) {
-            info += `  方位角: ${position[0]}°\n`;
-            info += `  极角: ${position[1]}°\n`;
-            info += `  距离: ${position[2]}\n\n`;
-          } else {
-            info += `  ${JSON.stringify(position)}\n\n`;
-          }
-        }
-        
+        const position = light.getPosition();
+        info += `Position:\n`;
+        info += `  方位角: ${position.azimuthal}°\n`;
+        info += `  极角: ${position.polar}°\n`;
+        info += `  距离: ${position.radial}\n\n`;
+
         // Color（颜色）
-        const color = light.color as string | undefined;
-        if (color !== undefined) {
-          info += `Color: ${color}\n\n`;
-        }
-        
+        const color = light.getColor();
+        info += `Color: ${color}\n\n`;
+
         // Intensity（强度）
-        const intensity = light.intensity as number | undefined;
-        if (intensity !== undefined) {
-          info += `Intensity: ${intensity}\n\n`;
-        }
-        
-        // 其他属性
-        const otherProps = Object.keys(light).filter(
-          key => !['anchor', 'position', 'color', 'intensity'].includes(key)
-        );
-        
-        if (otherProps.length > 0) {
-          info += '其他属性:\n';
-          otherProps.forEach((key: string) => {
-            const value: Object = light[key] as Object;
-            info += `  ${key}: ${JSON.stringify(value)}\n`;
-          });
-        }
-        
+        const intensity = light.getIntensity();
+        info += `Intensity: ${intensity}\n\n`;
+
         this.lightInfo = info;
         this.statusMessage = '✅ 已获取光照信息';
-        
-        hilog.info(DOMAIN, 'LightTestPage', `Light info: ${JSON.stringify(light)}`);
+
+        hilog.info(DOMAIN, 'LightTestPage', `Light info: ${JSON.stringify(light.toSpecification())}`);
       } else {
         this.lightInfo = '⚠️ 当前样式没有光照配置';
         this.statusMessage = '获取完成（无光照配置）';

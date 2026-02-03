@@ -232,7 +232,7 @@ struct AnnotationViewMarkerStaticTestPage {
       anchorU: ANCHOR_ALIGNMENT_U,
       anchorV: ANCHOR_ALIGNMENT_V,
       zIndex: 10,
-      builder: () => this.renderAnnotationContent()
+      // builder: () => this.renderAnnotationContent()
     };
   }
 
