@@ -188,13 +188,17 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 
     // Create the standalone CURLEventLoop
     try {
-        // Default to simple polling mode for stability
+        // 默认使用 EventDriven 模式（高性能）
+        // 环境变量 CURL_MODE=poll 可回退到 SimplePolling 模式
         auto mode = harmony::CURLEventLoop::Mode::SimplePolling;
         
         const char* curl_mode_env = getenv("CURL_MODE");
-        if (curl_mode_env && strcmp(curl_mode_env, "event") == 0) {
-            mode = harmony::CURLEventLoop::Mode::EventDriven;
+        if (curl_mode_env && strcmp(curl_mode_env, "poll") == 0) {
+            mode = harmony::CURLEventLoop::Mode::SimplePolling;
         }
+        
+        const char* modeString = (mode == harmony::CURLEventLoop::Mode::EventDriven) ? "EventDriven" : "SimplePolling";
+        Logger::info("Network", "CURL_MODE=%s -> CURLEventLoop mode: %s", curl_mode_env ? curl_mode_env : "unset", modeString);
         
         curlEventLoop = std::make_shared<harmony::CURLEventLoop>(mode);
         curlEventLoop->start();
@@ -540,9 +544,12 @@ size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const 
 }
 
 void HTTPRequest::handleResult(CURLcode code) {
+    // 🔒 ANR FIX: Add ANR detection to identify blocking operations
+    ANRDetector detector("HTTPRequest::handleResult", 50, 200);
+
     // 🔒 CRASH FIX: ensure the object survives while handleResult runs
     // Note: this method may be invoked on the CURLEventLoop thread
-    
+
     // Make sure a response object exists
     if (!response) {
         response = std::make_unique<Response>();

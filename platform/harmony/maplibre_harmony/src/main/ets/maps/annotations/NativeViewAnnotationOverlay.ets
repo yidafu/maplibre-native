@@ -217,7 +217,9 @@ export struct NativeViewAnnotationOverlay {
   private createBuilderContext(state: ViewAnnotationRenderState): ViewAnnotationBuilderContext {
     let ctx: ViewAnnotationBuilderContext;
     if (state.viewName === INFO_WINDOW_VIEW_NAME) {
-      ctx = new InfoWindowBuilderContext();
+      // Create a basic ViewAnnotationBuilderContext for InfoWindows
+      // The actual InfoWindowBuilderContext will be created by the InfoWindowManager
+      ctx = new ViewAnnotationBuilderContext();
     } else {
       ctx = new ViewAnnotationBuilderContext();
     }

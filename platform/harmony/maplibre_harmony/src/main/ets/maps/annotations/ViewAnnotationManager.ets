@@ -34,7 +34,7 @@ interface PartialNativeOptionFlags {
  */
 export interface ViewAnnotationAddOptions {
   anchor: LatLng;
-  wrappedBuilder?: WrappedBuilder<[ViewAnnotationBuilderContext]>;
+  wrappedBuilder?: ViewAnnotationWrappedBuilder;
   // renderCallback: ViewAnnotationRenderCallback;
   viewName?: string;
   width?: number;
@@ -57,7 +57,7 @@ export interface ViewAnnotationAddOptions {
  */
 export interface ViewAnnotationUpdateOptions {
   anchor?: LatLng;
-  wrappedBuilder?: WrappedBuilder<[ViewAnnotationBuilderContext]> | null;
+  wrappedBuilder?: ViewAnnotationWrappedBuilder | null;
   renderCallback?: ViewAnnotationRenderCallback | null;
   viewName?: string;
   width?: number;
@@ -78,7 +78,7 @@ export interface ViewAnnotationUpdateOptions {
 interface ViewAnnotationEntry {
   id: number;
   anchor: LatLng;
-  wrappedBuilder: WrappedBuilder<[ViewAnnotationBuilderContext]>;
+  wrappedBuilder: ViewAnnotationWrappedBuilder;
   // renderCallback: ViewAnnotationRenderCallback;
   viewName: string;
   width?: number;

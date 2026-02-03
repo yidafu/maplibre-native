@@ -30,6 +30,8 @@ export { MarkerManager } from './MarkerManager';
 // InfoWindow utilities
 export { InfoWindow, InfoWindowComponent } from './InfoWindow';
 
+export type { InfoWindowStyle } from './InfoWindow';
+
 export { InfoWindowAdapter } from './InfoWindowAdapter';
 
 export { InfoWindowManager } from './InfoWindowManager';

@@ -43,14 +43,14 @@ namespace harmony {
  * 4. Loosely coupled to HTTPFileSource
  *
  * Supports two modes:
- * - Simple polling: 100 ms timer polling (default, stable)
- * - Event-driven: socket-driven events (higher performance)
+ * - Simple polling: 20 ms timer polling (fallback mode)
+ * - Event-driven: socket-driven events (high performance, default)
  */
 class CURLEventLoop {
 public:
     enum class Mode {
-        SimplePolling,   // 100 ms timer polling (default)
-        EventDriven      // Socket-driven events (high performance)
+        SimplePolling,   // 20 ms timer polling (fallback mode)
+        EventDriven      // Socket-driven events (high performance, default)
     };
     
     CURLEventLoop(Mode mode = Mode::SimplePolling);

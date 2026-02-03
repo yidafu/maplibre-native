@@ -17,6 +17,7 @@
 #include <atomic>     // for std::atomic
 #include <stdexcept>  // for std::runtime_error
 #include <cmath>      // for std::abs
+#include <algorithm>  // for std::max
 
 using mbgl::harmony::Logger;
 
@@ -918,87 +919,146 @@ void HarmonyGLRendererBackend::activate() {
     {
         EGLDisplay display = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
         if (eglContext_ != EGL_NO_CONTEXT && display != EGL_NO_DISPLAY && eglSurface_ != EGL_NO_SURFACE) {
-        // ✅ Critical fix: check eglGetCurrentContext() inside the lock
-        // Ensures the check-and-activate sequence is atomic, eliminating races
-        std::lock_guard<std::mutex> lock(g_eglMutex);
-        
-        // Within the lock, verify whether the context is already current (performance optimization)
-        EGLContext currentContext = eglGetCurrentContext();
-        if (currentContext == eglContext_) {
-            // Context already current—no switch needed
-            // 🔍 Diagnostic log: validate the viewport even if the context is current
-            GLint viewport[4];
-            glGetIntegerv(GL_VIEWPORT, viewport);
-            if (viewport[2] != static_cast<GLint>(size.width) || 
-                viewport[3] != static_cast<GLint>(size.height)) {
-                Logger::warn("HarmonyGL", "⚠️ Viewport size mismatch! Current=[%d, %d], Expected=[%u, %u] - Fixing...",
-                            viewport[2], viewport[3], size.width, size.height);
-                // ✅ Critical fix: proactively repair the viewport mismatch
-                glViewport(0, 0, static_cast<GLsizei>(size.width), static_cast<GLsizei>(size.height));
-                // Update the context's assumed viewport state
-                if (gfx::BackendScope::exists()) {
-                    getContext<gl::Context>().viewport = {0, 0, size};
+            auto ensureViewport = [this]() {
+                GLint viewport[4];
+                glGetIntegerv(GL_VIEWPORT, viewport);
+                if (viewport[2] != static_cast<GLint>(size.width) ||
+                    viewport[3] != static_cast<GLint>(size.height)) {
+                    Logger::warn("HarmonyGL", "⚠️ Viewport size mismatch! Current=[%d, %d], Expected=[%u, %u] - Fixing...",
+                                 viewport[2], viewport[3], size.width, size.height);
+                    glViewport(0, 0, static_cast<GLsizei>(size.width), static_cast<GLsizei>(size.height));
+                    if (gfx::BackendScope::exists()) {
+                        getContext<gl::Context>().viewport = {0, 0, size};
+                    }
                 }
-            }
-            return;
-        }
-        
-        // ✅ Switch the context inside the lock without halting rendering; let errors unwind naturally
-        if (!eglMakeCurrent(display, eglSurface_, eglSurface_, eglContext_)) {
-            EGLint error = eglGetError();
-            Logger::error("HarmonyGLRendererBackend", 
-                         "activate() FAILED to make context current: %s (error code: 0x%X)", 
-                         eglErrorString(error), error);
-            
-            // ✅ During destruction, do not throw—return gracefully
-            if (isStopped_) {
-                Logger::warn("HarmonyGLRendererBackend", "activate() failed but cleanup in progress, returning gracefully");
+            };
+
+            auto isRecoverableError = [](EGLint error) -> bool {
+                switch (error) {
+                    case EGL_BAD_ACCESS:
+                    case EGL_BAD_SURFACE:
+                    case EGL_BAD_CURRENT_SURFACE:
+                    case EGL_CONTEXT_LOST:
+                    case EGL_BAD_NATIVE_WINDOW:
+                        return true;
+                    default:
+                        return false;
+                }
+            };
+
+            bool contextAlreadyCurrent = false;
+            bool makeCurrentSucceeded = false;
+            EGLint makeCurrentError = EGL_SUCCESS;
+
+            auto attemptMakeCurrent = [&](EGLDisplay eglDisplay) {
+                std::lock_guard<std::mutex> lock(g_eglMutex);
+                EGLContext currentContext = eglGetCurrentContext();
+                if (currentContext == eglContext_) {
+                    contextAlreadyCurrent = true;
+                    return;
+                }
+
+                if (eglMakeCurrent(eglDisplay, eglSurface_, eglSurface_, eglContext_)) {
+                    makeCurrentSucceeded = true;
+                    return;
+                }
+
+                makeCurrentError = eglGetError();
+                Logger::error("HarmonyGLRendererBackend",
+                              "activate() FAILED to make context current: %s (error code: 0x%X)",
+                              eglErrorString(makeCurrentError), makeCurrentError);
+            };
+
+            attemptMakeCurrent(display);
+
+            if (contextAlreadyCurrent) {
+                ensureViewport();
                 return;
             }
-            
-            // ✅ Do not stop rendering—let the caller throw or retry
-            // Remove pauseRendering() to avoid issuing OpenGL commands without an active context
-            throw std::runtime_error("eglMakeCurrent failed: " + std::string(eglErrorString(error)));
-        }
-        
-        // 🎯 After migration succeeds, update the render-thread ID
-        renderThreadId_ = std::this_thread::get_id();
 
-        // 🔍 Diagnostic log: after activation, verify viewport and framebuffer state
-        GLint viewport[4];
-        glGetIntegerv(GL_VIEWPORT, viewport);
-        GLint framebuffer = 0;
-        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &framebuffer);
-        
-        if (viewport[2] != static_cast<GLint>(size.width) || 
-            viewport[3] != static_cast<GLint>(size.height)) {
-            Logger::warn("HarmonyGL", "⚠️ Viewport size mismatch after activate! Current=[%d, %d], Expected=[%u, %u] - Fixing...",
-                        viewport[2], viewport[3], size.width, size.height);
-            // ✅ Critical fix: proactively repair the viewport mismatch
-            glViewport(0, 0, static_cast<GLsizei>(size.width), static_cast<GLsizei>(size.height));
-            // Update the context's assumed viewport state
-            if (gfx::BackendScope::exists()) {
-                getContext<gl::Context>().viewport = {0, 0, size};
+            if (!makeCurrentSucceeded) {
+                if (isStopped_) {
+                    Logger::warn("HarmonyGLRendererBackend", "activate() failed but cleanup in progress, returning gracefully");
+                    return;
+                }
+
+                if (isRecoverableError(makeCurrentError)) {
+                    Logger::warn("HarmonyGLRendererBackend",
+                                 "Attempting EGL recovery for error: %s (0x%X)",
+                                 eglErrorString(makeCurrentError), makeCurrentError);
+                    bool recovered = tryRecoverEGL();
+                    if (recovered) {
+                        if (size.width > 0 && size.height > 0) {
+                            const double safeRatio = (pixelRatio_ > 0.01f) ? static_cast<double>(pixelRatio_) : 1.0;
+                            int logicalWidth = static_cast<int>(std::lround(static_cast<double>(size.width) / safeRatio));
+                            int logicalHeight = static_cast<int>(std::lround(static_cast<double>(size.height) / safeRatio));
+                            logicalWidth = std::max(logicalWidth, 1);
+                            logicalHeight = std::max(logicalHeight, 1);
+                            try {
+                                resizeFramebuffer(logicalWidth, logicalHeight);
+                            } catch (const std::exception& resizeError) {
+                                Logger::warn("HarmonyGLRendererBackend",
+                                             "resizeFramebuffer failed during recovery: %s",
+                                             resizeError.what());
+                            }
+                        }
+
+                        EGLDisplay retryDisplay = displayAcquired_ ? EGLDisplayManager::getInstance().getDisplay() : EGL_NO_DISPLAY;
+                        if (retryDisplay != EGL_NO_DISPLAY && eglContext_ != EGL_NO_CONTEXT && eglSurface_ != EGL_NO_SURFACE) {
+                            attemptMakeCurrent(retryDisplay);
+                        } else {
+                            makeCurrentSucceeded = false;
+                        }
+                    }
+                }
             }
-        }
-        
-        GLenum glError = glGetError();
-        if (glError != GL_NO_ERROR) {
-            Logger::warn("HarmonyGL", "⚠️ OpenGL error after activate: 0x%X", glError);
-        }
+
+            if (!makeCurrentSucceeded) {
+                if (isRecoverableError(makeCurrentError)) {
+                    Logger::error("HarmonyGLRendererBackend",
+                                  "activate() could not recover EGL context (error=%s). Pausing rendering.",
+                                  eglErrorString(makeCurrentError));
+                    pauseRendering();
+                    return;
+                }
+
+                std::string error = "activate() failed: EGL not fully initialized (display=" +
+                                    std::to_string(reinterpret_cast<uintptr_t>(display)) +
+                                    ", surface=" + std::to_string(reinterpret_cast<uintptr_t>(eglSurface_)) +
+                                    ", context=" + std::to_string(reinterpret_cast<uintptr_t>(eglContext_)) + ")";
+                Logger::error("HarmonyGLRendererBackend", "%s", error.c_str());
+
+                if (isStopped_) {
+                    Logger::warn("HarmonyGLRendererBackend", "Skipping exception (cleanup in progress)");
+                    return;
+                }
+                throw std::runtime_error(error);
+            }
+
+            // 🎯 After migration succeeds, update the render-thread ID
+            renderThreadId_ = std::this_thread::get_id();
+
+            ensureViewport();
+
+            GLint framebuffer = 0;
+            glGetIntegerv(GL_FRAMEBUFFER_BINDING, &framebuffer);
+
+            GLenum glError = glGetError();
+            if (glError != GL_NO_ERROR) {
+                Logger::warn("HarmonyGL", "⚠️ OpenGL error after activate: 0x%X", glError);
+            }
         } else {
-        std::string error = "activate() failed: EGL not fully initialized (display=" + 
-                           std::to_string(reinterpret_cast<uintptr_t>(display)) + 
-                           ", surface=" + std::to_string(reinterpret_cast<uintptr_t>(eglSurface_)) +
-                           ", context=" + std::to_string(reinterpret_cast<uintptr_t>(eglContext_)) + ")";
-        Logger::error("HarmonyGLRendererBackend", "%s", error.c_str());
+            std::string error = "activate() failed: EGL not fully initialized (display=" +
+                               std::to_string(reinterpret_cast<uintptr_t>(display)) +
+                               ", surface=" + std::to_string(reinterpret_cast<uintptr_t>(eglSurface_)) +
+                               ", context=" + std::to_string(reinterpret_cast<uintptr_t>(eglContext_)) + ")";
+            Logger::error("HarmonyGLRendererBackend", "%s", error.c_str());
         
-        // Do not throw during destruction
-        if (isStopped_) {
-            Logger::warn("HarmonyGLRendererBackend", "Skipping exception (cleanup in progress)");
-            return;
-        }
-        throw std::runtime_error(error);
+            if (isStopped_) {
+                Logger::warn("HarmonyGLRendererBackend", "Skipping exception (cleanup in progress)");
+                return;
+            }
+            throw std::runtime_error(error);
         }
     }
 }

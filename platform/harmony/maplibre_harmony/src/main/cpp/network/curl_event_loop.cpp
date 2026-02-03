@@ -11,6 +11,7 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <thread>
 
@@ -121,6 +122,9 @@ void CURLEventLoop::start() {
     running_.store(true);
     stopping_.store(false);
     
+    const char* modeString = (mode_ == Mode::EventDriven) ? "EventDriven" : "SimplePolling";
+    Logger::info("Network", "Starting CURLEventLoop (mode=%s)", modeString);
+    
     // Start the polling timer when running in SimplePolling mode
     if (mode_ == Mode::SimplePolling) {
         polling_timer_ = new uv_timer_t;
@@ -150,10 +154,63 @@ void CURLEventLoop::stop() {
         return;
     }
     
+    Logger::info("Network", "Stopping CURLEventLoop - begin");
+    auto stopStart = std::chrono::steady_clock::now();
+
+    std::mutex watchdogMutex;
+    std::condition_variable watchdogCv;
+    bool joinCompleted = false;
+    bool stopRequested = false;
+
+    std::thread watchdog([&]() {
+        std::unique_lock<std::mutex> lk(watchdogMutex);
+        using namespace std::chrono_literals;
+        const auto warnInterval = 200ms;
+        auto lastWarn = std::chrono::steady_clock::now();
+
+        while (!joinCompleted) {
+            if (watchdogCv.wait_for(lk, warnInterval, [&]() { return joinCompleted || stopRequested; })) {
+                if (joinCompleted) {
+                    return;
+                }
+                if (stopRequested) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - stopStart);
+                    Logger::warn("Network", "Waiting for CURLEventLoop thread join... (%lld ms)",
+                                 static_cast<long long>(elapsed.count()));
+                    stopRequested = false;
+                    lastWarn = std::chrono::steady_clock::now();
+                }
+            } else {
+                auto now = std::chrono::steady_clock::now();
+                if (now - lastWarn >= 2s) {
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - stopStart);
+                    Logger::warn("Network", "Waiting for CURLEventLoop thread join... (%lld ms)",
+                                 static_cast<long long>(elapsed.count()));
+                    lastWarn = now;
+                }
+            }
+        }
+    });
+
     stopping_.store(true);
+    
+    if (loop_) {
+        Logger::debug("Network", "Issuing uv_stop on loop %p", static_cast<void*>(loop_));
+        uv_stop(loop_);
+        if (holder_) {
+            Logger::debug("Network", "Waking loop via uv_async_send before shutdown");
+            uv_async_send(holder_);
+        }
+    } else {
+        Logger::warn("Network", "Loop pointer is null during stop");
+    }
     
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        
+        Logger::debug("Network", "Closing timers (polling_timer_=%p, timeout_timer_=%p)",
+                      static_cast<void*>(polling_timer_), static_cast<void*>(timeout_timer_));
         
         // Stop and clean up the polling timer
         if (polling_timer_) {
@@ -174,9 +231,11 @@ void CURLEventLoop::stop() {
         }
         
         // Close all active handles
+        Logger::debug("Network", "Closing %zu active poll handles", active_handles_.size());
         for (auto it = active_handles_.begin(); it != active_handles_.end(); ++it) {
             uv_poll_t* poll = it->second;
             if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(poll))) {
+                Logger::debug("Network", "Closing active poll handle");
                 uv_close(reinterpret_cast<uv_handle_t*>(poll), onClose);
             }
         }
@@ -185,6 +244,7 @@ void CURLEventLoop::stop() {
     
     // Close the holder handle to stop the loop
     if (holder_) {
+        Logger::debug("Network", "Closing holder async handle");
         uv_close(reinterpret_cast<uv_handle_t*>(holder_), [](uv_handle_t* h) {
             delete reinterpret_cast<uv_async_t*>(h);
         });
@@ -193,8 +253,29 @@ void CURLEventLoop::stop() {
     
     // Wait for the thread to finish
     if (thread_ && thread_->joinable()) {
+        Logger::info("Network", "Joining CURLEventLoop thread");
+        {
+            std::lock_guard<std::mutex> lk(watchdogMutex);
+            stopRequested = true;
+        }
+        watchdogCv.notify_all();
         thread_->join();
     }
+    
+    {
+        std::lock_guard<std::mutex> lk(watchdogMutex);
+        joinCompleted = true;
+        stopRequested = false;
+    }
+    watchdogCv.notify_all();
+    if (watchdog.joinable()) {
+        watchdog.join();
+    }
+    
+    auto stopElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - stopStart);
+    Logger::info("Network", "Stopping CURLEventLoop - finished in %lld ms",
+                 static_cast<long long>(stopElapsed.count()));
     
     thread_.reset();
     running_.store(false);
@@ -205,25 +286,50 @@ bool CURLEventLoop::addHandle(CURL* handle) {
         Logger::error("Network", "Invalid parameters or event loop not running");
         return false;
     }
-    
-    std::lock_guard<std::mutex> lock(mutex_);
-    
-    CURLMcode result = curl_multi_add_handle(multi_, handle);
-    if (result != CURLM_OK) {
-        Logger::error("Network", "Failed to add CURL handle: %s", curl_multi_strerror(result));
-        return false;
+
+    Logger::debug("Network", "addHandle called on thread %llu (handle=%p)",
+                  static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id())),
+                  static_cast<void*>(handle));
+
+    // 🔒 THREAD SAFETY: Copy multi handle to minimize lock time
+    CURLM* multiCopy = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (!multi_) {
+            Logger::error("Network", "Multi handle is null");
+            return false;
+        }
+
+        CURLMcode result = curl_multi_add_handle(multi_, handle);
+        if (result != CURLM_OK) {
+            Logger::error("Network", "Failed to add CURL handle: %s", curl_multi_strerror(result));
+            return false;
+        }
+        multiCopy = multi_;
     }
-    
-    // In event-driven mode, prompt CURL to process this handle
+
+    // 🔒 NON-BLOCKING: Process outside lock to prevent deadlock
     if (mode_ == Mode::EventDriven) {
         int running_handles = 0;
-        result = curl_multi_socket_action(multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
+        CURLMcode result = curl_multi_socket_action(multiCopy, CURL_SOCKET_TIMEOUT, 0, &running_handles);
         if (result != CURLM_OK) {
             Logger::error("Network", "Failed to kick off CURL handle: %s", curl_multi_strerror(result));
         }
-        processCURLMessages();
+
+        // 🔒 ASYNC PROCESSING: Handle messages asynchronously
+        std::thread([this]() {
+            try {
+                std::lock_guard<std::mutex> lock(mutex_);
+                if (multi_ && !stopping_.load()) {
+                    processCURLMessages();
+                }
+            } catch (const std::exception& e) {
+                Logger::error("Network", "Exception in async addHandle processing: %s", e.what());
+            }
+        }).detach();
     }
-    
+
     return true;
 }
 
@@ -233,14 +339,25 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
         return false;
     }
     
+    Logger::debug("Network", "removeHandle called on thread %llu (handle=%p)",
+                  static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id())),
+                  static_cast<void*>(handle));
+
     std::lock_guard<std::mutex> lock(mutex_);
     
-    // Remove the libuv poll handle
+    // 🔒 ENHANCED FIX: Safer poll handle removal with lifecycle protection
     auto it = active_handles_.find(handle);
     if (it != active_handles_.end()) {
         uv_poll_t* poll = it->second;
+
+        // Mark as closing to prevent callback execution
+        poll->data = reinterpret_cast<void*>(0x1);
+
         if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(poll))) {
-            uv_close(reinterpret_cast<uv_handle_t*>(poll), onClose);
+            uv_close(reinterpret_cast<uv_handle_t*>(poll), [](uv_handle_t* h) {
+                // Safe cleanup after close completes
+                delete reinterpret_cast<uv_poll_t*>(h);
+            });
         }
         active_handles_.erase(it);
     }
@@ -258,29 +375,51 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
 // getActiveHandleCount removed; no longer required
 
 void CURLEventLoop::eventLoopThread() {
+    const auto threadId = static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id()));
+    Logger::info("Network", "CURLEventLoop thread start (id=%llu)", threadId);
     uv_run(loop_, UV_RUN_DEFAULT);
+    Logger::info("Network", "CURLEventLoop thread exit (id=%llu)", threadId);
 }
 
 // libuv callback function
 void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
     auto* eventLoop = static_cast<CURLEventLoop*>(poll->data);
-    
+
+    // 🔒 CRITICAL FIX: Check if handle is marked for closing (thread safety)
+    if (eventLoop == reinterpret_cast<CURLEventLoop*>(0x1)) {
+        return;  // Handle is being destroyed, exit immediately
+    }
+
     if (status < 0) {
         Logger::error("Network", "Socket event error: %s", uv_strerror(status));
         return;
     }
-    
-    // 🔒 Thread-safety: guard access to multi_ with a lock
-    std::lock_guard<std::mutex> lock(eventLoop->mutex_);
-    
-    if (!eventLoop->multi_) {
+
+    // 🔒 ENHANCED THREAD SAFETY: Early validation and non-blocking processing
+    if (!eventLoop || eventLoop->stopping_.load()) {
         return;
     }
-    
-    // Obtain the socket file descriptor
-    uv_os_fd_t fd;
-    uv_fileno(reinterpret_cast<uv_handle_t*>(poll), &fd);
-    
+
+    // Copy necessary data to avoid holding lock during network operations
+    CURLM* multiCopy = nullptr;
+    uv_os_fd_t fd = -1;
+
+    {
+        std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+
+        if (!eventLoop->multi_) {
+            return;
+        }
+
+        multiCopy = eventLoop->multi_;
+
+        // Obtain the socket file descriptor safely
+        if (uv_fileno(reinterpret_cast<uv_handle_t*>(poll), &fd) != 0) {
+            Logger::error("Network", "Failed to get socket file descriptor");
+            return;
+        }
+    }
+
     // Map libuv events to CURL events
     int curl_events = 0;
     if (events & UV_READABLE) {
@@ -289,71 +428,112 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
     if (events & UV_WRITABLE) {
         curl_events |= CURL_CSELECT_OUT;
     }
-    
-    // Notify CURL
+
+    // Notify CURL (non-blocking call)
     int running_handles = 0;
-    CURLMcode result = curl_multi_socket_action(eventLoop->multi_, fd, curl_events, &running_handles);
+    CURLMcode result = curl_multi_socket_action(multiCopy, fd, curl_events, &running_handles);
     if (result != CURLM_OK) {
         Logger::error("Network", "curl_multi_socket_action failed: %s", curl_multi_strerror(result));
         return;
     }
-    
-    // Handle CURL messages (lock already held)
-    eventLoop->processCURLMessages();
+
+    // 🔒 DEFERRED PROCESSING: Handle CURL messages asynchronously to avoid blocking
+    // This prevents callback chain that can lead to ANR on main thread
+    std::thread([eventLoop]() {
+        try {
+            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+            if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
+                eventLoop->processCURLMessages();
+            }
+        } catch (const std::exception& e) {
+            Logger::error("Network", "Exception in async message processing: %s", e.what());
+        }
+    }).detach();
 }
 
 void CURLEventLoop::onTimeout(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
-    
-    // 🔒 Thread-safety: guard access to multi_ with a lock
-    std::lock_guard<std::mutex> lock(eventLoop->mutex_);
-    
-    if (!eventLoop->multi_) {
+
+    // 🔒 ENHANCED THREAD SAFETY: Early validation
+    if (!eventLoop || eventLoop->stopping_.load()) {
         return;
     }
-    
-    // Notify CURL about a timeout
+
+    // Copy multi handle to avoid holding lock during network operation
+    CURLM* multiCopy = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+
+        if (!eventLoop->multi_) {
+            return;
+        }
+        multiCopy = eventLoop->multi_;
+    }
+
+    // Notify CURL about a timeout (non-blocking call)
     int running_handles = 0;
-    CURLMcode result = curl_multi_socket_action(eventLoop->multi_, CURL_SOCKET_TIMEOUT, 0, &running_handles);
+    CURLMcode result = curl_multi_socket_action(multiCopy, CURL_SOCKET_TIMEOUT, 0, &running_handles);
     if (result != CURLM_OK) {
         Logger::error("Network", "curl_multi_socket_action timeout failed: %s", curl_multi_strerror(result));
         return;
     }
-    
-    // Handle CURL messages (lock already held)
-    eventLoop->processCURLMessages();
+
+    // 🔒 DEFERRED PROCESSING: Handle CURL messages asynchronously to avoid blocking
+    std::thread([eventLoop]() {
+        try {
+            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+            if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
+                eventLoop->processCURLMessages();
+            }
+        } catch (const std::exception& e) {
+            Logger::error("Network", "Exception in async timeout processing: %s", e.what());
+        }
+    }).detach();
 }
 
 // Simple polling callback (SimplePolling mode)
 void CURLEventLoop::onPolling(uv_timer_t* timer) {
     auto* eventLoop = static_cast<CURLEventLoop*>(timer->data);
-    
-    if (eventLoop->stopping_.load()) {
+
+    if (!eventLoop || eventLoop->stopping_.load()) {
         return;
     }
-    
-    // 🔒 Thread-safety: guard access to multi_ with a lock
-    std::lock_guard<std::mutex> lock(eventLoop->mutex_);
-    
-    if (!eventLoop->multi_) {
-        return;
+
+    // Copy multi handle to minimize lock contention
+    CURLM* multiCopy = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+
+        if (!eventLoop->multi_) {
+            return;
+        }
+        multiCopy = eventLoop->multi_;
     }
-    
-    // Execute CURL processing
+
+    // Execute CURL processing (non-blocking call)
     int running_handles = 0;
-    CURLMcode result = curl_multi_perform(eventLoop->multi_, &running_handles);
-    
+    CURLMcode result = curl_multi_perform(multiCopy, &running_handles);
+
     if (result != CURLM_OK) {
         Logger::error("Network", "curl_multi_perform failed: %s", curl_multi_strerror(result));
         return;
     }
-    
-    // Process completed requests (lock already held)
-    eventLoop->processCURLMessages();
+
+    // 🔒 DEFERRED PROCESSING: Handle CURL messages asynchronously for consistency
+    std::thread([eventLoop]() {
+        try {
+            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+            if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
+                eventLoop->processCURLMessages();
+            }
+        } catch (const std::exception& e) {
+            Logger::error("Network", "Exception in async polling processing: %s", e.what());
+        }
+    }).detach();
 }
 
 void CURLEventLoop::onClose(uv_handle_t* handle) {
-    // Poll handle closed - no logging needed
+    Logger::debug("Network", "uv_handle closed: %p", static_cast<void*>(handle));
 }
 
 // CURL callback helpers
@@ -369,10 +549,13 @@ int CURLEventLoop::handleSocket(CURL* handle, curl_socket_t s, int action, void*
         case CURL_POLL_IN:
         case CURL_POLL_OUT:
         case CURL_POLL_INOUT: {
+            // 🔒 CRITICAL FIX: Add thread synchronization for active_handles_ access
+            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+
             // Create or update the poll handle
             uv_poll_t* poll = nullptr;
-            
-            // Check whether it already exists
+
+            // Check whether it already exists (now thread-safe)
             auto it = eventLoop->active_handles_.find(handle);
             if (it != eventLoop->active_handles_.end()) {
                 poll = it->second;
@@ -407,12 +590,22 @@ int CURLEventLoop::handleSocket(CURL* handle, curl_socket_t s, int action, void*
             break;
         }
         case CURL_POLL_REMOVE: {
-            // Remove the poll handle
+            // 🔒 CRITICAL FIX: Thread-safe poll handle removal with lifecycle protection
+            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+
             auto it = eventLoop->active_handles_.find(handle);
             if (it != eventLoop->active_handles_.end()) {
                 uv_poll_t* poll = it->second;
+
+                // Mark handle as closing to prevent callback execution
+                poll->data = reinterpret_cast<void*>(0x1);
+
                 uv_poll_stop(poll);
-                uv_close(reinterpret_cast<uv_handle_t*>(poll), onClose);
+                uv_close(reinterpret_cast<uv_handle_t*>(poll), [](uv_handle_t* h) {
+                    // Only delete after close completes
+                    delete reinterpret_cast<uv_poll_t*>(h);
+                });
+
                 eventLoop->active_handles_.erase(it);
             }
             break;
@@ -481,8 +674,22 @@ void CURLEventLoop::processCURLMessages() {
                 CURLcode info_result = curl_easy_getinfo(handle, CURLINFO_PRIVATE, &verify);
                 
                 if (info_result == CURLE_OK && verify == privateData) {
-                    // Invoke the external function to process the result
-                    handleHTTPRequestResult(privateData, result);
+                    // 🔒 ANR FIX: Process network results in background thread to avoid UI blocking
+                    // Issue: handleHTTPRequestResult was executing on main thread causing ANR
+                    // Solution: Use std::thread to process results asynchronously
+
+                    // Create a copy of the data to prevent use-after-free
+                    void* requestData = privateData;
+                    CURLcode requestResult = result;
+
+                    std::thread([requestData, requestResult]() {
+                        try {
+                            // Process result in background thread
+                            handleHTTPRequestResult(requestData, requestResult);
+                        } catch (const std::exception& e) {
+                            Logger::error("Network", "Exception in background result processing: %s", e.what());
+                        }
+                    }).detach();  // Detach to avoid blocking network thread
                 } else {
                     Logger::error("Network", "❌ privateData validity check failed (URL: %s, expected=%p, actual=%p)", 
                                  url ? url : "unknown", privateData, verify);

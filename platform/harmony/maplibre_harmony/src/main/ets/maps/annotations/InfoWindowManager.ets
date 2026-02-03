@@ -1,18 +1,26 @@
-import { InfoWindow, InfoWindowBuildContext, InfoWindowLayoutOptions, InfoWindowStyle, InfoWindowRenderContext, RenderCustomInfoWindow, RenderDefaultInfoWindow } from './InfoWindow';
+import {
+  InfoWindow,
+  InfoWindowLayoutOptions,
+  InfoWindowRenderContext,
+  InfoWindowStyle,
+  RenderDefaultInfoWindow
+} from './InfoWindow';
 import { InfoWindowAdapter } from './InfoWindowAdapter';
 import { OnInfoWindowClickListener } from '../listeners/OnInfoWindowClickListener';
 import { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseListener';
 import { OnInfoWindowLongClickListener } from '../listeners/OnInfoWindowLongClickListener';
 import { Marker } from './Marker';
-import { ViewAnnotationManager } from './ViewAnnotationManager';
 import type { ViewAnnotationAddOptions, ViewAnnotationUpdateOptions } from './ViewAnnotationManager';
+import { ViewAnnotationManager } from './ViewAnnotationManager';
 import {
   INFO_WINDOW_VIEW_NAME,
+  InfoWindowBuilderContext,
   ViewAnnotationBuilderContext,
   ViewAnnotationWrappedBuilder,
-  InfoWindowBuilderContext
+  InfoWindowWrappedBuilder
 } from './ViewAnnotationTypes';
 import { CenterOffset } from './AnnotationView';
+
 interface InfoWindowAddOptions extends ViewAnnotationAddOptions {
   viewName: string;
 }
@@ -32,49 +40,32 @@ export interface InfoWindowDisplayOptions {
   zIndex?: number;
 }
 
-interface InfoWindowBuilderPayload {
-  infoWindow: InfoWindow;
-  renderContext: InfoWindowRenderContext;
-  customBuilder: (() => void) | null;
-  notifySizeChanged: (width: number, height: number) => void;
-}
-
-const INFO_WINDOW_WRAPPED_BUILDER_INSTANCE: ViewAnnotationWrappedBuilder =
-  wrapBuilder<[ViewAnnotationBuilderContext]>(InfoWindowWrappedBuilderEntry);
-
-const infoWindowBuilderPayloads: Map<number, InfoWindowBuilderPayload> = new Map();
-
-function setInfoWindowBuilderPayload(id: number, payload: InfoWindowBuilderPayload): void {
-  if (id <= 0) {
-    return;
-  }
-  infoWindowBuilderPayloads.set(id, payload);
-}
-
-function getInfoWindowBuilderPayload(id: number): InfoWindowBuilderPayload | undefined {
-  if (id <= 0) {
-    return undefined;
-  }
-  return infoWindowBuilderPayloads.get(id);
-}
-
-function clearInfoWindowBuilderPayload(id: number): void {
-  if (id <= 0) {
-    return;
-  }
-  infoWindowBuilderPayloads.delete(id);
-}
 
 interface ScreenPoint {
   x: number;
   y: number;
 }
+class InfoWindowContextManager {
+
+  private ctxMap = new Map<number, InfoWindowBuilderContext>()
+  registerInfoWindowContext(annotationId: number, ctx: InfoWindowBuilderContext) {
+    this.ctxMap.set(annotationId, ctx)
+  }
+  getInfoWindowContext(annotation: number): InfoWindowBuilderContext | null{
+    return this.ctxMap.get(annotation)?? null
+  }
+  clear() {
+    this.ctxMap.clear();
+  }
+}
+
+const defaultCtxMap = new InfoWindowContextManager()
 
 /**
  * InfoWindowManager - Controls InfoWindows backed by ViewAnnotations.
  */
 export class InfoWindowManager {
-  private infoWindows: Map<number, InfoWindow> = new Map();
+  private infoWindowMap: Map<number, InfoWindow> = new Map();
   private adapter: InfoWindowAdapter | null = null;
   private onClickListener: OnInfoWindowClickListener | null = null;
   private onLongClickListener: OnInfoWindowLongClickListener | null = null;
@@ -91,11 +82,10 @@ export class InfoWindowManager {
     }
 
     if (this.viewAnnotationManager) {
-      this.infoWindows.forEach((infoWindow) => {
+      this.infoWindowMap.forEach((infoWindow) => {
         const annotationId = infoWindow.getAnnotationId();
         if (annotationId > 0) {
           this.viewAnnotationManager?.removeViewAnnotation(annotationId);
-          this.removeInfoWindowBuilderPayload(annotationId);
         }
         infoWindow.resetAnnotation();
         infoWindow.setVisible(false);
@@ -178,7 +168,7 @@ export class InfoWindowManager {
   /**
    * Show InfoWindow for a marker using the ViewAnnotation pipeline.
    */
-  show(marker: Marker, options?: InfoWindowDisplayOptions): InfoWindow | null {
+  show(marker: Marker, options?: InfoWindowDisplayOptions, customWrappedBuilder?: InfoWindowWrappedBuilder): InfoWindow | null {
     if (!this.viewAnnotationManager) {
       console.warn('[InfoWindowManager] ViewAnnotationManager not attached, cannot show InfoWindow');
       return null;
@@ -194,11 +184,28 @@ export class InfoWindowManager {
     }
 
     const markerId = marker.getId();
-    let infoWindow = this.infoWindows.get(markerId);
-
+    let infoWindow = this.infoWindowMap.get(markerId);
     if (!infoWindow) {
-      infoWindow = new InfoWindow(marker, options?.style);
-      this.infoWindows.set(markerId, infoWindow);
+      const renderContext: InfoWindowRenderContext = {
+        onWindowClick: () => {
+          if (this.onClickListener) {
+            this.onClickListener.onInfoWindowClick(marker);
+          }
+        },
+        onLongClick: () => {
+          if (this.onLongClickListener) {
+            this.onLongClickListener.onInfoWindowLongClick(marker);
+          }
+        },
+        onClose: () => {
+          this.close(marker);
+        },
+        onSizeChanged: (width: number, height: number) => {
+          this.handleSizeChanged(infoWindow!, width, height);
+        },
+      };
+      infoWindow = new InfoWindow(marker, renderContext, options?.style, customWrappedBuilder);
+      this.infoWindowMap.set(markerId, infoWindow);
     } else if (options?.style) {
       infoWindow.setStyle(options.style);
     }
@@ -211,42 +218,15 @@ export class InfoWindowManager {
     };
     infoWindow.setLayoutOptions(layoutOptions);
 
-    const customBuilder = this.adapter?.getInfoWindow(marker) ?? null;
-    const builderContext: InfoWindowBuildContext = {
-      onWindowClick: () => {
-        if (this.onClickListener) {
-          this.onClickListener.onInfoWindowClick(marker);
-        }
-      },
-      onLongClick: () => {
-        if (this.onLongClickListener) {
-          this.onLongClickListener.onInfoWindowLongClick(marker);
-        }
-      },
-      onClose: () => {
-        this.close(marker);
-      },
-      onSizeChanged: (width: number, height: number) => {
-        this.handleSizeChanged(infoWindow!, width, height);
-      },
-      customContentBuilder: customBuilder
-    };
-    const renderContext: InfoWindowRenderContext = {
-      onWindowClick: builderContext.onWindowClick,
-      onLongClick: builderContext.onLongClick,
-      onClose: builderContext.onClose,
-      onSizeChanged: builderContext.onSizeChanged
-    };
+
     const activeInfoWindow = infoWindow;
-    const payload = this.buildInfoWindowBuilderPayload(activeInfoWindow, renderContext, customBuilder);
-    const wrappedBuilder = this.getInfoWindowWrappedBuilder();
+    const wrappedBuilder = infoWindow.getWrappedBuilder()
     const markerPosition = marker.getPosition();
     const layout = activeInfoWindow.getLayoutOptions();
 
     const existingId = activeInfoWindow.getAnnotationId();
     if (existingId > 0) {
       try {
-        this.registerInfoWindowBuilderPayload(existingId, payload);
         const updateOptions = {
           anchor: markerPosition,
           wrappedBuilder: wrappedBuilder,
@@ -286,7 +266,6 @@ export class InfoWindowManager {
           return null;
         }
         activeInfoWindow.setAnnotationId(annotationId);
-        this.registerInfoWindowBuilderPayload(annotationId, payload);
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
         console.error('[InfoWindowManager] addViewAnnotation failed: ', reason);
@@ -302,7 +281,7 @@ export class InfoWindowManager {
    * Close InfoWindow for specific marker.
    */
   close(marker: Marker): void {
-    const infoWindow = this.infoWindows.get(marker.getId());
+    const infoWindow = this.infoWindowMap.get(marker.getId());
     if (!infoWindow || !infoWindow.isShown()) {
       return;
     }
@@ -312,7 +291,6 @@ export class InfoWindowManager {
       if (this.viewAnnotationManager) {
         this.viewAnnotationManager.removeViewAnnotation(annotationId);
       }
-      this.removeInfoWindowBuilderPayload(annotationId);
     }
 
     infoWindow.resetAnnotation();
@@ -327,7 +305,7 @@ export class InfoWindowManager {
    * Close all InfoWindows.
    */
   closeAll(): void {
-    this.infoWindows.forEach((infoWindow) => {
+    this.infoWindowMap.forEach((infoWindow) => {
       if (infoWindow.isShown()) {
         const marker = infoWindow.getMarker();
         this.close(marker);
@@ -350,13 +328,14 @@ export class InfoWindowManager {
    * Retrieve InfoWindow for marker.
    */
   get(marker: Marker): InfoWindow | null {
-    return this.infoWindows.get(marker.getId()) || null;
+    return this.infoWindowMap.get(marker.getId()) || null;
   }
 
   /**
    * Update positions for all visible InfoWindows (no-op with ViewAnnotations).
    */
-  updatePositions(_screenWidth: number, _screenHeight: number, _getMarkerScreenPosition: (marker: Marker) => ScreenPoint): void {
+  updatePositions(_screenWidth: number, _screenHeight: number,
+    _getMarkerScreenPosition: (marker: Marker) => ScreenPoint): void {
     // ViewAnnotations are automatically positioned by the native engine.
   }
 
@@ -387,12 +366,37 @@ export class InfoWindowManager {
    */
   getVisibleInfoWindows(): InfoWindow[] {
     const visible: InfoWindow[] = [];
-    this.infoWindows.forEach(infoWindow => {
+    this.infoWindowMap.forEach(infoWindow => {
       if (infoWindow.isShown()) {
         visible.push(infoWindow);
       }
     });
     return visible;
+  }
+
+  /**
+   * Update the custom wrapped builder of an already visible InfoWindow.
+   */
+  public updateCustomWrappedBuilder(marker: Marker, builder: InfoWindowWrappedBuilder | null): boolean {
+    const infoWindow = this.infoWindowMap.get(marker.getId());
+    if (!infoWindow || !infoWindow.isShown()) {
+      return false;
+    }
+
+    infoWindow.setCustomWrappedBuilder(builder);
+
+    if (infoWindow.getAnnotationId() > 0) {
+      const updateOptions: ViewAnnotationUpdateOptions = {
+        wrappedBuilder: infoWindow.getWrappedBuilder() as ViewAnnotationWrappedBuilder,
+        viewName: INFO_WINDOW_VIEW_NAME
+      };
+      return this.viewAnnotationManager?.updateViewAnnotation(
+        infoWindow.getAnnotationId(),
+        updateOptions
+      ) ?? false;
+    }
+
+    return true;
   }
 
   private handleSizeChanged(infoWindow: InfoWindow, width: number, height: number): void {
@@ -424,73 +428,7 @@ export class InfoWindowManager {
     return value > 0 ? value : undefined;
   }
 
-  private buildInfoWindowBuilderPayload(
-    infoWindow: InfoWindow,
-    renderContext: InfoWindowRenderContext,
-    customBuilder: (() => void) | null
-  ): InfoWindowBuilderPayload {
-    const notifySizeChanged = (width: number, height: number): void => {
-      const changed = infoWindow.updateSize(width, height);
-      if (changed && renderContext.onSizeChanged) {
-        renderContext.onSizeChanged(width, height);
-      }
-    };
-    return {
-      infoWindow,
-      renderContext,
-      customBuilder,
-      notifySizeChanged
-    };
-  }
 
-  private registerInfoWindowBuilderPayload(annotationId: number, payload: InfoWindowBuilderPayload): void {
-    setInfoWindowBuilderPayload(annotationId, payload);
-  }
 
-  private removeInfoWindowBuilderPayload(annotationId: number): void {
-    clearInfoWindowBuilderPayload(annotationId);
-  }
-
-  private getInfoWindowWrappedBuilder(): ViewAnnotationWrappedBuilder {
-    return INFO_WINDOW_WRAPPED_BUILDER_INSTANCE;
-  }
 }
 
-@Builder
-function InfoWindowWrappedBuilderEntry(ctx: ViewAnnotationBuilderContext): void {
-  renderInfoWindowBuilderEntry(ctx);
-}
-
-function renderInfoWindowBuilderEntry(ctx: ViewAnnotationBuilderContext): void {
-  const payload = prepareInfoWindowBuilderPayload(ctx);
-  if (!payload) {
-    return;
-  }
-  RenderInfoWindowContent(payload);
-}
-
-function prepareInfoWindowBuilderPayload(ctx: ViewAnnotationBuilderContext): InfoWindowBuilderPayload | null {
-  if (!(ctx instanceof InfoWindowBuilderContext)) {
-    return null;
-  }
-  const infoCtx: InfoWindowBuilderContext = ctx;
-  const payload = getInfoWindowBuilderPayload(infoCtx.annotationId);
-  if (!payload) {
-    return null;
-  }
-  const marker = payload.infoWindow.getMarker();
-  infoCtx.markerId = marker.getId();
-  infoCtx.title = marker.getTitle() ?? '';
-  infoCtx.content = marker.getSnippet() ?? '';
-  infoCtx.notifySizeChanged = payload.notifySizeChanged;
-  return payload;
-}
-
-@Builder
-function RenderInfoWindowContent(payload: InfoWindowBuilderPayload): void {
-  if (payload.customBuilder) {
-    RenderCustomInfoWindow(payload.renderContext, payload.notifySizeChanged, payload.customBuilder);
-  } else {
-    RenderDefaultInfoWindow(payload.infoWindow, payload.renderContext, payload.notifySizeChanged);
-  }
-}

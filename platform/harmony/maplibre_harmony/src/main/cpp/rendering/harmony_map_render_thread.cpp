@@ -299,19 +299,23 @@ void HarmonyMapRenderThread::invoke(std::function<void()> task) {
         return;
     }
     
-    // ✅ Check the destruction flag
-    if (destroying_.load()) {
-        Logger::warn("MapRenderThread", "invoke() ignored: instance is being destroyed");
-        return;
-    }
-    
-    if (shouldStop_) {
-        Logger::warn("MapRenderThread", "invoke() ignored: thread is stopping");
-        return;
+    const bool onRenderThread = isOnThread();
+
+    // ✅ Allow in-flight cleanup work on the render thread even during teardown.
+    if (!onRenderThread) {
+        if (destroying_.load()) {
+            Logger::warn("MapRenderThread", "invoke() ignored: instance is being destroyed");
+            return;
+        }
+        
+        if (shouldStop_) {
+            Logger::warn("MapRenderThread", "invoke() ignored: thread is stopping");
+            return;
+        }
     }
 
     // Check whether we are already on the map/render thread
-    if (isOnThread()) {
+    if (onRenderThread) {
         // ✅ Ensure the scheduler is set correctly
         Scheduler::SetCurrent(runLoop_.get());
         task();
@@ -604,36 +608,135 @@ std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
     const ScreenCoordinate& point,
     const RenderedQueryOptions& options) const {
     
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "queryRenderedFeatures(point) ignored: render thread is stopping");
+        return {};
+    }
+    
     if (!renderer_) {
         Logger::error("MapRenderThread", "queryRenderedFeatures: Renderer not initialized");
         return {};
     }
     
-    return renderer_->queryRenderedFeatures(point, options);
+    if (isOnThread()) {
+        return renderer_->queryRenderedFeatures(point, options);
+    }
+
+    auto promise = std::make_shared<std::promise<std::vector<Feature>>>();
+    auto future = promise->get_future();
+
+    const_cast<HarmonyMapRenderThread*>(this)->invoke([this, promise, point, options]() {
+        if (destroying_.load() || shouldStop_ || !renderer_) {
+            promise->set_value({});
+            return;
+        }
+        try {
+            promise->set_value(renderer_->queryRenderedFeatures(point, options));
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "queryRenderedFeatures(point) failed on render thread: %s", e.what());
+            promise->set_value({});
+        } catch (...) {
+            Logger::error("MapRenderThread", "queryRenderedFeatures(point) failed with unknown exception");
+            promise->set_value({});
+        }
+    });
+
+    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+        Logger::error("MapRenderThread", "queryRenderedFeatures(point) timed out waiting for render thread");
+        return {};
+    }
+
+    return future.get();
 }
 
 std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
     const ScreenBox& box,
     const RenderedQueryOptions& options) const {
     
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "queryRenderedFeatures(box) ignored: render thread is stopping");
+        return {};
+    }
+    
     if (!renderer_) {
         Logger::error("MapRenderThread", "queryRenderedFeatures: Renderer not initialized");
         return {};
     }
     
-    return renderer_->queryRenderedFeatures(box, options);
+    if (isOnThread()) {
+        return renderer_->queryRenderedFeatures(box, options);
+    }
+
+    auto promise = std::make_shared<std::promise<std::vector<Feature>>>();
+    auto future = promise->get_future();
+
+    const_cast<HarmonyMapRenderThread*>(this)->invoke([this, promise, box, options]() {
+        if (destroying_.load() || shouldStop_ || !renderer_) {
+            promise->set_value({});
+            return;
+        }
+        try {
+            promise->set_value(renderer_->queryRenderedFeatures(box, options));
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "queryRenderedFeatures(box) failed on render thread: %s", e.what());
+            promise->set_value({});
+        } catch (...) {
+            Logger::error("MapRenderThread", "queryRenderedFeatures(box) failed with unknown exception");
+            promise->set_value({});
+        }
+    });
+
+    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+        Logger::error("MapRenderThread", "queryRenderedFeatures(box) timed out waiting for render thread");
+        return {};
+    }
+
+    return future.get();
 }
 
 std::vector<Feature> HarmonyMapRenderThread::querySourceFeatures(
     const std::string& sourceId,
     const SourceQueryOptions& options) const {
     
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "querySourceFeatures ignored: render thread is stopping");
+        return {};
+    }
+    
     if (!renderer_) {
         Logger::error("MapRenderThread", "querySourceFeatures: Renderer not initialized");
         return {};
     }
     
-    return renderer_->querySourceFeatures(sourceId, options);
+    if (isOnThread()) {
+        return renderer_->querySourceFeatures(sourceId, options);
+    }
+
+    auto promise = std::make_shared<std::promise<std::vector<Feature>>>();
+    auto future = promise->get_future();
+
+    const_cast<HarmonyMapRenderThread*>(this)->invoke([this, promise, sourceId, options]() {
+        if (destroying_.load() || shouldStop_ || !renderer_) {
+            promise->set_value({});
+            return;
+        }
+        try {
+            promise->set_value(renderer_->querySourceFeatures(sourceId, options));
+        } catch (const std::exception& e) {
+            Logger::error("MapRenderThread", "querySourceFeatures failed on render thread: %s", e.what());
+            promise->set_value({});
+        } catch (...) {
+            Logger::error("MapRenderThread", "querySourceFeatures failed with unknown exception");
+            promise->set_value({});
+        }
+    });
+
+    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+        Logger::error("MapRenderThread", "querySourceFeatures timed out waiting for render thread");
+        return {};
+    }
+
+    return future.get();
 }
 
 void HarmonyMapRenderThread::setOnFpsChangedCallback(std::function<void(double)> callback) {

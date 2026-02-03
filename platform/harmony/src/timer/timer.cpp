@@ -59,17 +59,38 @@ public:
 
                 if (running && callback && runLoop) {
                     auto repeatCount = this->repeat.count();
+
+                    // 🔒 ANR FIX: Add timeout protection for callback execution
+                    // Record execution time and add exception handling
+
                     runLoop->invoke([this, repeatCount]() {
                         if (running && callback) {
-                            callback();
-                            
+                            // Record start time for ANR detection
+                            auto startTime = std::chrono::steady_clock::now();
+
+                            try {
+                                callback();
+
+                                // Check callback execution time
+                                auto duration = std::chrono::steady_clock::now() - startTime;
+                                auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+
+                                if (durationMs.count() > 100) {  // Log if callback takes >100ms
+                                    Logger::warn("Timer", "⚠️ Slow callback execution: %lld ms",
+                                               static_cast<long long>(durationMs.count()));
+                                }
+
+                            } catch (const std::exception& e) {
+                                Logger::error("Timer", "❌ Exception in callback: %s", e.what());
+                            }
+
                             // Stop non-repeating timers after the callback executes.
                             if (repeatCount == 0) {
                                 stop();
                             }
                         }
                     });
-                    
+
                     hasFired = true;
                 }
 

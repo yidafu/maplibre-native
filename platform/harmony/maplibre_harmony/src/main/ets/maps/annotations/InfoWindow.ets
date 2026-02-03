@@ -1,5 +1,10 @@
 import { Marker } from './Marker';
 import { CenterOffset } from './AnnotationView';
+import {
+  InfoWindowBuilderContext,
+  InfoWindowWrappedBuilder,
+  ViewAnnotationWrappedBuilder as ctx } from './ViewAnnotationTypes';
+
 /**
  * InfoWindow size info
  */
@@ -45,16 +50,6 @@ export interface InfoWindowLayoutOptions {
   zIndex?: number;
 }
 
-/**
- * Builder context used when constructing ArkUI content for the InfoWindow.
- */
-export interface InfoWindowBuildContext {
-  onWindowClick?: () => void;
-  onLongClick?: () => void;
-  onClose?: () => void;
-  onSizeChanged?: (width: number, height: number) => void;
-  customContentBuilder?: (() => void) | null;
-}
 
 export interface InfoWindowRenderContext {
   onWindowClick?: () => void;
@@ -63,10 +58,6 @@ export interface InfoWindowRenderContext {
   onSizeChanged?: (width: number, height: number) => void;
 }
 
-@Builder
-function  renderBuilderContent(builder: () => void) {
-  builder()
-}
 /**
  * InfoWindow - ViewAnnotation-backed InfoWindow descriptor.
  */
@@ -83,10 +74,15 @@ export class InfoWindow {
     anchorV: 1.0,
     zIndex: undefined
   };
-
-  constructor(marker: Marker, style?: InfoWindowStyle) {
+  private customWrappedBuilder: InfoWindowWrappedBuilder | null = null
+  private renderContext: InfoWindowRenderContext
+  constructor(marker: Marker,  renderContext: InfoWindowRenderContext,style?: InfoWindowStyle,customWrappedBuilder?: InfoWindowWrappedBuilder) {
     this.marker = marker;
     this.style = this.mergeStyle(style ?? {});
+    this.renderContext = renderContext
+    if (customWrappedBuilder) {
+      this.customWrappedBuilder = customWrappedBuilder
+    }
   }
 
   public getMarker(): Marker {
@@ -250,57 +246,40 @@ export class InfoWindow {
 
     return merged;
   }
-}
 
-@Builder
-export function RenderDefaultInfoWindow(infoWindow: InfoWindow, context: InfoWindowRenderContext, notifySizeChanged: (width: number, height: number) => void): void {
-  DefaultInfoWindowHost({
-    marker: infoWindow.getMarker(),
-    style: infoWindow.getStyle(),
-    context: context,
-    notifySizeChanged: notifySizeChanged
-  });
-}
-
-@Builder
-export function RenderCustomInfoWindow(context: InfoWindowRenderContext, notifySizeChanged: (width: number, height: number) => void, builder: () => void): void {
-  CustomInfoWindowHost({
-    context: context,
-    notifySizeChanged: notifySizeChanged,
-    contentBuilder: () => {
-      builder();
+  getWrappedBuilder(): InfoWindowWrappedBuilder {
+    if (!this.customWrappedBuilder) {
+      return INFO_WINDOW_WRAPPED_BUILDER_INSTANCE
     }
-  });
-}
+    return this.customWrappedBuilder
+  }
 
-@Component
-struct CustomInfoWindowHost {
-  @Prop context: InfoWindowRenderContext;
-  @Prop notifySizeChanged: (width: number, height: number) => void;
-  @BuilderParam contentBuilder: () => void;
+  getRenderContext(): InfoWindowRenderContext {
+    return this.renderContext;
+  }
 
-  build() {
-    Column() {
-      renderBuilderContent(this.contentBuilder)
-    }
-    .onClick(() => {
-      this.context.onWindowClick?.();
-    })
-    .gesture(
-      LongPressGesture({ repeat: false })
-        .onAction(() => {
-          this.context.onLongClick?.();
-        })
-    )
-    .onAreaChange((_oldValue: Area, newValue: Area) => {
-      const measuredWidth = Number(newValue.width);
-      const measuredHeight = Number(newValue.height);
-      if (measuredWidth > 0 && measuredHeight > 0) {
-        this.notifySizeChanged(measuredWidth, measuredHeight);
-      }
-    });
+  public setCustomWrappedBuilder(builder: InfoWindowWrappedBuilder | null): void {
+    this.customWrappedBuilder = builder;
+  }
+
+  public getCustomWrappedBuilder(): InfoWindowWrappedBuilder | null {
+    return this.customWrappedBuilder;
   }
 }
+
+const INFO_WINDOW_WRAPPED_BUILDER_INSTANCE: ctx<InfoWindowBuilderContext> =
+  wrapBuilder<[InfoWindowBuilderContext]>(RenderDefaultInfoWindow);
+
+@Builder
+export function RenderDefaultInfoWindow(ctx: InfoWindowBuilderContext): void {
+  DefaultInfoWindowHost({
+    marker: ctx.marker,
+    style: ctx.infoWindow.getStyle(),
+    context: ctx.builderContext,
+    notifySizeChanged: ctx.notifySizeChanged
+  });
+}
+
 
 @Component
 struct DefaultInfoWindowHost {
@@ -371,7 +350,7 @@ export struct InfoWindowComponent {
               if (this.leftAccessoryBuilder) {
                 this.leftAccessoryBuilder();
               } else if (this.customStyle?.leftAccessoryBuilder) {
-                this.customStyle.leftAccessoryBuilder();
+                // this.customStyle.leftAccessoryBuilder();
               }
             }
             .margin({ right: 8 })
@@ -416,7 +395,7 @@ export struct InfoWindowComponent {
               if (this.rightAccessoryBuilder) {
                 this.rightAccessoryBuilder();
               } else if (this.customStyle?.rightAccessoryBuilder) {
-                this.customStyle.rightAccessoryBuilder();
+                // this.customStyle.rightAccessoryBuilder();
               }
             }
           }

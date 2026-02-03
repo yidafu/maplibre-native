@@ -287,46 +287,44 @@ void HarmonyRenderer::stopAllRequests() {
 
 void HarmonyRenderer::stopAllRequestsAsync(std::function<void()> onComplete) {
     try {
-        // 1. Stop all requests immediately (synchronous part)
-        stopAllRequests();
+        const std::string instanceId = instanceId_;
         
-        // 2. Use an asynchronous task to wait for every thread to finish (align with Android/iOS patterns)
-        // Run the wait logic on a dedicated thread to avoid blocking the main thread
-        std::thread([this, onComplete = std::move(onComplete), instanceId = instanceId_]() {
+        std::thread([this, onComplete = std::move(onComplete), instanceId]() mutable {
             try {
-                // Wait for the render thread to complete its current work (prefer condition variables over hard-coded waits)
-                // Reference Android MapRenderer::waitForEmpty()
+                Logger::info("HarmonyRenderer", "[%s] stopAllRequestsAsync worker started", instanceId.c_str());
+                
+                // 执行可能阻塞的清理逻辑，避免阻塞 UI 线程
+                stopAllRequests();
+                
                 if (mapRenderThread_) {
-                    // Give the render thread time to finish the current frame
+                    // 等待渲染线程完成当前帧
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
                 }
                 
-                // Wait for the RunLoop to finish its pending tasks
-                // Reference the iOS RunLoop cleanup pattern
+                // 等待 RunLoop 处理剩余任务
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 
-                // Wait for the ResourceLoader thread to stop
-                // This is critical to prevent SIGSEGV (see CRASH_FIXES_2025_10_29.md)
+                // 等待资源加载线程停止
                 std::this_thread::sleep_for(std::chrono::milliseconds(150));
                 
-                Logger::info("HarmonyRenderer", "[%s] All async operations completed", instanceId.c_str());
-                
-                // 3. Invoke the completion callback
-                if (onComplete) {
-                    onComplete();
-                }
-                
+                Logger::info("HarmonyRenderer", "[%s] stopAllRequestsAsync worker finished", instanceId.c_str());
             } catch (const std::exception& e) {
-                Logger::error("HarmonyRenderer", "[%s] Error in async wait: %s", instanceId.c_str(), e.what());
-                if (onComplete) {
-                    onComplete(); // Call the callback even if an error occurs
-                }
+                Logger::error("HarmonyRenderer", "[%s] Error in async stop: %s", instanceId.c_str(), e.what());
+            } catch (...) {
+                Logger::error("HarmonyRenderer", "[%s] Unknown error in async stop", instanceId.c_str());
             }
-        }).detach(); // detach allows the thread to run independently
-        
+            
+            if (onComplete) {
+                onComplete();
+            }
+        }).detach();
     } catch (const std::exception& e) {
-        Logger::error("HarmonyRenderer", "[%s] Error in stopAllRequestsAsync: %s", instanceId_.c_str(), e.what());
-        // Immediately invoke the callback when an error occurs
+        Logger::error("HarmonyRenderer", "[%s] Error launching stopAllRequestsAsync worker: %s", instanceId_.c_str(), e.what());
+        if (onComplete) {
+            onComplete();
+        }
+    } catch (...) {
+        Logger::error("HarmonyRenderer", "[%s] Unknown error launching stopAllRequestsAsync worker", instanceId_.c_str());
         if (onComplete) {
             onComplete();
         }
