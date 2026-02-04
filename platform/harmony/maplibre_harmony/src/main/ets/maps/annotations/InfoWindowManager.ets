@@ -49,6 +49,7 @@ export function getInfoWindowManagerInstance(): InfoWindowManager | null {
 export interface InfoWindowDisplayOptions {
   style?: InfoWindowStyle;
   centerOffset?: CenterOffset;
+  anchorHeight?: number;  // Height for anchor positioning (e.g., marker icon height)
   anchorU?: number;
   anchorV?: number;
   zIndex?: number;
@@ -143,6 +144,14 @@ export class InfoWindowManager {
    */
   getAdapter(): InfoWindowAdapter | null {
     return this.adapter;
+  }
+
+  /**
+   * Get the ViewAnnotationManager instance.
+   * This is used by NativeViewAnnotationOverlay to access context during rendering.
+   */
+  getViewAnnotationManager(): ViewAnnotationManager | null {
+    return this.viewAnnotationManager;
   }
 
   /**
@@ -270,6 +279,7 @@ export class InfoWindowManager {
           viewName: INFO_WINDOW_VIEW_NAME,
           width: this.resolveDimensionForUpdate(activeInfoWindow.getWidth()),
           height: this.resolveDimensionForUpdate(activeInfoWindow.getHeight()),
+          anchorHeight: layout.anchorHeight ?? null,
           centerOffset: layout.centerOffset ?? null,
           visible: true,
           zIndex: layout.zIndex ?? null
@@ -281,12 +291,20 @@ export class InfoWindowManager {
       }
     } else {
       const estimatedSize = activeInfoWindow.estimateSize();
+
+      // Register context BEFORE addViewAnnotation to ensure it's available during render callback
+      // Use a unique temporary key based on the marker ID since annotation ID isn't known yet
+      const tempContextKey = markerId;
+      const tempContext = new InfoWindowBuilderContext(activeInfoWindow, infoWindow.getRenderContext());
+      this.registerInfoWindowContext(tempContextKey, tempContext);
+
       const addOptions = {
         anchor: markerPosition,
         wrappedBuilder: wrappedBuilder,
         viewName: INFO_WINDOW_VIEW_NAME,
         width: this.resolveDimensionForAdd(activeInfoWindow.getWidth(), estimatedSize.width),
         height: this.resolveDimensionForAdd(activeInfoWindow.getHeight(), estimatedSize.height),
+        anchorHeight: layout.anchorHeight,
         centerOffset: layout.centerOffset,
         visible: true,
         allowOverlap: true,
@@ -296,15 +314,31 @@ export class InfoWindowManager {
         zIndex: layout.zIndex
       } as InfoWindowAddOptions;
       try {
+        // Also register with ViewAnnotationManager for access during initial render callback
+        // This ensures context is available when refreshRenderStates() is called inside addViewAnnotation()
+        this.viewAnnotationManager.registerContextForAnnotation(-1, tempContext);
+
         annotationId = this.viewAnnotationManager.addViewAnnotation(addOptions);
         if (annotationId <= 0) {
           console.error('[InfoWindowManager] Failed to add ViewAnnotation for InfoWindow');
+          this.ctxMap.delete(tempContextKey); // Clean up temp context
           return null;
         }
         activeInfoWindow.setAnnotationId(annotationId);
+
+        // Re-register context with the real annotation ID
+        // This ensures subsequent render callbacks use the correct ID
+        const finalContext = new InfoWindowBuilderContext(activeInfoWindow, infoWindow.getRenderContext());
+        this.registerInfoWindowContext(annotationId, finalContext);
+        this.ctxMap.delete(tempContextKey); // Clean up temp context
+
+        // Trigger a re-render to ensure the InfoWindow content is rendered with the correct context
+        // The first render happened before context was registered, so we need to trigger another one
+        this.viewAnnotationManager.refreshRenderStates();
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
         console.error('[InfoWindowManager] addViewAnnotation failed: ', reason);
+        this.ctxMap.delete(tempContextKey); // Clean up temp context
         return null;
       }
     }

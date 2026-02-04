@@ -64,13 +64,29 @@ public:
     
     // Add a CURL handle to the event loop
     bool addHandle(CURL* handle);
-    
+
     // Remove a CURL handle from the event loop
     bool removeHandle(CURL* handle);
-    
+
+    // Remove all active CURL handles without triggering callbacks
+    // Must be called before stop() to prevent callbacks during shutdown
+    void removeAllHandles();
+
     // Check whether the loop is running
     bool isRunning() const { return running_.load(); }
-    
+
+    // Check whether the loop is stopping (for lifecycle management)
+    bool isStopping() const { return stopping_.load(std::memory_order_acquire); }
+
+    // Get active request count (for lifecycle management)
+    size_t getActiveRequestCount() const { return activeRequestCount_.load(std::memory_order_acquire); }
+
+    // Increment active request count
+    void incrementRequestCount() { activeRequestCount_.fetch_add(1, std::memory_order_acquire); }
+
+    // Decrement active request count
+    void decrementRequestCount() { activeRequestCount_.fetch_sub(1, std::memory_order_release); }
+
     // Expose the multi handle accessor
     CURLM* getMultiHandle() const { return multi_; }
 
@@ -82,7 +98,10 @@ private:
     // Run state
     std::atomic<bool> running_;
     std::atomic<bool> stopping_;
-    
+
+    // Active request count (tracks requests being processed to prevent use-after-free)
+    std::atomic<size_t> activeRequestCount_;
+
     // Operating mode
     Mode mode_;
     

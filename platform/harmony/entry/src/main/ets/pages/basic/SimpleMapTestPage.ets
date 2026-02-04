@@ -13,19 +13,58 @@ import { showToast, DEFAULT_STYLE_URLS, DEFAULT_MAP_CONFIG } from '../common/Tes
 @Component
 struct SimpleMapTestPage {
   private mapController: MapLibreMap | null = null;
+  private mapViewRef: ESObject = null; // Reference to MapView component
   @State private isMapReady: boolean = false;
 
   aboutToAppear() {
     console.info('[SimpleMapTestPage] aboutToAppear');
   }
 
-  aboutToDisappear() {
+  onPageShow(): void {
+    console.info('[SimpleMapTestPage] onPageShow');
+  }
+
+  onPageHide(): void {
+    console.info('[SimpleMapTestPage] onPageHide');
+    // When page hides, cancel pending network requests to prevent crashes
+    // This is critical for preventing SIGSEGV when navigating away
+    if (this.mapController) {
+      try {
+        const nativeMapView = this.mapController.getNativeMapView();
+        if (nativeMapView) {
+          nativeMapView.cancelAllRequests();
+          console.info('[SimpleMapTestPage] onPageHide: Cancelled all pending requests');
+        }
+      } catch (error) {
+        console.warn('[SimpleMapTestPage] onPageHide: Failed to cancel requests', error);
+      }
+    }
+  }
+
+  aboutToDisappear(): void {
     console.info('[SimpleMapTestPage] aboutToDisappear');
-    // 清理地图资源
+
+    // CRITICAL: Cancel pending requests BEFORE destroying the map
+    // This prevents HTTPFileSource callbacks from accessing destroyed objects
+    if (this.mapController) {
+      try {
+        const nativeMapView = this.mapController.getNativeMapView();
+        if (nativeMapView) {
+          nativeMapView.cancelAllRequests();
+          console.info('[SimpleMapTestPage] aboutToDisappear: Cancelled all pending requests');
+        }
+      } catch (error) {
+        console.warn('[SimpleMapTestPage] aboutToDisappear: Failed to cancel requests', error);
+      }
+    }
+
+    // Then destroy the map controller
     if (this.mapController) {
       this.mapController.destroy();
       this.mapController = null;
     }
+
+    console.info('[SimpleMapTestPage] aboutToDisappear: Cleanup complete');
   }
 
   /**

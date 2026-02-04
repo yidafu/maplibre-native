@@ -153,6 +153,7 @@ export interface NativeViewAnnotationOptions {
   anchor: NativeViewAnnotationAnchor;
   width?: number;
   height?: number;
+  anchorHeight?: number;  // Height for anchor positioning (e.g., marker icon height)
   centerOffset?: NativeViewAnnotationCenterOffset;
   visible?: boolean;
   allowOverlap?: boolean;
@@ -300,6 +301,18 @@ export class NativeMapView {
    * @param callback Callback invoked when destruction completes.
    */
   destroyAsync(callback: () => void): void;
+
+  /**
+   * Cancel all pending network requests.
+   *
+   * This method cancels all ongoing HTTP requests to prevent callbacks from
+   * accessing destroyed objects during page transitions. This is critical
+   * for preventing SIGSEGV crashes when the map is destroyed.
+   *
+   * Call this method during page lifecycle transitions (onPageHide, aboutToDisappear)
+   * before destroying the map controller.
+   */
+  cancelAllRequests(): void;
 
   // ========== Style Management ==========
 

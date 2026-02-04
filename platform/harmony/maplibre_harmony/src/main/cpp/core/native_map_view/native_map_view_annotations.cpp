@@ -60,6 +60,7 @@ struct HarmonyViewAnnotationUpdate {
     std::optional<mbgl::LatLng> anchor;
     std::optional<mbgl::Size> size;
     std::optional<mbgl::ScreenCoordinate> offset;
+    std::optional<double> anchorHeight;  // Height for anchor positioning
     std::optional<bool> visible;
     std::optional<bool> allowOverlap;
     std::optional<bool> draggable;
@@ -198,6 +199,12 @@ std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, Na
         }
     }
 
+    // Parse anchorHeight for anchor positioning
+    double anchorHeight = args.GetDoubleProperty(optionsObj, "anchorHeight", std::numeric_limits<double>::quiet_NaN());
+    if (std::isfinite(anchorHeight)) {
+        annotation.anchorHeight = std::max(0.0, anchorHeight) * instance.getPixelRatioValue();
+    }
+
     annotation.visible = args.GetBoolProperty(optionsObj, "visible", true);
     annotation.allowOverlap = args.GetBoolProperty(optionsObj, "allowOverlap", false);
     annotation.draggable = args.GetBoolProperty(optionsObj, "draggable", false);
@@ -246,6 +253,12 @@ std::optional<HarmonyViewAnnotationUpdate> parseUpdateOptions(NativeMapView& ins
         if (std::isfinite(offsetX) && std::isfinite(offsetY)) {
             update.offset = mbgl::ScreenCoordinate{offsetX * instance.getPixelRatioValue(), offsetY * instance.getPixelRatioValue()};
         }
+    }
+
+    // Parse anchorHeight for anchor positioning
+    if (hasNamedProperty(env, optionsObj, "anchorHeight")) {
+        double anchorHeight = args.GetDoubleProperty(optionsObj, "anchorHeight", 0.0);
+        update.anchorHeight = std::max(0.0, anchorHeight) * instance.getPixelRatioValue();
     }
 
     if (hasNamedProperty(env, optionsObj, "visible")) {
@@ -305,7 +318,19 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
     }
 
     const mbgl::ScreenCoordinate screen = map.pixelForLatLng(annotation.anchor);
-    frame.screen = mbgl::ScreenCoordinate{screen.x + annotation.offset.x, screen.y + annotation.offset.y};
+
+    // Use anchorHeight for anchor positioning calculation
+    // anchorHeight represents the height of the underlying element (e.g., marker icon)
+    // This ensures InfoWindow positions correctly relative to the marker anchor point
+    const double anchorHeightForPosition = annotation.anchorHeight > 0 ?
+        annotation.anchorHeight : static_cast<double>(annotation.size.height);
+
+    // Calculate position: anchor + offset - anchorHeight * anchorV
+    // anchorV defaults to 1.0 (bottom), so we subtract anchorHeight to position above the anchor
+    frame.screen = mbgl::ScreenCoordinate{
+        screen.x + annotation.offset.x,
+        screen.y + annotation.offset.y - anchorHeightForPosition
+    };
 
     return frame;
 }
@@ -1335,6 +1360,15 @@ napi_value NativeMapView::getViewAnnotationFrames(napi_env env, napi_callback_in
 
     napi_value resultArray;
     napi_create_array_with_length(env, frames.size(), &resultArray);
+
+    // Log frame data for debugging
+    Logger::info("NativeMapView", "[ViewAnnotation] getViewAnnotationFrames: %zu annotations, pixelRatio=%.2f",
+                 frames.size(), pixelRatio);
+    for (size_t i = 0; i < frames.size(); ++i) {
+        Logger::info("NativeMapView", "[ViewAnnotation] Frame[%zu]: id=%ld, screen=(%.2f, %.2f), size=%dx%d",
+                     i, frames[i].id, frames[i].screen.x, frames[i].screen.y,
+                     frames[i].size.width, frames[i].size.height);
+    }
 
     for (size_t i = 0; i < frames.size(); ++i) {
         const auto& frame = frames[i];

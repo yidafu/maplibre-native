@@ -20,11 +20,12 @@ using mbgl::harmony::Logger;
 namespace mbgl {
 namespace harmony {
 
-CURLEventLoop::CURLEventLoop(Mode mode) 
+CURLEventLoop::CURLEventLoop(Mode mode)
     : loop_(nullptr)
     , thread_(nullptr)
     , running_(false)
     , stopping_(false)
+    , activeRequestCount_(0)
     , mode_(mode)
     , multi_(nullptr)
     , timeout_timer_(nullptr)
@@ -317,17 +318,18 @@ bool CURLEventLoop::addHandle(CURL* handle) {
             Logger::error("Network", "Failed to kick off CURL handle: %s", curl_multi_strerror(result));
         }
 
-        // 🔒 ASYNC PROCESSING: Handle messages asynchronously
-        std::thread([this]() {
-            try {
-                std::lock_guard<std::mutex> lock(mutex_);
-                if (multi_ && !stopping_.load()) {
-                    processCURLMessages();
-                }
-            } catch (const std::exception& e) {
-                Logger::error("Network", "Exception in async addHandle processing: %s", e.what());
+        // 🔒 CRASH FIX: Process messages directly instead of creating detached threads
+        // Issue: Creating detached threads with raw pointers caused use-after-free crashes
+        // Solution: Process messages directly on this thread. This is safe because:
+        // 1. HTTPRequest objects are alive during processCURLMessages execution
+        // 2. handleResult uses AsyncTask for thread-safe callback dispatch
+        // 3. Eliminates race conditions from detached thread lifetime issues
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (multi_ && !stopping_.load()) {
+                processCURLMessages();
             }
-        }).detach();
+        }
     }
 
     return true;
@@ -368,8 +370,68 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
         Logger::error("Network", "Failed to remove CURL handle: %s", curl_multi_strerror(result));
         return false;
     }
-    
+
     return true;
+}
+
+void CURLEventLoop::removeAllHandles() {
+    // 🔒 CRASH FIX: Remove all handles before shutdown to prevent callbacks on destroyed objects
+    //
+    // Issue: When HTTPFileSource::Impl destructor runs while network requests are still pending,
+    // the curlEventLoop->stop() call doesn't immediately prevent CURL from completing requests.
+    // This leads to use-after-free when processCURLMessages tries to access destroyed HTTPRequest objects.
+    //
+    // Solution: Remove all handles from the CURL multi handle before stopping the event loop.
+    // This prevents CURL from invoking any completion callbacks during shutdown.
+    // Additionally, wait for in-flight requests to complete.
+
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    Logger::debug("Network", "removeAllHandles: removing %zu active handles, %zu in-flight requests",
+                  active_handles_.size(), activeRequestCount_.load(std::memory_order_acquire));
+
+    // First, remove all handles from CURL multi (this prevents CURLMSG_DONE callbacks)
+    if (multi_) {
+        for (auto it = active_handles_.begin(); it != active_handles_.end(); ++it) {
+            CURL* handle = it->first;
+            CURLMcode result = curl_multi_remove_handle(multi_, handle);
+            if (result != CURLM_OK) {
+                Logger::warn("Network", "Failed to remove handle from multi: %s", curl_multi_strerror(result));
+            }
+        }
+    }
+
+    // Then close all poll handles (safely, without triggering callbacks)
+    for (auto it = active_handles_.begin(); it != active_handles_.end(); ++it) {
+        uv_poll_t* poll = it->second;
+
+        // Mark as closing to prevent any callback execution
+        poll->data = reinterpret_cast<void*>(0x1);
+
+        if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(poll))) {
+            uv_poll_stop(poll);
+            uv_close(reinterpret_cast<uv_handle_t*>(poll), [](uv_handle_t* h) {
+                delete reinterpret_cast<uv_poll_t*>(h);
+            });
+        }
+    }
+
+    // Clear the map
+    active_handles_.clear();
+
+    // Wait for in-flight requests to complete (with timeout)
+    // These are requests that were already being processed in processCURLMessages
+    constexpr size_t kMaxWaitCount = 100;  // 100 * 10ms = 1 second max wait
+    size_t waitCount = 0;
+    while (activeRequestCount_.load(std::memory_order_acquire) > 0 && waitCount < kMaxWaitCount) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        waitCount++;
+    }
+
+    if (activeRequestCount_.load(std::memory_order_acquire) > 0) {
+        Logger::warn("Network", "removeAllHandles: %zu requests still in-flight after wait (will be orphaned)",
+                     activeRequestCount_.load(std::memory_order_acquire));
+    }
 }
 
 // getActiveHandleCount removed; no longer required
@@ -437,18 +499,17 @@ void CURLEventLoop::onSocketEvent(uv_poll_t* poll, int status, int events) {
         return;
     }
 
-    // 🔒 DEFERRED PROCESSING: Handle CURL messages asynchronously to avoid blocking
-    // This prevents callback chain that can lead to ANR on main thread
-    std::thread([eventLoop]() {
-        try {
-            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
-            if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
-                eventLoop->processCURLMessages();
-            }
-        } catch (const std::exception& e) {
-            Logger::error("Network", "Exception in async message processing: %s", e.what());
+    // 🔒 CRASH FIX: Process messages directly on this thread instead of detached thread
+    // Issue: Detached threads with raw pointers caused use-after-free crashes
+    // Solution: Process messages directly. Safe because:
+    // 1. HTTPRequest objects are alive during this function execution
+    // 2. handleResult uses AsyncTask for proper thread dispatch
+    {
+        std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+        if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
+            eventLoop->processCURLMessages();
         }
-    }).detach();
+    }
 }
 
 void CURLEventLoop::onTimeout(uv_timer_t* timer) {
@@ -478,17 +539,13 @@ void CURLEventLoop::onTimeout(uv_timer_t* timer) {
         return;
     }
 
-    // 🔒 DEFERRED PROCESSING: Handle CURL messages asynchronously to avoid blocking
-    std::thread([eventLoop]() {
-        try {
-            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
-            if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
-                eventLoop->processCURLMessages();
-            }
-        } catch (const std::exception& e) {
-            Logger::error("Network", "Exception in async timeout processing: %s", e.what());
+    // 🔒 CRASH FIX: Process messages directly on this thread instead of detached thread
+    {
+        std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+        if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
+            eventLoop->processCURLMessages();
         }
-    }).detach();
+    }
 }
 
 // Simple polling callback (SimplePolling mode)
@@ -519,17 +576,13 @@ void CURLEventLoop::onPolling(uv_timer_t* timer) {
         return;
     }
 
-    // 🔒 DEFERRED PROCESSING: Handle CURL messages asynchronously for consistency
-    std::thread([eventLoop]() {
-        try {
-            std::lock_guard<std::mutex> lock(eventLoop->mutex_);
-            if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
-                eventLoop->processCURLMessages();
-            }
-        } catch (const std::exception& e) {
-            Logger::error("Network", "Exception in async polling processing: %s", e.what());
+    // 🔒 CRASH FIX: Process messages directly on this thread instead of detached thread
+    {
+        std::lock_guard<std::mutex> lock(eventLoop->mutex_);
+        if (eventLoop->multi_ && !eventLoop->stopping_.load()) {
+            eventLoop->processCURLMessages();
         }
-    }).detach();
+    }
 }
 
 void CURLEventLoop::onClose(uv_handle_t* handle) {
@@ -634,69 +687,89 @@ int CURLEventLoop::handleTimer(CURLM* /*multi*/, long timeout_ms, void* userp) {
 extern "C" void handleHTTPRequestResult(void* request, CURLcode code);
 
 void CURLEventLoop::processCURLMessages() {
+    // 🔒 Fast fail if stopping
+    if (stopping_.load(std::memory_order_acquire)) {
+        return;
+    }
+
     CURLMsg* msg;
     int msgs_left;
-    
+
     while ((msg = curl_multi_info_read(multi_, &msgs_left))) {
         if (msg->msg == CURLMSG_DONE) {
             CURL* handle = msg->easy_handle;
             CURLcode result = msg->data.result;
-            
+
+            // 🔒 Enhanced check: verify handle is still valid
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                if (active_handles_.find(handle) == active_handles_.end()) {
+                    // Handle has been removed, skip processing
+                    Logger::debug("Network", "Skipping CURLMSG_DONE for removed handle");
+                    continue;
+                }
+            }
+
+            // Increment request count to track in-flight requests
+            incrementRequestCount();
+
             // 🔍 Diagnostics: fetch the request URL
             char* url = nullptr;
             curl_easy_getinfo(handle, CURLINFO_EFFECTIVE_URL, &url);
-            
+
             // 🔍 Diagnostics: gather response info
             long response_code = 0;
             curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &response_code);
-            
+
             double total_time = 0;
             curl_easy_getinfo(handle, CURLINFO_TOTAL_TIME, &total_time);
-            
+
             if (result != CURLE_OK) {
                 Logger::warn("Network", "❌ Request FAILED:");
                 Logger::warn("Network", "  URL: %s", url ? url : "unknown");
                 Logger::warn("Network", "  Error: %s", curl_easy_strerror(result));
                 Logger::warn("Network", "  Time: %.2f seconds", total_time);
             }
-            
+
             // Retrieve the HTTPRequest and propagate the result
             void* privateData = nullptr;
             curl_easy_getinfo(handle, CURLINFO_PRIVATE, &privateData);
-            
-            // 🔒 CRASH FIX: strengthen privateData validation
+
+            // 🔒 CRASH FIX: strengthen privateData validation and ensure object lifetime
             if (privateData) {
                 // Double-check that the handle is still valid before invoking the callback.
                 // Note: not a perfect guard against use-after-free, but lowers the risk.
-                
+
                 // Attempt to retrieve it again and ensure the pointer matches
                 void* verify = nullptr;
                 CURLcode info_result = curl_easy_getinfo(handle, CURLINFO_PRIVATE, &verify);
-                
+
                 if (info_result == CURLE_OK && verify == privateData) {
-                    // 🔒 ANR FIX: Process network results in background thread to avoid UI blocking
-                    // Issue: handleHTTPRequestResult was executing on main thread causing ANR
-                    // Solution: Use std::thread to process results asynchronously
+                    // 🔒 CRASH FIX: Process result directly instead of detached thread
+                    //
+                    // Issue: Creating detached threads with raw HTTPRequest* pointers caused
+                    // use-after-free crashes when the HTTPRequest was destroyed before the
+                    // detached thread executed.
+                    //
+                    // Solution: Process the result directly on this thread (network thread).
+                    // This is safe because:
+                    // 1. HTTPRequest objects are alive during processCURLMessages execution
+                    // 2. handleHTTPRequestResult uses AsyncTask which properly dispatches
+                    //    the callback to the correct RunLoop thread (main/UI thread)
+                    // 3. Eliminates race conditions from detached thread lifetime issues
 
-                    // Create a copy of the data to prevent use-after-free
-                    void* requestData = privateData;
-                    CURLcode requestResult = result;
-
-                    std::thread([requestData, requestResult]() {
-                        try {
-                            // Process result in background thread
-                            handleHTTPRequestResult(requestData, requestResult);
-                        } catch (const std::exception& e) {
-                            Logger::error("Network", "Exception in background result processing: %s", e.what());
-                        }
-                    }).detach();  // Detach to avoid blocking network thread
+                    // Process result directly using external function (void* to avoid needing full type)
+                    handleHTTPRequestResult(privateData, result);
                 } else {
-                    Logger::error("Network", "❌ privateData validity check failed (URL: %s, expected=%p, actual=%p)", 
+                    Logger::error("Network", "❌ privateData validity check failed (URL: %s, expected=%p, actual=%p)",
                                  url ? url : "unknown", privateData, verify);
                 }
             } else {
                 Logger::error("Network", "❌ No private data found for completed handle (URL: %s)", url ? url : "unknown");
             }
+
+            // Decrement request count (always decrement after processing attempt)
+            decrementRequestCount();
         }
     }
 }

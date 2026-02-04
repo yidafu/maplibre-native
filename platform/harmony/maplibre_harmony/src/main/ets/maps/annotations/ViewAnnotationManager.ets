@@ -39,6 +39,7 @@ export interface ViewAnnotationAddOptions {
   viewName?: string;
   width?: number;
   height?: number;
+  anchorHeight?: number;  // Height for anchor positioning (e.g., marker icon height)
   centerOffset?: CenterOffset;
   visible?: boolean;
   allowOverlap?: boolean;
@@ -62,6 +63,7 @@ export interface ViewAnnotationUpdateOptions {
   viewName?: string;
   width?: number;
   height?: number;
+  anchorHeight?: number | null;
   centerOffset?: CenterOffset | null;
   visible?: boolean;
   allowOverlap?: boolean;
@@ -83,6 +85,7 @@ interface ViewAnnotationEntry {
   viewName: string;
   width?: number;
   height?: number;
+  anchorHeight?: number;
   centerOffset?: CenterOffset;
   visible: boolean;
   allowOverlap: boolean;
@@ -105,6 +108,39 @@ export class ViewAnnotationManager {
   private entries: Map<number, ViewAnnotationEntry> = new Map();
   private renderStates: ViewAnnotationRenderState[] = [];
   private renderCallback?: (states: ViewAnnotationRenderState[]) => void;
+  private contextMap: Map<number, ViewAnnotationBuilderContext> = new Map();
+
+  /**
+   * Register a context for an annotation by ID.
+   * This should be called BEFORE addViewAnnotation() to ensure the context
+   * is available during the initial render callback triggered by addViewAnnotation().
+   *
+   * @param annotationId - The annotation ID (use -1 for pre-registration before real ID is assigned)
+   * @param context - The builder context to register
+   */
+  registerContextForAnnotation(annotationId: number, context: ViewAnnotationBuilderContext): void {
+    if (annotationId <= 0) {
+      // Use -1 as a temporary key for pre-registration
+      this.contextMap.set(-1, context);
+      console.info(`[ViewAnnotationManager] registerContextForAnnotation: pre-registered context`);
+    } else {
+      this.contextMap.set(annotationId, context);
+      console.info(`[ViewAnnotationManager] registerContextForAnnotation: registered for annotation ${annotationId}`);
+    }
+  }
+
+  /**
+   * Get a registered context for an annotation.
+   */
+  getContextForAnnotation(annotationId: number): ViewAnnotationBuilderContext | undefined {
+    // First try exact match
+    let context = this.contextMap.get(annotationId);
+    // If not found and annotationId > 0, also check if context was pre-registered with -1
+    if (!context && annotationId > 0) {
+      context = this.contextMap.get(-1);
+    }
+    return context;
+  }
 
   /**
    * Binds the manager to the underlying native map view.
@@ -174,6 +210,7 @@ export class ViewAnnotationManager {
         viewName: options.viewName ?? DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
         width: options.width,
         height: options.height,
+        anchorHeight: options.anchorHeight,
         centerOffset: options.centerOffset,
         visible: options.visible !== false,
         allowOverlap: options.allowOverlap === undefined ? true : options.allowOverlap,
@@ -234,6 +271,10 @@ export class ViewAnnotationManager {
     }
     if (options.height !== undefined) {
       entry.height = options.height;
+    }
+
+    if (options.anchorHeight !== undefined) {
+      entry.anchorHeight = options.anchorHeight === null ? undefined : options.anchorHeight;
     }
 
     if (options.centerOffset !== undefined) {
@@ -389,6 +430,13 @@ export class ViewAnnotationManager {
     const safeRatio = this.pixelRatio > 0 ? this.pixelRatio : 1;
     const nextStates: ViewAnnotationRenderState[] = [];
 
+    // Debug: log raw frame data from C++
+    console.info(`[ViewAnnotationManager] Raw frames from C++: ${frames.length} frames, safeRatio=${safeRatio.toFixed(2)}`);
+    frames.forEach((frame, idx) => {
+      console.info(`[ViewAnnotationManager] Raw frame[${idx}]: id=${frame.id}, x=${frame.x?.toFixed(2)}, y=${frame.y?.toFixed(2)}, ` +
+        `width=${frame.width}, height=${frame.height}, pixelRatio=${frame.pixelRatio}, visible=${frame.visible}`);
+    });
+
     frames.forEach((frame) => {
       const entry = this.entries.get(frame.id);
       if (!entry) {
@@ -402,15 +450,23 @@ export class ViewAnnotationManager {
       const logicalHeight = frame.height > 0 ? frame.height / frameRatio : (entry.height ?? 0);
       const frameLogicalX = frame.x / frameRatio;
       const frameLogicalY = frame.y / frameRatio;
-      const frameOffsetX = Number.isFinite(frame.offsetX) ? frame.offsetX / frameRatio : 0;
-      const frameOffsetY = Number.isFinite(frame.offsetY) ? frame.offsetY / frameRatio : 0;
-      const centerOffsetX = entry.centerOffset?.dx ?? 0;
-      const centerOffsetY = entry.centerOffset?.dy ?? 0;
+      // NOTE: frame.offset is NOT used here because C++ buildFrame() already applies
+      // annotation.offset to frame.screen coordinates. Using it again would double-count
+      // the offset (once in C++, once in JS), causing positioning errors.
+      const frameOffsetX = 0;
+      const frameOffsetY = 0;
       const anchorU = entry.anchorU ?? 0.5;
       const anchorV = entry.anchorV ?? 1.0;
 
-      const positionX = frameLogicalX - logicalWidth * anchorU + frameOffsetX + centerOffsetX;
-      const positionY = frameLogicalY - logicalHeight * anchorV + frameOffsetY + centerOffsetY;
+      // Use anchorHeight for anchor positioning, falling back to logicalHeight
+      const anchorHeight = entry.anchorHeight ?? logicalHeight;
+
+      const positionX = frameLogicalX - logicalWidth * anchorU + frameOffsetX;
+      const positionY = frameLogicalY + frameOffsetY;
+
+      console.info(`[ViewAnnotationManager] Calc for id=${frame.id}: ` +
+        `frameLogicalY=${format(frameLogicalY)} anchorHeight=${format(anchorHeight)} anchorV=${anchorV} ` +
+        `=> positionY=${format(positionY)}`);
 
       nextStates.push(new ViewAnnotationRenderState({
         id: frame.id,
@@ -492,6 +548,11 @@ export class ViewAnnotationManager {
 
     if (source.height !== undefined) {
       nativeOptions.height = Math.max(0, source.height * safeRatio);
+    }
+
+    // Pass anchorHeight for anchor positioning calculation
+    if (source.anchorHeight !== undefined) {
+      nativeOptions.anchorHeight = Math.max(0, source.anchorHeight * safeRatio);
     }
 
     const centerOffset = source.centerOffset;

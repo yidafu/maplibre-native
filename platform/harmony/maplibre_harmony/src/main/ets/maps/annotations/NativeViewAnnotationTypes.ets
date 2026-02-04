@@ -32,6 +32,7 @@ export interface NativeViewAnnotationOptions {
   anchor: NativeViewAnnotationAnchor;
   width?: number;
   height?: number;
+  anchorHeight?: number;
   centerOffset?: NativeViewAnnotationCenterOffset;
   visible?: boolean;
   allowOverlap?: boolean;
@@ -46,6 +47,7 @@ export class NativeViewAnnotationOptionsImpl implements NativeViewAnnotationOpti
   anchor: NativeViewAnnotationAnchor;
   width?: number;
   height?: number;
+  anchorHeight?: number;
   centerOffset?: NativeViewAnnotationCenterOffset;
   visible?: boolean;
   allowOverlap?: boolean;

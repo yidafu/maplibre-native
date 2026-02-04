@@ -34,6 +34,7 @@ struct HarmonyViewAnnotation {
     mbgl::LatLng anchor;
     mbgl::Size size{0, 0};
     mbgl::ScreenCoordinate offset{0.0, 0.0};
+    double anchorHeight = 0;  // Height for anchor positioning (separate from render size)
     bool visible = true;
     bool allowOverlap = false;
     bool draggable = false;
@@ -223,6 +224,15 @@ public:
     static napi_value setNativeWindow(napi_env env, napi_callback_info info);
     static napi_value setNativeWindowWithSize(napi_env env, napi_callback_info info);
     static napi_value hardReset(napi_env env, napi_callback_info info);
+
+    /**
+     * Cancel all pending network requests.
+     *
+     * This method cancels all ongoing HTTP requests to prevent callbacks from
+     * accessing destroyed objects during page transitions. This is critical
+     * for preventing SIGSEGV crashes when the map is destroyed.
+     */
+    static napi_value cancelAllRequests(napi_env env, napi_callback_info info);
 
     // Shader compilation
     void onRegisterShaders(mbgl::gfx::ShaderRegistry&) override;

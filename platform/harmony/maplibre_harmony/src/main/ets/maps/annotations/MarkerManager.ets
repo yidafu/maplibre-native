@@ -1391,10 +1391,14 @@ export class MarkerManager {
         dy: style.offsetY ?? 0
       };
 
-      console.info(`[MarkerManager] Calling InfoWindowManager.show() with centerOffset=(${centerOffset.dx}, ${centerOffset.dy})`);
+      // Pass icon height as anchorHeight for correct anchor positioning
+      const anchorHeight = iconHeightLogical > 0 ? iconHeightLogical : undefined;
+
+      console.info(`[MarkerManager] Calling InfoWindowManager.show() with centerOffset=(${centerOffset.dx}, ${centerOffset.dy}), anchorHeight=${anchorHeight}`);
       this.infoWindowManager.show(marker, {
         style: style,
         centerOffset: centerOffset,
+        anchorHeight: anchorHeight,
         anchorU: 0.5,
         anchorV: 1.0,
         zIndex: marker.getZIndex()

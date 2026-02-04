@@ -692,23 +692,40 @@ export class NativeMapViewController extends XComponentController implements Nat
 
   /**
    * Clean up map resources
+   *
+   * CRITICAL: This method must cancel all pending network requests before
+   * destroying the map. Failing to do so will cause SIGSEGV crashes when
+   * HTTPFileSource callbacks try to access destroyed objects.
+   *
+   * Order of operations:
+   * 1. Cancel network requests FIRST (prevents crashes)
+   * 2. Clear event listeners (prevents dangling callbacks)
+   * 3. Release other resources
    */
   private cleanupMapResources(): void {
     try {
       this.isDestroying = true;
 
-      // 1. Stop rendering operations
+      // 1. Cancel all pending network requests FIRST
+      // This prevents HTTPFileSource callbacks from accessing destroyed objects
       if (this.nativeMapView) {
-        // Pause rendering
+        try {
+          this.nativeMapView.cancelAllRequests();
+          hilog.info(DOMAIN, 'NativeMapView', 'cleanupMapResources: All pending requests cancelled');
+        } catch (error) {
+          hilog.warn(DOMAIN, 'NativeMapView', `Failed to cancel requests: ${error.message}`);
+        }
+
+        // 2. Clear event listeners
+        this.clearAllListeners();
+
+        // 3. Stop rendering operations
         // this.mapView.pause();
 
-        // 2. Release OpenGL resources
+        // 4. Release OpenGL resources
         // this.mapView.cleanupGLResources();
 
-        // 3. Cancel network requests
-        // this.mapView.cancelAllRequests();
-
-        // 4. Clear caches
+        // 5. Clear caches
         // this.mapView.clearCache();
       }
 
@@ -1783,6 +1800,63 @@ export class NativeMapViewController extends XComponentController implements Nat
     if (index !== -1) {
       this.onSpriteRequestedListeners.splice(index, 1);
     }
+  }
+
+  /**
+   * Clear all event listeners
+   *
+   * This method clears all registered event listeners to prevent callbacks
+   * from accessing destroyed objects during page transitions.
+   */
+  private clearAllListeners(): void {
+    // Camera listeners
+    this.onCameraWillChangeListeners = [];
+    this.onCameraIsChangingListeners = [];
+    this.onCameraDidChangeListeners = [];
+
+    // Map loading listeners
+    this.onWillStartLoadingMapListeners = [];
+    this.onDidFinishLoadingMapListeners = [];
+    this.onDidFailLoadingMapListeners = [];
+
+    // Rendering listeners
+    this.onWillStartRenderingFrameListeners = [];
+    this.onDidFinishRenderingFrameListeners = [];
+    this.onDidFinishRenderingFrameWithStatsListeners = [];
+    this.onWillStartRenderingMapListeners = [];
+    this.onDidFinishRenderingMapListeners = [];
+
+    // Style listeners
+    this.onDidFinishLoadingStyleListeners = [];
+    this.onStyleImageMissingListeners = [];
+    this.onCanRemoveUnusedStyleImageListeners = [];
+
+    // Other listeners
+    this.onDidBecomeIdleListeners = [];
+    this.onSourceChangedListeners = [];
+
+    // Shader listeners
+    this.onPreCompileShaderListeners = [];
+    this.onPostCompileShaderListeners = [];
+    this.onShaderCompileFailedListeners = [];
+
+    // Glyph listeners
+    this.onGlyphsLoadedListeners = [];
+    this.onGlyphsErrorListeners = [];
+    this.onGlyphsRequestedListeners = [];
+
+    // Sprite listeners
+    this.onSpriteLoadedListeners = [];
+    this.onSpriteErrorListeners = [];
+    this.onSpriteRequestedListeners = [];
+
+    // Tile listeners
+    this.onTileActionListeners = [];
+
+    // Map ready callbacks
+    this.onMapReadyCallbacks = [];
+
+    hilog.info(DOMAIN, 'NativeMapView', 'All listeners cleared');
   }
 
   /**

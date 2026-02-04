@@ -45,6 +45,7 @@ const DEFAULT_INFO_WINDOW_STYLE: InfoWindowStyle = {
  */
 export interface InfoWindowLayoutOptions {
   centerOffset?: CenterOffset;
+  anchorHeight?: number;
   anchorU?: number;
   anchorV?: number;
   zIndex?: number;
@@ -70,6 +71,7 @@ export class InfoWindow {
   private visible: boolean = false;
   private layoutOptions: InfoWindowLayoutOptions = {
     centerOffset: undefined,
+    anchorHeight: undefined,
     anchorU: 0.5,
     anchorV: 1.0,
     zIndex: undefined
@@ -102,6 +104,7 @@ export class InfoWindow {
   public setLayoutOptions(options: InfoWindowLayoutOptions): void {
     this.layoutOptions = {
       centerOffset: options.centerOffset ? { dx: options.centerOffset.dx, dy: options.centerOffset.dy } : undefined,
+      anchorHeight: options.anchorHeight ?? this.layoutOptions.anchorHeight,
       anchorU: options.anchorU ?? this.layoutOptions.anchorU ?? 0.5,
       anchorV: options.anchorV ?? this.layoutOptions.anchorV ?? 1.0,
       zIndex: options.zIndex ?? undefined
@@ -111,6 +114,7 @@ export class InfoWindow {
   public getLayoutOptions(): InfoWindowLayoutOptions {
     return {
       centerOffset: this.layoutOptions.centerOffset ? { dx: this.layoutOptions.centerOffset.dx, dy: this.layoutOptions.centerOffset.dy } : undefined,
+      anchorHeight: this.layoutOptions.anchorHeight,
       anchorU: this.layoutOptions.anchorU,
       anchorV: this.layoutOptions.anchorV,
       zIndex: this.layoutOptions.zIndex
@@ -273,7 +277,9 @@ const INFO_WINDOW_WRAPPED_BUILDER_INSTANCE: ctx<InfoWindowBuilderContext> =
 @Builder
 export function RenderDefaultInfoWindow(ctx: InfoWindowBuilderContext): void {
   DefaultInfoWindowHost({
-    marker: ctx.marker,
+    markerId: ctx.markerId,
+    markerTitle: ctx.title,
+    markerSnippet: ctx.content,
     style: ctx.infoWindow.getStyle(),
     context: ctx.builderContext,
     notifySizeChanged: ctx.notifySizeChanged
@@ -283,16 +289,18 @@ export function RenderDefaultInfoWindow(ctx: InfoWindowBuilderContext): void {
 
 @Component
 struct DefaultInfoWindowHost {
-  @Prop marker: Marker;
+  @Prop markerId: number = 0;
+  @Prop markerTitle: string = '';
+  @Prop markerSnippet: string = '';
   @Prop style: InfoWindowStyle;
   @Prop context: InfoWindowRenderContext;
   @Prop notifySizeChanged: (width: number, height: number) => void;
 
   build() {
     InfoWindowComponent({
-      markerId: this.marker.getId(),
-      markerTitle: this.marker.getTitle(),
-      markerSnippet: this.marker.getSnippet(),
+      markerId: this.markerId,
+      markerTitle: this.markerTitle,
+      markerSnippet: this.markerSnippet,
       arrowOffsetX: 0,
       customStyle: this.style,
       onWindowClick: () => {

@@ -220,24 +220,58 @@ export struct NativeViewAnnotationOverlay {
   }
 
   private createBuilderContext(state: ViewAnnotationRenderState): ViewAnnotationBuilderContext {
-    let ctx: ViewAnnotationBuilderContext;
     if (state.viewName === INFO_WINDOW_VIEW_NAME) {
       // For InfoWindows, get the actual InfoWindowBuilderContext from InfoWindowManager
       const infoWindowManager = getInfoWindowManagerInstance();
       if (infoWindowManager) {
+        // First try to look up by annotation ID (normal case)
         const infoWindowCtx = infoWindowManager.getInfoWindowContext(state.id);
         if (infoWindowCtx) {
           return infoWindowCtx;
         }
+
+        // If not found in InfoWindowManager's ctxMap, try ViewAnnotationManager's contextMap
+        // This handles the initial render case when context was pre-registered with -1 key
+        const viewAnnotationManager = infoWindowManager.getViewAnnotationManager();
+        if (viewAnnotationManager) {
+          const viewAnnotationCtx = viewAnnotationManager.getContextForAnnotation(state.id);
+          if (viewAnnotationCtx) {
+            return viewAnnotationCtx;
+          }
+        }
+
+        // Context not found by annotation ID - this can happen during initial render
+        // when context was registered with a temporary key (marker ID).
+        // The context should be registered shortly and a re-render will be triggered.
+        console.warn(`[NativeViewAnnotationOverlay] InfoWindowBuilderContext not found for annotation ${state.id}`);
+      } else {
+        console.warn(`[NativeViewAnnotationOverlay] InfoWindowManager not available for annotation ${state.id}`);
       }
-      // Fallback: create a basic context if InfoWindowManager is not available
-      ctx = new ViewAnnotationBuilderContext();
-    } else {
-      ctx = new ViewAnnotationBuilderContext();
     }
+    // Return a basic context as fallback
+    const ctx = new ViewAnnotationBuilderContext();
     ctx.annotationId = state.id;
     ctx.viewName = state.viewName;
     return ctx;
+  }
+
+  /**
+   * Calculate the Y offset for an annotation item.
+   * LOG: When anchorV=1.0 (bottom anchor), positionY already represents the top position
+   * of the InfoWindow (calculated as frameLogicalY - height in ViewAnnotationManager).
+   * So we should NOT subtract height again.
+   */
+  private getAnnotationYOffset(item: ViewAnnotationRenderState): number {
+    const formatNumber = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
+    const isInfoWindow = item.viewName === INFO_WINDOW_VIEW_NAME;
+    if (isInfoWindow) {
+      console.info(
+        `[NativeViewAnnotationOverlay] InfoWindow position: id=${item.id} ` +
+          `positionY=${formatNumber(item.positionY)} height=${formatNumber(item.height)} ` +
+          `yOffset=0 (positionY already = top)`
+      );
+    }
+    return 0; // positionY already includes the anchorV=1.0 offset
   }
 
   @Builder
@@ -248,7 +282,10 @@ export struct NativeViewAnnotationOverlay {
       }
       .width(item.width > 0 ? this.toLength(item.width) : 'auto')
       .height(item.height > 0 ? this.toLength(item.height) : 'auto')
-      .position({ x: this.toLength(item.positionX), y: this.toLength(item.positionY) })
+      .position({
+        x: this.toLength(item.positionX),
+        y: this.toLength(item.positionY + this.getAnnotationYOffset(item))
+      })
       .opacity(this.clampOpacity(item.opacity))
       .scale({
         x: this.sanitizeScale(item.scale),

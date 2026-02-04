@@ -133,6 +133,11 @@ public:
 
     void handleResult(CURLcode code);
 
+    // Check if eventLoop is valid and not stopping
+    bool isEventLoopValid() const {
+        return eventLoop && !eventLoop->isStopping();
+    }
+
 private:
     static size_t headerCallback(char *buffer, size_t size, size_t nmemb, void *userp);
     static size_t writeCallback(void *contents, size_t nmemb, size_t size, void *userp);
@@ -166,10 +171,20 @@ private:
 // External function invoked by CURLEventLoop.
 // Bridges CURLEventLoop and HTTPRequest::handleResult.
 extern "C" void handleHTTPRequestResult(void* request, CURLcode code) {
-    if (request) {
-        HTTPRequest* httpRequest = static_cast<HTTPRequest*>(request);
-        httpRequest->handleResult(code);
+    if (!request) {
+        Logger::error("Network", "handleHTTPRequestResult: null request");
+        return;
     }
+
+    HTTPRequest* httpRequest = static_cast<HTTPRequest*>(request);
+
+    // 🔒 Double-check eventLoop validity (using public accessor)
+    if (!httpRequest->isEventLoopValid()) {
+        Logger::warn("Network", "handleHTTPRequestResult: eventLoop invalid or stopping, skipping result");
+        return;
+    }
+
+    httpRequest->handleResult(code);
 }
 
 HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const ClientOptions &clientOptions_)
@@ -220,7 +235,7 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 HTTPFileSource::Impl::~Impl() {
     // 🔍 ANR monitoring: record HTTP teardown duration
     ANRDetector detector("HTTPFileSource::Impl destructor", 100, 500);
-    
+
     // ⚡ ANR FIX: monitor CURL event loop shutdown.
     // Reason: stop() may wait for active requests to complete and can take time.
     // Solution: use ANRDetector (200 ms threshold) to log slow operations.
@@ -228,6 +243,12 @@ HTTPFileSource::Impl::~Impl() {
     // Note: HarmonyOS standard library lacks a true std::async timeout,
     // but ANRDetector helps surface long-running operations.
     if (curlEventLoop) {
+        // 🔒 CRASH FIX: Remove all handles BEFORE stopping the event loop
+        // Issue: Pending network requests could complete after Impl destruction starts,
+        // causing use-after-free when accessing destroyed HTTPRequest objects.
+        // Solution: Remove all handles first to prevent completion callbacks.
+        curlEventLoop->removeAllHandles();
+
         ANRDetector stopDetector("curlEventLoop->stop", 50, 200);
         auto loopRef = std::move(curlEventLoop);
         loopRef->stop();
