@@ -17,6 +17,8 @@ import { UiSettings } from '../UiSettings';
 import { CompassView } from '../widgets/CompassView';
 import { LogoView } from '../widgets/LogoView';
 import { ScaleBarView } from '../widgets/ScaleBarView';
+import { AttributionButton, DEFAULT_ATTRIBUTIONS } from '../widgets/AttributionButton';
+import type { AttributionInfo } from '../widgets/AttributionButton';
 import { OrnamentPosition, RenderingRefreshMode } from '../types/NativeTypes';
 import { OnFpsChangedListener } from '../listeners/OnFpsChangedListener';
 import {
@@ -469,6 +471,59 @@ export struct MapView {
   }
 
   /**
+   * Get the attribution button X position
+   */
+  private getAttributionX(): Length {
+    const uiSettings = this.controller.getUiSettings();
+    const alignment = uiSettings.getAttributionAlignment();
+    const margins = uiSettings.getAttributionMargins();
+
+    switch (alignment) {
+      case Alignment.TopStart:
+      case Alignment.BottomStart:
+        return margins.left;
+      case Alignment.TopEnd:
+      case Alignment.BottomEnd:
+        return `calc(100% - 40vp - ${margins.right}vp)`; // 100% - button width - right margin
+      default:
+        return margins.left;
+    }
+  }
+
+  /**
+   * Get the attribution button Y position
+   */
+  private getAttributionY(): Length {
+    const uiSettings = this.controller.getUiSettings();
+    const alignment = uiSettings.getAttributionAlignment();
+    const margins = uiSettings.getAttributionMargins();
+
+    switch (alignment) {
+      case Alignment.TopStart:
+      case Alignment.TopEnd:
+        return margins.top;
+      case Alignment.BottomStart:
+      case Alignment.BottomEnd:
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - button height - bottom margin
+      default:
+        return `calc(100% - 40vp - ${margins.bottom}vp)`;
+    }
+  }
+
+  /**
+   * Get attributions for the attribution button
+   */
+  private getAttributions(): AttributionInfo[] {
+    const mapLibreMap = this.controller.getMapLibreMapInstance();
+    if (!mapLibreMap) {
+      return DEFAULT_ATTRIBUTIONS;
+    }
+    // TODO: 从样式获取 attributions (需要 C++ 端支持)
+    // 目前返回默认 attributions
+    return DEFAULT_ATTRIBUTIONS;
+  }
+
+  /**
    * Build the component
    */
   build() {
@@ -591,6 +646,17 @@ export struct MapView {
           useDarkStyles: this.controller.getUiSettings().isScaleBarUseDarkStyles()
         })
           .position({ x: this.getScaleBarX(), y: this.getScaleBarY() })
+      }
+
+      // Attribution button - absolute positioning configured via UiSettings
+      if (this.controller.getUiSettings().isAttributionEnabled()) {
+        AttributionButton({
+          isEnabled: this.controller.getUiSettings().isAttributionEnabled(),
+          attributions: this.getAttributions()
+        })
+          .width(40)
+          .height(40)
+          .position({ x: this.getAttributionX(), y: this.getAttributionY() })
       }
 
       // AnnotationView overlay - renders all custom AnnotationViews

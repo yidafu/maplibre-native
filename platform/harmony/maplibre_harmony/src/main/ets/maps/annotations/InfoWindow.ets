@@ -305,7 +305,7 @@ struct DefaultInfoWindowHost {
         this.context.onClose?.();
       },
       onSizeChanged: (width: number, height: number) => {
-        this.notifySizeChanged(width, height);
+        this.notifySizeChanged?.(width, height);
       }
     });
   }

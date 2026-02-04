@@ -1,5 +1,10 @@
 import type { ViewAnnotationWrappedBuilder } from './ViewAnnotationTypes';
-import { ViewAnnotationBuilderContext, InfoWindowBuilderContext, INFO_WINDOW_VIEW_NAME } from './ViewAnnotationTypes';
+import {
+  ViewAnnotationBuilderContext,
+  InfoWindowBuilderContext,
+  INFO_WINDOW_VIEW_NAME
+} from './ViewAnnotationTypes';
+import { getInfoWindowManagerInstance } from './InfoWindowManager';
 
 export interface ViewAnnotationRenderStateParams {
   id: number;
@@ -217,8 +222,15 @@ export struct NativeViewAnnotationOverlay {
   private createBuilderContext(state: ViewAnnotationRenderState): ViewAnnotationBuilderContext {
     let ctx: ViewAnnotationBuilderContext;
     if (state.viewName === INFO_WINDOW_VIEW_NAME) {
-      // Create a basic ViewAnnotationBuilderContext for InfoWindows
-      // The actual InfoWindowBuilderContext will be created by the InfoWindowManager
+      // For InfoWindows, get the actual InfoWindowBuilderContext from InfoWindowManager
+      const infoWindowManager = getInfoWindowManagerInstance();
+      if (infoWindowManager) {
+        const infoWindowCtx = infoWindowManager.getInfoWindowContext(state.id);
+        if (infoWindowCtx) {
+          return infoWindowCtx;
+        }
+      }
+      // Fallback: create a basic context if InfoWindowManager is not available
       ctx = new ViewAnnotationBuilderContext();
     } else {
       ctx = new ViewAnnotationBuilderContext();

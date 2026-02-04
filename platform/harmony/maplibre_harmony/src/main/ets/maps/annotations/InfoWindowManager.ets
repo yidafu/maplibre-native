@@ -30,6 +30,20 @@ interface InfoWindowUpdateOptions extends ViewAnnotationUpdateOptions {
 }
 
 /**
+ * Global reference to the current InfoWindowManager instance.
+ * Used by NativeViewAnnotationOverlay to get InfoWindowBuilderContext for rendering.
+ */
+let currentInfoWindowManager: InfoWindowManager | null = null;
+
+/**
+ * Get the current InfoWindowManager instance.
+ * Used for cross-component context access during rendering.
+ */
+export function getInfoWindowManagerInstance(): InfoWindowManager | null {
+  return currentInfoWindowManager;
+}
+
+/**
  * Options supplied when displaying an InfoWindow via the manager.
  */
 export interface InfoWindowDisplayOptions {
@@ -51,8 +65,8 @@ class InfoWindowContextManager {
   registerInfoWindowContext(annotationId: number, ctx: InfoWindowBuilderContext) {
     this.ctxMap.set(annotationId, ctx)
   }
-  getInfoWindowContext(annotation: number): InfoWindowBuilderContext | null{
-    return this.ctxMap.get(annotation)?? null
+  public getInfoWindowContext(annotation: number): InfoWindowBuilderContext | null {
+    return this.ctxMap.get(annotation) ?? null;
   }
   clear() {
     this.ctxMap.clear();
@@ -72,6 +86,28 @@ export class InfoWindowManager {
   private onCloseListener: OnInfoWindowCloseListener | null = null;
   private allowConcurrentMultiple: boolean = false;
   private viewAnnotationManager: ViewAnnotationManager | null = null;
+  private ctxMap: Map<number, InfoWindowBuilderContext> = new Map();
+
+  constructor() {
+    // Set as the current global instance for cross-component access
+    currentInfoWindowManager = this;
+  }
+
+  /**
+   * Register an InfoWindowBuilderContext for an annotation ID.
+   * Called by the rendering system to enable context lookup during view updates.
+   */
+  registerInfoWindowContext(annotationId: number, ctx: InfoWindowBuilderContext): void {
+    this.ctxMap.set(annotationId, ctx);
+  }
+
+  /**
+   * Get InfoWindowBuilderContext by annotation ID.
+   * Used by NativeViewAnnotationOverlay during rendering.
+   */
+  public getInfoWindowContext(annotationId: number): InfoWindowBuilderContext | null {
+    return this.ctxMap.get(annotationId) ?? null;
+  }
 
   /**
    * Bind the ViewAnnotationManager used to create InfoWindow annotations.
@@ -225,6 +261,7 @@ export class InfoWindowManager {
     const layout = activeInfoWindow.getLayoutOptions();
 
     const existingId = activeInfoWindow.getAnnotationId();
+    let annotationId = existingId;
     if (existingId > 0) {
       try {
         const updateOptions = {
@@ -241,7 +278,6 @@ export class InfoWindowManager {
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
         console.error('[InfoWindowManager] updateViewAnnotation failed: ', reason);
-        return null;
       }
     } else {
       const estimatedSize = activeInfoWindow.estimateSize();
@@ -260,7 +296,7 @@ export class InfoWindowManager {
         zIndex: layout.zIndex
       } as InfoWindowAddOptions;
       try {
-        const annotationId = this.viewAnnotationManager.addViewAnnotation(addOptions);
+        annotationId = this.viewAnnotationManager.addViewAnnotation(addOptions);
         if (annotationId <= 0) {
           console.error('[InfoWindowManager] Failed to add ViewAnnotation for InfoWindow');
           return null;
@@ -272,6 +308,10 @@ export class InfoWindowManager {
         return null;
       }
     }
+
+    // Register the InfoWindowBuilderContext for rendering
+    const builderContext = new InfoWindowBuilderContext(activeInfoWindow, infoWindow.getRenderContext());
+    this.registerInfoWindowContext(annotationId, builderContext);
 
     activeInfoWindow.setVisible(true);
     return activeInfoWindow;
@@ -291,6 +331,8 @@ export class InfoWindowManager {
       if (this.viewAnnotationManager) {
         this.viewAnnotationManager.removeViewAnnotation(annotationId);
       }
+      // Clean up the registered context
+      this.ctxMap.delete(annotationId);
     }
 
     infoWindow.resetAnnotation();

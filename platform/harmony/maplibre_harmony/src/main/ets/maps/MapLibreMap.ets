@@ -223,6 +223,9 @@ export class MapLibreMap {
   private pendingAnimationCallback: CameraAnimationCallback | null = null;
   private animationTimerId: number | null = null;
   private animationCancelled: boolean = false;
+  // Camera move throttling - limits update frequency during gestures
+  private lastCameraMoveTime: number = 0;
+  private static readonly CAMERA_MOVE_THROTTLE_MS = 16; // ~60fps limit
 
   constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
@@ -3098,7 +3101,12 @@ export class MapLibreMap {
       console.warn('[MapLibreMap] _notifyCameraMove() called but map is destroyed, skipping');
       return;
     }
-    console.info('[MapLibreMap] _notifyCameraMove() called');
+    // Throttle updates to ~60fps to avoid overwhelming the UI thread during gestures
+    const now = Date.now();
+    if (now - this.lastCameraMoveTime < MapLibreMap.CAMERA_MOVE_THROTTLE_MS) {
+      return;
+    }
+    this.lastCameraMoveTime = now;
     // Mirrors Android: update UI elements (InfoWindow, etc.) while the camera moves
     this.onUpdateRegionChange();
     this.cameraChangeDispatcher.notifyCameraMove();

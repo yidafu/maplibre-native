@@ -412,13 +412,6 @@ export class ViewAnnotationManager {
       const positionX = frameLogicalX - logicalWidth * anchorU + frameOffsetX + centerOffsetX;
       const positionY = frameLogicalY - logicalHeight * anchorV + frameOffsetY + centerOffsetY;
 
-      console.info(
-        `[ViewAnnotationManager] frame=${frame.id} raw=(${format(frame.x)}, ${format(frame.y)}) ` +
-        `pixelRatio(raw=${format(frame.pixelRatio)}, resolved=${format(frameRatio)}) ` +
-        `logical=(${format(frameLogicalX)}, ${format(frameLogicalY)}) size=(${format(logicalWidth)}, ${format(logicalHeight)}) ` +
-        `offset=(${format(frameOffsetX)}, ${format(frameOffsetY)}) position=(${format(positionX)}, ${format(positionY)})`
-      );
-
       nextStates.push(new ViewAnnotationRenderState({
         id: frame.id,
         positionX,

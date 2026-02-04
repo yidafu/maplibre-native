@@ -14,6 +14,12 @@ namespace harmony {
 // Static member initialization
 napi_ref LightHarmony::constructor = nullptr;
 
+// Constructor data structure for passing to napi_new_instance
+struct LightConstructorData {
+    mbgl::Map* map;
+    mbgl::style::Light* light;
+};
+
 LightHarmony::LightHarmony(mbgl::Map& coreMap, mbgl::style::Light& coreLight)
     : light(coreLight), map(&coreMap) {
     Logger::info("LightHarmony", "Light wrapper created");
@@ -30,7 +36,7 @@ void LightHarmony::Destructor(napi_env env, void* nativeObject, void* hint) {
 
 napi_value LightHarmony::Init(napi_env env, napi_value exports) {
     Logger::info("LightHarmony", "Initializing Light NAPI class");
-    
+
     napi_property_descriptor properties[] = {
         { "getAnchor", nullptr, GetAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setAnchor", nullptr, SetAnchor, nullptr, nullptr, nullptr, napi_default, nullptr },
@@ -47,33 +53,51 @@ napi_value LightHarmony::Init(napi_env env, napi_value exports) {
         { "getIntensityTransition", nullptr, GetIntensityTransition, nullptr, nullptr, nullptr, napi_default, nullptr },
         { "setIntensityTransition", nullptr, SetIntensityTransition, nullptr, nullptr, nullptr, napi_default, nullptr },
     };
-    
+
     napi_value cons;
-    napi_status status = napi_define_class(env, "Light", NAPI_AUTO_LENGTH, 
+    napi_status status = napi_define_class(env, "Light", NAPI_AUTO_LENGTH,
         [](napi_env env, napi_callback_info info) -> napi_value {
             napi_value jsThis;
-            napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+            size_t argc = 1;
+            napi_value argv[1];
+            napi_get_cb_info(env, info, &argc, argv, &jsThis, nullptr);
+
+            // Check if called as constructor (new Light(...))
+            napi_value newTarget;
+            napi_get_new_target(env, info, &newTarget);
+            if (newTarget != nullptr) {
+                // Constructor call - extract data and create wrapper
+                if (argc > 0) {
+                    LightConstructorData* data = nullptr;
+                    napi_get_value_external(env, argv[0], (void**)&data);
+                    if (data) {
+                        LightHarmony* lightHarmony = new LightHarmony(*data->map, *data->light);
+                        napi_wrap(env, jsThis, lightHarmony, Destructor, nullptr, nullptr);
+                        Logger::info("LightHarmony", "Light wrapper created via constructor");
+                    }
+                }
+            }
             return jsThis;
-        }, 
+        },
         nullptr, sizeof(properties) / sizeof(properties[0]), properties, &cons);
-    
+
     if (status != napi_ok) {
         Logger::error("LightHarmony", "Failed to define Light class");
         return nullptr;
     }
-    
+
     status = napi_create_reference(env, cons, 1, &constructor);
     if (status != napi_ok) {
         Logger::error("LightHarmony", "Failed to create Light constructor reference");
         return nullptr;
     }
-    
+
     status = napi_set_named_property(env, exports, "Light", cons);
     if (status != napi_ok) {
         Logger::error("LightHarmony", "Failed to export Light class");
         return nullptr;
     }
-    
+
     Logger::info("LightHarmony", "Light NAPI class initialized successfully");
     return exports;
 }
@@ -85,32 +109,31 @@ napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map, mbgl::sty
         napi_get_undefined(env, &undefined);
         return undefined;
     }
-    
+
     napi_value cons;
     napi_get_reference_value(env, constructor, &cons);
-    
+
+    // Create data structure with Map and Light pointers
+    LightConstructorData data{&map, &coreLight};
+
+    napi_value dataExternal;
+    napi_status status = napi_create_external(env, &data, nullptr, nullptr, &dataExternal);
+    if (status != napi_ok) {
+        Logger::error("LightHarmony", "Failed to create external data");
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
     napi_value instance;
-    napi_status status = napi_new_instance(env, cons, 0, nullptr, &instance);
+    status = napi_new_instance(env, cons, 1, &dataExternal, &instance);
     if (status != napi_ok) {
         Logger::error("LightHarmony", "Failed to create Light instance");
         napi_value undefined;
         napi_get_undefined(env, &undefined);
         return undefined;
     }
-    
-    // Create native wrapper
-    LightHarmony* lightHarmony = new LightHarmony(map, coreLight);
-    
-    // Wrap native object
-    status = napi_wrap(env, instance, lightHarmony, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        Logger::error("LightHarmony", "Failed to wrap Light instance");
-        delete lightHarmony;
-        napi_value undefined;
-        napi_get_undefined(env, &undefined);
-        return undefined;
-    }
-    
+
     Logger::info("LightHarmony", "Light peer created successfully");
     return instance;
 }
