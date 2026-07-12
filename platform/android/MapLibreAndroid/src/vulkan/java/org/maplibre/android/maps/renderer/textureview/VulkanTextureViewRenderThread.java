@@ -16,13 +16,11 @@ public class VulkanTextureViewRenderThread extends TextureViewRenderThread {
   }
 
   void cleanup() {
-    if (surface == null) {
-      return;
+    if (surface != null) {
+      mapRenderer.onSurfaceDestroyed();
+      surface.release();
+      surface = null;
     }
-
-    mapRenderer.onSurfaceDestroyed();
-    surface.release();
-    surface = null;
 
     hasNativeSurface = false;
   }
@@ -36,7 +34,6 @@ public class VulkanTextureViewRenderThread extends TextureViewRenderThread {
       while (true) {
         Runnable event = null;
         boolean createSurface = false;
-        boolean destroySurface = false;
         boolean sizeChanged = false;
         int w = -1;
         int h = -1;
@@ -56,14 +53,19 @@ public class VulkanTextureViewRenderThread extends TextureViewRenderThread {
             }
 
             if (this.destroySurface) {
-              surface = null;
-              destroySurface = true;
+              if (surface != null) {
+                mapRenderer.onSurfaceDestroyed();
+                surface.release();
+                surface = null;
+              }
+
+              this.hasNativeSurface = false;
               this.destroySurface = false;
+              lock.notifyAll();
               break;
             }
 
-            if (surfaceTexture != null && !paused && requestRender
-                    && (surface == null || this.sizeChanged)) {
+            if (surfaceTexture != null && !paused && requestRender) {
 
               w = width;
               h = height;
@@ -87,10 +89,6 @@ public class VulkanTextureViewRenderThread extends TextureViewRenderThread {
               break;
             }
 
-            if (requestRender && !paused) {
-              break;
-            }
-
             // Wait until needed
             lock.wait();
 
@@ -108,16 +106,6 @@ public class VulkanTextureViewRenderThread extends TextureViewRenderThread {
           mapRenderer.onSurfaceCreated(surface);
           mapRenderer.onSurfaceChanged(w, h);
           createSurface = false;
-          continue;
-        }
-
-        if (destroySurface) {
-          mapRenderer.onSurfaceDestroyed();
-          destroySurface = false;
-          synchronized (lock) {
-            this.hasNativeSurface = false;
-            lock.notifyAll();
-          }
           continue;
         }
 

@@ -42,8 +42,9 @@ constexpr uint32_t drawableUniformDescriptorPoolSize = 3 * 1024;
 constexpr uint32_t drawableImageDescriptorPoolSize = drawableUniformDescriptorPoolSize / 2;
 
 namespace {
+std::mutex glslangMutex;
 uint32_t glslangRefCount = 0;
-}
+} // namespace
 
 class RenderbufferResource : public gfx::RenderbufferResource {
 public:
@@ -54,20 +55,26 @@ Context::Context(RendererBackend& backend_)
     : gfx::Context(vulkan::maximumVertexBindingCount),
       backend(backend_),
       globalUniformBuffers(DescriptorSetType::Global, 0, 0, shaders::globalUBOCount) {
-    if (glslangRefCount++ == 0) {
-        glslang::InitializeProcess();
+    {
+        std::scoped_lock lock(glslangMutex);
+        if (glslangRefCount++ == 0) {
+            glslang::InitializeProcess();
+        }
     }
 
     initFrameResources();
 }
 
 Context::~Context() noexcept {
-    backend.getThreadPool().runRenderJobs(true /* closeQueue */);
+    MBGL_VERIFY_THREAD(tid);
 
     destroyResources();
 
-    if (--glslangRefCount == 0) {
-        glslang::FinalizeProcess();
+    {
+        std::scoped_lock lock(glslangMutex);
+        if (--glslangRefCount == 0) {
+            glslang::FinalizeProcess();
+        }
     }
 
 #if !defined(NDEBUG)
@@ -92,7 +99,8 @@ void Context::initFrameResources() {
 
     descriptorPoolMap.emplace(
         DescriptorSetType::DrawableUniform,
-        DescriptorPoolGrowable(drawableUniformDescriptorPoolSize, 0, shaders::maxUBOCountPerDrawable, 0));
+        DescriptorPoolGrowable(
+            drawableUniformDescriptorPoolSize, shaders::maxSSBOCountPerDrawable, shaders::maxUBOCountPerDrawable, 0));
 
     descriptorPoolMap.emplace(
         DescriptorSetType::DrawableImage,
@@ -118,25 +126,31 @@ void Context::initFrameResources() {
     }
 
     // force placeholder texture upload before any descriptor sets
-    (void)getDummyTexture();
+    static_cast<void>(getDummyTexture());
 
     buildUniformDescriptorSetLayout(
         globalUniformDescriptorSetLayout, 0, 0, shaders::globalUBOCount, "GlobalUniformDescriptorSetLayout");
     buildUniformDescriptorSetLayout(layerUniformDescriptorSetLayout,
-                                    shaders::globalUBOCount,
+                                    shaders::layerSSBOStartId,
                                     shaders::maxSSBOCountPerLayer,
                                     shaders::maxUBOCountPerLayer,
                                     "LayerUniformDescriptorSetLayout");
     buildUniformDescriptorSetLayout(drawableUniformDescriptorSetLayout,
-                                    shaders::globalUBOCount,
-                                    0,
+                                    shaders::drawableSSBOStartId,
+                                    shaders::maxSSBOCountPerDrawable,
                                     shaders::maxUBOCountPerDrawable,
                                     "DrawableUniformDescriptorSetLayout");
     buildImageDescriptorSetLayout();
 }
 
 void Context::destroyResources() {
-    backend.getDevice()->waitIdle(backend.getDispatcher());
+    MBGL_VERIFY_THREAD(tid);
+
+    try {
+        backend.getDevice()->waitIdle(backend.getDispatcher());
+    } catch (const vk::DeviceLostError& error) {
+        Log::Error(mbgl::Event::Render, "Vulkan device lost during context shutdown");
+    }
 
     for (auto& frame : frameResources) {
         frame.runDeletionQueue(*this);
@@ -159,6 +173,8 @@ void Context::destroyResources() {
 }
 
 void Context::enqueueDeletion(DeletionTask&& function) {
+    MBGL_VERIFY_THREAD(tid);
+
     if (frameResources.empty()) {
         function(*this);
         return;
@@ -168,32 +184,19 @@ void Context::enqueueDeletion(DeletionTask&& function) {
 }
 
 void Context::submitOneTimeCommand(const std::function<void(const vk::UniqueCommandBuffer&)>& function) {
-    submitOneTimeCommand({}, function);
+    submitOneTimeCommand(backend.getCommandPool(), function);
 }
 
-void Context::submitOneTimeCommand(const vk::UniqueCommandPool& commandPool,
-                                   const std::function<void(const vk::UniqueCommandBuffer&)>& function) {
+void Context::submitOneTimeCommand(const vk::UniqueCommandBuffer& commandBuffer) {
     MLN_TRACE_FUNC();
+
 #if DYNAMIC_TEXTURE_VULKAN_MULTITHREADED_UPLOAD
     std::scoped_lock lock(graphicsQueueSubmitMutex);
 #endif
 
-    const vk::CommandBufferAllocateInfo allocateInfo(
-        commandPool ? commandPool.get() : backend.getCommandPool().get(), vk::CommandBufferLevel::ePrimary, 1);
-
     const auto& device = backend.getDevice();
     const auto& dispatcher = backend.getDispatcher();
-    const auto& commandBuffers = device->allocateCommandBuffersUnique(allocateInfo, dispatcher);
-    auto& commandBuffer = commandBuffers.front();
-
-    backend.setDebugName(commandBuffer.get(), "OneTimeSubmitCommandBuffer");
-
-    commandBuffer->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit), dispatcher);
-    function(commandBuffer);
-    commandBuffer->end(dispatcher);
-
     const auto submitInfo = vk::SubmitInfo().setCommandBuffers(commandBuffer.get());
-
     const auto& fence = device->createFenceUnique(vk::FenceCreateInfo(vk::FenceCreateFlags()), nullptr, dispatcher);
     backend.getGraphicsQueue().submit(submitInfo, fence.get(), dispatcher);
 
@@ -202,6 +205,22 @@ void Context::submitOneTimeCommand(const vk::UniqueCommandPool& commandPool,
     if (waitFenceResult != vk::Result::eSuccess) {
         mbgl::Log::Error(mbgl::Event::Render, "OneTimeCommand - Wait fence failed");
     }
+}
+
+void Context::submitOneTimeCommand(const vk::UniqueCommandPool& pool,
+                                   const std::function<void(const vk::UniqueCommandBuffer&)>& function) {
+    const auto& device = backend.getDevice();
+    const auto& dispatcher = backend.getDispatcher();
+
+    const vk::CommandBufferAllocateInfo allocateInfo(pool.get(), vk::CommandBufferLevel::ePrimary, 1);
+    const auto& commandBuffers = device->allocateCommandBuffersUnique(allocateInfo, dispatcher);
+    const auto& commandBuffer = commandBuffers.front();
+
+    commandBuffer->begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit), dispatcher);
+    function(commandBuffer);
+    commandBuffer->end(dispatcher);
+
+    submitOneTimeCommand(commandBuffer);
 }
 
 void Context::requestSurfaceUpdate(bool useDelay) {
@@ -219,6 +238,8 @@ void Context::requestSurfaceUpdate(bool useDelay) {
 
 void Context::waitFrame() const {
     MLN_TRACE_FUNC();
+    MBGL_VERIFY_THREAD(tid);
+
     const auto& device = backend.getDevice();
     const auto& dispatcher = backend.getDispatcher();
     auto& frame = frameResources[frameResourceIndex];
@@ -233,6 +254,7 @@ void Context::waitFrame() const {
 
 void Context::beginFrame() {
     MLN_TRACE_FUNC();
+    MBGL_VERIFY_THREAD(tid);
 
     frameResourceIndex = (frameResourceIndex + 1) % frameResources.size();
 
@@ -323,6 +345,7 @@ void Context::endFrame() {}
 
 void Context::submitFrame() {
     MLN_TRACE_FUNC();
+
 #if DYNAMIC_TEXTURE_VULKAN_MULTITHREADED_UPLOAD
     std::scoped_lock lock(graphicsQueueSubmitMutex);
 #endif
@@ -421,11 +444,15 @@ gfx::ShaderProgramBasePtr Context::getGenericShader(gfx::ShaderRegistry& shaders
 }
 
 TileLayerGroupPtr Context::createTileLayerGroup(int32_t layerIndex, std::size_t initialCapacity, std::string name) {
-    return std::make_shared<TileLayerGroup>(layerIndex, initialCapacity, std::move(name));
+    auto tileLayerGroup = std::make_shared<TileLayerGroup>(layerIndex, initialCapacity, std::move(name));
+    tileLayerGroup->setObserver(observer);
+    return tileLayerGroup;
 }
 
 LayerGroupPtr Context::createLayerGroup(int32_t layerIndex, std::size_t initialCapacity, std::string name) {
-    return std::make_shared<LayerGroup>(layerIndex, initialCapacity, name);
+    auto layerGroup = std::make_shared<LayerGroup>(layerIndex, initialCapacity, name);
+    layerGroup->setObserver(observer);
+    return layerGroup;
 }
 
 bool Context::emplaceOrUpdateUniformBuffer(gfx::UniformBufferPtr& buffer,
@@ -633,7 +660,7 @@ const std::unique_ptr<Texture2D>& Context::getDummyTexture() {
         dummyTexture2D->setSize(size);
 
         submitOneTimeCommand([&](const vk::UniqueCommandBuffer& commandBuffer) {
-            dummyTexture2D->uploadSubRegion(data.data(), size, 0, 0, commandBuffer);
+            dummyTexture2D->uploadSubRegion(data.data(), size, 0, 0, commandBuffer, false);
         });
     }
 
@@ -641,7 +668,7 @@ const std::unique_ptr<Texture2D>& Context::getDummyTexture() {
 }
 
 void Context::buildUniformDescriptorSetLayout(vk::UniqueDescriptorSetLayout& layout,
-                                              size_t startId,
+                                              [[maybe_unused]] size_t startId,
                                               size_t storageCount,
                                               size_t uniformCount,
                                               const std::string& name) {
@@ -651,6 +678,7 @@ void Context::buildUniformDescriptorSetLayout(vk::UniqueDescriptorSetLayout& lay
         if (startId + i != shaders::idDrawableReservedFragmentOnlyUBO) {
             stageFlags |= vk::ShaderStageFlagBits::eVertex;
         }
+
         if (startId + i != shaders::idDrawableReservedVertexOnlyUBO) {
             stageFlags |= vk::ShaderStageFlagBits::eFragment;
         }
@@ -743,8 +771,23 @@ const vk::UniquePipelineLayout& Context::getPushConstantPipelineLayout() {
     const auto stages = vk::ShaderStageFlags() | vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
     const auto pushConstant = vk::PushConstantRange().setSize(sizeof(matf4)).setStageFlags(stages);
 
+    auto layoutInfo = vk::PipelineLayoutCreateInfo().setPushConstantRanges(pushConstant);
+
+#ifdef ENABLE_VULKAN_GPU_ASSISTED_VALIDATION
+    // GPU assisted validation crashes when using a pipeline without descriptors.
+    // Use a compatible layout with the general pipeline when enabled
+    const std::vector<vk::DescriptorSetLayout> layouts = {
+        globalUniformDescriptorSetLayout.get(),
+        layerUniformDescriptorSetLayout.get(),
+        drawableUniformDescriptorSetLayout.get(),
+        drawableImageDescriptorSetLayout.get(),
+    };
+
+    layoutInfo.setSetLayouts(layouts);
+#endif
+
     pushConstantPipelineLayout = backend.getDevice()->createPipelineLayoutUnique(
-        vk::PipelineLayoutCreateInfo().setPushConstantRanges(pushConstant), nullptr, backend.getDispatcher());
+        layoutInfo, nullptr, backend.getDispatcher());
 
     backend.setDebugName(pushConstantPipelineLayout.get(), "PipelineLayout_pushConstants");
 

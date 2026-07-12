@@ -13,6 +13,7 @@
 #include <mbgl/vulkan/renderer_backend.hpp>
 #include <mbgl/vulkan/pipeline.hpp>
 #include <mbgl/vulkan/descriptor_set.hpp>
+#include <mbgl/util/util.hpp>
 
 #include <memory>
 #include <optional>
@@ -148,9 +149,11 @@ public:
     const vk::UniquePipelineLayout& getPushConstantPipelineLayout();
 
     uint8_t getCurrentFrameResourceIndex() const { return frameResourceIndex; }
+    vk::UniqueCommandBuffer& getCommandBuffer() { return frameResources[frameResourceIndex].commandBuffer; }
     void enqueueDeletion(DeletionTask&& function);
     void submitOneTimeCommand(const std::function<void(const vk::UniqueCommandBuffer&)>& function);
-    void submitOneTimeCommand(const vk::UniqueCommandPool& commandPool,
+    void submitOneTimeCommand(const vk::UniqueCommandBuffer& buffer);
+    void submitOneTimeCommand(const vk::UniqueCommandPool& pool,
                               const std::function<void(const vk::UniqueCommandBuffer&)>& function);
 
     void requestSurfaceUpdate(bool useDelay = true);
@@ -212,6 +215,8 @@ private:
 #if DYNAMIC_TEXTURE_VULKAN_MULTITHREADED_UPLOAD
     std::mutex graphicsQueueSubmitMutex;
 #endif
+
+    MBGL_STORE_THREAD(tid);
 };
 
 } // namespace vulkan

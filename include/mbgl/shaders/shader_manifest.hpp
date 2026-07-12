@@ -19,10 +19,13 @@
 #include <mbgl/shaders/gl/fill_outline_pattern.hpp>
 #include <mbgl/shaders/gl/fill_outline_triangulated.hpp>
 #include <mbgl/shaders/gl/fill_extrusion.hpp>
+#include <mbgl/shaders/gl/fill_extrusion_instanced.hpp>
 #include <mbgl/shaders/gl/fill_extrusion_pattern.hpp>
+#include <mbgl/shaders/gl/fill_extrusion_pattern_instanced.hpp>
 #include <mbgl/shaders/gl/heatmap.hpp>
 #include <mbgl/shaders/gl/heatmap_texture.hpp>
 #include <mbgl/shaders/gl/hillshade_prepare.hpp>
+#include <mbgl/shaders/gl/color_relief.hpp>
 #include <mbgl/shaders/gl/hillshade.hpp>
 #include <mbgl/shaders/gl/line.hpp>
 #include <mbgl/shaders/gl/line_gradient.hpp>

@@ -12,6 +12,8 @@ target_compile_definitions(
 
 list(APPEND
         INCLUDE_FILES
+        ${PROJECT_SOURCE_DIR}/include/mbgl/style/layers/vulkan/custom_layer_init_parameters.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/style/layers/vulkan/custom_layer_render_parameters.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/vulkan/buffer_resource.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/vulkan/command_encoder.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/vulkan/context.hpp
@@ -47,6 +49,7 @@ list(APPEND
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/heatmap_texture.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/hillshade.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/hillshade_prepare.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/color_relief.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/line.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/location_indicator.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/vulkan/raster.hpp
@@ -56,6 +59,7 @@ list(APPEND
 
 list(APPEND
         SRC_FILES
+        ${PROJECT_SOURCE_DIR}/src/mbgl/style/layers/vulkan/custom_layer_render_parameters.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/vulkan/buffer_resource.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/vulkan/command_encoder.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/vulkan/context.cpp
@@ -91,6 +95,7 @@ list(APPEND
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/heatmap_texture.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/hillshade.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/hillshade_prepare.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/color_relief.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/line.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/location_indicator.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/vulkan/raster.cpp

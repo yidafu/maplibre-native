@@ -9,6 +9,12 @@ target_compile_definitions(
         MLN_RENDER_BACKEND_WEBGPU=1
 )
 
+target_include_directories(
+        mbgl-core
+        PUBLIC
+        ${PROJECT_SOURCE_DIR}/platform/default/include
+)
+
 list(APPEND
         SRC_FILES
         ${PROJECT_SOURCE_DIR}/src/mbgl/webgpu/buffer_resource.cpp
@@ -36,6 +42,7 @@ list(APPEND
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/heatmap_texture.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/hillshade.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/hillshade_prepare.cpp
+        ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/color_relief.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/line.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/location_indicator.cpp
         ${PROJECT_SOURCE_DIR}/src/mbgl/shaders/webgpu/raster.cpp
@@ -75,6 +82,7 @@ list(APPEND
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/heatmap_texture.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/hillshade.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/hillshade_prepare.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/color_relief.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/line.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/location_indicator.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/webgpu/raster.hpp
@@ -113,7 +121,7 @@ if(MLN_WEBGPU_IMPL_DAWN)
     if(TARGET mbgl-vendor-dawn)
         target_link_libraries(mbgl-core PRIVATE mbgl-vendor-dawn)
     endif()
-elseif(MLN_WEBGPU_IMPL_WGPU)
+elseif(MLN_WEBGPU_IMPL_WGPU OR MLN_WEBGPU_IMPL_FFI)
     # Include wgpu-native integration
     include(${PROJECT_SOURCE_DIR}/vendor/wgpu.cmake)
     if(TARGET mbgl-vendor-wgpu)

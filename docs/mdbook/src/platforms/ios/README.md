@@ -71,14 +71,14 @@ It is also possible to build and run the test application in a simulator from th
 bazel run //platform/ios:App --//:renderer=metal
 ```
 
-You can also build targets from the command line. For example, if you want to build your own XCFramework, see the 'Build XCFramework' step in the [iOS CI workflow](../../.github/workflows/ios-ci.yml).
+You can also build targets from the command line. For example, if you want to build your own XCFramework, see the 'Build XCFramework' step in the [iOS CI workflow](https://github.com/maplibre/maplibre-native/blob/main/.github/workflows/ios-ci.yml).
 
 ## CMake
 
 It is also possible to generate an Xcode project using CMake. As of February 2025, targets `mbgl-core`, `ios-sdk-static` and `app` (Objective-C development app) are supported.
 
 ```
-cmake --preset ios -DDEVELOPMENT_TEAM_ID=YOUR_TEAM_ID
+cmake --preset ios-metal -DDEVELOPMENT_TEAM_ID=YOUR_TEAM_ID
 xed build-ios/MapLibre\ Native.xcodeproj
 ```
 

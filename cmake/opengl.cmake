@@ -32,11 +32,14 @@ list(APPEND
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/fill_outline_pattern.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/fill_outline_triangulated.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/fill_extrusion.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/fill_extrusion_instanced.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/fill_extrusion_pattern.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/fill_extrusion_pattern_instanced.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/heatmap.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/heatmap_texture.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/hillshade_prepare.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/hillshade.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/color_relief.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/line.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/line_gradient.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/gl/line_pattern.hpp
@@ -113,6 +116,7 @@ list(APPEND INCLUDE_FILES
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/heatmap_layer_ubo.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/heatmap_texture_layer_ubo.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/hillshade_layer_ubo.hpp
+        ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/color_relief_layer_ubo.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/hillshade_prepare_layer_ubo.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/layer_ubo.hpp
         ${PROJECT_SOURCE_DIR}/include/mbgl/shaders/line_layer_ubo.hpp

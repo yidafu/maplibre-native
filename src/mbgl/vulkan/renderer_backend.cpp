@@ -12,6 +12,7 @@
 #include <mbgl/shaders/vulkan/circle.hpp>
 #include <mbgl/shaders/vulkan/clipping_mask.hpp>
 #include <mbgl/shaders/vulkan/collision.hpp>
+#include <mbgl/shaders/vulkan/color_relief.hpp>
 #include <mbgl/shaders/vulkan/custom_geometry.hpp>
 #include <mbgl/shaders/vulkan/custom_symbol_icon.hpp>
 #include <mbgl/shaders/vulkan/debug.hpp>
@@ -36,16 +37,29 @@
 
 #ifdef ENABLE_VMA_DEBUG
 
-#define VMA_DEBUG_MARGIN 16
+#define VMA_DEBUG_MARGIN 4
 #define VMA_DEBUG_DETECT_CORRUPTION 1
 #define VMA_DEBUG_INITIALIZE_ALLOCATIONS 1
 
-#define VMA_LEAK_LOG_FORMAT(format, ...)              \
+#define VMA_HEAVY_ASSERT(expr) VMA_ASSERT(expr)
+
+#define VMA_DEBUG_LOG_FORMAT(format, ...)             \
     {                                                 \
         char buffer[4096];                            \
         sprintf(buffer, format, __VA_ARGS__);         \
         mbgl::Log::Info(mbgl::Event::Render, buffer); \
     }
+
+#define VMA_DEBUG_LOG(str) VMA_DEBUG_LOG_FORMAT("%s", (str))
+#define VMA_LEAK_LOG_FORMAT(...) VMA_DEBUG_LOG_FORMAT(__VA_ARGS__)
+
+#else
+
+// - triggering VMA_ASSERT_LEAK in `VmaDeviceMemoryBlock::Destroy` without any log printed by
+// `VmaBlockMetadata_TLSF::DebugLogAllAllocations` (since all blocks are free).
+// - VMA_LEAK_LOG_FORMAT logs generate an equal number of alloc/free events.
+// - https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/issues/276
+#undef VMA_ASSERT_LEAK
 
 #endif
 
@@ -100,7 +114,7 @@ RendererBackend::RendererBackend(const gfx::ContextMode contextMode_)
       allocator(nullptr) {}
 
 RendererBackend::~RendererBackend() {
-    destroyResources(); // NOLINT(clang-analyzer-optin.cplusplus.VirtualCall)
+    destroyResources();
 }
 
 std::unique_ptr<gfx::Context> RendererBackend::createContext() {
@@ -257,26 +271,26 @@ void RendererBackend::triggerFrameCapture([[maybe_unused]] uint32_t frameCount, 
 
 #ifdef ENABLE_VULKAN_VALIDATION
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                           VkDebugUtilsMessageTypeFlagsEXT,
-                                                           const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
-                                                           void*) {
+static VKAPI_ATTR vk::Bool32 VKAPI_CALL vkDebugUtilsCallback(vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                             vk::DebugUtilsMessageTypeFlagsEXT,
+                                                             const vk::DebugUtilsMessengerCallbackDataEXT* callbackData,
+                                                             void*) {
     EventSeverity mbglSeverity = EventSeverity::Debug;
 
     switch (messageSeverity) {
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        case vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose:
             mbglSeverity = EventSeverity::Debug;
             break;
 
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+        case vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo:
             mbglSeverity = EventSeverity::Info;
             break;
 
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        case vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning:
             mbglSeverity = EventSeverity::Warning;
             break;
 
-        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        case vk::DebugUtilsMessageSeverityFlagBitsEXT::eError:
             mbglSeverity = EventSeverity::Error;
             break;
 
@@ -289,25 +303,25 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL vkDebugUtilsCallback(VkDebugUtilsMessageSe
     return VK_FALSE;
 }
 
-static VKAPI_ATTR VkBool32 vkDebugReportCallback(VkDebugReportFlagsEXT flags,
-                                                 VkDebugReportObjectTypeEXT objectType,
-                                                 [[maybe_unused]] uint64_t object,
-                                                 [[maybe_unused]] size_t location,
-                                                 int32_t messageCode,
-                                                 const char* pLayerPrefix,
-                                                 const char* pMessage,
-                                                 [[maybe_unused]] void* pUserData) {
+static VKAPI_ATTR vk::Bool32 VKAPI_CALL vkDebugReportCallback(vk::DebugReportFlagsEXT flags,
+                                                              vk::DebugReportObjectTypeEXT objectType,
+                                                              [[maybe_unused]] uint64_t object,
+                                                              [[maybe_unused]] size_t location,
+                                                              int32_t messageCode,
+                                                              const char* pLayerPrefix,
+                                                              const char* pMessage,
+                                                              [[maybe_unused]] void* pUserData) {
     EventSeverity mbglSeverity = EventSeverity::Debug;
 
-    if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+    if (flags & vk::DebugReportFlagBitsEXT::eInformation) {
         mbglSeverity = EventSeverity::Info;
-    } else if (flags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+    } else if (flags & vk::DebugReportFlagBitsEXT::eWarning) {
         mbglSeverity = EventSeverity::Warning;
-    } else if (flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+    } else if (flags & vk::DebugReportFlagBitsEXT::ePerformanceWarning) {
         mbglSeverity = EventSeverity::Warning;
-    } else if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+    } else if (flags & vk::DebugReportFlagBitsEXT::eError) {
         mbglSeverity = EventSeverity::Error;
-    } else if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+    } else if (flags & vk::DebugReportFlagBitsEXT::eDebug) {
         mbglSeverity = EventSeverity::Debug;
     }
 
@@ -424,10 +438,13 @@ void RendererBackend::initInstance() {
     extensions.insert(extensions.end(), debugExtensions.begin(), debugExtensions.end());
 
 #ifdef ENABLE_VULKAN_GPU_ASSISTED_VALIDATION
-    appInfo.setApiVersion(VK_API_VERSION_1_1);
+    appInfo.setApiVersion(VK_API_VERSION_1_2);
 
-    const std::array<vk::ValidationFeatureEnableEXT, 2> validationFeatures = {
-        vk::ValidationFeatureEnableEXT::eGpuAssisted, vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot};
+    const std::vector<vk::ValidationFeatureEnableEXT> validationFeatures = {
+        vk::ValidationFeatureEnableEXT::eGpuAssisted,
+        vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot,
+        vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
+    };
     const vk::ValidationFeaturesEXT validationFeatureInfo(validationFeatures);
 
     createInfo.setPNext(&validationFeatureInfo);
@@ -493,7 +510,6 @@ void RendererBackend::initAllocator() {
 
 void RendererBackend::initDevice() {
     const auto& extensions = getDeviceExtensions();
-    const auto& layers = getLayers();
     const auto& surface = getDefaultRenderable().getResource<SurfaceRenderableResource>().getPlatformSurface().get();
 
     const auto& isPhysicalDeviceCompatible = [&](const vk::PhysicalDevice& candidate) -> bool {
@@ -587,8 +603,13 @@ void RendererBackend::initDevice() {
                           .setPEnabledExtensionNames(extensions)
                           .setPEnabledFeatures(&physicalDeviceFeatures);
 
-    // this is not needed for newer implementations
-    createInfo.setPEnabledLayerNames(layers);
+#ifdef ENABLE_VULKAN_GPU_ASSISTED_VALIDATION
+    vk::PhysicalDeviceVulkan12Features extraFeatures;
+    extraFeatures.setBufferDeviceAddress(true);
+    extraFeatures.setTimelineSemaphore(true);
+
+    createInfo.setPNext(&extraFeatures);
+#endif
 
     device = physicalDevice.createDeviceUnique(createInfo, nullptr, dispatcher);
 }
@@ -618,12 +639,22 @@ void RendererBackend::initCommandPool() {
 }
 
 void RendererBackend::destroyResources() {
-    if (device) device->waitIdle(dispatcher);
+    if (device) {
+        try {
+            device->waitIdle(dispatcher);
+        } catch (const vk::DeviceLostError& error) {
+            Log::Error(mbgl::Event::Render, "Vulkan device lost during backend shutdown");
+        }
+    }
+
+    gfx::BackendScope scope(*this, gfx::BackendScope::ScopeType::Implicit);
+    getThreadPool().runRenderJobs(true /* closeQueue */);
 
     context.reset();
     commandPool.reset();
 
     vmaDestroyAllocator(allocator);
+    allocator = nullptr;
 
     usingSharedContext ? void(device.release()) : device.reset();
 
@@ -666,6 +697,7 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& shaders, const ProgramPar
                   shaders::BuiltIn::ClippingMaskProgram,
                   shaders::BuiltIn::CollisionBoxShader,
                   shaders::BuiltIn::CollisionCircleShader,
+                  shaders::BuiltIn::ColorReliefShader,
                   shaders::BuiltIn::CustomGeometryShader,
                   shaders::BuiltIn::CustomSymbolIconShader,
                   shaders::BuiltIn::DebugShader,
@@ -675,7 +707,9 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& shaders, const ProgramPar
                   shaders::BuiltIn::FillOutlinePatternShader,
                   shaders::BuiltIn::FillOutlineTriangulatedShader,
                   shaders::BuiltIn::FillExtrusionShader,
+                  shaders::BuiltIn::FillExtrusionInstancedShader,
                   shaders::BuiltIn::FillExtrusionPatternShader,
+                  shaders::BuiltIn::FillExtrusionPatternInstancedShader,
                   shaders::BuiltIn::HeatmapShader,
                   shaders::BuiltIn::HeatmapTextureShader,
                   shaders::BuiltIn::HillshadeShader,

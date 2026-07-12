@@ -21,6 +21,7 @@
 #include <mbgl/shaders/webgpu/heatmap_texture.hpp>
 #include <mbgl/shaders/webgpu/hillshade.hpp>
 #include <mbgl/shaders/webgpu/hillshade_prepare.hpp>
+#include <mbgl/shaders/webgpu/color_relief.hpp>
 #include <mbgl/shaders/webgpu/line.hpp>
 #include <mbgl/shaders/webgpu/location_indicator.hpp>
 #include <mbgl/shaders/webgpu/raster.hpp>
@@ -34,8 +35,8 @@ namespace webgpu {
 class RendererBackend::Impl {
 public:
     void* instance = nullptr;
-    void* device = nullptr;
-    void* queue = nullptr;
+    WGPUDevice device = nullptr;
+    WGPUQueue queue = nullptr;
     void* surface = nullptr;
     wgpu::TextureFormat depthStencilFormat = wgpu::TextureFormat::Undefined;
     wgpu::TextureFormat colorFormat = wgpu::TextureFormat::Undefined;
@@ -108,6 +109,7 @@ void RendererBackend::initShaders(gfx::ShaderRegistry& registry, const ProgramPa
                   shaders::BuiltIn::HeatmapTextureShader,
                   shaders::BuiltIn::HillshadeShader,
                   shaders::BuiltIn::HillshadePrepareShader,
+                  shaders::BuiltIn::ColorReliefShader,
                   shaders::BuiltIn::LineShader,
                   shaders::BuiltIn::LineGradientShader,
                   shaders::BuiltIn::LinePatternShader,
@@ -132,11 +134,11 @@ void RendererBackend::setInstance(void* instance) {
     impl->instance = instance;
 }
 
-void RendererBackend::setDevice(void* device) {
+void RendererBackend::setDevice(WGPUDevice device) {
     impl->device = device;
 }
 
-void RendererBackend::setQueue(void* queue) {
+void RendererBackend::setQueue(WGPUQueue queue) {
     impl->queue = queue;
 }
 
@@ -144,11 +146,11 @@ void* RendererBackend::getInstance() const {
     return impl->instance;
 }
 
-void* RendererBackend::getDevice() const {
+WGPUDevice RendererBackend::getDevice() const {
     return impl->device;
 }
 
-void* RendererBackend::getQueue() const {
+WGPUQueue RendererBackend::getQueue() const {
     return impl->queue;
 }
 

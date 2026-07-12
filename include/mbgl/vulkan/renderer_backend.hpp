@@ -21,10 +21,10 @@
 #define VMA_DYNAMIC_VULKAN_FUNCTIONS 0
 #include "vk_mem_alloc.h"
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !defined(__ANDROID__)
 #define ENABLE_VULKAN_VALIDATION
 // #define ENABLE_VULKAN_GPU_ASSISTED_VALIDATION
-//  #define ENABLE_VMA_DEBUG
+// #define ENABLE_VMA_DEBUG
 #endif
 
 namespace mbgl {
@@ -32,6 +32,11 @@ namespace mbgl {
 class ProgramParameters;
 
 namespace vulkan {
+
+using DynamicLoader = vk::detail::DynamicLoader;
+using DispatchLoaderDynamic = VULKAN_HPP_DISPATCH_LOADER_DYNAMIC_TYPE;
+template <typename OwnerType>
+using ObjectDestroy = vk::detail::ObjectDestroy<OwnerType, DispatchLoaderDynamic>;
 
 class RendererBackend : public gfx::RendererBackend {
 public:
@@ -42,7 +47,7 @@ public:
     void initShaders(gfx::ShaderRegistry&, const ProgramParameters& programParameters) override;
     void init();
 
-    const vk::DispatchLoaderDynamic& getDispatcher() const { return dispatcher; }
+    const DispatchLoaderDynamic& getDispatcher() const { return dispatcher; }
     const vk::UniqueInstance& getInstance() const { return instance; }
     const vk::PhysicalDevice& getPhysicalDevice() const { return physicalDevice; }
     const vk::UniqueDevice& getDevice() const { return device; }
@@ -63,7 +68,7 @@ public:
         if (!debugUtilsEnabled) return;
         const uint64_t handle = reinterpret_cast<uint64_t>(static_cast<typename T::CType>(object));
         device->setDebugUtilsObjectNameEXT(vk::DebugUtilsObjectNameInfoEXT()
-                                               .setObjectType(object.objectType)
+                                               .setObjectType(T::objectType)
                                                .setObjectHandle(handle)
                                                .setPObjectName(name.c_str()),
                                            dispatcher);
@@ -96,11 +101,11 @@ protected:
     virtual void initCommandPool();
     virtual void initFrameCapture();
 
-    virtual void destroyResources();
+    void destroyResources();
 
 protected:
-    vk::DynamicLoader dynamicLoader;
-    vk::DispatchLoaderDynamic dispatcher;
+    DynamicLoader dynamicLoader;
+    DispatchLoaderDynamic dispatcher;
 
     vk::UniqueInstance instance;
     vk::UniqueDebugUtilsMessengerEXT debugUtilsCallback;
