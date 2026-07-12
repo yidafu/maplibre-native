@@ -203,10 +203,10 @@ HTTPFileSource::Impl::Impl(const ResourceOptions &resourceOptions_, const Client
 
     // Create the standalone CURLEventLoop
     try {
-        // 默认使用 EventDriven 模式（高性能）
-        // 环境变量 CURL_MODE=poll 可回退到 SimplePolling 模式
-        auto mode = harmony::CURLEventLoop::Mode::SimplePolling;
-        
+        // 默认使用 EventDriven 模式（高性能，socket驱动）
+        // 环境变量 CURL_MODE=poll 可回退到 SimplePolling 模式（20ms 轮询）
+        auto mode = harmony::CURLEventLoop::Mode::EventDriven;
+
         const char* curl_mode_env = getenv("CURL_MODE");
         if (curl_mode_env && strcmp(curl_mode_env, "poll") == 0) {
             mode = harmony::CURLEventLoop::Mode::SimplePolling;
@@ -445,29 +445,27 @@ HTTPRequest::~HTTPRequest() {
     // 2. Wait briefly so in-flight callbacks complete.
     // 3. Clear userp and release resources.
     
-    // Step 1: remove the CURL handle from CURLEventLoop (stop new callbacks)
+    // Step 1: remove the CURL handle from CURLEventLoop (synchronous — blocks until
+    // the CURLEventLoop thread completes curl_multi_remove_handle + uv_poll_t cleanup).
+    // After this returns, no new callbacks (writeCallback/headerCallback) will fire.
     if (eventLoop && handle) {
-        bool success = eventLoop->removeHandle(handle);
-        
-        // Step 2: short wait to ensure in-flight callbacks finish
-        // Note: keep it brief to avoid ANR while still accommodating callbacks
-        std::this_thread::sleep_for(std::chrono::microseconds(100));
+        eventLoop->removeHandle(handle);
     }
-    
-    // Step 3: safe to clear the userp pointer now
+
+    // Step 2: safe to clear the userp pointer now
     if (handle) {
         curl_easy_setopt(handle, CURLOPT_WRITEDATA, nullptr);
         curl_easy_setopt(handle, CURLOPT_HEADERDATA, nullptr);
         curl_easy_setopt(handle, CURLOPT_PRIVATE, nullptr);
     }
-    
-    // Step 4: return the handle to the pool
+
+    // Step 3: return the handle to the pool
     if (context && handle) {
         context->returnHandle(handle);
         handle = nullptr;
     }
     
-    // Step 5: release HTTP headers
+    // Step 4: release HTTP headers
     if (headers) {
         curl_slist_free_all(headers);
         headers = nullptr;
