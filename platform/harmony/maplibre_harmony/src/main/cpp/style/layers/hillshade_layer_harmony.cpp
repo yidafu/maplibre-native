@@ -183,7 +183,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeIlluminationDirection(napi_env env, n
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, float>(
+    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, std::vector<float>>(
         env, layerObj->getLayer(), argv[0], "hillshade-illumination-direction",
         &mbgl::style::HillshadeLayer::setHillshadeIlluminationDirection
     );
@@ -237,7 +237,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeShadowColor(napi_env env, napi_callba
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::Color>(
+    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, std::vector<mbgl::Color>>(
         env, layerObj->getLayer(), argv[0], "hillshade-shadow-color",
         &mbgl::style::HillshadeLayer::setHillshadeShadowColor
     );
@@ -255,7 +255,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeHighlightColor(napi_env env, napi_cal
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
-    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, mbgl::Color>(
+    mbgl::harmony::setPaintProperty<mbgl::style::HillshadeLayer, std::vector<mbgl::Color>>(
         env, layerObj->getLayer(), argv[0], "hillshade-highlight-color",
         &mbgl::style::HillshadeLayer::setHillshadeHighlightColor
     );
@@ -300,7 +300,7 @@ napi_value HillshadeLayerNAPI::GetHillshadeIlluminationDirection(napi_env env, n
         return null_value;
     }
     
-    return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, float>(
+    return mbgl::harmony::getProperty<mbgl::style::HillshadeLayer, std::vector<float>>(
         env, layer, &mbgl::style::HillshadeLayer::getHillshadeIlluminationDirection
     );
 }

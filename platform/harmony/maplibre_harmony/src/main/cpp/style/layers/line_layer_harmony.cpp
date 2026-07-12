@@ -4,8 +4,12 @@
 #include "utils/logger.h"
 #include "style/filter_conversion.hpp"
 #include "style/layers/layer_property_utils.hpp"
+#include "style/conversion/property_value.hpp"
+#include "style/conversion/harmony_conversion.hpp"
 #include <mbgl/style/layers/line_layer.hpp>
 #include <mbgl/style/property_value.hpp>
+#include <mbgl/style/color_ramp_property_value.hpp>
+#include <mbgl/style/conversion/color_ramp_property_value.hpp>
 #include <mbgl/style/expression/image.hpp>
 #include <mbgl/style/types.hpp>
 #include <mbgl/util/color.hpp>
@@ -1081,10 +1085,22 @@ napi_value LineLayerNAPI::SetLineGradient(napi_env env, napi_callback_info info)
         return thisVar;
     }
     
-    // lineGradient uses ColorRampPropertyValue which requires expression
-    // TODO: Implement ColorRampPropertyValue conversion in future version
-    Logger::warn("LineLayerNAPI", "setLineGradient: ColorRampPropertyValue conversion not yet fully implemented");
-    
+    // lineGradient uses ColorRampPropertyValue
+    try {
+        NapiValue napiValue(env, argv[0]);
+        mbgl::style::conversion::Error error;
+        auto converted = mbgl::style::conversion::convert<mbgl::style::ColorRampPropertyValue>(
+            std::move(napiValue), error
+        );
+        if (converted) {
+            layerObj->getLayer()->setLineGradient(*converted);
+        } else {
+            Logger::error("LineLayerNAPI", "Failed to convert line-gradient: %s", error.message.c_str());
+        }
+    } catch (const std::exception& e) {
+        Logger::error("LineLayerNAPI", "Exception setting line-gradient: %s", e.what());
+    }
+
     return thisVar;
 }
 
@@ -1108,8 +1124,12 @@ napi_value LineLayerNAPI::GetLineGradient(napi_env env, napi_callback_info info)
         return undefined;
     }
     
-    // ColorRampPropertyValue requires special handling
-    // Return undefined for now - gradient is expression-only
+    // line-gradient is ColorRampPropertyValue
+    const auto& colorRamp = layer->getLineGradient();
+    auto result = mbgl::harmony::conversion::colorRampPropertyValueToNapi(env, colorRamp);
+    if (result) {
+        return *result;
+    }
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;

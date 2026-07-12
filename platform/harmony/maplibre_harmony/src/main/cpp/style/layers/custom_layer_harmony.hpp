@@ -23,7 +23,7 @@ public:
     ~ExampleCustomLayerHost() override;
 
     // CustomLayerHost interface implementation
-    void initialize() override;
+    void initialize(const mbgl::style::CustomLayerInitParameters&) override;
     void render(const mbgl::style::CustomLayerRenderParameters& parameters) override;
     void contextLost() override;
     void deinitialize() override;

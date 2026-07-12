@@ -159,7 +159,7 @@ GLuint ExampleCustomLayerHost::createShaderProgram() {
     return program;
 }
 
-void ExampleCustomLayerHost::initialize() {
+void ExampleCustomLayerHost::initialize(const mbgl::style::CustomLayerInitParameters&) {
     Logger::info("ExampleCustomLayerHost", "Initialize");
 
     if (initialized_) {
