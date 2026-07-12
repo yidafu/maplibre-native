@@ -78,7 +78,7 @@ OpenGL-based vector map rendering library for HarmonyOS.
 |                           | Custom Marker Icons               | ✅         | ✅       | ✅   |
 |                           | Polylines                         | ✅         | ✅       | ✅   |
 |                           | Polygons                          | ✅         | ✅       | ✅   |
-|                           | Info Windows                      | ⚠️         | ✅       | ✅   |
+|                           | Info Windows                      | ✅         | ✅       | ✅   |
 | **Style Control**         | Runtime Styling                   | ✅         | ✅       | ✅   |
 |                           | Add/Remove Layers                 | ✅         | ✅       | ✅   |
 |                           | Layer Properties                  | ✅         | ✅       | ✅   |
@@ -105,17 +105,17 @@ OpenGL-based vector map rendering library for HarmonyOS.
 |                           | Prefetch Tiles                    | ❌         | ✅       | ✅   |
 |                           | LOD Configuration                 | ❌         | ❌       | ✅   |
 |                           | Debug Info                        | ❌         | ✅       | ✅   |
-| **UI Settings**           | Compass                           | 🚧         | ✅       | ✅   |
-|                           | Logo                              | 🚧         | ✅       | ✅   |
-|                           | Attribution                       | 🚧         | ✅       | ✅   |
-|                           | Scale Bar                         | 🚧         | ✅       | ✅   |
-| **Offline Maps**          | Download Regions                  | ⚠️         | ✅       | ✅   |
-|                           | Offline Manager                   | ⚠️         | ✅       | ✅   |
-|                           | Region Status                     | ⚠️         | ✅       | ✅   |
-|                           | Pack Database                     | ⚠️         | ✅       | ✅   |
+| **UI Settings**           | Compass                           | ✅         | ✅       | ✅   |
+|                           | Logo                              | ✅         | ✅       | ✅   |
+|                           | Attribution                       | ✅         | ✅       | ✅   |
+|                           | Scale Bar                         | ✅         | ✅       | ✅   |
+| **Offline Maps**          | Download Regions                  | ✅         | ✅       | ✅   |
+|                           | Offline Manager                   | ✅         | ✅       | ✅   |
+|                           | Region Status                     | ✅         | ✅       | ✅   |
+|                           | Pack Database                     | ✅         | ✅       | ✅   |
 | **Snapshots**             | Take Snapshot                     | ✅         | ✅       | ✅   |
 |                           | Snapshot Options                  | ✅         | ✅       | ✅   |
-|                           | Async Snapshot                    | 🚧         | ✅       | ✅   |
+|                           | Async Snapshot                    | ✅         | ✅       | ✅   |
 | **Query Features**        | Query Rendered Features           | ✅         | ✅       | ✅   |
 |                           | Query Source Features             | ✅         | ✅       | ✅   |
 |                           | Get Cluster Children              | 🚧         | ✅       | ✅   |
