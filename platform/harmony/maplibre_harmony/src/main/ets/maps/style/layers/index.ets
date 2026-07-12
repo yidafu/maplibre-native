@@ -20,6 +20,8 @@ export { HeatmapLayer } from './HeatmapLayer';
 
 export { HillshadeLayer } from './HillshadeLayer';
 
+export { ColorReliefLayer } from './ColorReliefLayer';
+
 export { FillExtrusionLayer } from './FillExtrusionLayer';
 
 // Property types
@@ -94,6 +96,7 @@ export type {
   RasterResampling,
   HillshadePaint,
   HillshadeIlluminationAnchor,
-  HillshadeMethod
+  HillshadeMethod,
+  ColorReliefPaint
 } from './LayerPaint';
 

@@ -274,6 +274,7 @@ export {
   BackgroundLayer,
   HeatmapLayer,
   HillshadeLayer,
+  ColorReliefLayer,
   FillExtrusionLayer,
   PropertyFactory
 } from './style/layers';

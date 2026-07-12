@@ -587,3 +587,20 @@ export interface HillshadePaint {
   'hillshade-method'?: HillshadeMethod;
 }
 
+/**
+ * ColorReliefPaint - ColorRelief layer paint properties
+ */
+export interface ColorReliefPaint {
+  /**
+   * The color value for steep terrain color stops
+   * Uses ColorRampPropertyValue (interpolate expression with stops over elevation)
+   */
+  'color-relief-color'?: DataDrivenProperty<string>;
+
+  /**
+   * ColorRelief opacity
+   * @default 1
+   */
+  'color-relief-opacity'?: DataDrivenProperty<number>;
+}
+

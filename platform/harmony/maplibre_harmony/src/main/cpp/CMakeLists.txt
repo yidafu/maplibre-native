@@ -263,6 +263,8 @@ add_library(maplibre
     style/layers/hillshade_layer_harmony.cpp
     style/layers/fill_extrusion_layer_harmony.hpp
     style/layers/fill_extrusion_layer_harmony.cpp
+    style/layers/color_relief_layer_harmony.hpp
+    style/layers/color_relief_layer_harmony.cpp
     
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp
@@ -323,6 +325,7 @@ PUBLIC
     pixelmap_ndk.z
     rawfile.z
     image_ndk.z
+    image_source_ndk.z
     libnative_drawing.so
 )
 

@@ -26,6 +26,7 @@ import { RasterLayer } from './layers/RasterLayer';
 import { BackgroundLayer } from './layers/BackgroundLayer';
 import { HeatmapLayer } from './layers/HeatmapLayer';
 import { HillshadeLayer } from './layers/HillshadeLayer';
+import { ColorReliefLayer } from './layers/ColorReliefLayer';
 import { FillExtrusionLayer } from './layers/FillExtrusionLayer';
 
 /**
@@ -144,6 +145,9 @@ export class Style {
     }
     if (napiType === HillshadeLayer._TYPE_) {
       return HillshadeLayer.fromNative(nativeLayer as maplibre.HillshadeLayer);
+    }
+    if (napiType === ColorReliefLayer._TYPE_) {
+      return ColorReliefLayer.fromNative(nativeLayer as maplibre.ColorReliefLayer);
     }
     if (napiType === FillExtrusionLayer._TYPE_) {
       return FillExtrusionLayer.fromNative(nativeLayer as maplibre.FillExtrusionLayer);

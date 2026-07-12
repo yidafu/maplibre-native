@@ -34,6 +34,7 @@
 #include "style/layers/heatmap_layer_harmony.hpp"
 #include "style/layers/hillshade_layer_harmony.hpp"
 #include "style/layers/fill_extrusion_layer_harmony.hpp"
+#include "style/layers/color_relief_layer_harmony.hpp"
 #include "napi/bindings/style/custom_layer_napi.hpp"
 // Style components
 #include "style/light_harmony.hpp"
@@ -99,6 +100,7 @@ static napi_value Init(napi_env env, napi_value exports) {
     mbgl::harmony::HeatmapLayerNAPI::Init(env, exports);
     mbgl::harmony::HillshadeLayerNAPI::Init(env, exports);
     mbgl::harmony::FillExtrusionLayerNAPI::Init(env, exports);
+    mbgl::harmony::ColorReliefLayerNAPI::Init(env, exports);
     mbgl::harmony::CustomLayerNAPI::Init(env, exports);
     
     // Style components

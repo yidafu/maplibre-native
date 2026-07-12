@@ -75,3 +75,5 @@ out.png
 .cxx/
 output.log
 *.backup
+platform/harmony/entry/src/main/ets/entryability/token.ets
+platform/harmony/entry/src/main/ets/pages/tests/token.ets

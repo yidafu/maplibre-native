@@ -12,6 +12,7 @@ import { HeatmapLayer } from './HeatmapLayer';
 import { FillExtrusionLayer } from './FillExtrusionLayer';
 import { RasterLayer } from './RasterLayer';
 import { HillshadeLayer } from './HillshadeLayer';
+import { ColorReliefLayer } from './ColorReliefLayer';
 import { BackgroundLayer } from './BackgroundLayer';
 import type { FilterExpression } from './Expression';
 import type {
@@ -32,6 +33,7 @@ import type {
   FillPaint,
   HeatmapPaint,
   HillshadePaint,
+  ColorReliefPaint,
   LinePaint,
   RasterPaint,
   SymbolPaint
@@ -48,6 +50,7 @@ export type Layer =
     | FillExtrusionLayer
     | RasterLayer
     | HillshadeLayer
+    | ColorReliefLayer
     | BackgroundLayer
     | CustomLayer;
 
@@ -100,7 +103,8 @@ export type LayerPaint =
     | HeatmapPaint
     | FillExtrusionPaint
     | RasterPaint
-    | HillshadePaint;
+    | HillshadePaint
+    | ColorReliefPaint;
 
 /**
  * LayerMetadata - Layer metadata type

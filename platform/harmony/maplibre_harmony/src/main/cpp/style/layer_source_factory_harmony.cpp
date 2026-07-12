@@ -11,6 +11,7 @@
 #include "layers/line_layer_harmony.hpp"
 #include "layers/raster_layer_harmony.hpp"
 #include "layers/symbol_layer_harmony.hpp"
+#include "layers/color_relief_layer_harmony.hpp"
 
 // Source wrappers
 #include "sources/geojson_source_napi.hpp"
@@ -29,6 +30,7 @@
 #include <mbgl/style/layers/line_layer.hpp>
 #include <mbgl/style/layers/raster_layer.hpp>
 #include <mbgl/style/layers/symbol_layer.hpp>
+#include <mbgl/style/layers/color_relief_layer.hpp>
 
 #include <mbgl/style/sources/geojson_source.hpp>
 #include <mbgl/style/sources/vector_source.hpp>

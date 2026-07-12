@@ -10,6 +10,7 @@ import { FillExtrusionLayer } from './FillExtrusionLayer';
 import { FillLayer } from './FillLayer';
 import { HeatmapLayer } from './HeatmapLayer';
 import { HillshadeLayer } from './HillshadeLayer';
+import { ColorReliefLayer } from './ColorReliefLayer';
 import { LineLayer } from './LineLayer';
 import { RasterLayer } from './RasterLayer';
 import { SymbolLayer } from './SymbolLayer';
@@ -30,6 +31,8 @@ export { HeatmapLayer } from './HeatmapLayer';
 
 export { HillshadeLayer } from './HillshadeLayer';
 
+export { ColorReliefLayer } from './ColorReliefLayer';
+
 export { FillExtrusionLayer } from './FillExtrusionLayer';
 
 export { CustomLayer } from './CustomLayer';
@@ -47,6 +50,7 @@ export type Layer =
     | RasterLayer
     | HeatmapLayer
     | HillshadeLayer
+    | ColorReliefLayer
     | FillExtrusionLayer
     | CustomLayer;
 
