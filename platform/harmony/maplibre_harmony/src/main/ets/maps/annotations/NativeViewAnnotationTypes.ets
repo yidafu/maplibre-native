@@ -74,6 +74,8 @@ export interface NativeViewAnnotationFrame {
   rotation: number;
   opacity: number;
   pixelRatio: number;
+  positionX: number;  // Pre-computed by C++: final render X in logical pixels
+  positionY: number;  // Pre-computed by C++: final render Y in logical pixels
   visible: boolean;
   draggable: boolean;
 }
@@ -90,6 +92,8 @@ export class NativeViewAnnotationFrameImpl implements NativeViewAnnotationFrame 
   rotation: number = 0;
   opacity: number = 1;
   pixelRatio: number = 1;
+  positionX: number = 0;  // Pre-computed by C++
+  positionY: number = 0;  // Pre-computed by C++
   visible: boolean = true;
   draggable: boolean = false;
 }

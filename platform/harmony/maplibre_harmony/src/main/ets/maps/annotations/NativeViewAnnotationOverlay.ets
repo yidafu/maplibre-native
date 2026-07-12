@@ -1,11 +1,11 @@
-import type { ViewAnnotationWrappedBuilder } from './ViewAnnotationTypes';
-import {
-  ViewAnnotationBuilderContext,
-  InfoWindowBuilderContext,
-  INFO_WINDOW_VIEW_NAME
-} from './ViewAnnotationTypes';
-import { getInfoWindowManagerInstance } from './InfoWindowManager';
+import { AnnotationFrameNodeController } from './AnnotationFrameNodeController';
+import { ComponentContentRegistry } from './ComponentContentRegistry';
 
+/**
+ * ViewAnnotationRenderState represents the computed render state for a single
+ * ViewAnnotation frame, produced by ViewAnnotationManager and consumed by
+ * NativeViewAnnotationOverlay for rendering via NodeContainer + FrameNode.
+ */
 export interface ViewAnnotationRenderStateParams {
   id: number;
   positionX: number;
@@ -16,7 +16,6 @@ export interface ViewAnnotationRenderStateParams {
   rotation: number;
   opacity: number;
   visible: boolean;
-  wrappedBuilder: ViewAnnotationWrappedBuilder;
   viewName: string;
   zIndex?: number;
 }
@@ -31,7 +30,6 @@ export class ViewAnnotationRenderState {
   rotation: number;
   opacity: number;
   visible: boolean;
-  wrappedBuilder: ViewAnnotationWrappedBuilder;
   viewName: string;
   zIndex?: number;
 
@@ -45,31 +43,27 @@ export class ViewAnnotationRenderState {
     this.rotation = params.rotation;
     this.opacity = params.opacity;
     this.visible = params.visible;
-    this.wrappedBuilder = params.wrappedBuilder;
     this.viewName = params.viewName;
     this.zIndex = params.zIndex;
   }
 }
 
-@Component
-struct ViewAnnotationContentHost {
-  @BuilderParam builder: () => void;
-
-  build() {
-    this.builder();
-  }
-}
-
-@Builder
-function renderAnnotationContent(wrappedBuilder: ViewAnnotationWrappedBuilder, ctx: ViewAnnotationBuilderContext) {
-  wrappedBuilder.builder(ctx);
-}
-
+/**
+ * NativeViewAnnotationOverlay renders ViewAnnotation frames as positioned
+ * FrameNodes via NodeContainer + AnnotationFrameNodeController.
+ *
+ * Each frame gets a NodeController that manages a FrameNode. The
+ * ComponentContent for each annotation is retrieved from
+ * ComponentContentRegistry (populated by InfoWindowManager).
+ *
+ * FrameNodes are reused across re-renders — only position/visibility
+ * properties are updated, without recreating ComponentContent.
+ */
 @Component
 export struct NativeViewAnnotationOverlay {
   @Link @Watch('onFramesChanged') frames: ViewAnnotationRenderState[];
   @State private renderFrames: ViewAnnotationRenderState[] = [];
-  @State private frameVersionById: Map<number, number> = new Map<number, number>();
+  private controllerMap: Map<number, AnnotationFrameNodeController> = new Map();
   private readonly POSITION_EPSILON: number = 0.1;
   private readonly SIZE_EPSILON: number = 0.1;
   private readonly SCALE_EPSILON: number = 0.01;
@@ -80,33 +74,38 @@ export struct NativeViewAnnotationOverlay {
     this.syncRenderFrames(this.frames);
   }
 
+  aboutToDisappear(): void {
+    // Dispose all controllers to clean up FrameNode resources
+    this.controllerMap.forEach((ctrl) => {
+      ctrl.dispose();
+    });
+    this.controllerMap.clear();
+  }
+
   private onFramesChanged(): void {
     this.syncRenderFrames(this.frames);
   }
 
   private syncRenderFrames(source: ViewAnnotationRenderState[] | undefined): void {
-    const nextFrames: ViewAnnotationRenderState[] = (source ?? []).map((state) => new ViewAnnotationRenderState({
-      id: state.id,
-      positionX: state.positionX,
-      positionY: state.positionY,
-      width: state.width,
-      height: state.height,
-      scale: state.scale,
-      rotation: state.rotation,
-      opacity: state.opacity,
-      visible: state.visible,
-      wrappedBuilder: state.wrappedBuilder,
-      viewName: state.viewName,
-      zIndex: state.zIndex
-    }));
-    const previousById: Map<number, ViewAnnotationRenderState> = new Map<number, ViewAnnotationRenderState>();
+    const nextFrames: ViewAnnotationRenderState[] = (source ?? []).map((state) =>
+      new ViewAnnotationRenderState({
+        id: state.id,
+        positionX: state.positionX,
+        positionY: state.positionY,
+        width: state.width,
+        height: state.height,
+        scale: state.scale,
+        rotation: state.rotation,
+        opacity: state.opacity,
+        visible: state.visible,
+        viewName: state.viewName,
+        zIndex: state.zIndex
+      })
+    );
+
+    const previousById: Map<number, ViewAnnotationRenderState> = new Map();
     this.renderFrames.forEach((state) => {
       previousById.set(state.id, state);
-    });
-
-    const updatedVersionMap: Map<number, number> = new Map<number, number>();
-    this.frameVersionById.forEach((value, key) => {
-      updatedVersionMap.set(key, value);
     });
 
     let hasChange: boolean = nextFrames.length !== this.renderFrames.length;
@@ -120,83 +119,42 @@ export struct NativeViewAnnotationOverlay {
       }
 
       hasChange = true;
-      let currentVersion = updatedVersionMap.get(state.id);
-      if (currentVersion === undefined) {
-        currentVersion = 0;
-      }
-      updatedVersionMap.set(state.id, currentVersion + 1);
       updatedFrames.push(state);
     });
 
-    if (updatedVersionMap.size > updatedFrames.length) {
-      const validIds: Set<number> = new Set<number>();
-      updatedFrames.forEach((state) => {
-        validIds.add(state.id);
-      });
-
-      const idsToRemove: number[] = [];
-      updatedVersionMap.forEach((_value, key) => {
-        if (!validIds.has(key)) {
-          idsToRemove.push(key);
-        }
-      });
-
-      idsToRemove.forEach((key) => {
-        updatedVersionMap.delete(key);
-        hasChange = true;
-      });
-    }
+    // Clean up controllers for removed annotations
+    const nextIds: Set<number> = new Set(nextFrames.map(s => s.id));
+    const idsToRemove: number[] = [];
+    this.controllerMap.forEach((_ctrl, key) => {
+      if (!nextIds.has(key)) {
+        idsToRemove.push(key);
+      }
+    });
+    idsToRemove.forEach((key) => {
+      const ctrl = this.controllerMap.get(key);
+      if (ctrl) {
+        ctrl.dispose();
+        this.controllerMap.delete(key);
+      }
+      hasChange = true;
+    });
 
     if (!hasChange) {
       return;
     }
 
+    // Explicitly push updated state to existing controllers.
+    // ForEach with stable keys skips the builder function on state updates,
+    // so getOrCreateController() — which calls updateProperties() — would
+    // not be called for existing annotations. We do it here instead.
+    nextFrames.forEach((state) => {
+      const existingCtrl = this.controllerMap.get(state.id);
+      if (existingCtrl) {
+        existingCtrl.updateProperties(state);
+      }
+    });
+
     this.renderFrames = updatedFrames;
-    this.frameVersionById = updatedVersionMap;
-  }
-
-  private toLength(value: number): Length {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return `${value}vp`;
-  }
-
-  private clampOpacity(value: number): number {
-    if (!Number.isFinite(value)) {
-      return 1;
-    }
-    if (value <= 0) {
-      return 0;
-    }
-    if (value >= 1) {
-      return 1;
-    }
-    return value;
-  }
-
-  private sanitizeScale(value: number): number {
-    if (!Number.isFinite(value) || value <= 0) {
-      return 1;
-    }
-    return value;
-  }
-
-  private sanitizeRotation(value: number): number {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return value;
-  }
-
-  private logRenderState(state: ViewAnnotationRenderState): void {
-    const formatNumber = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
-    console.info(
-      `[NativeViewAnnotationOverlay] render id=${state.id} ` +
-        `position=(${formatNumber(state.positionX)}, ${formatNumber(state.positionY)}) ` +
-        `size=(${formatNumber(state.width)}, ${formatNumber(state.height)}) ` +
-        `scale=${formatNumber(state.scale)} rotation=${formatNumber(state.rotation)}`
-    );
   }
 
   private numbersClose(first: number, second: number, epsilon: number): boolean {
@@ -208,114 +166,52 @@ export struct NativeViewAnnotationOverlay {
 
   private areStatesEquivalent(previous: ViewAnnotationRenderState, next: ViewAnnotationRenderState): boolean {
     return this.numbersClose(previous.positionX, next.positionX, this.POSITION_EPSILON) &&
-    this.numbersClose(previous.positionY, next.positionY, this.POSITION_EPSILON) &&
-    this.numbersClose(previous.width, next.width, this.SIZE_EPSILON) &&
-    this.numbersClose(previous.height, next.height, this.SIZE_EPSILON) &&
-    this.numbersClose(previous.scale, next.scale, this.SCALE_EPSILON) &&
-    this.numbersClose(previous.rotation, next.rotation, this.ROTATION_EPSILON) &&
-    this.numbersClose(previous.opacity, next.opacity, this.OPACITY_EPSILON) &&
+      this.numbersClose(previous.positionY, next.positionY, this.POSITION_EPSILON) &&
+      this.numbersClose(previous.width, next.width, this.SIZE_EPSILON) &&
+      this.numbersClose(previous.height, next.height, this.SIZE_EPSILON) &&
+      this.numbersClose(previous.scale, next.scale, this.SCALE_EPSILON) &&
+      this.numbersClose(previous.rotation, next.rotation, this.ROTATION_EPSILON) &&
+      this.numbersClose(previous.opacity, next.opacity, this.OPACITY_EPSILON) &&
       previous.visible === next.visible &&
-      previous.wrappedBuilder === next.wrappedBuilder &&
       previous.zIndex === next.zIndex;
   }
 
-  private createBuilderContext(state: ViewAnnotationRenderState): ViewAnnotationBuilderContext {
-    if (state.viewName === INFO_WINDOW_VIEW_NAME) {
-      // For InfoWindows, get the actual InfoWindowBuilderContext from InfoWindowManager
-      const infoWindowManager = getInfoWindowManagerInstance();
-      if (infoWindowManager) {
-        // First try to look up by annotation ID (normal case)
-        const infoWindowCtx = infoWindowManager.getInfoWindowContext(state.id);
-        if (infoWindowCtx) {
-          return infoWindowCtx;
-        }
-
-        // If not found in InfoWindowManager's ctxMap, try ViewAnnotationManager's contextMap
-        // This handles the initial render case when context was pre-registered with -1 key
-        const viewAnnotationManager = infoWindowManager.getViewAnnotationManager();
-        if (viewAnnotationManager) {
-          const viewAnnotationCtx = viewAnnotationManager.getContextForAnnotation(state.id);
-          if (viewAnnotationCtx) {
-            return viewAnnotationCtx;
-          }
-        }
-
-        // Context not found by annotation ID - this can happen during initial render
-        // when context was registered with a temporary key (marker ID).
-        // The context should be registered shortly and a re-render will be triggered.
-        console.warn(`[NativeViewAnnotationOverlay] InfoWindowBuilderContext not found for annotation ${state.id}`);
-      } else {
-        console.warn(`[NativeViewAnnotationOverlay] InfoWindowManager not available for annotation ${state.id}`);
-      }
-    }
-    // Return a basic context as fallback
-    const ctx = new ViewAnnotationBuilderContext();
-    ctx.annotationId = state.id;
-    ctx.viewName = state.viewName;
-    return ctx;
-  }
-
   /**
-   * Calculate the Y offset for an annotation item.
-   * LOG: When anchorV=1.0 (bottom anchor), positionY already represents the top position
-   * of the InfoWindow (calculated as frameLogicalY - height in ViewAnnotationManager).
-   * So we should NOT subtract height again.
+   * Get or create an AnnotationFrameNodeController for the given render state.
+   *
+   * On first creation, looks up the ComponentContent from the registry and
+   * attaches it. On subsequent calls, updates only the position/visibility
+   * properties — ComponentContent is NOT recreated.
    */
-  private getAnnotationYOffset(item: ViewAnnotationRenderState): number {
-    const formatNumber = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
-    const isInfoWindow = item.viewName === INFO_WINDOW_VIEW_NAME;
-    if (isInfoWindow) {
-      console.info(
-        `[NativeViewAnnotationOverlay] InfoWindow position: id=${item.id} ` +
-          `positionY=${formatNumber(item.positionY)} height=${formatNumber(item.height)} ` +
-          `yOffset=0 (positionY already = top)`
-      );
-    }
-    return 0; // positionY already includes the anchorV=1.0 offset
-  }
-
-  @Builder
-  private renderAnnotationItem(item: ViewAnnotationRenderState): void {
-    if (item.visible) {
-      Column() {
-        renderAnnotationContent(item.wrappedBuilder, this.createBuilderContext(item));
+  private getOrCreateController(state: ViewAnnotationRenderState): AnnotationFrameNodeController {
+    let ctrl = this.controllerMap.get(state.id);
+    if (!ctrl) {
+      ctrl = new AnnotationFrameNodeController(state.id);
+      // Look up ComponentContent from the registry
+      const registry = ComponentContentRegistry.getInstance();
+      const content = registry.get(state.id);
+      if (content) {
+        ctrl.attachContent(content);
+        console.info(`[NativeViewAnnotationOverlay] Attached ComponentContent for annotation ${state.id}`);
+      } else {
+        console.warn(`[NativeViewAnnotationOverlay] No ComponentContent found for annotation ${state.id}`);
       }
-      .width(item.width > 0 ? this.toLength(item.width) : 'auto')
-      .height(item.height > 0 ? this.toLength(item.height) : 'auto')
-      .position({
-        x: this.toLength(item.positionX),
-        y: this.toLength(item.positionY + this.getAnnotationYOffset(item))
-      })
-      .opacity(this.clampOpacity(item.opacity))
-      .scale({
-        x: this.sanitizeScale(item.scale),
-        y: this.sanitizeScale(item.scale),
-        centerX: '50%',
-        centerY: '100%'
-      })
-      .rotate({
-        angle: this.sanitizeRotation(item.rotation),
-        centerX: '50%',
-        centerY: '100%'
-      })
-      .zIndex(item.zIndex ?? 0)
-      .hitTestBehavior(HitTestMode.Transparent);
-
-      // context.clearPayload();
+      this.controllerMap.set(state.id, ctrl);
     }
+    ctrl.updateProperties(state);
+    return ctrl;
   }
 
-  build(): void {
+  build() {
     Stack({ alignContent: Alignment.TopStart }) {
       ForEach(this.renderFrames, (item: ViewAnnotationRenderState) => {
-        this.renderAnnotationItem(item);
+        NodeContainer(this.getOrCreateController(item))
       }, (item: ViewAnnotationRenderState) => {
-        let version = this.frameVersionById.get(item.id);
-        if (version === undefined) {
-          version = 0;
-        }
-        return `view-annotation-${item.id}-v${version}`;
-      });
+        // Use a stable key (annotation ID only) so ForEach reuses existing
+        // NodeContainer + FrameNode. State updates flow through updateProperties()
+        // on the existing controller — no need to recreate the FrameNode.
+        return `view-annotation-${item.id}`;
+      })
     }
     .width('100%')
     .height('100%')
@@ -323,4 +219,3 @@ export struct NativeViewAnnotationOverlay {
     .hitTestBehavior(HitTestMode.Transparent);
   }
 }
-

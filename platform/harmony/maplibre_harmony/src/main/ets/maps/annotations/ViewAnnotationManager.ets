@@ -9,15 +9,6 @@ import {
 } from './NativeViewAnnotationTypes';
 import { ViewAnnotationRenderState } from './NativeViewAnnotationOverlay';
 import { CenterOffset } from './AnnotationView';
-import {
-  ViewAnnotationBuilderContext,
-  DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
-  DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER
-} from './ViewAnnotationTypes';
-import type {
-  ViewAnnotationRenderCallback,
-  ViewAnnotationWrappedBuilder
-} from './ViewAnnotationTypes';
 
 interface PartialNativeOptionFlags {
   visible?: boolean;
@@ -34,8 +25,6 @@ interface PartialNativeOptionFlags {
  */
 export interface ViewAnnotationAddOptions {
   anchor: LatLng;
-  wrappedBuilder?: ViewAnnotationWrappedBuilder;
-  // renderCallback: ViewAnnotationRenderCallback;
   viewName?: string;
   width?: number;
   height?: number;
@@ -58,8 +47,6 @@ export interface ViewAnnotationAddOptions {
  */
 export interface ViewAnnotationUpdateOptions {
   anchor?: LatLng;
-  wrappedBuilder?: ViewAnnotationWrappedBuilder | null;
-  renderCallback?: ViewAnnotationRenderCallback | null;
   viewName?: string;
   width?: number;
   height?: number;
@@ -80,8 +67,6 @@ export interface ViewAnnotationUpdateOptions {
 interface ViewAnnotationEntry {
   id: number;
   anchor: LatLng;
-  wrappedBuilder: ViewAnnotationWrappedBuilder;
-  // renderCallback: ViewAnnotationRenderCallback;
   viewName: string;
   width?: number;
   height?: number;
@@ -100,7 +85,7 @@ interface ViewAnnotationEntry {
 }
 
 /**
- * ViewAnnotationManager coordinates ArkUI builders with the native ViewAnnotation API.
+ * ViewAnnotationManager coordinates ViewAnnotation entries with the native API.
  */
 export class ViewAnnotationManager {
   private nativeMapView: NativeMapView | null = null;
@@ -108,39 +93,6 @@ export class ViewAnnotationManager {
   private entries: Map<number, ViewAnnotationEntry> = new Map();
   private renderStates: ViewAnnotationRenderState[] = [];
   private renderCallback?: (states: ViewAnnotationRenderState[]) => void;
-  private contextMap: Map<number, ViewAnnotationBuilderContext> = new Map();
-
-  /**
-   * Register a context for an annotation by ID.
-   * This should be called BEFORE addViewAnnotation() to ensure the context
-   * is available during the initial render callback triggered by addViewAnnotation().
-   *
-   * @param annotationId - The annotation ID (use -1 for pre-registration before real ID is assigned)
-   * @param context - The builder context to register
-   */
-  registerContextForAnnotation(annotationId: number, context: ViewAnnotationBuilderContext): void {
-    if (annotationId <= 0) {
-      // Use -1 as a temporary key for pre-registration
-      this.contextMap.set(-1, context);
-      console.info(`[ViewAnnotationManager] registerContextForAnnotation: pre-registered context`);
-    } else {
-      this.contextMap.set(annotationId, context);
-      console.info(`[ViewAnnotationManager] registerContextForAnnotation: registered for annotation ${annotationId}`);
-    }
-  }
-
-  /**
-   * Get a registered context for an annotation.
-   */
-  getContextForAnnotation(annotationId: number): ViewAnnotationBuilderContext | undefined {
-    // First try exact match
-    let context = this.contextMap.get(annotationId);
-    // If not found and annotationId > 0, also check if context was pre-registered with -1
-    if (!context && annotationId > 0) {
-      context = this.contextMap.get(-1);
-    }
-    return context;
-  }
 
   /**
    * Binds the manager to the underlying native map view.
@@ -185,8 +137,6 @@ export class ViewAnnotationManager {
       console.warn('[ViewAnnotationManager] addViewAnnotation: native map view is not available');
       return -1;
     }
-    const wrappedBuilder = options.wrappedBuilder ?? DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER;
-
     const anchor = options.anchor;
     if (!anchor) {
       console.error('[ViewAnnotationManager] addViewAnnotation: anchor is required');
@@ -206,8 +156,7 @@ export class ViewAnnotationManager {
       const entry: ViewAnnotationEntry = {
         id,
         anchor,
-        wrappedBuilder,
-        viewName: options.viewName ?? DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
+        viewName: options.viewName ?? 'maplibre_view_annotation',
         width: options.width,
         height: options.height,
         anchorHeight: options.anchorHeight,
@@ -254,16 +203,8 @@ export class ViewAnnotationManager {
       entry.anchor = options.anchor;
     }
 
-    if (options.wrappedBuilder !== undefined) {
-      if (options.wrappedBuilder === null) {
-        console.warn('[ViewAnnotationManager] updateViewAnnotation: wrappedBuilder cannot be null');
-      } else {
-        entry.wrappedBuilder = options.wrappedBuilder;
-      }
-    }
-
     if (options.viewName !== undefined) {
-      entry.viewName = options.viewName ?? DEFAULT_VIEW_ANNOTATION_VIEW_NAME;
+      entry.viewName = options.viewName ?? 'maplibre_view_annotation';
     }
 
     if (options.width !== undefined) {
@@ -444,41 +385,22 @@ export class ViewAnnotationManager {
         return;
       }
 
-      const format = (value: number): string => Number.isFinite(value) ? value.toFixed(2) : 'NaN';
+      // Phase 2: positionX/positionY are pre-computed by C++ buildFrame()
+      // No pixelRatio division or anchor math needed on the ArkTS side
       const frameRatio = this.resolveFramePixelRatio(frame.pixelRatio, safeRatio, frame.id);
       const logicalWidth = frame.width > 0 ? frame.width / frameRatio : (entry.width ?? 0);
       const logicalHeight = frame.height > 0 ? frame.height / frameRatio : (entry.height ?? 0);
-      const frameLogicalX = frame.x / frameRatio;
-      const frameLogicalY = frame.y / frameRatio;
-      // NOTE: frame.offset is NOT used here because C++ buildFrame() already applies
-      // annotation.offset to frame.screen coordinates. Using it again would double-count
-      // the offset (once in C++, once in JS), causing positioning errors.
-      const frameOffsetX = 0;
-      const frameOffsetY = 0;
-      const anchorU = entry.anchorU ?? 0.5;
-      const anchorV = entry.anchorV ?? 1.0;
-
-      // Use anchorHeight for anchor positioning, falling back to logicalHeight
-      const anchorHeight = entry.anchorHeight ?? logicalHeight;
-
-      const positionX = frameLogicalX - logicalWidth * anchorU + frameOffsetX;
-      const positionY = frameLogicalY + frameOffsetY;
-
-      console.info(`[ViewAnnotationManager] Calc for id=${frame.id}: ` +
-        `frameLogicalY=${format(frameLogicalY)} anchorHeight=${format(anchorHeight)} anchorV=${anchorV} ` +
-        `=> positionY=${format(positionY)}`);
 
       nextStates.push(new ViewAnnotationRenderState({
         id: frame.id,
-        positionX,
-        positionY,
+        positionX: frame.positionX,
+        positionY: frame.positionY,
         width: logicalWidth,
         height: logicalHeight,
         scale: Number.isFinite(frame.scale) && frame.scale > 0 ? frame.scale : 1,
         rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
         opacity: this.normalizeOpacity(frame.opacity),
         visible: entry.visible && frame.visible,
-        wrappedBuilder: entry.wrappedBuilder,
         viewName: entry.viewName,
         zIndex: entry.zIndex
       }));

@@ -30,11 +30,16 @@ export { MarkerManager } from './MarkerManager';
 // InfoWindow utilities
 export { InfoWindow, InfoWindowComponent } from './InfoWindow';
 
-export type { InfoWindowStyle } from './InfoWindow';
+export type { InfoWindowStyle, InfoWindowRenderParams } from './InfoWindow';
 
 export { InfoWindowAdapter } from './InfoWindowAdapter';
 
 export { InfoWindowManager } from './InfoWindowManager';
+
+// ComponentContent-based rendering
+export { ComponentContentRegistry } from './ComponentContentRegistry';
+
+export { AnnotationFrameNodeController } from './AnnotationFrameNodeController';
 
 // AnnotationView utilities
 export { AnnotationView } from './AnnotationView';
@@ -57,10 +62,7 @@ export {
 
 export {
   ViewAnnotationBuilderContext,
-  ViewAnnotationWrappedBuilder,
-  ViewAnnotationRenderCallback,
-  DEFAULT_VIEW_ANNOTATION_WRAPPED_BUILDER,
-  DEFAULT_VIEW_ANNOTATION_VIEW_NAME,
+  InfoWindowBuilderContext,
   INFO_WINDOW_VIEW_NAME
 } from './ViewAnnotationTypes';
 
