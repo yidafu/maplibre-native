@@ -4,6 +4,7 @@
 #include <mbgl/style/types.hpp>
 #include <mbgl/util/string.hpp>
 #include <mbgl/util/enum.hpp>
+#include <mbgl/util/font_stack.hpp>
 
 namespace mbgl {
 namespace harmony {
@@ -134,19 +135,72 @@ Result<napi_value> convertToNapi(napi_env env, const VariableAnchorOffsetCollect
 }
 
 Result<napi_value> convertToNapi(napi_env env, const style::expression::Formatted& value) {
-    // For Formatted text, convert to simple string (losing formatting info)
-    // TODO: Implement proper Formatted object conversion
-    std::string text;
-    for (const auto& section : value.sections) {
-        text += section.text;
-    }
-    
+    // Create a structured object with sections array, preserving formatting info.
+    // Result: { sections: [{ text, fontStack, scale }, ...] }
     napi_value result;
-    napi_status status = napi_create_string_utf8(env, text.c_str(), NAPI_AUTO_LENGTH, &result);
+    napi_status status = napi_create_object(env, &result);
     if (status != napi_ok) {
-        Logger::error("Converter", "Failed to convert Formatted to napi_value");
+        Logger::error("Converter", "Failed to create Formatted object");
         return {};
     }
+
+    // Create sections array
+    napi_value sectionsArr;
+    status = napi_create_array_with_length(env, value.sections.size(), &sectionsArr);
+    if (status != napi_ok) {
+        Logger::error("Converter", "Failed to create sections array");
+        return {};
+    }
+
+    for (std::size_t i = 0; i < value.sections.size(); i++) {
+        const auto& section = value.sections[i];
+        napi_value sectionObj;
+        napi_create_object(env, &sectionObj);
+
+        // text (string)
+        napi_value textVal;
+        napi_create_string_utf8(env, section.text.c_str(), NAPI_AUTO_LENGTH, &textVal);
+        napi_set_named_property(env, sectionObj, "text", textVal);
+
+        // fontStack (optional FontStack=vector<string> -> string or null)
+        if (section.fontStack && !section.fontStack->empty()) {
+            std::string fontStackStr = mbgl::fontStackToString(*section.fontStack);
+            napi_value fontVal;
+            napi_create_string_utf8(env, fontStackStr.c_str(), NAPI_AUTO_LENGTH, &fontVal);
+            napi_set_named_property(env, sectionObj, "fontStack", fontVal);
+        } else {
+            napi_value nullVal;
+            napi_get_null(env, &nullVal);
+            napi_set_named_property(env, sectionObj, "fontStack", nullVal);
+        }
+
+        // fontScale (optional double -> null on absent)
+        if (section.fontScale) {
+            napi_value scaleVal;
+            napi_create_double(env, *section.fontScale, &scaleVal);
+            napi_set_named_property(env, sectionObj, "fontScale", scaleVal);
+        } else {
+            napi_value nullVal;
+            napi_get_null(env, &nullVal);
+            napi_set_named_property(env, sectionObj, "fontScale", nullVal);
+        }
+
+        // textColor (optional Color -> string or null)
+        if (section.textColor) {
+            std::string colorStr = section.textColor->stringify();
+            napi_value colorVal;
+            napi_create_string_utf8(env, colorStr.c_str(), NAPI_AUTO_LENGTH, &colorVal);
+            napi_set_named_property(env, sectionObj, "textColor", colorVal);
+        } else {
+            napi_value nullVal;
+            napi_get_null(env, &nullVal);
+            napi_set_named_property(env, sectionObj, "textColor", nullVal);
+        }
+
+        napi_set_element(env, sectionsArr, static_cast<uint32_t>(i), sectionObj);
+    }
+
+    napi_set_named_property(env, result, "sections", sectionsArr);
     return result;
 }
 
