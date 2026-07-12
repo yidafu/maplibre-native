@@ -19,6 +19,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OHOS" AND NOT MLN_WITH_VULKAN AND NOT MLN_WITH_OP
     set(MLN_WITH_VULKAN ON CACHE BOOL "Build with Vulkan renderer" FORCE)
     message(STATUS "HarmonyOS: Defaulting to Vulkan renderer backend")
 endif()
+option(MLN_WITH_WEBGPU "Build with WebGPU renderer" OFF)
 option(MLN_WITH_PMTILES "Build with PMTiles support" ON)
 option(MLN_WITH_WERROR "Make all compilation warnings errors" ON)
 option(MLN_USE_UNORDERED_DENSE "Use ankerl dense containers for performance" ON)
