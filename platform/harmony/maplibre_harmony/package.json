@@ -5,7 +5,7 @@
   "main": "index.ets",
   "scripts": {
     "prepublishOnly": "cd .. && bash ./pre-release.sh \"$npm_package_version\"",
-    "version": "0.2.0-alpha.1"
+    "update:version": "cd .. && bash ./pre-release.sh \"$npm_package_version\""
   },
   "keywords": [
     "maplibre",
@@ -37,7 +37,8 @@
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
-    "access": "public"
+    "access": "public",
+    "tag": "alpha"
   },
   "files": [
     "index.ets",
