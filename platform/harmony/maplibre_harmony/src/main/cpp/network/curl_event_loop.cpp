@@ -648,11 +648,21 @@ void CURLEventLoop::performShutdown() {
         holder_ = nullptr;
     }
 
-    // 5. Close operation_signal_ last
-    // NOTE: Since we are inside the onOperationSignal callback, we must NOT
-    // close operation_signal_ synchronously here (uv_close inside its own callback
-    // is undefined behavior). We defer to the destructor as a safety net.
-    // The loop will exit because holder_ (and all other handles) are now closed.
+    // 5. Close operation_signal_
+    // Safe to close from within onOperationSignal's callback — uv_close marks
+    // the handle as UV_HANDLE_CLOSING and defers the actual close callback to
+    // the next event loop iteration. The restriction is about calling uv_close
+    // from within the handle's OWN close callback, not from its regular callback.
+    // Without this, uv_run never exits because operation_signal_ keeps the loop alive.
+    if (operation_signal_) {
+        if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(operation_signal_))) {
+            uv_close(reinterpret_cast<uv_handle_t*>(operation_signal_), [](uv_handle_t* h) {
+                delete reinterpret_cast<uv_async_t*>(h);
+            });
+        }
+        operation_signal_ = nullptr;
+    }
+
     Logger::debug("Network", "performShutdown: all handles closed, uv_run will return naturally");
 }
 
