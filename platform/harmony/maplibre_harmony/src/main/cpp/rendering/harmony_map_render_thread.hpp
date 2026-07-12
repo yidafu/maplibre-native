@@ -4,6 +4,7 @@
 #include <mbgl/renderer/renderer.hpp>
 #include <mbgl/renderer/renderer_frontend.hpp>
 #include <mbgl/util/run_loop.hpp>
+#include <mbgl/util/action_journal_options.hpp>
 #include <mbgl/map/map_observer.hpp>
 #include <mbgl/gfx/backend.hpp>
 #include <mbgl/actor/scheduler.hpp>
@@ -170,8 +171,13 @@ public:
      * Query the current tile cache state.
      */
     bool getTileCacheEnabled() const;
-    
-    
+
+    /**
+     * Set the action journal options.
+     */
+    void setActionJournalOptions(const util::ActionJournalOptions& opts) { actionJournalOptions_ = opts; }
+
+
     // ==================== Query utilities ====================
     
     /**
@@ -264,6 +270,7 @@ private:
     ResourceOptions resourceOptions_;
     ClientOptions clientOptions_;
     std::optional<std::string> localIdeographFontFamily_;
+    util::ActionJournalOptions actionJournalOptions_{};
     
     // Rendering state
     std::atomic<bool> paused_{true};

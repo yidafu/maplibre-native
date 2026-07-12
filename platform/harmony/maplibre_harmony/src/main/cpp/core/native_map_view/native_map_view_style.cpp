@@ -13,6 +13,7 @@
 #include <mbgl/style/layer.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/light.hpp>
+#include <mbgl/util/action_journal.hpp>
 #include "style/light_harmony.hpp"
 // Support waiting for resource readiness gating
 #include <chrono>
@@ -287,26 +288,110 @@ napi_value NativeMapView::setLatLngBounds(napi_env env, napi_callback_info info)
 // Note: setDebug, getDebug, setDebugActive, and isDebugActive are now implemented in native_map_view_debug.cpp
 
 napi_value NativeMapView::getActionJournalLogFiles(napi_env env, napi_callback_info info) {
-    // Action journal requires ActionJournal support, which is not configured on Harmony
-    // Action journal requires ActionJournal support, not configured for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+
+    // Obtain the NativeMapView instance
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getActionJournalLogFiles: Map not initialized");
+        return undefined;
+    }
+
+    try {
+        std::vector<std::string> files = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) -> std::vector<std::string> {
+                const auto& journal = m->getActionJournal();
+                if (!journal) {
+                    return {};
+                }
+                return journal->getLogFiles();
+            },
+            std::vector<std::string>{});
+
+        // Convert to napi string array
+        napi_value result;
+        napi_create_array(env, &result);
+        for (size_t i = 0; i < files.size(); i++) {
+            napi_value str;
+            napi_create_string_utf8(env, files[i].c_str(), NAPI_AUTO_LENGTH, &str);
+            napi_set_element(env, result, i, str);
+        }
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getActionJournalLogFiles: Failed - %s", e.what());
+    }
+
     return undefined;
 }
 
 napi_value NativeMapView::getActionJournalLog(napi_env env, napi_callback_info info) {
-    // Action journal requires ActionJournal support, which is not configured on Harmony
-    // Action journal requires ActionJournal support, not configured for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+
+    // Obtain the NativeMapView instance
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getActionJournalLog: Map not initialized");
+        return undefined;
+    }
+
+    try {
+        std::vector<std::string> logEntries = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) -> std::vector<std::string> {
+                const auto& journal = m->getActionJournal();
+                if (!journal) {
+                    return {};
+                }
+                return journal->getLog();
+            },
+            std::vector<std::string>{});
+
+        // Convert to napi string array
+        napi_value result;
+        napi_create_array(env, &result);
+        for (size_t i = 0; i < logEntries.size(); i++) {
+            napi_value str;
+            napi_create_string_utf8(env, logEntries[i].c_str(), NAPI_AUTO_LENGTH, &str);
+            napi_set_element(env, result, i, str);
+        }
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getActionJournalLog: Failed - %s", e.what());
+    }
+
     return undefined;
 }
 
 napi_value NativeMapView::clearActionJournalLog(napi_env env, napi_callback_info info) {
-    // Action journal requires ActionJournal support, which is not configured on Harmony
-    // Action journal requires ActionJournal support, not configured for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+
+    // Obtain the NativeMapView instance
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "clearActionJournalLog: Map not initialized");
+        return undefined;
+    }
+
+    try {
+        instance->invokeOnMapThread([](mbgl::Map* m) {
+            const auto& journal = m->getActionJournal();
+            if (journal) {
+                journal->clearLog();
+            }
+        });
+        Logger::info("NativeMapView", "clearActionJournalLog: Log cleared");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "clearActionJournalLog: Failed - %s", e.what());
+    }
+
     return undefined;
 }
 

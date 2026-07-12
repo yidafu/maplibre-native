@@ -166,7 +166,8 @@ bool HarmonyMapRenderThread::initialize() {
         *mapObserver_,
         mapOptions_,
         resourceOptions_,
-        clientOptions_
+        clientOptions_,
+        actionJournalOptions_   // Action journal options
     );
     if (!map_) {
         Logger::error("MapRenderThread", "Failed to create Map");
