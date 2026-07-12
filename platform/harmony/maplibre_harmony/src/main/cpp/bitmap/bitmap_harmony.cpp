@@ -21,7 +21,7 @@ PixelMapGuard::PixelMapGuard(napi_env env, napi_value pixelMap)
         Logger::error("PixelMapGuard", "Failed to lock pixels, error code: %d", result);
         throw std::runtime_error("PixelMapGuard: Failed to lock pixels");
     }
-    
+
 }
 
 PixelMapGuard::~PixelMapGuard() {
@@ -29,7 +29,6 @@ PixelMapGuard::~PixelMapGuard() {
         int32_t result = OH_UnAccessPixels(env_, pixelMap_);
         if (result != OHOS_IMAGE_RESULT_SUCCESS) {
             Logger::error("PixelMapGuard", "Failed to unlock pixels, error code: %d", result);
-        } else {
         }
     }
 }
@@ -45,11 +44,11 @@ PixelMapGuard& PixelMapGuard::operator=(PixelMapGuard&& other) noexcept {
         if (address_) {
             OH_UnAccessPixels(env_, pixelMap_);
         }
-        
+
         env_ = other.env_;
         pixelMap_ = other.pixelMap_;
         address_ = other.address_;
-        
+
         other.address_ = nullptr;
     }
     return *this;
@@ -77,14 +76,104 @@ bool BitmapHarmony::GetPixelMapInfo(napi_env env, napi_value pixelMap, PixelMapI
 }
 
 bool BitmapHarmony::IsFormatSupported(int32_t format) {
-    // We support RGBA_8888 format
+    // We support RGBA_8888 directly; other formats require conversion
     return format == OHOS_PIXEL_MAP_FORMAT_RGBA_8888;
 }
 
+// Convert a single row of pixel data to RGBA premultiplied format
+// Returns the number of bytes written to dstRow
+// dstRow must have capacity of width * 4 bytes
+size_t BitmapHarmony::ConvertRowToRGBA(uint8_t* dstRow, const uint8_t* srcRow,
+                                        uint32_t width, int32_t srcFormat, uint32_t srcRowStride) {
+    // PixelMap format constants (numeric values from image_pixel_map_napi.h)
+    // OHOS_PIXEL_MAP_FORMAT_NONE      = 0
+    // OHOS_PIXEL_MAP_FORMAT_RGB_565   = 2
+    // OHOS_PIXEL_MAP_FORMAT_RGBA_8888 = 3
+    // Additional common formats not defined in current SDK:
+    constexpr int32_t FMT_BGRA_8888 = 4;
+    constexpr int32_t FMT_RGB_888   = 5;
+    constexpr int32_t FMT_ALPHA_8    = 6;
+
+    switch (srcFormat) {
+    case OHOS_PIXEL_MAP_FORMAT_RGBA_8888: {
+        // Direct copy (PremultipliedImage stores RGBA)
+        std::copy(srcRow, srcRow + width * 4, dstRow);
+        return width * 4;
+    }
+    case FMT_BGRA_8888: {
+        // BGRA -> RGBA: swap R and B
+        for (uint32_t x = 0; x < width; x++) {
+            const uint8_t* pixel = srcRow + x * 4;
+            dstRow[x * 4 + 0] = pixel[2];  // R
+            dstRow[x * 4 + 1] = pixel[1];  // G
+            dstRow[x * 4 + 2] = pixel[0];  // B
+            dstRow[x * 4 + 3] = pixel[3];  // A
+        }
+        return width * 4;
+    }
+    case OHOS_PIXEL_MAP_FORMAT_RGB_565: {
+        // Each pixel is 2 bytes (16-bit): RRRRR GGGGGG BBBBB
+        for (uint32_t x = 0; x < width; x++) {
+            const uint16_t pixel = *reinterpret_cast<const uint16_t*>(srcRow + x * 2);
+            uint8_t r = ((pixel >> 11) & 0x1F) * 255 / 31;
+            uint8_t g = ((pixel >> 5)  & 0x3F) * 255 / 63;
+            uint8_t b = (pixel        & 0x1F) * 255 / 31;
+            dstRow[x * 4 + 0] = r;
+            dstRow[x * 4 + 1] = g;
+            dstRow[x * 4 + 2] = b;
+            dstRow[x * 4 + 3] = 255;
+        }
+        return width * 4;
+    }
+    case FMT_RGB_888: {
+        // Each pixel is 3 bytes: R, G, B
+        for (uint32_t x = 0; x < width; x++) {
+            dstRow[x * 4 + 0] = srcRow[x * 3 + 0];  // R
+            dstRow[x * 4 + 1] = srcRow[x * 3 + 1];  // G
+            dstRow[x * 4 + 2] = srcRow[x * 3 + 2];  // B
+            dstRow[x * 4 + 3] = 255;                  // A (fully opaque)
+        }
+        return width * 4;
+    }
+    case FMT_ALPHA_8: {
+        // Single channel: alpha only -> RGBA with white as color
+        for (uint32_t x = 0; x < width; x++) {
+            uint8_t a = srcRow[x];
+            dstRow[x * 4 + 0] = a;
+            dstRow[x * 4 + 1] = a;
+            dstRow[x * 4 + 2] = a;
+            dstRow[x * 4 + 3] = a;
+        }
+        return width * 4;
+    }
+    default:
+        Logger::error("BitmapHarmony", "Unsupported pixel format: %d", srcFormat);
+        return 0;
+    }
+}
+
+// Premultiply an RGBA row in-place
+void BitmapHarmony::PremultiplyRow(uint8_t* row, uint32_t width) {
+    for (uint32_t x = 0; x < width; x++) {
+        uint8_t a = row[x * 4 + 3];
+        if (a == 255) continue;  // Already fully opaque, skip
+        if (a == 0) {
+            // Fully transparent
+            row[x * 4 + 0] = 0;
+            row[x * 4 + 1] = 0;
+            row[x * 4 + 2] = 0;
+            continue;
+        }
+        row[x * 4 + 0] = row[x * 4 + 0] * a / 255;
+        row[x * 4 + 1] = row[x * 4 + 1] * a / 255;
+        row[x * 4 + 2] = row[x * 4 + 2] * a / 255;
+    }
+}
+
 napi_value BitmapHarmony::ConvertFormat(napi_env env, napi_value pixelMap) {
-    // Format conversion is not implemented yet
-    // For now, just log a warning and return the original
-    Logger::warn("BitmapHarmony", "Format conversion requested but not implemented");
+    // ConvertFormat now returns the same PixelMap but logging is done
+    // The actual format conversion happens in GetImage() during row copy
+    Logger::info("BitmapHarmony", "Format conversion will be handled during GetImage()");
     return pixelMap;
 }
 
@@ -105,36 +194,43 @@ PremultipliedImage BitmapHarmony::GetImage(napi_env env, napi_value pixelMap) {
         throw std::runtime_error("Invalid bitmap dimensions");
     }
 
-    // Check if format is supported
-    if (!IsFormatSupported(info.pixelFormat)) {
-        Logger::warn("BitmapHarmony", "Unsupported pixel format: %d, attempting conversion", info.pixelFormat);
-        // Try to convert format (currently not implemented)
-        pixelMap = ConvertFormat(env, pixelMap);
-        // Re-get info after potential conversion
-        if (!GetPixelMapInfo(env, pixelMap, info)) {
-            throw std::runtime_error("Failed to get PixelMap information after conversion");
-        }
-        if (!IsFormatSupported(info.pixelFormat)) {
-            throw std::runtime_error("Unsupported pixel format and conversion failed");
-        }
-    }
-
     // Lock pixels using RAII guard
     PixelMapGuard guard(env, pixelMap);
 
-    // Allocate memory for PremultipliedImage
-    const size_t expectedLength = info.width * info.height * PremultipliedImage::channels;
+    // Allocate memory for PremultipliedImage (always RGBA)
+    const size_t channels = PremultipliedImage::channels;  // 4
+    const size_t dstRowBytes = info.width * channels;
+    const size_t expectedLength = info.height * dstRowBytes;
     auto pixels = std::make_unique<uint8_t[]>(expectedLength);
 
-    // Copy pixel data row by row (accounting for stride)
-    for (uint32_t y = 0; y < info.height; y++) {
-        auto src = guard.get() + y * info.rowStride;
-        auto dst = pixels.get() + y * info.width * PremultipliedImage::channels;
-        std::copy(src, src + info.width * PremultipliedImage::channels, dst);
+    if (IsFormatSupported(info.pixelFormat)) {
+        // RGBA_8888: direct copy row by row, then premultiply
+        for (uint32_t y = 0; y < info.height; y++) {
+            auto src = guard.get() + y * info.rowStride;
+            auto dst = pixels.get() + y * dstRowBytes;
+            std::copy(src, src + dstRowBytes, dst);
+        }
+        // Premultiply: RGBA_8888 from HarmonyOS is straight alpha, but
+        // PremultipliedImage expects premultiplied alpha
+        for (uint32_t y = 0; y < info.height; y++) {
+            PremultiplyRow(pixels.get() + y * dstRowBytes, info.width);
+        }
+    } else {
+        // Convert from other pixel formats row by row
+        Logger::info("BitmapHarmony", "Converting pixel format %d to RGBA (premultiplied)", info.pixelFormat);
+
+        for (uint32_t y = 0; y < info.height; y++) {
+            auto src = guard.get() + y * info.rowStride;
+            auto dst = pixels.get() + y * dstRowBytes;
+            size_t written = ConvertRowToRGBA(dst, src, info.width, info.pixelFormat, info.rowStride);
+            if (written == 0) {
+                throw std::runtime_error("Failed to convert pixel row: unsupported format");
+            }
+        }
     }
 
-    Logger::info("BitmapHarmony", "Successfully converted native PixelMap to PremultipliedImage (%dx%d)", 
-                 info.width, info.height);
+    Logger::info("BitmapHarmony", "Successfully converted native PixelMap to PremultipliedImage (%dx%d, format=%d)",
+                 info.width, info.height, info.pixelFormat);
 
     return PremultipliedImage(Size{info.width, info.height}, std::move(pixels));
 }

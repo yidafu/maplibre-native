@@ -79,15 +79,21 @@ export class IconFactory {
   static fromResourceData(data: Uint8Array, iconId?: string, scale?: number): Icon;
 
   /**
-   * Create icon from rawfile resource (NOT YET IMPLEMENTED)
+   * Create icon from rawfile resource (C++ layer decodes directly).
+   *
+   * Reads and decodes the rawfile using HarmonyOS ResourceManager
+   * and ImageSource API directly in C++.
    *
    * @param fileName Rawfile name (e.g., 'marker.png')
    * @param iconId Optional icon identifier (auto-generated if not provided)
    * @param scale Optional pixel scale ratio (default: 1.0)
    * @returns Icon instance
-   * @throws Error - Currently not implemented, use fromResourceData() instead
+   * @throws Error if rawfile not found or image decoding fails
    *
-   * @deprecated Use fromResourceData() with ETS layer reading the rawfile
+   * @example
+   * ```typescript
+   * const icon = maplibre.IconFactory.fromRawfile('marker.png');
+   * ```
    */
   static fromRawfile(fileName: string, iconId?: string, scale?: number): Icon;
 

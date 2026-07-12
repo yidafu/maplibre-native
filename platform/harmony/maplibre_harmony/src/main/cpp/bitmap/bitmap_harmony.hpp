@@ -105,13 +105,36 @@ private:
     
     /**
      * Convert PixelMap to RGBA_8888 format if needed
-     * (Currently logs warning - format conversion not implemented)
-     * 
+     * The actual row-level conversion is handled in ConvertRowToRGBA during GetImage().
+     *
      * @param env NAPI environment
      * @param pixelMap Source PixelMap
-     * @return Converted PixelMap or original if already in correct format
+     * @return Original PixelMap (conversion happens during extraction)
      */
     static napi_value ConvertFormat(napi_env env, napi_value pixelMap);
+
+    /**
+     * Convert a single row of pixel data to RGBA 8-bit format.
+     * Handles BGRA_8888, RGB_565, RGB_888, ALPHA_8, and similar formats.
+     *
+     * @param dstRow Destination buffer (must have width * 4 bytes capacity)
+     * @param srcRow Source pixel row
+     * @param width Number of pixels in the row
+     * @param srcFormat Source pixel format (OHOS_PIXEL_MAP_FORMAT_*)
+     * @param srcRowStride Source row stride in bytes
+     * @return Number of bytes written to dstRow, or 0 on failure
+     */
+    static size_t ConvertRowToRGBA(uint8_t* dstRow, const uint8_t* srcRow,
+                                    uint32_t width, int32_t srcFormat, uint32_t srcRowStride);
+
+    /**
+     * Premultiply alpha in an RGBA row in-place.
+     * HarmonyOS provides straight alpha; MapLibre needs premultiplied.
+     *
+     * @param row RGBA pixel row
+     * @param width Number of pixels
+     */
+    static void PremultiplyRow(uint8_t* row, uint32_t width);
 };
 
 /**
