@@ -109,7 +109,12 @@ export function registerMapLibreMap(
       controller.updateScaleBarMetersPerPixel(metersPerPixel);
     };
 
-    // Trigger an immediate update so compass and scale bar have correct initial values
+    // Wire up pitch update callback (for build() caching, avoids NAPI calls)
+    mapLibreMap.onPitchUpdate = (pitch: number) => {
+      controller.cachedPitch = pitch;
+    };
+
+    // Trigger an immediate update so compass, scale bar, and pitch have correct initial values
     try {
       const bearing = mapLibreMap.getBearing();
       controller.updateCompassBearing(bearing);
@@ -165,7 +170,7 @@ export class NativeMapViewController extends XComponentController implements Nat
   private uiSettingsUpdateCallback?: () => void;
   private lastCompassBearing: number = 0;
   /** Cached pitch to avoid NAPI calls during ArkUI rebuilds */
-  private cachedPitch: number = 0;
+  public  cachedPitch: number = 0;
   private isDestroying: boolean = false;
   // UIContext for FrameNode lookup (used by native gesture setup and InfoWindow features)
   private uiContext?: UIContext;

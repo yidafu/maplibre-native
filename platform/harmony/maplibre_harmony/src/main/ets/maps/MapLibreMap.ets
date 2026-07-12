@@ -237,6 +237,9 @@ export class MapLibreMap {
   public onCompassUpdate?: (bearing: number) => void;
   // ScaleBar update callback (injected by the outer UI layer)
   public onScaleBarUpdate?: (metersPerPixel: number) => void;
+  // Pitch update callback (injected by the outer UI layer)
+  // Used by NativeMapViewController to cache pitch for build()
+  public onPitchUpdate?: (pitch: number) => void;
   // Animation callback management
   private pendingAnimationCallback: CameraAnimationCallback | null = null;
   private animationTimerId: number | null = null;
@@ -244,6 +247,12 @@ export class MapLibreMap {
   // Camera move throttling - limits update frequency during gestures
   private lastCameraMoveTime: number = 0;
   private static readonly CAMERA_MOVE_THROTTLE_MS = 16; // ~60fps limit
+
+  // Camera state cache: populated once per camera move event and shared across all
+  // internal listeners (compass, scale bar, annotation views). Cleared after the
+  // current move event cycle completes to ensure freshness.
+  private cachedCameraState: CameraState | null = null;
+  private cameraMoveInProgress: boolean = false;
 
   // Native bridge callback for map tap (registered via NAPI CallbackManager)
   // Stores the function reference so it can be removed in destroy()
@@ -285,14 +294,8 @@ export class MapLibreMap {
     // InfoWindow positioning is now handled automatically via onUpdateRegionChange() (mirrors Android)
     // A separate CameraMoveListener is no longer required
 
-    // Register the camera listener that updates AnnotationView positions
-    this.setupAnnotationViewCameraListener();
-
-    // Register the camera listener that updates the compass
-    this.setupCompassCameraListener();
-
-    // Register the camera listener that updates the scale bar
-    this.setupScaleBarCameraListener();
+    // Register the consolidated camera move listener (compass + scale bar + annotations)
+    this.setupConsolidatedCameraMoveListener();
 
     // 🔧 Register camera callbacks from the NAPI layer
     // These callbacks trigger cameraChangeDispatcher and notify all internal listeners
@@ -437,12 +440,13 @@ export class MapLibreMap {
   }
 
   /**
-   * Set up the compass camera move listener
-   * Automatically updates the compass heading when the map rotates
+   * Consolidated camera move listener — fires once per move event.
+   * Updates compass, scale bar, and annotation views using a single
+   * cached camera state to minimise NAPI cross-boundary calls.
    * @private
    */
-  private setupCompassCameraListener(): void {
-    class CompassMoveListenerImpl implements OnCameraMoveListener {
+  private setupConsolidatedCameraMoveListener(): void {
+    class ConsolidatedMoveListenerImpl implements OnCameraMoveListener {
       parent: MapLibreMap;
 
       constructor(parent: MapLibreMap) {
@@ -450,107 +454,30 @@ export class MapLibreMap {
       }
 
       onCameraMove(): void {
-        // Update the compass when the camera moves
+        const state = this.parent.getOrFetchCameraState();
+
+        // 1. Compass update
         if (this.parent.onCompassUpdate) {
-          const state = this.parent.getCameraState();
           this.parent.onCompassUpdate(state.bearing);
         }
-      }
-    }
 
-    this.cameraChangeDispatcher.addOnCameraMoveListener(new CompassMoveListenerImpl(this));
-  }
-
-  /**
-   * Set up the scale bar camera move listener
-   * Automatically updates the scale bar when the map zooms or moves
-   * @private
-   */
-  private setupScaleBarCameraListener(): void {
-    class ScaleBarMoveListenerImpl implements OnCameraMoveListener {
-      parent: MapLibreMap;
-
-      constructor(parent: MapLibreMap) {
-        this.parent = parent;
-      }
-
-      onCameraMove(): void {
-        // Update the scale bar when the camera moves
+        // 2. Scale bar update
         if (this.parent.onScaleBarUpdate) {
-          const state = this.parent.getCameraState();
           const metersPerPixel = this.parent.getMetersPerPixelAtLatitude(state.latitude, state.zoom);
           this.parent.onScaleBarUpdate(metersPerPixel);
         }
 
-        // Update AnnotationView positions at the same time
+        // 3. Pitch cache update (for build() caching)
+        if (this.parent.onPitchUpdate) {
+          this.parent.onPitchUpdate(state.pitch);
+        }
+
+        // 4. Annotation view position update
         this.parent.updateAnnotationViewPositions(false);
       }
     }
 
-    this.cameraChangeDispatcher.addOnCameraMoveListener(new ScaleBarMoveListenerImpl(this));
-  }
-
-  /**
-   * Register camera event callbacks from the NAPI layer
-   *
-   * This method wires up native camera callbacks. When the native map emits camera events,
-   * cameraChangeDispatcher is invoked to propagate the events to all internal listeners
-   * (InfoWindow, AnnotationView, Compass, ScaleBar, etc.).
-   *
-   * TODO: Future optimization — implement Android-style callback mapping in the ETS layer.
-   * Current approach: the C++ layer triggers Android-style callbacks inside MapObserver (temporary solution).
-   * Suggested approach:
-   *   1. Keep only the MapLibre native callbacks on the C++ side (onCameraWillChange, onCameraIsChanging, onCameraDidChange).
-   *   2. Listen to those native callbacks in ETS and convert them to Android-style callbacks here.
-   *   3. Example: listen for onCameraWillChange -> trigger cameraChangeDispatcher.notifyCameraMoveStarted().
-   *   4. Benefits: better separation between C++ and ETS layers, clearer architecture, easier maintenance.
-   *
-   * @private
-   */
-  private setupNativeCameraCallbacks(): void {
-    // Camera move started callback — translated from native onCameraWillChange
-    // Native callback provides 'animated' boolean; map to CameraMoveReason:
-    //   animated=true  → DEVELOPER_ANIMATION (3)
-    //   animated=false → GESTEST (1)
-    this.nativeMapView.addOnCameraWillChangeListener((animated: boolean) => {
-      const reason = animated ? CameraMoveReason.DEVELOPER_ANIMATION : CameraMoveReason.GESTURE;
-      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason);
-    });
-
-    // Camera moving callback — translated from native onCameraIsChanging
-    this.nativeMapView.addOnCameraIsChangingListener(() => {
-      this.cameraChangeDispatcher.notifyCameraMove();
-    });
-
-    // Camera idle callback — translated from native onCameraDidChange
-    this.nativeMapView.addOnCameraDidChangeListener(() => {
-      this.cameraChangeDispatcher.notifyCameraIdle();
-    });
-  }
-
-  /**
-   * Set up camera listeners for AnnotationView
-   * Updates positions and transforms for all AnnotationViews when the camera changes
-   * @private
-   */
-  private setupAnnotationViewCameraListener(): void {
-
-    // Camera move listener: update view positions
-    class AnnotationViewMoveListenerImpl implements OnCameraMoveListener {
-      parent: MapLibreMap;
-
-      constructor(parent: MapLibreMap) {
-        this.parent = parent;
-      }
-
-      onCameraMove(): void {
-        // Update positions while the camera moves (bearing/pitch unchanged)
-        this.parent.updateAnnotationViewPositions(false);
-      }
-    }
-
-    // Camera idle listener: ensure the final state is correct
-    class AnnotationViewIdleListenerImpl implements OnCameraIdleListener {
+    class ConsolidatedIdleListenerImpl implements OnCameraIdleListener {
       parent: MapLibreMap;
 
       constructor(parent: MapLibreMap) {
@@ -558,13 +485,42 @@ export class MapLibreMap {
       }
 
       onCameraIdle(): void {
-        // Update when the camera stops, including bearing/pitch changes
         this.parent.updateAnnotationViewPositions(true);
       }
     }
 
-    this.cameraChangeDispatcher.addOnCameraMoveListener(new AnnotationViewMoveListenerImpl(this));
-    this.cameraChangeDispatcher.addOnCameraIdleListener(new AnnotationViewIdleListenerImpl(this));
+    this.cameraChangeDispatcher.addOnCameraMoveListener(new ConsolidatedMoveListenerImpl(this));
+    this.cameraChangeDispatcher.addOnCameraIdleListener(new ConsolidatedIdleListenerImpl(this));
+  }
+
+  /**
+   * Register camera event callbacks from the NAPI layer
+   *
+   * Wires up native camera callbacks (onCameraWillChange, onCameraIsChanging,
+   * onCameraDidChange) and translates them to the Android-style events used
+   * internally by CameraChangeDispatcher.
+   *
+   * @private
+   */
+  private setupNativeCameraCallbacks(): void {
+    // Camera move started callback — translated from native onCameraWillChange
+    // animated=true  → DEVELOPER_ANIMATION (3), animated=false → GESTURE (1)
+    this.nativeMapView.addOnCameraWillChangeListener((animated: boolean) => {
+      const reason = animated ? CameraMoveReason.DEVELOPER_ANIMATION : CameraMoveReason.GESTURE;
+      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason);
+    });
+
+    // Camera moving callback — translated from native onCameraIsChanging
+    // Clears the intra-frame camera state cache so each frame gets fresh data.
+    this.nativeMapView.addOnCameraIsChangingListener(() => {
+      this.cachedCameraState = null; // Invalidate previous frame's cache
+      this.cameraChangeDispatcher.notifyCameraMove();
+    });
+
+    // Camera idle callback — translated from native onCameraDidChange
+    this.nativeMapView.addOnCameraDidChangeListener(() => {
+      this.cameraChangeDispatcher.notifyCameraIdle();
+    });
   }
 
   /**
@@ -1273,6 +1229,19 @@ export class MapLibreMap {
       zoom: this.getZoom(),
       pitch: this.getPitch()
     };
+  }
+
+  /**
+   * Get camera state with intra-frame caching.
+   * During a camera move event, all listeners share the same cached state
+   * to avoid redundant NAPI calls. The cache is naturally cleared on the
+   * next frame's onCameraIsChanging event.
+   */
+  private getOrFetchCameraState(): CameraState {
+    if (!this.cachedCameraState) {
+      this.cachedCameraState = this.getCameraState();
+    }
+    return this.cachedCameraState;
   }
 
   public setLatLng(latitude: number, longitude: number, padding?: number[], duration?: number): void {
