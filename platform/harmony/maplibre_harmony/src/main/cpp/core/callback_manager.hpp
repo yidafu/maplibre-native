@@ -144,18 +144,30 @@ public:
     
 private:
     napi_env env_;
-    
-    // Thread-safe callback container supporting multiple listeners
-    std::unordered_map<std::string, std::vector<std::unique_ptr<ThreadSafeCallback>>> callbacks_;
-    
+
+    /**
+     * CallbackEntry - bundles a ThreadSafeCallback with its napi_ref for identity comparison.
+     *
+     * The napi_ref enables correct per-listener removal in UnregisterCallback(name, callback).
+     */
+    // Note: napi_delete_reference for callbackRef must be called on the main thread
+    // with a valid env. CallbackManager::Clear() handles this explicitly.
+    struct CallbackEntry {
+        std::unique_ptr<ThreadSafeCallback> tsfn;
+        napi_ref callbackRef = nullptr;  // persistent reference for identity comparison
+    };
+
+    // Thread-safe callback container supporting multiple listeners per event name
+    std::unordered_map<std::string, std::vector<CallbackEntry>> callbacks_;
+
     // Mutex guarding the callback container
     mutable std::mutex mutex_;
-    
+
     // Indicates whether callbacks have been cleared
     bool cleared_ = false;
-    
-    // Helper: compare two napi_value callbacks for equality
-    bool AreCallbacksEqual(napi_value callback1, napi_value callback2) const;
+
+    // Helper: compare a stored napi_ref with a live napi_value callback for equality
+    bool AreCallbacksEqual(napi_ref storedRef, napi_value callback) const;
 };
 
 } // namespace harmony

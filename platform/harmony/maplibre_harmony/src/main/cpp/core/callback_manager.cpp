@@ -39,25 +39,36 @@ bool CallbackManager::RegisterCallback(const std::string& name, napi_value callb
     }
     
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     // Check whether the same callback already exists (avoid duplicates)
     auto it = callbacks_.find(name);
     if (it != callbacks_.end()) {
-        for (const auto& existing : it->second) {
-            // Note: wrapped callbacks cannot be compared directly, so we allow duplicates
-            // Callers must ensure they do not register the same callback repeatedly
+        for (const auto& entry : it->second) {
+            if (entry.callbackRef && AreCallbacksEqual(entry.callbackRef, callback)) {
+                Logger::warn("CallbackManager", "Duplicate callback registration ignored for: %s", name.c_str());
+                return false;
+            }
         }
     }
-    
+
+    // Create a persistent reference to the callback for identity comparison
+    napi_ref callbackRef = nullptr;
+    napi_status refStatus = napi_create_reference(env_, callback, 1, &callbackRef);
+    if (refStatus != napi_ok || callbackRef == nullptr) {
+        Logger::error("CallbackManager", "Failed to create napi_ref for callback '%s'", name.c_str());
+        return false;
+    }
+
     // Create ThreadSafeCallback
     auto tsfn = ThreadSafeCallback::Create(env_, callback, name.c_str());
     if (!tsfn) {
         Logger::error("CallbackManager", "Failed to create ThreadSafeCallback for '%s'", name.c_str());
+        napi_delete_reference(env_, callbackRef);
         return false;
     }
-    
+
     // Add to callback list
-    callbacks_[name].push_back(std::move(tsfn));
+    callbacks_[name].push_back({std::move(tsfn), callbackRef});
     return true;
 }
 
@@ -75,9 +86,12 @@ bool CallbackManager::UnregisterCallback(const std::string& name) {
         return false;
     }
     
-    // Release all ThreadSafeCallbacks
-    for (auto& tsfn : it->second) {
-        tsfn->Release();
+    // Release all ThreadSafeCallbacks and napi_refs
+    for (auto& entry : it->second) {
+        entry.tsfn->Release();
+        if (entry.callbackRef) {
+            napi_delete_reference(env_, entry.callbackRef);
+        }
     }
     callbacks_.erase(it);
     
@@ -89,29 +103,33 @@ bool CallbackManager::UnregisterCallback(const std::string& name, napi_value cal
         Logger::error("CallbackManager", "Cannot unregister callback with empty name");
         return false;
     }
-    
+
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     auto it = callbacks_.find(name);
     if (it == callbacks_.end()) {
-        Logger::warn("CallbackManager", "Callback not found: %s", name.c_str());
+        Logger::warn("CallbackManager", "Callback '%s' has no registered listeners", name.c_str());
         return false;
     }
-    
-    // Because wrapped callbacks cannot be directly compared, simply remove the last one
-    // Simplified logic assumes the caller manages callbacks in the correct order
-    if (!it->second.empty()) {
-        it->second.back()->Release();
-        it->second.pop_back();
-        
-        // Remove the entry if no listeners remain
-        if (it->second.empty()) {
-            callbacks_.erase(it);
+
+    // Find and remove the matching callback using napi_ref identity comparison
+    auto& vec = it->second;
+    for (auto entryIt = vec.begin(); entryIt != vec.end(); ++entryIt) {
+        if (entryIt->callbackRef && AreCallbacksEqual(entryIt->callbackRef, callback)) {
+            entryIt->tsfn->Release();
+            napi_delete_reference(env_, entryIt->callbackRef);
+            vec.erase(entryIt);
+
+            // Remove the name entry if no listeners remain
+            if (vec.empty()) {
+                callbacks_.erase(it);
+            }
+
+            return true;
         }
-        
-        return true;
     }
-    
+
+    Logger::warn("CallbackManager", "Callback not found for removal: %s", name.c_str());
     return false;
 }
 
@@ -141,8 +159,8 @@ bool CallbackManager::InvokeCallback(
     // Collect raw pointers to callbacks (avoid invoking while holding the lock)
     std::vector<ThreadSafeCallback*> callbackPtrs;
     callbackPtrs.reserve(it->second.size());
-    for (const auto& cb : it->second) {
-        callbackPtrs.push_back(cb.get());
+    for (const auto& entry : it->second) {
+        callbackPtrs.push_back(entry.tsfn.get());
     }
     
     // Release the lock
@@ -259,11 +277,16 @@ void CallbackManager::Clear() {
     
     size_t releasedCount = 0;
     for (auto& pair : callbacks_) {
-        for (auto& callback : pair.second) {
+        for (auto& entry : pair.second) {
             // Add per-callback timeout monitoring
             {
                 ANRDetector releaseDetector("callback->Release", 50, 200);
-                callback->Release();
+                entry.tsfn->Release();
+            }
+            // Release the napi_ref used for identity comparison
+            if (entry.callbackRef) {
+                napi_delete_reference(env_, entry.callbackRef);
+                entry.callbackRef = nullptr;
             }
             releasedCount++;
         }
@@ -275,11 +298,21 @@ void CallbackManager::Clear() {
     Logger::info("CallbackManager", "All %zu callbacks cleared", releasedCount);
 }
 
-bool CallbackManager::AreCallbacksEqual(napi_value callback1, napi_value callback2) const {
-    // N-API does not provide direct comparison for two napi_value handles
-    // Use napi_strict_equals for comparison
+bool CallbackManager::AreCallbacksEqual(napi_ref storedRef, napi_value callback) const {
+    if (storedRef == nullptr || callback == nullptr) {
+        return false;
+    }
+
+    // Get the napi_value from the stored persistent reference
+    napi_value storedValue = nullptr;
+    napi_status getStatus = napi_get_reference_value(env_, storedRef, &storedValue);
+    if (getStatus != napi_ok || storedValue == nullptr) {
+        return false;
+    }
+
+    // Compare using strict equality
     bool isEqual = false;
-    napi_status status = napi_strict_equals(env_, callback1, callback2, &isEqual);
+    napi_status status = napi_strict_equals(env_, storedValue, callback, &isEqual);
     return (status == napi_ok) && isEqual;
 }
 
