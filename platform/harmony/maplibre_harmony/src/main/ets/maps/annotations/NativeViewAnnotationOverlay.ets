@@ -150,6 +150,18 @@ export struct NativeViewAnnotationOverlay {
     nextFrames.forEach((state) => {
       const existingCtrl = this.controllerMap.get(state.id);
       if (existingCtrl) {
+        // Check if this controller was created without content (race condition:
+        // addViewAnnotation's internal refreshRenderStates runs before
+        // InfoWindowManager registers the ComponentContent). If so, look up
+        // the content now that it should be available.
+        if (!existingCtrl.hasContent()) {
+          const registry = ComponentContentRegistry.getInstance();
+          const content = registry.get(state.id);
+          if (content) {
+            existingCtrl.attachContent(content);
+            console.info(`[NativeViewAnnotationOverlay] Late-attached ComponentContent for annotation ${state.id}`);
+          }
+        }
         existingCtrl.updateProperties(state);
       }
     });

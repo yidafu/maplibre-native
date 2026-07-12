@@ -350,7 +350,12 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
     // Eliminates per-frame pixelRatio division and anchor math on the ArkTS side
     const double ratio = pixelRatio > 0.0 ? pixelRatio : 1.0;
     frame.positionX = (frame.screen.x / ratio) - (static_cast<double>(frame.size.width) / ratio) * annotation.anchorU;
-    frame.positionY = (frame.screen.y / ratio) - annotation.anchorHeight * annotation.anchorV;
+    // Use the frame's own height for anchorV-based positioning (anchorHeight is
+    // already handled via centerOffset on the ArkTS side). This ensures that
+    // with anchorV=1.0 and centerOffset.dy=-iconHeight, the InfoWindow's bottom
+    // aligns with the top of the marker icon — placing the InfoWindow entirely
+    // above the marker instead of covering it.
+    frame.positionY = (frame.screen.y / ratio) - (static_cast<double>(frame.size.height) / ratio) * annotation.anchorV;
 
     return frame;
 }
