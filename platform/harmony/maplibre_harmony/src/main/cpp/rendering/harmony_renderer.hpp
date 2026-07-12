@@ -6,6 +6,7 @@
 #include <mbgl/util/identity.hpp>
 #include <mbgl/util/geo.hpp>
 #include <mbgl/util/feature.hpp>
+#include <mbgl/util/geojson.hpp>
 #include <mbgl/renderer/query.hpp>
 #include <native_window/external_window.h>
 #include <memory>
@@ -122,6 +123,14 @@ public:
     // Query source features
     std::vector<Feature> querySourceFeatures(const std::string& sourceId,
                                             const SourceQueryOptions& options = {}) const;
+
+    // Query feature extensions (cluster children/leaves/expansion-zoom)
+    FeatureExtensionValue queryFeatureExtensions(
+        const std::string& sourceID,
+        const Feature& feature,
+        const std::string& extension,
+        const std::string& extensionField,
+        const std::optional<std::map<std::string, Value>>& args = std::nullopt) const;
     
     // FPS measurement (aligned with Android MapRenderer)
     void setOnFpsChangedCallback(std::function<void(double)> callback);

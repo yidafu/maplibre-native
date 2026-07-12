@@ -18,6 +18,7 @@ namespace harmony {
 
 // Static member initialization
 napi_ref GeoJsonSourceNAPI::constructor = nullptr;
+GeoJsonSourceNAPI::QueryFeatureExtensionsFn GeoJsonSourceNAPI::queryFeatureExtensionsFn_ = nullptr;
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source)
     : id(id), source(std::move(source)), ownsSource(true), rawSourceFallback(nullptr) {
@@ -74,6 +75,10 @@ GeoJsonSourceNAPI::~GeoJsonSourceNAPI() {
 void GeoJsonSourceNAPI::Destructor(napi_env env, void* nativeObject, void* finalize_hint) {
     GeoJsonSourceNAPI* sourceNapi = static_cast<GeoJsonSourceNAPI*>(nativeObject);
     delete sourceNapi;
+}
+
+void GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn) {
+    queryFeatureExtensionsFn_ = std::move(fn);
 }
 
 napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
@@ -634,15 +639,21 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
     }
     
     try {
-        // Parse clusterId (it can be a number or a Feature object)
-        uint64_t clusterId = 0;
+        if (!queryFeatureExtensionsFn_) {
+            Logger::error("GeoJsonSourceNAPI", "GetClusterChildren: queryFeatureExtensions callback not set");
+            napi_throw_error(env, nullptr, "Renderer not initialized - cluster query callback not set");
+            napi_value result;
+            napi_create_array(env, &result);
+            return result;
+        }
         
+        // Parse clusterId
+        uint64_t clusterId = 0;
         if (IsNumber(env, args[0])) {
             double value = 0;
             napi_get_value_double(env, args[0], &value);
             clusterId = static_cast<uint64_t>(value);
         } else if (IsObject(env, args[0])) {
-            // Feature object: extract cluster_id from properties
             auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
             if (feature.properties.count("cluster_id")) {
                 auto& idValue = feature.properties["cluster_id"];
@@ -654,16 +665,32 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
             }
         }
         
-        // TODO: query cluster children via rendererFrontend
-        // Similar to the Android implementation:
-        // featureExtension = rendererFrontend->queryFeatureExtensions(
-        //     source.getID(), feature, "supercluster", "children", {});
+        // Build a Feature with cluster_id property
+        mbgl::Feature clusterFeature;
+        clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
         
-        Logger::warn("GeoJsonSourceNAPI", "GetClusterChildren: rendererFrontend access not yet implemented (clusterId: %llu)", 
-                    clusterId);
+        // Query the extension
+        auto extResult = queryFeatureExtensionsFn_(
+            source->getID(),
+            clusterFeature,
+            "supercluster",
+            "children",
+            std::nullopt);
         
-        std::vector<mbgl::Feature> features;
-        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        // The result is either a FeatureCollection or a Value
+        if (extResult.is<mbgl::FeatureCollection>()) {
+            auto& collection = extResult.get<mbgl::FeatureCollection>();
+            Logger::info("GeoJsonSourceNAPI", "GetClusterChildren: %zu children for cluster %llu",
+                        collection.size(), clusterId);
+            // Convert FeatureCollection to vector<Feature> for the converter
+            std::vector<mbgl::Feature> features(collection.begin(), collection.end());
+            return GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        }
+        
+        Logger::warn("GeoJsonSourceNAPI", "GetClusterChildren: unexpected result type for cluster %llu", clusterId);
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "GetClusterChildren failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -703,7 +730,15 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
     }
     
     try {
-        // Parse arguments
+        if (!queryFeatureExtensionsFn_) {
+            Logger::error("GeoJsonSourceNAPI", "GetClusterLeaves: queryFeatureExtensions callback not set");
+            napi_throw_error(env, nullptr, "Renderer not initialized - cluster query callback not set");
+            napi_value result;
+            napi_create_array(env, &result);
+            return result;
+        }
+        
+        // Parse clusterId
         uint64_t clusterId = 0;
         if (IsNumber(env, args[0])) {
             double value = 0;
@@ -721,6 +756,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
             }
         }
         
+        // Parse limit and offset
         double limitValue = 10, offsetValue = 0;
         napi_get_value_double(env, args[1], &limitValue);
         napi_get_value_double(env, args[2], &offsetValue);
@@ -728,18 +764,37 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
         uint64_t limit = static_cast<uint64_t>(limitValue);
         uint64_t offset = static_cast<uint64_t>(offsetValue);
         
-        // TODO: query cluster leaves via rendererFrontend
-        // Similar to the Android implementation:
-        // options = {{"limit", limit}, {"offset", offset}};
-        // featureExtension = rendererFrontend->queryFeatureExtensions(
-        //     source.getID(), feature, "supercluster", "leaves", options);
+        // Build a Feature with cluster_id property
+        mbgl::Feature clusterFeature;
+        clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
         
-        Logger::warn("GeoJsonSourceNAPI", 
-                    "GetClusterLeaves: rendererFrontend access not yet implemented (clusterId: %llu, limit: %llu, offset: %llu)", 
-                    clusterId, limit, offset);
+        // Build args map (must use uint64_t for getProperty<uint64_t> in render_geojson_source.cpp)
+        std::map<std::string, mbgl::Value> queryArgs;
+        queryArgs["limit"] = static_cast<uint64_t>(limit);
+        queryArgs["offset"] = static_cast<uint64_t>(offset);
         
-        std::vector<mbgl::Feature> features;
-        return GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        // Query the extension
+        auto extResult = queryFeatureExtensionsFn_(
+            source->getID(),
+            clusterFeature,
+            "supercluster",
+            "leaves",
+            std::make_optional(std::move(queryArgs)));
+        
+        // The result is either a FeatureCollection or a Value
+        if (extResult.is<mbgl::FeatureCollection>()) {
+            auto& collection = extResult.get<mbgl::FeatureCollection>();
+            Logger::info("GeoJsonSourceNAPI", "GetClusterLeaves: %zu leaves for cluster %llu (limit=%llu, offset=%llu)",
+                        collection.size(), clusterId, limit, offset);
+            // Convert FeatureCollection to vector<Feature> for the converter
+            std::vector<mbgl::Feature> features(collection.begin(), collection.end());
+            return GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        }
+        
+        Logger::warn("GeoJsonSourceNAPI", "GetClusterLeaves: unexpected result type for cluster %llu", clusterId);
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "GetClusterLeaves failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
@@ -773,6 +828,12 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
     }
     
     try {
+        if (!queryFeatureExtensionsFn_) {
+            Logger::error("GeoJsonSourceNAPI", "GetClusterExpansionZoom: queryFeatureExtensions callback not set");
+            napi_throw_error(env, nullptr, "Renderer not initialized - cluster query callback not set");
+            return CreateDoubleValue(env, 0.0);
+        }
+        
         // Parse clusterId
         uint64_t clusterId = 0;
         if (IsNumber(env, args[0])) {
@@ -791,15 +852,40 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
             }
         }
         
-        // TODO: query the cluster expansion zoom via rendererFrontend
-        // Similar to the Android implementation:
-        // featureExtension = rendererFrontend->queryFeatureExtensions(
-        //     source.getID(), feature, "supercluster", "expansion-zoom", {});
+        // Build a Feature with cluster_id property
+        mbgl::Feature clusterFeature;
+        clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
         
-        Logger::warn("GeoJsonSourceNAPI", 
-                    "GetClusterExpansionZoom: rendererFrontend access not yet implemented (clusterId: %llu)", 
-                    clusterId);
+        // Query the extension
+        auto extResult = queryFeatureExtensionsFn_(
+            source->getID(),
+            clusterFeature,
+            "supercluster",
+            "expansion-zoom",
+            std::nullopt);
         
+        // The result is either a Value (number) or a FeatureCollection
+        if (extResult.is<mbgl::Value>()) {
+            auto& val = extResult.get<mbgl::Value>();
+            if (val.is<double>()) {
+                double zoom = val.get<double>();
+                Logger::info("GeoJsonSourceNAPI", "GetClusterExpansionZoom: cluster %llu -> zoom %.2f", 
+                            clusterId, zoom);
+                return CreateDoubleValue(env, zoom);
+            } else if (val.is<uint64_t>()) {
+                double zoom = static_cast<double>(val.get<uint64_t>());
+                Logger::info("GeoJsonSourceNAPI", "GetClusterExpansionZoom: cluster %llu -> zoom %.0f", 
+                            clusterId, zoom);
+                return CreateDoubleValue(env, zoom);
+            } else if (val.is<int64_t>()) {
+                double zoom = static_cast<double>(val.get<int64_t>());
+                Logger::info("GeoJsonSourceNAPI", "GetClusterExpansionZoom: cluster %llu -> zoom %.0f", 
+                            clusterId, zoom);
+                return CreateDoubleValue(env, zoom);
+            }
+        }
+        
+        Logger::warn("GeoJsonSourceNAPI", "GetClusterExpansionZoom: unexpected result type for cluster %llu", clusterId);
         return CreateDoubleValue(env, 0.0);
     } catch (const std::exception& e) {
         Logger::error("GeoJsonSourceNAPI", "GetClusterExpansionZoom failed: %s", e.what());

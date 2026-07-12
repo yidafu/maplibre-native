@@ -9,6 +9,7 @@
 #include <mbgl/gfx/backend.hpp>
 #include <mbgl/actor/scheduler.hpp>
 #include <mbgl/util/image.hpp>
+#include <mbgl/util/geojson.hpp>
 
 #include <memory>
 #include <thread>
@@ -197,6 +198,26 @@ public:
      */
     std::vector<Feature> querySourceFeatures(const std::string& sourceId,
                                             const SourceQueryOptions& options = {}) const;
+
+    /**
+     * Query feature extensions (cluster children/leaves/expansion-zoom).
+     *
+     * Used for GeoJSON cluster queries. Dispatches to the render thread
+     * following the same pattern as querySourceFeatures.
+     *
+     * @param sourceID Source identifier
+     * @param feature Feature to query extensions for (with cluster_id property)
+     * @param extension Extension identifier (e.g. "supercluster")
+     * @param extensionField Extension field (e.g. "children", "leaves", "expansion-zoom")
+     * @param args Optional parameters (e.g. limit/offset for "leaves")
+     * @return Extension result (Value for expansion-zoom, FeatureCollection for children/leaves)
+     */
+    FeatureExtensionValue queryFeatureExtensions(
+        const std::string& sourceID,
+        const Feature& feature,
+        const std::string& extension,
+        const std::string& extensionField,
+        const std::optional<std::map<std::string, Value>>& args = std::nullopt) const;
     
     /**
      * Set the FPS callback (mirrors Android MapRenderer::setOnFpsChangedListener).

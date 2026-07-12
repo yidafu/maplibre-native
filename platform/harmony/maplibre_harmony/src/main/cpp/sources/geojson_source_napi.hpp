@@ -2,8 +2,12 @@
 
 #include <napi/native_api.h>
 #include <mbgl/style/sources/geojson_source.hpp>
+#include <mbgl/util/geojson.hpp>
 #include <string>
 #include <memory>
+#include <functional>
+#include <map>
+#include <optional>
 
 namespace maplibre {
 namespace harmony {
@@ -50,6 +54,18 @@ public:
     static napi_value GetClusterChildren(napi_env env, napi_callback_info info);
     static napi_value GetClusterLeaves(napi_env env, napi_callback_info info);
     static napi_value GetClusterExpansionZoom(napi_env env, napi_callback_info info);
+
+    // Static callback for querying feature extensions from the renderer.
+    // Set by NativeMapView during initialization (single-map constraint).
+    using QueryFeatureExtensionsFn = std::function<mbgl::FeatureExtensionValue(
+        const std::string& sourceID,
+        const mbgl::Feature& feature,
+        const std::string& extension,
+        const std::string& extensionField,
+        const std::optional<std::map<std::string, mbgl::Value>>& args)>;
+
+    static void setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn);
+    static QueryFeatureExtensionsFn queryFeatureExtensionsFn_;
     
     // Internal helpers
     std::string getId() const { return id; }

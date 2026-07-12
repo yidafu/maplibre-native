@@ -745,6 +745,56 @@ std::vector<Feature> HarmonyMapRenderThread::querySourceFeatures(
     return future.get();
 }
 
+FeatureExtensionValue HarmonyMapRenderThread::queryFeatureExtensions(
+    const std::string& sourceID,
+    const Feature& feature,
+    const std::string& extension,
+    const std::string& extensionField,
+    const std::optional<std::map<std::string, Value>>& args) const {
+
+    if (destroying_.load() || shouldStop_) {
+        Logger::warn("MapRenderThread", "queryFeatureExtensions ignored: render thread is stopping");
+        return FeatureCollection{};
+    }
+
+    if (!renderer_) {
+        Logger::error("MapRenderThread", "queryFeatureExtensions: Renderer not initialized");
+        return FeatureCollection{};
+    }
+
+    if (isOnThread()) {
+        return renderer_->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
+    }
+
+    auto promise = std::make_shared<std::promise<FeatureExtensionValue>>();
+    auto future = promise->get_future();
+
+    const_cast<HarmonyMapRenderThread*>(this)->invoke(
+        [this, promise, sourceID, feature, extension, extensionField, args]() {
+            if (destroying_.load() || shouldStop_ || !renderer_) {
+                promise->set_value(FeatureCollection{});
+                return;
+            }
+            try {
+                promise->set_value(
+                    renderer_->queryFeatureExtensions(sourceID, feature, extension, extensionField, args));
+            } catch (const std::exception& e) {
+                Logger::error("MapRenderThread", "queryFeatureExtensions failed on render thread: %s", e.what());
+                promise->set_value(FeatureCollection{});
+            } catch (...) {
+                Logger::error("MapRenderThread", "queryFeatureExtensions failed with unknown exception");
+                promise->set_value(FeatureCollection{});
+            }
+        });
+
+    if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+        Logger::error("MapRenderThread", "queryFeatureExtensions timed out waiting for render thread");
+        return FeatureCollection{};
+    }
+
+    return future.get();
+}
+
 void HarmonyMapRenderThread::setOnFpsChangedCallback(std::function<void(double)> callback) {
     fpsCallback_ = std::move(callback);
     measureFps_ = (fpsCallback_ != nullptr);

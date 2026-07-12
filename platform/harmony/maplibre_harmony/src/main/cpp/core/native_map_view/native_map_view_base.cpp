@@ -1,6 +1,7 @@
 #include "native_map_view_harmony.hpp"
 #include "napi/bindings/marker/marker_napi.hpp"
 #include "napi/bindings/style/style_napi.hpp"
+#include "sources/geojson_source_napi.hpp"
 
 #include <js_native_api_types.h>
 #include <mbgl/map/map.hpp>
@@ -101,6 +102,9 @@ NativeMapView::~NativeMapView() {
 void NativeMapView::cleanupAllResources() {
     // Synchronous teardown: block until the render thread and resources are fully released
     ANRDetector detector("cleanupAllResources_sync", 100, 2000);
+
+    // Clear the cluster query callback to prevent dangling pointer access
+    maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(nullptr);
 
     // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
@@ -630,6 +634,18 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
         Logger::warn("NativeMapView", "hardReset: getMap() returned null");
     }
 
+    // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
+    maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+        [renderer = instance->harmonyRenderer.get()](
+            const std::string& sourceID,
+            const mbgl::Feature& feature,
+            const std::string& extension,
+            const std::string& extensionField,
+            const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
+            if (!renderer) return mbgl::FeatureCollection{};
+            return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
+        });
+
     // 6) Trigger the first frame
     if (instance->harmonyRenderer) {
         instance->harmonyRenderer->requestRender();
@@ -758,6 +774,19 @@ void NativeMapView::initializeRenderer() {
         // ✅ New behavior: once the Map is constructed, fire the onMapViewCreated callback
         // At this point the C++ Map exists, allowing ArkTS to create MapLibreMap and register observers
         // Matches Android behavior: trigger before style loading so listeners can be registered
+
+        // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
+        maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+            [renderer = harmonyRenderer.get()](
+                const std::string& sourceID,
+                const mbgl::Feature& feature,
+                const std::string& extension,
+                const std::string& extensionField,
+                const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
+                if (!renderer) return mbgl::FeatureCollection{};
+                return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
+            });
+
         if (callbackManager_) {
             callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
             Logger::info("NativeMapView", "✅ Triggered onMapViewCreated callback");
@@ -802,6 +831,18 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         }
     }
     map = harmonyRenderer->getMap();
+
+    // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
+    maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+        [renderer = harmonyRenderer.get()](
+            const std::string& sourceID,
+            const mbgl::Feature& feature,
+            const std::string& extension,
+            const std::string& extensionField,
+            const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
+            if (!renderer) return mbgl::FeatureCollection{};
+            return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
+        });
     
     // ✅ After self-healing, also trigger the onMapViewCreated callback
     if (map && callbackManager_) {
