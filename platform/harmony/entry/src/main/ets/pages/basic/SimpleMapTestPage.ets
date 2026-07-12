@@ -94,7 +94,7 @@ struct SimpleMapTestPage {
       styleUrl: DEFAULT_STYLE_URLS.streets,
       initialLatitude: 39.9,
       initialLongitude: 116.4,
-      initialZoom: 10
+      initialZoom: 5,
     })
       .width('100%')
       .height('100%');

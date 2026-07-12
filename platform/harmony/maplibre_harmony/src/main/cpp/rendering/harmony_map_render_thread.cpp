@@ -124,7 +124,12 @@ void HarmonyMapRenderThread::threadLoop() {
 
 bool HarmonyMapRenderThread::initialize() {
     // Step 1: create the RunLoop (must happen first)
-    runLoop_ = std::make_unique<util::RunLoop>();
+    // CRITICAL: Use Type::New (not Default!) to create a dedicated libuv loop.
+    // uv_default_loop() is a process-wide singleton -- if other threads also run
+    // uv_run() on it, async signals (e.g. VSync callbacks dispatched via
+    // uv_async_send) can be processed on the wrong thread, causing
+    // "onVSyncFrame invoked off render thread, redispatching" to loop infinitely.
+    runLoop_ = std::make_unique<util::RunLoop>(util::RunLoop::Type::New);
     if (!runLoop_) {
         Logger::error("MapRenderThread", "Failed to create RunLoop");
         return false;
