@@ -161,6 +161,10 @@ public:
     static napi_value getViewAnnotationFrames(napi_env env, napi_callback_info info);
     static napi_value onLowMemory(napi_env env, napi_callback_info info);
     
+    // Rendering Frame listener with stats
+    static napi_value addOnDidFinishRenderingFrameWithStatsListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnDidFinishRenderingFrameWithStatsListener(napi_env env, napi_callback_info info);
+
     // Debug methods
     static napi_value setDebug(napi_env env, napi_callback_info info);
     static napi_value getDebug(napi_env env, napi_callback_info info);

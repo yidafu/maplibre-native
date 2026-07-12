@@ -496,6 +496,8 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"removeOnWillStartRenderingFrameListener", nullptr, removeOnWillStartRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnDidFinishRenderingFrameListener", nullptr, addOnDidFinishRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnDidFinishRenderingFrameListener", nullptr, removeOnDidFinishRenderingFrameListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnDidFinishRenderingFrameWithStatsListener", nullptr, addOnDidFinishRenderingFrameWithStatsListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnDidFinishRenderingFrameWithStatsListener", nullptr, removeOnDidFinishRenderingFrameWithStatsListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnWillStartRenderingMapListener", nullptr, addOnWillStartRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnWillStartRenderingMapListener", nullptr, removeOnWillStartRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnDidFinishRenderingMapListener", nullptr, addOnDidFinishRenderingMapListener, nullptr, nullptr, nullptr, napi_default, nullptr},

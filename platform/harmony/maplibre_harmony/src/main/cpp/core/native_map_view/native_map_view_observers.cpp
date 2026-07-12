@@ -221,6 +221,26 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
             napi_create_double(env, renderingTime, &argv[2]);
             return argv[0]; // DataBuilder requires a return value; return the first argument here
         });
+
+        // Also fire the WithStats variant with a full stats object
+        callbackManager_->InvokeCallback("onDidFinishRenderingFrameWithStats", [fully, encodingTime, renderingTime](napi_env env) {
+            napi_value stats;
+            napi_create_object(env, &stats);
+
+            napi_value fullyVal;
+            napi_get_boolean(env, fully, &fullyVal);
+            napi_set_named_property(env, stats, "fully", fullyVal);
+
+            napi_value encTimeVal;
+            napi_create_double(env, encodingTime, &encTimeVal);
+            napi_set_named_property(env, stats, "frameEncodingTime", encTimeVal);
+
+            napi_value renTimeVal;
+            napi_create_double(env, renderingTime, &renTimeVal);
+            napi_set_named_property(env, stats, "frameRenderingTime", renTimeVal);
+
+            return stats;
+        });
     }
     
     // Network I/O is now handled by the renderer thread's RunLoop
@@ -970,18 +990,60 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
 }
 
 napi_value NativeMapView::isRenderingStatsViewEnabled(napi_env env, napi_callback_info info) {
-    // Rendering stats view is not implemented on the Harmony platform
-    // Rendering stats view not implemented for Harmony
     napi_value result;
     napi_get_boolean(env, false, &result);
+
+    // Obtain the NativeMapView instance
+    napi_value thisObj;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisObj, nullptr);
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::warn("NativeMapView", "isRenderingStatsViewEnabled: Map not initialized, returning false");
+        return result;
+    }
+
+    try {
+        bool enabled = instance->invokeOnMapThreadSync([&](mbgl::Map* m) { return m->isRenderingStatsViewEnabled(); }, false);
+        napi_get_boolean(env, enabled, &result);
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "isRenderingStatsViewEnabled: Failed - %s", e.what());
+    }
+
     return result;
 }
 
 napi_value NativeMapView::enableRenderingStatsView(napi_env env, napi_callback_info info) {
-    // Rendering stats view is not implemented on the Harmony platform
-    // Rendering stats view not implemented for Harmony
     napi_value undefined;
     napi_get_undefined(env, &undefined);
+
+    // Obtain the NativeMapView instance and arguments
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "enableRenderingStatsView: Missing enable argument");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "enableRenderingStatsView: Map not initialized");
+        return undefined;
+    }
+
+    bool enable;
+    if (napi_get_value_bool(env, args[0], &enable) != napi_ok) {
+        Logger::error("NativeMapView", "enableRenderingStatsView: Failed to parse enable argument");
+        return undefined;
+    }
+
+    try {
+        instance->invokeOnMapThread([enable](mbgl::Map* m) { m->enableRenderingStatsView(enable); });
+        Logger::info("NativeMapView", "enableRenderingStatsView: Set to %s", enable ? "enabled" : "disabled");
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "enableRenderingStatsView: Failed - %s", e.what());
+    }
+
     return undefined;
 }
 
@@ -2083,6 +2145,10 @@ IMPLEMENT_REMOVE_LISTENER(removeOnSpriteRequestedListener, "onSpriteRequested")
 
 IMPLEMENT_ADD_LISTENER(addOnTileActionListener, "onTileAction")
 IMPLEMENT_REMOVE_LISTENER(removeOnTileActionListener, "onTileAction")
+
+// ===== Rendering Frame with Stats listeners =====
+IMPLEMENT_ADD_LISTENER(addOnDidFinishRenderingFrameWithStatsListener, "onDidFinishRenderingFrameWithStats")
+IMPLEMENT_REMOVE_LISTENER(removeOnDidFinishRenderingFrameWithStatsListener, "onDidFinishRenderingFrameWithStats")
 
 #undef IMPLEMENT_ADD_LISTENER
 #undef IMPLEMENT_REMOVE_LISTENER
