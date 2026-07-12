@@ -12,7 +12,6 @@
  */
 import type { MapLibreMap } from '../MapLibreMap';
 import { Polyline, PolylineOptions } from './Polyline';
-import { Rect } from '../geometry/Rect';
 
 /**
  * PolylineManager class.
@@ -61,7 +60,7 @@ export class PolylineManager {
   }
 
   /**
-   * Add polylines in batch.
+   * Add multiple polylines.
    *
    * @param optionsList Array of PolylineOptions.
    * @returns Array of created polylines.
@@ -163,4 +162,3 @@ export class PolylineManager {
     return Array.from(this.polylineMap.values());
   }
 }
-

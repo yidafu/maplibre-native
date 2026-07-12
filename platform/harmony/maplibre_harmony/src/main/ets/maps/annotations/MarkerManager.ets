@@ -22,6 +22,7 @@ import type { Icon } from './Icon';
 import type { CenterOffset } from './AnnotationView';
 import type { Marker, MarkerAnchor } from './Marker';
 import common from '@ohos.app.ability.common';
+import type { UIContext } from '@kit.ArkUI';
 import type {
   OnMapClickListener,
   OnMapLongClickListener,
@@ -65,6 +66,13 @@ export class MarkerManager {
   // Drag state
   private draggingMarker: Marker | null = null;
   private draggingMarkerId: number | null = null;
+
+  // Listener references (for cleanup to prevent memory leaks)
+  private styleLoadedListener: OnStyleLoadedListener | null = null;
+  private mapClickListener: OnMapClickListener | null = null;
+  private mapLongClickListener: OnMapLongClickListener | null = null;
+  private touchMoveListener: OnTouchMoveListener | null = null;
+  private touchUpListener: OnTouchUpListener | null = null;
 
   /**
    * Construct a MarkerManager
@@ -125,11 +133,8 @@ export class MarkerManager {
         // Restore all markers
         if (manager.markerMap.size > 0) {
 
-          // Collect markers explicitly
-          const markersToRestore = Array.from<Marker>(manager.markerMap.values());
-
-          // Re-add to layer
-          for (const marker of markersToRestore) {
+          // Collect markers explicitly - iterate directly to avoid unnecessary array creation
+          for (const marker of manager.markerMap.values()) {
             manager.markerLayerManager.addMarker(marker, true); // skipUpdate=true
 
             // Recreate custom annotation views
@@ -143,7 +148,9 @@ export class MarkerManager {
       }
     }
 
-    this.mapLibreMap.addOnStyleLoadedListener(new StyleLoadedListenerImpl());
+    // Store listener reference for cleanup
+    this.styleLoadedListener = new StyleLoadedListenerImpl();
+    this.mapLibreMap.addOnStyleLoadedListener(this.styleLoadedListener);
   }
 
   /**
@@ -171,7 +178,9 @@ export class MarkerManager {
       }
     }
 
-    this.mapLibreMap.addOnMapClickListener(new MapClickListenerImpl(this));
+    // Store listener reference for cleanup
+    this.mapClickListener = new MapClickListenerImpl(this);
+    this.mapLibreMap.addOnMapClickListener(this.mapClickListener);
 
     // Long-press listener (start dragging)
     class MapLongClickListenerImpl implements OnMapLongClickListener {
@@ -186,7 +195,9 @@ export class MarkerManager {
       }
     }
 
-    this.mapLibreMap.addOnMapLongClickListener(new MapLongClickListenerImpl(this));
+    // Store listener reference for cleanup
+    this.mapLongClickListener = new MapLongClickListenerImpl(this);
+    this.mapLibreMap.addOnMapLongClickListener(this.mapLongClickListener);
 
     // Touch-move listener (drag updates) - mirrors Android MoveGestureDetector.onMove
     class TouchMoveListenerImpl implements OnTouchMoveListener {
@@ -201,7 +212,9 @@ export class MarkerManager {
       }
     }
 
-    this.mapLibreMap.addOnTouchMoveListener(new TouchMoveListenerImpl(this));
+    // Store listener reference for cleanup
+    this.touchMoveListener = new TouchMoveListenerImpl(this);
+    this.mapLibreMap.addOnTouchMoveListener(this.touchMoveListener);
 
     // Touch-up listener (drag end) - mirrors Android onMoveEnd and iOS UIGestureRecognizerStateEnded
     class TouchUpListenerImpl implements OnTouchUpListener {
@@ -216,7 +229,9 @@ export class MarkerManager {
       }
     }
 
-    this.mapLibreMap.addOnTouchUpListener(new TouchUpListenerImpl(this));
+    // Store listener reference for cleanup
+    this.touchUpListener = new TouchUpListenerImpl(this);
+    this.mapLibreMap.addOnTouchUpListener(this.touchUpListener);
 
   }
 
@@ -903,6 +918,9 @@ export class MarkerManager {
    * ```
    */
   public clear(): void {
+    // Remove all registered listeners to prevent memory leaks
+    this.removeAllListeners();
+
     // Clean up each marker
     for (const marker of this.markerMap.values()) {
       if (marker.isInfoWindowShown()) {
@@ -935,11 +953,78 @@ export class MarkerManager {
   }
 
   /**
+   * Remove all registered listeners to prevent memory leaks.
+   *
+   * This method removes:
+   * - Style loaded listener
+   * - Map click listener
+   * - Map long-click listener
+   * - Touch move listener
+   * - Touch up listener
+   */
+  private removeAllListeners(): void {
+    // Remove style loaded listener
+    if (this.styleLoadedListener) {
+      try {
+        this.mapLibreMap.removeOnStyleLoadedListener(this.styleLoadedListener);
+      } catch (error) {
+        console.warn(`[MarkerManager] Failed to remove style loaded listener: ${error}`);
+      }
+      this.styleLoadedListener = null;
+    }
+
+    // Remove map click listener
+    if (this.mapClickListener) {
+      try {
+        this.mapLibreMap.removeOnMapClickListener(this.mapClickListener);
+      } catch (error) {
+        console.warn(`[MarkerManager] Failed to remove map click listener: ${error}`);
+      }
+      this.mapClickListener = null;
+    }
+
+    // Remove map long-click listener
+    if (this.mapLongClickListener) {
+      try {
+        this.mapLibreMap.removeOnMapLongClickListener(this.mapLongClickListener);
+      } catch (error) {
+        console.warn(`[MarkerManager] Failed to remove map long-click listener: ${error}`);
+      }
+      this.mapLongClickListener = null;
+    }
+
+    // Remove touch move listener
+    if (this.touchMoveListener) {
+      try {
+        this.mapLibreMap.removeOnTouchMoveListener(this.touchMoveListener);
+      } catch (error) {
+        console.warn(`[MarkerManager] Failed to remove touch move listener: ${error}`);
+      }
+      this.touchMoveListener = null;
+    }
+
+    // Remove touch up listener
+    if (this.touchUpListener) {
+      try {
+        this.mapLibreMap.removeOnTouchUpListener(this.touchUpListener);
+      } catch (error) {
+        console.warn(`[MarkerManager] Failed to remove touch up listener: ${error}`);
+      }
+      this.touchUpListener = null;
+    }
+  }
+
+  /**
    * Remove all listeners
    *
    * Detaches every marker-related listener to prevent leaks.
+   * This includes both user-provided listeners and internal map listeners.
    */
   public clearAllListeners(): void {
+    // Remove internal map listeners (prevents memory leaks)
+    this.removeAllListeners();
+
+    // Clear user-provided listeners
     this.onMarkerClickListener = null;
     this.onMarkerLongClickListener = null;
     this.onMarkerDragListener = null;
@@ -1292,6 +1377,14 @@ export class MarkerManager {
    */
   public getInfoWindowManager(): InfoWindowManager {
     return this.infoWindowManager;
+  }
+
+  /**
+   * Set UIContext for ComponentContent creation.
+   * Must be called before showing InfoWindows.
+   */
+  public setUIContext(uiContext: UIContext | null): void {
+    this.infoWindowManager.setUIContext(uiContext);
   }
 
   /**

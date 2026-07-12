@@ -450,6 +450,11 @@ export class MarkerLayerManager {
 
   /**
    * Perform the actual source update (internal helper).
+   *
+   * Performance notes:
+   * - Executes asynchronously to avoid blocking the UI thread
+   * - Debounced via updateSource() to consolidate multiple rapid updates
+   * - Triggers map repaint after successful update
    */
   private performUpdate(): void {
     if (!this.source) {
@@ -475,25 +480,24 @@ export class MarkerLayerManager {
       }
     }
 
-    // Schedule on the next macrotask (`setTimeout(0)`) to leave the current event loop
-    setTimeout(() => {
-      try {
-        const updateStartTime = Date.now();
+    // Perform update asynchronously (single setTimeout for both debounce and async execution)
+    // The debounce in updateSource() already schedules this, so we execute directly
+    try {
+      const updateStartTime = Date.now();
 
-        // Pass the FeatureCollection object directly (NAPI converts it; no JSON serialization needed)
-        this.source!.setGeoJson(featureCollection);
+      // Pass the FeatureCollection object directly (NAPI converts it; no JSON serialization needed)
+      this.source!.setGeoJson(featureCollection);
 
-        // Trigger map repaint
-        const nativeMapView = this.mapLibreMap.getNativeMapView();
-        if (nativeMapView) {
-          nativeMapView.triggerRepaint();
-        }
-
-        const updateTime = Date.now() - updateStartTime;
-      } catch (error) {
-        console.error(`[MarkerLayerManager] Failed to update source: ${error}`);
+      // Trigger map repaint
+      const nativeMapView = this.mapLibreMap.getNativeMapView();
+      if (nativeMapView) {
+        nativeMapView.triggerRepaint();
       }
-    }, 0);
+
+      const updateTime = Date.now() - updateStartTime;
+    } catch (error) {
+      console.error(`[MarkerLayerManager] Failed to update source: ${error}`);
+    }
   }
 
   /**

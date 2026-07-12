@@ -12,7 +12,6 @@
  */
 import type { MapLibreMap } from '../MapLibreMap';
 import { Polygon, PolygonOptions } from './Polygon';
-import { Rect } from '../geometry/Rect';
 
 /**
  * PolygonManager class.
@@ -163,4 +162,3 @@ export class PolygonManager {
     return Array.from(this.polygonMap.values());
   }
 }
-

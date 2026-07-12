@@ -61,6 +61,8 @@ struct HarmonyViewAnnotationUpdate {
     std::optional<mbgl::Size> size;
     std::optional<mbgl::ScreenCoordinate> offset;
     std::optional<double> anchorHeight;  // Height for anchor positioning
+    std::optional<double> anchorU;       // Horizontal anchor (0=left, 1=right)
+    std::optional<double> anchorV;       // Vertical anchor (0=top, 1=bottom)
     std::optional<bool> visible;
     std::optional<bool> allowOverlap;
     std::optional<bool> draggable;
@@ -205,6 +207,10 @@ std::optional<HarmonyViewAnnotation> parseAddOptions(NativeMapView& instance, Na
         annotation.anchorHeight = std::max(0.0, anchorHeight) * instance.getPixelRatioValue();
     }
 
+    // Parse anchorU/anchorV for pre-computed position (Phase 2 optimization)
+    annotation.anchorU = args.GetDoubleProperty(optionsObj, "anchorU", 0.5);
+    annotation.anchorV = args.GetDoubleProperty(optionsObj, "anchorV", 1.0);
+
     annotation.visible = args.GetBoolProperty(optionsObj, "visible", true);
     annotation.allowOverlap = args.GetBoolProperty(optionsObj, "allowOverlap", false);
     annotation.draggable = args.GetBoolProperty(optionsObj, "draggable", false);
@@ -259,6 +265,14 @@ std::optional<HarmonyViewAnnotationUpdate> parseUpdateOptions(NativeMapView& ins
     if (hasNamedProperty(env, optionsObj, "anchorHeight")) {
         double anchorHeight = args.GetDoubleProperty(optionsObj, "anchorHeight", 0.0);
         update.anchorHeight = std::max(0.0, anchorHeight) * instance.getPixelRatioValue();
+    }
+
+    // Parse anchorU/anchorV for pre-computed position (Phase 2 optimization)
+    if (hasNamedProperty(env, optionsObj, "anchorU")) {
+        update.anchorU = args.GetDoubleProperty(optionsObj, "anchorU", 0.5);
+    }
+    if (hasNamedProperty(env, optionsObj, "anchorV")) {
+        update.anchorV = args.GetDoubleProperty(optionsObj, "anchorV", 1.0);
     }
 
     if (hasNamedProperty(env, optionsObj, "visible")) {
@@ -325,12 +339,18 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
     const double anchorHeightForPosition = annotation.anchorHeight > 0 ?
         annotation.anchorHeight : static_cast<double>(annotation.size.height);
 
-    // Calculate position: anchor + offset - anchorHeight * anchorV
-    // anchorV defaults to 1.0 (bottom), so we subtract anchorHeight to position above the anchor
+    // Calculate screen position: anchor + offset
+    // Note: anchorHeight offset is applied in JS layer for consistent positioning
     frame.screen = mbgl::ScreenCoordinate{
         screen.x + annotation.offset.x,
-        screen.y + annotation.offset.y - anchorHeightForPosition
+        screen.y + annotation.offset.y
     };
+
+    // Compute final render position in logical pixels
+    // Eliminates per-frame pixelRatio division and anchor math on the ArkTS side
+    const double ratio = pixelRatio > 0.0 ? pixelRatio : 1.0;
+    frame.positionX = (frame.screen.x / ratio) - (static_cast<double>(frame.size.width) / ratio) * annotation.anchorU;
+    frame.positionY = (frame.screen.y / ratio) - annotation.anchorHeight * annotation.anchorV;
 
     return frame;
 }
@@ -1260,6 +1280,15 @@ napi_value NativeMapView::updateViewAnnotation(napi_env env, napi_callback_info 
             if (update.maxZoom) {
                 data.maxZoom = *update.maxZoom;
             }
+            if (update.anchorHeight) {
+                data.anchorHeight = *update.anchorHeight;
+            }
+            if (update.anchorU) {
+                data.anchorU = *update.anchorU;
+            }
+            if (update.anchorV) {
+                data.anchorV = *update.anchorV;
+            }
 
             updated = true;
         }
@@ -1408,6 +1437,12 @@ napi_value NativeMapView::getViewAnnotationFrames(napi_env env, napi_callback_in
         napi_set_named_property(env, frameObj, "visible", value);
         napi_get_boolean(env, frame.draggable, &value);
         napi_set_named_property(env, frameObj, "draggable", value);
+
+        // Phase 2 optimization: pre-computed render position in logical pixels
+        napi_create_double(env, frame.positionX, &value);
+        napi_set_named_property(env, frameObj, "positionX", value);
+        napi_create_double(env, frame.positionY, &value);
+        napi_set_named_property(env, frameObj, "positionY", value);
 
         napi_set_element(env, resultArray, i, frameObj);
     }

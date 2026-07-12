@@ -936,8 +936,9 @@ export class AnnotationViewManager {
       }
 
       viewData.annotationId = frame.id;
-      viewData.screenX = frame.x / safePixelRatio;
-      viewData.screenY = frame.y / safePixelRatio;
+      // Phase 2: positionX/positionY are pre-computed by C++ in logical pixels
+      viewData.screenX = frame.positionX;
+      viewData.screenY = frame.positionY;
       viewData.width = Math.round(frame.width / safePixelRatio);
       viewData.height = Math.round(frame.height / safePixelRatio);
       viewData.centerOffset = {
