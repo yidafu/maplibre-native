@@ -99,6 +99,11 @@ export function registerMapLibreMap(
   if (controller) {
     controller.setMapLibreMapInstance(mapLibreMap);
 
+    // Sync UiSettings: make MapLibreMap use the controller's instance
+    // so runtime API calls (e.g. map.getUiSettings().setCompassEnabled())
+    // affect the same instance that drives widget rendering in build().
+    mapLibreMap.setUiSettings(controller.getUiSettings());
+
     // Wire up compass update callback
     mapLibreMap.onCompassUpdate = (bearing: number) => {
       controller.updateCompassBearing(bearing);
@@ -156,6 +161,8 @@ export class NativeMapViewController extends XComponentController implements Nat
   public initialZoom: number = 6;
   public initialBearing: number = 0;
   public initialPitch: number = 0;
+  // User-provided MapLibreMapOptions (passed from the component layer)
+  public mapOptions: MapLibreMapOptions | undefined = undefined;
   // Callback hooks
   public onMapReadyCallback?: (mapView?: NativeMapView) => void;
   public onMapViewCreatedCallback?: (mapLibreMap: MapLibreMap) => void;
@@ -167,7 +174,6 @@ export class NativeMapViewController extends XComponentController implements Nat
   // UI component state hooks
   private compassBearingUpdateCallback?: (bearing: number) => void;
   private pitchUpdateCallback?: (pitch: number) => void;
-  private uiSettingsUpdateCallback?: () => void;
   private lastCompassBearing: number = 0;
   /** Cached pitch to avoid NAPI calls during ArkUI rebuilds */
   public  cachedPitch: number = 0;
@@ -837,7 +843,7 @@ export class NativeMapViewController extends XComponentController implements Nat
     try {
       // Create MapLibreMap instance (only once)
       if (!this.mapLibreMapInstance && this.nativeMapView) {
-        const options = new MapLibreMapOptions();
+        const options = this.mapOptions ? new MapLibreMapOptions(this.mapOptions) : new MapLibreMapOptions();
         this.mapLibreMapInstance = new MapLibreMap(this.nativeMapView, options);
         hilog.info(DOMAIN, 'NativeMapViewController', '✅ MapLibreMap instance created');
         
@@ -903,13 +909,6 @@ export class NativeMapViewController extends XComponentController implements Nat
    */
   getCachedPitch(): number {
     return this.cachedPitch;
-  }
-
-  /**
-   * Set UI settings update callback
-   */
-  setUiSettingsUpdateCallback(callback: () => void): void {
-    this.uiSettingsUpdateCallback = callback;
   }
 
   // Scale bar update callback
@@ -1453,8 +1452,7 @@ export class NativeMapViewController extends XComponentController implements Nat
     }
 
     try {
-    // TODO: C++ NAPI binding
-      // this.mapView.setTileCacheEnabled(enabled);
+      this.nativeMapView.setTileCacheEnabled(enabled);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileCacheEnabled error: ${error.message}`);
     }
@@ -1525,6 +1523,268 @@ export class NativeMapViewController extends XComponentController implements Nat
       this.nativeMapView.setTileLodZoomShift(shift);
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `setTileLodZoomShift error: ${error.message}`);
+    }
+  }
+
+  // ========== Prefetch tile getters ==========
+
+  /**
+   * Check whether tile prefetching is enabled
+   * @returns true if prefetching is enabled
+   */
+  getPrefetchTiles(): boolean {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getPrefetchTiles: Map not initialized');
+      return false;
+    }
+    try {
+      return this.nativeMapView.getPrefetchTiles();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getPrefetchTiles error: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get the current prefetch zoom delta
+   * @returns Prefetch zoom delta value
+   */
+  getPrefetchZoomDelta(): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getPrefetchZoomDelta: Map not initialized');
+      return 0;
+    }
+    try {
+      return this.nativeMapView.getPrefetchZoomDelta();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getPrefetchZoomDelta error: ${error.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * Set prefetch zoom delta directly
+   * @param delta Prefetch zoom delta (0 disables)
+   */
+  setPrefetchZoomDelta(delta: number): void {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setPrefetchZoomDelta: Map not initialized');
+      return;
+    }
+    try {
+      this.nativeMapView.setPrefetchZoomDelta(delta);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setPrefetchZoomDelta error: ${error.message}`);
+    }
+  }
+
+  // ========== Tile LOD getters ==========
+
+  /**
+   * Get the minimum LOD radius
+   * @returns Minimum radius in tile units
+   */
+  getTileLodMinRadius(): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getTileLodMinRadius: Map not initialized');
+      return 0;
+    }
+    try {
+      return this.nativeMapView.getTileLodMinRadius();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getTileLodMinRadius error: ${error.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * Get the LOD scale factor
+   * @returns Scale factor
+   */
+  getTileLodScale(): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getTileLodScale: Map not initialized');
+      return 1.0;
+    }
+    try {
+      return this.nativeMapView.getTileLodScale();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getTileLodScale error: ${error.message}`);
+      return 1.0;
+    }
+  }
+
+  /**
+   * Get the LOD pitch threshold
+   * @returns Pitch threshold in radians
+   */
+  getTileLodPitchThreshold(): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getTileLodPitchThreshold: Map not initialized');
+      return 0;
+    }
+    try {
+      return this.nativeMapView.getTileLodPitchThreshold();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getTileLodPitchThreshold error: ${error.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * Get the LOD zoom shift
+   * @returns Zoom shift value
+   */
+  getTileLodZoomShift(): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getTileLodZoomShift: Map not initialized');
+      return 0;
+    }
+    try {
+      return this.nativeMapView.getTileLodZoomShift();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getTileLodZoomShift error: ${error.message}`);
+      return 0;
+    }
+  }
+
+  // ========== Rendering stats ==========
+
+  /**
+   * Check whether rendering stats view is enabled
+   * @returns true if rendering stats view is enabled
+   */
+  isRenderingStatsViewEnabled(): boolean {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'isRenderingStatsViewEnabled: Map not initialized');
+      return false;
+    }
+    try {
+      return this.nativeMapView.isRenderingStatsViewEnabled();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `isRenderingStatsViewEnabled error: ${error.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Enable or disable rendering stats view
+   * @param enabled Whether rendering stats should be displayed
+   */
+  enableRenderingStatsView(enabled: boolean): void {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'enableRenderingStatsView: Map not initialized');
+      return;
+    }
+    try {
+      this.nativeMapView.enableRenderingStatsView(enabled);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `enableRenderingStatsView error: ${error.message}`);
+    }
+  }
+
+  // ========== Action journal ==========
+
+  /**
+   * Get action journal log file paths
+   * @returns Array of log file paths
+   */
+  getActionJournalLogFiles(): string[] {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getActionJournalLogFiles: Map not initialized');
+      return [];
+    }
+    try {
+      return this.nativeMapView.getActionJournalLogFiles();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getActionJournalLogFiles error: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Get action journal log entries as JSON strings
+   * @returns Array of JSON log entries
+   */
+  getActionJournalLog(): string[] {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getActionJournalLog: Map not initialized');
+      return [];
+    }
+    try {
+      return this.nativeMapView.getActionJournalLog();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getActionJournalLog error: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * Clear the action journal log
+   */
+  clearActionJournalLog(): void {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'clearActionJournalLog: Map not initialized');
+      return;
+    }
+    try {
+      this.nativeMapView.clearActionJournalLog();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `clearActionJournalLog error: ${error.message}`);
+    }
+  }
+
+  // ========== Map load status ==========
+
+  /**
+   * Check whether the map is fully loaded
+   * @returns true if the map is fully loaded
+   */
+  isFullyLoaded(): boolean {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'isFullyLoaded: Map not initialized');
+      return false;
+    }
+    try {
+      return this.nativeMapView.isFullyLoaded();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `isFullyLoaded error: ${error.message}`);
+      return false;
+    }
+  }
+
+  // ========== Debug options ==========
+
+  /**
+   * Get current debug options as a bitmask
+   * @returns Bitmask of enabled debug options
+   */
+  getDebug(): number {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getDebug: Map not initialized');
+      return 0;
+    }
+    try {
+      return this.nativeMapView.getDebug();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getDebug error: ${error.message}`);
+      return 0;
+    }
+  }
+
+  /**
+   * Set debug options using a bitmask
+   * @param debugOptions Bitmask of debug options
+   */
+  setDebug(debugOptions: number): void {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'setDebug: Map not initialized');
+      return;
+    }
+    try {
+      this.nativeMapView.setDebug(debugOptions);
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `setDebug error: ${error.message}`);
     }
   }
 

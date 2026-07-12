@@ -32,6 +32,7 @@ export class MapLibreMapOptions {
   public attributionEnabled: boolean = true;
   public logoEnabled: boolean = true;
   public compassEnabled: boolean = true;
+  public scaleBarEnabled: boolean = true;
   // Interaction configuration
   public scrollEnabled: boolean = true;
   public zoomEnabled: boolean = true;
@@ -46,7 +47,11 @@ export class MapLibreMapOptions {
   public prefetchZoomDelta: number = 4;
   public tileCacheEnabled: boolean = true;
   // Tile LOD configuration
+  /** Minimum radius around the view point in tile units where fine-grained zoom level tiles are always used.
+   *  0 = disabled (always use highest LOD). Must be >= 1 when enabled. */
   public tileLodMinRadius: number = 0;
+  /** Factor for the distance to the camera view point.
+   *  A value larger than 1 increases the distance, reducing LOD effect. 1.0 = no scaling (default). */
   public tileLodScale: number = 1.0;
   // Local glyph configuration
   // HarmonyOS font families (priority order):
@@ -63,7 +68,11 @@ export class MapLibreMapOptions {
   // 3. DroidSansFallback.ttf (final fallback)
   public localIdeographFontFamily: string | null = 'HarmonyOS_Sans';
   public localIdeographEnabled: boolean = true;
+  /** Pitch angle in radians above which LOD calculation is performed. 0 = always perform LOD. */
   public tileLodPitchThreshold: number = 0;
+  /** Shift applied to the zoom level during LOD calculation.
+   *  A negative value shifts to coarser levels (reducing quality, improving performance).
+   *  0 = no shift (default). */
   public tileLodZoomShift: number = 0;
   // Lighting
   public light: LightSpecification | null = null;
@@ -133,6 +142,9 @@ export class MapLibreMapOptions {
       }
       if (options.compassEnabled !== undefined) {
         this.compassEnabled = options.compassEnabled;
+      }
+      if (options.scaleBarEnabled !== undefined) {
+        this.scaleBarEnabled = options.scaleBarEnabled;
       }
       if (options.scrollEnabled !== undefined) {
         this.scrollEnabled = options.scrollEnabled;

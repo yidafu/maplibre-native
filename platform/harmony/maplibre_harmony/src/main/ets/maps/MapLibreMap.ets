@@ -88,6 +88,8 @@ import {
   OnWillStartRenderingFrameListener,
   OnWillStartRenderingMapListener
 } from './listeners/MapEventListeners';
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../constants/HiLogConstants';
 
 function logListenerError(eventName: string, message: string): void {
   console.error('MapLibreMap', `${eventName}: ${message}`);
@@ -309,6 +311,38 @@ export class MapLibreMap {
     // The C++ gesture manager detects the tap, extracts coordinates, dispatches via CallbackManager
     // to the JS callback registered here, which then calls _notifyMapClick to notify all ETS listeners.
     this.setupMapClickNativeBridge();
+
+    // Apply prefetch, LOD, and debug settings from MapLibreMapOptions
+    try {
+      if (options.prefetchTiles !== undefined) {
+        this.setPrefetchTiles(options.prefetchTiles);
+      }
+      if (options.prefetchZoomDelta !== undefined) {
+        this.setPrefetchZoomDelta(options.prefetchZoomDelta);
+      }
+      if (options.tileCacheEnabled !== undefined) {
+        this.setTileCacheEnabled(options.tileCacheEnabled);
+      }
+      // LOD settings -- only apply non-default values
+      if (options.tileLodMinRadius !== undefined && options.tileLodMinRadius > 0) {
+        this.setTileLodMinRadius(options.tileLodMinRadius);
+      }
+      if (options.tileLodScale !== undefined && options.tileLodScale !== 1.0) {
+        this.setTileLodScale(options.tileLodScale);
+      }
+      if (options.tileLodPitchThreshold !== undefined && options.tileLodPitchThreshold > 0) {
+        this.setTileLodPitchThreshold(options.tileLodPitchThreshold);
+      }
+      if (options.tileLodZoomShift !== undefined && options.tileLodZoomShift !== 0) {
+        this.setTileLodZoomShift(options.tileLodZoomShift);
+      }
+      if (options.debug !== undefined && options.debug) {
+        this.setDebugActive(true);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      hilog.warn(DOMAIN, 'MapLibreMap', 'Failed to apply initial options: ' + errorMsg);
+    }
   }
 
   /**
@@ -697,6 +731,17 @@ export class MapLibreMap {
    */
   public getUiSettings(): UiSettings {
     return this.uiSettings;
+  }
+
+  /**
+   * Set the UI settings instance.
+   *
+   * Allows the controller to inject its shared UiSettings instance so that
+   * runtime API calls (e.g. map.getUiSettings().setCompassEnabled())
+   * affect the same instance that drives widget rendering in build().
+   */
+  public setUiSettings(uiSettings: UiSettings): void {
+    this.uiSettings = uiSettings;
   }
 
   /**
@@ -3412,11 +3457,10 @@ export class MapLibreMap {
       return;
     }
     const wrapper: OnDidFinishRenderingFrameWithStatsListener = (
-      fully: boolean,
       stats: RenderingStats
     ) => {
       try {
-        listener(fully, stats);
+        listener(stats);
       } catch (error) {
         const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
         logListenerError('OnDidFinishRenderingFrameWithStatsListener', message);

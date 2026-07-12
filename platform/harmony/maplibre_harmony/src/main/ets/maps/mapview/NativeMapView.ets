@@ -6,6 +6,7 @@ import {
   type NativeMapView
 } from './NativeMapViewController';
 import { MapLibreMap } from '../MapLibreMap';
+import { MapLibreMapOptions } from '../MapLibreMapOptions';
 import { Marker } from '../annotations/Marker';
 import { AnnotationViewData } from '../annotations/AnnotationViewManager';
 import { AnnotationViewOverlay } from '../annotations/AnnotationViewOverlay';
@@ -71,6 +72,7 @@ export struct MapView {
   @Prop initialBearing: number = 0;
   @Prop initialPitch: number = 0;
   @Prop debugMode: boolean = false;
+  @Prop mapOptions: MapLibreMapOptions | undefined = undefined;
   @State private viewAnnotationFrames: ViewAnnotationRenderState[] = [];
   // Callbacks
   onMapViewCreated?: (map: MapLibreMap) => void; // Early callback: invoked right after MapLibreMap is created (before style load)
@@ -83,8 +85,12 @@ export struct MapView {
   @Provide('mapLibreMap') mapInstance: MapLibreMap | null = null;
   // UI component state
   @State private compassBearing: number = 0;
-  @State private uiSettingsVersion: number = 0;
   @State private scaleBarMetersPerPixel: number = 0;
+  // Widget visibility state (synced from UiSettings, used in build() for conditional rendering)
+  @State private compassEnabled: boolean = false;
+  @State private logoEnabled: boolean = false;
+  @State private scaleBarEnabled: boolean = true;
+  @State private attributionEnabled: boolean = true;
   // InfoWindow state management
   // AnnotationView state management
   @State private visibleAnnotationViews: AnnotationViewData[] = [];
@@ -214,6 +220,11 @@ export struct MapView {
 
         this.syncInitialCameraProps(true);
 
+        // ✅ Pass user-configured MapLibreMapOptions to the controller
+        if (this.mapOptions) {
+          this.controller.mapOptions = this.mapOptions;
+        }
+
         // ✅ Set the onMapViewCreated callback (fires after the C++ map is created)
         this.controller.onMapViewCreatedCallback = (mapLibreMap: MapLibreMap) => {
           hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapViewCreated callback');
@@ -271,10 +282,6 @@ export struct MapView {
           // The controller also caches it internally.
         });
 
-        this.controller.setUiSettingsUpdateCallback(() => {
-          this.uiSettingsVersion++;
-        });
-
         this.controller.setScaleBarMetersPerPixelUpdateCallback((metersPerPixel: number) => {
           this.scaleBarMetersPerPixel = metersPerPixel;
         });
@@ -291,15 +298,20 @@ export struct MapView {
         });
 
         // Register UiSettings configuration change callbacks
+        // Each callback updates a local @State boolean used in build() for conditional rendering,
+        // ensuring ArkUI's reactive system triggers a proper re-render.
         const uiSettings = this.controller.getUiSettings();
         uiSettings.onCompassConfigChanged = () => {
-          this.uiSettingsVersion++;
+          this.compassEnabled = uiSettings.isCompassEnabled();
         };
         uiSettings.onLogoConfigChanged = () => {
-          this.uiSettingsVersion++;
+          this.logoEnabled = uiSettings.isLogoEnabled();
         };
         uiSettings.onScaleBarConfigChanged = () => {
-          this.uiSettingsVersion++;
+          this.scaleBarEnabled = uiSettings.isScaleBarEnabled();
+        };
+        uiSettings.onAttributionConfigChanged = () => {
+          this.attributionEnabled = uiSettings.isAttributionEnabled();
         };
 
       } else {
@@ -558,10 +570,10 @@ export struct MapView {
         .height('100%')
 
       // Compass component - absolute positioning configured via UiSettings
-      if (this.controller.getUiSettings().isCompassEnabled()) {
+      if (this.compassEnabled) {
         CompassView({
           externalBearing: this.compassBearing,
-          compassEnabled: this.controller.getUiSettings().isCompassEnabled(),
+          compassEnabled: this.compassEnabled,
           compassVisibility: this.controller.getUiSettings().getCompassVisibility(),
           fadeWhenFacingNorth: this.controller.getUiSettings().isCompassFadeWhenFacingNorth(),
           onCompassClick: () => {
@@ -574,9 +586,9 @@ export struct MapView {
       }
 
       // Logo component - absolute positioning configured via UiSettings
-      if (this.controller.getUiSettings().isLogoEnabled()) {
+      if (this.logoEnabled) {
         LogoView({
-          logoEnabled: this.controller.getUiSettings().isLogoEnabled()
+          logoEnabled: this.logoEnabled
         })
           .width(80)
           .height(40)
@@ -584,9 +596,9 @@ export struct MapView {
       }
 
       // Scale bar component - absolute positioning configured via UiSettings
-      if (this.controller.getUiSettings().isScaleBarEnabled()) {
+      if (this.scaleBarEnabled) {
         ScaleBarView({
-          isEnabled: this.controller.getUiSettings().isScaleBarEnabled(),
+          isEnabled: this.scaleBarEnabled,
           metersPerPixel: this.scaleBarMetersPerPixel,
           unitSystem: this.controller.getUiSettings().getScaleBarUnit(),
           useDarkStyles: this.controller.getUiSettings().isScaleBarUseDarkStyles()
@@ -595,9 +607,9 @@ export struct MapView {
       }
 
       // Attribution button - absolute positioning configured via UiSettings
-      if (this.controller.getUiSettings().isAttributionEnabled()) {
+      if (this.attributionEnabled) {
         AttributionButton({
-          isEnabled: this.controller.getUiSettings().isAttributionEnabled(),
+          isEnabled: this.attributionEnabled,
           attributions: this.getAttributions()
         })
           .width(40)
@@ -1267,26 +1279,6 @@ export struct MapView {
   }
 
   /**
-   * Get the current debug options
-   *
-   * @returns Bitmask of the currently enabled debug options
-   */
-  getDebug(): number {
-    const mapView = this.controller.getMapView();
-    if (!mapView) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'getDebug: Native map view not initialized');
-      return 0;
-    }
-    try {
-      return mapView.getDebug();
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      hilog.error(DOMAIN, 'NativeMapView', `getDebug failed: ${errorMsg}`);
-      return 0;
-    }
-  }
-
-  /**
    * Toggle debug mode quickly (uses the default option set)
    * When enabled, shows tile boundaries, tile info, and collision boxes
    *
@@ -1332,5 +1324,108 @@ export struct MapView {
       hilog.error(DOMAIN, 'NativeMapView', `isDebugActive failed: ${errorMsg}`);
       return false;
     }
+  }
+
+  // ========== Prefetch tile getters ==========
+
+  /**
+   * Check whether tile prefetching is enabled
+   */
+  getPrefetchTiles(): boolean {
+    return this.controller.getPrefetchTiles();
+  }
+
+  /**
+   * Get the current prefetch zoom delta
+   */
+  getPrefetchZoomDelta(): number {
+    return this.controller.getPrefetchZoomDelta();
+  }
+
+  // ========== Tile LOD getters ==========
+
+  /**
+   * Get the minimum LOD radius
+   */
+  getTileLodMinRadius(): number {
+    return this.controller.getTileLodMinRadius();
+  }
+
+  /**
+   * Get the LOD scale factor
+   */
+  getTileLodScale(): number {
+    return this.controller.getTileLodScale();
+  }
+
+  /**
+   * Get the LOD pitch threshold
+   */
+  getTileLodPitchThreshold(): number {
+    return this.controller.getTileLodPitchThreshold();
+  }
+
+  /**
+   * Get the LOD zoom shift
+   */
+  getTileLodZoomShift(): number {
+    return this.controller.getTileLodZoomShift();
+  }
+
+  // ========== Rendering stats ==========
+
+  /**
+   * Check whether rendering stats view is enabled
+   */
+  isRenderingStatsViewEnabled(): boolean {
+    return this.controller.isRenderingStatsViewEnabled();
+  }
+
+  /**
+   * Enable or disable rendering stats view
+   */
+  enableRenderingStatsView(enabled: boolean): void {
+    this.controller.enableRenderingStatsView(enabled);
+  }
+
+  // ========== Action journal ==========
+
+  /**
+   * Get action journal log file paths
+   */
+  getActionJournalLogFiles(): string[] {
+    return this.controller.getActionJournalLogFiles();
+  }
+
+  /**
+   * Get action journal log entries
+   */
+  getActionJournalLog(): string[] {
+    return this.controller.getActionJournalLog();
+  }
+
+  /**
+   * Clear the action journal log
+   */
+  clearActionJournalLog(): void {
+    this.controller.clearActionJournalLog();
+  }
+
+  // ========== Map load status ==========
+
+  /**
+   * Check whether the map is fully loaded
+   */
+  isFullyLoaded(): boolean {
+    return this.controller.isFullyLoaded();
+  }
+
+  // ========== Debug options ==========
+
+  /**
+   * Get current debug options as a bitmask
+   */
+  getDebug(): number {
+    return this.controller.getDebug();
   }
 }

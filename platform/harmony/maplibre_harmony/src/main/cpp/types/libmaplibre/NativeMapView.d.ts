@@ -123,7 +123,7 @@ export interface RenderingStats {
   frameRenderingTime: number;
 }
 
-export type OnDidFinishRenderingFrameWithStatsListener = (fully: boolean, stats: RenderingStats) => void;
+export type OnDidFinishRenderingFrameWithStatsListener = (stats: RenderingStats) => void;
 
 export type OnWillStartRenderingMapListener = () => void;
 
