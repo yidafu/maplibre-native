@@ -1,4 +1,5 @@
 import { InfoWindowAdapter, LatLng, MapLibreMap, Marker, MarkerOptions, MapView, OnInfoWindowClickListener, OnInfoWindowCloseListener } from 'maplibre_harmony';
+import { ComponentContent, UIContext } from '@kit.ArkUI';
 import { TestPageLayout } from '../common/TestPageLayout';
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
@@ -204,11 +205,13 @@ struct CustomInfoWindowTestPage {
           .fontColor('#333333')
 
         Text(`
-// 自定义 InfoWindow 构建器示例
+// 自定义 InfoWindow 适配器示例 (ComponentContent)
+import { ComponentContent, UIContext } from '@kit.ArkUI';
+
 map.setInfoWindowAdapter({
-  getInfoWindow: (marker: Marker) => {
-    return () => {
-      // 自定义 UI 组件
+  getInfoWindow: (marker: Marker, uiContext: UIContext) => {
+    const content = new ComponentContent(uiContext);
+    content.update(() => {
       Column() {
         Text(marker.getTitle())
         Text(marker.getSnippet())
@@ -216,7 +219,8 @@ map.setInfoWindowAdapter({
       .padding(12)
       .backgroundColor('#2196F3')
       .borderRadius(8)
-    }
+    });
+    return content;
   }
 });
 
@@ -244,11 +248,11 @@ map.setOnInfoWindowClickListener({
           .fontColor('#333333')
 
         Column({ space: 4 }) {
-          Text('• 使用 WrapBuilder 包装自定义构建器')
+          Text('• 使用 ComponentContent 创建动态 InfoWindow')
             .fontSize(12)
             .fontColor('#666666')
 
-          Text('• 实现尺寸变化回调以优化布局')
+          Text('• 在 content.update() 中构建自定义 UI')
             .fontSize(12)
             .fontColor('#666666')
 
@@ -339,7 +343,7 @@ map.setOnInfoWindowClickListener({
     this.markers = await map.addMarkersBatch(options);
   }
 
-  // Setup custom InfoWindow adapter with multiple builder types
+  // Setup custom InfoWindow adapter with multiple builder types using ComponentContent
   private setupCustomAdapter(map: MapLibreMap): void {
     class CustomInfoWindowBuilderAdapter implements InfoWindowAdapter {
       page: CustomInfoWindowTestPage;
@@ -348,7 +352,7 @@ map.setOnInfoWindowClickListener({
         this.page = page;
       }
 
-      getInfoWindow(marker: Marker): (() => void) | null {
+      getInfoWindow(marker: Marker, uiContext: UIContext): ComponentContent | null {
         const title = marker.getTitle();
         const markerData = title ?
           Array.from(this.page.customMarkerData.values()).find((d: CustomMarkerData) => d.title === title) : null;
@@ -357,9 +361,12 @@ map.setOnInfoWindowClickListener({
           return null; // Use default InfoWindow for unknown markers
         }
 
-        return () => {
+        // Create ComponentContent that uses the pre-defined @Builder functions
+        const content = new ComponentContent(uiContext);
+        content.update(() => {
           this.page.renderCustomInfoWindow(marker, markerData);
-        };
+        });
+        return content;
       }
     }
 

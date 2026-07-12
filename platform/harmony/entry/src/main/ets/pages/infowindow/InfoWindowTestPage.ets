@@ -82,9 +82,11 @@ struct InfoWindowTestPage {
       
       onMarkerClick(marker: Marker): boolean {
         console.info(`[InfoWindowTest] Marker clicked: ${marker.getTitle()}`);
-        this.mapController.selectMarker(marker, true);
-        // showToast(`显示 InfoWindow: ${marker.getTitle()}`); // 移除 Toast，避免误导
-        return false; // false 会自动显示 InfoWindow
+        // Do NOT call selectMarker() here — return false so the default
+        // MarkerManager.handleMarkerClick() handles selection + InfoWindow.
+        // Calling selectMarker() AND returning false causes double invocation:
+        // the 2nd call's deselectMarkers() removes the InfoWindow just created.
+        return false; // false triggers default behavior: select + show InfoWindow
       }
     }
     

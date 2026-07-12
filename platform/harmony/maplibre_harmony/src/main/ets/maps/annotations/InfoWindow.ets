@@ -1,9 +1,7 @@
 import { Marker } from './Marker';
 import { CenterOffset } from './AnnotationView';
-import {
-  InfoWindowBuilderContext,
-  InfoWindowWrappedBuilder,
-  ViewAnnotationWrappedBuilder as ctx } from './ViewAnnotationTypes';
+import type { InfoWindowBuilderContext } from './ViewAnnotationTypes';
+import { ComponentContent } from '@kit.ArkUI';
 
 /**
  * InfoWindow size info
@@ -51,7 +49,6 @@ export interface InfoWindowLayoutOptions {
   zIndex?: number;
 }
 
-
 export interface InfoWindowRenderContext {
   onWindowClick?: () => void;
   onLongClick?: () => void;
@@ -60,7 +57,46 @@ export interface InfoWindowRenderContext {
 }
 
 /**
+ * InfoWindowRenderParams - data passed to the default ComponentContent for rendering.
+ */
+export interface InfoWindowRenderParams {
+  markerId: number;
+  title: string;
+  snippet: string;
+  style: InfoWindowStyle;
+  onClick?: () => void;
+  onLongClick?: () => void;
+  onClose?: () => void;
+  onSizeChanged?: (width: number, height: number) => void;
+}
+
+/**
+ * Default @Builder for rendering an InfoWindow via the ComponentContent pipeline.
+ *
+ * Wrapped via wrapBuilder<[InfoWindowRenderParams]> and passed to the
+ * ComponentContent constructor so the ArkUI framework can instantiate
+ * the InfoWindowComponent with the correct parameters.
+ */
+@Builder
+function infoWindowDefaultBuilder(params: InfoWindowRenderParams) {
+  InfoWindowComponent({
+    markerId: params.markerId,
+    markerTitle: params.title,
+    markerSnippet: params.snippet,
+    arrowOffsetX: 0,
+    customStyle: params.style,
+    onWindowClick: params.onClick,
+    onLongClick: params.onLongClick,
+    onClose: params.onClose,
+    onSizeChanged: params.onSizeChanged,
+  });
+}
+
+/**
  * InfoWindow - ViewAnnotation-backed InfoWindow descriptor.
+ *
+ * Each InfoWindow wraps a Marker and manages its own style, layout options,
+ * and ComponentContent for rendering via the ViewAnnotation pipeline.
  */
 export class InfoWindow {
   private readonly marker: Marker;
@@ -76,14 +112,15 @@ export class InfoWindow {
     anchorV: 1.0,
     zIndex: undefined
   };
-  private customWrappedBuilder: InfoWindowWrappedBuilder | null = null
-  private renderContext: InfoWindowRenderContext
-  constructor(marker: Marker,  renderContext: InfoWindowRenderContext,style?: InfoWindowStyle,customWrappedBuilder?: InfoWindowWrappedBuilder) {
+  private customComponentContent: ComponentContent<InfoWindowRenderParams> | null = null;
+  private renderContext: InfoWindowRenderContext;
+
+  constructor(marker: Marker, renderContext: InfoWindowRenderContext, style?: InfoWindowStyle, customComponentContent?: ComponentContent<InfoWindowRenderParams>) {
     this.marker = marker;
     this.style = this.mergeStyle(style ?? {});
-    this.renderContext = renderContext
-    if (customWrappedBuilder) {
-      this.customWrappedBuilder = customWrappedBuilder
+    this.renderContext = renderContext;
+    if (customComponentContent) {
+      this.customComponentContent = customComponentContent;
     }
   }
 
@@ -95,13 +132,14 @@ export class InfoWindow {
     return this.style;
   }
 
-  public setStyle(style: InfoWindowStyle): void {
+  public setStyle(style: InfoWindowStyle): InfoWindow {
     this.style = this.mergeStyle(style);
     this.width = 0;
     this.height = 0;
+    return this;
   }
 
-  public setLayoutOptions(options: InfoWindowLayoutOptions): void {
+  public setLayoutOptions(options: InfoWindowLayoutOptions): InfoWindow {
     this.layoutOptions = {
       centerOffset: options.centerOffset ? { dx: options.centerOffset.dx, dy: options.centerOffset.dy } : undefined,
       anchorHeight: options.anchorHeight ?? this.layoutOptions.anchorHeight,
@@ -109,6 +147,7 @@ export class InfoWindow {
       anchorV: options.anchorV ?? this.layoutOptions.anchorV ?? 1.0,
       zIndex: options.zIndex ?? undefined
     };
+    return this;
   }
 
   public getLayoutOptions(): InfoWindowLayoutOptions {
@@ -251,76 +290,79 @@ export class InfoWindow {
     return merged;
   }
 
-  getWrappedBuilder(): InfoWindowWrappedBuilder {
-    if (!this.customWrappedBuilder) {
-      return INFO_WINDOW_WRAPPED_BUILDER_INSTANCE
+  /**
+   * Get the ComponentContent for rendering this InfoWindow.
+   *
+   * Returns the custom ComponentContent if set via adapter or setCustomComponentContent(),
+   * otherwise creates and returns the default ComponentContent using the provided UIContext.
+   *
+   * @param uiContext UIContext required to create a ComponentContent (used only for default).
+   * @returns The ComponentContent to render, or null if UIContext is missing for default.
+   */
+  public getComponentContent(uiContext: UIContext): ComponentContent<InfoWindowRenderParams> | null {
+    if (this.customComponentContent) {
+      return this.customComponentContent;
     }
-    return this.customWrappedBuilder
+    // Create default ComponentContent on demand
+    return InfoWindow.createDefaultComponentContent(this, uiContext);
   }
 
-  getRenderContext(): InfoWindowRenderContext {
+  /**
+   * Set a custom ComponentContent for this InfoWindow.
+   * Pass null to revert to the default rendering.
+   */
+  public setCustomComponentContent(content: ComponentContent<InfoWindowRenderParams> | null): void {
+    this.customComponentContent = content;
+  }
+
+  /**
+   * Get the currently set custom ComponentContent (may be null).
+   */
+  public getCustomComponentContent(): ComponentContent<InfoWindowRenderParams> | null {
+    return this.customComponentContent;
+  }
+
+  public getRenderContext(): InfoWindowRenderContext {
     return this.renderContext;
   }
 
-  public setCustomWrappedBuilder(builder: InfoWindowWrappedBuilder | null): void {
-    this.customWrappedBuilder = builder;
-  }
+  /**
+   * Create the default ComponentContent for an InfoWindow.
+   *
+   * This factory method wraps the default InfoWindowComponent in a ComponentContent
+   * so that all InfoWindows (default and custom) use the same rendering pipeline.
+   *
+   * @param infoWindow The InfoWindow descriptor.
+   * @param uiContext UIContext from the page/component scope.
+   * @returns A ComponentContent rendering the default InfoWindow UI.
+   */
+  static createDefaultComponentContent(infoWindow: InfoWindow, uiContext: UIContext): ComponentContent<InfoWindowRenderParams> {
+    const renderParams: InfoWindowRenderParams = {
+      markerId: infoWindow.marker.getId(),
+      title: infoWindow.marker.getTitle() || '',
+      snippet: infoWindow.marker.getSnippet() || '',
+      style: infoWindow.style,
+      onClick: infoWindow.renderContext.onWindowClick,
+      onLongClick: infoWindow.renderContext.onLongClick,
+      onClose: infoWindow.renderContext.onClose,
+      onSizeChanged: infoWindow.renderContext.onSizeChanged,
+    };
 
-  public getCustomWrappedBuilder(): InfoWindowWrappedBuilder | null {
-    return this.customWrappedBuilder;
-  }
-}
+    const content = new ComponentContent<InfoWindowRenderParams>(
+      uiContext,
+      wrapBuilder<[InfoWindowRenderParams]>(infoWindowDefaultBuilder),
+      renderParams
+    );
 
-const INFO_WINDOW_WRAPPED_BUILDER_INSTANCE: ctx<InfoWindowBuilderContext> =
-  wrapBuilder<[InfoWindowBuilderContext]>(RenderDefaultInfoWindow);
-
-@Builder
-export function RenderDefaultInfoWindow(ctx: InfoWindowBuilderContext): void {
-  DefaultInfoWindowHost({
-    markerId: ctx.markerId,
-    markerTitle: ctx.title,
-    markerSnippet: ctx.content,
-    style: ctx.infoWindow.getStyle(),
-    context: ctx.builderContext,
-    notifySizeChanged: ctx.notifySizeChanged
-  });
-}
-
-
-@Component
-struct DefaultInfoWindowHost {
-  @Prop markerId: number = 0;
-  @Prop markerTitle: string = '';
-  @Prop markerSnippet: string = '';
-  @Prop style: InfoWindowStyle;
-  @Prop context: InfoWindowRenderContext;
-  @Prop notifySizeChanged: (width: number, height: number) => void;
-
-  build() {
-    InfoWindowComponent({
-      markerId: this.markerId,
-      markerTitle: this.markerTitle,
-      markerSnippet: this.markerSnippet,
-      arrowOffsetX: 0,
-      customStyle: this.style,
-      onWindowClick: () => {
-        this.context.onWindowClick?.();
-      },
-      onLongClick: () => {
-        this.context.onLongClick?.();
-      },
-      onClose: () => {
-        this.context.onClose?.();
-      },
-      onSizeChanged: (width: number, height: number) => {
-        this.notifySizeChanged?.(width, height);
-      }
-    });
+    return content;
   }
 }
 
 /**
  * InfoWindowComponent - Default InfoWindow UI component.
+ *
+ * Used by the default ComponentContent factory to render standard InfoWindows.
+ * Custom adapters can create entirely different UIs via their own ComponentContent.
  */
 @Component
 export struct InfoWindowComponent {
@@ -451,6 +493,7 @@ export struct InfoWindowComponent {
       .margin({ top: -1 })
     }
     .alignItems(HorizontalAlign.Center)
+    .constraintSize({ maxWidth: (this.customStyle?.maxWidth ?? 240) })
     .opacity(this.windowOpacity)
     .scale({ x: this.windowScale, y: this.windowScale })
     .animation({ duration: 250, curve: Curve.EaseOut })

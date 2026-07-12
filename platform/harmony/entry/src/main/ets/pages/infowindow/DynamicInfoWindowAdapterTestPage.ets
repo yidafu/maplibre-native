@@ -1,23 +1,66 @@
 import { InfoWindowAdapter, LatLng, MapLibreMap, MarkerOptions, MapView, OnInfoWindowClickListener, Marker } from 'maplibre_harmony';
+import { ComponentContent, UIContext } from '@kit.ArkUI';
 /**
  * Dynamic Info Window Adapter Activity
- * 动态自定义信息窗口测试
- * 参考 Android: DynamicInfoWindowAdapterActivity
+ * Dynamic custom InfoWindow test using ComponentContent
+ * References: Android - DynamicInfoWindowAdapterActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+
+/**
+ * Data passed to the dynamic InfoWindow @Builder via ComponentContent.
+ */
+interface DynamicInfoWindowData {
+  title: string;
+  updateCount: number;
+  backgroundColor: string;
+}
+
+/**
+ * @Builder for the dynamic InfoWindow UI.
+ * Receives DynamicInfoWindowData via ComponentContent's WrappedBuilder parameter.
+ */
+@Builder
+function dynamicInfoWindowBuilder(params: DynamicInfoWindowData) {
+  Column({ space: 6 }) {
+    Text(`${params.title} [${params.updateCount}]`)
+      .fontSize(16)
+      .fontWeight(FontWeight.Bold)
+      .fontColor('#FFFFFF')
+      .maxLines(1)
+
+    Text(`更新次数: ${params.updateCount}`)
+      .fontSize(12)
+      .fontColor('#E0E0E0')
+
+    Text('点击窗口更改颜色')
+      .fontSize(10)
+      .fontColor('#B3E5FC')
+      .margin({ top: 4 })
+  }
+  .padding(12)
+  .backgroundColor(params.backgroundColor)
+  .borderRadius(8)
+  .shadow({
+    radius: 6,
+    color: 'rgba(0, 0, 0, 0.25)',
+    offsetX: 0,
+    offsetY: 2
+  })
+}
 
 @Entry
 @Component
 struct DynamicInfoWindowAdapterTestPage {
   private mapController: MapLibreMap | null = null;
   @State private updateCount: number = 0;
-  
+
   build() {
     Column() {
     TestPageLayout({
       title: 'Dynamic InfoWindow',
-      description: '动态更新信息窗口内容',
+      description: '动态更新信息窗口内容 (ComponentContent)',
       showActionBar: true,
       mapContent: (): void => this.buildMapContent(),
       actionButtons: (): void => this.buildActionButtons()
@@ -37,14 +80,14 @@ struct DynamicInfoWindowAdapterTestPage {
       onMapReady: async (map: MapLibreMap) => {
         this.mapController = map;
         map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 12);
-        
-        // 添加标记
+
+        // Add marker
         await map.addMarker(new MarkerOptions()
           .position(TEST_LOCATIONS.beijing)
           .title('动态窗口')
           .snippet('点击窗口更新内容')
         );
-        
+
         this.setupAdapter(map);
         this.setupListeners(map);
       }
@@ -54,26 +97,30 @@ struct DynamicInfoWindowAdapterTestPage {
   private setupAdapter(map: MapLibreMap): void {
     class DynamicAdapter implements InfoWindowAdapter {
       page: DynamicInfoWindowAdapterTestPage;
-      
+
       constructor(page: DynamicInfoWindowAdapterTestPage) {
         this.page = page;
       }
-      
-      getInfoWindow(marker: Marker): ESObject {
+
+      getInfoWindow(marker: Marker, uiContext: UIContext): ComponentContent<Object> | null {
         const colors = ['#6200EE', '#03DAC5', '#BB86FC', '#018786']
         const randomColor = colors[this.page.updateCount % colors.length]
-        
-        const viewData: Record<string, Object> = {
-          'title': `${marker.getTitle()} [${this.page.updateCount}]`,
-          'snippet': `更新次数: ${this.page.updateCount}`,
-          'backgroundColor': randomColor,
-          'titleColor': '#FFFFFF',
-          'snippetColor': '#E0E0E0'
+
+        const data: DynamicInfoWindowData = {
+          title: marker.getTitle() || '',
+          updateCount: this.page.updateCount,
+          backgroundColor: randomColor,
         };
-        return viewData as ESObject;
+
+        const content = new ComponentContent<DynamicInfoWindowData>(
+          uiContext,
+          wrapBuilder<[DynamicInfoWindowData]>(dynamicInfoWindowBuilder),
+          data
+        );
+        return content;
       }
     }
-    
+
     map.setInfoWindowAdapter(new DynamicAdapter(this));
   }
 
@@ -81,15 +128,15 @@ struct DynamicInfoWindowAdapterTestPage {
     class InfoWindowClickListener implements OnInfoWindowClickListener {
       page: DynamicInfoWindowAdapterTestPage;
       map: MapLibreMap;
-      
+
       constructor(page: DynamicInfoWindowAdapterTestPage, map: MapLibreMap) {
         this.page = page;
         this.map = map;
       }
-      
+
       onInfoWindowClick(marker: Marker): boolean {
         this.page.updateCount++;
-        // 重新显示 InfoWindow 以刷新内容
+        // Re-show InfoWindow to refresh content with new ComponentContent
         this.map.hideInfoWindow(marker);
         setTimeout(() => {
           this.map.showInfoWindow(marker);
@@ -98,7 +145,7 @@ struct DynamicInfoWindowAdapterTestPage {
         return true;
       }
     }
-    
+
     map.setOnInfoWindowClickListener(new InfoWindowClickListener(this, map));
   }
 
