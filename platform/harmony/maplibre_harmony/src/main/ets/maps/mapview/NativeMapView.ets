@@ -265,6 +265,12 @@ export struct MapView {
           this.compassBearing = bearing;
         });
 
+        this.controller.setPitchUpdateCallback((pitch: number) => {
+          // Pitch is used by the AnnotationViewOverlay; cache it to
+          // avoid a NAPI call in the build() path every frame.
+          // The controller also caches it internally.
+        });
+
         this.controller.setUiSettingsUpdateCallback(() => {
           this.uiSettingsVersion++;
         });
@@ -603,7 +609,7 @@ export struct MapView {
       AnnotationViewOverlay({
         visibleAnnotationViews: this.visibleAnnotationViews,
         mapBearing: this.compassBearing,
-        mapPitch: this.controller.getPitch(),
+        mapPitch: this.controller.getCachedPitch(),
         screenWidth: this.controller.getWidth(),
         screenHeight: this.controller.getHeight(),
         onAnnotationSelect: (marker: Marker) => {
@@ -640,16 +646,8 @@ export struct MapView {
           try {
             const mapView = this.controller.getMapView();
             if (mapView) {
-              let pixelRatio = 1;
-              try {
-                const candidate = mapView.getPixelRatio?.();
-                if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) {
-                  pixelRatio = candidate;
-                }
-              } catch (ratioError) {
-                const reason = ratioError instanceof Error ? ratioError.message : `${ratioError}`;
-                this.logNativeMapViewError('latLngForPixel pixelRatio read error', reason);
-              }
+              // Use cached pixel ratio from controller to avoid NAPI call per drag frame
+              const pixelRatio = this.controller.getCachedPixelRatio();
 
               const physicalX = screenX * pixelRatio;
               const physicalY = screenY * pixelRatio;

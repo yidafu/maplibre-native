@@ -162,6 +162,17 @@ interface MapClickPosition {
   y: number;
 }
 
+/**
+ * Batch camera state returned by getCameraState().
+ * Combines all camera parameters in one object to minimize NAPI calls.
+ */
+export interface CameraState {
+  bearing: number;
+  latitude: number;
+  longitude: number;
+  zoom: number;
+  pitch: number;
+}
 
 export class MapLibreMap {
   private nativeMapView: NativeMapView;
@@ -496,21 +507,22 @@ export class MapLibreMap {
    * @private
    */
   private setupNativeCameraCallbacks(): void {
-    // Camera move started callback (Android style)
-    // TODO: Switch to listening for onCameraWillChange and convert in ETS
-    this.nativeMapView.addOnCameraMoveStartedListener((reason: number) => {
-      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
+    // Camera move started callback — translated from native onCameraWillChange
+    // Native callback provides 'animated' boolean; map to CameraMoveReason:
+    //   animated=true  → DEVELOPER_ANIMATION (3)
+    //   animated=false → GESTEST (1)
+    this.nativeMapView.addOnCameraWillChangeListener((animated: boolean) => {
+      const reason = animated ? CameraMoveReason.DEVELOPER_ANIMATION : CameraMoveReason.GESTURE;
+      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason);
     });
 
-    // Camera moving callback (Android style)
-    // TODO: Switch to listening for onCameraIsChanging and convert in ETS
-    this.nativeMapView.addOnCameraMoveListener(() => {
+    // Camera moving callback — translated from native onCameraIsChanging
+    this.nativeMapView.addOnCameraIsChangingListener(() => {
       this.cameraChangeDispatcher.notifyCameraMove();
     });
 
-    // Camera idle callback (Android style)
-    // TODO: Switch to listening for onCameraDidChange and convert in ETS
-    this.nativeMapView.addOnCameraIdleListener(() => {
+    // Camera idle callback — translated from native onCameraDidChange
+    this.nativeMapView.addOnCameraDidChangeListener(() => {
       this.cameraChangeDispatcher.notifyCameraIdle();
     });
   }
@@ -1236,6 +1248,30 @@ export class MapLibreMap {
     }
     const nativeLatLng: maplibre.LatLng = this.nativeMapView.getLatLng();
     return LatLng.fromNative(nativeLatLng);
+  }
+
+  /**
+   * Get all camera parameters (bearing, center, zoom, pitch) in a single NAPI call.
+   * Use instead of separate getBearing() / getLatLng() / getZoom() / getPitch() calls
+   * to minimize cross-boundary overhead.
+   */
+  public getCameraState(): CameraState {
+    if (this.destroyed) {
+      return { bearing: 0, latitude: 0, longitude: 0, zoom: 0, pitch: 0 };
+    }
+    const state = this.nativeMapView.getCameraState() as CameraState | undefined;
+    if (state) {
+      return state;
+    }
+    // Fallback: assemble from individual NAPI calls if batch method unavailable
+    const latLng = this.getLatLng();
+    return {
+      bearing: this.getBearing(),
+      latitude: latLng.latitude,
+      longitude: latLng.longitude,
+      zoom: this.getZoom(),
+      pitch: this.getPitch()
+    };
   }
 
   public setLatLng(latitude: number, longitude: number, padding?: number[], duration?: number): void {

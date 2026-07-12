@@ -33,7 +33,7 @@ void NativeMapView::runOnRenderThread(std::function<void()>&& fn) {
 
 void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this, mode]() {
@@ -45,23 +45,11 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
                     napi_get_boolean(env, animated, &argv[0]);
                     return argv[0];
                 });
-                
-                // TODO: Move the Android-style callback mapping to the ETS layer
-                // Temporary approach: trigger Android-style callbacks directly in C++
-                // Long-term approach: listen to onCameraWillChange in NativeMapView.ets and translate it to onCameraMoveStarted
-                // 🔧 Trigger the Android-style onCameraMoveStarted callback
-                // reason: 3=DEVELOPER_ANIMATION (animation), 1=GESTURE (gesture)
-                int reason = animated ? 3 : 1;
-                callbackManager_->InvokeCallback("onCameraMoveStarted", [reason](napi_env env) {
-                    napi_value argv[1];
-                    napi_create_int32(env, reason, &argv[0]);
-                    return argv[0];
-                });
             }
         });
         return;
     }
-    
+
     // Notify listeners
     if (callbackManager_) {
         bool animated = (mode == MapObserver::CameraChangeMode::Animated);
@@ -70,56 +58,32 @@ void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
             napi_get_boolean(env, animated, &argv[0]);
             return argv[0];
         });
-        
-        // TODO: Move the Android-style callback mapping to the ETS layer
-        // Temporary approach: trigger Android-style callbacks directly in C++
-        // Long-term approach: listen to onCameraWillChange in NativeMapView.ets and translate it to onCameraMoveStarted
-        // 🔧 Trigger the Android-style onCameraMoveStarted callback
-        // reason: 3=DEVELOPER_ANIMATION (animation), 1=GESTURE (gesture)
-        int reason = animated ? 3 : 1;
-        callbackManager_->InvokeCallback("onCameraMoveStarted", [reason](napi_env env) {
-            napi_value argv[1];
-            napi_create_int32(env, reason, &argv[0]);
-            return argv[0];
-        });
     }
 }
 
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
-                
-                // TODO: Move the Android-style callback mapping to the ETS layer
-                // Temporary approach: trigger Android-style callbacks directly in C++
-                // Long-term approach: listen to onCameraIsChanging in NativeMapView.ets and translate it to onCameraMove
-                // 🔧 Trigger the Android-style onCameraMove callback
-                callbackManager_->InvokeCallbackEmpty("onCameraMove");
             }
         });
         return;
     }
-    
+
     // Notify listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
-        
-        // TODO: Move the Android-style callback mapping to the ETS layer
-        // Temporary approach: trigger Android-style callbacks directly in C++
-        // Long-term approach: listen to onCameraIsChanging in NativeMapView.ets and translate it to onCameraMove
-        // 🔧 Trigger the Android-style onCameraMove callback
-        callbackManager_->InvokeCallbackEmpty("onCameraMove");
     }
 }
 
 void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this, mode]() {
@@ -131,17 +95,11 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
                     napi_get_boolean(env, animated, &argv[0]);
                     return argv[0];
                 });
-                
-                // TODO: Move the Android-style callback mapping to the ETS layer
-                // Temporary approach: trigger Android-style callbacks directly in C++
-                // Long-term approach: listen to onCameraDidChange in NativeMapView.ets and translate it to onCameraIdle
-                // 🔧 Trigger the Android-style onCameraIdle callback
-                callbackManager_->InvokeCallbackEmpty("onCameraIdle");
             }
         });
         return;
     }
-    
+
     // Notify listeners
     if (callbackManager_) {
         bool animated = (mode == MapObserver::CameraChangeMode::Animated);
@@ -150,14 +108,8 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
             napi_get_boolean(env, animated, &argv[0]);
             return argv[0];
         });
-        
-        // TODO: Move the Android-style callback mapping to the ETS layer
-        // Temporary approach: trigger Android-style callbacks directly in C++
-        // Long-term approach: listen to onCameraDidChange in NativeMapView.ets and translate it to onCameraIdle
-        // 🔧 Trigger the Android-style onCameraIdle callback
-        callbackManager_->InvokeCallbackEmpty("onCameraIdle");
     }
-    
+
     // MapLibre already handles render timing internally (via triggerRepaint)
     // No additional render request is required here; otherwise it leads to over-rendering
 }

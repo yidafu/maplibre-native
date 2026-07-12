@@ -161,8 +161,11 @@ export class NativeMapViewController extends XComponentController implements Nat
   // Gesture recognition is now handled by C++ NativeGestureManager (Phase 3)
   // UI component state hooks
   private compassBearingUpdateCallback?: (bearing: number) => void;
+  private pitchUpdateCallback?: (pitch: number) => void;
   private uiSettingsUpdateCallback?: () => void;
   private lastCompassBearing: number = 0;
+  /** Cached pitch to avoid NAPI calls during ArkUI rebuilds */
+  private cachedPitch: number = 0;
   private isDestroying: boolean = false;
   // UIContext for FrameNode lookup (used by native gesture setup and InfoWindow features)
   private uiContext?: UIContext;
@@ -235,15 +238,6 @@ export class NativeMapViewController extends XComponentController implements Nat
         hilog.error(DOMAIN, 'NativeMapView', 'mapView is null after initialization');
         return;
       }
-
-      // Phase 3: Gesture recognition is handled by C++ NativeGestureManager
-
-      // Register camera listener to update compass and annotation views
-      this.nativeMapView.addOnCameraMoveListener(() => {
-        // TODO: need bearing parameter
-        this.updateCompassBearing(0.0);
-        this.updateAnnotationViews();
-      });
 
       // ========== Register internal callbacks with C++ layer ==========
       // Note: User event listeners are managed directly by C++ CallbackManager.
@@ -320,9 +314,8 @@ export class NativeMapViewController extends XComponentController implements Nat
       // Shader, Glyph, Sprite, Tile) are now dispatched directly by C++ CallbackManager.
       // No bridge callbacks needed here.
 
-      // Perform initial compass update
-      // TODO: need bearing parameter
-      this.updateCompassBearing(0);
+      // Initial pitch cache (avoid NAPI call during first build())
+      this.cacheCurrentPitch();
 
       // ⚠️ Note: onMapReady callback moved to OnDidFinishLoadingStyleListener
       // Ensures the style is fully loaded before firing, preventing "Style not loaded" errors
@@ -743,16 +736,28 @@ export class NativeMapViewController extends XComponentController implements Nat
    */
   getPixelRatio(): number {
     if (!this.nativeMapView || !this.isInitialized) {
-      hilog.warn(DOMAIN, 'NativeMapView', 'getPixelRatio: Map not initialized');
       return 1.0;
     }
 
     try {
-      return this.nativeMapView.getPixelRatio() as number;
+      const ratio = this.nativeMapView.getPixelRatio() as number;
+      if (typeof ratio === 'number' && Number.isFinite(ratio) && ratio > 0) {
+        this.pixelRatio = ratio;
+      }
+      return ratio;
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `getPixelRatio error: ${error.message}`);
       return 1.0;
     }
+  }
+
+  /**
+   * Get cached pixel ratio without NAPI call
+   * Returns the last known value; may be slightly stale if device DPI changes at runtime
+   * @returns Cached pixel ratio
+   */
+  getCachedPixelRatio(): number {
+    return this.pixelRatio > 0 ? this.pixelRatio : this.getPixelRatio();
   }
 
   /**
@@ -882,6 +887,20 @@ export class NativeMapViewController extends XComponentController implements Nat
   }
 
   /**
+   * Set pitch update callback (used by NativeMapView to cache pitch for build())
+   */
+  setPitchUpdateCallback(callback: (pitch: number) => void): void {
+    this.pitchUpdateCallback = callback;
+  }
+
+  /**
+   * Get cached pitch value (avoids NAPI call during ArkUI rebuilds)
+   */
+  getCachedPitch(): number {
+    return this.cachedPitch;
+  }
+
+  /**
    * Set UI settings update callback
    */
   setUiSettingsUpdateCallback(callback: () => void): void {
@@ -943,6 +962,28 @@ export class NativeMapViewController extends XComponentController implements Nat
 
     if (resolvedBearing !== undefined) {
       this.compassBearingUpdateCallback(resolvedBearing);
+    }
+  }
+
+  /**
+   * Cache current pitch from native map view
+   * Called on camera move to avoid NAPI calls during build() re-execution
+   */
+  private cacheCurrentPitch(): void {
+    if (!this.nativeMapView || !this.isInitialized) {
+      return;
+    }
+
+    try {
+      const pitch: number = this.nativeMapView.getPitch();
+      if (typeof pitch === 'number' && Number.isFinite(pitch)) {
+        this.cachedPitch = pitch;
+        if (this.pitchUpdateCallback) {
+          this.pitchUpdateCallback(pitch);
+        }
+      }
+    } catch (error) {
+      // Silently fail — cached pitch will be stale but won't crash
     }
   }
 
