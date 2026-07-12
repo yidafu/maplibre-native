@@ -6,7 +6,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraPosition, LatLng, MapDebugOptions } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraPosition, LatLng, MapDebugOptions, RenderingStats } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
@@ -19,13 +19,19 @@ struct DebugModeTestPage {
   @State private showTileInfo: boolean = false;
   @State private showTimestamps: boolean = false;
   @State private showOverdraw: boolean = false;
-  
+  @State private renderingStatsEnabled: boolean = false;
+  @State private actionJournalLogFiles: string = '';
+  @State private actionJournalEntries: string = '';
+  // Frame stats listener ID for cleanup
+  private statsListenerId: number = 0;
+
   aboutToDisappear() {
     if (this.mapView) {
       this.mapView.destroy();
       this.mapView = null;
     }
   }
+
   
   private onMapReady = (map: MapLibreMap): void => {
     console.info('[DebugModeTestPage] onMapReady');
@@ -128,7 +134,71 @@ struct DebugModeTestPage {
     this.updateDebugOptions();
     showToast(`过度绘制: ${this.showOverdraw ? '显示' : '隐藏'}`);
   };
-  
+
+  // ========== Rendering Stats ==========
+
+  /**
+   * 切换 Rendering Stats View 显示
+   */
+  private toggleRenderingStats = (): void => {
+    if (!this.mapView) return;
+    this.renderingStatsEnabled = !this.renderingStatsEnabled;
+    this.mapView.enableRenderingStatsView(this.renderingStatsEnabled);
+    const actual = this.mapView.isRenderingStatsViewEnabled();
+    showToast(`Rendering Stats: ${actual ? 'Enabled' : 'Disabled'}`);
+  };
+
+  /**
+   * Register a frame stats listener to log rendering statistics
+   */
+  private registerStatsListener = (): void => {
+    if (!this.mapView) return;
+    this.mapView.addOnDidFinishRenderingFrameWithStatsListener((stats: RenderingStats) => {
+      console.info(`[DebugMode] Frame stats - fully: ${stats.fully}, ` +
+        `encoding: ${stats.frameEncodingTime?.toFixed(1)}ms, ` +
+        `rendering: ${stats.frameRenderingTime?.toFixed(1)}ms`);
+    });
+    showToast('Stats listener registered');
+  };
+
+  // ========== Action Journal ==========
+
+  /**
+   * 加载 Action Journal 日志
+   */
+  private loadActionJournalLog = (): void => {
+    if (!this.mapView) return;
+    try {
+      const files = this.mapView.getActionJournalLogFiles();
+      this.actionJournalLogFiles = files.length > 0 ? files.join('\n') : '(no log files)';
+
+      const entries = this.mapView.getActionJournalLog();
+      this.actionJournalEntries = entries.length > 0
+        ? entries.slice(0, 10).join('\n') + (entries.length > 10 ? `\n... (${entries.length - 10} more)` : '')
+        : '(no entries)';
+      showToast(`Journal: ${files.length} files, ${entries.length} entries`);
+    } catch (error) {
+      showToast('Journal not available (not configured)');
+      this.actionJournalLogFiles = '(not configured)';
+      this.actionJournalEntries = '(not configured)';
+    }
+  };
+
+  /**
+   * 清除 Action Journal 日志
+   */
+  private clearActionJournalLog = (): void => {
+    if (!this.mapView) return;
+    try {
+      this.mapView.clearActionJournalLog();
+      this.actionJournalLogFiles = '';
+      this.actionJournalEntries = '';
+      showToast('Journal cleared');
+    } catch (error) {
+      showToast('Failed to clear journal');
+    }
+  };
+
   @Builder
   actionButtonsBuilder() {
     Column() {
@@ -176,6 +246,48 @@ struct DebugModeTestPage {
           .fontSize(12)
           .backgroundColor(this.showOverdraw ? '#2196F3' : '#BDBDBD')
           .onClick(this.toggleOverdraw);
+      }
+      .margin({ bottom: 4 });
+
+      // 第四行：Rendering Stats
+      Row() {
+        Button('Rendering Stats')
+          .fontSize(12)
+          .backgroundColor(this.renderingStatsEnabled ? '#FF9800' : '#BDBDBD')
+          .onClick(this.toggleRenderingStats)
+          .margin({ right: 4 });
+
+        Button('Stats Listener')
+          .fontSize(12)
+          .backgroundColor('#9C27B0')
+          .onClick(this.registerStatsListener)
+          .margin({ right: 4 });
+      }
+      .margin({ bottom: 4 });
+
+      // 第五行：Action Journal
+      Row() {
+        Button('Load Journal')
+          .fontSize(12)
+          .backgroundColor('#607D8B')
+          .onClick(this.loadActionJournalLog)
+          .margin({ right: 4 });
+
+        Button('Clear Journal')
+          .fontSize(12)
+          .backgroundColor('#E91E63')
+          .onClick(this.clearActionJournalLog)
+          .margin({ right: 4 });
+      }
+
+      // Log display area
+      if (this.actionJournalLogFiles.length > 0) {
+        Text('Journal Files:').fontSize(10).fontWeight(FontWeight.Bold).margin({ top: 4 })
+        Text(this.actionJournalLogFiles).fontSize(9).lineHeight(14).maxLines(3)
+      }
+      if (this.actionJournalEntries.length > 0) {
+        Text('Journal Entries:').fontSize(10).fontWeight(FontWeight.Bold).margin({ top: 2 })
+        Text(this.actionJournalEntries).fontSize(9).lineHeight(14).maxLines(5)
       }
     }
     .alignItems(HorizontalAlign.Start)

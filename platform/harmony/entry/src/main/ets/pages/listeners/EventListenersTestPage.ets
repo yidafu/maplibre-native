@@ -321,11 +321,11 @@ struct EventListenersTestPage {
     
     let frameCount = 0;
     let lastFpsUpdateTime = Date.now();
-    const didFinishRenderingFrameWithStatsListener: OnDidFinishRenderingFrameWithStatsListener = (fully: boolean, stats: RenderingStats) => {
+    const didFinishRenderingFrameWithStatsListener: OnDidFinishRenderingFrameWithStatsListener = (stats: RenderingStats) => {
       if (this.showRenderingEvents) {
         this.logEvent(
           '渲染',
-          `🎨 帧渲染完成 (完整: ${fully ? '是' : '否'}, 编码: ${stats.frameEncodingTime.toFixed(2)}ms, 渲染: ${stats.frameRenderingTime.toFixed(2)}ms)`
+          `🎨 帧渲染完成 (完整: ${stats.fully ? '是' : '否'}, 编码: ${stats.frameEncodingTime.toFixed(2)}ms, 渲染: ${stats.frameRenderingTime.toFixed(2)}ms)`
         );
       }
 

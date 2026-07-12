@@ -10,7 +10,7 @@
  */
 
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, MapLibreMapOptions, UiSettings } from 'maplibre_harmony';
+import { MapView, MapLibreMap, MapLibreMapOptions, UiSettings, CompassVisibility } from 'maplibre_harmony';
 import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
@@ -25,6 +25,7 @@ struct MapOptionsRuntimeTestPage {
   @State private compassEnabled: boolean = true;
   @State private logoEnabled: boolean = true;
   @State private attributionEnabled: boolean = true;
+  @State private scaleBarEnabled: boolean = true;
   
   aboutToDisappear() {
     if (this.mapController) {
@@ -49,6 +50,7 @@ struct MapOptionsRuntimeTestPage {
     this.compassEnabled = this.uiSettings.isCompassEnabled();
     this.logoEnabled = this.uiSettings.isLogoEnabled();
     this.attributionEnabled = this.uiSettings.isAttributionEnabled();
+    this.scaleBarEnabled = this.uiSettings.isScaleBarEnabled();
   };
   
   /**
@@ -100,9 +102,13 @@ struct MapOptionsRuntimeTestPage {
    */
   private toggleCompass = (): void => {
     if (!this.uiSettings) return;
-    
+
     this.compassEnabled = !this.compassEnabled;
     this.uiSettings.setCompassEnabled(this.compassEnabled);
+    // 启用时将可见性设为 Visible，确保指南针立即显示（避免 Adaptive 模式在朝北时隐藏）
+    if (this.compassEnabled) {
+      this.uiSettings.setCompassVisibility(CompassVisibility.Visible);
+    }
     showToast(`指南针: ${this.compassEnabled ? '显示' : '隐藏'}`);
   };
   
@@ -122,10 +128,21 @@ struct MapOptionsRuntimeTestPage {
    */
   private toggleAttribution = (): void => {
     if (!this.uiSettings) return;
-    
+
     this.attributionEnabled = !this.attributionEnabled;
     this.uiSettings.setAttributionEnabled(this.attributionEnabled);
     showToast(`Attribution: ${this.attributionEnabled ? '显示' : '隐藏'}`);
+  };
+
+  /**
+   * 切换比例尺
+   */
+  private toggleScaleBar = (): void => {
+    if (!this.uiSettings) return;
+
+    this.scaleBarEnabled = !this.scaleBarEnabled;
+    this.uiSettings.setScaleBarEnabled(this.scaleBarEnabled);
+    showToast(`比例尺: ${this.scaleBarEnabled ? '显示' : '隐藏'}`);
   };
   
   @Builder
@@ -141,66 +158,68 @@ struct MapOptionsRuntimeTestPage {
   
   @Builder
   buildControlPanel() {
-    Scroll() {
-      Column({ space: 12 }) {
-        Text('运行时选项控制')
-          .fontSize(16)
-          .fontWeight(FontWeight.Bold)
-        
-        Text('手势控制')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Button(`旋转手势 ${this.rotateEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.rotateEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleRotate())
-        
-        Button(`平移手势 ${this.scrollEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.scrollEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleScroll())
-        
-        Button(`缩放手势 ${this.zoomEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.zoomEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleZoom())
-        
-        Button(`倾斜手势 ${this.tiltEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.tiltEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleTilt())
-        
-        Divider()
-        
-        Text('UI组件控制')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-        
-        Button(`指南针 ${this.compassEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.compassEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleCompass())
-        
-        Button(`Logo ${this.logoEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.logoEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleLogo())
-        
-        Button(`Attribution ${this.attributionEnabled ? '✓' : '✗'}`)
-          .width('100%')
-          .backgroundColor(this.attributionEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick(() => this.toggleAttribution())
-        
-        Text('说明: 使用UiSettings运行时修改地图选项')
-          .fontSize(12)
-          .fontColor('#666')
-          .margin({ top: 8 })
-      }
-      .width('100%')
-      .padding(16)
+    Column({ space: 12 }) {
+      Text('运行时选项控制')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+
+      Text('手势控制')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+
+      Button(`旋转手势 ${this.rotateEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.rotateEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleRotate())
+
+      Button(`平移手势 ${this.scrollEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.scrollEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleScroll())
+
+      Button(`缩放手势 ${this.zoomEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.zoomEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleZoom())
+
+      Button(`倾斜手势 ${this.tiltEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.tiltEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleTilt())
+
+      Divider()
+
+      Text('UI组件控制')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+
+      Button(`指南针 ${this.compassEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.compassEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleCompass())
+
+      Button(`Logo ${this.logoEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.logoEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleLogo())
+
+      Button(`Attribution ${this.attributionEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.attributionEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleAttribution())
+
+      Button(`比例尺 ${this.scaleBarEnabled ? '✓' : '✗'}`)
+        .width('100%')
+        .backgroundColor(this.scaleBarEnabled ? '#4CAF50' : '#9E9E9E')
+        .onClick(() => this.toggleScaleBar())
+
+      Text('说明: 使用UiSettings运行时修改地图选项')
+        .fontSize(12)
+        .fontColor('#666')
+        .margin({ top: 8 })
     }
-    .height('100%')
+    .width('100%')
+    .padding(16)
   }
   
   build() {
