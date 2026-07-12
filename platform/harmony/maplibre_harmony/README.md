@@ -118,8 +118,8 @@ OpenGL-based vector map rendering library for HarmonyOS.
 |                           | Async Snapshot                    | ✅         | ✅       | ✅   |
 | **Query Features**        | Query Rendered Features           | ✅         | ✅       | ✅   |
 |                           | Query Source Features             | ✅         | ✅       | ✅   |
-|                           | Get Cluster Children              | 🚧         | ✅       | ✅   |
-|                           | Get Cluster Leaves                | 🚧         | ✅       | ✅   |
+|                           | Get Cluster Children              | ✅         | ✅       | ✅   |
+|                           | Get Cluster Leaves                | ✅         | ✅       | ✅   |
 | **Coordinate Conversion** | LatLng to Screen                  | ✅         | ✅       | ✅   |
 |                           | Screen to LatLng                  | ✅         | ✅       | ✅   |
 |                           | Meters to LatLng                  | ✅         | ✅       | ✅   |
