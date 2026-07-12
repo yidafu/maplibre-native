@@ -62,6 +62,23 @@ export interface CameraPosition {
 }
 
 /**
+ * Batch camera state returned by getCameraState().
+ * Contains all camera parameters in one object to minimize NAPI calls.
+ */
+export interface CameraState {
+  /** Bearing in degrees (0 = north). */
+  bearing: number;
+  /** Latitude of the map center. */
+  latitude: number;
+  /** Longitude of the map center. */
+  longitude: number;
+  /** Zoom level. */
+  zoom: number;
+  /** Pitch/tilt in degrees (0 = top-down). */
+  pitch: number;
+}
+
+/**
  * Camera options interface.
  * Used to configure camera parameters.
  */
@@ -588,6 +605,14 @@ export class NativeMapView {
    * @returns Bearing in degrees.
    */
   getBearing(): number;
+
+  /**
+   * Get all camera parameters (bearing, center, zoom, pitch) in a single call.
+   * Use this instead of separate getBearing/getLatLng/getZoom/getPitch calls
+   * to reduce NAPI cross-boundary overhead.
+   * @returns Camera state or undefined if the map is not ready.
+   */
+  getCameraState(): CameraState | undefined;
 
   /**
    * Reset the bearing to due north (0 degrees).

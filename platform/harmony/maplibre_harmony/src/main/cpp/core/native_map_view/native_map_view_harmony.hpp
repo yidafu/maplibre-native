@@ -147,6 +147,7 @@ public:
     static napi_value setBearing(napi_env env, napi_callback_info info);
     static napi_value setBearingXY(napi_env env, napi_callback_info info);
     static napi_value getBearing(napi_env env, napi_callback_info info);
+    static napi_value getCameraState(napi_env env, napi_callback_info info);
     static napi_value resetNorth(napi_env env, napi_callback_info info);
     static napi_value setVisibleCoordinateBounds(napi_env env, napi_callback_info info);
     static napi_value getVisibleCoordinateBounds(napi_env env, napi_callback_info info);

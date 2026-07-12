@@ -350,6 +350,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"setBearing", nullptr, setBearing, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setBearingXY", nullptr, setBearingXY, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getBearing", nullptr, getBearing, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getCameraState", nullptr, getCameraState, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"resetNorth", nullptr, resetNorth, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setVisibleCoordinateBounds", nullptr, setVisibleCoordinateBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getVisibleCoordinateBounds", nullptr, getVisibleCoordinateBounds, nullptr, nullptr, nullptr, napi_default, nullptr},

@@ -1516,6 +1516,57 @@ napi_value NativeMapView::getCameraPosition(napi_env env, napi_callback_info inf
     return args.Undefined();
 }
 
+napi_value NativeMapView::getCameraState(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getCameraState: map not initialized");
+        return args.Undefined();
+    }
+
+    try {
+        auto cameraOptions = instance->invokeOnMapThreadSync([&](mbgl::Map* m) {
+            return m->getCameraOptions();
+        }, mbgl::CameraOptions{});
+
+        napi_value result;
+        napi_create_object(env, &result);
+
+        if (cameraOptions.bearing) {
+            napi_value v;
+            napi_create_double(env, *cameraOptions.bearing, &v);
+            napi_set_named_property(env, result, "bearing", v);
+        }
+
+        if (cameraOptions.center) {
+            napi_value lat, lng;
+            napi_create_double(env, cameraOptions.center->latitude(), &lat);
+            napi_set_named_property(env, result, "latitude", lat);
+            napi_create_double(env, cameraOptions.center->longitude(), &lng);
+            napi_set_named_property(env, result, "longitude", lng);
+        }
+
+        if (cameraOptions.zoom) {
+            napi_value v;
+            napi_create_double(env, *cameraOptions.zoom, &v);
+            napi_set_named_property(env, result, "zoom", v);
+        }
+
+        if (cameraOptions.pitch) {
+            napi_value v;
+            napi_create_double(env, *cameraOptions.pitch, &v);
+            napi_set_named_property(env, result, "pitch", v);
+        }
+
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getCameraState: Failed - %s", e.what());
+    }
+
+    return args.Undefined();
+}
+
 void NativeMapView::resetSnapshotState() {
     std::lock_guard<std::mutex> lock(snapshotMutex_);
     snapshotInProgress_ = false;

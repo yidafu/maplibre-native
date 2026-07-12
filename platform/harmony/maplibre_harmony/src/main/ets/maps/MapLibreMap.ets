@@ -452,8 +452,8 @@ export class MapLibreMap {
       onCameraMove(): void {
         // Update the compass when the camera moves
         if (this.parent.onCompassUpdate) {
-          const bearing = this.parent.getBearing();
-          this.parent.onCompassUpdate(bearing);
+          const state = this.parent.getCameraState();
+          this.parent.onCompassUpdate(state.bearing);
         }
       }
     }
@@ -477,7 +477,8 @@ export class MapLibreMap {
       onCameraMove(): void {
         // Update the scale bar when the camera moves
         if (this.parent.onScaleBarUpdate) {
-          const metersPerPixel = this.parent.getMetersPerPixelAtLatitude(this.parent.getLatLng().latitude);
+          const state = this.parent.getCameraState();
+          const metersPerPixel = this.parent.getMetersPerPixelAtLatitude(state.latitude, state.zoom);
           this.parent.onScaleBarUpdate(metersPerPixel);
         }
 
