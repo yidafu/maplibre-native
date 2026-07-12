@@ -181,6 +181,8 @@ export interface NativeViewAnnotationFrame {
   pixelRatio: number;
   visible: boolean;
   draggable: boolean;
+  positionX: number;
+  positionY: number;
 }
 
 // ==================== NativeMapView Class ====================
@@ -266,6 +268,14 @@ export class NativeMapView {
    * @param height Height in logical pixels.
    */
   setNativeWindowWithSize(surfaceId: BigInt, width: number, height: number): void;
+
+  /**
+   * Set up native gesture recognizers (replaces ArkTS MapGestureDetector).
+   * Extracts the ArkUI_NodeHandle from the FrameNode and attaches native gestures
+   * (pan, pinch, rotate, tap, double-tap, long-press, tilt) to the XComponent.
+   * @param frameNode The FrameNode of the XComponent (obtained via UIContext.getFrameNodeById).
+   */
+  setupNativeGestures(frameNode: Object): void;
 
   /**
    * Force-reset the renderer and rendering context (hard reset).
@@ -1372,7 +1382,37 @@ export class NativeMapView {
 
   removeOnSourceChangedListener(listener: OnSourceChangedListener): void;
 
-  // ========== Observer listeners (shader, glyph, sprite, tile) ==========
+  // ========== Gesture Listener Methods (map click / long-click) ==========
+
+  /**
+   * Add a map click listener (tap gesture).
+   * Invoked when the user taps on the map, forwarding logical pixel coordinates.
+   * Note: coordinates arrive as a single object {x, y} because the underlying
+   * ThreadSafeCallback infrastructure passes exactly one argument to the JS callback.
+   * @param callback Callback receiving {x, y} object with logical pixel coordinates.
+   */
+  addOnMapClickListener(callback: (coords: { x: number, y: number }) => void): void;
+
+  /**
+   * Remove a previously registered map click listener.
+   * @param callback The same function reference passed to addOnMapClickListener.
+   */
+  removeOnMapClickListener(callback: (coords: { x: number, y: number }) => void): void;
+
+  /**
+   * Add a map long-click listener (long-press gesture).
+   * Invoked when the user long-presses on the map, forwarding logical pixel coordinates.
+   * Note: coordinates arrive as a single object {x, y} because the underlying
+   * ThreadSafeCallback infrastructure passes exactly one argument to the JS callback.
+   * @param callback Callback receiving {x, y} object with logical pixel coordinates.
+   */
+  addOnMapLongClickListener(callback: (coords: { x: number, y: number }) => void): void;
+
+  /**
+   * Remove a previously registered map long-click listener.
+   * @param callback The same function reference passed to addOnMapLongClickListener.
+   */
+  removeOnMapLongClickListener(callback: (coords: { x: number, y: number }) => void): void;
   
   /**
    * Add a pre-compile-shader listener.

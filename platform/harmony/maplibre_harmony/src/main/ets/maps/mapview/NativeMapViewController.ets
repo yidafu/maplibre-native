@@ -1,8 +1,8 @@
 import maplibre, { NativeMapView as NativeMapViewNAPI } from 'libmaplibre.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
+import { UIContext } from '@kit.ArkUI';
 import common from '@ohos.app.ability.common';
 import { DOMAIN } from '../../constants/HiLogConstants';
-import { MapGestureDetector } from '../gestures/MapGestureDetector';
 import { UiSettings } from '../UiSettings';
 import type {
   NativeViewAnnotationAnchor,
@@ -158,46 +158,19 @@ export class NativeMapViewController extends XComponentController implements Nat
   private mapLibreMapInstance: MapLibreMap | null = null;
   // Gesture system
   private uiSettings: UiSettings = new UiSettings();
-  private gestureDetector: MapGestureDetector = new MapGestureDetector(this.uiSettings);
+  // Gesture recognition is now handled by C++ NativeGestureManager (Phase 3)
   // UI component state hooks
   private compassBearingUpdateCallback?: (bearing: number) => void;
   private uiSettingsUpdateCallback?: () => void;
   private lastCompassBearing: number = 0;
   private isDestroying: boolean = false;
+  // UIContext for FrameNode lookup (used by native gesture setup and InfoWindow features)
+  private uiContext?: UIContext;
   // ========== Listener management ==========
+  // All listener add/remove methods are thin pass-through to the C++ CallbackManager
+  // which natively supports multi-dispatch for every event type.
 
-  // Camera event listeners
-  private onCameraWillChangeListeners: OnCameraWillChangeListener[] = [];
-  private onCameraIsChangingListeners: OnCameraIsChangingListener[] = [];
-  private onCameraDidChangeListeners: OnCameraDidChangeListener[] = [];
-  // Map loading event listeners
-  private onWillStartLoadingMapListeners: OnWillStartLoadingMapListener[] = [];
-  private onDidFinishLoadingMapListeners: OnDidFinishLoadingMapListener[] = [];
-  private onDidFailLoadingMapListeners: OnDidFailLoadingMapListener[] = [];
-  // Rendering event listeners
-  private onWillStartRenderingFrameListeners: OnWillStartRenderingFrameListener[] = [];
-  private onDidFinishRenderingFrameListeners: OnDidFinishRenderingFrameListener[] = [];
-  private onDidFinishRenderingFrameWithStatsListeners: OnDidFinishRenderingFrameWithStatsListener[] = [];
-  private onWillStartRenderingMapListeners: OnWillStartRenderingMapListener[] = [];
-  private onDidFinishRenderingMapListeners: OnDidFinishRenderingMapListener[] = [];
-  // Style event listeners
-  private onDidFinishLoadingStyleListeners: OnDidFinishLoadingStyleListener[] = [];
-  private onStyleImageMissingListeners: OnStyleImageMissingListener[] = [];
-  private onCanRemoveUnusedStyleImageListeners: OnCanRemoveUnusedStyleImageListener[] = [];
-  // Other event listeners
-  private onDidBecomeIdleListeners: OnDidBecomeIdleListener[] = [];
-  private onSourceChangedListeners: OnSourceChangedListener[] = [];
-  private onPreCompileShaderListeners: OnPreCompileShaderListener[] = [];
-  private onPostCompileShaderListeners: OnPostCompileShaderListener[] = [];
-  private onShaderCompileFailedListeners: OnShaderCompileFailedListener[] = [];
-  private onGlyphsLoadedListeners: OnGlyphsLoadedListener[] = [];
-  private onGlyphsErrorListeners: OnGlyphsErrorListener[] = [];
-  private onGlyphsRequestedListeners: OnGlyphsRequestedListener[] = [];
-  private onTileActionListeners: OnTileActionListener[] = [];
-  private onSpriteLoadedListeners: OnSpriteLoadedListener[] = [];
-  private onSpriteErrorListeners: OnSpriteErrorListener[] = [];
-  private onSpriteRequestedListeners: OnSpriteRequestedListener[] = [];
-  // Map ready callback list
+  // Map ready callback list (deferred callback pattern, not a listener)
   private onMapReadyCallbacks: OnMapReadyCallback[] = [];
 
   /**
@@ -263,8 +236,7 @@ export class NativeMapViewController extends XComponentController implements Nat
         return;
       }
 
-      // Provide map controller reference to gesture detector
-      this.gestureDetector.setMapController(this.nativeMapView);
+      // Phase 3: Gesture recognition is handled by C++ NativeGestureManager
 
       // Register camera listener to update compass and annotation views
       this.nativeMapView.addOnCameraMoveListener(() => {
@@ -273,128 +245,14 @@ export class NativeMapViewController extends XComponentController implements Nat
         this.updateAnnotationViews();
       });
 
-      // ========== Register Android/iOS-style callbacks with C++ layer ==========
+      // ========== Register internal callbacks with C++ layer ==========
+      // Note: User event listeners are managed directly by C++ CallbackManager.
+      // Only internal lifecycle callbacks that require complex ArkTS-side logic stay here.
 
       // ✅ Register map lifecycle callback
       // Fires after the C++ map object is created, before style loading
       this.nativeMapView.setOnMapViewCreatedCallback(() => {
         this.handleMapViewCreated();
-      });
-
-      // Camera event listeners
-      this.nativeMapView.addOnCameraWillChangeListener((animated: boolean) => {
-        for (const listener of this.onCameraWillChangeListeners) {
-          try {
-            listener(animated);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnCameraWillChangeListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnCameraIsChangingListener(() => {
-        for (const listener of this.onCameraIsChangingListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnCameraIsChangingListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnCameraDidChangeListener((animated: boolean) => {
-        for (const listener of this.onCameraDidChangeListeners) {
-          try {
-            listener(animated);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnCameraDidChangeListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // Map loading event listeners
-      this.nativeMapView.addOnWillStartLoadingMapListener(() => {
-        for (const listener of this.onWillStartLoadingMapListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnWillStartLoadingMapListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnDidFinishLoadingMapListener(() => {
-        for (const listener of this.onDidFinishLoadingMapListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishLoadingMapListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnDidFailLoadingMapListener((errorMessage: string) => {
-        for (const listener of this.onDidFailLoadingMapListeners) {
-          try {
-            listener(errorMessage);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidFailLoadingMapListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // Rendering event listeners
-      this.nativeMapView.addOnWillStartRenderingFrameListener(() => {
-        for (const listener of this.onWillStartRenderingFrameListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnWillStartRenderingFrameListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnDidFinishRenderingFrameListener((fully: boolean, frameEncodingTime: number,
-        frameRenderingTime: number) => {
-        // Notify simple listener variant
-        for (const listener of this.onDidFinishRenderingFrameListeners) {
-          try {
-            listener(fully, frameEncodingTime, frameRenderingTime);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishRenderingFrameListener error: ${error.message}`);
-          }
-        }
-        // Notify listener variant with rendering statistics
-        const stats: RenderingStats = {
-          fully, frameEncodingTime, frameRenderingTime
-        };
-        for (const listener of this.onDidFinishRenderingFrameWithStatsListeners) {
-          try {
-            listener(fully, stats);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishRenderingFrameWithStatsListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnWillStartRenderingMapListener(() => {
-        for (const listener of this.onWillStartRenderingMapListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnWillStartRenderingMapListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnDidFinishRenderingMapListener((fully: boolean) => {
-        for (const listener of this.onDidFinishRenderingMapListeners) {
-          try {
-            listener(fully);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishRenderingMapListener error: ${error.message}`);
-          }
-        }
       });
 
       // Style event listeners
@@ -453,153 +311,14 @@ export class NativeMapViewController extends XComponentController implements Nat
           hilog.warn(DOMAIN, 'NativeMapView', '♻️ Style reloaded - skipping onMapReady (already initialized)');
         }
 
-        // ========== Notify style listeners on every style load ==========
-        // Inform user-supplied OnDidFinishLoadingStyleListener handlers
-        for (const listener of this.onDidFinishLoadingStyleListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidFinishLoadingStyleListener error: ${error.message}`);
-          }
-        }
+        // Note: User OnDidFinishLoadingStyle listeners are now dispatched
+        // directly by C++ CallbackManager. This callback handles only internal
+        // onMapReady lifecycle logic.
       });
 
-      this.nativeMapView.addOnStyleImageMissingListener((id: string) => {
-        for (const listener of this.onStyleImageMissingListeners) {
-          try {
-            listener(id);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnStyleImageMissingListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // Additional event listeners
-      this.nativeMapView.addOnDidBecomeIdleListener(() => {
-        for (const listener of this.onDidBecomeIdleListeners) {
-          try {
-            listener();
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnDidBecomeIdleListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnSourceChangedListener((id: string) => {
-        for (const listener of this.onSourceChangedListeners) {
-          try {
-            listener(id);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnSourceChangedListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // ========== Observer listeners (Shader, Glyph, Sprite, Tile) ==========
-      
-      // Shader compile listeners
-      this.nativeMapView.addOnPreCompileShaderListener((shaderId: number, backendType: number, defines: string) => {
-        for (const listener of this.onPreCompileShaderListeners) {
-          try {
-            listener(shaderId, backendType, defines);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnPreCompileShaderListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnPostCompileShaderListener((shaderId: number, backendType: number, defines: string) => {
-        for (const listener of this.onPostCompileShaderListeners) {
-          try {
-            listener(shaderId, backendType, defines);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnPostCompileShaderListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnShaderCompileFailedListener((shaderId: number, backendType: number, defines: string) => {
-        for (const listener of this.onShaderCompileFailedListeners) {
-          try {
-            listener(shaderId, backendType, defines);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnShaderCompileFailedListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // Glyph listeners
-      this.nativeMapView.addOnGlyphsLoadedListener((fontStack: string[], rangeStart: number, rangeEnd: number) => {
-        for (const listener of this.onGlyphsLoadedListeners) {
-          try {
-            listener(fontStack, rangeStart, rangeEnd);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnGlyphsLoadedListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnGlyphsErrorListener((fontStack: string[], rangeStart: number, rangeEnd: number) => {
-        for (const listener of this.onGlyphsErrorListeners) {
-          try {
-            listener(fontStack, rangeStart, rangeEnd);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnGlyphsErrorListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnGlyphsRequestedListener((fontStack: string[], rangeStart: number, rangeEnd: number) => {
-        for (const listener of this.onGlyphsRequestedListeners) {
-          try {
-            listener(fontStack, rangeStart, rangeEnd);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnGlyphsRequestedListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // Sprite listeners
-      this.nativeMapView.addOnSpriteLoadedListener((spriteId: string, url: string) => {
-        for (const listener of this.onSpriteLoadedListeners) {
-          try {
-            listener(spriteId, url);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnSpriteLoadedListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnSpriteErrorListener((spriteId: string, url: string) => {
-        for (const listener of this.onSpriteErrorListeners) {
-          try {
-            listener(spriteId, url);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnSpriteErrorListener error: ${error.message}`);
-          }
-        }
-      });
-
-      this.nativeMapView.addOnSpriteRequestedListener((spriteId: string, url: string) => {
-        for (const listener of this.onSpriteRequestedListeners) {
-          try {
-            listener(spriteId, url);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnSpriteRequestedListener error: ${error.message}`);
-          }
-        }
-      });
-
-      // Tile action listeners
-      this.nativeMapView.addOnTileActionListener((operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string) => {
-        for (const listener of this.onTileActionListeners) {
-          try {
-            listener(operation, x, y, z, wrap, overscaledZ, sourceId);
-          } catch (error) {
-            hilog.error(DOMAIN, 'NativeMapView', `OnTileActionListener error: ${error.message}`);
-          }
-        }
-      });
+      // Note: All other event listeners (StyleImageMissing, DidBecomeIdle, SourceChanged,
+      // Shader, Glyph, Sprite, Tile) are now dispatched directly by C++ CallbackManager.
+      // No bridge callbacks needed here.
 
       // Perform initial compass update
       // TODO: need bearing parameter
@@ -716,8 +435,8 @@ export class NativeMapViewController extends XComponentController implements Nat
           hilog.warn(DOMAIN, 'NativeMapView', `Failed to cancel requests: ${error.message}`);
         }
 
-        // 2. Clear event listeners
-        this.clearAllListeners();
+        // 2. Event listeners cleared automatically by C++ CallbackManager during native map destruction
+        // (No ArkTS-side listener state to clean — all managed by C++)
 
         // 3. Stop rendering operations
         // this.mapView.pause();
@@ -1046,18 +765,14 @@ export class NativeMapViewController extends XComponentController implements Nat
   /**
    * Get gesture detector
    */
-  getGestureDetector(): MapGestureDetector {
-    return this.gestureDetector;
-  }
+  // Phase 3: getGestureDetector() removed — gesture recognition is handled by C++
 
   /**
    * Set MapLibreMap instance (for InfoWindow management)
    */
   setMapLibreMapInstance(mapLibreMap: MapLibreMap): void {
     this.mapLibreMapInstance = mapLibreMap;
-
-    // Bridge gesture detector to MapLibreMap (mirrors Android MapGestureDetector wiring)
-    this.gestureDetector.setMapLibreMapInstance(mapLibreMap);
+    // Phase 3: Gesture detection now handled by C++ NativeGestureManager — no wiring needed.
   }
 
   /**
@@ -1065,6 +780,41 @@ export class NativeMapViewController extends XComponentController implements Nat
    */
   getMapLibreMapInstance(): MapLibreMap | null {
     return this.mapLibreMapInstance;
+  }
+
+  /**
+   * Set UIContext for FrameNode lookup and InfoWindow rendering
+   */
+  setUIContext(context: UIContext): void {
+    this.uiContext = context;
+  }
+
+  /**
+   * Initialize native gesture recognizers
+   *
+   * Looks up the XComponent FrameNode by ID and passes it to the C++ NativeGestureManager
+   * via the setupNativeGestures NAPI method.
+   */
+  private initializeNativeGestures(): void {
+    if (!this.nativeMapView || !this.uiContext) {
+      hilog.warn(DOMAIN, 'NativeMapViewController',
+        'initializeNativeGestures: map or UIContext not ready');
+      return;
+    }
+    try {
+      const frameNode = this.uiContext.getFrameNodeById('maplibre_xcomponent');
+      if (frameNode) {
+        this.nativeMapView.setupNativeGestures(frameNode);
+        hilog.info(DOMAIN, 'NativeMapViewController',
+          '✅ Native gesture recognizers initialized');
+      } else {
+        hilog.warn(DOMAIN, 'NativeMapViewController',
+          '⚠️ XComponent FrameNode not found for gesture init');
+      }
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapViewController',
+        `❌ Failed to initialize native gestures: ${error.message}`);
+    }
   }
 
   /**
@@ -1087,8 +837,8 @@ export class NativeMapViewController extends XComponentController implements Nat
           this.mapLibreMapInstance.resizeView(this.surfaceWidth, this.surfaceHeight);
         }
         
-        // Wire gesture detector to MapLibreMap
-        this.gestureDetector.setMapLibreMapInstance(this.mapLibreMapInstance);
+        // Initialize native gesture recognizers (C++ NativeGestureManager)
+        this.initializeNativeGestures();
 
         if (this.annotationViewUpdateCallback) {
           const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
@@ -1297,567 +1047,212 @@ export class NativeMapViewController extends XComponentController implements Nat
   }
 
   // ========== Listener registration and removal ==========
+  // All listener management is delegated to C++ CallbackManager which natively
+  // supports multi-dispatch and identity-based removal for every event type.
+  //
+  // These thin pass-through methods preserve API compatibility with existing
+  // callers (MapLibreMap, MapView component, external users).
 
   // ===== Camera listeners =====
 
-  /**
-   * Add a camera-will-change listener
-   */
   addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    if (this.onCameraWillChangeListeners.indexOf(listener) === -1) {
-      this.onCameraWillChangeListeners.push(listener);
-    }
+    this.nativeMapView?.addOnCameraWillChangeListener(listener);
   }
-
-  /**
-   * Remove a camera-will-change listener
-   */
   removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    const index = this.onCameraWillChangeListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onCameraWillChangeListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnCameraWillChangeListener(listener);
   }
 
-  /**
-   * Add a camera-is-changing listener
-   */
   addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    if (this.onCameraIsChangingListeners.indexOf(listener) === -1) {
-      this.onCameraIsChangingListeners.push(listener);
-    }
+    this.nativeMapView?.addOnCameraIsChangingListener(listener);
   }
-
-  /**
-   * Remove a camera-is-changing listener
-   */
   removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    const index = this.onCameraIsChangingListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onCameraIsChangingListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnCameraIsChangingListener(listener);
   }
 
-  /**
-   * Add a camera-did-change listener
-   */
   addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    if (this.onCameraDidChangeListeners.indexOf(listener) === -1) {
-      this.onCameraDidChangeListeners.push(listener);
-    }
+    this.nativeMapView?.addOnCameraDidChangeListener(listener);
   }
-
-  /**
-   * Remove a camera-did-change listener
-   */
   removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    const index = this.onCameraDidChangeListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onCameraDidChangeListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnCameraDidChangeListener(listener);
   }
 
   // ===== Map loading listeners =====
 
-  /**
-   * Add a will-start-loading-map listener
-   */
   addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    if (this.onWillStartLoadingMapListeners.indexOf(listener) === -1) {
-      this.onWillStartLoadingMapListeners.push(listener);
-    }
+    this.nativeMapView?.addOnWillStartLoadingMapListener(listener);
   }
-
-  /**
-   * Remove a will-start-loading-map listener
-   */
   removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    const index = this.onWillStartLoadingMapListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onWillStartLoadingMapListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnWillStartLoadingMapListener(listener);
   }
 
-  /**
-   * Add a did-finish-loading-map listener
-   */
   addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    if (this.onDidFinishLoadingMapListeners.indexOf(listener) === -1) {
-      this.onDidFinishLoadingMapListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidFinishLoadingMapListener(listener);
   }
-
-  /**
-   * Remove a did-finish-loading-map listener
-   */
   removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    const index = this.onDidFinishLoadingMapListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidFinishLoadingMapListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidFinishLoadingMapListener(listener);
   }
 
-  /**
-   * Add a did-fail-loading-map listener
-   */
   addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    if (this.onDidFailLoadingMapListeners.indexOf(listener) === -1) {
-      this.onDidFailLoadingMapListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidFailLoadingMapListener(listener);
   }
-
-  /**
-   * Remove a did-fail-loading-map listener
-   */
   removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    const index = this.onDidFailLoadingMapListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidFailLoadingMapListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidFailLoadingMapListener(listener);
   }
 
   // ===== Rendering listeners =====
 
-  /**
-   * Add a will-start-rendering-frame listener
-   */
   addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    if (this.onWillStartRenderingFrameListeners.indexOf(listener) === -1) {
-      this.onWillStartRenderingFrameListeners.push(listener);
-    }
+    this.nativeMapView?.addOnWillStartRenderingFrameListener(listener);
   }
-
-  /**
-   * Remove a will-start-rendering-frame listener
-   */
   removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    const index = this.onWillStartRenderingFrameListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onWillStartRenderingFrameListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnWillStartRenderingFrameListener(listener);
   }
 
-  /**
-   * Add a did-finish-rendering-frame listener (simple variant)
-   */
   addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    if (this.onDidFinishRenderingFrameListeners.indexOf(listener) === -1) {
-      this.onDidFinishRenderingFrameListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidFinishRenderingFrameListener(listener);
   }
-
-  /**
-   * Remove a did-finish-rendering-frame listener (simple variant)
-   */
   removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    const index = this.onDidFinishRenderingFrameListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidFinishRenderingFrameListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidFinishRenderingFrameListener(listener);
   }
 
-  /**
-   * Add a did-finish-rendering-frame listener (with stats)
-   */
   addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
-    if (this.onDidFinishRenderingFrameWithStatsListeners.indexOf(listener) === -1) {
-      this.onDidFinishRenderingFrameWithStatsListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidFinishRenderingFrameWithStatsListener(listener);
   }
-
-  /**
-   * Remove a did-finish-rendering-frame listener (with stats)
-   */
   removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
-    const index = this.onDidFinishRenderingFrameWithStatsListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidFinishRenderingFrameWithStatsListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidFinishRenderingFrameWithStatsListener(listener);
   }
 
-  /**
-   * Add a will-start-rendering-map listener
-   */
   addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    if (this.onWillStartRenderingMapListeners.indexOf(listener) === -1) {
-      this.onWillStartRenderingMapListeners.push(listener);
-    }
+    this.nativeMapView?.addOnWillStartRenderingMapListener(listener);
   }
-
-  /**
-   * Remove a will-start-rendering-map listener
-   */
   removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    const index = this.onWillStartRenderingMapListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onWillStartRenderingMapListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnWillStartRenderingMapListener(listener);
   }
 
-  /**
-   * Add a did-finish-rendering-map listener
-   */
   addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    if (this.onDidFinishRenderingMapListeners.indexOf(listener) === -1) {
-      this.onDidFinishRenderingMapListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidFinishRenderingMapListener(listener);
   }
-
-  /**
-   * Remove a did-finish-rendering-map listener
-   */
   removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    const index = this.onDidFinishRenderingMapListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidFinishRenderingMapListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidFinishRenderingMapListener(listener);
   }
 
   // ===== Style listeners =====
 
-  /**
-   * Add a did-finish-loading-style listener
-   */
   addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    if (this.onDidFinishLoadingStyleListeners.indexOf(listener) === -1) {
-      this.onDidFinishLoadingStyleListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidFinishLoadingStyleListener(listener);
   }
-
-  /**
-   * Remove a did-finish-loading-style listener
-   */
   removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    const index = this.onDidFinishLoadingStyleListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidFinishLoadingStyleListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidFinishLoadingStyleListener(listener);
   }
 
-  /**
-   * Add a style-image-missing listener
-   */
   addOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
-    if (this.onStyleImageMissingListeners.indexOf(listener) === -1) {
-      this.onStyleImageMissingListeners.push(listener);
-    }
+    this.nativeMapView?.addOnStyleImageMissingListener(listener);
   }
-
-  /**
-   * Remove a style-image-missing listener
-   */
   removeOnStyleImageMissingListener(listener: OnStyleImageMissingListener): void {
-    const index = this.onStyleImageMissingListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onStyleImageMissingListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnStyleImageMissingListener(listener);
   }
 
-  /**
-   * Add a can-remove-unused-style-image listener
-   */
   addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    if (this.onCanRemoveUnusedStyleImageListeners.indexOf(listener) === -1) {
-      this.onCanRemoveUnusedStyleImageListeners.push(listener);
-    }
+    this.nativeMapView?.addOnCanRemoveUnusedStyleImageListener(listener);
   }
-
-  /**
-   * Remove a can-remove-unused-style-image listener
-   */
   removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    const index = this.onCanRemoveUnusedStyleImageListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onCanRemoveUnusedStyleImageListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnCanRemoveUnusedStyleImageListener(listener);
   }
 
   // ===== Miscellaneous listeners =====
 
-  /**
-   * Add a did-become-idle listener
-   */
   addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    if (this.onDidBecomeIdleListeners.indexOf(listener) === -1) {
-      this.onDidBecomeIdleListeners.push(listener);
-    }
+    this.nativeMapView?.addOnDidBecomeIdleListener(listener);
   }
-
-  /**
-   * Remove a did-become-idle listener
-   */
   removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    const index = this.onDidBecomeIdleListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onDidBecomeIdleListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnDidBecomeIdleListener(listener);
   }
 
-  /**
-   * Add a source-changed listener
-   */
   addOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    if (this.onSourceChangedListeners.indexOf(listener) === -1) {
-      this.onSourceChangedListeners.push(listener);
-    }
+    this.nativeMapView?.addOnSourceChangedListener(listener);
   }
-
-  /**
-   * Remove a source-changed listener
-   */
   removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    const index = this.onSourceChangedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onSourceChangedListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnSourceChangedListener(listener);
   }
 
-  /**
-   * Add a pre-compile-shader listener
-   */
+  // ===== Shader listeners =====
+
   addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    if (this.onPreCompileShaderListeners.indexOf(listener) === -1) {
-      this.onPreCompileShaderListeners.push(listener);
-    }
+    this.nativeMapView?.addOnPreCompileShaderListener(listener);
   }
-
-  /**
-   * Remove a pre-compile-shader listener
-   */
   removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    const index = this.onPreCompileShaderListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onPreCompileShaderListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnPreCompileShaderListener(listener);
   }
 
-  /**
-   * Add a post-compile-shader listener
-   */
   addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    if (this.onPostCompileShaderListeners.indexOf(listener) === -1) {
-      this.onPostCompileShaderListeners.push(listener);
-    }
+    this.nativeMapView?.addOnPostCompileShaderListener(listener);
   }
-
-  /**
-   * Remove a post-compile-shader listener
-   */
   removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    const index = this.onPostCompileShaderListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onPostCompileShaderListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnPostCompileShaderListener(listener);
   }
 
-  /**
-   * Add a shader-compile-failed listener
-   */
   addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    if (this.onShaderCompileFailedListeners.indexOf(listener) === -1) {
-      this.onShaderCompileFailedListeners.push(listener);
-    }
+    this.nativeMapView?.addOnShaderCompileFailedListener(listener);
   }
-
-  /**
-   * Remove a shader-compile-failed listener
-   */
   removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    const index = this.onShaderCompileFailedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onShaderCompileFailedListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnShaderCompileFailedListener(listener);
   }
 
-  /**
-   * Add a glyph-loaded listener
-   */
+  // ===== Glyph listeners =====
+
   addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    if (this.onGlyphsLoadedListeners.indexOf(listener) === -1) {
-      this.onGlyphsLoadedListeners.push(listener);
-    }
+    this.nativeMapView?.addOnGlyphsLoadedListener(listener);
   }
-
-  /**
-   * Remove a glyph-loaded listener
-   */
   removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    const index = this.onGlyphsLoadedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onGlyphsLoadedListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnGlyphsLoadedListener(listener);
   }
 
-  /**
-   * Add a glyph-error listener
-   */
   addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    if (this.onGlyphsErrorListeners.indexOf(listener) === -1) {
-      this.onGlyphsErrorListeners.push(listener);
-    }
+    this.nativeMapView?.addOnGlyphsErrorListener(listener);
   }
-
-  /**
-   * Remove a glyph-error listener
-   */
   removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    const index = this.onGlyphsErrorListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onGlyphsErrorListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnGlyphsErrorListener(listener);
   }
 
-  /**
-   * Add a glyph-requested listener
-   */
   addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    if (this.onGlyphsRequestedListeners.indexOf(listener) === -1) {
-      this.onGlyphsRequestedListeners.push(listener);
-    }
+    this.nativeMapView?.addOnGlyphsRequestedListener(listener);
   }
-
-  /**
-   * Remove a glyph-requested listener
-   */
   removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    const index = this.onGlyphsRequestedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onGlyphsRequestedListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnGlyphsRequestedListener(listener);
   }
 
-  /**
-   * Add a tile-action listener
-   */
-  addOnTileActionListener(listener: OnTileActionListener): void {
-    if (this.onTileActionListeners.indexOf(listener) === -1) {
-      this.onTileActionListeners.push(listener);
-    }
-  }
+  // ===== Sprite listeners =====
 
-  /**
-   * Remove a tile-action listener
-   */
-  removeOnTileActionListener(listener: OnTileActionListener): void {
-    const index = this.onTileActionListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onTileActionListeners.splice(index, 1);
-    }
-  }
-
-  /**
-   * Add a sprite-loaded listener
-   */
   addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    if (this.onSpriteLoadedListeners.indexOf(listener) === -1) {
-      this.onSpriteLoadedListeners.push(listener);
-    }
+    this.nativeMapView?.addOnSpriteLoadedListener(listener);
   }
-
-  /**
-   * Remove a sprite-loaded listener
-   */
   removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    const index = this.onSpriteLoadedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onSpriteLoadedListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnSpriteLoadedListener(listener);
   }
 
-  /**
-   * Add a sprite-error listener
-   */
   addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    if (this.onSpriteErrorListeners.indexOf(listener) === -1) {
-      this.onSpriteErrorListeners.push(listener);
-    }
+    this.nativeMapView?.addOnSpriteErrorListener(listener);
   }
-
-  /**
-   * Remove a sprite-error listener
-   */
   removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    const index = this.onSpriteErrorListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onSpriteErrorListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnSpriteErrorListener(listener);
   }
 
-  /**
-   * Add a sprite-requested listener
-   */
   addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    if (this.onSpriteRequestedListeners.indexOf(listener) === -1) {
-      this.onSpriteRequestedListeners.push(listener);
-    }
+    this.nativeMapView?.addOnSpriteRequestedListener(listener);
   }
-
-  /**
-   * Remove a sprite-requested listener
-   */
   removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    const index = this.onSpriteRequestedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.onSpriteRequestedListeners.splice(index, 1);
-    }
+    this.nativeMapView?.removeOnSpriteRequestedListener(listener);
   }
 
-  /**
-   * Clear all event listeners
-   *
-   * This method clears all registered event listeners to prevent callbacks
-   * from accessing destroyed objects during page transitions.
-   */
-  private clearAllListeners(): void {
-    // Camera listeners
-    this.onCameraWillChangeListeners = [];
-    this.onCameraIsChangingListeners = [];
-    this.onCameraDidChangeListeners = [];
+  // ===== Tile action listeners =====
 
-    // Map loading listeners
-    this.onWillStartLoadingMapListeners = [];
-    this.onDidFinishLoadingMapListeners = [];
-    this.onDidFailLoadingMapListeners = [];
-
-    // Rendering listeners
-    this.onWillStartRenderingFrameListeners = [];
-    this.onDidFinishRenderingFrameListeners = [];
-    this.onDidFinishRenderingFrameWithStatsListeners = [];
-    this.onWillStartRenderingMapListeners = [];
-    this.onDidFinishRenderingMapListeners = [];
-
-    // Style listeners
-    this.onDidFinishLoadingStyleListeners = [];
-    this.onStyleImageMissingListeners = [];
-    this.onCanRemoveUnusedStyleImageListeners = [];
-
-    // Other listeners
-    this.onDidBecomeIdleListeners = [];
-    this.onSourceChangedListeners = [];
-
-    // Shader listeners
-    this.onPreCompileShaderListeners = [];
-    this.onPostCompileShaderListeners = [];
-    this.onShaderCompileFailedListeners = [];
-
-    // Glyph listeners
-    this.onGlyphsLoadedListeners = [];
-    this.onGlyphsErrorListeners = [];
-    this.onGlyphsRequestedListeners = [];
-
-    // Sprite listeners
-    this.onSpriteLoadedListeners = [];
-    this.onSpriteErrorListeners = [];
-    this.onSpriteRequestedListeners = [];
-
-    // Tile listeners
-    this.onTileActionListeners = [];
-
-    // Map ready callbacks
-    this.onMapReadyCallbacks = [];
-
-    hilog.info(DOMAIN, 'NativeMapView', 'All listeners cleared');
+  addOnTileActionListener(listener: OnTileActionListener): void {
+    this.nativeMapView?.addOnTileActionListener(listener);
   }
+  removeOnTileActionListener(listener: OnTileActionListener): void {
+    this.nativeMapView?.removeOnTileActionListener(listener);
+  }
+
 
   /**
    * Acquire map asynchronously (mirrors Android getMapAsync)

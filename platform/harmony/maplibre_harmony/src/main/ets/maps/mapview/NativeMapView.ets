@@ -21,16 +21,7 @@ import { AttributionButton, DEFAULT_ATTRIBUTIONS } from '../widgets/AttributionB
 import type { AttributionInfo } from '../widgets/AttributionButton';
 import { OrnamentPosition, RenderingRefreshMode } from '../types/NativeTypes';
 import { OnFpsChangedListener } from '../listeners/OnFpsChangedListener';
-import {
-  OnMoveListener,
-  OnScaleListener,
-  OnRotateListener,
-  OnMapClickListener,
-  OnMapLongClickListener,
-  OnDoubleTapListener,
-  OnTiltListener,
-  OnQuickZoomListener
-} from '../gestures/GestureListeners';
+// Phase 3: Gesture listener types no longer needed — gesture recognition moved to C++
 import {
   OnCameraDidChangeListener,
   OnCameraIsChangingListener,
@@ -209,11 +200,34 @@ export struct MapView {
 
       // Propagate component props and callbacks to the controller
       if (this.controller) {
+        // ✅ Pre-set UIContext on the controller for gesture initialization
+        // handleMapViewCreated -> initializeNativeGestures needs uiContext before
+        // onMapViewCreatedCallback fires, so set it here directly rather than only inside the callback.
+        try {
+          const uiContext = this.getUIContext();
+          if (uiContext) {
+            this.controller.setUIContext(uiContext);
+          }
+        } catch (err) {
+          hilog.warn(DOMAIN, 'NativeMapView', `Failed to pre-set UIContext: ${err}`);
+        }
+
         this.syncInitialCameraProps(true);
 
         // ✅ Set the onMapViewCreated callback (fires after the C++ map is created)
         this.controller.onMapViewCreatedCallback = (mapLibreMap: MapLibreMap) => {
           hilog.info(DOMAIN, 'NativeMapView', '📢 Calling user onMapViewCreated callback');
+          // Propagate UIContext for ComponentContent-based InfoWindow rendering
+          try {
+            const uiContext = this.getUIContext();
+            if (uiContext) {
+              mapLibreMap.setUIContext(uiContext);
+              this.controller.setUIContext(uiContext);
+              hilog.info(DOMAIN, 'NativeMapView', 'UIContext propagated to MapLibreMap and controller');
+            }
+          } catch (err) {
+            hilog.warn(DOMAIN, 'NativeMapView', `Failed to set UIContext: ${err}`);
+          }
           const callback = this.getOnMapViewCreatedCallback();
           if (callback) {
             callback(mapLibreMap);
@@ -528,88 +542,14 @@ export struct MapView {
    */
   build() {
     Stack() {
-      // Map XComponent
+      // Map XComponent (with ID for native gesture FrameNode lookup)
       XComponent({
         type: XComponentType.SURFACE,
         controller: this.controller,
       })
+        .id('maplibre_xcomponent')
         .width('100%')
         .height('100%')
-        .parallelGesture(
-          // Use GestureGroup to combine multiple gestures and allow parallel recognition
-          GestureGroup(GestureMode.Parallel,
-            // Pan gesture - single-finger drag
-            PanGesture({ fingers: 1, distance: 5 })
-              .onActionStart((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPanStart(event);
-              })
-              .onActionUpdate((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPanUpdate(event);
-              })
-              .onActionEnd((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPanEnd(event);
-              }),
-
-            // Pinch gesture - two-finger pinch
-            PinchGesture({ fingers: 2, distance: 5 })
-              .onActionStart((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPinchStart(event);
-              })
-              .onActionUpdate((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPinchUpdate(event);
-              })
-              .onActionEnd((event: GestureEvent) => {
-                this.controller.getGestureDetector().onPinchEnd(event);
-              }),
-
-            // Rotation gesture - two-finger rotate
-            RotationGesture({ fingers: 2, angle: 1 })
-              .onActionStart((event: GestureEvent) => {
-                this.controller.getGestureDetector().onRotateStart(event);
-              })
-              .onActionUpdate((event: GestureEvent) => {
-                this.controller.getGestureDetector().onRotateUpdate(event);
-              })
-              .onActionEnd((event: GestureEvent) => {
-                this.controller.getGestureDetector().onRotateEnd(event);
-              })
-          )
-        )
-        // Double-tap gesture - use priorityGesture to ensure the highest priority
-        .priorityGesture(
-          TapGesture({ count: 2 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onDoubleTap(event);
-            }),
-          GestureMask.Normal
-        )
-        // Long-press gesture - registered separately
-        .gesture(
-          LongPressGesture({ repeat: false, duration: 500 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onLongPress(event);
-            })
-        )
-        // Single-tap gesture - registered separately; the system resolves conflicts with long press
-        .gesture(
-          TapGesture({ count: 1 })
-            .onAction((event: GestureEvent) => {
-              this.controller.getGestureDetector().onSingleTap(event);
-            })
-        )
-        .gesture(
-          // Tilt gesture - two-finger vertical drag
-          PanGesture({ fingers: 2, distance: 10, direction: PanDirection.Vertical })
-            .onActionStart((event: GestureEvent) => {
-              this.controller.getGestureDetector().onTwoFingerPanStart(event);
-            })
-            .onActionUpdate((event: GestureEvent) => {
-              this.controller.getGestureDetector().onTwoFingerPanUpdate(event);
-            })
-            .onActionEnd((event: GestureEvent) => {
-              this.controller.getGestureDetector().onTwoFingerPanEnd(event);
-            })
-        )
 
       // Compass component - absolute positioning configured via UiSettings
       if (this.controller.getUiSettings().isCompassEnabled()) {
@@ -750,61 +690,11 @@ export struct MapView {
     }
   }
 
-  /**
-   * Add a pan gesture listener
-   */
-  addOnMoveListener(listener: OnMoveListener): void {
-    this.controller.getGestureDetector().addOnMoveListener(listener);
-  }
-
-  /**
-   * Add a scale gesture listener
-   */
-  addOnScaleListener(listener: OnScaleListener): void {
-    this.controller.getGestureDetector().addOnScaleListener(listener);
-  }
-
-  /**
-   * Add a rotate gesture listener
-   */
-  addOnRotateListener(listener: OnRotateListener): void {
-    this.controller.getGestureDetector().addOnRotateListener(listener);
-  }
-
-  /**
-   * Add a tap listener
-   */
-  addOnMapClickListener(listener: OnMapClickListener): void {
-    this.controller.getGestureDetector().addOnMapClickListener(listener);
-  }
-
-  /**
-   * Add a long-press listener
-   */
-  addOnMapLongClickListener(listener: OnMapLongClickListener): void {
-    this.controller.getGestureDetector().addOnMapLongClickListener(listener);
-  }
-
-  /**
-   * Add a double-tap listener
-   */
-  addOnDoubleTapListener(listener: OnDoubleTapListener): void {
-    this.controller.getGestureDetector().addOnDoubleTapListener(listener);
-  }
-
-  /**
-   * Add a tilt listener
-   */
-  addOnTiltListener(listener: OnTiltListener): void {
-    this.controller.getGestureDetector().addOnTiltListener(listener);
-  }
-
-  /**
-   * Add a quick zoom listener
-   */
-  addOnQuickZoomListener(listener: OnQuickZoomListener): void {
-    this.controller.getGestureDetector().addOnQuickZoomListener(listener);
-  }
+  // Phase 3: Gesture listener proxy methods removed.
+  // Gesture recognition is now handled by C++ NativeGestureManager.
+  // User gesture listeners (onMapClick, onMapLongClick, etc.) can be
+  // registered via nativeMapView NAPI methods (when available) or
+  // through the C++ CallbackManager.
 
   /**
    * Get the map pitch

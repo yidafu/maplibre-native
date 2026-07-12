@@ -55,6 +55,7 @@ import { LocationComponent } from './location/LocationComponent';
 import { Projection } from './projection/Projection';
 import { CameraAnimationCallback } from './camera/CameraAnimationCallback';
 import { registerMapLibreMap } from './mapview/NativeMapView';
+import type { UIContext } from '@kit.ArkUI';
 import { Marker } from './annotations/Marker';
 import { Style } from './style/Style';
 import { RenderingRefreshMode } from './types/NativeTypes';
@@ -156,6 +157,12 @@ type PendingOperation = () => void;
  * @see {@link MapLibreMapOptions} Map configuration options
  * @see {@link NativeMapView} The underlying map view component
  */
+interface MapClickPosition {
+  x: number;
+  y: number;
+}
+
+
 export class MapLibreMap {
   private nativeMapView: NativeMapView;
   private options: MapLibreMapOptions;
@@ -227,6 +234,12 @@ export class MapLibreMap {
   private lastCameraMoveTime: number = 0;
   private static readonly CAMERA_MOVE_THROTTLE_MS = 16; // ~60fps limit
 
+  // Native bridge callback for map tap (registered via NAPI CallbackManager)
+  // Stores the function reference so it can be removed in destroy()
+  // Coordinates arrive as {x, y} object because ThreadSafeCallback supports only 1 argument
+  private mapClickNativeBridge: ((coords: MapClickPosition) => void) | null = null;
+  private mapLongClickNativeBridge: ((coords: MapClickPosition) => void) | null = null;
+
   constructor(nativeMapView: NativeMapView, options: MapLibreMapOptions) {
     this.nativeMapView = nativeMapView;
     this.options = options;
@@ -276,6 +289,50 @@ export class MapLibreMap {
 
     // Register with NativeMapView to enable InfoWindow features
     registerMapLibreMap(nativeMapView, this);
+
+    // 🔧 Register native bridge callbacks for map tap / long-press gestures
+    // These bridge from C++ NativeGestureManager → NAPI CallbackManager → ETS _notifyMapClick
+    // The C++ gesture manager detects the tap, extracts coordinates, dispatches via CallbackManager
+    // to the JS callback registered here, which then calls _notifyMapClick to notify all ETS listeners.
+    this.setupMapClickNativeBridge();
+  }
+
+  /**
+   * Set up native bridge callbacks for map tap and long-press gestures.
+   *
+   * Registers closure-based callbacks with the NAPI layer so that when the
+   * C++ NativeGestureManager detects a tap or long-press, the event flows
+   * through to the ETS listener dispatch methods.
+   *
+   * @private
+   */
+  private setupMapClickNativeBridge(): void {
+    // Map click bridge: forwards tap coordinates from C++ to ETS listeners.
+    // Note: ThreadSafeCallback passes only 1 argument, so coordinates arrive as {x, y}.
+    this.mapClickNativeBridge = (coords: MapClickPosition): void => {
+      const validX = typeof coords?.x === 'number' ? coords.x : 0;
+      const validY = typeof coords?.y === 'number' ? coords.y : 0;
+      this._notifyMapClick(validX, validY);
+    };
+    try {
+      this.nativeMapView.addOnMapClickListener(this.mapClickNativeBridge);
+      console.info('[MapLibreMap] Map click native bridge registered');
+    } catch (error) {
+      console.error(`[MapLibreMap] Failed to register map click native bridge: ${error}`);
+    }
+
+    // Map long-click bridge: forwards long-press coordinates from C++ to ETS listeners
+    this.mapLongClickNativeBridge = (coords: MapClickPosition): void => {
+      const validX = typeof coords?.x === 'number' ? coords.x : 0;
+      const validY = typeof coords?.y === 'number' ? coords.y : 0;
+      this._notifyMapLongClick(validX, validY);
+    };
+    try {
+      this.nativeMapView.addOnMapLongClickListener(this.mapLongClickNativeBridge);
+      console.info('[MapLibreMap] Map long-click native bridge registered');
+    } catch (error) {
+      console.error(`[MapLibreMap] Failed to register map long-click native bridge: ${error}`);
+    }
   }
 
   /**
@@ -598,6 +655,24 @@ export class MapLibreMap {
       this.pendingOperations = [];
       this.mapClickListeners = [];
       this.mapLongClickListeners = [];
+
+      // 1.1 Clean up native bridge callbacks for map tap / long-press
+      if (this.mapClickNativeBridge) {
+        try {
+          this.nativeMapView.removeOnMapClickListener(this.mapClickNativeBridge);
+        } catch (error) {
+          console.warn(`[MapLibreMap] Failed to remove map click native bridge: ${error}`);
+        }
+        this.mapClickNativeBridge = null;
+      }
+      if (this.mapLongClickNativeBridge) {
+        try {
+          this.nativeMapView.removeOnMapLongClickListener(this.mapLongClickNativeBridge);
+        } catch (error) {
+          console.warn(`[MapLibreMap] Failed to remove map long-click native bridge: ${error}`);
+        }
+        this.mapLongClickNativeBridge = null;
+      }
 
       // 2. Cancel all animations
       if (this.animationTimerId !== null) {
@@ -4181,12 +4256,10 @@ export class MapLibreMap {
     }
 
     try {
-      // DPI conversion: logical pixels -> physical pixels
-      const pixelRatio = this.nativeMapView.getPixelRatio();
-      const screenX = x * pixelRatio;
-      const screenY = y * pixelRatio;
-
-      const features = this.nativeMapView.queryRenderedFeaturesForPoint(screenX, screenY, layerIds, filter);
+      // Note: The renderer's internal coordinate system is in logical pixels (vp)
+      // because resizeView() passes logical pixel dimensions to map.setSize().
+      // So we pass logical pixel coordinates directly WITHOUT pixelRatio conversion.
+      const features = this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
       return features as IFeature[];
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForPoint failed: ${error.message}`);
@@ -4195,28 +4268,19 @@ export class MapLibreMap {
   }
 
   /**
-   * Query rendered features within a rectangle (physical pixel variant)
+   * Query rendered features within a rectangle (direct NAPI pass-through)
    *
-   * **Note**: Accepts **physical pixel** coordinates and passes them directly to the renderer without DPI conversion.
-   * Useful for internal map calculations and scenarios requiring exact physical pixel control.
+   * **Coordinate system**: The underlying renderer operates in logical pixels (vp) because
+   * resizeView() passes logical pixel dimensions to map.setSize(). So this method accepts
+   * and passes logical pixel coordinates directly to the NAPI layer WITHOUT pixelRatio conversion.
    *
-   * @param left Left boundary in physical pixels
-   * @param top Top boundary in physical pixels
-   * @param right Right boundary in physical pixels
-   * @param bottom Bottom boundary in physical pixels
+   * @param left Left boundary in logical pixels
+   * @param top Top boundary in logical pixels
+   * @param right Right boundary in logical pixels
+   * @param bottom Bottom boundary in logical pixels
    * @param layerIds Optional array of layer IDs to filter the results
    * @param filter Optional filter expression
    * @returns Array of IFeature
-   *
-   * @example
-   * ```typescript
-   * // Internal calculations using physical pixels
-   * const pixelRatio = map.getNativeMapView().getPixelRatio();
-   * const physicalLeft = logicalLeft * pixelRatio;
-   * const features = map.queryRenderedFeaturesForBoxPhysical(
-   *   physicalLeft, physicalTop, physicalRight, physicalBottom
-   * );
-   * ```
    */
   public queryRenderedFeaturesForBoxPhysical(
     left: number,
@@ -4295,15 +4359,12 @@ export class MapLibreMap {
     }
 
     try {
-      // DPI conversion: logical pixels -> physical pixels
-      const pixelRatio = this.nativeMapView.getPixelRatio();
-      const physicalLeft = left * pixelRatio;
-      const physicalTop = top * pixelRatio;
-      const physicalRight = right * pixelRatio;
-      const physicalBottom = bottom * pixelRatio;
-
+      // Note: The renderer's internal coordinate system is in logical pixels (vp)
+      // because resizeView() passes logical pixel dimensions to map.setSize().
+      // So we pass logical pixel coordinates directly WITHOUT pixelRatio conversion.
+      // See HarmonyRenderer::resize() for details.
       return this.queryRenderedFeaturesForBoxPhysical(
-        physicalLeft, physicalTop, physicalRight, physicalBottom, layerIds, filter
+        left, top, right, bottom, layerIds, filter
       );
     } catch (error) {
       console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
@@ -4369,6 +4430,18 @@ export class MapLibreMap {
    */
   public getInfoWindowManager(): InfoWindowManager {
     return this.infoWindowManager;
+  }
+
+  /**
+   * Set the UIContext for ComponentContent creation.
+   *
+   * Must be called before showing InfoWindows so that the InfoWindowManager
+   * can create ComponentContent instances for rendering.
+   *
+   * @param uiContext The UIContext from the page/component.
+   */
+  public setUIContext(uiContext: UIContext): void {
+    this.markerManager.setUIContext(uiContext);
   }
 
 // ========== Performance instrumentation (mirrors Android) ==========
