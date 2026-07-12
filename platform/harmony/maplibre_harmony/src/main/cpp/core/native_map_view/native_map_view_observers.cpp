@@ -4,6 +4,7 @@
 #include "utils/logger.h"
 #include "bitmap/bitmap_napi.hpp"
 #include "rendering/harmony_renderer.hpp"
+#include <arkui/native_node_napi.h>
 #include <mbgl/gfx/shader_registry.hpp>
 #include <mbgl/style/style.hpp>
 #include <tuple>
@@ -1081,7 +1082,226 @@ napi_value NativeMapView::setNativeWindowWithSize(napi_env env, napi_callback_in
     nativeMapView->setNativeWindowWithSize(surfaceId, width, height);
     
     Logger::info("NativeMapView", "========== setNativeWindowWithSize() END - SUCCESS ==========");
-    
+
+    return undefined;
+}
+
+// NAPI method to initialize native gesture recognizers (replaces ArkTS MapGestureDetector)
+// Accepts a FrameNode napi_value and extracts ArkUI_NodeHandle via OH_ArkUI_GetNodeHandleFromNapiValue.
+napi_value NativeMapView::setupNativeGestures(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    // Get the 'this' object and arguments
+    size_t argc = 1;
+    napi_value args[1];
+    napi_value thisObj;
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok) {
+        Logger::error("NativeMapView", "setupNativeGestures: failed to get arguments");
+        return undefined;
+    }
+
+    if (argc < 1) {
+        Logger::warn("NativeMapView", "setupNativeGestures: no FrameNode provided, skipping gesture init");
+        return undefined;
+    }
+
+    // Extract ArkUI_NodeHandle from the FrameNode napi_value
+    ArkUI_NodeHandle nodeHandle = nullptr;
+    int32_t result = OH_ArkUI_GetNodeHandleFromNapiValue(env, args[0], &nodeHandle);
+    if (result != 0 || !nodeHandle) {
+        Logger::error("NativeMapView", "setupNativeGestures: failed to get node handle from FrameNode, error=%d", result);
+        return undefined;
+    }
+
+    // Get NativeMapView instance
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "setupNativeGestures: failed to unwrap instance");
+        return undefined;
+    }
+
+    if (!instance->map) {
+        Logger::warn("NativeMapView", "setupNativeGestures: map not ready yet, deferring gesture init");
+        return undefined;
+    }
+
+    // Initialize gesture manager with a render-thread dispatcher
+    // Gesture callbacks arrive on the UI thread, but mbgl::Map operations
+    // must run on the render thread to avoid data races and bad_function_call.
+    auto renderThreadDispatcher = [instance](std::function<void()> task) {
+        if (instance->harmonyRenderer) {
+            instance->harmonyRenderer->runOnRenderThread(std::move(task));
+        }
+    };
+    instance->gestureManager_ = std::make_unique<gesture::NativeGestureManager>();
+    if (!instance->gestureManager_->initialize(nodeHandle, instance->map, instance->getPixelRatioValue(), std::move(renderThreadDispatcher))) {
+        Logger::error("NativeMapView", "setupNativeGestures: failed to initialize gesture manager");
+        instance->gestureManager_.reset();
+        return undefined;
+    }
+
+    // Wire tap gesture → JS callback via CallbackManager
+    if (instance->callbackManager_) {
+        instance->gestureManager_->setOnMapClickListener(
+            [instance](double x, double y) {
+                instance->callbackManager_->InvokeCallback(
+                    "onMapClick",
+                    [x, y](napi_env env) -> napi_value {
+                        // Pass both coordinates as a single object {x, y}
+                        // because ThreadSafeCallback only supports 1 argument
+                        napi_value obj;
+                        napi_create_object(env, &obj);
+                        napi_value xVal, yVal;
+                        napi_create_double(env, x, &xVal);
+                        napi_create_double(env, y, &yVal);
+                        napi_set_named_property(env, obj, "x", xVal);
+                        napi_set_named_property(env, obj, "y", yVal);
+                        return obj;
+                    });
+            });
+
+        instance->gestureManager_->setOnMapLongClickListener(
+            [instance](double x, double y) {
+                instance->callbackManager_->InvokeCallback(
+                    "onMapLongClick",
+                    [x, y](napi_env env) -> napi_value {
+                        napi_value obj;
+                        napi_create_object(env, &obj);
+                        napi_value xVal, yVal;
+                        napi_create_double(env, x, &xVal);
+                        napi_create_double(env, y, &yVal);
+                        napi_set_named_property(env, obj, "x", xVal);
+                        napi_set_named_property(env, obj, "y", yVal);
+                        return obj;
+                    });
+            });
+    } else {
+        Logger::warn("NativeMapView", "setupNativeGestures: callbackManager_ not available, tap/long-click disabled");
+    }
+
+    Logger::info("NativeMapView", "setupNativeGestures: native gesture recognizers initialized successfully");
+    return undefined;
+}
+
+// ========== Map click listener management ==========
+
+napi_value NativeMapView::addOnMapClickListener(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "addOnMapClickListener: Failed to get callback argument");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "addOnMapClickListener: Failed to unwrap instance");
+        return undefined;
+    }
+
+    if (!instance->callbackManager_) {
+        Logger::error("NativeMapView", "addOnMapClickListener: CallbackManager not initialized");
+        return undefined;
+    }
+
+    // Register the callback under the "onMapClick" name
+    if (instance->callbackManager_->RegisterCallback("onMapClick", args[0])) {
+        Logger::info("NativeMapView", "addOnMapClickListener: registered");
+    } else {
+        Logger::error("NativeMapView", "addOnMapClickListener: Failed to register callback");
+    }
+
+    return undefined;
+}
+
+napi_value NativeMapView::removeOnMapClickListener(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "removeOnMapClickListener: Failed to get callback argument");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "removeOnMapClickListener: Failed to unwrap instance");
+        return undefined;
+    }
+
+    if (!instance->callbackManager_) {
+        Logger::error("NativeMapView", "removeOnMapClickListener: CallbackManager not initialized");
+        return undefined;
+    }
+
+    instance->callbackManager_->UnregisterCallback("onMapClick", args[0]);
+    return undefined;
+}
+
+napi_value NativeMapView::addOnMapLongClickListener(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "addOnMapLongClickListener: Failed to get callback argument");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "addOnMapLongClickListener: Failed to unwrap instance");
+        return undefined;
+    }
+
+    if (!instance->callbackManager_) {
+        Logger::error("NativeMapView", "addOnMapLongClickListener: CallbackManager not initialized");
+        return undefined;
+    }
+
+    if (instance->callbackManager_->RegisterCallback("onMapLongClick", args[0])) {
+        Logger::info("NativeMapView", "addOnMapLongClickListener: registered");
+    } else {
+        Logger::error("NativeMapView", "addOnMapLongClickListener: Failed to register callback");
+    }
+
+    return undefined;
+}
+
+napi_value NativeMapView::removeOnMapLongClickListener(napi_env env, napi_callback_info info) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+
+    napi_value thisObj;
+    size_t argc = 1;
+    napi_value args[1];
+    if (napi_get_cb_info(env, info, &argc, args, &thisObj, nullptr) != napi_ok || argc < 1) {
+        Logger::error("NativeMapView", "removeOnMapLongClickListener: Failed to get callback argument");
+        return undefined;
+    }
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::error("NativeMapView", "removeOnMapLongClickListener: Failed to unwrap instance");
+        return undefined;
+    }
+
+    if (!instance->callbackManager_) {
+        Logger::error("NativeMapView", "removeOnMapLongClickListener: CallbackManager not initialized");
+        return undefined;
+    }
+
+    instance->callbackManager_->UnregisterCallback("onMapLongClick", args[0]);
     return undefined;
 }
 

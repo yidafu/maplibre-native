@@ -4,6 +4,7 @@
 #include "rendering/backends/harmony_renderer_backend.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include "core/callback_manager.hpp"
+#include "core/gesture/native_gesture_manager.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/geometry.hpp>
@@ -35,6 +36,8 @@ struct HarmonyViewAnnotation {
     mbgl::Size size{0, 0};
     mbgl::ScreenCoordinate offset{0.0, 0.0};
     double anchorHeight = 0;  // Height for anchor positioning (separate from render size)
+    double anchorU = 0.5;     // Horizontal anchor (0=left, 0.5=center, 1=right)
+    double anchorV = 1.0;     // Vertical anchor (0=top, 0.5=center, 1=bottom)
     bool visible = true;
     bool allowOverlap = false;
     bool draggable = false;
@@ -53,6 +56,8 @@ struct HarmonyViewAnnotationFrame {
     double rotation = 0.0;
     double opacity = 1.0;
     double pixelRatio = 1.0;
+    double positionX = 0.0;  // Final render X in logical pixels (screen.x/pixelRatio - w*anchorU)
+    double positionY = 0.0;  // Final render Y in logical pixels (screen.y/pixelRatio - h*anchorV)
     bool visible = true;
     bool draggable = false;
 };
@@ -77,7 +82,11 @@ public:
     
     // Asynchronous destruction (invoked from TS layer, supports callback)
     static napi_value destroyAsync(napi_env env, napi_callback_info info);
-    
+
+    // Set up native gesture recognizers (replaces ArkTS MapGestureDetector)
+    // @param frameNode FrameNode of the XComponent (obtained via UIContext.getFrameNodeById)
+    static napi_value setupNativeGestures(napi_env env, napi_callback_info info);
+
     // Set the native window along with size parameters
     void setNativeWindowWithSize(int64_t surfaceId, int width, int height);
 
@@ -253,6 +262,12 @@ public:
     void onSpriteError(const std::optional<mbgl::style::Sprite>&, std::exception_ptr) override;
     void onSpriteRequested(const std::optional<mbgl::style::Sprite>&) override;
     
+    // Gesture listener management (map click / long-click)
+    static napi_value addOnMapClickListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnMapClickListener(napi_env env, napi_callback_info info);
+    static napi_value addOnMapLongClickListener(napi_env env, napi_callback_info info);
+    static napi_value removeOnMapLongClickListener(napi_env env, napi_callback_info info);
+
     // Camera listener management
     static napi_value addOnCameraIdleListener(napi_env env, napi_callback_info info);
     static napi_value removeOnCameraIdleListener(napi_env env, napi_callback_info info);
@@ -417,6 +432,9 @@ private:
     
     // Unified callback manager
     std::shared_ptr<mbgl::harmony::CallbackManager> callbackManager_;
+
+    // Native gesture manager (replaces ArkTS MapGestureDetector)
+    std::unique_ptr<mbgl::harmony::gesture::NativeGestureManager> gestureManager_;
     
     // Application cache directory path
     std::string cachePath_;

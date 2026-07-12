@@ -79,7 +79,10 @@ add_library(maplibre
     core/native_map_view/native_map_view_observers.cpp
     core/native_map_view/native_map_view_performance.cpp
     core/native_map_view/native_map_view_debug.cpp
-    
+    # Phase 3: Native gesture recognizers (replaces ArkTS MapGestureDetector)
+    core/gesture/native_gesture_manager.hpp
+    core/gesture/native_gesture_manager.cpp
+
     # Configuration management
     config/maplibre_settings.hpp
     config/maplibre_settings.cpp

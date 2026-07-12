@@ -322,6 +322,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"setLatLngBounds", nullptr, setLatLngBounds, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"cancelTransitions", nullptr, cancelTransitions, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setGestureInProgress", nullptr, setGestureInProgress, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setupNativeGestures", nullptr, setupNativeGestures, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"moveBy", nullptr, moveBy, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"jumpTo", nullptr, jumpTo, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"easeTo", nullptr, easeTo, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -451,6 +452,10 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"getLocalIdeographFontFamily", nullptr, getLocalIdeographFontFamily, nullptr, nullptr, nullptr, napi_default, nullptr},
         
         // Legacy camera listener methods
+        {"addOnMapClickListener", nullptr, addOnMapClickListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnMapClickListener", nullptr, removeOnMapClickListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"addOnMapLongClickListener", nullptr, addOnMapLongClickListener, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"removeOnMapLongClickListener", nullptr, removeOnMapLongClickListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnCameraIdleListener", nullptr, addOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeOnCameraIdleListener", nullptr, removeOnCameraIdleListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"addOnCameraMoveStartedListener", nullptr, addOnCameraMoveStartedListener, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -1219,12 +1224,21 @@ napi_value NativeMapView::getDensityDependantRectangle(napi_env env, napi_callba
 /**
  * Cancel all pending network requests.
  *
- * This method cancels all ongoing HTTP requests to prevent callbacks from
- * accessing destroyed objects during page transitions. This is critical
- * for preventing SIGSEGV crashes when the map is destroyed.
+ * ⚠️ NOTE: Network request cleanup is handled automatically during
+ * HTTPFileSource/OnlineFileSource destruction (calls removeAllHandles()
+ * and stop() on CURLEventLoop). Individual HTTPRequest destructors also
+ * remove their handles from the event loop to prevent callbacks.
  *
- * Implementation: Uses FileSourceManager to get HarmonyOS-specific HTTPFileSource
- * and calls its cancelAllRequests() method.
+ * This function exists as a signal to the ArkTS layer that cleanup has
+ * started so it doesn't attempt further network operations. No direct
+ * cancellation is performed here because:
+ * - OnlineFileSource::pause() requires calling from the thread that owns
+ *   the Thread<OnlineFileSourceThread> object (assertion in thread.hpp:115)
+ * - This NAPI method runs on the UI thread, not the network thread
+ * - HTTP cleanup is handled safely by destructors during map teardown
+ *
+ * See HTTPFileSource::Impl::~Impl() and HTTPRequest::~HTTPRequest() for
+ * the actual cleanup logic.
  */
 napi_value NativeMapView::cancelAllRequests(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
@@ -1242,42 +1256,11 @@ napi_value NativeMapView::cancelAllRequests(napi_env env, napi_callback_info inf
         return args.Undefined();
     }
 
-    // Get FileSourceManager and cancel all requests
-    try {
-        auto* fileSourceManager = mbgl::FileSourceManager::get();
-        if (!fileSourceManager) {
-            Logger::warn("NativeMapView", "cancelAllRequests: FileSourceManager not available");
-            return args.Undefined();
-        }
+    Logger::info("NativeMapView", "cancelAllRequests: Cleanup signal received (network cleanup handled by destructors)");
 
-        mbgl::ResourceOptions resourceOptions;
-        mbgl::ClientOptions clientOptions;
-
-        // Get the Network file source (HTTPFileSource on HarmonyOS)
-        auto fileSource = fileSourceManager->getFileSource(
-            mbgl::FileSourceType::Network, resourceOptions, clientOptions);
-
-        if (!fileSource) {
-            Logger::warn("NativeMapView", "cancelAllRequests: Network file source not available");
-            return args.Undefined();
-        }
-
-        // Check if it's a HarmonyOS HTTPFileSource with cancelAllRequests
-        // We need to cast to the platform-specific type
-        // Since FileSource doesn't have cancelAllRequests in the base class,
-        // we use the pause() method as a fallback which stops new requests
-        fileSource->pause();
-
-        Logger::info("NativeMapView", "cancelAllRequests: File source paused (pending requests will complete without callbacks)");
-
-        // For more aggressive cleanup, we could also stop the CURLEventLoop directly
-        // but that requires access to the platform-specific implementation
-
-    } catch (const std::exception& e) {
-        Logger::error("NativeMapView", "cancelAllRequests: Error: %s", e.what());
-    } catch (...) {
-        Logger::error("NativeMapView", "cancelAllRequests: Unknown error");
-    }
+    // Intentional no-op: network request cleanup is handled by
+    // HTTPFileSource::Impl and HTTPRequest destructors during map teardown.
+    // See function-level comment for details.
 
     return args.Undefined();
 }
