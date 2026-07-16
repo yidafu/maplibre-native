@@ -745,6 +745,16 @@ void NativeMapView::initializeRenderer() {
             // best-effort cleanup
         }
         harmonyRenderer.reset();
+        // ⚠️ DANGLING POINTER RISK: Setting map = nullptr here prevents *this* instance
+        // from using a stale pointer, BUT any StyleNAPI instances that previously received
+        // this Map address (via the ArkTS layer's pointer-passing) will NOT be updated.
+        //
+        // StyleNAPI holds a raw mbgl::Map* that was obtained during style construction
+        // (style_napi_base.cpp:149). After this point, that pointer is dangling.
+        // The !style->map guards in StyleNAPI methods cannot detect this because the
+        // old address is non-null but points to freed memory.
+        //
+        // See style_napi.hpp for full details on the crash scenario.
         map = nullptr; // drop old Map reference tied to previous renderer/thread
     }
     
@@ -817,6 +827,8 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         // best effort
     }
     harmonyRenderer.reset();
+    // ⚠️ Same dangling pointer risk as initializeRenderer() — see note above.
+    // Any StyleNAPI holding the old Map pointer is now referencing freed memory.
     map = nullptr;
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
     

@@ -119,6 +119,32 @@ export class MarkerManager {
    *
    * Style reloads drop previously created sources/layers, so we must reinitialize the
    * MarkerLayerManager and restore markers.
+   *
+   * ⚠️ THREADING / CRASH NOTE
+   *
+   * This callback fires from the render thread via ThreadSafeCallback, but executes
+   * on the main (UI/JS) thread. The MarkerLayerManager.initialize() call below will
+   * eventually call Style.addLayer() → native StyleNAPI::AddLayer(), which directly
+   * mutates the core mbgl::Style object on the main thread.
+   *
+   * PROBLEM: The render thread may simultaneously read the same Style internal state
+   * (layers/sources collections) to render a frame. This data race corrupts the
+   * internal data structures, leading to a null pointer dereference.
+   *
+   * Observed crash: SIGSEGV @0x8 inside Style::Impl::addLayer() when accessing
+   *   layer->baseImpl at offset 8 from a null Layer* (the Layer* comes from a
+   *   corrupted collection).
+   *
+   * Trigger sequence:
+   *   1. render thread: onDidFinishLoadingStyle → notifyStyleLoaded()
+   *   2. main thread:   this onStyleLoaded callback runs
+   *   3. main thread:   markerLayerManager.initialize() → style.addLayer(tempLayer)
+   *   4. render thread: concurrently reading style layers for rendering
+   *
+   * POTENTIAL FIX DIRECTION:
+   *   Queue addLayer / addSource calls to the render thread instead of executing
+   *   them synchronously on the main thread. Or protect the core style collections
+   *   with a mutex.
    */
   private setupStyleLoadedListener(): void {
     const manager = this;

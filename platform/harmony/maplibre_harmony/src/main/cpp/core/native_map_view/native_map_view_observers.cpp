@@ -292,20 +292,36 @@ void NativeMapView::onDidFinishLoadingStyle() {
         Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle: Instance is destroying, skipping callback");
         return;
     }
-    
+
     // ✅ Architecture fix: ensure callbacks execute on the render thread
     if (!isOnRenderThread()) {
         Logger::warn("NativeMapView", "⚠️ onDidFinishLoadingStyle from non-render thread, dispatching");
 
+        // ⚠️ CRASH NOTE — Threading hazard in the onStyleLoaded callback path
+        //
+        // We switch execution to the render thread and call notifyStyleLoaded() here.
+        // notifyStyleLoaded() dispatches the JS "onStyleLoaded" callback asynchronously
+        // to the main (UI) thread via ThreadSafeCallback/CallbackManager.
+        //
+        // By the time the main thread executes the callback (e.g., MarkerManager's
+        // onStyleLoaded → MarkerLayerManager.initialize() → style.addLayer()), the
+        // render thread may be concurrently reading the same Style data for rendering.
+        //
+        // The addLayer call directly mutates Style::Impl::layers/sources collections
+        // from the main thread while the render thread reads them → DATA RACE.
+        //
+        // See style_impl.cpp :: Style::Impl::addLayer() for the crash site.
+        // See style_napi.hpp for the full analysis.
+        // ========================================================================
         // Switch execution to the render thread
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
-            
+
             // Notify the Android-style listeners
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingStyle");
             }
-            
+
             // Notify that style loading completed (legacy listener)
             notifyStyleLoaded();
         });
@@ -1979,6 +1995,24 @@ napi_value NativeMapView::setOnStyleLoadErrorListener(napi_env env, napi_callbac
     return undefined;
 }
 
+// ⚠️ CRASH NOTE: notifyStyleLoaded is the entry point for a known data race.
+//
+// This function invokes the JS "onStyleLoaded" callback asynchronously on the main
+// (UI) thread via CallbackManager. The callback runs on the main thread, where it
+// may call StyleNAPI::AddLayer() / AddSource() which DIRECTLY mutates core mbgl::Style
+// internal state (layers, sources collections).
+//
+// Meanwhile, the render thread (which called this function) continues to read the
+// same Style data to render frames. This concurrent read/write is a DATA RACE that
+// corrupts the internal collections, leading to null pointer dereferences.
+//
+// Crash site: Style::Impl::addLayer() at style_impl.cpp:212
+//   layer->baseImpl accessed at offset 8 from a null Layer*
+//   → SIGSEGV @0x0000000000000008
+//   → Frame #09: StyleNAPI::AddLayer + 3812
+//
+// Full analysis: see style_napi.hpp (the THREAD SAFETY WARNING section)
+// =============================================================================
 void NativeMapView::notifyStyleLoaded() {
     if (isDestroying.load(std::memory_order_acquire)) {
         Logger::warn("NativeMapView", "⚠️ notifyStyleLoaded: Instance is destroying, skipping callback");

@@ -65,6 +65,35 @@ namespace harmony {
 // Placeholder for AddSource - actual implementation is in style_napi_sources.cpp or style_napi_base.cpp
 // ==================== Layer management ====================
 
+// ⚠️ THREAD SAFETY NOTE — AddLayer & the onStyleLoaded crash
+//
+// This function is called from the main (UI/JS) thread but directly mutates the
+// core mbgl::style::Style object via style->map->getStyle().addLayer().
+// The render thread concurrently reads the same Style internal data (layers,
+// sources collections) during frame rendering — this is a DATA RACE.
+//
+// Crash signature: SIGSEGV @0x8 inside Style::Impl::addLayer() (style_impl.cpp:212)
+//   Address 0x8 = Layer::baseImpl at offset 8 from null Layer*
+//   The Layer* becomes null when the style's internal collection is corrupted
+//   by concurrent read/write from the render thread.
+//
+// Trigger path:
+//   [Render Thread] onDidFinishLoadingStyle → notifyStyleLoaded() (async)
+//   [Main Thread]   onStyleLoaded → MarkerManager → MarkerLayerManager.initialize()
+//                   → Style.addLayer() → StyleNAPI::AddLayer() → core addLayer()
+//   [Render Thread] simultaneously reading style layers to render a frame
+//
+// Additional risk: style->map is a RAW POINTER stored in StyleNAPI (see style_napi.hpp).
+//   If NativeMapView reinitializes the renderer (map = nullptr; map = newMap),
+//   style->map becomes a DANGLING POINTER that the !style->map guard cannot detect.
+//
+// === FIX GUIDANCE ===
+// 1. Queue AddLayer operations to the render thread instead of calling addLayer
+//    directly (use RendererFrontend or similar marshalling mechanism)
+// 2. OR add a mutex around Style internal state (layers/sources collections)
+// 3. OR ensure StyleNAPI::map is updated when the Map object is recreated
+//    (e.g., via a callback from NativeMapView to all StyleNAPI instances)
+// ========================================================================
 napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
     napiArgs.RequireMinArgs(1);

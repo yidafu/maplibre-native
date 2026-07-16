@@ -162,6 +162,14 @@ export class MarkerLayerManager {
       this.configureLayer(tempLayer);
 
       // Add the layer to the style (Style will call getNative() on the wrapper)
+      //
+      // ⚠️ CRASH SITE: This style.addLayer() call triggers StyleNAPI::AddLayer() in
+      // the native layer. When called from onStyleLoaded (the MarkerManager listener),
+      // this runs on the main thread while the render thread may concurrently read
+      // the same Style data — causing a data race and null-pointer crash (@0x8).
+      //
+      // See MarkerManager.ets :: setupStyleLoadedListener() for the full analysis.
+      // See style_napi.hpp for the native-side trace and fix guidance.
       style.addLayer(tempLayer);
 
       // Re-fetch the layer from the style to ensure we reference the style-owned instance
