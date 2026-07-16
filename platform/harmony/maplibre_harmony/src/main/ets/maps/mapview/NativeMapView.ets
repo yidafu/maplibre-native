@@ -565,7 +565,7 @@ export struct MapView {
         type: XComponentType.SURFACE,
         controller: this.controller,
       })
-        .id('maplibre_xcomponent')
+        .id(this.controller.getXComponentId())
         .width('100%')
         .height('100%')
 

@@ -76,6 +76,11 @@ type CameraOptions = maplibre.CameraOptions;
 
 type NullableNativeMapView = NativeMapView | null;
 
+// Monotonic counter for unique XComponent IDs.
+// Each MapView instance gets a unique ID so initializeNativeGestures()
+// can look up its own FrameNode when multiple maps are on the same page.
+let nextXComponentId: number = 1;
+
 /**
  * Global map: NAPI NativeMapView -> ETS NativeMapViewController
  * Allows MapLibreMap to find and register with its controller
@@ -154,6 +159,10 @@ export class NativeMapViewController extends XComponentController implements Nat
   private surfaceHeight: number = 0;
   private pixelRatio: number = 1.0; // Cached device pixel ratio
   private isSurfaceRectSet: boolean = false; // Prevent setXComponentSurfaceRect recursion
+  // Unique XComponent ID for FrameNode lookup.
+  // Generated at construction time so both build() (.id()) and
+  // initializeNativeGestures() (getFrameNodeById) reference the same ID.
+  private xcomponentId: string = 'maplibre_xcomponent_' + (nextXComponentId++);
   // Initial configuration
   public styleUrl: string = "https://demotiles.maplibre.org/style.json";
   public initialLatitude: number = 0;
@@ -799,6 +808,16 @@ export class NativeMapViewController extends XComponentController implements Nat
   }
 
   /**
+   * Get the unique XComponent ID for this map view instance.
+   * Used by MapView.build() for the XComponent .id() binding, and internally
+   * by initializeNativeGestures() for FrameNode lookup.
+   * @returns Unique XComponent ID string
+   */
+  getXComponentId(): string {
+    return this.xcomponentId;
+  }
+
+  /**
    * Set UIContext for FrameNode lookup and InfoWindow rendering
    */
   setUIContext(context: UIContext): void {
@@ -818,7 +837,7 @@ export class NativeMapViewController extends XComponentController implements Nat
       return;
     }
     try {
-      const frameNode = this.uiContext.getFrameNodeById('maplibre_xcomponent');
+      const frameNode = this.uiContext.getFrameNodeById(this.xcomponentId);
       if (frameNode) {
         this.nativeMapView.setupNativeGestures(frameNode);
         hilog.info(DOMAIN, 'NativeMapViewController',

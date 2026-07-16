@@ -526,19 +526,23 @@ build/default/outputs/default/maplibre-harmony.har
 3. Inspect HiLog: `hdc hilog | grep MapLibre`
 4. **Known Issue**: Map may crash on repeated page transitions (being fixed)
 
-### Multiple maps limitation
+### Multiple maps support
 
-> ⚠️ **IMPORTANT**: Multiple map instances on the same screen are **NOT supported** currently.
+> ✅ **Support for multiple map instances on the same screen is now available**.
 >
-> **Current Limitation**:
+> **Current Status**:
 >
-> - Only **ONE** map instance can be rendered on screen at a time
-> - Creating multiple `NativeMapView` components simultaneously will cause rendering conflicts
-> - Switching between maps requires proper cleanup of the previous instance
+> - **Two or more** `MapView` instances can be rendered on screen simultaneously
+> - Each map instance has independent camera, style, and gesture controls
+> - Proper cleanup required when destroying instances (use `MapLibreMap.destroy()`)
 >
-> **Status**: 🚧 Multi-map support is **planned** and under investigation
+> **Known Limitations**:
 >
-> **Workaround**: Use navigation or tabs to display maps one at a time
+> - Maximum recommended instances: **4** (limited by EGLDisplayManager cap)
+> - Performance impact with 3+ instances (resource-intensive, not optimized)
+> - Each map requires its own XComponent surface (memory proportional to instance count)
+>
+> **Verification**: See [`DoubleMapTestPage`](../entry/src/main/ets/pages/basic/DoubleMapTestPage.ets) for a working example
 
 ### Build errors
 1. Clean build cache: `npm run clean`
@@ -590,7 +594,7 @@ See the [`entry`](../entry/) module for complete working examples:
 - Type-safe, reactive map configuration
 - Simplified component composition
 
-**Multiple Map Support** 🚧 Planned
+**Multiple Map Support** ✅ Done
 
 - Support rendering multiple map instances on the same screen
 - Independent camera and style control for each instance

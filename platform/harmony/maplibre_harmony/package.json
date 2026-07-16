@@ -1,11 +1,11 @@
 {
   "name": "maplibre-harmony",
-  "version": "0.2.0-alpha.1",
+  "version": "0.2.0-alpha.2",
   "description": "MapLibre Native for HarmonyOS - OpenGL-based vector map rendering library",
   "main": "index.ets",
   "scripts": {
     "prepublishOnly": "cd .. && bash ./pre-release.sh \"$npm_package_version\"",
-    "update:version": "cd .. && bash ./pre-release.sh \"$npm_package_version\""
+    "update:version": "cd .. && bash ./pre-release.sh"
   },
   "keywords": [
     "maplibre",
