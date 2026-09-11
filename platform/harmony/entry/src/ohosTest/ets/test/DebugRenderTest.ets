@@ -7,7 +7,7 @@ import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MapLibreMap, MapDebugOptions, RenderingRefreshMode } from 'maplibre_harmony';
-import { TestMapAccessor } from '../../../../main/ets/pages/common/TestMapAccessor';
+import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'DebugRenderTest';
 const DOMAIN = 0xFF00;
@@ -127,5 +127,5 @@ export default function DebugRenderTest() {
 }
 
 async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms);
+  return new Promise(resolve => setTimeout(resolve, ms));
 }

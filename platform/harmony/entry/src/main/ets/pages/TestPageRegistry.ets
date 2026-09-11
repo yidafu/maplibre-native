@@ -26,6 +26,7 @@ export const TEST_PAGE_CATEGORIES: TestPageCategory[] = [
       { title: 'Simple Map', description: 'Display a basic interactive map', route: 'pages/basic/SimpleMapTestPage' },
       { title: 'Debug Mode', description: 'Toggle debug visualizations (tile boundaries, FPS)', route: 'pages/basic/DebugModeTestPage' },
       { title: 'Map State', description: 'Monitor map lifecycle and state changes', route: 'pages/basic/MapStateTestPage' },
+      { title: 'Renderer Backend Info', description: 'Show active graphics backend (OpenGL ES / Vulkan) and GPU', route: 'pages/basic/BackendInfoTestPage' },
     ],
   },
   {
@@ -223,6 +224,13 @@ export const TEST_PAGE_CATEGORIES: TestPageCategory[] = [
     pages: [
       { title: 'Auto Test', description: 'Bridge for ohosTest suites', route: 'pages/integration/AutomationTestPage' },
       { title: 'Declarative API', description: 'Declarative map API demo', route: 'pages/integration/DeclarativeAPITestPage' },
+    ],
+  },
+  {
+    name: 'Texture Mode',
+    key: '21_texturemode',
+    pages: [
+      { title: 'Texture XComponent', description: 'Map on XComponentType.TEXTURE with transforms', route: 'pages/texturemode/TextureModeTestPage' },
     ],
   },
 ];

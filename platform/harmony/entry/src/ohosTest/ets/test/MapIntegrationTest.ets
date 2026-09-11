@@ -15,7 +15,7 @@ import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MapLibreMap, LatLng, CameraPosition } from 'maplibre_harmony';
 // Import TestMapAccessor from the main app module
-import { TestMapAccessor } from '../../../../main/ets/pages/common/TestMapAccessor';
+import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'MapIntegrationTest';
 const DOMAIN = 0xFF00;

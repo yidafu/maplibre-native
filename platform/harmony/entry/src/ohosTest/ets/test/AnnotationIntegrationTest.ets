@@ -8,7 +8,8 @@ import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { MapLibreMap, LatLng, MarkerOptions, Marker, Polyline, Polygon } from 'maplibre_harmony';
-import { TestMapAccessor } from '../../../../main/ets/pages/common/TestMapAccessor';
+import { TestMapAccessor } from '../common/TestMapAccessor';
+import { TestMarkerClickListener } from '../common/TestListeners';
 
 const TAG = 'AnnotationIntegrationTest';
 const DOMAIN = 0xFF00;
@@ -51,7 +52,7 @@ export default function AnnotationIntegrationTest() {
       it('should add a single marker', 0, async () => {
         if (!map) { return; }
         const marker = await map.addMarker(new MarkerOptions().position(new LatLng(39.9, 116.4)).title('Test'));
-        expect(marker).assertNull() == false;
+        expect(marker !== null).assertTrue();
         if (marker) {
           expect(marker.getId() >= 0).assertTrue();
           map.removeMarker(marker);
@@ -86,9 +87,11 @@ export default function AnnotationIntegrationTest() {
       it('should set marker click listener', 0, () => {
         if (!map) { return; }
         let clicked = false;
-        map.setOnMarkerClickListener({
-          onMarkerClick: () => { clicked = true; return true; }
+        const listener = new TestMarkerClickListener((marker: Marker): boolean => {
+          clicked = true;
+          return true;
         });
+        map.setOnMarkerClickListener(listener);
         expect(clicked).assertFalse(); // not triggered yet
         // Cleanup
         map.setOnMarkerClickListener(null);

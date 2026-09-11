@@ -12,7 +12,7 @@ import {
   FillLayer, CircleLayer, LineLayer, GeoJsonSource,
   Expression, TransitionOptions
 } from 'maplibre_harmony';
-import { TestMapAccessor } from '../../../../main/ets/pages/common/TestMapAccessor';
+import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'StyleIntegrationTest';
 const DOMAIN = 0xFF00;
@@ -81,7 +81,7 @@ export default function StyleIntegrationTest() {
         if (layers.length > 0) {
           const firstId = layers[0].getId();
           const layer = map.getLayer(firstId);
-          expect(layer).assertNull() == false;
+          expect(layer !== null).assertTrue();
           if (layer) {
             expect(layer.getId()).assertEqual(firstId);
           }
@@ -92,9 +92,10 @@ export default function StyleIntegrationTest() {
         if (!map) { return; }
         if (!map.isStyleLoaded()) { return; }
 
-        // Add a source first
+        // Add a source first (GeoJSON passed as string: ArkTS forbids
+        // untyped object literals)
         const sourceId = 'test-source-' + Date.now();
-        const source = new GeoJsonSource(sourceId, { data: { type: 'Point', coordinates: [0, 0] } });
+        const source = GeoJsonSource.fromGeoJson(sourceId, '{"type":"Point","coordinates":[0,0]}');
         map.addSource(source);
 
         // Add a circle layer
@@ -122,9 +123,10 @@ export default function StyleIntegrationTest() {
         if (!map.isStyleLoaded()) { return; }
 
         const sourceId = 'geojson-test-' + Date.now();
-        const source = new GeoJsonSource(sourceId, {
-          data: { type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] } }
-        });
+        const source = GeoJsonSource.fromGeoJson(
+          sourceId,
+          '{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]}}'
+        );
         map.addSource(source);
         const retrieved = map.getSource(sourceId);
         if (retrieved) {

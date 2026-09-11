@@ -5,6 +5,7 @@
     "pages/basic/SimpleMapTestPage",
     "pages/basic/DebugModeTestPage",
     "pages/basic/MapStateTestPage",
+    "pages/basic/BackendInfoTestPage",
 
     "pages/maplayout/MapPaddingTestPage",
     "pages/maplayout/DoubleMapTestPage",
@@ -106,6 +107,8 @@
     "pages/benchmark/PerformanceTestPage",
 
     "pages/integration/AutomationTestPage",
-    "pages/integration/DeclarativeAPITestPage"
+    "pages/integration/DeclarativeAPITestPage",
+
+    "pages/texturemode/TextureModeTestPage"
   ]
 }
