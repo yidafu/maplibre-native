@@ -8,6 +8,7 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import { promptAction } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 /**
  * Attribution entry.
  */
@@ -108,6 +109,45 @@ export struct AttributionButton {
   }
 
   /**
+   * Open the attribution URL in the system browser; falls back to a toast
+   * when no URL is present or the system cannot handle the link.
+   */
+  private openAttributionUrl(attribution: AttributionInfo): void {
+    if (!attribution.url) {
+      promptAction.showToast({
+        message: attribution.title,
+        duration: 2000,
+        bottom: 100
+      });
+      return;
+    }
+
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      if (!context || typeof context.openLink !== 'function') {
+        hilog.warn(DOMAIN, 'AttributionButton', 'openLink unavailable on this context');
+        this.showUrlToast(attribution.url);
+        return;
+      }
+      context.openLink(attribution.url).catch((err: Error) => {
+        hilog.error(DOMAIN, 'AttributionButton', `Failed to open ${attribution.url}: ${err.message}`);
+        this.showUrlToast(attribution.url!);
+      });
+    } catch (error) {
+      hilog.error(DOMAIN, 'AttributionButton', `Error opening attribution URL: ${error}`);
+      this.showUrlToast(attribution.url);
+    }
+  }
+
+  private showUrlToast(url: string): void {
+    promptAction.showToast({
+      message: `Visit: ${url}`,
+      duration: 3000,
+      bottom: 100
+    });
+  }
+
+  /**
    * Display the attribution dialog.
    */
   private showAttributionDialog(): void {
@@ -149,14 +189,9 @@ export struct AttributionButton {
             // Invoke the external callback.
             this.onAttributionClick(selectedAttribution);
           } else {
-            // Default behavior: show a prompt when a URL is available.
-            if (selectedAttribution.url) {
-              promptAction.showToast({
-                message: `Visit: ${selectedAttribution.url}`,
-                duration: 3000,
-                bottom: 100
-              });
-            }
+            // Default behavior: open the attribution URL in the browser
+            // (mirrors Android AttributionDialogManager / iOS MLNAttributionButton).
+            this.openAttributionUrl(selectedAttribution);
           }
         }
       }).catch((err: Error) => {

@@ -6,4 +6,6 @@ export * from './CompassVisibility'
 
 export * from './LogoView'
 
+export * from './RenderingStatsView'
+
 export * from './ScaleBarView'
