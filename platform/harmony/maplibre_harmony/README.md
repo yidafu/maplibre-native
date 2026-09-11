@@ -102,6 +102,7 @@ OpenGL-based vector map rendering library for HarmonyOS.
 |                           | 26 Event Listeners                | ✅         | ✅       | ✅   |
 | **Performance**           | FPS Control                       | ✅         | ✅       | ✅   |
 |                           | Render Mode (Continuous/OnDemand) | ✅         | ✅       | ✅   |
+|                           | Texture Mode (TextureMapView)     | ✅         | ✅       | ✅   |
 |                           | Prefetch Tiles                    | ❌         | ✅       | ✅   |
 |                           | LOD Configuration                 | ❌         | ❌       | ✅   |
 |                           | Debug Info                        | ❌         | ✅       | ✅   |
@@ -609,12 +610,36 @@ See the [`entry`](../entry/) module for complete working examples:
 - Better GPU utilization
 - Cross-platform rendering consistency
 
-**TextureView Support** 🔬 Under Investigation
+### Render Modes (SURFACE / TEXTURE) ✅ Done
 
-- Alternative rendering mode for better composition
-- Improved integration with ArkUI component tree
-- Support for view transformations and effects
-- Enhanced multi-map support
+Two public components are provided, following the same convention as Android
+map SDKs (`MapView` / `TextureMapView`):
+
+- **`MapView`** — renders into an `XComponentType.SURFACE` exclusive surface
+  (default, highest performance path).
+- **`TextureMapView`** — renders into an `XComponentType.TEXTURE` surface that
+  participates in the ArkUI render tree (like iOS `MLNMapView`'s layer-backed
+  view), enabling view transforms, effects, and reliable sibling overlays.
+
+`MapView` also accepts an explicit `surfaceType: 'surface' | 'texture'` prop
+(the equivalent of Android `MapLibreMapOptions.textureMode`), and
+`TextureMapView` is a thin `surfaceType: 'texture'` forwarding component.
+Both modes share the same controller, gestures, ornaments, and native EGL
+pipeline; only the XComponent type differs.
+
+```typescript
+import { MapView, TextureMapView } from '@ohos/maplibre';
+
+// Exclusive-surface fast path (default)
+MapView({ styleUrl: '...' })
+
+// In-tree compositing: transforms/effects apply to the map
+TextureMapView({ styleUrl: '...' })
+  .rotate({ x: 0, y: 0, z: 1, angle: 20 })
+```
+
+> ⚠️ The render mode is fixed when the component is created; changing
+> `surfaceType` at runtime does not switch modes — rebuild the component.
 
 #### 📋 Future Considerations
 
@@ -631,7 +656,7 @@ See the [`entry`](../entry/) module for complete working examples:
 - **Q1-Q2 2025**: Declarative API design & prototyping
 - **Q2-Q3 2025**: Multiple map support implementation
 - **Q3-Q4 2025**: Vulkan backend research & evaluation
-- **2025+**: TextureView support and React Native bridge
+- **2025+**: React Native bridge
 
 ## Contributing
 

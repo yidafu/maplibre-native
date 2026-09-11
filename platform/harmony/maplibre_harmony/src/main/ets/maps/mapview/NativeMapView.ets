@@ -11,6 +11,7 @@ import { Marker } from '../annotations/Marker';
 import { AnnotationViewData } from '../annotations/AnnotationViewManager';
 import { AnnotationViewOverlay } from '../annotations/AnnotationViewOverlay';
 import { NativeViewAnnotationOverlay, ViewAnnotationRenderState } from '../annotations/NativeViewAnnotationOverlay';
+import { ComponentContentRegistry } from '../annotations/ComponentContentRegistry';
 import { ViewAnnotationBuilderContext } from '../annotations/ViewAnnotationTypes';
 import { NativeViewAnnotationOptions, NativeViewAnnotationFrame } from '../annotations/NativeViewAnnotationTypes';
 import { LatLng } from '../geometry/LatLng';
@@ -21,6 +22,7 @@ import { ScaleBarView } from '../widgets/ScaleBarView';
 import { AttributionButton, DEFAULT_ATTRIBUTIONS } from '../widgets/AttributionButton';
 import type { AttributionInfo } from '../widgets/AttributionButton';
 import { OrnamentPosition, RenderingRefreshMode } from '../types/NativeTypes';
+import type { MapSurfaceType } from '../types/NativeTypes';
 import { OnFpsChangedListener } from '../listeners/OnFpsChangedListener';
 // Phase 3: Gesture listener types no longer needed — gesture recognition moved to C++
 import {
@@ -73,6 +75,10 @@ export struct MapView {
   @Prop initialPitch: number = 0;
   @Prop debugMode: boolean = false;
   @Prop mapOptions: MapLibreMapOptions | undefined = undefined;
+  // 渲染表面类型：'surface'（默认，独占层）或 'texture'（ArkUI 树内合成，支持 transform/特效）。
+  // 对应 Android MapLibreMapOptions.textureMode。XComponent 类型在组件创建时固定，
+  // 运行时修改此 prop 不会切换渲染模式，需要重建 MapView（TextureMapView 组件等价于 surfaceType='texture'）。
+  @Prop surfaceType: MapSurfaceType = 'surface';
   @State private viewAnnotationFrames: ViewAnnotationRenderState[] = [];
   // Callbacks
   onMapViewCreated?: (map: MapLibreMap) => void; // Early callback: invoked right after MapLibreMap is created (before style load)
@@ -94,7 +100,6 @@ export struct MapView {
   // InfoWindow state management
   // AnnotationView state management
   @State private visibleAnnotationViews: AnnotationViewData[] = [];
-  private lastViewAnnotationSnapshot: Map<number, string> = new Map();
 
   private getOnMapViewCreatedCallback(): ((map: MapLibreMap) => void) | undefined {
     return typeof this.onMapViewCreated === 'function' ? this.onMapViewCreated : undefined;
@@ -154,49 +159,6 @@ export struct MapView {
     }
   }
 
-  private logViewAnnotationStateChanges(states: ViewAnnotationRenderState[]): void {
-    const maxLogItems = 5;
-    const nextSnapshot: Map<number, string> = new Map();
-    const changes: string[] = [];
-    let truncated = false;
-
-    states.forEach((state) => {
-      const summary = `pos=(${state.positionX.toFixed(2)}, ${state.positionY.toFixed(2)}), size=(${state.width.toFixed(2)} x ${state.height.toFixed(2)}), scale=${state.scale.toFixed(3)}, rotation=${state.rotation.toFixed(2)}, visible=${state.visible}`;
-      nextSnapshot.set(state.id, summary);
-      const previous = this.lastViewAnnotationSnapshot.get(state.id);
-      if (previous !== summary) {
-        if (changes.length < maxLogItems) {
-          changes.push(`id=${state.id} ${summary}`);
-        } else {
-          truncated = true;
-        }
-      }
-    });
-
-    this.lastViewAnnotationSnapshot.forEach((_, id) => {
-      if (!nextSnapshot.has(id)) {
-        if (changes.length < maxLogItems) {
-          changes.push(`id=${id} removed`);
-        } else {
-          truncated = true;
-        }
-      }
-    });
-
-    if (states.length === 0 && this.lastViewAnnotationSnapshot.size > 0 && changes.length < maxLogItems) {
-      changes.push('all annotations cleared');
-    }
-
-    if (changes.length > 0) {
-      if (truncated) {
-        changes.push('...');
-      }
-      console.info(`[MapView] ViewAnnotation state changes (${states.length} states): ${changes.join(' | ')}`);
-    }
-
-    this.lastViewAnnotationSnapshot = nextSnapshot;
-  }
-
   /**
    * Component is about to appear
    */
@@ -224,6 +186,9 @@ export struct MapView {
         if (this.mapOptions) {
           this.controller.mapOptions = this.mapOptions;
         }
+
+        // ✅ Sync the render surface type (must match the XComponent type used in build())
+        this.controller.surfaceType = this.surfaceType;
 
         // ✅ Set the onMapViewCreated callback (fires after the C++ map is created)
         this.controller.onMapViewCreatedCallback = (mapLibreMap: MapLibreMap) => {
@@ -292,8 +257,6 @@ export struct MapView {
         });
 
         this.controller.setViewAnnotationRenderCallback((states: ViewAnnotationRenderState[]) => {
-          console.info(`[MapView] ViewAnnotation render callback: received ${states.length} states`);
-          this.logViewAnnotationStateChanges(states);
           this.viewAnnotationFrames = [...states];
         });
 
@@ -374,7 +337,6 @@ export struct MapView {
       // 6. Reset AnnotationView state
       this.visibleAnnotationViews = [];
       this.controller.clearViewAnnotationRenderCallback();
-      this.logViewAnnotationStateChanges([]);
       this.viewAnnotationFrames = [];
 
     } catch (error) {
@@ -561,8 +523,10 @@ export struct MapView {
   build() {
     Stack() {
       // Map XComponent (with ID for native gesture FrameNode lookup)
+      // Render mode branch (analogous to Android MapRenderer.create): both types bind the
+      // same controller; the surface lifecycle callbacks behave identically for SURFACE/TEXTURE.
       XComponent({
-        type: XComponentType.SURFACE,
+        type: this.surfaceType === 'texture' ? XComponentType.TEXTURE : XComponentType.SURFACE,
         controller: this.controller,
       })
         .id(this.controller.getXComponentId())
@@ -687,7 +651,11 @@ export struct MapView {
       })
 
       NativeViewAnnotationOverlay({
-        frames: this.viewAnnotationFrames
+        frames: this.viewAnnotationFrames,
+        contentRegistryProvider: (): ComponentContentRegistry | null => {
+          const mapLibreMap = this.controller.getMapLibreMapInstance();
+          return mapLibreMap ? mapLibreMap.getViewAnnotationManager().getContentRegistry() : null;
+        }
       })
         .width('100%')
         .height('100%')
@@ -1427,5 +1395,16 @@ export struct MapView {
    */
   getDebug(): number {
     return this.controller.getDebug();
+  }
+
+  /**
+   * Get a description of the active rendering backend and GPU.
+   *
+   * The backend is selected at build time via scripts/build-harmony.sh --backend
+   * (opengl | vulkan); this reports which one the loaded library uses,
+   * e.g. "vulkan | Mali-G78".
+   */
+  getRendererInfo(): string {
+    return this.controller.getRendererInfo();
   }
 }

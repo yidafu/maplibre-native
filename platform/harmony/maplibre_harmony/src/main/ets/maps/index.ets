@@ -10,6 +10,7 @@ import maplibre from 'libmaplibre.so';
 
 // ========== Core components ==========
 export { MapView } from './mapview/NativeMapView';
+export { TextureMapView } from './mapview/TextureMapView';
 
 export type NativeMapView = maplibre.NativeMapView;
 
@@ -44,11 +45,13 @@ export {
   OrnamentPosition,
   RenderingRefreshMode,
   TileOperation,
-  UserTrackingMode,
-  CameraMoveReason
+  UserTrackingMode
 } from './types/NativeTypes';
 
 export type { Margins, Size } from './types/NativeTypes';
+
+// ========== Render surface types ==========
+export type { MapSurfaceType } from './types/NativeTypes';
 
 // ========== Debug options ==========
 export { MapDebugOptions } from './types/MapDebugOptions';
@@ -108,7 +111,8 @@ export {
   OnInfoWindowCloseListener,
   OnMarkerSelectListener,
   OnStyleLoadedListener,
-  OnStyleLoadErrorListener
+  OnStyleLoadErrorListener,
+  OnFpsChangedListener
 } from './listeners';
 
 // ========== Gesture listeners ==========
@@ -184,6 +188,11 @@ export {
   CameraChangeListener
 } from './camera/CameraListener';
 
+// Canonical CameraMoveReason for the OnCameraMoveStartedListener contract.
+// (types/NativeTypes also declares a CameraMoveReason; it is not exported
+// here to avoid a conflicting root export.)
+export { CameraMoveReason, getCameraMoveReasonText } from './camera/CameraMoveReason';
+
 // ========== UI components ==========
 export { CompassView } from './widgets/CompassView';
 
@@ -258,6 +267,10 @@ export { Light } from './style/light/Light';
 
 export type { LightOptions } from './style/light/Light';
 
+export { TransitionOptions } from './style/layers/TransitionOptions';
+
+export type { ITransitionOptions } from './style/layers/TransitionOptions';
+
 export { DEFAULT_STYLE_URLS } from './constants/DefaultStyles';
 
 export type { DefaultStyleUrls } from './constants/DefaultStyles';
@@ -281,6 +294,7 @@ export {
   HillshadeLayer,
   ColorReliefLayer,
   FillExtrusionLayer,
+  LocationIndicatorLayer,
   PropertyFactory
 } from './style/layers';
 

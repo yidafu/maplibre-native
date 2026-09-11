@@ -188,6 +188,14 @@ export enum TileOperation {
 }
 
 /**
+ * XComponent 渲染表面类型（对齐 Android MapLibreMapOptions.textureMode 的两种模式）。
+ * - 'surface'：XComponentType.SURFACE，独占图层直接上屏，性能最优；
+ * - 'texture'：XComponentType.TEXTURE，参与 ArkUI 合成树，支持 transform/特效叠加。
+ * 模式在组件构造时确定，创建后不可切换，如需切换必须重建 MapView。
+ */
+export type MapSurfaceType = 'surface' | 'texture';
+
+/**
  * User location tracking mode (aligned with iOS MLNUserTrackingMode).
  */
 export enum UserTrackingMode {

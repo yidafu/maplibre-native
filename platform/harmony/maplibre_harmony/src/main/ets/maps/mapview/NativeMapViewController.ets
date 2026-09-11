@@ -47,6 +47,7 @@ import { MapLibreMap } from '../MapLibreMap';
 import { MapLibreMapOptions } from '../MapLibreMapOptions';
 import { Marker } from '../annotations/Marker';
 import { RenderingRefreshMode } from '../types/NativeTypes';
+import type { MapSurfaceType } from '../types/NativeTypes';
 
 export type {
   NativeViewAnnotationAnchor,
@@ -172,6 +173,10 @@ export class NativeMapViewController extends XComponentController implements Nat
   public initialPitch: number = 0;
   // User-provided MapLibreMapOptions (passed from the component layer)
   public mapOptions: MapLibreMapOptions | undefined = undefined;
+  // Render surface type ('surface' | 'texture'), mirrored from the MapView prop.
+  // Informational only: surface lifecycle callbacks behave identically for both
+  // XComponentType.SURFACE and XComponentType.TEXTURE.
+  public surfaceType: MapSurfaceType = 'surface';
   // Callback hooks
   public onMapReadyCallback?: (mapView?: NativeMapView) => void;
   public onMapViewCreatedCallback?: (mapLibreMap: MapLibreMap) => void;
@@ -204,7 +209,7 @@ export class NativeMapViewController extends XComponentController implements Nat
    */
   onSurfaceCreated(surfaceId: string): void {
 
-    hilog.warn(DOMAIN, "NativeMapView", `🌟 onSurfaceCreated START - surfaceId: ${surfaceId}`);
+    hilog.warn(DOMAIN, "NativeMapView", `🌟 onSurfaceCreated START - mode: ${this.surfaceType}, surfaceId: ${surfaceId}`);
     this.isDestroying = false;
     this.surfaceId = surfaceId;
 
@@ -1788,6 +1793,25 @@ export class NativeMapViewController extends XComponentController implements Nat
     } catch (error) {
       hilog.error(DOMAIN, 'NativeMapView', `getDebug error: ${error.message}`);
       return 0;
+    }
+  }
+
+  /**
+   * Get a description of the active rendering backend and GPU.
+   * The backend is decided at compile time (MLN_WITH_OPENGL / MLN_WITH_VULKAN);
+   * this reports which one this build uses, e.g. "vulkan | Mali-G78".
+   * @returns Backend and device info string
+   */
+  getRendererInfo(): string {
+    if (!this.nativeMapView || !this.isInitialized) {
+      hilog.warn(DOMAIN, 'NativeMapView', 'getRendererInfo: Map not initialized');
+      return 'uninitialized';
+    }
+    try {
+      return this.nativeMapView.getRendererInfo();
+    } catch (error) {
+      hilog.error(DOMAIN, 'NativeMapView', `getRendererInfo error: ${error.message}`);
+      return 'unknown';
     }
   }
 
