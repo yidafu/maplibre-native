@@ -444,20 +444,14 @@ export class MapLibreMap {
    * @private
    */
   private onUpdateRegionChange(): void {
-    console.info('[MapLibreMap] onUpdateRegionChange - updating UI elements');
-    
-    // Update InfoWindow positions
-    this.annotationViewManager.updatePositionsWithProjector((marker: Marker) => {
-      const position = marker.getPosition();
-      return this.pixelForLatLng(position.latitude, position.longitude);
-    });
+    // Update AnnotationView positions with ONE batched NAPI call
+    // (pixelsForLatLngs). The previous per-marker pixelForLatLng projector
+    // performed one synchronous cross-boundary call per marker per frame.
+    this.annotationViewManager.batchUpdatePositions();
 
+    // ViewAnnotation-backed InfoWindows are repositioned by the native engine;
+    // just refresh the render states pushed to the ArkUI overlay.
     this.viewAnnotationManager.refreshRenderStates();
-    
-    // Additional UI elements can be updated here in the future
-    // - Compass direction
-    // - Scale bar
-    // - Attribution text
   }
 
   private readPixelRatioSafe(mapView: NativeMapView): number {
@@ -692,8 +686,9 @@ export class MapLibreMap {
       this.polygonManager.clear();
       this.polylineManager.clear();
 
-      // 4. Clear the InfoWindowManager
-      this.infoWindowManager.closeAll();
+      // 4. Clear the InfoWindowManager (closes windows, drops cached
+      // descriptors and detaches adapter/listeners/UIContext)
+      this.infoWindowManager.destroy();
 
       // 5. Clear the AnnotationViewManager
       this.annotationViewManager.clear();
@@ -2867,6 +2862,21 @@ export class MapLibreMap {
       return;
     }
     this.markerManager.hideInfoWindow(marker);
+  }
+
+  /**
+   * Refresh the content of a currently shown InfoWindow. Call this after
+   * editing a marker (setTitle/setSnippet) or its InfoWindow style so the
+   * visible window reflects the new state.
+   *
+   * @param marker Marker owning the InfoWindow
+   * @returns true when a visible InfoWindow was refreshed
+   */
+  public refreshInfoWindowContent(marker: Marker): boolean {
+    if (this.destroyed) {
+      return false;
+    }
+    return this.infoWindowManager.refreshContent(marker);
   }
 
 // ========== Polygon management ==========

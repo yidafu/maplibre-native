@@ -6,14 +6,21 @@
 #include "geometry/lat_lng_bounds_harmony.hpp"
 #include "geometry/rect_harmony.hpp"
 #include "camera/camera_position_harmony.hpp"
+#include "geojson/geojson_converter.hpp"
 #include "rendering/harmony_renderer.hpp"
 #include <mbgl/style/style.hpp>
+#include <mbgl/style/conversion/json.hpp>
+#include <mbgl/style/conversion/geojson.hpp>
 #include <mbgl/map/camera.hpp>
+#include <mbgl/util/geo.hpp>
+#include <mbgl/util/geojson.hpp>
+#include <mbgl/util/geometry.hpp>
 #include <vector>
 #include <cstring>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
+using maplibre::harmony::geojson::GeoJsonConverter;
 
 namespace mbgl {
 namespace harmony {
@@ -671,14 +678,69 @@ napi_value NativeMapView::getCameraForLatLngBounds(napi_env env, napi_callback_i
 
 napi_value NativeMapView::getCameraForGeometry(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
-    
-    // TODO: Implement Geometry and CameraPosition NAPI wrappers.
-    // Refer to Android sources:
-    // platform/android/MapLibreAndroid/src/cpp/geojson/geometry.cpp
-    // platform/android/MapLibreAndroid/src/cpp/map/camera_position.cpp
-    Logger::warn("NativeMapView", "getCameraForGeometry: Not implemented - requires Geometry and CameraPosition wrapper classes");
-    
-    return args.Undefined();
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // Obtain the NativeMapView instance
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "getCameraForGeometry: Map not initialized");
+        return args.Undefined();
+    }
+
+    // Parse the geometry, given as a GeoJSON geometry string or object
+    napi_value geometryValue = args.GetValue(0);
+    mbgl::Geometry<double> geometry;
+    try {
+        napi_valuetype valueType = napi_undefined;
+        napi_typeof(env, geometryValue, &valueType);
+        if (valueType == napi_string) {
+            std::string geoJsonString = args.GetString(0, "geometry");
+            if (args.HasError()) return args.Undefined();
+
+            mbgl::style::conversion::Error error;
+            auto parsed = mbgl::style::conversion::convertJSON<mbgl::GeoJSON>(geoJsonString, error);
+            if (!parsed) {
+                Logger::error("NativeMapView", "getCameraForGeometry: %s", error.message.c_str());
+                return args.Undefined();
+            }
+            // Extract the geometry from the GeoJSON variant
+            geometry = parsed->get<mbgl::Geometry<double>>();
+        } else if (valueType == napi_object) {
+            geometry = GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
+        } else {
+            napi_throw_error(env, nullptr, "Geometry must be a GeoJSON string or object");
+            return nullptr;
+        }
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getCameraForGeometry: Failed to parse geometry - %s", e.what());
+        return args.Undefined();
+    }
+
+    // Parse padding (top, left, bottom, right)
+    double top = args.GetDoubleOr(1, 0.0);
+    double left = args.GetDoubleOr(2, 0.0);
+    double bottom = args.GetDoubleOr(3, 0.0);
+    double right = args.GetDoubleOr(4, 0.0);
+    mbgl::EdgeInsets padding{top, left, bottom, right};
+
+    // Parse optional bearing and tilt
+    double bearing = args.GetDoubleOr(5, 0.0);
+    double tilt = args.GetDoubleOr(6, 0.0);
+
+    try {
+        mbgl::CameraOptions cameraOptions = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) {
+                return m->cameraForGeometry(geometry, padding, bearing, tilt);
+            },
+            mbgl::CameraOptions{});
+
+        napi_value result = CameraPositionHarmony::CreateCameraPositionObject(env, cameraOptions, instance->pixelRatio);
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "getCameraForGeometry: Failed - %s", e.what());
+        return args.Undefined();
+    }
 }
 
 napi_value NativeMapView::setReachability(napi_env env, napi_callback_info info) {

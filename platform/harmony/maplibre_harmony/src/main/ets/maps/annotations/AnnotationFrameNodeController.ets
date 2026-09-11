@@ -44,11 +44,15 @@ export class AnnotationFrameNodeController extends NodeController {
 
     try {
       this.frameNode = new FrameNode(uiContext);
-      // Set initial default properties
+      // Set initial default properties.
+      // Block: taps on the InfoWindow content must not fall through to the map
+      // beneath (otherwise tapping the window would also hit markers under it).
+      // The full-screen overlay container stays Transparent so gestures on
+      // empty areas still reach the map.
       this.frameNode.commonAttribute
         .position({ x: 0, y: 0 })
         .visibility(Visibility.Hidden)
-        .hitTestBehavior(HitTestMode.Transparent);
+        .hitTestBehavior(HitTestMode.Block);
 
       // Attach ComponentContent if already available
       if (this.componentContent) {
@@ -98,10 +102,11 @@ export class AnnotationFrameNodeController extends NodeController {
   }
 
   /**
-   * Check if content has been set (before or after makeNode).
+   * Get the currently attached ComponentContent (may be null).
+   * Used by the overlay to detect content replacement.
    */
-  hasContent(): boolean {
-    return this.componentContent !== null;
+  getContent(): ComponentContent<Object> | null {
+    return this.componentContent;
   }
 
   /**

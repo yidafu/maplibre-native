@@ -977,19 +977,51 @@ export class AnnotationViewManager {
    * @param cameraChanged Whether the camera changed (affects transform calculations)
    */
   public batchUpdatePositions(cameraChanged: boolean = false): void {
-    let updateCount = 0;
-    this.annotationViews.forEach((viewData, markerId) => {
-      // Guard against null markers to avoid ObservedObject errors
+    if (this.annotationViews.size === 0 || !this.nativeMapView) {
+      return;
+    }
+
+    // Collect all marker positions first, then convert them with ONE batch
+    // NAPI call (pixelsForLatLngs) instead of one pixelForLatLng round trip
+    // per marker — this runs on every camera-move frame.
+    const targets: AnnotationViewData[] = [];
+    const flatInput: number[] = [];
+    this.annotationViews.forEach((viewData) => {
       if (viewData.marker !== null) {
-        const position = this.calculateScreenPosition(viewData.marker);
-        viewData.screenX = position.x;
-        viewData.screenY = position.y;
-        updateCount++;
+        const position = viewData.marker.getPosition();
+        flatInput.push(position.latitude, position.longitude);
+        targets.push(viewData);
       }
     });
 
-    if (updateCount > 0) {
-      // External callers handle rendering callbacks
+    if (targets.length === 0) {
+      return;
+    }
+
+    const safePixelRatio = this.pixelRatio === 0 ? 1 : this.pixelRatio;
+    const output: number[] = new Array(flatInput.length).fill(0);
+
+    if (targets.length === 1) {
+      // Single marker: keep the direct conversion (batch overhead not worth it)
+      const position = this.calculateScreenPosition(targets[0].marker!);
+      targets[0].screenX = position.x;
+      targets[0].screenY = position.y;
+      return;
+    }
+
+    try {
+      this.nativeMapView.pixelsForLatLngs(flatInput, output);
+      for (let i = 0; i < targets.length; i++) {
+        targets[i].screenX = output[i * 2] / safePixelRatio;
+        targets[i].screenY = output[i * 2 + 1] / safePixelRatio;
+      }
+    } catch (e) {
+      // Fall back to per-marker conversion on any batch failure
+      for (const viewData of targets) {
+        const position = this.calculateScreenPosition(viewData.marker!);
+        viewData.screenX = position.x;
+        viewData.screenY = position.y;
+      }
     }
   }
 

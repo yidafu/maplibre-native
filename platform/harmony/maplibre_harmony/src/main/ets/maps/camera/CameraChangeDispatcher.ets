@@ -192,7 +192,6 @@ export class CameraChangeDispatcher {
    * @param reason Movement reason
    */
   notifyCameraMoveStarted(reason: CameraMoveReason): void {
-    console.info('[CameraChangeDispatcher] notifyCameraMoveStarted called, isIdle:', this.isIdle);
     this.moveStartedReason = reason;
     
     this.scheduleMessage(CameraEventType.MOVE_STARTED, () => {

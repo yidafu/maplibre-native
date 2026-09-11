@@ -8,6 +8,7 @@ import {
   NativeViewAnnotationOptionsImpl
 } from './NativeViewAnnotationTypes';
 import { ViewAnnotationRenderState } from './NativeViewAnnotationOverlay';
+import { ComponentContentRegistry } from './ComponentContentRegistry';
 import { CenterOffset } from './AnnotationView';
 
 interface PartialNativeOptionFlags {
@@ -93,6 +94,17 @@ export class ViewAnnotationManager {
   private entries: Map<number, ViewAnnotationEntry> = new Map();
   private renderStates: ViewAnnotationRenderState[] = [];
   private renderCallback?: (states: ViewAnnotationRenderState[]) => void;
+  // Per-instance registry: annotation IDs are allocated per native map, so a
+  // process-wide registry would collide across multiple map instances.
+  private contentRegistry: ComponentContentRegistry = new ComponentContentRegistry();
+
+  /**
+   * Content registry owned by this manager. The rendering overlay resolves it
+   * through a provider so each map instance renders only its own contents.
+   */
+  getContentRegistry(): ComponentContentRegistry {
+    return this.contentRegistry;
+  }
 
   /**
    * Binds the manager to the underlying native map view.
@@ -174,7 +186,6 @@ export class ViewAnnotationManager {
       };
 
       this.entries.set(id, entry);
-      console.info(`[ViewAnnotationManager] addViewAnnotation: entry ${id} added, total entries=${this.entries.size}`);
       this.refreshRenderStates();
       return id;
     } catch (error) {
@@ -270,7 +281,6 @@ export class ViewAnnotationManager {
       if (!updated) {
         console.warn(`[ViewAnnotationManager] updateViewAnnotation: native returned ${rawResult}`);
       }
-      console.info(`[ViewAnnotationManager] updateViewAnnotation: entry ${id} updated, total entries=${this.entries.size}`);
       this.refreshRenderStates();
       return updated;
     } catch (error) {
@@ -354,6 +364,16 @@ export class ViewAnnotationManager {
       return;
     }
 
+    // Fast path: the frame fetch is a synchronous NAPI round trip; skip it
+    // entirely when nothing is on screen (the common per-frame case).
+    if (this.entries.size === 0) {
+      if (this.renderStates.length !== 0) {
+        this.renderStates = [];
+        this.notifyRenderCallback();
+      }
+      return;
+    }
+
     let frames: NativeViewAnnotationFrame[] = [];
     try {
       const rawFrames = this.nativeMapView.getViewAnnotationFrames();
@@ -370,13 +390,6 @@ export class ViewAnnotationManager {
 
     const safeRatio = this.pixelRatio > 0 ? this.pixelRatio : 1;
     const nextStates: ViewAnnotationRenderState[] = [];
-
-    // Debug: log raw frame data from C++
-    console.info(`[ViewAnnotationManager] Raw frames from C++: ${frames.length} frames, safeRatio=${safeRatio.toFixed(2)}`);
-    frames.forEach((frame, idx) => {
-      console.info(`[ViewAnnotationManager] Raw frame[${idx}]: id=${frame.id}, x=${frame.x?.toFixed(2)}, y=${frame.y?.toFixed(2)}, ` +
-        `width=${frame.width}, height=${frame.height}, pixelRatio=${frame.pixelRatio}, visible=${frame.visible}`);
-    });
 
     frames.forEach((frame) => {
       const entry = this.entries.get(frame.id);
@@ -440,7 +453,6 @@ export class ViewAnnotationManager {
 
   private notifyRenderCallback(): void {
     if (this.renderCallback) {
-      console.info(`[ViewAnnotationManager] notifyRenderCallback: emitting ${this.renderStates.length} states`);
       this.renderCallback(this.renderStates.slice());
     }
   }

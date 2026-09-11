@@ -9,17 +9,13 @@ import { ComponentContent } from '@kit.ArkUI';
  *
  * This decouples content creation (InfoWindowManager/Adapter) from content rendering
  * (NativeViewAnnotationOverlay).
+ *
+ * Each ViewAnnotationManager owns one instance: annotation IDs are allocated per
+ * native map, so a process-wide registry would collide when multiple map
+ * instances are alive at the same time.
  */
 export class ComponentContentRegistry {
-  private static instance: ComponentContentRegistry | null = null;
   private contentMap: Map<number, ComponentContent<Object>> = new Map();
-
-  static getInstance(): ComponentContentRegistry {
-    if (!ComponentContentRegistry.instance) {
-      ComponentContentRegistry.instance = new ComponentContentRegistry();
-    }
-    return ComponentContentRegistry.instance;
-  }
 
   /**
    * Register a ComponentContent for an annotation ID.
@@ -31,7 +27,6 @@ export class ComponentContentRegistry {
       return;
     }
     this.contentMap.set(id, content);
-    console.info(`[ComponentContentRegistry] Registered content for annotation ${id}, total: ${this.contentMap.size}`);
   }
 
   /**
@@ -47,10 +42,7 @@ export class ComponentContentRegistry {
    * Called when an InfoWindow is closed or annotation is removed.
    */
   remove(id: number): void {
-    const existed = this.contentMap.delete(id);
-    if (existed) {
-      console.info(`[ComponentContentRegistry] Removed content for annotation ${id}, remaining: ${this.contentMap.size}`);
-    }
+    this.contentMap.delete(id);
   }
 
   /**
@@ -65,9 +57,7 @@ export class ComponentContentRegistry {
    * Called during cleanup.
    */
   clear(): void {
-    const count = this.contentMap.size;
     this.contentMap.clear();
-    console.info(`[ComponentContentRegistry] Cleared all ${count} registered contents`);
   }
 
   /**

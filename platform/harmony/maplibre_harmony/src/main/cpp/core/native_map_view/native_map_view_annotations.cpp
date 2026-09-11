@@ -333,14 +333,10 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
 
     const mbgl::ScreenCoordinate screen = map.pixelForLatLng(annotation.anchor);
 
-    // Use anchorHeight for anchor positioning calculation
-    // anchorHeight represents the height of the underlying element (e.g., marker icon)
-    // This ensures InfoWindow positions correctly relative to the marker anchor point
-    const double anchorHeightForPosition = annotation.anchorHeight > 0 ?
-        annotation.anchorHeight : static_cast<double>(annotation.size.height);
-
-    // Calculate screen position: anchor + offset
-    // Note: anchorHeight offset is applied in JS layer for consistent positioning
+    // Calculate screen position: anchor + offset.
+    // Note: the icon-height offset for InfoWindows is applied on the ArkTS side
+    // via centerOffset (dy = -icon height). annotation.anchorHeight is parsed
+    // and stored but intentionally not applied here.
     frame.screen = mbgl::ScreenCoordinate{
         screen.x + annotation.offset.x,
         screen.y + annotation.offset.y
@@ -350,11 +346,9 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
     // Eliminates per-frame pixelRatio division and anchor math on the ArkTS side
     const double ratio = pixelRatio > 0.0 ? pixelRatio : 1.0;
     frame.positionX = (frame.screen.x / ratio) - (static_cast<double>(frame.size.width) / ratio) * annotation.anchorU;
-    // Use the frame's own height for anchorV-based positioning (anchorHeight is
-    // already handled via centerOffset on the ArkTS side). This ensures that
-    // with anchorV=1.0 and centerOffset.dy=-iconHeight, the InfoWindow's bottom
-    // aligns with the top of the marker icon — placing the InfoWindow entirely
-    // above the marker instead of covering it.
+    // anchorV positions the frame's own bottom edge at the anchor+offset point;
+    // combined with centerOffset.dy = -iconHeight the InfoWindow's bottom
+    // aligns with the top of the marker icon.
     frame.positionY = (frame.screen.y / ratio) - (static_cast<double>(frame.size.height) / ratio) * annotation.anchorV;
 
     return frame;
@@ -409,9 +403,6 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
     auto position = marker->getPositionPoint();
     auto iconId = marker->getIconId();
     
-    Logger::info("NativeMapView", "[MarkerDebug] updateMarker: ID=%lu, lat=%f, lon=%f, icon=\"%s\"", 
-                  annotationId, position.y, position.x, iconId.c_str());
-    
     try {
         // Update the marker using SymbolAnnotation
         mbgl::SymbolAnnotation annotation(position, iconId);
@@ -420,7 +411,6 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
             m->triggerRepaint();
         });
         
-        Logger::info("NativeMapView", "[MarkerDebug] updateMarker: Marker updated successfully");
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "[MarkerDebug] updateMarker: Failed - %s", e.what());
     }
@@ -472,61 +462,64 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
         return undefined;
     }
     
-    Logger::info("NativeMapView", "addMarkers: Processing %u markers", length);
-    
-    // Store the generated annotation IDs
-    std::vector<mbgl::AnnotationID> ids;
-    ids.reserve(length);
-    
-    // Iterate over the marker array (now MarkerNAPI objects)
+    // Parse all markers on this (JS) thread first...
+    struct PendingMarker {
+        mbgl::SymbolAnnotation annotation;
+        maplibre::harmony::MarkerNAPI* marker;
+    };
+    std::vector<PendingMarker> pending;
+    pending.reserve(length);
+    bool warnedEmptyIcon = false;
+
     for (uint32_t i = 0; i < length; i++) {
         napi_value markerObj;
         if (napi_get_element(env, args[0], i, &markerObj) != napi_ok) {
             Logger::error("NativeMapView", "addMarkers: Failed to get marker at index %u", i);
             continue;
         }
-        
+
         // Unwrap the MarkerNAPI object
         maplibre::harmony::MarkerNAPI* marker = nullptr;
         if (napi_unwrap(env, markerObj, reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
-            Logger::error("NativeMapView", "[MarkerDebug] NAPI-Error: Failed to unwrap Marker at index %u", i);
+            Logger::error("NativeMapView", "addMarkers: Failed to unwrap Marker at index %u", i);
             continue;
         }
-        
-        // Pull data directly from the MarkerNAPI object
-        auto position = marker->getPositionPoint();
-        auto iconId = marker->getIconId();
-        
-        // [MarkerDebug] Log the incoming data
-        if (iconId.empty()) {
-            Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Input: marker[%u] has EMPTY icon, may not be visible!", i);
-            Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Warning: Use addAnnotationIcon() to add custom icon or ensure style has default marker icon");
+
+        if (marker->getIconId().empty() && !warnedEmptyIcon) {
+            warnedEmptyIcon = true;
+            Logger::warn("NativeMapView",
+                         "addMarkers: marker without icon may be invisible; "
+                         "call addAnnotationIcon() or ensure the style has a default marker icon");
         }
-        
-        Logger::info("NativeMapView", "[MarkerDebug] NAPI-Input: marker[%u] lat=%f, lon=%f, icon=\"%s\"", 
-                     i, position.y, position.x, iconId.empty() ? "(empty)" : iconId.c_str());
-        
-        try {
-            // Create a SymbolAnnotation
-            mbgl::SymbolAnnotation annotation(position, iconId);
-            
-            // Add it to the map and obtain the ID
-            mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
-            ids.push_back(annotationId);
-            
-            // Write the annotation ID back to the marker
-            marker->setAnnotationId(annotationId);
-            
-            Logger::info("NativeMapView", "[MarkerDebug] NAPI-Result: marker[%u] created with ID=%lu", i, annotationId);
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "[MarkerDebug] NAPI-Error: marker[%u] failed to add - %s", i, e.what());
-        }
+
+        pending.push_back({mbgl::SymbolAnnotation(marker->getPositionPoint(), marker->getIconId()), marker});
     }
-    
-    // [MarkerDebug] Summarize the add results
-    Logger::info("NativeMapView", "[MarkerDebug] NAPI-Summary: Added %zu/%u markers successfully", ids.size(), length);
-    if (ids.size() < length) {
-        Logger::warn("NativeMapView", "[MarkerDebug] NAPI-Summary: ⚠️ %u markers failed to add", length - static_cast<uint32_t>(ids.size()));
+
+    // ...then add them all with a single round trip to the render thread
+    // (one blocking hop total, not one per marker).
+    std::vector<mbgl::AnnotationID> ids;
+    ids.reserve(pending.size());
+    if (!pending.empty()) {
+        auto addedIds = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) {
+                std::vector<mbgl::AnnotationID> result;
+                result.reserve(pending.size());
+                for (auto& p : pending) {
+                    result.push_back(m->addAnnotation(p.annotation));
+                }
+                return result;
+            },
+            std::vector<mbgl::AnnotationID>{});
+
+        for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
+            pending[i].marker->setAnnotationId(addedIds[i]);
+        }
+        ids = std::move(addedIds);
+    }
+
+    if (ids.size() < pending.size()) {
+        Logger::warn("NativeMapView", "addMarkers: %u of %zu markers failed to add",
+                     static_cast<uint32_t>(pending.size() - ids.size()), pending.size());
     }
     
     // Trigger a repaint
@@ -610,34 +603,48 @@ napi_value NativeMapView::addPolylines(napi_env env, napi_callback_info info) {
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
     
-    // Iterate over the polyline array
+    // Parse all polylines on this thread first...
+    struct PendingPolyline {
+        mbgl::LineAnnotation annotation;
+        PolylineNAPI* polyline;
+    };
+    std::vector<PendingPolyline> pending;
+    pending.reserve(length);
+
     for (uint32_t i = 0; i < length; i++) {
         napi_value polylineObj;
         if (napi_get_element(env, args[0], i, &polylineObj) != napi_ok) {
             Logger::error("NativeMapView", "addPolylines: Failed to get polyline at index %u", i);
             continue;
         }
-        
+
         // Unwrap the PolylineNAPI object
         PolylineNAPI* polyline = nullptr;
         if (napi_unwrap(env, polylineObj, reinterpret_cast<void**>(&polyline)) != napi_ok || !polyline) {
             Logger::error("NativeMapView", "addPolylines: Failed to unwrap Polyline at index %u", i);
             continue;
         }
-        
-        try {
-            // Convert to a LineAnnotation
-            mbgl::LineAnnotation annotation = polyline->toAnnotation();
-            
-            // Add it to the map and obtain the ID
-            mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
-            ids.push_back(annotationId);
-            
-            // Write the annotation ID back to the polyline
-            polyline->setAnnotationId(annotationId);
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "addPolylines: polyline[%u] failed to add - %s", i, e.what());
+
+        pending.push_back({polyline->toAnnotation(), polyline});
+    }
+
+    // ...then add them all with a single round trip to the render thread.
+    {
+        auto addedIds = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) {
+                std::vector<mbgl::AnnotationID> result;
+                result.reserve(pending.size());
+                for (auto& p : pending) {
+                    result.push_back(m->addAnnotation(p.annotation));
+                }
+                return result;
+            },
+            std::vector<mbgl::AnnotationID>{});
+
+        for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
+            pending[i].polyline->setAnnotationId(addedIds[i]);
         }
+        ids = std::move(addedIds);
     }
     
     // Trigger a repaint
@@ -711,34 +718,48 @@ napi_value NativeMapView::addPolygons(napi_env env, napi_callback_info info) {
     std::vector<mbgl::AnnotationID> ids;
     ids.reserve(length);
     
-    // Iterate over the polygon array
+    // Parse all polygons on this thread first...
+    struct PendingPolygon {
+        mbgl::FillAnnotation annotation;
+        PolygonNAPI* polygon;
+    };
+    std::vector<PendingPolygon> pending;
+    pending.reserve(length);
+
     for (uint32_t i = 0; i < length; i++) {
         napi_value polygonObj;
         if (napi_get_element(env, args[0], i, &polygonObj) != napi_ok) {
             Logger::error("NativeMapView", "addPolygons: Failed to get polygon at index %u", i);
             continue;
         }
-        
+
         // Unwrap the PolygonNAPI object
         PolygonNAPI* polygon = nullptr;
         if (napi_unwrap(env, polygonObj, reinterpret_cast<void**>(&polygon)) != napi_ok || !polygon) {
             Logger::error("NativeMapView", "addPolygons: Failed to unwrap Polygon at index %u", i);
             continue;
         }
-        
-        try {
-            // Convert to a FillAnnotation
-            mbgl::FillAnnotation annotation = polygon->toAnnotation();
-            
-            // Add it to the map and obtain the ID
-            mbgl::AnnotationID annotationId = instance->invokeOnMapThreadSync([&](mbgl::Map* m){ return m->addAnnotation(annotation); }, mbgl::AnnotationID{});
-            ids.push_back(annotationId);
-            
-            // Write the annotation ID back to the polygon
-            polygon->setAnnotationId(annotationId);
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "addPolygons: polygon[%u] failed to add - %s", i, e.what());
+
+        pending.push_back({polygon->toAnnotation(), polygon});
+    }
+
+    // ...then add them all with a single round trip to the render thread.
+    {
+        auto addedIds = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) {
+                std::vector<mbgl::AnnotationID> result;
+                result.reserve(pending.size());
+                for (auto& p : pending) {
+                    result.push_back(m->addAnnotation(p.annotation));
+                }
+                return result;
+            },
+            std::vector<mbgl::AnnotationID>{});
+
+        for (size_t i = 0; i < addedIds.size() && i < pending.size(); i++) {
+            pending[i].polygon->setAnnotationId(addedIds[i]);
         }
+        ids = std::move(addedIds);
     }
     
     // Trigger a repaint
@@ -1014,13 +1035,11 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
                 image->clone(),  // Clone the image for the style
                 scale
             );
-            Logger::info("NativeMapView", "🎯 Adding icon '%s' to style.addImage()...", iconId.c_str());
+            Logger::debug("NativeMapView", "addAnnotationIcon: icon '%s' added to style", iconId.c_str());
             m->getStyle().addImage(std::move(styleImage));
-            Logger::info("NativeMapView", "✅ Icon '%s' successfully added to style", iconId.c_str());
         });
-        
-        Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add (using Icon object)", iconId.c_str());
-        Logger::info("NativeMapView", "========== addAnnotationIcon() END (Icon object) ==========");
+
+        Logger::debug("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add (using Icon object)", iconId.c_str());
         return args.Undefined();
     }
     
@@ -1054,7 +1073,7 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
         return args.Undefined();
     }
     
-    Logger::info("NativeMapView", "addAnnotationIcon: symbol=%s, width=%d, height=%d, scale=%f, pixelLength=%zu", 
+    Logger::debug("NativeMapView", "addAnnotationIcon: symbol=%s, width=%d, height=%d, scale=%f, pixelLength=%zu",
                   symbol.c_str(), width, height, scale, pixelLength);
     
     // Construct and add the image on the render thread to avoid moving a unique_ptr across threads
@@ -1072,14 +1091,13 @@ napi_value NativeMapView::addAnnotationIcon(napi_env env, napi_callback_info inf
                 auto styleImage = std::make_unique<mbgl::style::Image>(symbolCopy, std::move(image), scaleCopy);
                 m->getStyle().addImage(std::move(styleImage));
             });
-            Logger::info("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add", symbol.c_str());
+            Logger::debug("NativeMapView", "addAnnotationIcon: Icon '%s' scheduled to add", symbol.c_str());
         } else {
-            Logger::error("NativeMapView", "addAnnotationIcon: Invalid pixel data size (expected %zu, got %zu)", 
+            Logger::error("NativeMapView", "addAnnotationIcon: Invalid pixel data size (expected %zu, got %zu)",
                          expectedSize, pixelLength);
         }
     }
-    
-    Logger::info("NativeMapView", "========== addAnnotationIcon() END (byte array) ==========");
+
     return args.Undefined();
 }
 

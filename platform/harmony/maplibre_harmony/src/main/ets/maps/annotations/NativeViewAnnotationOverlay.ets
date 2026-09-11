@@ -1,6 +1,5 @@
 import { AnnotationFrameNodeController } from './AnnotationFrameNodeController';
 import { ComponentContentRegistry } from './ComponentContentRegistry';
-
 /**
  * ViewAnnotationRenderState represents the computed render state for a single
  * ViewAnnotation frame, produced by ViewAnnotationManager and consumed by
@@ -53,8 +52,9 @@ export class ViewAnnotationRenderState {
  * FrameNodes via NodeContainer + AnnotationFrameNodeController.
  *
  * Each frame gets a NodeController that manages a FrameNode. The
- * ComponentContent for each annotation is retrieved from
- * ComponentContentRegistry (populated by InfoWindowManager).
+ * ComponentContent for each annotation is resolved through the per-map
+ * ComponentContentRegistry (owned by that map's ViewAnnotationManager and
+ * populated by its InfoWindowManager).
  *
  * FrameNodes are reused across re-renders — only position/visibility
  * properties are updated, without recreating ComponentContent.
@@ -64,6 +64,10 @@ export struct NativeViewAnnotationOverlay {
   @Link @Watch('onFramesChanged') frames: ViewAnnotationRenderState[];
   @State private renderFrames: ViewAnnotationRenderState[] = [];
   private controllerMap: Map<number, AnnotationFrameNodeController> = new Map();
+  // Resolved lazily so the overlay works even when the host map initializes
+  // after the overlay is first built. Non-private: initialized through the
+  // component constructor from NativeMapView.
+  contentRegistryProvider: (() => ComponentContentRegistry | null) | null = null;
   private readonly POSITION_EPSILON: number = 0.1;
   private readonly SIZE_EPSILON: number = 0.1;
   private readonly SCALE_EPSILON: number = 0.01;
@@ -150,23 +154,29 @@ export struct NativeViewAnnotationOverlay {
     nextFrames.forEach((state) => {
       const existingCtrl = this.controllerMap.get(state.id);
       if (existingCtrl) {
-        // Check if this controller was created without content (race condition:
-        // addViewAnnotation's internal refreshRenderStates runs before
-        // InfoWindowManager registers the ComponentContent). If so, look up
-        // the content now that it should be available.
-        if (!existingCtrl.hasContent()) {
-          const registry = ComponentContentRegistry.getInstance();
-          const content = registry.get(state.id);
-          if (content) {
-            existingCtrl.attachContent(content);
-            console.info(`[NativeViewAnnotationOverlay] Late-attached ComponentContent for annotation ${state.id}`);
-          }
-        }
+        this.attachContentIfChanged(existingCtrl, state.id);
         existingCtrl.updateProperties(state);
       }
     });
 
     this.renderFrames = updatedFrames;
+  }
+
+  /**
+   * Attach the ComponentContent registered for the annotation when it differs
+   * from what the controller currently renders. Covers both the race where a
+   * controller is created before InfoWindowManager registers the content and
+   * content replacement (e.g. a new adapter result on re-show).
+   */
+  private attachContentIfChanged(ctrl: AnnotationFrameNodeController, annotationId: number): void {
+    const registry = this.contentRegistryProvider ? this.contentRegistryProvider() : null;
+    if (!registry) {
+      return;
+    }
+    const content = registry.get(annotationId);
+    if (content && ctrl.getContent() !== content) {
+      ctrl.attachContent(content);
+    }
   }
 
   private numbersClose(first: number, second: number, epsilon: number): boolean {
@@ -199,17 +209,9 @@ export struct NativeViewAnnotationOverlay {
     let ctrl = this.controllerMap.get(state.id);
     if (!ctrl) {
       ctrl = new AnnotationFrameNodeController(state.id);
-      // Look up ComponentContent from the registry
-      const registry = ComponentContentRegistry.getInstance();
-      const content = registry.get(state.id);
-      if (content) {
-        ctrl.attachContent(content);
-        console.info(`[NativeViewAnnotationOverlay] Attached ComponentContent for annotation ${state.id}`);
-      } else {
-        console.warn(`[NativeViewAnnotationOverlay] No ComponentContent found for annotation ${state.id}`);
-      }
       this.controllerMap.set(state.id, ctrl);
     }
+    this.attachContentIfChanged(ctrl, state.id);
     ctrl.updateProperties(state);
     return ctrl;
   }

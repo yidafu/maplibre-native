@@ -2,6 +2,7 @@ import { Marker } from './Marker';
 import { CenterOffset } from './AnnotationView';
 import type { InfoWindowBuilderContext } from './ViewAnnotationTypes';
 import { ComponentContent } from '@kit.ArkUI';
+import measure from '@ohos.measure';
 
 /**
  * InfoWindow size info
@@ -26,6 +27,8 @@ export interface InfoWindowStyle {
   padding?: number;
   maxWidth?: number;
   animated?: boolean;
+  // Reserved fields: the default ComponentContent render pipeline cannot inject
+  // arbitrary @Builder functions, so these are currently not rendered.
   leftAccessoryBuilder?: () => void;
   rightAccessoryBuilder?: () => void;
   showCloseButton?: boolean;
@@ -33,6 +36,9 @@ export interface InfoWindowStyle {
   offsetX?: number;
   offsetY?: number;
 }
+
+/** Shared default so estimation and layout agree on the same clamp. */
+const DEFAULT_MAX_WIDTH = 280;
 
 const DEFAULT_INFO_WINDOW_STYLE: InfoWindowStyle = {
   showCloseButton: true
@@ -113,12 +119,15 @@ export class InfoWindow {
     zIndex: undefined
   };
   private customComponentContent: ComponentContent<InfoWindowRenderParams> | null = null;
+  private defaultComponentContent: ComponentContent<InfoWindowRenderParams> | null = null;
   private renderContext: InfoWindowRenderContext;
 
   constructor(marker: Marker, renderContext: InfoWindowRenderContext, style?: InfoWindowStyle, customComponentContent?: ComponentContent<InfoWindowRenderParams>) {
     this.marker = marker;
-    this.style = this.mergeStyle(style ?? {});
     this.renderContext = renderContext;
+    this.style = {};
+    this.applyStylePatch(DEFAULT_INFO_WINDOW_STYLE);
+    this.applyStylePatch(style ?? {});
     if (customComponentContent) {
       this.customComponentContent = customComponentContent;
     }
@@ -132,11 +141,69 @@ export class InfoWindow {
     return this.style;
   }
 
+  /**
+   * Merge the patch into the current style. Fields left undefined in the
+   * patch keep their previous values (true partial update).
+   */
   public setStyle(style: InfoWindowStyle): InfoWindow {
-    this.style = this.mergeStyle(style);
+    this.applyStylePatch(style);
     this.width = 0;
     this.height = 0;
     return this;
+  }
+
+  private applyStylePatch(patch: InfoWindowStyle): void {
+    if (patch.backgroundColor !== undefined) {
+      this.style.backgroundColor = patch.backgroundColor;
+    }
+    if (patch.borderRadius !== undefined) {
+      this.style.borderRadius = patch.borderRadius;
+    }
+    if (patch.shadowRadius !== undefined) {
+      this.style.shadowRadius = patch.shadowRadius;
+    }
+    if (patch.shadowColor !== undefined) {
+      this.style.shadowColor = patch.shadowColor;
+    }
+    if (patch.titleFontSize !== undefined) {
+      this.style.titleFontSize = patch.titleFontSize;
+    }
+    if (patch.titleFontColor !== undefined) {
+      this.style.titleFontColor = patch.titleFontColor;
+    }
+    if (patch.snippetFontSize !== undefined) {
+      this.style.snippetFontSize = patch.snippetFontSize;
+    }
+    if (patch.snippetFontColor !== undefined) {
+      this.style.snippetFontColor = patch.snippetFontColor;
+    }
+    if (patch.padding !== undefined) {
+      this.style.padding = patch.padding;
+    }
+    if (patch.maxWidth !== undefined) {
+      this.style.maxWidth = patch.maxWidth;
+    }
+    if (patch.animated !== undefined) {
+      this.style.animated = patch.animated;
+    }
+    if (patch.leftAccessoryBuilder !== undefined) {
+      this.style.leftAccessoryBuilder = patch.leftAccessoryBuilder;
+    }
+    if (patch.rightAccessoryBuilder !== undefined) {
+      this.style.rightAccessoryBuilder = patch.rightAccessoryBuilder;
+    }
+    if (patch.thumbnailImage !== undefined) {
+      this.style.thumbnailImage = patch.thumbnailImage;
+    }
+    if (patch.offsetX !== undefined) {
+      this.style.offsetX = patch.offsetX;
+    }
+    if (patch.offsetY !== undefined) {
+      this.style.offsetY = patch.offsetY;
+    }
+    if (patch.showCloseButton !== undefined) {
+      this.style.showCloseButton = patch.showCloseButton;
+    }
   }
 
   public setLayoutOptions(options: InfoWindowLayoutOptions): InfoWindow {
@@ -181,14 +248,17 @@ export class InfoWindow {
     return this.visible;
   }
 
+  /**
+   * Record a measured size, deduplicating sub-epsilon changes so callers can
+   * skip redundant native updates when onAreaChange fires repeatedly.
+   */
   public updateSize(width: number, height: number): boolean {
     if (width <= 0 || height <= 0) {
       return false;
     }
-    const WIDTH_EPSILON = 0.1;
-    const HEIGHT_EPSILON = 0.1;
-    const widthChanged = Math.abs(width - this.width) > WIDTH_EPSILON;
-    const heightChanged = Math.abs(height - this.height) > HEIGHT_EPSILON;
+    const SIZE_EPSILON = 0.1;
+    const widthChanged = Math.abs(width - this.width) > SIZE_EPSILON;
+    const heightChanged = Math.abs(height - this.height) > SIZE_EPSILON;
     if (!(widthChanged || heightChanged)) {
       return false;
     }
@@ -211,17 +281,23 @@ export class InfoWindow {
     const titleFontSize = this.style.titleFontSize ?? 16;
     const snippetFontSize = this.style.snippetFontSize ?? 14;
     const padding = this.style.padding ?? 12;
-    const titleWidth = title.length * titleFontSize * 0.7;
-    const snippetWidth = snippet ? snippet.length * snippetFontSize * 0.6 : 0;
-    const maxTextWidth = Math.max(titleWidth, snippetWidth);
-    const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;
+    const maxWidth = this.style.maxWidth ?? DEFAULT_MAX_WIDTH;
     const showCloseButton = this.style.showCloseButton !== false;
+    const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;
     const closeButtonWidth = showCloseButton ? 36 : 0;
-    const estimatedWidth = Math.max(maxTextWidth + padding * 2 + thumbnailWidth + closeButtonWidth, 80);
-    const maxWidth = this.style.maxWidth ?? 240;
+
+    const textAreaWidth = Math.max(maxWidth - padding * 2 - thumbnailWidth - closeButtonWidth, 60);
+    const titleWidth = title ? this.measureTextWidth(title, titleFontSize, true) : 0;
+    const snippetWidth = snippet ? this.measureTextWidth(snippet, snippetFontSize, false) : 0;
+    const contentWidth = Math.max(titleWidth, snippetWidth);
+    const estimatedWidth = Math.max(contentWidth + padding * 2 + thumbnailWidth + closeButtonWidth, 80);
     const width = Math.min(estimatedWidth, maxWidth);
-    const titleHeight = title ? titleFontSize + 8 : 0;
-    const snippetHeight = snippet ? snippetFontSize + 4 : 0;
+
+    // The default UI renders the title on one line and the snippet on at most two.
+    const titleLines = title ? 1 : 0;
+    const snippetLines = snippet ? Math.min(2, Math.max(1, Math.ceil(snippetWidth / textAreaWidth))) : 0;
+    const titleHeight = titleLines * (titleFontSize + 8);
+    const snippetHeight = snippetLines * (snippetFontSize + 4);
     const arrowHeight = 10;
     const closeButtonHeight = showCloseButton ? 32 : 0;
     const estimatedHeight = closeButtonHeight + titleHeight + snippetHeight + padding * 2 + arrowHeight;
@@ -231,80 +307,68 @@ export class InfoWindow {
     };
   }
 
-  private mergeStyle(style: InfoWindowStyle): InfoWindowStyle {
-    const merged: InfoWindowStyle = {};
+  private measureTextWidth(text: string, fontSize: number, bold: boolean): number {
+    try {
+      return measure.measureText({
+        textContent: text,
+        fontSize: fontSize,
+        fontWeight: bold ? FontWeight.Bold : FontWeight.Normal
+      });
+    } catch (error) {
+      // Fallback heuristic: CJK glyphs are ~1em wide, Latin ~0.55em.
+      let width = 0;
+      for (const ch of text) {
+        width += ch.charCodeAt(0) > 0x2E7F ? fontSize : fontSize * 0.55;
+      }
+      return width;
+    }
+  }
 
-    if (style.backgroundColor !== undefined) {
-      merged.backgroundColor = style.backgroundColor;
-    }
-    if (style.borderRadius !== undefined) {
-      merged.borderRadius = style.borderRadius;
-    }
-    if (style.shadowRadius !== undefined) {
-      merged.shadowRadius = style.shadowRadius;
-    }
-    if (style.shadowColor !== undefined) {
-      merged.shadowColor = style.shadowColor;
-    }
-    if (style.titleFontSize !== undefined) {
-      merged.titleFontSize = style.titleFontSize;
-    }
-    if (style.titleFontColor !== undefined) {
-      merged.titleFontColor = style.titleFontColor;
-    }
-    if (style.snippetFontSize !== undefined) {
-      merged.snippetFontSize = style.snippetFontSize;
-    }
-    if (style.snippetFontColor !== undefined) {
-      merged.snippetFontColor = style.snippetFontColor;
-    }
-    if (style.padding !== undefined) {
-      merged.padding = style.padding;
-    }
-    if (style.maxWidth !== undefined) {
-      merged.maxWidth = style.maxWidth;
-    }
-    if (style.animated !== undefined) {
-      merged.animated = style.animated;
-    }
-    if (style.leftAccessoryBuilder !== undefined) {
-      merged.leftAccessoryBuilder = style.leftAccessoryBuilder;
-    }
-    if (style.rightAccessoryBuilder !== undefined) {
-      merged.rightAccessoryBuilder = style.rightAccessoryBuilder;
-    }
-    if (style.thumbnailImage !== undefined) {
-      merged.thumbnailImage = style.thumbnailImage;
-    }
-    if (style.offsetX !== undefined) {
-      merged.offsetX = style.offsetX;
-    }
-    if (style.offsetY !== undefined) {
-      merged.offsetY = style.offsetY;
-    }
-
-    merged.showCloseButton = style.showCloseButton !== undefined
-      ? style.showCloseButton
-      : DEFAULT_INFO_WINDOW_STYLE.showCloseButton;
-
-    return merged;
+  /**
+   * Snapshot the current marker/style state as render params. Used both when
+   * creating the default ComponentContent and when refreshing it via update().
+   */
+  public buildRenderParams(): InfoWindowRenderParams {
+    return {
+      markerId: this.marker.getId(),
+      title: this.marker.getTitle() || '',
+      snippet: this.marker.getSnippet() || '',
+      style: this.style,
+      onClick: this.renderContext.onWindowClick,
+      onLongClick: this.renderContext.onLongClick,
+      onClose: this.renderContext.onClose,
+      onSizeChanged: this.renderContext.onSizeChanged,
+    };
   }
 
   /**
    * Get the ComponentContent for rendering this InfoWindow.
    *
-   * Returns the custom ComponentContent if set via adapter or setCustomComponentContent(),
-   * otherwise creates and returns the default ComponentContent using the provided UIContext.
+   * Returns the custom ComponentContent if set via adapter or
+   * setCustomComponentContent(). Otherwise returns the cached default
+   * ComponentContent, refreshing its params (title/snippet/style) via
+   * update() so later marker edits are reflected; creates it on first use.
    *
-   * @param uiContext UIContext required to create a ComponentContent (used only for default).
+   * @param uiContext UIContext required to create the default content.
    * @returns The ComponentContent to render, or null if UIContext is missing for default.
    */
-  public getComponentContent(uiContext: UIContext): ComponentContent<InfoWindowRenderParams> | null {
+  public getComponentContent(uiContext: UIContext | null): ComponentContent<InfoWindowRenderParams> | null {
     if (this.customComponentContent) {
       return this.customComponentContent;
     }
-    // Create default ComponentContent on demand
-    return InfoWindow.createDefaultComponentContent(this, uiContext);
+    if (!uiContext) {
+      return null;
+    }
+    if (this.defaultComponentContent) {
+      this.defaultComponentContent.update(this.buildRenderParams());
+      return this.defaultComponentContent;
+    }
+    this.defaultComponentContent = new ComponentContent<InfoWindowRenderParams>(
+      uiContext,
+      wrapBuilder<[InfoWindowRenderParams]>(infoWindowDefaultBuilder),
+      this.buildRenderParams()
+    );
+    return this.defaultComponentContent;
   }
 
   /**
@@ -325,37 +389,6 @@ export class InfoWindow {
   public getRenderContext(): InfoWindowRenderContext {
     return this.renderContext;
   }
-
-  /**
-   * Create the default ComponentContent for an InfoWindow.
-   *
-   * This factory method wraps the default InfoWindowComponent in a ComponentContent
-   * so that all InfoWindows (default and custom) use the same rendering pipeline.
-   *
-   * @param infoWindow The InfoWindow descriptor.
-   * @param uiContext UIContext from the page/component scope.
-   * @returns A ComponentContent rendering the default InfoWindow UI.
-   */
-  static createDefaultComponentContent(infoWindow: InfoWindow, uiContext: UIContext): ComponentContent<InfoWindowRenderParams> {
-    const renderParams: InfoWindowRenderParams = {
-      markerId: infoWindow.marker.getId(),
-      title: infoWindow.marker.getTitle() || '',
-      snippet: infoWindow.marker.getSnippet() || '',
-      style: infoWindow.style,
-      onClick: infoWindow.renderContext.onWindowClick,
-      onLongClick: infoWindow.renderContext.onLongClick,
-      onClose: infoWindow.renderContext.onClose,
-      onSizeChanged: infoWindow.renderContext.onSizeChanged,
-    };
-
-    const content = new ComponentContent<InfoWindowRenderParams>(
-      uiContext,
-      wrapBuilder<[InfoWindowRenderParams]>(infoWindowDefaultBuilder),
-      renderParams
-    );
-
-    return content;
-  }
 }
 
 /**
@@ -371,41 +404,30 @@ export struct InfoWindowComponent {
   @Prop markerSnippet: string = '';
   @Prop arrowOffsetX: number = 0;
   @Prop customStyle: InfoWindowStyle | null = null;
-  @State windowOpacity: number = 0;
-  @State windowScale: number = 0.8;
-  @BuilderParam leftAccessoryBuilder?: () => void;
-  @BuilderParam rightAccessoryBuilder?: () => void;
   onWindowClick?: () => void;
   onLongClick?: () => void;
   onClose?: () => void;
   onSizeChanged?: (width: number, height: number) => void;
 
-  aboutToAppear() {
-    const animated = this.customStyle?.animated !== false;
-    if (animated) {
-      this.windowOpacity = 1;
-      this.windowScale = 1;
-    } else {
-      this.windowOpacity = 1;
-      this.windowScale = 1;
+  /**
+   * Appear/disappear transition. Plays a fade + scale-in entrance unless the
+   * style opts out via animated === false. Removal stays immediate because the
+   * owning ViewAnnotation is torn down on close.
+   */
+  private buildTransition(): TransitionEffect {
+    if (this.customStyle?.animated === false) {
+      return TransitionEffect.IDENTITY;
     }
+    const curve: AnimateParam = { duration: 250, curve: Curve.EaseOut };
+    return TransitionEffect.OPACITY
+      .animation(curve)
+      .combine(TransitionEffect.scale({ x: 0.85, y: 0.85, centerX: '50%', centerY: '100%' }).animation(curve));
   }
 
   build() {
     Column() {
       Column() {
         Row({ space: 8 }) {
-          if (this.leftAccessoryBuilder || this.customStyle?.leftAccessoryBuilder) {
-            Column() {
-              if (this.leftAccessoryBuilder) {
-                this.leftAccessoryBuilder();
-              } else if (this.customStyle?.leftAccessoryBuilder) {
-                // this.customStyle.leftAccessoryBuilder();
-              }
-            }
-            .margin({ right: 8 })
-          }
-
           Column() {
             if (this.markerTitle) {
               Row() {
@@ -424,7 +446,7 @@ export struct InfoWindowComponent {
                   .textAlign(TextAlign.Center)
                   .maxLines(1)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 250 })
+                  .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? DEFAULT_MAX_WIDTH })
               }
               .alignItems(VerticalAlign.Center)
             }
@@ -436,17 +458,7 @@ export struct InfoWindowComponent {
                 .maxLines(2)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
                 .margin({ top: 4 })
-                .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 250 })
-            }
-          }
-
-          if (this.rightAccessoryBuilder || this.customStyle?.rightAccessoryBuilder) {
-            Column() {
-              if (this.rightAccessoryBuilder) {
-                this.rightAccessoryBuilder();
-              } else if (this.customStyle?.rightAccessoryBuilder) {
-                // this.customStyle.rightAccessoryBuilder();
-              }
+                .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? DEFAULT_MAX_WIDTH })
             }
           }
 
@@ -478,7 +490,7 @@ export struct InfoWindowComponent {
         offsetX: 0,
         offsetY: 2
       })
-      .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? 280 })
+      .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? DEFAULT_MAX_WIDTH })
 
       Row() {
         Polygon()
@@ -493,10 +505,8 @@ export struct InfoWindowComponent {
       .margin({ top: -1 })
     }
     .alignItems(HorizontalAlign.Center)
-    .constraintSize({ maxWidth: (this.customStyle?.maxWidth ?? 240) })
-    .opacity(this.windowOpacity)
-    .scale({ x: this.windowScale, y: this.windowScale })
-    .animation({ duration: 250, curve: Curve.EaseOut })
+    .constraintSize({ maxWidth: this.customStyle?.maxWidth ?? DEFAULT_MAX_WIDTH })
+    .transition(this.buildTransition())
     .onClick(() => {
       if (this.onWindowClick) {
         this.onWindowClick();

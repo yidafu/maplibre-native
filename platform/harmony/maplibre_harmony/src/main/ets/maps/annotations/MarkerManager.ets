@@ -272,19 +272,19 @@ export class MarkerManager {
    */
   private handleMapClick(x: number, y: number): boolean {
     try {
-      console.info(`[MarkerManager] handleMapClick at (${x}, ${y})`);
-      
       // Locate marker at tap position (queryRenderedFeaturesForBox handles coordinate transforms)
       const marker = this.queryMarkerAtPoint(x, y);
 
       if (marker) {
-        console.info(`[MarkerManager] Found marker at click position: ${marker.getTitle()}`);
         // Dispatch marker click event
         return this.handleMarkerClick(marker);
       }
 
-      console.info(`[MarkerManager] No marker found at click position`);
-      return false; // No marker hit; event not consumed
+      // Mirrors Android deselectMarkersOnTap: tapping empty map area deselects
+      // the selected marker, which hides its InfoWindow. The event itself stays
+      // unconsumed so user onMapClick listeners still fire.
+      this.deselectMarkers();
+      return false;
     } catch (error) {
       console.error(`[MarkerManager] Error handling map click: ${error}`);
       return false;
@@ -778,10 +778,8 @@ export class MarkerManager {
       return;
     }
 
-    // Close InfoWindow if visible
-    if (marker.isInfoWindowShown()) {
-      marker.hideInfoWindow();
-    }
+    // Close InfoWindow and purge its cached descriptor
+    marker.hideInfoWindow();
 
     // Deselect if currently selected
     if (marker.isSelected()) {
@@ -823,9 +821,7 @@ export class MarkerManager {
       const id = marker.getId();
       if (id !== -1) {
         // Reset marker UI state
-        if (marker.isInfoWindowShown()) {
-          marker.hideInfoWindow();
-        }
+        marker.hideInfoWindow();
         if (marker.isSelected()) {
           this.selectedMarkers.delete(marker);
         }
@@ -949,9 +945,7 @@ export class MarkerManager {
 
     // Clean up each marker
     for (const marker of this.markerMap.values()) {
-      if (marker.isInfoWindowShown()) {
-        marker.hideInfoWindow();
-      }
+      marker.hideInfoWindow();
 
       // Icon cleanup
       // Obtain icon from map (NAPI marker lacks icon reference)
@@ -1081,15 +1075,8 @@ export class MarkerManager {
     }
 
     // Display InfoWindow if applicable
-    const title = marker.getTitle();
-    const snippet = marker.getSnippet();
-    console.info(`[MarkerManager] selectMarker - title: "${title}", snippet: "${snippet}", showInfoWindow: ${showInfoWindow}`);
-
-    if (showInfoWindow && (title || snippet)) {
-      console.info(`[MarkerManager] Showing InfoWindow for marker with title: "${title}"`);
+    if (showInfoWindow && (marker.getTitle() || marker.getSnippet())) {
       marker.showInfoWindow();
-    } else {
-      console.warn(`[MarkerManager] InfoWindow not shown - showInfoWindow: ${showInfoWindow}, hasTitle: ${!!title}, hasSnippet: ${!!snippet}`);
     }
   }
 
@@ -1252,12 +1239,16 @@ export class MarkerManager {
       } catch (error) {
         console.error(`[MarkerManager] Error in onMarkerClickListener: ${error}`);
       }
-    } else {
-      console.warn('[MarkerManager] Warning: onMarkerClickListener is not set');
     }
 
-    // Default behavior: select marker and show InfoWindow
-    this.selectMarker(marker, true);
+    // Default behavior mirrors Android toggleMarkerSelectionState: tapping an
+    // already-selected marker deselects it (hiding its InfoWindow), tapping an
+    // unselected marker selects it and shows the InfoWindow.
+    if (this.selectedMarkers.has(marker)) {
+      this.deselectMarker(marker);
+    } else {
+      this.selectMarker(marker, true);
+    }
     return false;
   }
 
@@ -1489,20 +1480,14 @@ export class MarkerManager {
    */
   public showInfoWindow(marker: Marker): void {
     try {
-      const title = marker.getTitle();
-      const snippet = marker.getSnippet();
-      console.info(`[MarkerManager] showInfoWindow called for marker - title: "${title}", snippet: "${snippet}"`);
-
       const iconId = marker.getIcon();
       const iconHeightPhysical = this.iconManager.getIconHeight(iconId);
       const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
       const iconHeightLogical = iconHeightPhysical / pixelRatio;
-      console.info(`[MarkerManager] Icon "${iconId}" height: ${iconHeightPhysical}px (physical) = ${iconHeightLogical}px (logical)`);
 
       const style = this.cloneInfoWindowStyle(this.getInfoWindowStyle(marker));
       if (style.offsetY === undefined && iconHeightLogical > 0) {
         style.offsetY = -iconHeightLogical;
-        console.info(`[MarkerManager] Setting offsetY to -${iconHeightLogical} (negative icon height for top positioning)`);
       }
 
       const centerOffset: CenterOffset = {
@@ -1513,7 +1498,6 @@ export class MarkerManager {
       // Pass icon height as anchorHeight for correct anchor positioning
       const anchorHeight = iconHeightLogical > 0 ? iconHeightLogical : undefined;
 
-      console.info(`[MarkerManager] Calling InfoWindowManager.show() with centerOffset=(${centerOffset.dx}, ${centerOffset.dy}), anchorHeight=${anchorHeight}`);
       this.infoWindowManager.show(marker, {
         style: style,
         centerOffset: centerOffset,
@@ -1522,8 +1506,6 @@ export class MarkerManager {
         anchorV: 1.0,
         zIndex: marker.getZIndex()
       });
-      console.info('[MarkerManager] InfoWindow shown successfully');
-
     } catch (error) {
       console.error(`[MarkerManager] Failed to show InfoWindow: ${error.message}`);
     }
