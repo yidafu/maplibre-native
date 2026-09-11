@@ -59,3 +59,36 @@ export interface InfoWindowAdapter {
    */
   getInfoWindow(marker: Marker, uiContext: UIContext): ComponentContent<Object> | null;
 }
+
+/**
+ * Factory function to create an InfoWindowAdapter from a callback.
+ *
+ * @param handler Callback invoked when an InfoWindow needs to be created.
+ * @returns InfoWindowAdapter instance.
+ */
+/**
+ * Concrete implementation of InfoWindowAdapter wrapping a callback function.
+ */
+class InfoWindowAdapterImpl implements InfoWindowAdapter {
+  private handler: (marker: Marker, uiContext: UIContext) => ComponentContent<Object> | null;
+
+  constructor(handler: (marker: Marker, uiContext: UIContext) => ComponentContent<Object> | null) {
+    this.handler = handler;
+  }
+
+  getInfoWindow(marker: Marker, uiContext: UIContext): ComponentContent<Object> | null {
+    return this.handler(marker, uiContext);
+  }
+}
+
+/**
+ * Factory function to create an InfoWindowAdapter from a callback.
+ *
+ * @param handler Callback invoked when an InfoWindow needs to be created.
+ * @returns InfoWindowAdapter instance.
+ */
+export function createInfoWindowAdapter(
+  handler: (marker: Marker, uiContext: UIContext) => ComponentContent<Object> | null
+): InfoWindowAdapter {
+  return new InfoWindowAdapterImpl(handler);
+}

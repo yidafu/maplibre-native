@@ -26,7 +26,7 @@ export {
   NativeViewAnnotationOptionsImpl
 } from './annotations/NativeViewAnnotationTypes';
 
-export { MapLibreMap } from './MapLibreMap';
+export { MapLibreMap, CameraState } from './MapLibreMap';
 
 export { MapLibreMapOptions } from './MapLibreMapOptions';
 
@@ -149,9 +149,11 @@ export { VisibleRegion } from './projection/VisibleRegion';
 export {
   OfflineManager,
   OfflineRegion,
+  DownloadState,
   DownloadState as OfflineRegionDownloadState,
   OfflineRegionDefinition,
   OfflineTilePyramidRegionDefinition,
+  createTilePyramidRegionDefinition,
   OfflineRegionStatus,
   OfflineRegionErrorReason
 } from './offline';
@@ -163,6 +165,7 @@ export type {
 // ========== Camera ==========
 export {
   CameraPosition,
+  createCameraPosition,
   EdgeInsets
 } from './camera/CameraPosition';
 
@@ -219,7 +222,9 @@ export { PolygonManager } from './annotations/PolygonManager';
 
 export { InfoWindow, InfoWindowComponent } from './annotations/InfoWindow';
 
-export { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
+export type { InfoWindowStyle } from './annotations/InfoWindow';
+
+export { InfoWindowAdapter, createInfoWindowAdapter } from './annotations/InfoWindowAdapter';
 
 export { AnnotationView, DragState } from './annotations/AnnotationView';
 

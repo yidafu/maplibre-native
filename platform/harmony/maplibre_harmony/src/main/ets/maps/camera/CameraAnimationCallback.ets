@@ -40,37 +40,3 @@ export interface AnimationOptions {
   callback?: CameraAnimationCallback;
 }
 
-/**
- * Concrete implementation of CameraAnimationCallback.
- * Helps avoid type mismatches when using object literals.
- */
-export class CameraAnimationCallbackImpl implements CameraAnimationCallback {
-  private finishFn: () => void;
-  private cancelFn?: () => void;
-
-  constructor(onFinish: () => void, onCancel?: () => void) {
-    this.finishFn = onFinish;
-    this.cancelFn = onCancel;
-  }
-
-  onFinish(): void {
-    this.finishFn();
-  }
-
-  onCancel(): void {
-    if (this.cancelFn) {
-      this.cancelFn();
-    }
-  }
-}
-
-/**
- * Factory helper to create CameraAnimationCallback instances.
- */
-export function createAnimationCallback(
-  onFinish: () => void,
-  onCancel?: () => void
-): CameraAnimationCallback {
-  return new CameraAnimationCallbackImpl(onFinish, onCancel);
-}
-
