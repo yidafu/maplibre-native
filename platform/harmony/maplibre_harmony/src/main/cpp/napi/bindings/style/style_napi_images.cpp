@@ -1,4 +1,7 @@
 #include "style_napi.hpp"
+#include <chrono>
+#include <future>
+#include <functional>
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "napi/bindings/image/image_napi.hpp"
@@ -35,7 +38,7 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         napi_throw_error(env, nullptr, "Invalid style instance");
         return nullptr;
     }
@@ -57,7 +60,9 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
             auto styleImage = imageNapi->toStyleImage();
             std::string imageName = styleImage->getID();
 
-            style->map->getStyle().addImage(std::move(styleImage));
+            style->runOnMap([&](mbgl::Map& m) {
+                m.getStyle().addImage(std::move(styleImage));
+            });
             style->images[imageName] = true;
 
             Logger::info("StyleNAPI", "AddImage from Image object: %s (%dx%d)",
@@ -115,16 +120,25 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    double pixelRatio = napiArgs.GetDouble(4, "pixelRatio");
-    if (napiArgs.HasError()) {
-        return nullptr;
-    }
-
+    // Trailing arguments accept either form:
+    // - addImage(name, buffer, width, height, sdf?)
+    // - addImage(name, buffer, width, height, pixelRatio?, sdf?)
+    // Numbers fill pixelRatio (default 1.0), booleans set `sdf`.
+    double pixelRatio = 1.0;
     bool sdf = false;
-    if (argc >= 6) {
-        sdf = napiArgs.GetBool(5, "sdf");
-        if (napiArgs.HasError()) {
-            return nullptr;
+    for (size_t i = 4; i < argc; ++i) {
+        napi_valuetype argType;
+        napi_typeof(env, napiArgs.GetValue(i), &argType);
+        if (argType == napi_number) {
+            pixelRatio = napiArgs.GetDouble(i, "pixelRatio");
+            if (napiArgs.HasError()) {
+                return nullptr;
+            }
+        } else if (argType == napi_boolean) {
+            sdf = napiArgs.GetBool(i, "sdf");
+            if (napiArgs.HasError()) {
+                return nullptr;
+            }
         }
     }
 
@@ -145,7 +159,9 @@ napi_value StyleNAPI::AddImage(napi_env env, napi_callback_info info) {
             sdf
         );
 
-        style->map->getStyle().addImage(std::move(image));
+        style->runOnMap([&](mbgl::Map& m) {
+            m.getStyle().addImage(std::move(image));
+        });
         style->images[imageName] = true;
 
         Logger::info("StyleNAPI", "AddImage: %s (%dx%d, ratio: %.2f, sdf: %s)",
@@ -170,7 +186,7 @@ napi_value StyleNAPI::RemoveImage(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         return CreateBoolValue(env, false);
     }
 
@@ -180,7 +196,9 @@ napi_value StyleNAPI::RemoveImage(napi_env env, napi_callback_info info) {
     }
 
     try {
-        style->map->getStyle().removeImage(imageName);
+        style->runOnMap([&](mbgl::Map& m) {
+            m.getStyle().removeImage(imageName);
+        });
         style->images.erase(imageName);
         Logger::info("StyleNAPI", "RemoveImage: %s", imageName.c_str());
         return CreateBoolValue(env, true);
@@ -201,7 +219,7 @@ napi_value StyleNAPI::GetImage(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         return napiArgs.Null();
     }
 
@@ -211,7 +229,12 @@ napi_value StyleNAPI::GetImage(napi_env env, napi_callback_info info) {
     }
 
     try {
-        auto imageOpt = style->map->getStyle().getImage(imageName);
+        // Fetch a value copy on the render thread; the copy keeps the image
+        // data alive no matter what the style does afterwards.
+        std::optional<mbgl::style::Image> imageOpt;
+        style->runOnMap([&](mbgl::Map& m) {
+            imageOpt = m.getStyle().getImage(imageName);
+        });
         if (!imageOpt) {
             return napiArgs.Null();
         }
@@ -343,8 +366,10 @@ void AddImageAsyncComplete(napi_env env, napi_status status, void* data) {
                 );
             }
             
-            // Add to style
-            style->getMap()->getStyle().addImage(std::move(image));
+            // Add to style (serialized with the render thread)
+            style->runOnMap([&](mbgl::Map& m) {
+                m.getStyle().addImage(std::move(image));
+            });
             style->images[asyncData->imageName] = true;
             
             Logger::info("StyleNAPI", "AddImageAsync completed: %s (%dx%d)", 
@@ -477,14 +502,24 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
             
             napi_get_value_uint32(env, args[2], &asyncData->width);
             napi_get_value_uint32(env, args[3], &asyncData->height);
-            
-            double pixelRatio = 1.0;
-            napi_get_value_double(env, args[4], &pixelRatio);
-            asyncData->pixelRatio = static_cast<float>(pixelRatio);
-            
+
+            // Trailing arguments accept either form:
+            // - addImageAsync(name, buffer, width, height, sdf?)
+            // - addImageAsync(name, buffer, width, height, pixelRatio?, sdf?)
+            asyncData->pixelRatio = 1.0f;
             asyncData->sdf = false;
-            if (argc >= 6) {
-                napi_get_value_bool(env, args[5], &asyncData->sdf);
+            for (size_t i = 4; i < argc; ++i) {
+                napi_valuetype argType;
+                if (napi_typeof(env, args[i], &argType) != napi_ok) {
+                    continue;
+                }
+                if (argType == napi_number) {
+                    double pixelRatio = 1.0;
+                    napi_get_value_double(env, args[i], &pixelRatio);
+                    asyncData->pixelRatio = static_cast<float>(pixelRatio);
+                } else if (argType == napi_boolean) {
+                    napi_get_value_bool(env, args[i], &asyncData->sdf);
+                }
             }
             
             // Verify data size
@@ -570,13 +605,16 @@ void AddImagesAsyncComplete(napi_env env, napi_status status, void* data) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
-    if (status == napi_ok && asyncData->success && style && style->getMap()) {
+    if (status == napi_ok && asyncData->success && style && style->acquireMap()) {
         try {
-            // Add all images to style
-            for (size_t i = 0; i < asyncData->images.size(); ++i) {
-                std::string imageName = asyncData->imageNames[i];
-                style->getMap()->getStyle().addImage(std::move(asyncData->images[i]));
-                style->images[imageName] = true;
+            // Add all images to style in a single render-thread dispatch
+            style->runOnMap([&](mbgl::Map& m) {
+                for (size_t i = 0; i < asyncData->images.size(); ++i) {
+                    m.getStyle().addImage(std::move(asyncData->images[i]));
+                }
+            });
+            for (size_t i = 0; i < asyncData->imageNames.size(); ++i) {
+                style->images[asyncData->imageNames[i]] = true;
             }
             
             Logger::info("StyleNAPI", "AddImagesAsync completed: %zu images", asyncData->images.size());
@@ -728,18 +766,25 @@ napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         return napiArgs.Null();
     }
     
     try {
-        mbgl::style::Light* light = style->map->getStyle().getLight();
+        mbgl::style::Light* light = nullptr;
+        style->runOnMap([&](mbgl::Map& m) {
+            light = m.getStyle().getLight();
+        });
         if (!light) {
             Logger::warn("StyleNAPI", "GetLight: Style has no light definition");
             return napiArgs.Null();
         }
-        
-        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *style->map, *light);
+
+        mbgl::Map* map = style->acquireMap();
+        if (!map) {
+            return napiArgs.Null();
+        }
+        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *map, *light);
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetLight failed: %s", e.what());
         return napiArgs.Null();
@@ -757,7 +802,7 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         napi_throw_error(env, nullptr, "Invalid style instance");
         return nullptr;
     }
@@ -767,21 +812,37 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    try {
-        mbgl::style::Light* light = style->map->getStyle().getLight();
-        if (!light) {
-            Logger::warn("StyleNAPI", "SetLight: Style does not contain a light definition");
-            return napiArgs.Undefined();
-        }
+    // Applies are collected during parsing and committed to the light in one
+    // render-thread dispatch at the end of this function.
+    std::vector<std::function<void(mbgl::style::Light&)>> pendingApply;
 
+    try {
         napi_valuetype valueType = napi_undefined;
         napi_typeof(env, lightOptions, &valueType);
 
         if (valueType == napi_string) {
+            // Accept a JSON string via JSON.parse (avoids duplicating the
+            // parser in C++); fall through with the parsed object.
             std::string json = GetStringFromValue(env, lightOptions);
-            Logger::warn("StyleNAPI", "SetLight: JSON string parsing not supported yet, ignoring input");
-            Logger::info("StyleNAPI", "SetLight input JSON: %s", json.c_str());
-            return napiArgs.Undefined();
+            napi_value global, jsonObj, parseFn, parsed = nullptr;
+            if (napi_get_global(env, &global) == napi_ok &&
+                napi_get_named_property(env, global, "JSON", &jsonObj) == napi_ok &&
+                napi_get_named_property(env, jsonObj, "parse", &parseFn) == napi_ok) {
+                napi_value strValue;
+                if (napi_create_string_utf8(env, json.c_str(), NAPI_AUTO_LENGTH, &strValue) == napi_ok &&
+                    napi_call_function(env, jsonObj, parseFn, 1, &strValue, &parsed) == napi_ok) {
+                    napi_valuetype parsedType = napi_undefined;
+                    napi_typeof(env, parsed, &parsedType);
+                    if (parsedType == napi_object) {
+                        lightOptions = parsed;
+                        valueType = napi_object;
+                    }
+                }
+            }
+            if (valueType != napi_object) {
+                Logger::warn("StyleNAPI", "SetLight: Failed to parse JSON string input");
+                return napiArgs.Undefined();
+            }
         }
 
         if (valueType != napi_object) {
@@ -805,10 +866,13 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
             napi_value anchorValue;
             if (hasProperty(lightOptions, "anchor", anchorValue)) {
                 std::string anchor = GetStringFromValue(env, anchorValue);
-                if (anchor == "map") {
-                    light->setAnchor(mbgl::style::LightAnchorType::Map);
-                } else if (anchor == "viewport") {
-                    light->setAnchor(mbgl::style::LightAnchorType::Viewport);
+                if (anchor == "map" || anchor == "viewport") {
+                    const mbgl::style::LightAnchorType anchorType = (anchor == "map")
+                        ? mbgl::style::LightAnchorType::Map
+                        : mbgl::style::LightAnchorType::Viewport;
+                    pendingApply.push_back([anchorType](mbgl::style::Light& light) {
+                        light.setAnchor(anchorType);
+                    });
                 } else {
                     Logger::warn("StyleNAPI", "SetLight: Unknown anchor '%s'", anchor.c_str());
                 }
@@ -862,7 +926,9 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
 
                 if (parsed) {
                     mbgl::style::Position position(spherical);
-                    light->setPosition(position);
+                    pendingApply.push_back([position](mbgl::style::Light& light) {
+                        light.setPosition(position);
+                    });
                 } else {
                     Logger::warn("StyleNAPI", "SetLight: Failed to parse position");
                 }
@@ -876,7 +942,10 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
                 std::string colorStr = GetStringFromValue(env, colorValue);
                 auto parsedColor = mbgl::Color::parse(colorStr);
                 if (parsedColor) {
-                    light->setColor(*parsedColor);
+                    const mbgl::Color color = *parsedColor;
+                    pendingApply.push_back([color](mbgl::style::Light& light) {
+                        light.setColor(color);
+                    });
                 } else {
                     Logger::warn("StyleNAPI", "SetLight: Invalid color '%s'", colorStr.c_str());
                 }
@@ -889,7 +958,10 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
             if (hasProperty(lightOptions, "intensity", intensityValue)) {
                 double intensity = 0.0;
                 if (napi_get_value_double(env, intensityValue, &intensity) == napi_ok) {
-                    light->setIntensity(static_cast<float>(intensity));
+                    const float intensityF = static_cast<float>(intensity);
+                    pendingApply.push_back([intensityF](mbgl::style::Light& light) {
+                        light.setIntensity(intensityF);
+                    });
                 } else {
                     Logger::warn("StyleNAPI", "SetLight: Failed to parse intensity");
                 }
@@ -932,16 +1004,34 @@ napi_value StyleNAPI::SetLight(napi_env env, napi_callback_info info) {
         };
 
         applyTransition("positionTransition", [&](const mbgl::style::TransitionOptions& options) {
-            light->setPositionTransition(options);
+            pendingApply.push_back([options](mbgl::style::Light& light) {
+                light.setPositionTransition(options);
+            });
         });
 
         applyTransition("colorTransition", [&](const mbgl::style::TransitionOptions& options) {
-            light->setColorTransition(options);
+            pendingApply.push_back([options](mbgl::style::Light& light) {
+                light.setColorTransition(options);
+            });
         });
 
         applyTransition("intensityTransition", [&](const mbgl::style::TransitionOptions& options) {
-            light->setIntensityTransition(options);
+            pendingApply.push_back([options](mbgl::style::Light& light) {
+                light.setIntensityTransition(options);
+            });
         });
+
+        if (!pendingApply.empty()) {
+            style->runOnMap([&](mbgl::Map& m) {
+                mbgl::style::Light* light = m.getStyle().getLight();
+                if (!light) {
+                    return;
+                }
+                for (auto& apply : pendingApply) {
+                    apply(*light);
+                }
+            });
+        }
 
         Logger::info("StyleNAPI", "SetLight applied light specification");
 
@@ -962,27 +1052,36 @@ napi_value StyleNAPI::GetTransition(napi_env env, napi_callback_info info) {
     napi_value jsThis = napiArgs.This();
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
-    
-    if (!style || !style->map) {
+
+    if (!style || !style->acquireMap()) {
         return napiArgs.Null();
     }
-    
-    // TODO: getTransition is not available in mbgl::style::Style
-    // Returning default transition options
-    Logger::warn("StyleNAPI", "GetTransition: Not implemented - returning default values");
-    
+
+    mbgl::style::TransitionOptions options;
+    try {
+        style->runOnMap([&](mbgl::Map& m) {
+            options = m.getStyle().getTransitionOptions();
+        });
+    } catch (const std::exception& e) {
+        Logger::error("StyleNAPI", "GetTransition failed: %s", e.what());
+        return napiArgs.Null();
+    }
+
     napi_value result;
     napi_create_object(env, &result);
-    
-    // Return the default values
+
     napi_value durationValue;
-    napi_create_int64(env, 300, &durationValue);  // default 300 ms
+    napi_create_int64(env,
+                      options.duration ? static_cast<int64_t>(options.duration->count()) : 300,
+                      &durationValue);
     napi_set_named_property(env, result, "duration", durationValue);
-    
+
     napi_value delayValue;
-    napi_create_int64(env, 0, &delayValue);
+    napi_create_int64(env,
+                      options.delay ? static_cast<int64_t>(options.delay->count()) : 0,
+                      &delayValue);
     napi_set_named_property(env, result, "delay", delayValue);
-    
+
     return result;
 }
 
@@ -997,7 +1096,7 @@ napi_value StyleNAPI::SetTransition(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         napi_throw_error(env, nullptr, "Invalid style instance");
         return nullptr;
     }
@@ -1006,36 +1105,44 @@ napi_value StyleNAPI::SetTransition(napi_env env, napi_callback_info info) {
     if (napiArgs.HasError()) {
         return nullptr;
     }
-    
-    // TODO: setTransition is not available in mbgl::style::Style
-    // Logging the attempted transition but not applying it
-    Logger::warn("StyleNAPI", "SetTransition: Not implemented - transition settings not applied");
-    
-    // Parse arguments to record logging details
+
+    mbgl::style::TransitionOptions options;
+
     napi_value durationValue;
-    napi_status status = napi_get_named_property(env, transitionOptions, "duration", &durationValue);
-    int64_t duration = 300;  // default value
-    if (status == napi_ok) {
+    if (napi_get_named_property(env, transitionOptions, "duration", &durationValue) == napi_ok) {
         napi_valuetype valueType;
         napi_typeof(env, durationValue, &valueType);
         if (valueType == napi_number) {
-            napi_get_value_int64(env, durationValue, &duration);
+            double duration = 0.0;
+            if (napi_get_value_double(env, durationValue, &duration) == napi_ok) {
+                options.duration.emplace(mbgl::Milliseconds(static_cast<int64_t>(duration)));
+            }
         }
     }
-    
+
     napi_value delayValue;
-    status = napi_get_named_property(env, transitionOptions, "delay", &delayValue);
-    int64_t delay = 0;
-    if (status == napi_ok) {
+    if (napi_get_named_property(env, transitionOptions, "delay", &delayValue) == napi_ok) {
         napi_valuetype valueType;
         napi_typeof(env, delayValue, &valueType);
         if (valueType == napi_number) {
-            napi_get_value_int64(env, delayValue, &delay);
+            double delay = 0.0;
+            if (napi_get_value_double(env, delayValue, &delay) == napi_ok) {
+                options.delay.emplace(mbgl::Milliseconds(static_cast<int64_t>(delay)));
+            }
         }
     }
-    
-    Logger::info("StyleNAPI", "SetTransition (stub): duration=%ld, delay=%ld", static_cast<long>(duration), static_cast<long>(delay));
-    
+
+    try {
+        style->runOnMap([&](mbgl::Map& m) {
+            m.getStyle().setTransitionOptions(options);
+        });
+        Logger::info("StyleNAPI", "SetTransition applied");
+    } catch (const std::exception& e) {
+        Logger::error("StyleNAPI", "SetTransition failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return nullptr;
+    }
+
     return napiArgs.Undefined();
 }
 

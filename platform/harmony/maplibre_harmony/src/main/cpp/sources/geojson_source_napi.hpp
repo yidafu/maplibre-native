@@ -3,11 +3,13 @@
 #include <napi/native_api.h>
 #include <mbgl/style/sources/geojson_source.hpp>
 #include <mbgl/util/geojson.hpp>
+#include <mbgl/renderer/query.hpp>
 #include <string>
 #include <memory>
 #include <functional>
 #include <map>
 #include <optional>
+#include <vector>
 
 namespace maplibre {
 namespace harmony {
@@ -55,8 +57,11 @@ public:
     static napi_value GetClusterLeaves(napi_env env, napi_callback_info info);
     static napi_value GetClusterExpansionZoom(napi_env env, napi_callback_info info);
 
-    // Static callback for querying feature extensions from the renderer.
-    // Set by NativeMapView during initialization (single-map constraint).
+    // Static callbacks for querying through the renderer. Set by NativeMapView
+    // during initialization. Registered per-owner (the HarmonyRenderer raw
+    // pointer): with multiple map instances a later instance replaces the
+    // hooks, and clearing is owner-checked so destroying one map can never
+    // disable (or leave dangling) another map's hooks.
     using QueryFeatureExtensionsFn = std::function<mbgl::FeatureExtensionValue(
         const std::string& sourceID,
         const mbgl::Feature& feature,
@@ -64,8 +69,19 @@ public:
         const std::string& extensionField,
         const std::optional<std::map<std::string, mbgl::Value>>& args)>;
 
-    static void setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn);
-    static QueryFeatureExtensionsFn queryFeatureExtensionsFn_;
+    using QuerySourceFeaturesFn = std::function<std::vector<mbgl::Feature>(
+        const std::string& sourceID,
+        const mbgl::SourceQueryOptions& options)>;
+
+    static void setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn, void* owner);
+    static void setQuerySourceFeaturesFn(QuerySourceFeaturesFn fn, void* owner);
+    // Clears both hooks only if they were registered by `owner`.
+    static void clearRendererHooks(void* owner);
+
+    // Resolve the current hook; empty when unset. Returns a copy under the
+    // hook mutex so call sites invoke it without holding the lock.
+    static QueryFeatureExtensionsFn queryFeatureExtensionsFn();
+    static QuerySourceFeaturesFn querySourceFeaturesFn();
     
     // Internal helpers
     std::string getId() const { return id; }

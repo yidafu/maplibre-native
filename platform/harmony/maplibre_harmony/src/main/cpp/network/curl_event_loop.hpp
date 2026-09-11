@@ -103,16 +103,22 @@ private:
         RemoveAllHandles, // Bulk remove all handles (pre-stop cleanup)
     };
 
-    // A single pending operation with synchronization primitives for synchronous callers.
-    // done_mutex/done_cv/done_flag are pointers to locals on the caller's (main thread) stack.
-    // This is safe because the caller is blocked on done_cv.wait() until the operation completes.
+    // Synchronization state for one synchronous operation. Heap-allocated and
+    // shared between the caller and the queued operation: if the caller's
+    // bounded wait below times out, the loop thread may still complete the
+    // operation later — with shared ownership that write lands on live memory
+    // instead of a dead caller stack frame.
+    struct OpState {
+        std::mutex mutex;
+        std::condition_variable cv;
+        bool done = false;
+        bool success = false;
+    };
+
     struct PendingOperation {
         OperationType type;
-        CURL* handle;              // valid for AddHandle/RemoveHandle; nullptr otherwise
-        std::mutex* done_mutex;    // caller-local mutex for synchronization
-        std::condition_variable* done_cv;
-        bool* done_flag;           // set to true when operation completes
-        bool* success_flag;        // set to true/false indicating operation result
+        CURL* handle;                       // valid for AddHandle/RemoveHandle; nullptr otherwise
+        std::shared_ptr<OpState> state;     // completion signaling for the synchronous caller
     };
 
     // libuv event loop
@@ -163,6 +169,14 @@ private:
 
     // Event-loop thread entry point
     void eventLoopThread();
+
+    // Queue an operation for the CURLEventLoop thread and wake it. Returns the
+    // shared completion state, or nullptr when the loop is stopping (checked
+    // under the queue lock, so no enqueue can slip past stop()'s final drain).
+    std::shared_ptr<OpState> enqueue(OperationType type, CURL* handle);
+
+    // Block until the operation completes (bounded). Returns op result.
+    static bool waitForResult(OpState& state, const char* what);
 
     // libuv callbacks
     static void onSocketEvent(uv_poll_t* poll, int status, int events);

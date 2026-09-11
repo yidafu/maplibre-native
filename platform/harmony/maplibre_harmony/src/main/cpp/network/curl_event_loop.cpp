@@ -286,6 +286,36 @@ void CURLEventLoop::stop() {
     running_.store(false);
 }
 
+// Queue an operation for the CURLEventLoop thread and wake it. The stopping_
+// check happens under the queue lock, the same lock the loop thread's final
+// drain holds, so an operation can never be enqueued after that drain ran.
+std::shared_ptr<CURLEventLoop::OpState> CURLEventLoop::enqueue(OperationType type, CURL* handle) {
+    auto state = std::make_shared<OpState>();
+    {
+        std::lock_guard<std::mutex> lock(operation_queue_mutex_);
+        if (stopping_.load(std::memory_order_acquire)) {
+            return nullptr;
+        }
+        pending_operations_.push({type, handle, state});
+    }
+
+    // Wake the CURLEventLoop thread
+    uv_async_send(operation_signal_);
+    return state;
+}
+
+// Block until the operation completes (bounded). Shared ownership keeps the
+// state alive even if the loop thread completes the operation after we gave
+// up waiting.
+bool CURLEventLoop::waitForResult(OpState& state, const char* what) {
+    std::unique_lock<std::mutex> lock(state.mutex);
+    if (!state.cv.wait_for(lock, std::chrono::seconds(10), [&state] { return state.done; })) {
+        Logger::error("Network", "%s: timed out waiting for CURLEventLoop thread (10s)", what);
+        return false;
+    }
+    return state.success;
+}
+
 // Queue an AddHandle operation and block until the CURLEventLoop thread completes it.
 bool CURLEventLoop::addHandle(CURL* handle) {
     if (!handle || !multi_ || !running_.load()) {
@@ -293,37 +323,17 @@ bool CURLEventLoop::addHandle(CURL* handle) {
         return false;
     }
 
-    if (stopping_.load(std::memory_order_acquire)) {
-        Logger::error("Network", "Event loop is stopping, cannot add handle");
-        return false;
-    }
-
     Logger::debug("Network", "addHandle called on thread %llu (handle=%p)",
                   static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id())),
                   static_cast<void*>(handle));
 
-    // Synchronization primitives on the caller's stack
-    std::mutex done_mutex;
-    std::condition_variable done_cv;
-    bool done = false;
-    bool success = false;
-
-    // Enqueue the operation
-    {
-        std::lock_guard<std::mutex> lock(operation_queue_mutex_);
-        pending_operations_.push({OperationType::AddHandle, handle, &done_mutex, &done_cv, &done, &success});
+    auto state = enqueue(OperationType::AddHandle, handle);
+    if (!state) {
+        Logger::error("Network", "Event loop is stopping, cannot add handle");
+        return false;
     }
 
-    // Wake the CURLEventLoop thread
-    uv_async_send(operation_signal_);
-
-    // Block until the operation is processed
-    {
-        std::unique_lock<std::mutex> lock(done_mutex);
-        done_cv.wait(lock, [&done] { return done; });
-    }
-
-    return success;
+    return waitForResult(*state, "addHandle");
 }
 
 // Queue a RemoveHandle operation and block until the CURLEventLoop thread completes it.
@@ -337,28 +347,13 @@ bool CURLEventLoop::removeHandle(CURL* handle) {
                   static_cast<unsigned long long>(std::hash<std::thread::id>{}(std::this_thread::get_id())),
                   static_cast<void*>(handle));
 
-    // Synchronization primitives on the caller's stack
-    std::mutex done_mutex;
-    std::condition_variable done_cv;
-    bool done = false;
-    bool success = false;
-
-    // Enqueue the operation
-    {
-        std::lock_guard<std::mutex> lock(operation_queue_mutex_);
-        pending_operations_.push({OperationType::RemoveHandle, handle, &done_mutex, &done_cv, &done, &success});
+    auto state = enqueue(OperationType::RemoveHandle, handle);
+    if (!state) {
+        Logger::error("Network", "Event loop is stopping, cannot remove handle");
+        return false;
     }
 
-    // Wake the CURLEventLoop thread
-    uv_async_send(operation_signal_);
-
-    // Block until the operation is processed
-    {
-        std::unique_lock<std::mutex> lock(done_mutex);
-        done_cv.wait(lock, [&done] { return done; });
-    }
-
-    return success;
+    return waitForResult(*state, "removeHandle");
 }
 
 // Queue a RemoveAllHandles operation and block until the CURLEventLoop thread completes it.
@@ -366,26 +361,13 @@ void CURLEventLoop::removeAllHandles() {
     Logger::debug("Network", "removeAllHandles: %zu active handles, %zu in-flight requests",
                   active_handles_.size(), activeRequestCount_.load(std::memory_order_acquire));
 
-    // Synchronization primitives on the caller's stack
-    std::mutex done_mutex;
-    std::condition_variable done_cv;
-    bool done = false;
-    bool success = false;
-
-    // Enqueue the operation
-    {
-        std::lock_guard<std::mutex> lock(operation_queue_mutex_);
-        pending_operations_.push({OperationType::RemoveAllHandles, nullptr, &done_mutex, &done_cv, &done, &success});
+    auto state = enqueue(OperationType::RemoveAllHandles, nullptr);
+    if (!state) {
+        Logger::warn("Network", "Event loop is stopping, removeAllHandles skipped");
+        return;
     }
 
-    // Wake the CURLEventLoop thread
-    uv_async_send(operation_signal_);
-
-    // Block until the operation is processed
-    {
-        std::unique_lock<std::mutex> lock(done_mutex);
-        done_cv.wait(lock, [&done] { return done; });
-    }
+    waitForResult(*state, "removeAllHandles");
 
     // Wait for in-flight requests to complete (with timeout)
     // These are requests that were already being processed in processCURLMessages
@@ -432,9 +414,12 @@ void CURLEventLoop::onOperationSignal(uv_async_t* async) {
             std::lock_guard<std::mutex> lock(eventLoop->operation_queue_mutex_);
             while (!eventLoop->pending_operations_.empty()) {
                 auto& op = eventLoop->pending_operations_.front();
-                if (op.success_flag) *op.success_flag = false;
-                if (op.done_flag) *op.done_flag = true;
-                if (op.done_cv) op.done_cv->notify_one();
+                {
+                    std::lock_guard<std::mutex> stateLock(op.state->mutex);
+                    op.state->success = false;
+                    op.state->done = true;
+                }
+                op.state->cv.notify_one();
                 eventLoop->pending_operations_.pop();
             }
         }
@@ -457,9 +442,12 @@ void CURLEventLoop::onOperationSignal(uv_async_t* async) {
         bool op_success = eventLoop->processOperation(op);
 
         // Signal completion to the waiting caller
-        if (op.success_flag) *op.success_flag = op_success;
-        if (op.done_flag) *op.done_flag = true;
-        if (op.done_cv) op.done_cv->notify_one();
+        {
+            std::lock_guard<std::mutex> stateLock(op.state->mutex);
+            op.state->success = op_success;
+            op.state->done = true;
+        }
+        op.state->cv.notify_one();
 
         ops.pop();
     }

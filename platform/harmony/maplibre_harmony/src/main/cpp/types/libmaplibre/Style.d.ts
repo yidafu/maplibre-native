@@ -124,24 +124,48 @@ export class Style {
 
   /**
    * Add an image to the style.
+   *
+   * Supported forms:
+   * - addImage(name, buffer, width, height, sdf?)
+   * - addImage(name, buffer, width, height, pixelRatio?, sdf?)
+   *
    * @param name Image name.
    * @param imageData Image data (ArrayBuffer or Uint8Array, RGBA format).
    * @param width Pixel width.
    * @param height Pixel height.
+   * @param pixelRatioOrSdf Pixel ratio (defaults to 1.0) or SDF flag.
    * @param sdf Whether this is an SDF (signed distance field) image; defaults to false.
    */
-  addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void;
+  addImage(
+    name: string,
+    imageData: ArrayBuffer | Uint8Array,
+    width: number,
+    height: number,
+    pixelRatioOrSdf?: number | boolean,
+    sdf?: boolean
+  ): void;
 
   /**
    * Add an image asynchronously (non-blocking).
+   *
+   * Accepts the same argument forms as `addImage`.
+   *
    * @param name Image name.
    * @param imageData Image data (ArrayBuffer or Uint8Array, RGBA format).
    * @param width Pixel width.
    * @param height Pixel height.
+   * @param pixelRatioOrSdf Pixel ratio (defaults to 1.0) or SDF flag.
    * @param sdf Whether this is an SDF image; defaults to false.
    * @returns Promise<void> resolved on completion.
    */
-  addImageAsync(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): Promise<void>;
+  addImageAsync(
+    name: string,
+    imageData: ArrayBuffer | Uint8Array,
+    width: number,
+    height: number,
+    pixelRatioOrSdf?: number | boolean,
+    sdf?: boolean
+  ): Promise<void>;
 
   /**
    * Add multiple images asynchronously (non-blocking).

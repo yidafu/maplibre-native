@@ -599,7 +599,9 @@ napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
     }
     
     try {
-        mbgl::style::Light* light = instance->map->getStyle().getLight();
+        mbgl::style::Light* light = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) { return m->getStyle().getLight(); },
+            (mbgl::style::Light*)nullptr);
         if (!light) {
             Logger::warn("NativeMapView", "getLight: No light in style");
             return args.Undefined();
@@ -623,8 +625,10 @@ napi_value NativeMapView::getLayers(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Get all layers from style
-        std::vector<mbgl::style::Layer*> layers = instance->map->getStyle().getLayers();
+        // Snapshot the layer list on the render thread
+        std::vector<mbgl::style::Layer*> layers = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) { return m->getStyle().getLayers(); },
+            std::vector<mbgl::style::Layer*>{});
         
         // Create array
         napi_value layersArray;
@@ -661,7 +665,9 @@ napi_value NativeMapView::getLayer(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     try {
-        mbgl::style::Layer* layer = instance->map->getStyle().getLayer(layerId);
+        mbgl::style::Layer* layer = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) { return m->getStyle().getLayer(layerId); },
+            (mbgl::style::Layer*)nullptr);
         if (!layer) {
             Logger::warn("NativeMapView", "getLayer: Layer '%s' not found", layerId.c_str());
             return args.Undefined();
@@ -769,14 +775,46 @@ napi_value NativeMapView::addLayerAt(napi_env env, napi_callback_info info) {
 }
 
 napi_value NativeMapView::removeLayerAt(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_get_boolean(env, false, &result);
-    
-    // TODO: Implement the Layer NAPI wrapper
-    // Reference Android: platform/android/MapLibreAndroid/src/cpp/native_map_view.cpp:1133-1150
-    Logger::warn("NativeMapView", "removeLayerAt: Not implemented - requires Layer wrapper classes");
-    
-    return result;
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) return args.Undefined();
+
+    // Obtain the NativeMapView instance
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance->map) {
+        Logger::error("NativeMapView", "removeLayerAt: Map not initialized");
+        return args.Undefined();
+    }
+
+    const uint32_t index = args.GetUint32(0, "index");
+    if (args.HasError()) return args.Undefined();
+
+    try {
+        bool removed = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) {
+                const auto& layers = m->getStyle().getLayers();
+                if (index < layers.size()) {
+                    const std::string layerId = layers[index]->getID();
+                    m->getStyle().removeLayer(layerId);
+                    return true;
+                }
+                return false;
+            },
+            false);
+        if (!removed) {
+            Logger::warn("NativeMapView", "removeLayerAt: index %u out of bounds", index);
+        } else {
+            Logger::info("NativeMapView", "removeLayerAt: removed layer at index %u", index);
+        }
+        napi_value result;
+        napi_get_boolean(env, removed, &result);
+        return result;
+    } catch (const std::exception& e) {
+        Logger::error("NativeMapView", "removeLayerAt: Exception - %s", e.what());
+        napi_value result;
+        napi_get_boolean(env, false, &result);
+        return result;
+    }
 }
 
 napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
@@ -800,9 +838,11 @@ napi_value NativeMapView::removeLayer(napi_env env, napi_callback_info info) {
     if (args.HasError()) return result;
     
     try {
-        // Remove layer from style
-        instance->map->getStyle().removeLayer(layerId);
-        instance->map->triggerRepaint();
+        // Remove layer from style (serialized with the render thread)
+        instance->invokeOnMapThread([&](mbgl::Map* m) {
+            m->getStyle().removeLayer(layerId);
+            m->triggerRepaint();
+        });
         
         napi_get_boolean(env, true, &result);
         Logger::info("NativeMapView", "removeLayer: Removed layer '%s'", layerId.c_str());
@@ -824,8 +864,10 @@ napi_value NativeMapView::getSources(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Get all sources from style
-        std::vector<mbgl::style::Source*> sources = instance->map->getStyle().getSources();
+        // Snapshot the source list on the render thread
+        std::vector<mbgl::style::Source*> sources = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) { return m->getStyle().getSources(); },
+            std::vector<mbgl::style::Source*>{});
         
         // Create array
         napi_value sourcesArray;
@@ -862,7 +904,9 @@ napi_value NativeMapView::getSource(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     try {
-        mbgl::style::Source* source = instance->map->getStyle().getSource(sourceId);
+        mbgl::style::Source* source = instance->invokeOnMapThreadSync(
+            [&](mbgl::Map* m) { return m->getStyle().getSource(sourceId); },
+            (mbgl::style::Source*)nullptr);
         if (!source) {
             Logger::warn("NativeMapView", "getSource: Source '%s' not found", sourceId.c_str());
             return args.Undefined();
@@ -928,9 +972,11 @@ napi_value NativeMapView::removeSource(napi_env env, napi_callback_info info) {
     if (args.HasError()) return result;
     
     try {
-        // Remove source from style
-        instance->map->getStyle().removeSource(sourceId);
-        instance->map->triggerRepaint();
+        // Remove source from style (serialized with the render thread)
+        instance->invokeOnMapThread([&](mbgl::Map* m) {
+            m->getStyle().removeSource(sourceId);
+            m->triggerRepaint();
+        });
         
         napi_get_boolean(env, true, &result);
         Logger::info("NativeMapView", "removeSource: Removed source '%s'", sourceId.c_str());

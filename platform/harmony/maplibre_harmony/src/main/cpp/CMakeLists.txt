@@ -68,6 +68,8 @@ add_library(maplibre
     core/common.hpp
     core/thread_safe_callback.hpp
     core/thread_safe_callback.cpp
+    core/map_registry.hpp
+    core/map_registry.cpp
     core/callback_manager.hpp
     core/callback_manager.cpp
     core/native_map_view/native_map_view_harmony.hpp

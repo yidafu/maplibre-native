@@ -5,6 +5,7 @@
 #include "rendering/harmony_renderer.hpp"
 #include "core/callback_manager.hpp"
 #include "core/gesture/native_gesture_manager.hpp"
+#include "core/map_registry.hpp"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/geometry.hpp>
@@ -170,6 +171,9 @@ public:
     static napi_value getDebug(napi_env env, napi_callback_info info);
     static napi_value setDebugActive(napi_env env, napi_callback_info info);
     static napi_value isDebugActive(napi_env env, napi_callback_info info);
+
+    // Renderer diagnostics: active backend name + GPU description
+    static napi_value getRendererInfo(napi_env env, napi_callback_info info);
     
     static napi_value getActionJournalLogFiles(napi_env env, napi_callback_info info);
     static napi_value getActionJournalLog(napi_env env, napi_callback_info info);
@@ -389,9 +393,17 @@ private:
                                 const char* methodName,
                                 size_t argc,
                                 napi_value* argv);
-    
+
     mbgl::Map& getMap();
-    
+
+    // Publish (or re-publish) the current Map in the MapRegistry so style
+    // wrappers (StyleNAPI etc.) can resolve a liveness token and a
+    // render-thread dispatcher for the raw map pointer they were given.
+    void attachMapRegistry();
+    // Invalidate the registry entry for the current map before dropping it.
+    // Call before every harmonyRenderer.reset() / map = nullptr.
+    void detachMapRegistry();
+
     // Initialize the renderer
     void initializeRenderer();
     // Ensure resource subsystems are ready; attempt self-recovery if not
@@ -431,9 +443,11 @@ private:
     std::atomic<int> cameraChangedCount{0};
     
     // Performance configuration (aligned with Android MapRenderer)
-    int maximumFps_ = 60;  // Default maximum 60 FPS
+    int maximumFps_ = 0;  // 0 = unlimited (render at display refresh rate); setMaximumFps() applies it to the render loop
     int renderingRefreshMode_ = 1;  // Default WHEN_DIRTY mode (0=CONTINUOUS, 1=WHEN_DIRTY)
-    std::unique_ptr<ThreadSafeCallback> fpsChangedCallback_;  // Callback invoked when FPS changes
+    // shared_ptr (not unique_ptr): the render thread's fps lambda captures the
+    // same instance, so a listener swap/removal must not free it mid-call.
+    std::shared_ptr<ThreadSafeCallback> fpsChangedCallback_;  // Callback invoked when FPS changes
     
     // Unified callback manager
     std::shared_ptr<mbgl::harmony::CallbackManager> callbackManager_;
@@ -495,28 +509,32 @@ private:
         if (!harmonyRenderer || !map) {
             return defaultValue;
         }
-        
-        // Use a promise/future pair to perform the synchronous call
-        std::promise<Result> promise;
-        auto future = promise.get_future();
-        
-        harmonyRenderer->runOnRenderThread([this, func = std::forward<Func>(func), &promise]() mutable {
+
+        // Heap-allocate the promise: if the render thread stalls past the wait
+        // timeout below, this frame returns while the queued lambda stays alive
+        // holding the promise. A stack promise captured by reference here would
+        // be written after its frame is gone (same pattern as
+        // HarmonyMapRenderThread::queryRenderedFeatures).
+        auto promise = std::make_shared<std::promise<Result>>();
+        auto future = promise->get_future();
+
+        harmonyRenderer->runOnRenderThread([this, func = std::forward<Func>(func), promise]() mutable {
             try {
                 if (map) {
                     Result result = func(map);
-                    promise.set_value(std::move(result));
+                    promise->set_value(std::move(result));
                 } else {
-                    promise.set_value(Result{});
+                    promise->set_value(Result{});
                 }
             } catch (...) {
                 try {
-                    promise.set_exception(std::current_exception());
+                    promise->set_exception(std::current_exception());
                 } catch (...) {
                     // Promise may already be set
                 }
             }
         });
-        
+
         // Wait for the result (up to 5 seconds)
         auto status = future.wait_for(std::chrono::seconds(5));
         if (status == std::future_status::timeout) {
@@ -532,6 +550,9 @@ private:
     
     // Ensure these are initialised last
     mbgl::Map* map = nullptr;  // Reference to Map owned by HarmonyMapRenderThread
+
+    // Liveness token for the current map, published in the MapRegistry
+    std::shared_ptr<MapToken> mapToken_;
 };
 
 } // namespace harmony

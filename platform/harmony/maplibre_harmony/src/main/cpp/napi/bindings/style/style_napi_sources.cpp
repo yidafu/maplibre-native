@@ -15,6 +15,8 @@
 #include "sources/raster_source_napi.hpp"
 #include "sources/raster_dem_source_napi.hpp"
 #include "sources/image_source_napi.hpp"
+#include "sources/custom_geometry_source_napi.hpp"
+#include <mbgl/style/sources/custom_geometry_source.hpp>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -35,7 +37,7 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         Logger::error("StyleNAPI", "RemoveSource: Invalid style or map");
         napi_throw_error(env, nullptr, "Invalid style instance");
         return nullptr;
@@ -51,19 +53,22 @@ napi_value StyleNAPI::RemoveSource(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Remove the source from the style
-        mbgl::style::Source* source = style->map->getStyle().getSource(sourceId);
-        if (!source) {
+        bool removed = false;
+        style->runOnMap([&](mbgl::Map& m) {
+            if (m.getStyle().getSource(sourceId)) {
+                m.getStyle().removeSource(sourceId);
+                removed = true;
+            }
+        });
+        if (!removed) {
             Logger::error("StyleNAPI", "RemoveSource: Source not found: %s", sourceId.c_str());
             napi_throw_error(env, nullptr, "Source not found");
             return nullptr;
         }
-        
-        style->map->getStyle().removeSource(sourceId);
         style->sources.erase(sourceId);
-        
+
         Logger::info("StyleNAPI", "RemoveSource: %s", sourceId.c_str());
-        
+
         return napiArgs.Undefined();
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "RemoveSource failed: %s", e.what());
@@ -83,7 +88,7 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         Logger::error("StyleNAPI", "GetSource: Invalid style or map");
         return napiArgs.Null();
     }
@@ -97,19 +102,28 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
+    // Resolve the source on the render thread; the NAPI peer is built below.
+    mbgl::style::Source* source = nullptr;
     try {
-        // Retrieve the source from the style
-        mbgl::style::Source* source = style->map->getStyle().getSource(sourceId);
-        if (!source) {
-            Logger::info("StyleNAPI", "GetSource: Source not found: %s", sourceId.c_str());
-            napi_value result;
-            napi_get_null(env, &result);
-            return result;
-        }
-        
+        style->runOnMap([&](mbgl::Map& m) {
+            source = m.getStyle().getSource(sourceId);
+        });
+    } catch (const std::exception& e) {
+        Logger::error("StyleNAPI", "GetSource failed: %s", e.what());
+        source = nullptr;
+    }
+
+    if (!source) {
+        Logger::info("StyleNAPI", "GetSource: Source not found: %s", sourceId.c_str());
+        napi_value result;
+        napi_get_null(env, &result);
+        return result;
+    }
+
+    {
         // Create the corresponding NAPI instance based on the source type
         Logger::info("StyleNAPI", "GetSource: %s (type: %d)", sourceId.c_str(), static_cast<int>(source->getType()));
-        
+
         switch (source->getType()) {
             case mbgl::style::SourceType::GeoJSON: {
                 auto* geoJsonSource = static_cast<mbgl::style::GeoJSONSource*>(source);
@@ -131,13 +145,14 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
                 auto* imageSource = static_cast<mbgl::style::ImageSource*>(source);
                 return maplibre::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
             }
+            case mbgl::style::SourceType::CustomVector: {
+                auto* customGeometrySource = static_cast<mbgl::style::CustomGeometrySource*>(source);
+                return maplibre::harmony::CustomGeometrySourceNAPI::CreateInstance(env, customGeometrySource);
+            }
             default:
                 Logger::warn("StyleNAPI", "GetSource: Unknown source type: %d", static_cast<int>(source->getType()));
                 return napiArgs.Null();
         }
-    } catch (const std::exception& e) {
-        Logger::error("StyleNAPI", "GetSource failed: %s", e.what());
-        return napiArgs.Null();
     }
 }
 
@@ -151,7 +166,7 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
     StyleNAPI* style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&style));
     
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         Logger::error("StyleNAPI", "GetSources: Invalid style or map");
         napi_value result;
         napi_create_array(env, &result);
@@ -159,15 +174,22 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Retrieve all sources
-        const auto& sources = style->map->getStyle().getSources();
-        
+        // Snapshot the source list on the render thread
+        std::vector<mbgl::style::Source*> sourceList;
+        style->runOnMap([&](mbgl::Map& m) {
+            const auto& sources = m.getStyle().getSources();
+            sourceList.reserve(sources.size());
+            for (const auto& source : sources) {
+                sourceList.push_back(source);
+            }
+        });
+
         // Create the result array
         napi_value result;
-        napi_create_array_with_length(env, sources.size(), &result);
-        
+        napi_create_array_with_length(env, sourceList.size(), &result);
+
         size_t index = 0;
-        for (const auto& source : sources) {
+        for (const auto& source : sourceList) {
             if (!source) continue;
             
             // Create the source info object
@@ -194,6 +216,9 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
                     break;
                 case mbgl::style::SourceType::Image:
                     typeStr = "image";
+                    break;
+                case mbgl::style::SourceType::CustomVector:
+                    typeStr = "custom-vector";
                     break;
                 default:
                     typeStr = "unknown";

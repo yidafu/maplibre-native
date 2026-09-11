@@ -3,6 +3,8 @@
 #include <napi/native_api.h>
 #include <mbgl/map/map.hpp>
 #include <mbgl/style/style.hpp>
+#include "core/map_registry.hpp"
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -16,40 +18,30 @@ namespace harmony {
  * Wraps mbgl::style::Style to provide an object-oriented style management API.
  * Mirrors the Android Style class.
  *
- * === THREAD SAFETY WARNING ===
+ * === THREAD SAFETY ===
  *
- * StyleNAPI methods (AddLayer, AddSource, etc.) are called from the main (UI/JS)
- * thread. They directly call style->map->getStyle().addLayer(...) / addSource(...)
- * on the core mbgl::Style object WITHOUT marshalling to the render thread.
+ * StyleNAPI methods are called from the main (UI/JS) thread while the render
+ * thread reads the same mbgl::Style (layer/source collections) every frame.
+ * Core style collections have no internal locking: the wrapper vector
+ * (src/mbgl/style/collection.hpp) is a plain std::vector, so structural
+ * mutations (addLayer/addSource/addImage/remove...) and collection iterations
+ * on the JS thread race the renderer and crash (SIGSEGV @0x8 in
+ * Style::Impl::addLayer when layer->baseImpl was accessed concurrently).
  *
- * This creates a DATA RACE with the render thread, which reads the same
- * mbgl::Style internal state (layers, sources collections) during frame rendering.
- * See: src/mbgl/style/style_impl.cpp :: Style::Impl::addLayer()
- *
- * Observed crash: SIGSEGV @0x8 in Style::Impl::addLayer when accessing
- * layer->baseImpl (offset 8 from Layer*) — the Layer pointer can become null
- * if the style's internal collection is corrupted by concurrent access.
+ * Rule: every structural mutation and collection read goes through runOnMap(),
+ * which dispatches to the render thread and waits (see below). Per-property
+ * setters are safe without dispatch: core serializes them via copy-on-write
+ * Immutable snapshots (the same mechanism Android/iOS rely on).
  *
  * === MAP POINTER LIFECYCLE ===
  *
- * The `map` member is a raw pointer to an mbgl::Map owned by HarmonyMapRenderThread.
- * When NativeMapView reinitializes the renderer (e.g., after surface destruction),
- * the old Map is destroyed and a new Map is created.
- *
- * However, StyleNAPI::map IS NOT UPDATED to point to the new Map — it becomes
- * a DANGLING POINTER. The !style->map guard in AddLayer/AddSource cannot detect
- * this because the old address is non-null.
- *
- * See: native_map_view_base.cpp :: initializeRenderer() / ensureResourcesReadyOrRecover()
- *   where "map = nullptr" and "map = harmonyRenderer->getMap()" are called.
- *
- * === Known crash pattern ===
- * 1. onDidFinishLoadingStyle fires notifyStyleLoaded() from render thread
- * 2. onStyleLoaded JS callback runs on main thread → MarkerLayerManager.initialize()
- * 3. style.addLayer() → StyleNAPI::AddLayer() → core Style::Impl::addLayer()
- * 4. Render thread simultaneously reads style layers for rendering
- * 5. Data race corrupts internal collection → Layer* becomes null
- * 6. layer->baseImpl accessed at offset 8 → SIGSEGV @0x8
+ * The `map` member is a raw pointer to an mbgl::Map owned by
+ * HarmonyMapRenderThread, received through the JS API as a numeric value. When
+ * NativeMapView reinitializes the renderer (surface loss, hardReset, font
+ * changes) that pointer dangles. Construction therefore resolves a MapToken
+ * from MapRegistry (keyed by the pointer value); once
+ * NativeMapView::detachMapRegistry() invalidates the token, all methods fail
+ * cleanly with acquireMap() == nullptr instead of touching freed memory.
  */
 class StyleNAPI {
 public:
@@ -103,12 +95,37 @@ public:
     void setFullyLoaded(bool loaded) { fullyLoaded = loaded; }
     bool isFullyLoaded() const { return fullyLoaded; }
     mbgl::Map* getMap() const { return map; }
-    
+
+    /**
+     * Token-aware Map fetch. Returns nullptr once the renderer that owned the
+     * map was torn down/rebuilt (the token is invalidated by
+     * NativeMapView::detachMapRegistry). Falls back to the raw pointer for
+     * wrappers constructed before any registry entry existed.
+     */
+    mbgl::Map* acquireMap() const;
+
+    /**
+     * Run op(map) serialized with the render thread. Structural style changes
+     * (addLayer/addSource/addImage/...) and collection reads MUST go through
+     * here: the render thread consumes the style's layer collection every
+     * frame, and mutating/iterating it directly from the JS thread is the
+     * documented SIGSEGV@0x8 data race (see the class comment above).
+     *
+     * Throws std::exception when op throws on the render thread or the
+     * dispatch times out (5s). Returns false (does not throw) when the map is
+     * gone or was never resolvable — callers should throw a JS error in that
+     * case.
+     */
+    bool runOnMap(const std::function<void(mbgl::Map&)>& op);
+
     // Constructor reference (used to create instances)
     static napi_ref constructor;
-    
+
 private:
     mbgl::Map* map;  // Holds a Map pointer (not owned)
+    // Liveness + dispatch channel resolved from MapRegistry at construction
+    std::shared_ptr<mbgl::harmony::MapToken> token_;
+    mbgl::harmony::MapRegistry::Dispatcher dispatcher_;
     bool fullyLoaded;
     
     // Caches (mirroring Android)

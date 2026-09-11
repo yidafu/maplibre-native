@@ -114,12 +114,7 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     // No additional render request is required here; otherwise it leads to over-rendering
 }
 void NativeMapView::onWillStartLoadingMap() {
-    Logger::info("NativeMapView", "========== onWillStartLoadingMap ==========");
-    Logger::info("NativeMapView", "Map loading started");
-    Logger::info("NativeMapView", "This is triggered when:");
-    Logger::info("NativeMapView", "  - Style URL/JSON is set");
-    Logger::info("NativeMapView", "  - Map starts loading resources");
-    Logger::info("NativeMapView", "===========================================");
+    Logger::info("NativeMapView", "onWillStartLoadingMap");
     
     // Notify listeners
     if (callbackManager_) {
@@ -214,12 +209,13 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
         if (encodingTime > 0.0 || renderingTime > 0.0) {
         }
         
-        callbackManager_->InvokeCallback("onDidFinishRenderingFrame", [fully, encodingTime, renderingTime](napi_env env) {
-            napi_value argv[3];
-            napi_get_boolean(env, fully, &argv[0]);
-            napi_create_double(env, encodingTime, &argv[1]);
-            napi_create_double(env, renderingTime, &argv[2]);
-            return argv[0]; // DataBuilder requires a return value; return the first argument here
+        // ThreadSafeCallback passes exactly one argument: the plain frame
+        // listener receives `fully` (timings go through the WithStats variant
+        // below, which passes a single stats object).
+        callbackManager_->InvokeCallback("onDidFinishRenderingFrame", [fully](napi_env env) {
+            napi_value value;
+            napi_get_boolean(env, fully, &value);
+            return value;
         });
 
         // Also fire the WithStats variant with a full stats object
@@ -328,20 +324,6 @@ void NativeMapView::onDidFinishLoadingStyle() {
         return;
     }
     
-    auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    
-    // Instance identifier
-    static int instanceCounter = 0;
-    static std::map<void*, int> instanceIds;
-    if (instanceIds.find(this) == instanceIds.end()) {
-        instanceIds[this] = ++instanceCounter;
-    }
-    int instanceId = instanceIds[this];
-    
-    Logger::info("NativeMapView", "onDidFinishLoadingStyle (instance=%d, +%lld ms)", instanceId, elapsed);
-    
     // Notify the Android-style listeners
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onDidFinishLoadingStyle");
@@ -350,28 +332,8 @@ void NativeMapView::onDidFinishLoadingStyle() {
     // Notify that style loading completed (legacy listener)
     notifyStyleLoaded();
     
-    if (map) {
-        try {
-            auto info = invokeOnMapThreadSync([&](mbgl::Map* m) {
-                return std::tuple<std::string, std::string, size_t, size_t>{
-                    m->getStyle().getURL(),
-                    m->getStyle().getName(),
-                    m->getStyle().getSources().size(),
-                    m->getStyle().getLayers().size()};
-            }, std::tuple<std::string, std::string, size_t, size_t>{});
-            
-            const auto& [styleUrl, styleName, sourceCount, layerCount] = info;
-            Logger::info("NativeMapView",
-                         "Style loaded: url=%s, name=%s, sources=%zu, layers=%zu",
-                         styleUrl.empty() ? "(inline JSON)" : styleUrl.c_str(),
-                         styleName.empty() ? "(unnamed)" : styleName.c_str(),
-                         sourceCount,
-                         layerCount);
-        } catch (const std::exception& e) {
-            Logger::error("NativeMapView", "Error inspecting loaded style: %s", e.what());
-        }
-    } else {
-        Logger::warn("NativeMapView", "Map object is null");
+    if (!map) {
+        Logger::warn("NativeMapView", "onDidFinishLoadingStyle: Map object is null");
     }
     
     // MapLibre already handles rendering internally, no additional request is required
@@ -389,17 +351,7 @@ void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
         auto sourceType = source.getType();
         
         // Switch execution to the render thread
-        runOnRenderThread([this, sourceId, sourceType]() {
-            // Execute safely on the render thread
-            int count = ++sourceChangedCount;
-            auto now = std::chrono::steady_clock::now();
-            static auto startTime = now;
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-            
-            Logger::info("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d) [render thread]", 
-                         elapsed, count, sourceId.c_str(), static_cast<int>(sourceType));
-            
-            // Notify listeners
+        runOnRenderThread([this, sourceId]() {
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackWithString("onSourceChanged", sourceId);
             }
@@ -407,17 +359,9 @@ void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
         return;
     }
     
-    // Already on the render thread; execute directly
-    int count = ++sourceChangedCount;
-    auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    
-    Logger::warn("NativeMapView", "🔄 [%lld ms] onSourceChanged #%d: %s (type=%d)", 
-                 elapsed, count, source.getID().c_str(), static_cast<int>(source.getType()));
-    
-    // Notify listeners
-    if (callbackManager_) {
+    // Already on the render thread; notify listeners directly (no per-event
+    // logging: source changes can fire in bursts during style load)
+    if (callbackManager_ && callbackManager_->HasCallback("onSourceChanged")) {
         std::string sourceId = source.getID();
         callbackManager_->InvokeCallbackWithString("onSourceChanged", sourceId);
     }
@@ -426,30 +370,27 @@ void NativeMapView::onSourceChanged(mbgl::style::Source& source) {
     // Remove requestRender() here to avoid duplicate rendering that leads to an infinite loop
 }
 void NativeMapView::onStyleImageMissing(const std::string& id) {
-    Logger::warn("NativeMapView", "========== onStyleImageMissing ==========");
-    Logger::warn("NativeMapView", "[MarkerDebug] Style-Missing: Icon \"%s\" not found in style", id.c_str());
-    Logger::warn("NativeMapView", "[MarkerDebug] ⚠️ CRITICAL: This will cause markers with this icon to be INVISIBLE!");
-    Logger::info("NativeMapView", "");
-    Logger::info("NativeMapView", "[MarkerDebug] Solutions:");
-    Logger::info("NativeMapView", "[MarkerDebug]   1. Add custom icon using addAnnotationIcon():");
-    Logger::info("NativeMapView", "[MarkerDebug]      mapView.addAnnotationIcon(\"icon-name\", width, height, scale, pixelData)");
-    Logger::info("NativeMapView", "[MarkerDebug]   2. Use a style that includes the icon in sprite sheet");
-    Logger::info("NativeMapView", "[MarkerDebug]   3. Specify an existing icon name when creating marker");
-    Logger::info("NativeMapView", "");
-    if (id.empty()) {
-        Logger::warn("NativeMapView", "[MarkerDebug] ⚠️ Icon ID is EMPTY - did you forget to set icon when creating Marker?");
-        Logger::info("NativeMapView", "[MarkerDebug]    Example: new MarkerOptions().position(latLng).icon(\"my-icon\").getMarker()");
-    }
-    Logger::warn("NativeMapView", "=========================================");
-    
+    // One concise warn: markers with this icon render invisible until the app
+    // adds it via addAnnotationIcon / style sprite / Marker.icon(...).
+    Logger::warn("NativeMapView",
+                 "onStyleImageMissing: icon \"%s\" not in style%s — add via "
+                 "addAnnotationIcon(), the style sprite, or Marker.icon()",
+                 id.c_str(), id.empty() ? " (EMPTY id — Marker created without icon?)" : "");
+
     // Notify listeners
-    if (callbackManager_) {
+    if (callbackManager_ && callbackManager_->HasCallback("onStyleImageMissing")) {
         callbackManager_->InvokeCallbackWithString("onStyleImageMissing", id);
     }
 }
 
 bool NativeMapView::onCanRemoveUnusedStyleImage(const std::string& id) {
-    return false;
+    // Core only asks about images no longer referenced by any layer. Returning
+    // true (the MapObserver default, matching Android/iOS) lets core garbage-
+    // collect them instead of leaking for the lifetime of the map. Annotation
+    // icons are unaffected: the JS IconManager ref-counts them and explicitly
+    // calls removeAnnotationIcon when the last marker drops the icon, and
+    // re-uploads via addAnnotationIcon on next use.
+    return true;
 }
 
 // Note: initializeRenderer is defined in native_map_view_base.cpp
@@ -471,8 +412,13 @@ napi_value NativeMapView::getImage(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
     
     try {
-        // Get image from style (returns std::optional<Image>)
-        auto optionalImage = instance->map->getStyle().getImage(imageId);
+        // Read the style image on the map thread: Style collections are
+        // mutated on the render thread, so touching them from the JS thread
+        // is the documented data-race pattern (see style_napi.hpp).
+        auto optionalImage = instance->invokeOnMapThreadSync(
+            [imageId](mbgl::Map* map) { return map->getStyle().getImage(imageId); },
+            std::optional<mbgl::style::Image>{});
+
         if (!optionalImage) {
             Logger::warn("NativeMapView", "getImage: Image '%s' not found", imageId.c_str());
             return args.Undefined();

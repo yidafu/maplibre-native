@@ -5,12 +5,18 @@
 #include <mbgl/style/style.hpp>
 #include <mbgl/style/source.hpp>
 #include <mbgl/style/layer.hpp>
+#include <chrono>
+#include <future>
+#include <memory>
+#include <stdexcept>
 // Source NAPI classes
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
 #include "sources/raster_source_napi.hpp"
 #include "sources/raster_dem_source_napi.hpp"
 #include "sources/image_source_napi.hpp"
+#include "sources/custom_geometry_source_napi.hpp"
+#include "sources/video_source_napi.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -22,10 +28,72 @@ namespace harmony {
 napi_ref StyleNAPI::constructor = nullptr;
 
 StyleNAPI::StyleNAPI(mbgl::Map *map) : map(map), fullyLoaded(false) {
-    Logger::info("StyleNAPI", "StyleNAPI instance created");
+    // Resolve the liveness token + render-thread dispatcher published by
+    // NativeMapView::attachMapRegistry(). When missing (unregistered map),
+    // acquireMap()/runOnMap() fall back to direct access — the pre-registry
+    // behavior.
+    if (map) {
+        token_ = mbgl::harmony::MapRegistry::resolveToken(
+            reinterpret_cast<uintptr_t>(map));
+        dispatcher_ = mbgl::harmony::MapRegistry::resolveDispatcher(
+            reinterpret_cast<uintptr_t>(map));
+    }
+    Logger::info("StyleNAPI", "StyleNAPI instance created (registry %s)",
+                 token_ ? "attached" : "not registered");
 }
 
 StyleNAPI::~StyleNAPI() { Logger::info("StyleNAPI", "StyleNAPI instance destroyed"); }
+
+mbgl::Map *StyleNAPI::acquireMap() const {
+    if (token_) {
+        if (!token_->valid.load(std::memory_order_acquire)) {
+            return nullptr;
+        }
+        return token_->map;
+    }
+    return map;
+}
+
+bool StyleNAPI::runOnMap(const std::function<void(mbgl::Map &)> &op) {
+    mbgl::Map *target = acquireMap();
+    if (!target) {
+        return false;
+    }
+
+    if (dispatcher_) {
+        // Heap-allocated promise + an owned copy of op: if the render thread
+        // stalls past the timeout, this frame throws while the queued lambda
+        // keeps its own copies alive. Capturing by reference here would leave
+        // the render thread writing through dangling references.
+        auto promise = std::make_shared<std::promise<void>>();
+        auto future = promise->get_future();
+        auto ownedOp = op;
+        dispatcher_([ownedOp, promise](mbgl::Map *m) {
+            try {
+                if (m) {
+                    ownedOp(*m);
+                }
+                promise->set_value();
+            } catch (...) {
+                try {
+                    promise->set_exception(std::current_exception());
+                } catch (...) {
+                    // promise may already be satisfied
+                }
+            }
+        });
+
+        if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+            throw std::runtime_error("style operation timed out on the render thread");
+        }
+        future.get();  // rethrows exceptions raised on the render thread
+        return true;
+    }
+
+    // Legacy fallback: no dispatcher available, run inline on the JS thread.
+    op(*target);
+    return true;
+}
 
 void StyleNAPI::Destructor(napi_env env, void *nativeObject, void *finalize_hint) {
     StyleNAPI *style = static_cast<StyleNAPI *>(nativeObject);
@@ -171,12 +239,13 @@ napi_value StyleNAPI::GetUri(napi_env env, napi_callback_info info) {
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         return CreateStringValue(env, "");
     }
 
     try {
-        std::string uri = style->map->getStyle().getURL();
+        std::string uri;
+        style->runOnMap([&](mbgl::Map &m) { uri = m.getStyle().getURL(); });
         return CreateStringValue(env, uri);
     } catch (const std::exception &e) {
         Logger::error("StyleNAPI", "GetUri failed: %s", e.what());
@@ -194,12 +263,13 @@ napi_value StyleNAPI::GetJson(napi_env env, napi_callback_info info) {
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         return CreateStringValue(env, "");
     }
 
     try {
-        std::string json = style->map->getStyle().getJSON();
+        std::string json;
+        style->runOnMap([&](mbgl::Map &m) { json = m.getStyle().getJSON(); });
         return CreateStringValue(env, json);
     } catch (const std::exception &e) {
         Logger::error("StyleNAPI", "GetJson failed: %s", e.what());
@@ -237,7 +307,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     StyleNAPI *style = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void **>(&style));
 
-    if (!style || !style->map) {
+    if (!style || !style->acquireMap()) {
         Logger::error("StyleNAPI", "AddSource: Invalid style or map");
         napi_throw_error(env, nullptr, "Invalid style instance");
         return nullptr;
@@ -280,15 +350,16 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->map->getStyle().addSource(std::move(source));
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    // After adding to the style, let the wrapper store the live source pointer
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::GeoJSON) {
+                        geoJsonSource->attachToStyle(static_cast<mbgl::style::GeoJSONSource *>(styleSource));
+                    }
+                });
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-
-                // Important: after adding to the style, allow GeoJsonSourceNAPI to store the source pointer retrieved from the style
-                auto *styleSource = style->map->getStyle().getSource(sourceId);
-                if (styleSource && styleSource->getType() == mbgl::style::SourceType::GeoJSON) {
-                    geoJsonSource->attachToStyle(static_cast<mbgl::style::GeoJSONSource *>(styleSource));
-                }
 
                 Logger::info("StyleNAPI", "AddSource (GeoJsonSource): %s", sourceId.c_str());
                 return napiArgs.Undefined();
@@ -312,15 +383,16 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->map->getStyle().addSource(std::move(source));
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    // After adding to the style, let the wrapper store the live source pointer
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Vector) {
+                        vectorSource->attachToStyle(static_cast<mbgl::style::VectorSource *>(styleSource));
+                    }
+                });
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-
-                // Create a WeakPtr
-                auto *styleSource = style->map->getStyle().getSource(sourceId);
-                if (styleSource && styleSource->getType() == mbgl::style::SourceType::Vector) {
-                    vectorSource->attachToStyle(static_cast<mbgl::style::VectorSource *>(styleSource));
-                }
 
                 Logger::info("StyleNAPI", "AddSource (VectorSource): %s", sourceId.c_str());
                 return napiArgs.Undefined();
@@ -344,15 +416,16 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->map->getStyle().addSource(std::move(source));
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    // After adding to the style, let the wrapper store the live source pointer
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Raster) {
+                        rasterSource->attachToStyle(static_cast<mbgl::style::RasterSource *>(styleSource));
+                    }
+                });
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-
-                // Create a WeakPtr
-                auto *styleSource = style->map->getStyle().getSource(sourceId);
-                if (styleSource && styleSource->getType() == mbgl::style::SourceType::Raster) {
-                    rasterSource->attachToStyle(static_cast<mbgl::style::RasterSource *>(styleSource));
-                }
 
                 Logger::info("StyleNAPI", "AddSource (RasterSource): %s", sourceId.c_str());
                 return napiArgs.Undefined();
@@ -376,15 +449,16 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->map->getStyle().addSource(std::move(source));
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    // After adding to the style, let the wrapper store the live source pointer
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::RasterDEM) {
+                        rasterDemSource->attachToStyle(static_cast<mbgl::style::RasterDEMSource *>(styleSource));
+                    }
+                });
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-
-                // Create a WeakPtr
-                auto *styleSource = style->map->getStyle().getSource(sourceId);
-                if (styleSource && styleSource->getType() == mbgl::style::SourceType::RasterDEM) {
-                    rasterDemSource->attachToStyle(static_cast<mbgl::style::RasterDEMSource *>(styleSource));
-                }
 
                 Logger::info("StyleNAPI", "AddSource (RasterDemSource): %s", sourceId.c_str());
                 return napiArgs.Undefined();
@@ -397,7 +471,7 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     }
 
     // 5. ImageSource
-    if (!sourceAdded) {
+    if (!sourceAdded && (sourceType == "ImageSource" || sourceType.empty())) {
         ImageSourceNAPI *imageSource = nullptr;
         status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&imageSource));
         if (status == napi_ok && imageSource) {
@@ -408,20 +482,87 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
                     napi_throw_error(env, nullptr, "Source already added to style");
                     return nullptr;
                 }
-                style->map->getStyle().addSource(std::move(source));
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    // After adding to the style, let the wrapper store the live source pointer
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
+                        imageSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
+                    }
+                });
                 style->sources[sourceId] = true;
                 sourceAdded = true;
-
-                // Create a WeakPtr
-                auto *styleSource = style->map->getStyle().getSource(sourceId);
-                if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
-                    imageSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
-                }
 
                 Logger::info("StyleNAPI", "AddSource (ImageSource): %s", sourceId.c_str());
                 return napiArgs.Undefined();
             } catch (const std::exception &e) {
                 Logger::error("StyleNAPI", "AddSource (ImageSource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
+    // 6. CustomGeometrySource
+    if (!sourceAdded && (sourceType == "CustomGeometrySource" || sourceType.empty())) {
+        CustomGeometrySourceNAPI *customGeometrySource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&customGeometrySource));
+        if (status == napi_ok && customGeometrySource) {
+            try {
+                sourceId = customGeometrySource->getId();
+                auto source = customGeometrySource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    // After adding to the style, let the wrapper store the live source pointer
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::CustomVector) {
+                        customGeometrySource->attachToStyle(
+                            static_cast<mbgl::style::CustomGeometrySource *>(styleSource));
+                    }
+                });
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+
+                Logger::info("StyleNAPI", "AddSource (CustomGeometrySource): %s", sourceId.c_str());
+                return napiArgs.Undefined();
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddSource (CustomGeometrySource) failed: %s", e.what());
+                napi_throw_error(env, nullptr, e.what());
+                return nullptr;
+            }
+        }
+    }
+
+    // 7. VideoSource (platform-level composition over an ImageSource)
+    if (!sourceAdded && (sourceType == "VideoSource" || sourceType.empty())) {
+        VideoSourceNAPI *videoSource = nullptr;
+        status = napi_unwrap(env, sourceValue, reinterpret_cast<void **>(&videoSource));
+        if (status == napi_ok && videoSource) {
+            try {
+                sourceId = videoSource->getId();
+                auto source = videoSource->releaseSource();
+                if (!source) {
+                    napi_throw_error(env, nullptr, "Source already added to style");
+                    return nullptr;
+                }
+                style->runOnMap([&](mbgl::Map &m) {
+                    m.getStyle().addSource(std::move(source));
+                    auto *styleSource = m.getStyle().getSource(sourceId);
+                    if (styleSource && styleSource->getType() == mbgl::style::SourceType::Image) {
+                        videoSource->attachToStyle(static_cast<mbgl::style::ImageSource *>(styleSource));
+                    }
+                });
+                style->sources[sourceId] = true;
+                sourceAdded = true;
+
+                Logger::info("StyleNAPI", "AddSource (VideoSource): %s", sourceId.c_str());
+                return napiArgs.Undefined();
+            } catch (const std::exception &e) {
+                Logger::error("StyleNAPI", "AddSource (VideoSource) failed: %s", e.what());
                 napi_throw_error(env, nullptr, e.what());
                 return nullptr;
             }

@@ -107,7 +107,7 @@ export { Image, ImageOptions } from './images/Image';
  * All layer types and unions.
  * Includes FillLayer, LineLayer, CircleLayer, SymbolLayer, BackgroundLayer,
  *       RasterLayer, HeatmapLayer, HillshadeLayer, FillExtrusionLayer,
- * and the Layer union.
+ *       ColorReliefLayer, LocationIndicatorLayer and the Layer union.
  */
 export * from './layers';
 

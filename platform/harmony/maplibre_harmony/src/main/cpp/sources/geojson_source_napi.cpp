@@ -4,10 +4,16 @@
 #include "utils/logger.h"
 #include "geojson/geojson_converter.hpp"
 #include "geojson/util.hpp"
+#include "style/filter_conversion.hpp"
+#include "style/conversion/harmony_conversion.hpp"
 #include <mbgl/style/conversion/json.hpp>
 #include <mbgl/style/conversion/geojson.hpp>
 #include <mbgl/style/conversion/geojson_options.hpp>
+#include <mbgl/style/expression/dsl.hpp>
 #include <mbgl/util/geojson.hpp>
+
+#include <mutex>
+#include <sstream>
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -16,9 +22,35 @@ using namespace maplibre::harmony::geojson;
 namespace maplibre {
 namespace harmony {
 
+namespace {
+
+// Convert one JS expression of a clusterProperties entry into an mbgl
+// expression. `role` ("map" / "reduce") is used for logging only.
+std::unique_ptr<mbgl::style::expression::Expression> convertClusterExpression(
+    napi_env env, napi_value exprValue, const std::string& propertyName, const char* role) {
+    mbgl::style::conversion::Convertible convertible(mbgl::harmony::NapiValue(env, exprValue));
+    auto parsed = mbgl::style::expression::dsl::createExpression(convertible);
+    if (!parsed) {
+        Logger::error("GeoJsonSourceNAPI",
+                      "clusterProperties[\"%s\"]: failed to convert %s expression",
+                      propertyName.c_str(), role);
+    }
+    return parsed;
+}
+
+} // namespace
+
 // Static member initialization
 napi_ref GeoJsonSourceNAPI::constructor = nullptr;
-GeoJsonSourceNAPI::QueryFeatureExtensionsFn GeoJsonSourceNAPI::queryFeatureExtensionsFn_ = nullptr;
+
+namespace {
+// Renderer query hooks + their owner. All access happens on the JS thread,
+// but the mutex documents the invariant and keeps future callers honest.
+std::mutex s_hooksMutex;
+GeoJsonSourceNAPI::QueryFeatureExtensionsFn s_featureExtensionsFn;
+GeoJsonSourceNAPI::QuerySourceFeaturesFn s_sourceFeaturesFn;
+void* s_hooksOwner = nullptr;
+} // anonymous namespace
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source)
     : id(id), source(std::move(source)), ownsSource(true), rawSourceFallback(nullptr) {
@@ -77,8 +109,37 @@ void GeoJsonSourceNAPI::Destructor(napi_env env, void* nativeObject, void* final
     delete sourceNapi;
 }
 
-void GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn) {
-    queryFeatureExtensionsFn_ = std::move(fn);
+void GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(QueryFeatureExtensionsFn fn, void* owner) {
+    std::lock_guard<std::mutex> lock(s_hooksMutex);
+    s_featureExtensionsFn = std::move(fn);
+    s_hooksOwner = owner;
+}
+
+void GeoJsonSourceNAPI::setQuerySourceFeaturesFn(QuerySourceFeaturesFn fn, void* owner) {
+    std::lock_guard<std::mutex> lock(s_hooksMutex);
+    s_sourceFeaturesFn = std::move(fn);
+    s_hooksOwner = owner;
+}
+
+void GeoJsonSourceNAPI::clearRendererHooks(void* owner) {
+    std::lock_guard<std::mutex> lock(s_hooksMutex);
+    if (s_hooksOwner != owner) {
+        // A newer instance owns the hooks; leave them alone.
+        return;
+    }
+    s_featureExtensionsFn = nullptr;
+    s_sourceFeaturesFn = nullptr;
+    s_hooksOwner = nullptr;
+}
+
+GeoJsonSourceNAPI::QueryFeatureExtensionsFn GeoJsonSourceNAPI::queryFeatureExtensionsFn() {
+    std::lock_guard<std::mutex> lock(s_hooksMutex);
+    return s_featureExtensionsFn;
+}
+
+GeoJsonSourceNAPI::QuerySourceFeaturesFn GeoJsonSourceNAPI::querySourceFeaturesFn() {
+    std::lock_guard<std::mutex> lock(s_hooksMutex);
+    return s_sourceFeaturesFn;
 }
 
 napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
@@ -260,31 +321,67 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
                             propertyName.resize(nameLen);
                             napi_get_value_string_utf8(env, propertyNameValue, &propertyName[0], nameLen + 1, &nameLen);
                             
-                            // Retrieve the expression array [mapExpr, reduceExpr] for this property
+                            // Retrieve the expression array [reduceExpr, mapExpr] for this property
                             napi_value expressionArray;
                             napi_get_property(env, clusterPropsValue, propertyNameValue, &expressionArray);
-                            
+
                             bool isArray = false;
                             napi_is_array(env, expressionArray, &isArray);
-                            
+
                             if (isArray) {
                                 uint32_t arrayLength = 0;
                                 napi_get_array_length(env, expressionArray, &arrayLength);
-                                
+
                                 if (arrayLength >= 2) {
-                                    // Retrieve the map and reduce expressions
-                                    napi_value mapExprValue, reduceExprValue;
-                                    napi_get_element(env, expressionArray, 0, &mapExprValue);
-                                    napi_get_element(env, expressionArray, 1, &reduceExprValue);
-                                    
-                                    // Convert to mbgl Expression
-                                    // TODO: clusterProperties require specialized expression conversion
-                                    // Currently we skip parsing clusterProperties
-                                    // A future version could transmit them as JSON strings
-                                    Logger::warn("GeoJsonSourceNAPI", 
-                                                "clusterProperties[\"%s\"]: Expression conversion not yet implemented", 
-                                                propertyName.c_str());
+                                    // Follow the style JSON convention: element 0 is the
+                                    // reduce expression, element 1 the per-feature map
+                                    // expression
+                                    napi_value reduceExprValue, mapExprValue;
+                                    napi_get_element(env, expressionArray, 0, &reduceExprValue);
+                                    napi_get_element(env, expressionArray, 1, &mapExprValue);
+
+                                    std::unique_ptr<mbgl::style::expression::Expression> reduce;
+                                    napi_valuetype reduceType = napi_undefined;
+                                    napi_typeof(env, reduceExprValue, &reduceType);
+
+                                    if (reduceType == napi_string) {
+                                        // Expand the operator shorthand (e.g. "sum") into
+                                        // [operator, ["accumulated"], ["get", key]], the
+                                        // same reformulation the style JSON conversion applies
+                                        std::string reduceOp = GetStringFromValue(env, reduceExprValue);
+                                        std::stringstream ss;
+                                        ss << R"([")" << reduceOp << R"(", ["accumulated"], ["get", ")"
+                                           << propertyName << R"("]])";
+                                        reduce = mbgl::style::expression::dsl::createExpression(ss.str().c_str());
+                                        if (!reduce) {
+                                            Logger::error("GeoJsonSourceNAPI",
+                                                          "clusterProperties[\"%s\"]: failed to convert reduce operator \"%s\"",
+                                                          propertyName.c_str(), reduceOp.c_str());
+                                        }
+                                    } else {
+                                        reduce = convertClusterExpression(env, reduceExprValue, propertyName, "reduce");
+                                    }
+
+                                    auto map = convertClusterExpression(env, mapExprValue, propertyName, "map");
+
+                                    if (reduce && map) {
+                                        options.clusterProperties.emplace(
+                                            propertyName,
+                                            std::make_pair(std::move(map), std::move(reduce)));
+                                    } else {
+                                        Logger::error("GeoJsonSourceNAPI",
+                                                      "clusterProperties[\"%s\"]: skipped due to conversion failure",
+                                                      propertyName.c_str());
+                                    }
+                                } else {
+                                    Logger::warn("GeoJsonSourceNAPI",
+                                                 "clusterProperties[\"%s\"]: expected an array with 2 elements, got %u",
+                                                 propertyName.c_str(), arrayLength);
                                 }
+                            } else {
+                                Logger::warn("GeoJsonSourceNAPI",
+                                             "clusterProperties[\"%s\"]: value must be a [reduce, map] array",
+                                             propertyName.c_str());
                             }
                         }
                         
@@ -586,16 +683,41 @@ napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_in
     }
     
     try {
-        // TODO: requires accessing the rendererFrontend to query features
-        // Similar to the Android implementation:
-        // features = rendererFrontend->querySourceFeatures(source.getID(), {{}, filter});
-        
-        // Return an empty array for now
-        Logger::warn("GeoJsonSourceNAPI", "QuerySourceFeatures: rendererFrontend access not yet implemented");
-        
-        std::vector<mbgl::Feature> features;
-        // Here we should obtain features from the rendererFrontend
-        
+        if (!querySourceFeaturesFn()) {
+            Logger::warn("GeoJsonSourceNAPI",
+                         "QuerySourceFeatures: querySourceFeatures callback not set - renderer not ready");
+            napi_value result;
+            napi_create_array(env, &result);
+            return result;
+        }
+
+        // Build query options from the optional filter argument.
+        // The ArkTS layer passes `undefined` when no filter is given, so
+        // skip undefined/null values before parsing the expression array.
+        mbgl::SourceQueryOptions options;
+        if (argc >= 1) {
+            napi_valuetype type = napi_undefined;
+            napi_typeof(env, args[0], &type);
+            if (type == napi_object) {
+                bool isArray = false;
+                napi_is_array(env, args[0], &isArray);
+                if (isArray) {
+                    auto filter = mbgl::harmony::napiArrayToFilter(env, args[0]);
+                    if (filter.has_value()) {
+                        options.filter = std::move(*filter);
+                    } else {
+                        Logger::warn("GeoJsonSourceNAPI", "QuerySourceFeatures: Failed to parse filter expression");
+                    }
+                }
+            }
+        }
+
+        // Query the features through the renderer (same path as the Map-level query)
+        std::vector<mbgl::Feature> features = querySourceFeaturesFn()(source->getID(), options);
+
+        Logger::info("GeoJsonSourceNAPI", "QuerySourceFeatures: %zu features from source '%s'",
+                     features.size(), source->getID().c_str());
+
         // Convert the results into a NAPI array
         return GeoJsonConverter::FeatureArrayToJsArray(env, features);
     } catch (const std::exception& e) {
@@ -639,7 +761,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
     }
     
     try {
-        if (!queryFeatureExtensionsFn_) {
+        if (!queryFeatureExtensionsFn()) {
             Logger::error("GeoJsonSourceNAPI", "GetClusterChildren: queryFeatureExtensions callback not set");
             napi_throw_error(env, nullptr, "Renderer not initialized - cluster query callback not set");
             napi_value result;
@@ -670,7 +792,7 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
         clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
         
         // Query the extension
-        auto extResult = queryFeatureExtensionsFn_(
+        auto extResult = queryFeatureExtensionsFn()(
             source->getID(),
             clusterFeature,
             "supercluster",
@@ -730,7 +852,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
     }
     
     try {
-        if (!queryFeatureExtensionsFn_) {
+        if (!queryFeatureExtensionsFn()) {
             Logger::error("GeoJsonSourceNAPI", "GetClusterLeaves: queryFeatureExtensions callback not set");
             napi_throw_error(env, nullptr, "Renderer not initialized - cluster query callback not set");
             napi_value result;
@@ -774,7 +896,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
         queryArgs["offset"] = static_cast<uint64_t>(offset);
         
         // Query the extension
-        auto extResult = queryFeatureExtensionsFn_(
+        auto extResult = queryFeatureExtensionsFn()(
             source->getID(),
             clusterFeature,
             "supercluster",
@@ -828,7 +950,7 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
     }
     
     try {
-        if (!queryFeatureExtensionsFn_) {
+        if (!queryFeatureExtensionsFn()) {
             Logger::error("GeoJsonSourceNAPI", "GetClusterExpansionZoom: queryFeatureExtensions callback not set");
             napi_throw_error(env, nullptr, "Renderer not initialized - cluster query callback not set");
             return CreateDoubleValue(env, 0.0);
@@ -857,7 +979,7 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
         clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
         
         // Query the extension
-        auto extResult = queryFeatureExtensionsFn_(
+        auto extResult = queryFeatureExtensionsFn()(
             source->getID(),
             clusterFeature,
             "supercluster",

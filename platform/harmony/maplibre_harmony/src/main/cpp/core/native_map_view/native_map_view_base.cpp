@@ -2,6 +2,7 @@
 #include "napi/bindings/marker/marker_napi.hpp"
 #include "napi/bindings/style/style_napi.hpp"
 #include "sources/geojson_source_napi.hpp"
+#include "sources/custom_geometry_source_napi.hpp"
 
 #include <js_native_api_types.h>
 #include <mbgl/map/map.hpp>
@@ -29,6 +30,7 @@
 #include "utils/logger.h"
 #include "utils/anr_detector.hpp"
 #include "core/thread_safe_callback.hpp"
+#include "core/map_registry.hpp"
 
 // Geometry conversion helpers
 #include "geometry/lat_lng_harmony.hpp"
@@ -68,16 +70,14 @@ namespace {
     std::atomic<int> g_totalInstanceCount{0};  // Total instances created (used for IDs)
 }
 
-NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath) 
+NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string& cachePath)
     : env_(env), cachePath_(cachePath) {
     // Instance identifier (global counter used for multi-instance debugging)
-    static std::map<void*, int> globalInstanceIds;
-    int instanceId = ++g_totalInstanceCount;
-    globalInstanceIds[this] = instanceId;
+    ++g_totalInstanceCount;
     
     // ✅ Increment the active instance count
-    int activeCount = ++g_activeInstanceCount;
-    
+    ++g_activeInstanceCount;
+
     // Create the wrapper reference
     napi_create_reference(env, wrapper, 1, &wrapper_);
     
@@ -94,17 +94,54 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string
 NativeMapView::~NativeMapView() {
     // Immediately mark destruction to prevent callbacks from touching the object
     isDestroying.store(true, std::memory_order_release);
-    
+
     // Ensure resources are released in order
     cleanupAllResources();
+}
+
+void NativeMapView::attachMapRegistry() {
+    if (!map) {
+        return;
+    }
+
+    auto token = std::make_shared<MapToken>();
+    token->map = map;
+    mapToken_ = token;
+
+    // Publish a dispatcher so style wrappers can run structural style work
+    // serialized with the render thread (the renderer reads the style's layer
+    // collection concurrently — mutating it from the JS thread is the
+    // documented SIGSEGV@0x8 crash pattern).
+    MapRegistry::registerMap(
+        reinterpret_cast<uintptr_t>(map), token,
+        [this](std::function<void(mbgl::Map*)>&& op) {
+            invokeOnMapThreadSync([op = std::move(op)](mbgl::Map* m) -> int {
+                if (op && m) {
+                    op(m);
+                }
+                return 0;
+            });
+        });
+}
+
+void NativeMapView::detachMapRegistry() {
+    if (mapToken_) {
+        mapToken_->valid.store(false, std::memory_order_release);
+        mapToken_.reset();
+    }
+    if (map) {
+        MapRegistry::unregisterMap(reinterpret_cast<uintptr_t>(map));
+    }
 }
 
 void NativeMapView::cleanupAllResources() {
     // Synchronous teardown: block until the render thread and resources are fully released
     ANRDetector detector("cleanupAllResources_sync", 100, 2000);
 
-    // Clear the cluster query callback to prevent dangling pointer access
-    maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(nullptr);
+    // Clear the renderer query hooks — owner-checked, so only the hooks this
+    // instance registered are removed (other map instances keep theirs).
+    maplibre::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
+    maplibre::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
 
     // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
@@ -132,6 +169,9 @@ void NativeMapView::cleanupAllResources() {
         harmonyRenderer.reset();
     }
 
+    // 1b. Invalidate the map registry entry (style wrappers now see the map as gone)
+    detachMapRegistry();
+
     // 2. Clear the Map reference
     if (map) {
         map = nullptr;
@@ -155,10 +195,20 @@ void NativeMapView::cleanupAllResources() {
     --g_activeInstanceCount;
 }
 
+namespace {
+// Native stub backing the async-cleanup bridge tsfn: the actual work runs in
+// the DataBuilder on the JS thread; the JS function itself does nothing.
+napi_value CleanupBridgeStub(napi_env env, napi_callback_info /*info*/) {
+    napi_value undefined;
+    napi_get_undefined(env, &undefined);
+    return undefined;
+}
+} // anonymous namespace
+
 void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
     // 🔍 ANR monitoring: record elapsed time for the full cleanup path
     ANRDetector detector("cleanupAllResourcesAsync", 100, 1000);
-    
+
     // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
         Logger::warn("NativeMapView", "Resources already cleaned, skipping");
@@ -166,28 +216,50 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         return;
     }
 
+    // Owner-checked clearing of the renderer query hooks while harmonyRenderer
+    // is still alive, so no later query can reach the renderer being destroyed
+    // (the async path previously left these dangling).
+    maplibre::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
+    maplibre::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
+
     resetSnapshotState();
-    
+
     try {
         // 0. Clear all callbacks (with ANR monitoring)
         if (callbackManager_) {
             ANRDetector callbackDetector("callbackManager->Clear", 50, 500);
             callbackManager_->Clear();
         }
-        
-        // 1. ✅ Stop rendering immediately (mirrors iOS destroyDisplayLink and Android MapRenderer.onStop())
-        // Critical fix: halt rendering before waiting asynchronously to avoid OpenGL attribute assertions
-        if (harmonyRenderer) {
-            harmonyRenderer->pause();
-            
-            // ✅ Wait for the in-flight frame to finish (see Android GLSurfaceView.onPause())
-            // Reason: pause() only flips a flag; the active frame may still touch resources
-            // Fix: give the current frame time to finish (typically 1-2 frames = 16-33 ms)
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+        if (!harmonyRenderer) {
+            Logger::warn("NativeMapView", "No harmonyRenderer, cleaning up immediately");
+            detachMapRegistry();
+            mapRenderer = nullptr;
+            nativeWindow = nullptr;
+            if (styleRef_) {
+                napi_delete_reference(env_, styleRef_);
+                styleRef_ = nullptr;
+            }
+            if (wrapper_) {
+                napi_delete_reference(env_, wrapper_);
+                wrapper_ = nullptr;
+            }
+            --g_activeInstanceCount;
+            if (onComplete) onComplete();
+            return;
         }
-        
+
+        // 1. ✅ Stop rendering immediately (mirrors iOS destroyDisplayLink and Android MapRenderer.onStop())
+        harmonyRenderer->pause();
+
+        // Best-effort early quiet (see Android GLSurfaceView.onPause()): pause()
+        // only flips a flag; give the in-flight frame time to finish. The
+        // deterministic teardown barrier is harmonyRenderer.reset() in the
+        // completion task below, which joins the render thread.
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
         // 2. Cancel all animations immediately (mirrors Android cancelTransitions) — must run on the render thread
-        if (harmonyRenderer && map) {
+        if (map) {
             harmonyRenderer->runOnRenderThread([this]() {
                 if (map) {
                     try {
@@ -198,82 +270,84 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
                 }
             });
         }
-        
-        // 3. Wait for background work asynchronously (aligned with Android/iOS)
-        if (harmonyRenderer) {
-            // Use an asynchronous callback rather than a hard-coded wait
-            harmonyRenderer->stopAllRequestsAsync([this, onComplete = std::move(onComplete)]() {
-                try {
-                    // 4. Clean up Map objects (following the iOS destroyCoreObjects order)
+
+        // Bridge tsfn created ON THE JS THREAD: the worker below must not
+        // touch Node-API (env access is JS-thread-only). The wrapper_
+        // reference keeps this NativeMapView alive until the completion task
+        // deletes it on the JS thread, so capturing `this` there is safe.
+        napi_value stub = nullptr;
+        napi_status stubStatus = napi_create_function(
+            env_, "mbgl_cleanup_bridge", NAPI_AUTO_LENGTH, CleanupBridgeStub, nullptr, &stub);
+        auto bridge = (stubStatus == napi_ok && stub)
+            ? mbgl::harmony::ThreadSafeCallback::Create(env_, stub, "cleanupAsync_bridge")
+            : nullptr;
+
+        if (!bridge) {
+            Logger::error("NativeMapView", "cleanupAllResourcesAsync: failed to create JS bridge; "
+                                           "deferring renderer teardown to the finalizer");
+            if (styleRef_) {
+                napi_delete_reference(env_, styleRef_);
+                styleRef_ = nullptr;
+            }
+            if (wrapper_) {
+                napi_delete_reference(env_, wrapper_);
+                wrapper_ = nullptr;
+            }
+            --g_activeInstanceCount;
+            if (onComplete) onComplete();
+            return;
+        }
+
+        // 3. Worker thread: pause the process-wide file sources and let
+        // in-flight network callbacks drain. It touches NO NativeMapView
+        // state — every member mutation happens in the JS-thread completion
+        // task, so the worker and the JS thread can no longer race.
+        std::thread(
+            [bridge = std::move(bridge), onComplete = std::move(onComplete), this]() mutable {
+                HarmonyRenderer::pauseFileSources("cleanupAsync");
+
+                // Bounded drain window for in-flight network callbacks (same
+                // rationale as the synchronous cleanup path).
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+                // 4.-8. Finish on the JS thread: native teardown + NAPI refs.
+                // CallBlocking: one-shot completion that must not be dropped;
+                // the JS thread is not concurrently blocked on this tsfn.
+                bridge->CallBlocking([this, onComplete = std::move(onComplete)](napi_env env) mutable -> napi_value {
+                    detachMapRegistry();
+
                     if (map) {
-                        // Note: In the current architecture, HarmonyMapRenderThread owns Map
+                        // In the current architecture, HarmonyMapRenderThread owns Map;
                         // NativeMapView simply holds a reference
                         map = nullptr;
                     }
-                    
-                    // 5. Clean up HarmonyRenderer (mirrors iOS destroyCoreObjects)
-                    if (harmonyRenderer) {
-                        harmonyRenderer.reset();
-                    }
-                    
-                    // 6. Clean up remaining resources
+
+                    // Destroys HarmonyRenderer → joins the render thread (the
+                    // deterministic quiescence barrier).
+                    harmonyRenderer.reset();
+
                     mapRenderer = nullptr;
                     nativeWindow = nullptr;
-                    
-                    // 7. Release NAPI references
+
+                    --g_activeInstanceCount;
+
                     if (styleRef_) {
-                        napi_delete_reference(env_, styleRef_);
+                        napi_delete_reference(env, styleRef_);
                         styleRef_ = nullptr;
                     }
                     if (wrapper_) {
-                        napi_delete_reference(env_, wrapper_);
+                        napi_delete_reference(env, wrapper_);
                         wrapper_ = nullptr;
                     }
-                    
-                    // ✅ Decrement the active instance count
-                    --g_activeInstanceCount;
-                    
-                    // 8. Invoke the completion callback
                     if (onComplete) {
                         onComplete();
                     }
-                    
-                } catch (const std::exception& e) {
-                    Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
-                    // ✅ Even on errors, decrement the counter
-                    --g_activeInstanceCount;
-                    if (onComplete) onComplete();
-                } catch (...) {
-                    Logger::error("NativeMapView", "Unknown error during resource cleanup");
-                    // ✅ Even on errors, decrement the counter
-                    --g_activeInstanceCount;
-                    if (onComplete) onComplete();
-                }
-            });
-            
-            return; // Kick off asynchronously and return immediately
-        }
-        
-        // If harmonyRenderer is missing, clean up the remaining resources immediately
-        Logger::warn("NativeMapView", "No harmonyRenderer, cleaning up immediately");
-        
-        mapRenderer = nullptr;
-        nativeWindow = nullptr;
 
-        if (styleRef_) {
-            napi_delete_reference(env_, styleRef_);
-            styleRef_ = nullptr;
-        }
-        
-        if (wrapper_) {
-            napi_delete_reference(env_, wrapper_);
-            wrapper_ = nullptr;
-        }
-        
-        // ✅ Decrement the active instance count
-        --g_activeInstanceCount;
-        if (onComplete) onComplete();
-        
+                    napi_value undefined;
+                    napi_get_undefined(env, &undefined);
+                    return undefined;
+                });
+            }).detach();
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
         // ✅ Decrement the counter even if an error occurs
@@ -375,6 +449,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"getDebug", nullptr, getDebug, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setDebugActive", nullptr, setDebugActive, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"isDebugActive", nullptr, isDebugActive, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"getRendererInfo", nullptr, getRendererInfo, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getActionJournalLogFiles", nullptr, getActionJournalLogFiles, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getActionJournalLog", nullptr, getActionJournalLog, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"clearActionJournalLog", nullptr, clearActionJournalLog, nullptr, nullptr, nullptr, napi_default, nullptr},
@@ -601,6 +676,8 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
         }
         instance->harmonyRenderer.reset();
     }
+    // Invalidate style wrappers that cached the old Map pointer before dropping it
+    instance->detachMapRegistry();
     instance->map = nullptr;
     instance->mapRenderer = nullptr;
 
@@ -620,6 +697,10 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     instance->harmonyRenderer->initialize(instance->width, instance->height, instance->pixelRatio, instance->cachePath_,
                                          instance->localIdeographFontFamily_);
 
+    // Reapply the stored performance configuration to the new render loop
+    instance->harmonyRenderer->setMaximumFps(instance->maximumFps_);
+    instance->harmonyRenderer->setRenderingRefreshMode(instance->renderingRefreshMode_);
+
     // 4) Reapply window and dimensions
     if (instance->nativeWindow) {
         instance->harmonyRenderer->setNativeWindow(instance->nativeWindow);
@@ -633,6 +714,7 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     if (!instance->map) {
         Logger::warn("NativeMapView", "hardReset: getMap() returned null");
     }
+    instance->attachMapRegistry();
 
     // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
     maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
@@ -644,7 +726,26 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
             const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
             if (!renderer) return mbgl::FeatureCollection{};
             return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
-        });
+        },
+        instance->harmonyRenderer.get());
+
+    // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
+        maplibre::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+            [renderer = instance->harmonyRenderer.get()](
+                const std::string& sourceID,
+                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+                if (!renderer) return {};
+                return renderer->querySourceFeatures(sourceID, options);
+            },
+            instance->harmonyRenderer.get());
+        maplibre::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
+            [renderer = instance->harmonyRenderer.get()](
+                const std::string& sourceID,
+                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+                if (!renderer) return {};
+                return renderer->querySourceFeatures(sourceID, options);
+            },
+            instance->harmonyRenderer.get());
 
     // 6) Trigger the first frame
     if (instance->harmonyRenderer) {
@@ -745,16 +846,10 @@ void NativeMapView::initializeRenderer() {
             // best-effort cleanup
         }
         harmonyRenderer.reset();
-        // ⚠️ DANGLING POINTER RISK: Setting map = nullptr here prevents *this* instance
-        // from using a stale pointer, BUT any StyleNAPI instances that previously received
-        // this Map address (via the ArkTS layer's pointer-passing) will NOT be updated.
-        //
-        // StyleNAPI holds a raw mbgl::Map* that was obtained during style construction
-        // (style_napi_base.cpp:149). After this point, that pointer is dangling.
-        // The !style->map guards in StyleNAPI methods cannot detect this because the
-        // old address is non-null but points to freed memory.
-        //
-        // See style_napi.hpp for full details on the crash scenario.
+        // Invalidate style wrappers that cached the old Map pointer. Any
+        // StyleNAPI holding the previous token now fails cleanly instead of
+        // dereferencing freed memory (see map_registry.hpp).
+        detachMapRegistry();
         map = nullptr; // drop old Map reference tied to previous renderer/thread
     }
     
@@ -765,7 +860,11 @@ void NativeMapView::initializeRenderer() {
     Logger::info("NativeMapView", "NativeMapView registered to HarmonyRenderer for event forwarding");
     
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
-    
+
+    // Apply the stored performance configuration to the new render loop
+    harmonyRenderer->setMaximumFps(maximumFps_);
+    harmonyRenderer->setRenderingRefreshMode(renderingRefreshMode_);
+
     // 2. Bind the window if one is available
     if (nativeWindow && harmonyRenderer) {
         harmonyRenderer->setNativeWindow(nativeWindow);
@@ -780,7 +879,10 @@ void NativeMapView::initializeRenderer() {
             Logger::error("NativeMapView", "Cannot get Map - HarmonyRenderer returned null");
             return;
         }
-        
+
+        // Publish the new map for style wrappers (liveness token + dispatcher)
+        attachMapRegistry();
+
         // ✅ New behavior: once the Map is constructed, fire the onMapViewCreated callback
         // At this point the C++ Map exists, allowing ArkTS to create MapLibreMap and register observers
         // Matches Android behavior: trigger before style loading so listeners can be registered
@@ -795,7 +897,26 @@ void NativeMapView::initializeRenderer() {
                 const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
                 if (!renderer) return mbgl::FeatureCollection{};
                 return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
-            });
+            },
+            harmonyRenderer.get());
+
+        // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
+        maplibre::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+            [renderer = harmonyRenderer.get()](
+                const std::string& sourceID,
+                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+                if (!renderer) return {};
+                return renderer->querySourceFeatures(sourceID, options);
+            },
+            harmonyRenderer.get());
+        maplibre::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
+            [renderer = harmonyRenderer.get()](
+                const std::string& sourceID,
+                const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+                if (!renderer) return {};
+                return renderer->querySourceFeatures(sourceID, options);
+            },
+            harmonyRenderer.get());
 
         if (callbackManager_) {
             callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
@@ -827,8 +948,9 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         // best effort
     }
     harmonyRenderer.reset();
-    // ⚠️ Same dangling pointer risk as initializeRenderer() — see note above.
-    // Any StyleNAPI holding the old Map pointer is now referencing freed memory.
+    // Invalidate style wrappers that cached the old Map pointer (see
+    // initializeRenderer for the crash scenario this prevents).
+    detachMapRegistry();
     map = nullptr;
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
     
@@ -836,6 +958,10 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     harmonyRenderer->setNativeMapView(this);
     
     harmonyRenderer->initialize(width, height, pixelRatio, cachePath_, localIdeographFontFamily_);
+
+    // Apply the stored performance configuration to the new render loop
+    harmonyRenderer->setMaximumFps(maximumFps_);
+    harmonyRenderer->setRenderingRefreshMode(renderingRefreshMode_);
     if (nativeWindow) {
         harmonyRenderer->setNativeWindow(nativeWindow);
         if (width > 0 && height > 0) {
@@ -843,6 +969,9 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         }
     }
     map = harmonyRenderer->getMap();
+
+    // Publish the new map for style wrappers (liveness token + dispatcher)
+    attachMapRegistry();
 
     // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
     maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
@@ -854,8 +983,19 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
             const std::optional<std::map<std::string, mbgl::Value>>& args) -> mbgl::FeatureExtensionValue {
             if (!renderer) return mbgl::FeatureCollection{};
             return renderer->queryFeatureExtensions(sourceID, feature, extension, extensionField, args);
-        });
-    
+        },
+        harmonyRenderer.get());
+
+    // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
+    maplibre::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+        [renderer = harmonyRenderer.get()](
+            const std::string& sourceID,
+            const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
+            if (!renderer) return {};
+            return renderer->querySourceFeatures(sourceID, options);
+        },
+        harmonyRenderer.get());
+
     // ✅ After self-healing, also trigger the onMapViewCreated callback
     if (map && callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onMapViewCreated");
@@ -941,9 +1081,14 @@ napi_value NativeMapView::setLocalIdeographFontFamily(napi_env env, napi_callbac
         instance->initializeRenderer();
         
         // Restore the style (glyphs are re-rasterized automatically)
+        // Structural style work must run on the map thread: loadURL mutates
+        // the style collections the render thread reads every frame (the
+        // documented SIGSEGV@0x8 pattern).
         if (!currentStyleUrl.empty() && instance->map) {
             instance->styleLoadedOnce.store(false, std::memory_order_release);
-            instance->map->getStyle().loadURL(currentStyleUrl);
+            instance->invokeOnMapThread([styleUrl = currentStyleUrl](mbgl::Map* m) {
+                m->getStyle().loadURL(styleUrl);
+            });
             Logger::info("NativeMapView", "setLocalIdeographFontFamily: Style reloaded, glyphs will be re-rasterized");
         }
         
@@ -985,72 +1130,42 @@ napi_value NativeMapView::getLocalIdeographFontFamily(napi_env env, napi_callbac
 
 napi_value NativeMapView::destroy(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
-    
+
     NativeMapView* nativeMapView = nullptr;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
-    
+
     if (nativeMapView) {
-        // Prevent double destruction (tracked via a static set)
-        static std::mutex destroyMutex;
-        static std::set<void*> destroyedInstances;
-        
-        {
-            std::lock_guard<std::mutex> lock(destroyMutex);
-            if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
-                Logger::warn("NativeMapView", "Instance already destroyed, skipping");
-                return nullptr;
-            }
-            destroyedInstances.insert(nativeMapView);
-        }
-        
+        // Double-destroy protection lives in cleanupAllResources()
+        // (resourcesCleaned_ atomic). A static pointer set here would grow for
+        // the life of the process and misfire on address reuse (ABA).
         nativeMapView->cleanupAllResources();
     } else {
         Logger::warn("NativeMapView", "Cannot destroy: native instance is null");
     }
-    
+
     return nullptr;
 }
 
 napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     args.RequireMinArgs(1); // Require a callback argument
-    
+
     if (args.HasError()) {
         Logger::error("NativeMapView", "destroyAsync: Missing callback parameter");
         return args.Undefined();
     }
-    
+
     // Retrieve the callback
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) {
         Logger::error("NativeMapView", "destroyAsync: Invalid callback parameter");
         return args.Undefined();
     }
-    
+
     NativeMapView* nativeMapView = nullptr;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&nativeMapView));
-    
+
     if (nativeMapView) {
-        // Prevent double destruction
-        static std::mutex destroyMutex;
-        static std::set<void*> destroyedInstances;
-        
-        {
-            std::lock_guard<std::mutex> lock(destroyMutex);
-            if (destroyedInstances.find(nativeMapView) != destroyedInstances.end()) {
-                Logger::warn("NativeMapView", "Instance already destroyed, skipping");
-                
-                // ✅ Use ThreadSafeCallback to ensure thread-safety
-                auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_skip");
-                if (tsfn) {
-                    tsfn->CallEmpty();
-                }
-                
-                return args.Undefined();
-            }
-            destroyedInstances.insert(nativeMapView);
-        }
-        
         // ✅ Create a ThreadSafeCallback for cross-thread invocation
         auto tsfn = ThreadSafeCallback::Create(env, callback, "destroyAsync_complete");
         if (!tsfn) {
@@ -1061,12 +1176,16 @@ napi_value NativeMapView::destroyAsync(napi_env env, napi_callback_info info) {
         // Launch asynchronous cleanup with the callback.
         // Use shared_ptr to keep the callback alive until cleanup completes.
         auto sharedTsfn = std::shared_ptr<ThreadSafeCallback>(std::move(tsfn));
-        
+
         nativeMapView->cleanupAllResourcesAsync([sharedTsfn]() {
-            // ✅ ThreadSafeCallback dispatches on the main thread automatically
-            // No manual napi_call_function invocation is required
+            // The completion is a one-shot event that must never be dropped,
+            // so use the blocking dispatch (see ThreadSafeCallback::CallBlocking).
             if (sharedTsfn && sharedTsfn->IsValid()) {
-                sharedTsfn->CallEmpty();
+                sharedTsfn->CallBlocking([](napi_env env) -> napi_value {
+                    napi_value undefined;
+                    napi_get_undefined(env, &undefined);
+                    return undefined;
+                });
             } else {
                 Logger::warn("NativeMapView", "ThreadSafeCallback is invalid or released");
             }
