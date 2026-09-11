@@ -91,6 +91,12 @@ public:
     // Configure the render mode
     void setRenderingMode(MapObserver::RenderMode mode);
     
+    // Limit the render loop frame rate (0 = unlimited, render at display refresh rate)
+    void setMaximumFps(int fps);
+    
+    // Control the render loop refresh behavior (0 = CONTINUOUS, 1 = WHEN_DIRTY)
+    void setRenderingRefreshMode(int refreshMode);
+    
     // Pause rendering
     void pause();
     
@@ -103,16 +109,21 @@ public:
     
     // Stop all network requests
     void stopAllRequests();
-    
-    // Asynchronously stop all requests (mirrors Android/iOS, uses callback rather than blocking)
-    // onComplete: callback invoked when every asynchronous operation has stopped
-    void stopAllRequestsAsync(std::function<void()> onComplete);
+
+    // Pause all process-wide file sources (ResourceLoader/Network/Database).
+    // Static: safe to call from any thread (touches no renderer state), used
+    // by both the synchronous cleanup path and NativeMapView's async destroy
+    // worker.
+    static void pauseFileSources(const std::string& label);
     
     // Clean up resources
     void cleanup();
     
     // Access the renderer backend
     HarmonyRendererBackendImpl* getRendererBackend() const;
+
+    // Active backend name and GPU description (for diagnostics)
+    std::string getRendererInfo() const;
     
     // Query rendered features
     std::vector<Feature> queryRenderedFeatures(const ScreenCoordinate& point,

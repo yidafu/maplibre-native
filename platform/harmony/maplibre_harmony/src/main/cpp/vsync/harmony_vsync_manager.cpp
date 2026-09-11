@@ -1,6 +1,8 @@
 #include "harmony_vsync_manager.hpp"
 #include "utils/logger.h"
 #include <mbgl/util/run_loop.hpp>
+#include <chrono>
+#include <thread>
 
 using mbgl::harmony::Logger;
 
@@ -108,19 +110,29 @@ void HarmonyVSyncManager::requestFrame(FrameCallback callback) {
 
 void HarmonyVSyncManager::stop() {
     Logger::info("HarmonyVSyncManager", "stop() called");
-    
+
     // Set stop flag first to block new requests
     stopped_.store(true);
-    
+
     // Clear pending callback and RunLoop reference (thread safe)
     {
         std::lock_guard<std::mutex> lock(callbackMutex_);
         pendingCallback_ = nullptr;
         renderRunLoop_ = nullptr;  // Clear RunLoop pointer to prevent dangling reference
     }
-    
+
     frameRequested_ = false;
-    
+
+    // Wait out any in-flight dispatch: it copied the raw RunLoop pointer
+    // before we cleared it and is about to call runLoop->invoke(). The owner
+    // destroys that RunLoop right after stop() returns.
+    for (int i = 0; i < 100 && inFlightDispatches_.load(std::memory_order_acquire) > 0; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    if (inFlightDispatches_.load(std::memory_order_acquire) > 0) {
+        Logger::error("HarmonyVSyncManager",
+                      "⚠️  in-flight VSync dispatch did not drain within 100 ms");
+    }
 }
 
 void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
@@ -140,15 +152,20 @@ void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
 void HarmonyVSyncManager::executeCallback() {
     // Dispatch callback to render thread via RunLoop
     // Ensures callback executes on the proper render thread, aligned with other actor messages
-    
+
+    // Mark the dispatch in flight BEFORE touching the RunLoop pointer, so
+    // stop() (which waits for this counter) can never race the invoke below.
+    inFlightDispatches_.fetch_add(1, std::memory_order_acq_rel);
+
     // Double-check stopped flag and RunLoop validity
-    if (stopped_.load()) {
+    if (stopped_.load(std::memory_order_acquire)) {
+        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
         return;
     }
-    
+
     FrameCallback callback;
     util::RunLoop* runLoop = nullptr;
-    
+
     // Acquire callback and RunLoop pointers under mutex protection
     {
         std::lock_guard<std::mutex> lock(callbackMutex_);
@@ -156,23 +173,26 @@ void HarmonyVSyncManager::executeCallback() {
         pendingCallback_ = nullptr;
         runLoop = renderRunLoop_;  // Copy RunLoop pointer locally
     }
-    
+
     if (!callback) {
         Logger::warn("HarmonyVSyncManager", "No callback to execute");
+        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
         return;
     }
-    
+
     // Verify RunLoop validity (avoid touching a destroyed RunLoop)
     if (!runLoop) {
-        Logger::warn("HarmonyVSyncManager", 
+        Logger::warn("HarmonyVSyncManager",
             "⚠️  RunLoop not set, skipping VSync callback (would cause thread safety violation)");
+        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
         return;
     }
-    
-    if (stopped_.load()) {
+
+    if (stopped_.load(std::memory_order_acquire)) {
+        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
         return;
     }
-    
+
     // Dispatch through RunLoop to render thread (ensures thread safety)
     // Note: use local runLoop variable inside lambda to avoid accessing members
     runLoop->invoke([callback]() {
@@ -182,6 +202,8 @@ void HarmonyVSyncManager::executeCallback() {
             Logger::error("HarmonyVSyncManager", "Exception in VSync callback: %s", e.what());
         }
     });
+
+    inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
 }
 
 } // namespace harmony

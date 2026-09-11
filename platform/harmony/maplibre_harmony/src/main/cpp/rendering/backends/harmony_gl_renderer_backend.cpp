@@ -478,44 +478,42 @@ bool HarmonyGLRendererBackend::isEGLHealthy() const {
 
 // 🛡️ Attempt to recover EGL state (fix repeated-entry crash)
 bool HarmonyGLRendererBackend::tryRecoverEGL() {
-    // ✅ Prevent concurrent recovery (if multiple instances fail, only one may perform recovery)
-    static std::atomic<bool> recovering{false};
-    if (recovering.exchange(true)) {
-        Logger::warn("HarmonyGLRendererBackend", 
+    // ✅ Prevent concurrent recovery of THIS instance (cross-instance recovery
+    // is safe: each instance owns its context/surface; EGL calls themselves
+    // are thread-safe)
+    if (eglRecovering_.exchange(true)) {
+        Logger::warn("HarmonyGLRendererBackend",
                     "❌ Already in recovery process, aborting this attempt");
         return false;
     }
-    
+
     Logger::info("HarmonyGLRendererBackend", "🔧 Attempting to recover EGL state...");
-    
+
     // Limit retries to avoid infinite loops
-    static std::atomic<int> recoveryAttempts{0};
-    static std::chrono::steady_clock::time_point lastRecoveryTime;
-    
     auto now = std::chrono::steady_clock::now();
     auto timeSinceLastRecovery = std::chrono::duration_cast<std::chrono::seconds>(
-        now - lastRecoveryTime).count();
-    
+        now - lastEglRecoveryTime_).count();
+
     // If the last recovery was under 2 seconds ago, treat it as a rapid failure and abort recovery
-    if (timeSinceLastRecovery < 2 && recoveryAttempts > 3) {
-        Logger::error("HarmonyGLRendererBackend", 
-                     "❌ Too many recovery attempts (%d) in short time, giving up", 
-                     recoveryAttempts.load());
-        recovering = false;  // ✅ Reset the flag
+    if (timeSinceLastRecovery < 2 && eglRecoveryAttempts_ > 3) {
+        Logger::error("HarmonyGLRendererBackend",
+                     "❌ Too many recovery attempts (%d) in short time, giving up",
+                     eglRecoveryAttempts_.load());
+        eglRecovering_ = false;  // ✅ Reset the flag
         return false;
     }
-    
+
     // Reset the counter if more than five seconds have passed
     if (timeSinceLastRecovery > 5) {
-        recoveryAttempts = 0;
+        eglRecoveryAttempts_ = 0;
     }
-    
-    recoveryAttempts++;
-    lastRecoveryTime = now;
-    
-    Logger::info("HarmonyGLRendererBackend", 
-                "Recovery attempt #%d (last recovery was %ld seconds ago)", 
-                recoveryAttempts.load(), timeSinceLastRecovery);
+
+    eglRecoveryAttempts_++;
+    lastEglRecoveryTime_ = now;
+
+    Logger::info("HarmonyGLRendererBackend",
+                "Recovery attempt #%d (last recovery was %ld seconds ago)",
+                eglRecoveryAttempts_.load(), timeSinceLastRecovery);
     
     // 1. Fully clean up the current invalid EGL resources
     Logger::info("HarmonyGLRendererBackend", "Step 1: Cleaning up invalid EGL resources");
@@ -558,13 +556,13 @@ bool HarmonyGLRendererBackend::tryRecoverEGL() {
     Logger::info("HarmonyGLRendererBackend", "Step 3: Re-initializing complete EGL stack");
     if (!eglWindow_) {
         Logger::error("HarmonyGLRendererBackend", "❌ No native window available for recovery");
-        recovering = false;  // ✅ Reset the flag
+        eglRecovering_ = false;  // ✅ Reset the flag
         return false;
     }
     
     if (!initializeEGLDisplay()) {
         Logger::error("HarmonyGLRendererBackend", "❌ Failed to re-initialize EGL display");
-        recovering = false;  // ✅ Reset the flag
+        eglRecovering_ = false;  // ✅ Reset the flag
         return false;
     }
     
@@ -572,11 +570,11 @@ bool HarmonyGLRendererBackend::tryRecoverEGL() {
     Logger::info("HarmonyGLRendererBackend", "Step 4: Re-initializing EGL context");
     if (!initializeEGLContext()) {
         Logger::error("HarmonyGLRendererBackend", "❌ Failed to re-initialize EGL context");
-        recovering = false;  // ✅ Reset the flag
+        eglRecovering_ = false;  // ✅ Reset the flag
         return false;
     }
     
-    recovering = false;  // ✅ Reset the flag
+    eglRecovering_ = false;  // ✅ Reset the flag
     return true;
 }
 
@@ -1192,6 +1190,27 @@ bool HarmonyGLRendererBackend::isSurfaceValid() const {
 }
 
 // 🛡️ Added: pause rendering to prevent crashes
+void HarmonyGLRendererBackend::cleanupBackend() {
+    Logger::info("HarmonyGLRendererBackend", "Cleaning up EGL resources");
+    cleanupEGL();
+
+    // gfx::Backend lacks a virtual destructor, so backend_.reset() does not run
+    // the subclass destructor; the render thread calls cleanupBackend() instead
+    // to keep the shared-display refcount balanced.
+    EGLDisplayManager::getInstance().unregisterInstance();
+}
+
+std::string HarmonyGLRendererBackend::getRendererInfo() {
+    std::string info = "opengl";
+    if (eglGetCurrentContext() != EGL_NO_CONTEXT) {
+        if (const GLubyte* renderer = glGetString(GL_RENDERER)) {
+            info += " | ";
+            info += reinterpret_cast<const char*>(renderer);
+        }
+    }
+    return info;
+}
+
 void HarmonyGLRendererBackend::pauseRendering() {
     Logger::info("HarmonyGLRendererBackend", "Pausing rendering to prevent crash");
     isStopped_ = true;

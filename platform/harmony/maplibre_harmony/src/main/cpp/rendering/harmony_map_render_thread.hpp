@@ -11,6 +11,8 @@
 #include <mbgl/util/image.hpp>
 #include <mbgl/util/geojson.hpp>
 
+#include "backends/harmony_renderer_backend.hpp"
+
 #include <memory>
 #include <thread>
 #include <atomic>
@@ -23,8 +25,6 @@
 
 namespace mbgl {
 namespace harmony {
-
-class HarmonyGLRendererBackend;
 
 /**
  * HarmonyMapRenderThread - unified map and render thread.
@@ -49,7 +49,7 @@ public:
     /**
      * Constructor.
      *
-     * @param backend GL backend (manages EGL)
+     * @param backend Rendering backend (OpenGL ES or Vulkan, chosen at compile time)
      * @param pixelRatio Pixel density ratio
      * @param observer Map observer
      * @param mapOptions Map options (moved in)
@@ -58,7 +58,7 @@ public:
      * @param localIdeographFontFamily Optional local ideograph font family
      */
     HarmonyMapRenderThread(
-        std::unique_ptr<gfx::Backend> backend,
+        std::unique_ptr<HarmonyRendererBackend> backend,
         float pixelRatio,
         MapObserver& observer,
         MapOptions&& mapOptions,
@@ -157,6 +157,9 @@ public:
      * Retrieve the renderer backend.
      */
     gfx::RendererBackend& getRendererBackend();
+
+    /// Active backend name and GPU description (for diagnostics)
+    std::string getRendererInfo();
     
     /**
      * Resize the framebuffer.
@@ -223,11 +226,39 @@ public:
      * Set the FPS callback (mirrors Android MapRenderer::setOnFpsChangedListener).
      */
     void setOnFpsChangedCallback(std::function<void(double)> callback);
-    
+
     /**
      * Enable or disable FPS measurement.
      */
     void enableFpsMeasurement(bool enable);
+
+    /**
+     * Limit the render loop to at most the given frames per second by skipping
+     * VSync ticks that arrive sooner than the frame interval (mirrors Android
+     * MapRenderer::setMaximumFps). 0 disables the limit (render at the display
+     * refresh rate). Safe to call from any thread.
+     */
+    void setMaximumFps(int fps);
+
+    /**
+     * Current FPS limit; 0 means unlimited.
+     */
+    int getMaximumFps() const { return static_cast<int>(maximumFps_.load(std::memory_order_relaxed)); }
+
+    /**
+     * Control whether the render loop keeps pumping frames when the map is idle.
+     * 0 = CONTINUOUS: re-arms VSync after every frame and forces a repaint each
+     * tick, matching Android RENDERMODE_CONTINUOUSLY.
+     * 1 = WHEN_DIRTY: the loop sleeps once the map has nothing more to repaint;
+     * VSync is re-armed by update() when the content changes (saves power).
+     * Safe to call from any thread.
+     */
+    void setRenderingRefreshMode(int mode);
+
+    /**
+     * Current refresh mode: 0 = CONTINUOUS, 1 = WHEN_DIRTY.
+     */
+    int getRenderingRefreshMode() const { return refreshMode_.load(std::memory_order_relaxed); }
     
     using SnapshotSuccessCallback = std::function<void(mbgl::PremultipliedImage&&, float)>;
     using SnapshotErrorCallback = std::function<void(const std::string&)>;
@@ -263,6 +294,14 @@ private:
      */
     void onVSyncFrame();
 
+    /**
+     * Frame pacing check for the current tick. Returns true when the tick
+     * arrived sooner than the configured frame interval (and should be
+     * skipped); otherwise records the frame start time and returns false.
+     * Render thread only.
+     */
+    bool shouldThrottleFrame();
+
     // ==================== Member variables ====================
     
     // Thread objects
@@ -275,13 +314,14 @@ private:
     std::atomic<bool> started_{false};
     std::atomic<bool> shouldStop_{false};
     std::atomic<bool> initialized_{false};
+    std::atomic<bool> initFailed_{false};  // Lets start() fail fast instead of waiting out the timeout
     std::atomic<bool> destroying_{false};  // ✅ Destruction flag to avoid race conditions
     
     // Core objects (created and destroyed on the thread)
     std::unique_ptr<util::RunLoop> runLoop_;
     std::unique_ptr<Map> map_;
     std::unique_ptr<Renderer> renderer_;
-    std::unique_ptr<gfx::Backend> backend_;
+    std::unique_ptr<HarmonyRendererBackend> backend_;
     std::unique_ptr<TaggedScheduler> threadPool_;
     
     // Initialization parameters (captured from constructor)
@@ -297,11 +337,24 @@ private:
     std::atomic<bool> paused_{true};
     
     // FPS measurement (aligned with Android MapRenderer)
-    std::chrono::steady_clock::time_point lastFrameTime_;
+    // Only touched on the render thread; the first frame after enabling just
+    // records the start time instead of reporting a bogus interval.
+    std::chrono::steady_clock::time_point lastFrameTime_{};
     std::atomic<bool> measureFps_{false};
-    std::function<void(double)> fpsCallback_;
+    // Guarded by fpsCallbackMutex_: written from the JS thread, read per-frame
+    // on the render thread. Shared pointer swap lets an in-frame invocation
+    // outlive a concurrent setOnFpsChangedCallback(nullptr).
+    std::mutex fpsCallbackMutex_;
+    std::shared_ptr<std::function<void(double)>> fpsCallback_;
     void* nativeWindow_{nullptr};
-    
+
+    // Frame pacing / render mode (mirrors Android MapRenderer)
+    // maximumFps_: 0 disables the limit (render at the display refresh rate)
+    // refreshMode_: 0 = CONTINUOUS, 1 = WHEN_DIRTY (default, saves power)
+    std::atomic<uint32_t> maximumFps_{0};
+    std::atomic<int> refreshMode_{1};
+    std::chrono::steady_clock::time_point lastFrameDeadline_;
+
     // VSync management
     std::unique_ptr<HarmonyVSyncManager> vsyncManager_;
     std::shared_ptr<UpdateParameters> pendingUpdateParams_{nullptr};
@@ -313,9 +366,11 @@ private:
     SnapshotErrorCallback snapshotErrorCallback_;
     bool snapshotPending_{false};
 
-    // Most recent logical size (used immediately after window recreation)
-    int lastWidth_{0};
-    int lastHeight_{0};
+    // Most recent logical size (used after window recreation). atomic<int>:
+    // written from the JS thread (resizeFramebuffer) and read on the render
+    // thread (setNativeWindow).
+    std::atomic<int> lastWidth_{0};
+    std::atomic<int> lastHeight_{0};
 };
 
 } // namespace harmony

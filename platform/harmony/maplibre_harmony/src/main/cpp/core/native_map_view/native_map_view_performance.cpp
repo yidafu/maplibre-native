@@ -36,23 +36,25 @@ napi_value NativeMapView::setMaximumFps(napi_env env, napi_callback_info info) {
     }
     
     try {
-        // Retrieve FPS parameter
+        // Retrieve FPS parameter (0 disables the limit: render at display refresh rate)
         int fps = args.GetInt32(0, "maximumFps");
-        if (args.HasError() || fps <= 0) {
+        if (args.HasError() || fps < 0) {
             Logger::error("NativeMapView", "setMaximumFps: Invalid FPS value %d", fps);
             return args.Undefined();
         }
-        
+
         // Save configuration
         instance->maximumFps_ = fps;
-        
+
+        // Forward to the render loop: frames arriving sooner than 1/fps are
+        // skipped in HarmonyMapRenderThread::onVSyncFrame(), mirroring Android
+        // MapRenderer.setMaximumFps()
+        if (instance->harmonyRenderer) {
+            instance->harmonyRenderer->setMaximumFps(fps);
+        }
+
         Logger::info("NativeMapView", "setMaximumFps: Set maximum FPS to %d", fps);
-        
-        // Reference Android MapRenderer.setMaximumFps()
-        // Actual FPS limiting is handled via sleep inside the render loop
-        // Here we only store the configuration value; real limiting must be implemented in HarmonyMapRenderThread
-        // TODO: Implement FPS limiting in the render loop (requires modifying HarmonyMapRenderThread)
-        
+
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "setMaximumFps: Exception - %s", e.what());
     }
@@ -99,22 +101,13 @@ napi_value NativeMapView::setRenderingRefreshMode(napi_env env, napi_callback_in
         Logger::info("NativeMapView", "setRenderingRefreshMode: Set rendering mode to %s (%d)", modeName, mode);
         
         // Reference Android MapRenderer.setRenderingRefreshMode()
-        // CONTINUOUS mode: render every frame continuously
-        // WHEN_DIRTY mode: render only when necessary (default mode, saves power)
-        
-        // Set rendering mode on HarmonyRenderer
+        // Forward to the render loop: CONTINUOUS re-arms VSync after every
+        // frame and forces a repaint each tick; WHEN_DIRTY sleeps once the map
+        // has nothing more to repaint (default mode, saves power).
+        // Note: MapObserver::RenderMode (Partial/Full) is a different concept
+        // and is intentionally not derived from the refresh mode.
         if (instance->harmonyRenderer) {
-            // Pass rendering mode to HarmonyRenderer
-            // CONTINUOUS (0) -> RenderMode::Full (render every frame continuously)
-            // WHEN_DIRTY (1) -> RenderMode::Full (render on demand, default mode)
-            // Note: MapObserver::RenderMode offers only Partial and Full
-            // Continuous rendering must be controlled by other means (e.g., requestRender)
-            mbgl::MapObserver::RenderMode renderMode = mbgl::MapObserver::RenderMode::Full;
-            instance->harmonyRenderer->setRenderingMode(renderMode);
-            
-            // TODO: Implement real CONTINUOUS vs WHEN_DIRTY control
-            // CONTINUOUS mode should keep calling requestRender()
-            // WHEN_DIRTY mode should call requestRender() only when the map changes
+            instance->harmonyRenderer->setRenderingRefreshMode(mode);
         } else {
             Logger::warn("NativeMapView", "setRenderingRefreshMode: HarmonyRenderer not initialized");
         }
@@ -200,11 +193,14 @@ napi_value NativeMapView::setOnFpsChangedListener(napi_env env, napi_callback_in
         napi_typeof(env, callback, &type);
         
         if (type == napi_null || type == napi_undefined) {
-            // Remove listener
-            instance->fpsChangedCallback_.reset();
+            // Remove listener: clear the render-thread use FIRST, then drop the
+            // shared reference. The render thread's lambda holds a shared_ptr,
+            // so an in-flight invocation keeps the callback alive even if the
+            // member is reset concurrently.
             if (instance->harmonyRenderer) {
                 instance->harmonyRenderer->setOnFpsChangedCallback(nullptr);
             }
+            instance->fpsChangedCallback_.reset();
             Logger::info("NativeMapView", "setOnFpsChangedListener: Listener removed");
         } else if (type == napi_function) {
             // Create ThreadSafeCallback (refer to Android NativeMapView::setOnFpsChangedListener)
@@ -213,23 +209,25 @@ napi_value NativeMapView::setOnFpsChangedListener(napi_env env, napi_callback_in
                 Logger::error("NativeMapView", "setOnFpsChangedListener: Failed to create ThreadSafeCallback");
                 return args.Undefined();
             }
-            
+
             instance->fpsChangedCallback_ = std::move(callback_ptr);
-            
+
             if (instance->harmonyRenderer) {
-                // Install callback
-                auto callbackPtr = instance->fpsChangedCallback_.get();
-                instance->harmonyRenderer->setOnFpsChangedCallback([callbackPtr](double fps) {
-                    if (callbackPtr && callbackPtr->IsValid()) {
+                // Install callback. Capture the shared_ptr (not a raw pointer)
+                // so removal from the JS thread can never free the callback
+                // while the render thread is dispatching an fps event.
+                auto pinned = instance->fpsChangedCallback_;
+                instance->harmonyRenderer->setOnFpsChangedCallback([pinned](double fps) {
+                    if (pinned && pinned->IsValid()) {
                         // Use ThreadSafeCallback to safely call back to the ETS layer
-                        callbackPtr->Call([fps](napi_env env) -> napi_value {
+                        pinned->Call([fps](napi_env env) -> napi_value {
                             napi_value fpsValue;
                             napi_create_double(env, fps, &fpsValue);
                             return fpsValue;
                         });
                     }
                 });
-                
+
                 Logger::info("NativeMapView", "setOnFpsChangedListener: Listener set successfully");
             } else {
                 Logger::warn("NativeMapView", "setOnFpsChangedListener: HarmonyRenderer not initialized");

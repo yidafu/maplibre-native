@@ -100,6 +100,33 @@ napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
 }
 
 /**
+ * Get a description of the active rendering backend and GPU.
+ *
+ * The backend itself is chosen at compile time (MLN_WITH_OPENGL /
+ * MLN_WITH_VULKAN build flags); this exposes which one the native library
+ * was built with plus the GPU name, e.g. "vulkan | Mali-G78".
+ *
+ * @return String with backend and device info
+ */
+napi_value NativeMapView::getRendererInfo(napi_env env, napi_callback_info info) {
+    using namespace mbgl::harmony::napi;
+    NapiArgs args(env, info);
+
+    std::string rendererInfo = HarmonyRendererBackend::backendTypeName();
+
+    NativeMapView* instance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        Logger::warn("NativeMapView", "getRendererInfo: Failed to unwrap instance, returning compile-time backend only");
+    } else if (instance->harmonyRenderer) {
+        rendererInfo = instance->harmonyRenderer->getRendererInfo();
+    }
+
+    napi_value result;
+    napi_create_string_utf8(env, rendererInfo.c_str(), rendererInfo.size(), &result);
+    return result;
+}
+
+/**
  * Simplified debug toggle - enable or disable a default set of debug options
  * 
  * When enabled, activates:

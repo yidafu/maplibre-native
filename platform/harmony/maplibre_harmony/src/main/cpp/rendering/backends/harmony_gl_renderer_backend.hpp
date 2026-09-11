@@ -9,6 +9,8 @@
 #include <mbgl/gl/renderer_backend.hpp>
 #include "harmony_renderer_backend.hpp"
 #include "egl_display_manager.hpp"
+#include <atomic>
+#include <chrono>
 #include <memory>
 #include <thread>
 
@@ -25,11 +27,13 @@ public:
 
     mbgl::gfx::RendererBackend& getImpl() override { return *this; }
 
-    void setNativeWindow(void* window);
+    void setNativeWindow(void* window) override;
     void updateViewPort() override;
     void markContextLost() override;
     void resizeFramebuffer(int width, int height) override;
     PremultipliedImage readFramebuffer() override;
+    void cleanupBackend() override;
+    std::string getRendererInfo() override;
     void swapBuffers();  // Call eglSwapBuffers to display frame
     
     // Added: retrieve and update pixelRatio
@@ -47,7 +51,7 @@ public:
     void pauseRendering() override;
     void resumeRendering() override;
     bool isRenderingStopped() const override { return isStopped_; }
-    bool hasValidSurface() const;
+    bool hasValidSurface() const override;
     
     // 🔒 Thread-safety checks
     bool isOnCorrectThread() const;
@@ -94,6 +98,13 @@ private:
     // 🔒 Thread ownership & safety
     std::thread::id ownerThreadId_;  // Thread owning the EGL context (for validation)
     std::thread::id renderThreadId_;  // Render thread ID (for eglMakeCurrent validation)
+
+    // 🛡️ EGL recovery state. Per instance on purpose: process-wide statics
+    // here would let one map instance's recovery suppress another's and race
+    // on the non-atomic timestamp.
+    std::atomic<bool> eglRecovering_{false};
+    std::atomic<int> eglRecoveryAttempts_{0};
+    std::chrono::steady_clock::time_point lastEglRecoveryTime_{};
 };
 
 } // namespace harmony

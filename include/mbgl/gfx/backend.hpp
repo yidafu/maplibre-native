@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <string>
 
 namespace mbgl {
 namespace gfx {
@@ -36,6 +37,16 @@ public:
     }
 
     static Type GetType() { return Value(DefaultType); }
+
+    static std::string GetTypeName(Type type) {
+        switch (type) {
+            case Type::OpenGL: return "opengl";
+            case Type::Metal: return "metal";
+            case Type::Vulkan: return "vulkan";
+            case Type::WebGPU: return "webgpu";
+            default: return "unknown";
+        }
+    }
 
     static bool getEnableGPUExpressionEval() { return enableGPUExpressionEval; }
     static void setEnableGPUExpressionEval(bool value) { enableGPUExpressionEval = value; }

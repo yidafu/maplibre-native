@@ -47,6 +47,12 @@ public:
      * @param window Pointer to the native HarmonyOS window
      */
     void setNativeWindow(OHNativeWindow* window);
+
+    /// Base-class hook: bind a native window (as void*) on the render thread
+    void setNativeWindow(void* window) override { setNativeWindow(static_cast<OHNativeWindow*>(window)); }
+
+    /// Whether the backend has a window bound and an initialized context
+    bool hasValidSurface() const override { return window != nullptr && context != nullptr; }
     
     /**
      * @brief Get the renderer backend implementation
@@ -66,12 +72,29 @@ public:
      * @param height New height in pixels
      */
     void resizeFramebuffer(int width, int height) override;
-    
+
+    /**
+     * @brief Queue a swapchain read for the next presented frame
+     *
+     * Must be called before rendering the frame that should be captured.
+     */
+    void enableFramebufferRead(bool value) override;
+
     /**
      * @brief Read the framebuffer contents for screenshot functionality
      * @return PremultipliedImage containing the framebuffer data
      */
     PremultipliedImage readFramebuffer() override;
+
+    /**
+     * @brief Release backend resources (device idle + swapchain teardown)
+     */
+    void cleanupBackend() override;
+
+    /**
+     * @brief Human-readable backend/device description for diagnostics
+     */
+    std::string getRendererInfo() override;
 
     // mbgl::gfx::RendererBackend implementation
 public:

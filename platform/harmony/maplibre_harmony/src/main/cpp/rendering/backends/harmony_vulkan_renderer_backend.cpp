@@ -6,38 +6,19 @@
 #include <mbgl/util/logging.hpp>
 
 #include <cassert>
+#include <string>
 #include "utils/logger.h"
 
-// HarmonyOS Vulkan surface extension definitions
-// These may need to be adjusted based on the actual HarmonyOS Vulkan SDK
-#ifndef VK_OHOS_SURFACE_EXTENSION_NAME
-#define VK_OHOS_SURFACE_EXTENSION_NAME "VK_OHOS_surface"
-#endif
-
-#ifndef VK_STRUCTURE_TYPE_OHOS_SURFACE_CREATE_INFO_KHR
-#define VK_STRUCTURE_TYPE_OHOS_SURFACE_CREATE_INFO_KHR ((VkStructureType)1000000000)
-#endif
-
-// Forward declare HarmonyOS Vulkan surface structures if not available
-#ifndef VK_OHOS_surface
-struct VkOHOSSurfaceCreateInfoKHR {
-    VkStructureType sType;
-    const void* pNext;
-    VkFlags flags;
-    OHNativeWindow* window;
-};
-
-// Function pointer type for OHOS surface creation
-// Use generic pointer for cross-platform compatibility
-using PFN_vkCreateOHOSSurfaceKHR = VkResult (*)(VkInstance, const VkOHOSSurfaceCreateInfoKHR*, const VkAllocationCallbacks*, VkSurfaceKHR*);
-#endif
+// VK_OHOS_surface definitions (VkSurfaceCreateInfoOHOS, vkCreateSurfaceOHOS,
+// VK_OHOS_SURFACE_EXTENSION_NAME) come from the vendored Vulkan-Headers'
+// <vulkan/vulkan_ohos.h>, pulled in via <vulkan/vulkan.hpp> in 1.4.352+.
 
 namespace mbgl {
 namespace harmony {
 
 /**
  * @brief HarmonyOS-specific Vulkan renderable resource
- * 
+ *
  * This class handles the creation and management of Vulkan surfaces
  * and swapchains for HarmonyOS native windows.
  */
@@ -63,75 +44,55 @@ public:
     }
 
     /**
-     * @brief Create the Vulkan surface for HarmonyOS native window
-     * 
-     * This method creates a platform-specific Vulkan surface using the
-     * HarmonyOS native window handle. It uses the VK_OHOS_surface extension
-     * to create the surface compatible with OHNativeWindow.
+     * @brief Create the Vulkan surface for the HarmonyOS native window
+     *
+     * Uses the VK_OHOS_surface extension via vkCreateSurfaceOHOS, resolved
+     * through the instance dispatcher. The VkSurfaceCreateInfoOHOS struct and
+     * function pointer types come from the vendored <vulkan/vulkan_ohos.h>,
+     * included by <vulkan/vulkan.h> when VK_USE_PLATFORM_OHOS is defined.
      */
     void createPlatformSurface() override {
         auto& backendImpl = static_cast<HarmonyVulkanRendererBackend&>(backend);
         OHNativeWindow* nativeWindow = backendImpl.getWindow();
-        
+
         Logger::info("HarmonyVulkan", "Creating Vulkan surface for HarmonyOS window=%p", nativeWindow);
-        
+
         if (!nativeWindow) {
             Logger::error("HarmonyVulkan", "Native window is null, cannot create surface");
             throw std::runtime_error("HarmonyOS native window is null");
         }
 
-        try {
-            // Get the Vulkan instance
-            VkInstance instance = backendImpl.getInstance()->operator VkInstance();
-            const auto& dispatcher = backendImpl.getDispatcher();
-            
-            // Create surface using HarmonyOS-specific Vulkan API
-            VkOHOSSurfaceCreateInfoKHR createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_OHOS_SURFACE_CREATE_INFO_KHR;
-            createInfo.pNext = nullptr;
-            createInfo.flags = 0;
-            createInfo.window = nativeWindow;
+        VkInstance instance = backendImpl.getInstance()->operator VkInstance();
+        const auto& dispatcher = backendImpl.getDispatcher();
 
-            // Try to get the function pointer for vkCreateOHOSSurfaceKHR
-            auto vkCreateOHOSSurfaceKHR = reinterpret_cast<PFN_vkCreateOHOSSurfaceKHR>(
-                dispatcher.vkGetInstanceProcAddr(instance, "vkCreateOHOSSurfaceKHR")
-            );
-            
-            if (!vkCreateOHOSSurfaceKHR) {
-                Logger::error("HarmonyVulkan", "vkCreateOHOSSurfaceKHR function not found");
-                throw std::runtime_error("HarmonyOS Vulkan surface extension not available");
-            }
-            
-            VkSurfaceKHR rawSurface = VK_NULL_HANDLE;
-            VkResult result = vkCreateOHOSSurfaceKHR(
-                instance,
-                &createInfo,
-                nullptr,
-                &rawSurface
-            );
-            
-            if (result != VK_SUCCESS || rawSurface == VK_NULL_HANDLE) {
-                Logger::error("HarmonyVulkan", "Failed to create Vulkan surface, error code: %d", result);
-                throw std::runtime_error("Failed to create HarmonyOS Vulkan surface");
-            }
-            
-            // Wrap in unique_ptr for automatic cleanup
-            surface = vk::UniqueSurfaceKHR(
-                vk::SurfaceKHR(rawSurface),
-                vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic>(
-                    *backendImpl.getInstance(),
-                    nullptr,
-                    dispatcher
-                )
-            );
-            
-            Logger::info("HarmonyVulkan", "Successfully created Vulkan surface");
-            
-            // HarmonyOS may support surface pre-rotation similar to Android
-        } catch (const std::exception& e) {
-            Logger::error("HarmonyVulkan", "Exception during surface creation: %s", e.what());
-            throw;
+        if (!dispatcher.vkCreateSurfaceOHOS) {
+            Logger::error("HarmonyVulkan", "vkCreateSurfaceOHOS function not found");
+            throw std::runtime_error("HarmonyOS Vulkan surface extension (VK_OHOS_surface) not available");
         }
+
+        VkSurfaceCreateInfoOHOS createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS;
+        createInfo.pNext = nullptr;
+        createInfo.flags = 0;
+        createInfo.window = nativeWindow;
+
+        VkSurfaceKHR rawSurface = VK_NULL_HANDLE;
+        VkResult result = dispatcher.vkCreateSurfaceOHOS(instance, &createInfo, nullptr, &rawSurface);
+
+        if (result != VK_SUCCESS || rawSurface == VK_NULL_HANDLE) {
+            Logger::error("HarmonyVulkan", "Failed to create Vulkan surface, error code: %d", result);
+            throw std::runtime_error("Failed to create HarmonyOS Vulkan surface");
+        }
+
+        surface = vk::UniqueSurfaceKHR(
+            vk::SurfaceKHR(rawSurface),
+            mbgl::vulkan::ObjectDestroy<vk::Instance>(
+                *backendImpl.getInstance(),
+                nullptr,
+                dispatcher)
+        );
+
+        Logger::info("HarmonyVulkan", "Successfully created Vulkan surface");
     }
 
     /**
@@ -140,10 +101,10 @@ public:
     void bind() override {
         // No-op for Vulkan - binding is handled through command buffers
     }
-    
+
     /**
      * @brief Swap buffers and present the rendered frame
-     * 
+     *
      * This method submits the frame and presents it to the screen.
      * It also handles synchronization based on the swap behavior setting.
      */
@@ -168,7 +129,7 @@ HarmonyVulkanRendererBackend::HarmonyVulkanRendererBackend()
     : vulkan::RendererBackend(gfx::ContextMode::Unique),
       vulkan::Renderable({64, 64}, std::make_unique<HarmonyVulkanRenderableResource>(*this)),
       window(nullptr) {
-    
+
     Logger::info("HarmonyVulkan", "Creating HarmonyVulkanRendererBackend (deferred initialization)");
     // Note: init() will be called later when window is set via setNativeWindow()
 }
@@ -177,14 +138,14 @@ HarmonyVulkanRendererBackend::HarmonyVulkanRendererBackend(OHNativeWindow* windo
     : vulkan::RendererBackend(gfx::ContextMode::Unique),
       vulkan::Renderable({64, 64}, std::make_unique<HarmonyVulkanRenderableResource>(*this)),
       window(window_) {
-    
+
     Logger::info("HarmonyVulkan", "Initializing HarmonyVulkanRendererBackend with window=%p", window);
-    
+
     if (!window) {
         Logger::error("HarmonyVulkan", "Cannot initialize with null window");
         throw std::runtime_error("HarmonyOS native window is null");
     }
-    
+
     try {
         // Initialize the Vulkan backend
         // This will call initInstance, initSurface, initDevice, etc.
@@ -202,18 +163,18 @@ HarmonyVulkanRendererBackend::~HarmonyVulkanRendererBackend() {
 
 void HarmonyVulkanRendererBackend::setNativeWindow(OHNativeWindow* window_) {
     Logger::info("HarmonyVulkan", "Setting native window: %p", window_);
-    
+
     if (window == window_) {
         return;
     }
-    
+
     window = window_;
-    
+
     if (!window) {
         Logger::warn("HarmonyVulkan", "Setting null window");
         return;
     }
-    
+
     // If not initialized yet, initialize now
     if (!context) {
         Logger::info("HarmonyVulkan", "Initializing Vulkan backend with window");
@@ -226,8 +187,6 @@ void HarmonyVulkanRendererBackend::setNativeWindow(OHNativeWindow* window_) {
         }
     } else {
         Logger::info("HarmonyVulkan", "Reinitializing surface for new window");
-        // TODO: Implement surface recreation for window change
-        // This requires recreating the surface and swapchain
         if (context) {
             static_cast<vulkan::Context&>(*context).requestSurfaceUpdate();
         }
@@ -237,34 +196,29 @@ void HarmonyVulkanRendererBackend::setNativeWindow(OHNativeWindow* window_) {
 std::vector<const char*> HarmonyVulkanRendererBackend::getInstanceExtensions() {
     // Get base extensions from parent class
     auto extensions = mbgl::vulkan::RendererBackend::getInstanceExtensions();
-    
+
     // Add Vulkan surface extension (standard WSI extension)
     extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-    
+
     // Add HarmonyOS-specific surface extension
-    // VK_OHOS_surface is the HarmonyOS-specific extension for window surface support
     extensions.push_back(VK_OHOS_SURFACE_EXTENSION_NAME);
-    
+
     Logger::info("HarmonyVulkan", "Requesting %zu Vulkan instance extensions", extensions.size());
-    
-    // Log all requested extensions for debugging
-    for (size_t i = 0; i < extensions.size(); ++i) {
-    }
-    
+
     return extensions;
 }
 
 void HarmonyVulkanRendererBackend::resizeFramebuffer(int width, int height) {
     Logger::info("HarmonyVulkan", "Resizing framebuffer to %dx%d", width, height);
-    
+
     if (width <= 0 || height <= 0) {
         Logger::warn("HarmonyVulkan", "Invalid framebuffer size: %dx%d, ignoring resize", width, height);
         return;
     }
-    
+
     // Update the renderable size
     size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-    
+
     // Request surface update if context is available
     if (context) {
         static_cast<vulkan::Context&>(*context).requestSurfaceUpdate();
@@ -273,66 +227,58 @@ void HarmonyVulkanRendererBackend::resizeFramebuffer(int width, int height) {
     }
 }
 
-PremultipliedImage HarmonyVulkanRendererBackend::readFramebuffer() {
-    try {
-        // Get the current framebuffer size
-        const auto& renderableSize = getDefaultRenderable().getSize();
-        const uint32_t width = renderableSize.width;
-        const uint32_t height = renderableSize.height;
-        
-        if (width == 0 || height == 0) {
-            Logger::warn("HarmonyVulkan", "Invalid framebuffer size for readback");
-            return PremultipliedImage(Size(2, 2));
-        }
-        
-        // TODO: Implement actual framebuffer readback for HarmonyOS
-        // This requires:
-        // 1. Creating a staging buffer
-        // 2. Copying the framebuffer image to the staging buffer
-        // 3. Mapping the staging buffer memory
-        // 4. Reading the pixel data
-        // 5. Converting to PremultipliedImage format
-        
-        Logger::warn("HarmonyVulkan", "Framebuffer readback not fully implemented yet");
-        
-        // For now, return a minimal image
-        // In production, this should copy the actual rendered content
-        return PremultipliedImage(Size(width, height));
-        
-    } catch (const std::exception& e) {
-        Logger::error("HarmonyVulkan", "Error reading framebuffer: %s", e.what());
-        return PremultipliedImage(Size(2, 2));
+void HarmonyVulkanRendererBackend::enableFramebufferRead(bool value) {
+    if (!value) {
+        return;
     }
+
+    // The core SurfaceRenderableResource copies the acquired swapchain image
+    // into a readback texture during the next swap.
+    if (hasResource()) {
+        getResource<HarmonyVulkanRenderableResource>().queueSurfaceRead();
+    }
+}
+
+PremultipliedImage HarmonyVulkanRendererBackend::readFramebuffer() {
+    if (!hasResource()) {
+        Logger::warn("HarmonyVulkan", "readFramebuffer called without a renderable resource");
+        return {};
+    }
+
+    auto image = getResource<HarmonyVulkanRenderableResource>().readImage();
+    if (!image) {
+        Logger::warn("HarmonyVulkan", "Framebuffer readback not queued for this frame");
+        return {};
+    }
+    return std::move(*image);
+}
+
+void HarmonyVulkanRendererBackend::cleanupBackend() {
+    Logger::info("HarmonyVulkan", "Cleaning up Vulkan backend resources");
+
+    // Drain pending frames before the surface/swapchain go away
+    if (context) {
+        try {
+            static_cast<vulkan::Context&>(*context).waitFrame();
+        } catch (const std::exception& e) {
+            Logger::warn("HarmonyVulkan", "waitFrame during cleanup failed: %s", e.what());
+        }
+    }
+    // Instance/device/swapchain teardown happens in the vulkan::RendererBackend
+    // and RenderableResource destructors.
+}
+
+std::string HarmonyVulkanRendererBackend::getRendererInfo() {
+    std::string info = "vulkan";
+    try {
+        const auto& props = getDeviceProperties();
+        info += " | ";
+        info += std::string(props.deviceName.data());
+    } catch (const std::exception& e) {
+        Logger::warn("HarmonyVulkan", "getRendererInfo failed: %s", e.what());
+    }
+    return info;
 }
 
 } // namespace harmony
-} // namespace mbgl
-
-// ============================================================================
-// Backend Factory Implementation
-// ============================================================================
-
-namespace mbgl {
-namespace gfx {
-
-/**
- * @brief Factory method specialization for creating HarmonyOS Vulkan backend
- * 
- * This template specialization is called when creating a Vulkan backend
- * with an OHNativeWindow parameter.
- */
-template <>
-std::unique_ptr<Backend> Backend::Create<Backend::Type::Vulkan>(OHNativeWindow* window) {
-    mbgl::Log::Info(mbgl::Event::Render, "Creating HarmonyOS Vulkan backend");
-    
-    if (!window) {
-        mbgl::Log::Error(mbgl::Event::Render, "Cannot create Vulkan backend with null window");
-        throw std::runtime_error("OHNativeWindow is null");
-    }
-    
-    auto backend = std::make_unique<mbgl::harmony::HarmonyVulkanRendererBackend>(window);
-    return std::unique_ptr<Backend>(backend.release());
-}
-
-} // namespace gfx
 } // namespace mbgl

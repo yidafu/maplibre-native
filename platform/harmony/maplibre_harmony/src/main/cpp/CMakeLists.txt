@@ -94,8 +94,6 @@ add_library(maplibre
     rendering/harmony_renderer.cpp
     rendering/harmony_map_render_thread.hpp
     rendering/harmony_map_render_thread.cpp
-    rendering/harmony_renderer_thread_manager.hpp
-    rendering/harmony_renderer_thread_manager.cpp
     rendering/backends/harmony_renderer_backend.hpp
     rendering/backends/harmony_renderer_backend.cpp
     rendering/egl/Render.h

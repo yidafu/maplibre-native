@@ -149,7 +149,8 @@ void HarmonyRenderer::resize(int width_, int height_) {
     width = width_;
     height = height_;
     
-    Logger::info("HarmonyRenderer", "🔍 resize() called: %dx%d", width_, height_);
+    // resize() fires on every layout pass (rotation, keyboard, folds) — keep quiet.
+    Logger::debug("HarmonyRenderer", "resize() called: %dx%d", width_, height_);
     
     if (mapRenderThread_) {
         // ✅ Critical fix: update both the backend framebuffer size and the map size
@@ -176,13 +177,6 @@ void HarmonyRenderer::requestRender() {
         return;
     }
     
-    static int totalCalls = 0;
-    auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    
-    Logger::warn("HarmonyRenderer", "🎬 [%lld ms] requestRender() #%d", elapsed, ++totalCalls);
-    
     // Trigger Map update which will call RendererFrontend::update
     if (mapRenderThread_) {
         mapRenderThread_->invoke([this]() {
@@ -197,6 +191,26 @@ void HarmonyRenderer::setRenderingMode(MapObserver::RenderMode mode) {
         return;
     }
     // Note: RenderMode handling may need to be implemented if needed
+}
+
+void HarmonyRenderer::setMaximumFps(int fps) {
+    if (!initialized) {
+        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        return;
+    }
+    if (mapRenderThread_) {
+        mapRenderThread_->setMaximumFps(fps);
+    }
+}
+
+void HarmonyRenderer::setRenderingRefreshMode(int refreshMode) {
+    if (!initialized) {
+        Log::Warning(Event::OpenGL, "HarmonyRenderer not initialized");
+        return;
+    }
+    if (mapRenderThread_) {
+        mapRenderThread_->setRenderingRefreshMode(refreshMode);
+    }
 }
 
 void HarmonyRenderer::pause() {
@@ -235,100 +249,55 @@ bool HarmonyRenderer::getTileCacheEnabled() const {
     return mapRenderThread_->getTileCacheEnabled();
 }
 
-void HarmonyRenderer::stopAllRequests() {
-    
+void HarmonyRenderer::pauseFileSources(const std::string& label) {
     try {
-        Logger::info("HarmonyRenderer", "[%s] Stopping all file source requests...", instanceId_.c_str());
-        
+        Logger::info("HarmonyRenderer", "[%s] Stopping all file source requests...", label.c_str());
+
         // Get FileSourceManager and pause all file sources
-        // This prevents new requests from starting and pauses active ones
+        // This prevents new requests from starting and pauses active ones.
+        // Static on purpose: file sources are process-wide singletons, so this
+        // touches no renderer state and is safe from any thread.
         auto* fileSourceManager = mbgl::FileSourceManager::get();
         if (fileSourceManager) {
             // Create empty ResourceOptions to get file sources
             mbgl::ResourceOptions resourceOptions;
             mbgl::ClientOptions clientOptions;
-            
+
             // Pause ResourceLoader (manages all other file sources)
             if (auto resourceLoader = fileSourceManager->getFileSource(
                     mbgl::FileSourceType::ResourceLoader, resourceOptions, clientOptions)) {
-                Logger::info("HarmonyRenderer", "[%s] Pausing ResourceLoader...", instanceId_.c_str());
+                Logger::info("HarmonyRenderer", "[%s] Pausing ResourceLoader...", label.c_str());
                 resourceLoader->pause();
             }
-            
+
             // Also pause Online and Database file sources directly for safety
             if (auto onlineSource = fileSourceManager->getFileSource(
                     mbgl::FileSourceType::Network, resourceOptions, clientOptions)) {
-                Logger::info("HarmonyRenderer", "[%s] Pausing Online file source...", instanceId_.c_str());
+                Logger::info("HarmonyRenderer", "[%s] Pausing Online file source...", label.c_str());
                 onlineSource->pause();
             }
-            
+
             if (auto databaseSource = fileSourceManager->getFileSource(
                     mbgl::FileSourceType::Database, resourceOptions, clientOptions)) {
-                Logger::info("HarmonyRenderer", "[%s] Pausing Database file source...", instanceId_.c_str());
+                Logger::info("HarmonyRenderer", "[%s] Pausing Database file source...", label.c_str());
                 databaseSource->pause();
             }
         }
-        
-        // Pause rendering to prevent new render requests
-        if (mapRenderThread_) {
-            Logger::info("HarmonyRenderer", "[%s] Pausing render thread...", instanceId_.c_str());
-            mapRenderThread_->pause();
-        }
-        
-        Logger::info("HarmonyRenderer", "[%s] All file source requests stopped successfully", instanceId_.c_str());
-        
+
+        Logger::info("HarmonyRenderer", "[%s] All file source requests stopped successfully", label.c_str());
+
     } catch (const std::exception& e) {
-        Logger::error("HarmonyRenderer", "[%s] Error stopping network requests: %s", instanceId_.c_str(), e.what());
+        Logger::error("HarmonyRenderer", "[%s] Error stopping network requests: %s", label.c_str(), e.what());
     } catch (...) {
-        Logger::error("HarmonyRenderer", "[%s] Unknown error stopping network requests", instanceId_.c_str());
+        Logger::error("HarmonyRenderer", "[%s] Unknown error stopping network requests", label.c_str());
     }
-    
 }
 
-void HarmonyRenderer::stopAllRequestsAsync(std::function<void()> onComplete) {
-    try {
-        const std::string instanceId = instanceId_;
-        
-        std::thread([this, onComplete = std::move(onComplete), instanceId]() mutable {
-            try {
-                Logger::info("HarmonyRenderer", "[%s] stopAllRequestsAsync worker started", instanceId.c_str());
-                
-                // 执行可能阻塞的清理逻辑，避免阻塞 UI 线程
-                stopAllRequests();
-                
-                if (mapRenderThread_) {
-                    // 等待渲染线程完成当前帧
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-                }
-                
-                // 等待 RunLoop 处理剩余任务
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                
-                // 等待资源加载线程停止
-                std::this_thread::sleep_for(std::chrono::milliseconds(150));
-                
-                Logger::info("HarmonyRenderer", "[%s] stopAllRequestsAsync worker finished", instanceId.c_str());
-            } catch (const std::exception& e) {
-                Logger::error("HarmonyRenderer", "[%s] Error in async stop: %s", instanceId.c_str(), e.what());
-            } catch (...) {
-                Logger::error("HarmonyRenderer", "[%s] Unknown error in async stop", instanceId.c_str());
-            }
-            
-            if (onComplete) {
-                onComplete();
-            }
-        }).detach();
-    } catch (const std::exception& e) {
-        Logger::error("HarmonyRenderer", "[%s] Error launching stopAllRequestsAsync worker: %s", instanceId_.c_str(), e.what());
-        if (onComplete) {
-            onComplete();
-        }
-    } catch (...) {
-        Logger::error("HarmonyRenderer", "[%s] Unknown error launching stopAllRequestsAsync worker", instanceId_.c_str());
-        if (onComplete) {
-            onComplete();
-        }
-    }
+void HarmonyRenderer::stopAllRequests() {
+    // Rendering is not paused here on purpose: callers either stop the render
+    // thread right after (cleanup()) or never touch it (async destroy worker).
+    // HarmonyMapRenderThread::stop() sets the pause flag itself.
+    pauseFileSources(instanceId_);
 }
 
 void HarmonyRenderer::cleanup() {
@@ -345,22 +314,22 @@ void HarmonyRenderer::cleanup() {
     
     // First stop all network requests (pause all file sources)
     stopAllRequests();
-    
-    // 🔑 Critical: Wait for active network callbacks to complete
-    // Network requests in OnlineFileSource thread may still be executing callbacks
-    // even after pause() is called. We need to give them time to finish to avoid
-    // accessing destroyed mutexes (SIGSEGV in pthread_mutex_lock)
+
+    // 🔑 Known limitation: wait for active network callbacks to complete.
+    // Not a synchronization primitive — OnlineFileSource callbacks may still
+    // run briefly after pause(); without this drain window they can touch
+    // state being torn down (historical SIGSEGV in pthread_mutex_lock).
+    // The deterministic barrier for renderer state is mapRenderThread_->stop()
+    // below, which joins the render thread.
     Logger::info("HarmonyRenderer", "[%s] Waiting for active network callbacks to complete...", instanceId_.c_str());
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    
+
     // Stop the Map+Render thread
     if (mapRenderThread_) {
         Logger::info("HarmonyRenderer", "[%s] Stopping Map+Render thread...", instanceId_.c_str());
         mapRenderThread_->stop();
-        
-        // Give render thread time to finish current frame
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        
+        // No extra wait here: stop() joins the render thread, which is the
+        // quiescence barrier for everything the thread was doing.
         mapRenderThread_.reset();
         Logger::info("HarmonyRenderer", "[%s] Map+Render thread stopped", instanceId_.c_str());
     }
@@ -546,6 +515,13 @@ HarmonyRendererBackendImpl* HarmonyRenderer::getRendererBackend() const {
     return nullptr;
 }
 
+std::string HarmonyRenderer::getRendererInfo() const {
+    if (!initialized || !mapRenderThread_) {
+        return "uninitialized";
+    }
+    return mapRenderThread_->getRendererInfo();
+}
+
 std::vector<Feature> HarmonyRenderer::queryRenderedFeatures(
     const ScreenCoordinate& point,
     const RenderedQueryOptions& options) const {
@@ -635,19 +611,22 @@ void HarmonyRenderer::requestSnapshot(SnapshotSuccessCallback success, SnapshotE
 
 // Scheduler interface implementation
 void HarmonyRenderer::schedule(std::function<void()>&& fn) {
-    // For now, execute immediately on the current thread
-    // In a real implementation, this would queue the function for execution
-    if (fn) {
-        fn();
+    // Scheduler contract: queue for deferred execution — never run inline on
+    // the caller's thread, or tasks expecting render-thread affinity would
+    // silently execute in the wrong place.
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "[%s] schedule() dropped: render thread not initialized", instanceId_.c_str());
+        return;
     }
+    mapRenderThread_->invoke(std::move(fn));
 }
 
 void HarmonyRenderer::schedule(const util::SimpleIdentity tag, std::function<void()>&& fn) {
-    // For now, execute immediately on the current thread
-    // In a real implementation, this would queue the function for execution with the given tag
-    if (fn) {
-        fn();
+    if (!mapRenderThread_) {
+        Logger::error("HarmonyRenderer", "[%s] schedule(tag) dropped: render thread not initialized", instanceId_.c_str());
+        return;
     }
+    mapRenderThread_->invoke(std::move(fn));
 }
 
 mapbox::base::WeakPtr<Scheduler> HarmonyRenderer::makeWeakPtr() {
@@ -655,11 +634,12 @@ mapbox::base::WeakPtr<Scheduler> HarmonyRenderer::makeWeakPtr() {
 }
 
 void HarmonyRenderer::runOnRenderThread(const util::SimpleIdentity tag, std::function<void()>&& fn) {
-    // For now, execute immediately on the current thread
-    // In a real implementation, this would queue the function for execution on the render thread
-    if (fn) {
-        fn();
+    if (!mapRenderThread_) {
+        Logger::error("Renderer", "[%s] Cannot runOnRenderThread(tag): thread is null", instanceId_.c_str());
+        return;
     }
+
+    mapRenderThread_->invoke(std::move(fn));
 }
 
 void HarmonyRenderer::runRenderJobs(const util::SimpleIdentity tag, bool closeQueue) {

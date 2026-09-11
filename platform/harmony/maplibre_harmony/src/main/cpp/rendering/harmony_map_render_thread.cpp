@@ -1,6 +1,4 @@
 #include "harmony_map_render_thread.hpp"
-#include "backends/harmony_gl_renderer_backend.hpp"
-#include "backends/egl_display_manager.hpp"
 #include "../utils/logger.h"
 
 #include <mbgl/gfx/backend_scope.hpp>
@@ -20,7 +18,7 @@ namespace harmony {
 std::atomic<uint64_t> HarmonyMapRenderThread::globalInstanceCounter_{0};
 
 HarmonyMapRenderThread::HarmonyMapRenderThread(
-    std::unique_ptr<gfx::Backend> backend,
+    std::unique_ptr<HarmonyRendererBackend> backend,
     float pixelRatio,
     MapObserver& observer,
     MapOptions&& mapOptions,
@@ -58,36 +56,49 @@ void HarmonyMapRenderThread::start() {
         Logger::error("MapRenderThread", "start() refused: already started");
         return;
     }
-    
+
     // Use a condition variable to wait for initialization to finish
     std::unique_lock<std::mutex> lock(mutex_);
-    
+
     // Launch the thread
     thread_ = std::thread([this]() {
         threadLoop();
     });
-    
-    // Wait for initialization to complete (up to 10 seconds)
+
+    // Assign the thread ID on the starting thread: the std::thread
+    // construction happens-before the thread function, so the new thread (and
+    // any JS-thread caller after start() returns) observes it without a race.
+    threadId_ = thread_.get_id();
+
+    // Wait for initialization to complete (up to 10 seconds); a failed
+    // initialization reports through initFailed_ instead of stalling here.
     auto timeout = std::chrono::seconds(10);
-    if (!cv_.wait_for(lock, timeout, [this]() { return initialized_.load(); })) {
+    if (!cv_.wait_for(lock, timeout, [this]() {
+            return initialized_.load() || initFailed_.load();
+        })) {
         Logger::error("MapRenderThread", "Thread initialization timeout!");
         throw std::runtime_error("MapRenderThread initialization timeout");
+    }
+
+    if (!initialized_.load()) {
+        Logger::error("MapRenderThread", "Thread initialization failed");
+        throw std::runtime_error("MapRenderThread initialization failed");
     }
 }
 
 void HarmonyMapRenderThread::threadLoop() {
-    // 🎯 Mark the current thread as the render thread
-    threadId_ = std::this_thread::get_id();
+    // 🎯 Mark the current thread as the render thread (threadId_ was assigned
+    // by start() before this function could run)
     started_ = true;
-    
+
     try {
         // Initialize all components
         if (!initialize()) {
             Logger::error("MapRenderThread", "Initialization failed");
-            // Notify that initialization failed
+            // Notify that initialization failed so start() can fail fast
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                initialized_ = false;
+                initFailed_ = true;
             }
             cv_.notify_one();
             return;
@@ -146,14 +157,14 @@ bool HarmonyMapRenderThread::initialize() {
         util::SimpleIdentity::Empty
     );
     
-    // Step 3: create the Renderer (does not require an EGL context yet)
-    auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-    if (!glBackend) {
-        Logger::error("MapRenderThread", "Invalid GL backend");
+    // Step 3: create the Renderer (does not require a context yet)
+    auto* backend = backend_.get();
+    if (!backend) {
+        Logger::error("MapRenderThread", "Invalid rendering backend");
         return false;
     }
-    
-    gfx::RendererBackend& backendImpl = glBackend->getImpl();
+
+    gfx::RendererBackend& backendImpl = backend->getImpl();
     renderer_ = std::make_unique<Renderer>(backendImpl, pixelRatio_, localIdeographFontFamily_);
     if (!renderer_) {
         Logger::error("MapRenderThread", "Failed to create Renderer");
@@ -190,16 +201,9 @@ void HarmonyMapRenderThread::cleanup() {
         renderer_.reset();
     }
     
-    // Clean up EGL resources
+    // Release backend resources (EGL context/surface or Vulkan device work)
     if (backend_) {
-        auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-        glBackend->cleanupEGL();
-        
-        // ⚡ Critical fix: manually unregister the instance
-        // Reason: gfx::Backend lacks a virtual destructor, so backend_.reset() does not invoke the subclass destructor
-        // We must call unregisterInstance() manually to decrement the active-count
-        EGLDisplayManager::getInstance().unregisterInstance();
-        
+        backend_->cleanupBackend();
         backend_.reset();
     }
     
@@ -238,7 +242,14 @@ void HarmonyMapRenderThread::stop() {
         vsyncManager_->stop();
     }
     pendingRender_ = false;
-    pendingUpdateParams_.reset();
+    // pendingUpdateParams_ is a shared_ptr the render thread reads in
+    // update()/onVSyncFrame(); reset it ON the render thread instead of here
+    // to keep the access serialized (stop() runs on the JS thread).
+    if (runLoop_) {
+        runLoop_->invoke([this]() {
+            pendingUpdateParams_.reset();
+        });
+    }
     
     // ✅ Step 3: clean up Map and Renderer on the render thread
     // Ensure all mailbox messages are processed before destruction
@@ -382,8 +393,7 @@ void HarmonyMapRenderThread::update(std::shared_ptr<UpdateParameters> params) {
             // Execute here instead of calling onVSyncFrame() to avoid thread scheduling issues
             if (params && renderer_ && backend_) {
                 try {
-                    auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-                    gfx::BackendScope scope{glBackend->getImpl()};
+                    gfx::BackendScope scope{backend_->getImpl()};
                     renderer_->render(params);
                 } catch (const std::exception& e) {
                     Logger::error("MapRenderThread", "Immediate render failed: %s", e.what());
@@ -422,20 +432,19 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
         return;
     }
     
-    // ⚠️ Critical fix: perform all EGL operations on the render thread
-    // This includes initializing the display, surface, and context
+    // ⚠️ Critical fix: perform all window-binding operations on the render thread
+    // This includes initializing the display/surface (GL) or instance/surface/swapchain (Vulkan)
     invoke([this, window]() {
         nativeWindow_ = window;
-        
-        auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-        
-        // If EGL resources already exist, clean them up before rebuilding to avoid reusing state across sessions
-        // This relies on the backend's setNativeWindow implementation being idempotent
-        // Step 1: initialize the display and surface on the render thread
-        Logger::info("MapRenderThread", "Initializing EGL Display and Surface on render thread...");
-        glBackend->setNativeWindow(window);
-        if (!glBackend->hasValidSurface()) {
-            Logger::error("MapRenderThread", "Failed to initialize EGL surface; rendering remains paused");
+
+        // If backend resources already exist, the backends rebuild them before
+        // binding the new window (their setNativeWindow implementations are
+        // idempotent for repeated calls)
+        // Step 1: initialize the backend surface on the render thread
+        Logger::info("MapRenderThread", "Initializing backend surface on render thread...");
+        backend_->setNativeWindow(window);
+        if (!backend_->hasValidSurface()) {
+            Logger::error("MapRenderThread", "Failed to initialize rendering surface; rendering remains paused");
             paused_ = true;
             return;
         }
@@ -477,10 +486,7 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
         
         // ✅ If we have a remembered size, apply it immediately and trigger an initial render
         if (lastWidth_ > 0 && lastHeight_ > 0) {
-            auto* glBackend2 = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-            if (glBackend2) {
-                glBackend2->resizeFramebuffer(lastWidth_, lastHeight_);
-            }
+            backend_->resizeFramebuffer(lastWidth_, lastHeight_);
             if (map_) {
                 map_->setSize(Size{static_cast<uint32_t>(lastWidth_), static_cast<uint32_t>(lastHeight_)});
             }
@@ -506,6 +512,12 @@ void HarmonyMapRenderThread::resume() {
     invoke([this]() {
         pendingRender_ = false;
         pendingUpdateParams_.reset();
+        // CONTINUOUS mode needs an explicit kick: the pump died while paused
+        // because onVSyncFrame() returns early before re-arming VSync.
+        if (refreshMode_.load(std::memory_order_relaxed) == 0
+            && vsyncManager_ && vsyncManager_->isAvailable()) {
+            vsyncManager_->requestFrame([this]() { onVSyncFrame(); });
+        }
     });
 }
 
@@ -520,9 +532,15 @@ gfx::RendererBackend& HarmonyMapRenderThread::getRendererBackend() {
     if (!backend_) {
         throw std::runtime_error("Backend not initialized");
     }
-    
-    auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-    return glBackend->getImpl();
+
+    return backend_->getImpl();
+}
+
+std::string HarmonyMapRenderThread::getRendererInfo() {
+    if (!backend_) {
+        return "uninitialized";
+    }
+    return backend_->getRendererInfo();
 }
 
 void HarmonyMapRenderThread::resizeFramebuffer(int width, int height) {
@@ -535,13 +553,8 @@ void HarmonyMapRenderThread::resizeFramebuffer(int width, int height) {
             Logger::error("MapRenderThread", "Backend not initialized, cannot resize");
             return;
         }
-        
-        auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-        if (glBackend) {
-            glBackend->resizeFramebuffer(width, height);
-        } else {
-            Logger::error("MapRenderThread", "Invalid backend type");
-        }
+
+        backend_->resizeFramebuffer(width, height);
     });
 }
 
@@ -796,10 +809,16 @@ FeatureExtensionValue HarmonyMapRenderThread::queryFeatureExtensions(
 }
 
 void HarmonyMapRenderThread::setOnFpsChangedCallback(std::function<void(double)> callback) {
-    fpsCallback_ = std::move(callback);
-    measureFps_ = (fpsCallback_ != nullptr);
+    auto next = callback ? std::make_shared<std::function<void(double)>>(std::move(callback)) : nullptr;
+    {
+        std::lock_guard<std::mutex> lock(fpsCallbackMutex_);
+        fpsCallback_ = std::move(next);
+    }
+    measureFps_ = (callback != nullptr);
+    // lastFrameTime_ is intentionally NOT touched here: it is only accessed on
+    // the render thread, which records the start time on the first measured
+    // frame after enabling.
     if (measureFps_) {
-        lastFrameTime_ = std::chrono::steady_clock::now();
         Logger::info("MapRenderThread", "FPS measurement enabled");
     } else {
         Logger::info("MapRenderThread", "FPS measurement disabled");
@@ -808,8 +827,49 @@ void HarmonyMapRenderThread::setOnFpsChangedCallback(std::function<void(double)>
 
 void HarmonyMapRenderThread::enableFpsMeasurement(bool enable) {
     measureFps_ = enable;
-    if (enable && !fpsCallback_) {
-        Logger::warn("MapRenderThread", "FPS measurement enabled but no callback set");
+    if (enable) {
+        std::lock_guard<std::mutex> lock(fpsCallbackMutex_);
+        if (!fpsCallback_) {
+            Logger::warn("MapRenderThread", "FPS measurement enabled but no callback set");
+        }
+    }
+}
+
+void HarmonyMapRenderThread::setMaximumFps(int fps) {
+    // 0 (or negative) disables the limit: render at the display refresh rate
+    const uint32_t clamped = (fps <= 0) ? 0 : static_cast<uint32_t>(fps);
+    maximumFps_.store(clamped, std::memory_order_relaxed);
+    if (clamped == 0) {
+        Logger::info("MapRenderThread", "Maximum FPS: unlimited");
+    } else {
+        Logger::info("MapRenderThread", "Maximum FPS: %d", fps);
+    }
+}
+
+void HarmonyMapRenderThread::setRenderingRefreshMode(int mode) {
+    if (mode != 0 && mode != 1) {
+        Logger::warn("MapRenderThread", "setRenderingRefreshMode: invalid mode %d", mode);
+        return;
+    }
+
+    const int previous = refreshMode_.exchange(mode, std::memory_order_relaxed);
+    if (previous == mode) {
+        return;
+    }
+    Logger::info("MapRenderThread", "Rendering refresh mode: %s",
+                 (mode == 0) ? "CONTINUOUS" : "WHEN_DIRTY");
+
+    if (mode == 0 && !paused_.load()) {
+        // Entering CONTINUOUS: the frame pump may be asleep (WHEN_DIRTY stops
+        // re-arming VSync once the map is idle), so kick one tick to restart it.
+        invoke([this]() {
+            if (destroying_.load() || paused_.load()) {
+                return;
+            }
+            if (vsyncManager_ && vsyncManager_->isAvailable()) {
+                vsyncManager_->requestFrame([this]() { onVSyncFrame(); });
+            }
+        });
     }
 }
 
@@ -858,6 +918,21 @@ void HarmonyMapRenderThread::requestSnapshot(SnapshotSuccessCallback success, Sn
 
 // ==================== VSync control ====================
 
+bool HarmonyMapRenderThread::shouldThrottleFrame() {
+    const uint32_t maxFps = maximumFps_.load(std::memory_order_relaxed);
+    if (maxFps == 0) {
+        return false;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    const auto minInterval = std::chrono::nanoseconds(1000000000LL / static_cast<int64_t>(maxFps));
+    if (now - lastFrameDeadline_ < minInterval) {
+        return true;
+    }
+    lastFrameDeadline_ = now;
+    return false;
+}
+
 void HarmonyMapRenderThread::onVSyncFrame() {
     // ✅ Check the destruction flag (must happen before assertions!)
     if (destroying_.load()) {
@@ -886,6 +961,22 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     
     // Fetch the pending render parameters
     if (!pendingRender_.load()) {
+        // Stray VSync tick with no pending work: ask the Map for a repaint so
+        // the pipeline cannot stall (the Map decides whether anything changed).
+        // In CONTINUOUS mode this branch is what keeps the frame pump running.
+        if (map_) {
+            map_->triggerRepaint();
+        }
+        return;
+    }
+    
+    // FPS limiting (frame pacing): a tick that arrives sooner than the
+    // configured frame interval is skipped; the pending render is retried
+    // on the next VSync tick (Android paces equivalently via post-render sleep).
+    if (shouldThrottleFrame()) {
+        if (vsyncManager_ && vsyncManager_->isAvailable()) {
+            vsyncManager_->requestFrame([this]() { onVSyncFrame(); });
+        }
         return;
     }
     
@@ -903,11 +994,12 @@ void HarmonyMapRenderThread::onVSyncFrame() {
             // Begin frame timing
             auto frameStartTime = std::chrono::steady_clock::now();
             
-            auto* glBackend = static_cast<HarmonyGLRendererBackend*>(backend_.get());
-            gfx::BackendScope scope{glBackend->getImpl()};
-            
-            renderer_->render(params);
-            
+            auto* backend = backend_.get();
+            gfx::BackendScope scope{backend->getImpl()};
+
+            // Claim a pending snapshot before rendering so backends that need to
+            // queue a readback (Vulkan copies the swapchain image during swap)
+            // prepare for this frame; GL reads the surface after present anyway.
             bool shouldCapture = false;
             {
                 std::lock_guard<std::mutex> lock(snapshotMutex_);
@@ -920,10 +1012,15 @@ void HarmonyMapRenderThread::onVSyncFrame() {
                     snapshotErrorCallback_ = nullptr;
                 }
             }
-            
+            if (shouldCapture) {
+                backend->enableFramebufferRead(true);
+            }
+
+            renderer_->render(params);
+
             if (shouldCapture) {
                 try {
-                    auto image = glBackend->readFramebuffer();
+                    auto image = backend->readFramebuffer();
                     snapshotImage = std::make_unique<mbgl::PremultipliedImage>(std::move(image));
                 } catch (const std::exception& e) {
                     if (snapshotError) {
@@ -932,19 +1029,34 @@ void HarmonyMapRenderThread::onVSyncFrame() {
                 }
             }
             
-            // FPS measurement (mirrors Android MapRenderer::updateFps)
-            if (measureFps_.load() && fpsCallback_) {
-                auto currentTime = std::chrono::steady_clock::now();
-                auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    currentTime - lastFrameTime_).count();
-                
-                if (elapsedNanos > 0) {
-                    // Compute FPS: fps = 1E9 / elapsed_nanoseconds
-                    double fps = 1.0e9 / static_cast<double>(elapsedNanos);
-                    fpsCallback_(fps);
+            // FPS measurement (mirrors Android MapRenderer)
+            if (measureFps_.load()) {
+                // Copy the shared_ptr under the lock, then invoke the copy: a
+                // concurrent setOnFpsChangedCallback may swap the slot but the
+                // referenced function object stays alive for this invocation.
+                std::shared_ptr<std::function<void(double)>> fpsCb;
+                {
+                    std::lock_guard<std::mutex> lock(fpsCallbackMutex_);
+                    fpsCb = fpsCallback_;
                 }
-                
-                lastFrameTime_ = currentTime;
+                auto currentTime = std::chrono::steady_clock::now();
+
+                if (lastFrameTime_ == std::chrono::steady_clock::time_point{}) {
+                    // First measured frame after enabling: record the start
+                    // time only, so we never report a bogus interval.
+                    lastFrameTime_ = currentTime;
+                } else {
+                    auto elapsedNanos = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        currentTime - lastFrameTime_).count();
+
+                    if (fpsCb && elapsedNanos > 0) {
+                        // Compute FPS: fps = 1E9 / elapsed_nanoseconds
+                        double fps = 1.0e9 / static_cast<double>(elapsedNanos);
+                        (*fpsCb)(fps);
+                    }
+
+                    lastFrameTime_ = currentTime;
+                }
             }
         } catch (const std::exception& e) {
             Logger::error("MapRenderThread", "Render failed on VSync: %s", e.what());
@@ -963,6 +1075,15 @@ void HarmonyMapRenderThread::onVSyncFrame() {
     
     if (snapshotImage && snapshotSuccess) {
         snapshotSuccess(std::move(*snapshotImage), pixelRatio_);
+    }
+    
+    // CONTINUOUS mode: re-arm VSync even when the Map has no further work —
+    // the next tick falls into the triggerRepaint branch above, closing the
+    // pump loop. WHEN_DIRTY relies on update() to re-arm, so the loop sleeps
+    // until the content changes (saves power).
+    if (refreshMode_.load(std::memory_order_relaxed) == 0
+        && vsyncManager_ && vsyncManager_->isAvailable()) {
+        vsyncManager_->requestFrame([this]() { onVSyncFrame(); });
     }
 }
 

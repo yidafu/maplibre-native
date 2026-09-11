@@ -97,7 +97,10 @@ EGLDisplay EGLDisplayManager::acquireDisplay() {
 }
 
 EGLDisplay EGLDisplayManager::getDisplay() const {
-    // No lock required: read-only access (sharedDisplay_ remains stable until cleanup)
+    // Lock: sharedDisplay_ is written under the mutex by initialize/cleanup,
+    // and cleanup can run concurrently with a still-live render thread's
+    // health checks.
+    std::lock_guard<std::mutex> lock(mutex_);
     return sharedDisplay_;
 }
 

@@ -5,7 +5,8 @@ target_compile_definitions(
 )
 
 # Conditionally set rendering backend macro
-# Ensure only one backend is enabled
+# Backend selection is decided at compile time; GL and Vulkan are built as
+# separate artifacts (use scripts/build-harmony.sh --backend to switch).
 if(MLN_WITH_VULKAN AND MLN_WITH_OPENGL)
     message(FATAL_ERROR "Cannot enable both Vulkan and OpenGL backends. Please set only one to ON.")
 endif()

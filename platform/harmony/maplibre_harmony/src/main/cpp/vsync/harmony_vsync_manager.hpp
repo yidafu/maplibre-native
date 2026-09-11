@@ -73,6 +73,10 @@ private:
     FrameCallback pendingCallback_;
     std::mutex callbackMutex_;
     std::atomic<bool> stopped_{false};
+    // executeCallback runs on the system VSync thread and calls into the raw
+    // render-thread RunLoop pointer; stop() must wait this counter out before
+    // letting the owner destroy that RunLoop.
+    std::atomic<int> inFlightDispatches_{0};
     uint64_t ownerInstanceId_{0};
     
     /**

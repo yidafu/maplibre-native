@@ -831,6 +831,13 @@ export class NativeMapView {
    */
   isDebugActive(): boolean;
 
+  /**
+   * Get a description of the active rendering backend and GPU.
+   * The backend is chosen at compile time (MLN_WITH_OPENGL / MLN_WITH_VULKAN).
+   * @returns Backend and device info, e.g. "vulkan | Mali-G78".
+   */
+  getRendererInfo(): string;
+
   // ========== Action Journal ==========
 
   /**
@@ -1183,12 +1190,16 @@ export class NativeMapView {
 
   /**
    * Set the maximum frames per second (similar to Android MapView.setMaximumFps).
-   * @param maximumFps Maximum FPS, for example 30 or 60.
+   * The render loop skips VSync ticks that arrive sooner than 1/fps.
+   * @param maximumFps Maximum FPS, for example 30 or 60. Pass 0 to disable
+   * the limit and render at the display refresh rate (default).
    */
   setMaximumFps(maximumFps: number): void;
 
   /**
    * Set the rendering refresh mode (similar to Android MapView.setRenderingRefreshMode).
+   * CONTINUOUS keeps rendering every VSync tick even when the map is idle;
+   * WHEN_DIRTY renders only when the map content changes (default, saves power).
    * @param mode Rendering mode: 0 = CONTINUOUS, 1 = WHEN_DIRTY.
    */
   setRenderingRefreshMode(mode: number): void;
@@ -1715,11 +1726,28 @@ export interface MapSnapshotterNAPI {
 
   /**
    * Add an image to the snapshot style.
+   *
+   * Supported forms:
+   * - addImage(name, icon, sdf?) — an Icon created by IconFactory.
+   * - addImage(name, image, sdf?) — a style Image object.
+   * - addImage(name, buffer, width, height, pixelRatio?, sdf?) — raw RGBA
+   *   (premultiplied) pixels; buffer byte length must equal width*height*4.
+   *
    * @param name Image name.
-   * @param imageData Image data.
-   * @param sdf Whether the image is an SDF icon.
+   * @param imageData Icon, Image object, or raw RGBA pixel data.
+   * @param widthOrSdf Width in pixels (raw form) or SDF flag (object form).
+   * @param height Height in pixels (raw form only).
+   * @param pixelRatioOrSdf Pixel ratio (raw form) or SDF flag (object form).
+   * @param sdf Whether the image is an SDF icon (raw form only).
    */
-  addImage(name: string, imageData: ArrayBuffer | Uint8Array, sdf: boolean): void;
+  addImage(
+    name: string,
+    imageData: ArrayBuffer | Uint8Array | Icon | Image,
+    widthOrSdf?: number | boolean,
+    height?: number,
+    pixelRatioOrSdf?: number | boolean,
+    sdf?: boolean
+  ): void;
 }
 
 /**

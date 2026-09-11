@@ -14,6 +14,10 @@ PremultipliedImage HarmonyRendererBackend::readFramebuffer() {
 
 void HarmonyRendererBackend::markContextLost() {}
 
+std::string HarmonyRendererBackend::getRendererInfo() {
+    return backendTypeName();
+}
+
 void HarmonyRendererBackend::setSwapBehavior(gfx::Renderable::SwapBehaviour swapBehaviour_) {
     swapBehaviour = swapBehaviour_;
 }

@@ -100,8 +100,8 @@ private:
     // Maximum concurrent map instances (based on HarmonyOS system limits)
     static constexpr int MAX_CONCURRENT_INSTANCES = 4;
 
-    // Thread-safety guard
-    std::mutex mutex_;
+    // Thread-safety guard (mutable: getDisplay() is const and hot)
+    mutable std::mutex mutex_;
 
     // Shared EGL Display
     EGLDisplay sharedDisplay_ = EGL_NO_DISPLAY;
