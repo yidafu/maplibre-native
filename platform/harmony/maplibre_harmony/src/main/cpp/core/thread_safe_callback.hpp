@@ -3,6 +3,7 @@
 #include "napi/native_api.h"
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace mbgl {
@@ -18,17 +19,25 @@ namespace harmony {
  * ```cpp
  * // Create on the UI thread
  * auto callback = ThreadSafeCallback::Create(env, jsCallback, "onMapLoaded");
- * 
+ *
  * // Call from the render thread
  * callback->Call([](napi_env env) {
  *     napi_value result;
  *     napi_create_string_utf8(env, "Map loaded", NAPI_AUTO_LENGTH, &result);
  *     return result;
  * });
- * 
+ *
  * // Destroy (automatically handled in destructor)
  * callback->Release();
  * ```
+ *
+ * Thread-safety notes:
+ * - Call()/Release() may race; the underlying tsfn pointer is guarded by a mutex and the
+ *   N-API call happens under that lock, so a call can never land on a released tsfn.
+ * - The queue is bounded: when the JS thread stalls, overflow events are dropped instead of
+ *   growing without limit. Use CallBlocking() for one-shot completions that must not drop.
+ * - CallJS opens a handle scope; without one every napi_create_* handle made in the builder
+ *   would accumulate for the lifetime of the engine.
  */
 class ThreadSafeCallback {
 public:
@@ -39,7 +48,7 @@ public:
      * @return Callback argument (napi_value)
      */
     using DataBuilder = std::function<napi_value(napi_env env)>;
-    
+
     /**
      * Create a thread-safe callback.
      *
@@ -53,49 +62,73 @@ public:
         napi_value callback,
         const char* resourceName
     );
-    
+
     ~ThreadSafeCallback();
-    
+
     // Disable copying
     ThreadSafeCallback(const ThreadSafeCallback&) = delete;
     ThreadSafeCallback& operator=(const ThreadSafeCallback&) = delete;
-    
+
     /**
-     * Invoke the callback from any thread.
+     * Invoke the callback from any thread. Non-blocking: when the bounded queue is
+     * full the event is dropped (with a rate-limited warning).
      *
      * @param builder Data builder executed on the UI thread
      * @return True if dispatch succeeded
      */
     bool Call(DataBuilder builder);
-    
+
+    /**
+     * Invoke the callback from any thread, blocking until the event is queued.
+     * Use for one-shot completions (destroy callbacks, etc.) that must not be dropped.
+     *
+     * Constraint: only for sparsely-used callbacks (a one-shot completion) — if the
+     * queue were saturated while the JS thread concurrently blocked in Release(),
+     * neither could make progress. Never use on high-frequency callbacks.
+     */
+    bool CallBlocking(DataBuilder builder);
+
     /**
      * Convenience call with a single string argument.
      */
     bool CallWithString(const std::string& value);
-    
+
     /**
      * Convenience call with an object argument.
      */
     bool CallWithObject(const std::function<void(napi_env, napi_value)>& buildObject);
-    
+
     /**
      * Convenience call with no arguments.
      */
     bool CallEmpty();
-    
+
+    /**
+     * Run a task on the JS (env) thread without needing a JavaScript callback up front.
+     *
+     * Creates an ephemeral threadsafe function around a native stub and dispatches the
+     * task through it. The task runs on the JS thread with a valid napi_env — required
+     * for any N-API reference work (e.g. napi_delete_reference) triggered from worker
+     * threads. The task is always executed or (on shutdown) destroyed; it must not
+     * outlive objects it captures.
+     *
+     * @return True if the task was queued (or, on env/thread errors, false).
+     */
+    static bool DispatchTask(napi_env env, std::function<void(napi_env)> task);
+
     /**
      * Release resources (may be called explicitly; destructor also releases).
      */
     void Release();
-    
+
     /**
      * Check whether the callback remains valid.
      */
-    bool IsValid() const { return tsfn_ != nullptr; }
-    
+    bool IsValid() const;
+
 private:
     ThreadSafeCallback() = default;
-    
+
     /**
      * Initialize the underlying ThreadSafeFunction.
      */
@@ -104,16 +137,18 @@ private:
         napi_value callback,
         const char* resourceName
     );
-    
+
+    bool DispatchInternal(DataBuilder builder, bool blocking);
+
     /**
      * Wrapper for callback data.
      */
     struct CallbackData {
         DataBuilder builder;
-        
+
         explicit CallbackData(DataBuilder b) : builder(std::move(b)) {}
     };
-    
+
     /**
      * N-API callback executed on the UI thread.
      */
@@ -123,7 +158,7 @@ private:
         void* context,
         void* data
     );
-    
+
     /**
      * ThreadSafeFunction finalizer.
      */
@@ -132,11 +167,11 @@ private:
         void* finalize_data,
         void* finalize_hint
     );
-    
-    napi_threadsafe_function tsfn_ = nullptr;
+
+    mutable std::mutex mutex_;
+    napi_threadsafe_function tsfn_ = nullptr;  // guarded by mutex_
     std::string resourceName_;
 };
 
 } // namespace harmony
 } // namespace mbgl
-

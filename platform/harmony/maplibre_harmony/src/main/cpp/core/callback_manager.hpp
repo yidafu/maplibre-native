@@ -2,6 +2,7 @@
 
 #include "thread_safe_callback.hpp"
 #include "napi/native_api.h"
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <memory>
@@ -153,7 +154,11 @@ private:
     // Note: napi_delete_reference for callbackRef must be called on the main thread
     // with a valid env. CallbackManager::Clear() handles this explicitly.
     struct CallbackEntry {
-        std::unique_ptr<ThreadSafeCallback> tsfn;
+        // shared_ptr (not unique_ptr): InvokeCallback() collects entries under
+        // the lock and calls them after unlocking — a concurrent
+        // Unregister/Clear on the JS thread must not free a callback the
+        // render thread is about to invoke.
+        std::shared_ptr<ThreadSafeCallback> tsfn;
         napi_ref callbackRef = nullptr;  // persistent reference for identity comparison
     };
 
@@ -164,7 +169,8 @@ private:
     mutable std::mutex mutex_;
 
     // Indicates whether callbacks have been cleared
-    bool cleared_ = false;
+    // (atomic: read without the lock on the invoke fast path)
+    std::atomic<bool> cleared_{false};
 
     // Helper: compare a stored napi_ref with a live napi_value callback for equality
     bool AreCallbacksEqual(napi_ref storedRef, napi_value callback) const;

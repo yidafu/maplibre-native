@@ -82,7 +82,8 @@ bool CallbackManager::UnregisterCallback(const std::string& name) {
     
     auto it = callbacks_.find(name);
     if (it == callbacks_.end()) {
-        Logger::warn("CallbackManager", "Callback not found: %s", name.c_str());
+        // Silent fast-path: per-frame events (camera moves, render frames) fire
+        // whether or not anyone listens — logging here spams the hot path.
         return false;
     }
     
@@ -152,15 +153,18 @@ bool CallbackManager::InvokeCallback(
     
     auto it = callbacks_.find(name);
     if (it == callbacks_.end()) {
-        Logger::warn("CallbackManager", "Callback not found: %s", name.c_str());
+        // Silent fast-path: per-frame events (camera moves, render frames) fire
+        // whether or not anyone listens — logging here spams the hot path.
         return false;
     }
     
-    // Collect raw pointers to callbacks (avoid invoking while holding the lock)
-    std::vector<ThreadSafeCallback*> callbackPtrs;
+    // Collect shared_ptr copies (requires holding the lock) — a concurrent
+    // Unregister/Clear on the JS thread may destroy map entries, so raw
+    // pointers would dangle once the lock is released.
+    std::vector<std::shared_ptr<ThreadSafeCallback>> callbackPtrs;
     callbackPtrs.reserve(it->second.size());
     for (const auto& entry : it->second) {
-        callbackPtrs.push_back(entry.tsfn.get());
+        callbackPtrs.push_back(entry.tsfn);
     }
     
     // Release the lock
@@ -176,7 +180,7 @@ bool CallbackManager::InvokeCallback(
             allSucceeded = false;
         }
     }
-    
+
     return allSucceeded;
 }
 
