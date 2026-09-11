@@ -1,315 +1,177 @@
 /**
- * Camera Position Test Page
- * 相机位置控制测试页面
- * 
- * 参考: platform/android/MapLibreAndroidTestApp/src/main/java/org/maplibre/android/testapp/activity/camera/CameraPositionActivity.kt
- * 
- * 功能：
- * - 监听相机变化事件（onCameraWillChange, onCameraIsChanging, onCameraDidChange）
- * - 显示相机状态指示器
- * - 弹窗展示和修改相机位置参数（经纬度、缩放、倾斜、方位角）
- * - 动画相机移动
+ * CameraPositionTestPage - Set camera position and zoom.
+ *
+ * Reference: Android CameraPositionActivity
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
-import { promptAction } from '@kit.ArkUI';
+import { MapView, MapLibreMap, CameraState } from 'maplibre_harmony';
+import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 @Entry
 @Component
 struct CameraPositionTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private cameraStatus: string = '静止';
-  @State private statusColor: string = '#4CAF50';
-  @State private latitude: number = 39.9042;
-  @State private longitude: number = 116.4074;
-  @State private zoom: number = 12;
+  @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Ready';
+  @State private lat: number = 30.2741;
+  @State private lng: number = 120.1551;
+  @State private zoom: number = 8;
   @State private bearing: number = 0;
   @State private pitch: number = 0;
-  @State private listenersEnabled: boolean = false;
-  
+
   aboutToDisappear() {
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[CameraPositionTestPage] onMapReady');
     this.mapController = map;
-    map.jumpTo(0, this.latitude, this.longitude, 0, this.zoom);
-    
-    this.updateCameraInfo();
-    showToast('相机位置监听已激活');
+    this.isMapReady = true;
+    this.refreshCameraState();
   };
-  
-  /**
-   * 启用/禁用相机监听器
-   */
-  private toggleListeners = (): void => {
-    this.listenersEnabled = !this.listenersEnabled;
-    
-    if (this.listenersEnabled) {
-      // 在实际实现中，这里应该注册相机监听器
-      // 由于当前 MapLibreMap API 可能不直接暴露这些监听器，
-      // 我们提供UI演示
-      this.cameraStatus = '监听已启用';
-      this.statusColor = '#2196F3';
-      showToast('相机监听器已启用');
-    } else {
-      this.cameraStatus = '监听已禁用';
-      this.statusColor = '#999';
-      showToast('相机监听器已禁用');
-    }
-  };
-  
-  /**
-   * 更新相机信息
-   */
-  private updateCameraInfo = (): void => {
+
+  private refreshCameraState(): void {
     if (!this.mapController) return;
-    
-    try {
-      const latLng = this.mapController.getLatLng();
-      const zoom = this.mapController.getZoom();
-      const bearing = this.mapController.getBearing();
-      const pitch = this.mapController.getPitch();
-      
-      this.latitude = latLng.latitude;
-      this.longitude = latLng.longitude;
-      this.zoom = zoom;
-      this.bearing = bearing;
-      this.pitch = pitch;
-    } catch (error) {
-      console.error('[CameraPositionTestPage] Failed to get camera info:', error);
-    }
-  };
-  
-  /**
-   * 执行相机动画
-   */
-  private animateCamera = (): void => {
-    if (!this.mapController) return;
-    
-    // 模拟相机状态变化
-    this.cameraStatus = '移动中...';
-    this.statusColor = '#FF9800';
-    
-    // 动画到新位置（上海）
-    this.mapController.easeTo(31.2304, 121.4737, 0, 13, 2000);
-    
-    // 更新状态
-    setTimeout(() => {
-      this.cameraStatus = '动画完成';
-      this.statusColor = '#4CAF50';
-      this.updateCameraInfo();
-    }, 2000);
-    
-    showToast('相机动画开始');
-  };
-  
-  /**
-   * 重置相机位置
-   */
-  private resetCamera = (): void => {
-    if (!this.mapController) return;
-    
-    this.cameraStatus = '重置中...';
-    this.statusColor = '#2196F3';
-    
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
-    
-    setTimeout(() => {
-      this.cameraStatus = '已重置';
-      this.statusColor = '#4CAF50';
-      this.updateCameraInfo();
-    }, 100);
-    
-    showToast('相机已重置');
-  };
-  
-  /**
-   * 显示相机参数对话框
-   */
-  private showCameraDialog = (): void => {
-    promptAction.showDialog({
-      title: '相机位置参数',
-      message: `纬度: ${this.latitude.toFixed(6)}\n` +
-               `经度: ${this.longitude.toFixed(6)}\n` +
-               `缩放: ${this.zoom.toFixed(2)}\n` +
-               `方位角: ${this.bearing.toFixed(2)}°\n` +
-               `倾斜角: ${this.pitch.toFixed(2)}°`,
-      buttons: [
-        { text: '关闭', color: '#666' }
-      ]
-    });
-  };
-  
-  @Builder
-  mapContentBuilder() {
-    Stack() {
-      MapView({
-        onMapReady: this.onMapReady,
-        styleUrl: DEFAULT_STYLE_URLS.bright,
-        initialLatitude: 39.9,
-        initialLongitude: 116.4,
-        initialZoom: 10
-      })
-        .width('100%')
-        .height('100%')
-      
-      // 状态指示器（浮动在地图上）
-      Column() {
-        Row() {
-          Circle({ width: 12, height: 12 })
-            .fill(this.statusColor)
-          
-          Text(this.cameraStatus)
-            .fontSize(14)
-            .fontColor(Color.White)
-            .margin({ left: 8 })
-        }
-        .padding(8)
-        .backgroundColor('rgba(0, 0, 0, 0.7)')
-        .borderRadius(20)
-      }
-      .position({ x: 16, y: 16 })
-    }
-    .width('100%')
-    .height('100%')
+    const state: CameraState = this.mapController.getCameraState();
+    this.lat = state.latitude;
+    this.lng = state.longitude;
+    this.zoom = state.zoom;
+    this.bearing = state.bearing;
+    this.pitch = state.pitch;
+    this.statusMessage = `Lat: ${state.latitude.toFixed(4)}, Lng: ${state.longitude.toFixed(4)}`;
   }
-  
+
   @Builder
-  controlPanelBuilder() {
-    Column({ space: 8 }) {
-      Text('相机位置控制')
+  mapContent() {
+    MapView({
+      onMapReady: this.onMapReady,
+    })
+      .width('100%')
+      .height('100%')
+  }
+
+  @Builder
+  controlPanel() {
+    Column() {
+      Text('Camera State')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
         .width('100%')
-      
-      // 相机参数显示
-      Column({ space: 8 }) {
-        Row() {
-          Text('纬度:')
-            .fontSize(12)
-            .width(60)
-          Text(this.latitude.toFixed(6))
-            .fontSize(12)
-            .fontFamily('monospace')
-            .layoutWeight(1)
-        }
-        .width('100%')
-        
-        Row() {
-          Text('经度:')
-            .fontSize(12)
-            .width(60)
-          Text(this.longitude.toFixed(6))
-            .fontSize(12)
-            .fontFamily('monospace')
-            .layoutWeight(1)
-        }
-        .width('100%')
-        
-        Row() {
-          Text('缩放:')
-            .fontSize(12)
-            .width(60)
-          Text(this.zoom.toFixed(2))
-            .fontSize(12)
-            .fontFamily('monospace')
-            .layoutWeight(1)
-        }
-        .width('100%')
-        
-        Row() {
-          Text('方位角:')
-            .fontSize(12)
-            .width(60)
-          Text(`${this.bearing.toFixed(2)}°`)
-            .fontSize(12)
-            .fontFamily('monospace')
-            .layoutWeight(1)
-        }
-        .width('100%')
-        
-        Row() {
-          Text('倾斜角:')
-            .fontSize(12)
-            .width(60)
-          Text(`${this.pitch.toFixed(2)}°`)
-            .fontSize(12)
-            .fontFamily('monospace')
-            .layoutWeight(1)
-        }
-        .width('100%')
+        .margin({ bottom: 8 })
+
+      Column() {
+        this.buildInfoRow('Latitude', this.lat.toFixed(4))
+        this.buildInfoRow('Longitude', this.lng.toFixed(4))
+        this.buildInfoRow('Zoom', this.zoom.toFixed(2))
+        this.buildInfoRow('Bearing', `${this.bearing.toFixed(1)} deg`)
+        this.buildInfoRow('Pitch', `${this.pitch.toFixed(1)} deg`)
       }
       .width('100%')
-      .padding(12)
+      .padding(8)
       .backgroundColor('#F5F5F5')
-      .borderRadius(4)
-      
-      // 说明文字
-      Text('💡 监听相机移动事件\n包括移动开始、移动中、移动结束、移动取消等')
-        .fontSize(11)
-        .fontColor('#666')
+      .borderRadius(6)
+
+      Text('Jump to Location')
+        .fontSize(15)
+        .fontWeight(FontWeight.Bold)
         .width('100%')
-        .margin({ top: 4 })
-        .lineHeight(16)
-    }
-    .width('100%')
-    .padding(8)
-  }
-  
-  @Builder
-  actionButtonsBuilder() {
-    Column({ space: 8 }) {
-      Button(this.listenersEnabled ? '禁用监听' : '启用监听')
+        .margin({ top: 12, bottom: 6 })
+
+      Row() {
+        Button('Beijing').height(36)
+          .onClick((): void => {
+            this.mapController?.jumpTo(0, 39.9042, 116.4074, 0, 10);
+            setTimeout((): void => this.refreshCameraState(), 200);
+          })
+        Button('Shanghai').height(36).margin({ left: 6 })
+          .onClick((): void => {
+            this.mapController?.jumpTo(0, 31.2304, 121.4737, 0, 12);
+            setTimeout((): void => this.refreshCameraState(), 200);
+          })
+        Button('London').height(36).margin({ left: 6 })
+          .onClick((): void => {
+            this.mapController?.jumpTo(0, 51.5074, -0.1278, 0, 10);
+            setTimeout((): void => this.refreshCameraState(), 200);
+          })
+      }
+      .width('100%')
+
+      Row() {
+        Button('Tokyo').height(36).margin({ top: 6 })
+          .onClick((): void => {
+            this.mapController?.jumpTo(0, 35.6762, 139.6503, 0, 11);
+            setTimeout((): void => this.refreshCameraState(), 200);
+          })
+        Button('NYC').height(36).margin({ top: 6, left: 6 })
+          .onClick((): void => {
+            this.mapController?.jumpTo(0, 40.7128, -74.006, 0, 11);
+            setTimeout((): void => this.refreshCameraState(), 200);
+          })
+        Button('SF').height(36).margin({ top: 6, left: 6 })
+          .onClick((): void => {
+            this.mapController?.jumpTo(0, 37.7749, -122.4194, 0, 10);
+            setTimeout((): void => this.refreshCameraState(), 200);
+          })
+      }
+      .width('100%')
+
+      Text('Zoom Level')
+        .fontSize(15)
+        .fontWeight(FontWeight.Bold)
         .width('100%')
-        .backgroundColor(this.listenersEnabled ? '#FF6B6B' : '#4CAF50')
-        .onClick(() => this.toggleListeners())
-      
-      Button('动画相机')
+        .margin({ top: 12, bottom: 6 })
+
+      Row() {
+        Button('Zoom 4').height(36)
+          .onClick((): void => { this.mapController?.setZoom(4); setTimeout((): void => this.refreshCameraState(), 200); })
+        Button('Zoom 8').height(36).margin({ left: 6 })
+          .onClick((): void => { this.mapController?.setZoom(8); setTimeout((): void => this.refreshCameraState(), 200); })
+        Button('Zoom 12').height(36).margin({ left: 6 })
+          .onClick((): void => { this.mapController?.setZoom(12); setTimeout((): void => this.refreshCameraState(), 200); })
+        Button('Zoom 16').height(36).margin({ left: 6 })
+          .onClick((): void => { this.mapController?.setZoom(16); setTimeout((): void => this.refreshCameraState(), 200); })
+      }
+      .width('100%')
+
+      Button('Refresh State')
         .width('100%')
-        .backgroundColor('#2196F3')
-        .onClick(() => this.animateCamera())
-      
-      Button('重置位置')
-        .width('100%')
-        .backgroundColor('#FF9800')
-        .onClick(() => this.resetCamera())
-      
-      Button('刷新参数')
-        .width('100%')
-        .backgroundColor('#9C27B0')
-        .onClick(() => {
-          this.updateCameraInfo();
-          showToast('参数已刷新');
+        .margin({ top: 10 })
+        .onClick((): void => {
+          this.refreshCameraState();
+          showToast('Camera state refreshed');
         })
-      
-      Button('显示详情')
-        .width('100%')
-        .backgroundColor('#607D8B')
-        .onClick(() => this.showCameraDialog())
+        .enabled(this.isMapReady)
     }
     .width('100%')
-    .padding(8)
   }
-  
+
+  @Builder
+  buildInfoRow(label: string, value: string) {
+    Row() {
+      Text(label)
+        .fontSize(12)
+        .fontColor('#666')
+        .width(80)
+      Text(value)
+        .fontSize(12)
+        .fontFamily('monospace')
+        .fontColor('#333')
+        .layoutWeight(1)
+    }
+    .width('100%')
+    .height(24)
+  }
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Camera Position',
-        description: '相机位置控制',
-        showActionBar: true,
-        mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
-        actionButtons: (): void => this.actionButtonsBuilder()
-      });
+      title: 'Camera Position',
+      subtitle: 'Set camera position and zoom',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

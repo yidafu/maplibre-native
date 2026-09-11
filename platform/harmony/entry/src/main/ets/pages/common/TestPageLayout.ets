@@ -1,103 +1,119 @@
 /**
- * 测试页面统一布局组件
- * 提供标题栏、返回按钮、操作按钮区等公共 UI 元素
+ * TestPageLayout - Unified test page layout component.
+ *
+ * Provides a consistent structure for all test pages:
+ * - Title bar with back button
+ * - Map content area (full remaining space)
+ * - Optional floating control panel
+ * - Optional control footer at the bottom
  */
+
 import { router } from '@kit.ArkUI';
 
 @Component
 export struct TestPageLayout {
-  // 页面标题
-  @Prop title: string = '测试页面';
-  
-  // 页面描述（可选）
-  @Prop description: string = '';
-  
-  // 是否显示操作按钮区
-  @Prop showActionBar: boolean = false;
-  
-  // 操作按钮内容构建器
-  @BuilderParam actionButtons?: () => void;
-  
-  // 地图区域内容构建器
-  @BuilderParam mapContent: () => void;
-  
-  // 控制面板内容构建器（可选）
+  // Page title displayed in the header bar
+  @Prop title: string = 'Test Page';
+
+  // Optional subtitle displayed below the title
+  @Prop subtitle: string = '';
+
+  // Show the control footer area at the bottom
+  @Prop showControlFooter: boolean = false;
+
+  // Map content builder (required)
+  @BuilderParam mapContent: () => void = this.defaultMapContent;
+
+  // Floating control panel builder (optional, shown on top of map)
   @BuilderParam controlPanel?: () => void;
-  
-  // 控制面板显示状态
-  @State isControlPanelVisible: boolean = true;
+
+  // Control footer builder (optional, shown at bottom)
+  @BuilderParam controlFooter?: () => void;
+
+  // Control panel visibility state
+  @State private isControlPanelVisible: boolean = true;
 
   @Builder
-  defaultActionButtons() {
-    // 默认无操作按钮
+  defaultMapContent() {
+    Column() {
+      Text('Map content area')
+        .fontSize(14)
+        .fontColor('#999')
+        .textAlign(TextAlign.Center)
+        .width('100%')
+    }
+    .width('100%')
+    .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .backgroundColor('#F0F0F0')
   }
-  
+
   build() {
     Column() {
-      // 标题栏
+      // ===== Title Bar =====
       Row() {
-        // 返回按钮
+        // Back button
         Button({ type: ButtonType.Normal }) {
           Text('←')
-            .fontSize(24)
+            .fontSize(22)
             .fontColor(Color.White)
         }
         .backgroundColor(Color.Transparent)
-        .width(48)
-        .height(48)
+        .width(44)
+        .height(44)
         .onClick(() => {
           router.back();
         })
-        
-        // 标题和描述
+
         Column() {
           Text(this.title)
-            .fontSize(18)
+            .fontSize(17)
             .fontWeight(FontWeight.Bold)
             .fontColor(Color.White)
-          
-          if (this.description) {
-            Text(this.description)
+            .lineHeight(22)
+
+          if (this.subtitle) {
+            Text(this.subtitle)
               .fontSize(12)
-              .fontColor('#E0E0E0')
-              .margin({ top: 2 })
+              .fontColor('rgba(255,255,255,0.8)')
+              .margin({ top: 1 })
+              .lineHeight(16)
           }
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
-        .margin({ left: 8 })
-        
-        // 控制面板切换按钮（仅在有控制面板时显示）
+        .margin({ left: 4 })
+
+        // Toggle control panel button
         if (this.controlPanel) {
           Button({ type: ButtonType.Normal }) {
             Text(this.isControlPanelVisible ? '▼' : '▲')
-              .fontSize(20)
+              .fontSize(18)
               .fontColor(Color.White)
           }
           .backgroundColor(Color.Transparent)
-          .width(40)
-          .height(40)
+          .width(44)
+          .height(44)
           .onClick(() => {
             this.isControlPanelVisible = !this.isControlPanelVisible;
           })
         }
-
       }
       .width('100%')
-      .height(60)
+      .height(56)
       .backgroundColor('#2196F3')
-      .padding({ left: 8, right: 8, top: 10 })
-      
-      // 主内容区
+      .padding({ left: 4, right: 4 })
+
+      // ===== Main Content Area =====
       Stack({ alignContent: Alignment.TopStart }) {
-        // 地图内容（全屏）
+        // Map content fills the entire area
         Column() {
           this.mapContent();
         }
         .width('100%')
         .height('100%')
-        
-        // 控制面板（浮动在地图上，支持滚动）
+
+        // Floating control panel overlay
         if (this.controlPanel && this.isControlPanelVisible) {
           Column() {
             Blank()
@@ -110,49 +126,44 @@ export struct TestPageLayout {
               .width('100%')
             }
             .backgroundColor(Color.White)
-            .borderRadius(8)
+            .borderRadius({ topLeft: 12, topRight: 12 })
             .shadow({
-              radius: 8,
-              color: 'rgba(0, 0, 0, 0.2)',
+              radius: 12,
+              color: 'rgba(0, 0, 0, 0.15)',
               offsetX: 0,
-              offsetY: 2
+              offsetY: -2,
             })
-            .padding(12)
+            .padding(16)
             .scrollBar(BarState.Auto)
-            .constraintSize({
-              maxHeight: '65%'
-            })
+            .constraintSize({ maxHeight: '60%' })
           }
           .width('100%')
           .height('100%')
-          .padding({
-            left: 16,
-            right: 16,
-            bottom: 16
-          })
+          .padding({ bottom: 16 })
           .hitTestBehavior(HitTestMode.Transparent)
         }
       }
       .layoutWeight(1)
-      
-      // 操作按钮区（可选，支持滚动）
-      if (this.actionButtons) {
+
+      // ===== Control Footer =====
+      if (this.showControlFooter) {
         Scroll() {
           Column() {
-            this.actionButtons();
+            if (this.controlFooter) {
+              this.controlFooter();
+            }
           }
           .width('100%')
           .padding(12)
         }
         .width('100%')
-        .layoutWeight(0.4)
-        .backgroundColor('#F5F5F5')
+        .constraintSize({ maxHeight: '35%' })
+        .backgroundColor('#F8F8F8')
         .scrollBar(BarState.Auto)
       }
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FFFFFF')
+    .backgroundColor(Color.White)
   }
 }
-

@@ -1,115 +1,111 @@
 /**
- * Simple Map Test Page
- * 简单地图显示测试
+ * SimpleMapTestPage - Display a basic interactive map.
  *
- * 参考: platform/android/MapLibreAndroidTestApp/src/main/java/org/maplibre/android/testapp/activity/maplayout/SimpleMapActivity.kt
+ * Reference: Android SimpleMapActivity
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry
 @Component
 struct SimpleMapTestPage {
   private mapController: MapLibreMap | null = null;
-  private mapViewRef: ESObject = null; // Reference to MapView component
   @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Loading...';
 
-  aboutToAppear() {
-    console.info('[SimpleMapTestPage] aboutToAppear');
+  aboutToDisappear() {
+    this.mapController?.destroy();
+    this.mapController = null;
   }
 
-  onPageShow(): void {
-    console.info('[SimpleMapTestPage] onPageShow');
-  }
-
-  onPageHide(): void {
-    console.info('[SimpleMapTestPage] onPageHide');
-    // When page hides, cancel pending network requests to prevent crashes
-    // This is critical for preventing SIGSEGV when navigating away
-    if (this.mapController) {
-      try {
-        const nativeMapView = this.mapController.getNativeMapView();
-        if (nativeMapView) {
-          nativeMapView.cancelAllRequests();
-          console.info('[SimpleMapTestPage] onPageHide: Cancelled all pending requests');
-        }
-      } catch (error) {
-        console.warn('[SimpleMapTestPage] onPageHide: Failed to cancel requests', error);
-      }
-    }
-  }
-
-  aboutToDisappear(): void {
-    console.info('[SimpleMapTestPage] aboutToDisappear');
-
-    // CRITICAL: Cancel pending requests BEFORE destroying the map
-    // This prevents HTTPFileSource callbacks from accessing destroyed objects
-    if (this.mapController) {
-      try {
-        const nativeMapView = this.mapController.getNativeMapView();
-        if (nativeMapView) {
-          nativeMapView.cancelAllRequests();
-          console.info('[SimpleMapTestPage] aboutToDisappear: Cancelled all pending requests');
-        }
-      } catch (error) {
-        console.warn('[SimpleMapTestPage] aboutToDisappear: Failed to cancel requests', error);
-      }
-    }
-
-    // Then destroy the map controller
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
-
-    console.info('[SimpleMapTestPage] aboutToDisappear: Cleanup complete');
-  }
-
-  /**
-   * 地图就绪回调
-   */
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[SimpleMapTestPage] onMapReady');
     this.mapController = map;
     this.isMapReady = true;
-
-    // 设置默认样式
-    // map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-
-    // 设置初始相机位置（使用 jumpTo）
-    // map.jumpTo(0, 39.9042, 116.4074, 0, 5);
-
-    showToast('地图加载成功');
+    this.statusMessage = 'Map ready';
+    console.info('[SimpleMapTestPage] Map ready');
   };
 
-  /**
-   * 地图内容构建器
-   */
   @Builder
-  mapContentBuilder() {
+  mapContent() {
     MapView({
       onMapReady: this.onMapReady,
-      styleUrl: DEFAULT_STYLE_URLS.streets,
-      initialLatitude: 39.9,
-      initialLongitude: 116.4,
-      initialZoom: 5,
     })
       .width('100%')
-      .height('100%');
+      .height('100%')
+  }
+
+  @Builder
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? '#4CAF50' : '#FF9800')
+        .width('100%')
+        .padding(12)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+
+      Text('Map Controls')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 12, bottom: 8 })
+
+      Row() {
+        Button('Zoom In')
+          .width('48%')
+          .onClick((): void => {
+            if (this.mapController) {
+              const z = this.mapController.getZoom();
+              this.mapController.setZoom(z + 1, 300);
+              this.statusMessage = `Zoom: ${(z + 1).toFixed(1)}`;
+            }
+          })
+          .enabled(this.isMapReady)
+
+        Button('Zoom Out')
+          .width('48%')
+          .margin({ left: 8 })
+          .onClick((): void => {
+            if (this.mapController) {
+              const z = this.mapController.getZoom();
+              this.mapController.setZoom(z - 1, 300);
+              this.statusMessage = `Zoom: ${(z - 1).toFixed(1)}`;
+            }
+          })
+          .enabled(this.isMapReady)
+      }
+      .width('100%')
+
+      Row() {
+        Button('Jump to Default')
+          .width('100%')
+          .margin({ top: 8 })
+          .onClick((): void => {
+            if (this.mapController) {
+              this.mapController.jumpTo(0, DEFAULT_MAP_CONFIG.latitude,
+                DEFAULT_MAP_CONFIG.longitude, 0, DEFAULT_MAP_CONFIG.zoom);
+              this.statusMessage = 'Jumped to default position';
+            }
+          })
+          .enabled(this.isMapReady)
+      }
+      .width('100%')
+    }
+    .width('100%')
   }
 
   build() {
     Column() {
       TestPageLayout({
-        title: 'Simple Map',
-        description: '简单地图显示',
-        showActionBar: false,
-        mapContent: (): void => this.mapContentBuilder()
-      });
+      title: 'Simple Map',
+      subtitle: 'Basic map display',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

@@ -1,19 +1,13 @@
 /**
- * Cache Management
- * 缓存管理
- * 
- * 参考: platform/android/MapLibreAndroidTestApp/src/main/java/org/maplibre/android/testapp/activity/storage/CacheManagementActivity.kt
- * 
- * 功能：
- * - 重置数据库（Reset Database）
- * - 使环境缓存失效（Invalidate Ambient Cache）
- * - 清除环境缓存（Clear Ambient Cache）
- * - 设置最大环境缓存大小（Set Maximum Ambient Cache Size）
+ * CacheManagementTestPage - Manage tile cache.
+ *
+ * Demonstrates cache management operations: reset database,
+ * invalidate ambient cache, clear ambient cache, and set
+ * maximum ambient cache size.
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
 import { MapView, MapLibreMap, OfflineManager } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS } from '../common/TestUtils';
+import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 import { common } from '@kit.AbilityKit';
 
 @Entry
@@ -22,212 +16,200 @@ struct CacheManagementTestPage {
   private mapController: MapLibreMap | null = null;
   private offlineManager: OfflineManager | null = null;
   private context: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
-  @State private operationStatus: string = '等待操作...';
+  @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Initializing...';
   @State private isProcessing: boolean = false;
-  
+
   aboutToAppear() {
     try {
-      // 获取 OfflineManager 实例
       this.offlineManager = OfflineManager.getInstance(this.context);
-      this.operationStatus = 'OfflineManager 已就绪';
+      this.statusMessage = 'OfflineManager ready';
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.operationStatus = `初始化失败: ${errorMsg}`;
-      console.error('[CacheManagementTestPage] Failed to get OfflineManager:', errorMsg);
+      this.statusMessage = `Init error: ${error instanceof Error ? error.message : String(error)}`;
+      console.error('[CacheManagementTestPage] Init error:', error);
     }
   }
-  
+
   aboutToDisappear() {
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[CacheManagementTestPage] onMapReady');
     this.mapController = map;
-    map.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 10);
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready. Use buttons to manage cache.';
+    console.info('[CacheManagementTestPage] Map ready');
   };
-  
+
   /**
-   * 重置数据库
+   * Reset the entire database, removing all offline regions and cache data.
    */
   private resetDatabase = async (): Promise<void> => {
     if (!this.offlineManager || this.isProcessing) return;
-    
     this.isProcessing = true;
-    this.operationStatus = '正在重置数据库...';
-    
+    this.statusMessage = 'Resetting database...';
+
     try {
       await this.offlineManager.resetDatabase();
-      this.operationStatus = '✅ 数据库重置成功';
-      showToast('数据库重置成功');
+      this.statusMessage = 'Database reset successful';
+      showToast('Database reset');
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.operationStatus = `❌ 重置失败: ${errorMsg}`;
-      showToast(`重置失败: ${errorMsg}`);
-      console.error('[CacheManagementTestPage] resetDatabase failed:', errorMsg);
+      this.statusMessage = `Reset failed: ${error instanceof Error ? error.message : String(error)}`;
+      showToast('Reset failed');
     } finally {
       this.isProcessing = false;
     }
   };
-  
+
   /**
-   * 使环境缓存失效
+   * Invalidate the ambient cache, forcing tiles to be re-downloaded.
    */
   private invalidateAmbientCache = async (): Promise<void> => {
     if (!this.offlineManager || this.isProcessing) return;
-    
     this.isProcessing = true;
-    this.operationStatus = '正在使缓存失效...';
-    
+    this.statusMessage = 'Invalidating ambient cache...';
+
     try {
       await this.offlineManager.invalidateAmbientCache();
-      this.operationStatus = '✅ 缓存失效成功';
-      showToast('缓存失效成功');
+      this.statusMessage = 'Ambient cache invalidated';
+      showToast('Cache invalidated');
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.operationStatus = `❌ 操作失败: ${errorMsg}`;
-      showToast(`操作失败: ${errorMsg}`);
-      console.error('[CacheManagementTestPage] invalidateAmbientCache failed:', errorMsg);
+      this.statusMessage = `Invalidation failed: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
       this.isProcessing = false;
     }
   };
-  
+
   /**
-   * 清除环境缓存
+   * Clear the ambient cache, removing all cached tiles.
    */
   private clearAmbientCache = async (): Promise<void> => {
     if (!this.offlineManager || this.isProcessing) return;
-    
     this.isProcessing = true;
-    this.operationStatus = '正在清除缓存...';
-    
+    this.statusMessage = 'Clearing ambient cache...';
+
     try {
       await this.offlineManager.clearAmbientCache();
-      this.operationStatus = '✅ 缓存清除成功';
-      showToast('缓存清除成功');
+      this.statusMessage = 'Ambient cache cleared';
+      showToast('Cache cleared');
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.operationStatus = `❌ 清除失败: ${errorMsg}`;
-      showToast(`清除失败: ${errorMsg}`);
-      console.error('[CacheManagementTestPage] clearAmbientCache failed:', errorMsg);
+      this.statusMessage = `Clear failed: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
       this.isProcessing = false;
     }
   };
-  
+
   /**
-   * 设置最大环境缓存大小（5MB）
+   * Set the maximum ambient cache size to 5 MB.
    */
   private setMaximumAmbientCacheSize = (): void => {
     if (!this.offlineManager || this.isProcessing) return;
-    
     this.isProcessing = true;
-    this.operationStatus = '正在设置缓存大小...';
-    
+    this.statusMessage = 'Setting maximum cache size...';
+
     try {
-      const maxSize = 5000000; // 5MB
+      const maxSize = 5 * 1024 * 1024; // 5 MB
       this.offlineManager.setMaximumAmbientCacheSize(maxSize);
-      this.operationStatus = `✅ 最大缓存设置为: ${(maxSize / 1024 / 1024).toFixed(2)}MB`;
-      showToast(`最大缓存设置为: ${(maxSize / 1024 / 1024).toFixed(2)}MB`);
+      this.statusMessage = `Max cache size set to 5 MB`;
+      showToast('Cache size set to 5 MB');
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      this.operationStatus = `❌ 设置失败: ${errorMsg}`;
-      showToast(`设置失败: ${errorMsg}`);
-      console.error('[CacheManagementTestPage] setMaximumAmbientCacheSize failed:', errorMsg);
+      this.statusMessage = `Set size failed: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
       this.isProcessing = false;
     }
   };
-  
+
+  /**
+   * Reload the map style to observe cache effects.
+   */
+  private reloadStyle(): void {
+    if (!this.mapController) return;
+    const url = this.mapController.getStyleUrl();
+    this.mapController.setStyleUrl(url);
+    this.statusMessage = 'Reloading style...';
+    showToast('Style reloaded');
+  }
+
   @Builder
-  mapContentBuilder() {
+  mapContent() {
     MapView({
       onMapReady: this.onMapReady,
-      styleUrl: DEFAULT_STYLE_URLS.bright,
-      initialLatitude: 39.9,
-      initialLongitude: 116.4,
-      initialZoom: 10
     })
       .width('100%')
-      .height('100%');
+      .height('100%')
   }
-  
+
   @Builder
-  controlPanelBuilder() {
-    Column({ space: 12 }) {
-      // 状态显示
-      Text('操作状态')
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? (this.isProcessing ? '#FF9800' : '#4CAF50') : '#FF9800')
+        .width('100%')
+        .padding(10)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+
+      Text('Cache Operations')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
         .width('100%')
-      
-      Text(this.operationStatus)
-        .fontSize(14)
-        .fontColor('#666')
-        .width('100%')
-        .padding(8)
-        .backgroundColor('#F5F5F5')
-        .borderRadius(4)
-      
-      Divider().margin({ top: 4, bottom: 4 })
-      
-      // 操作按钮组
-      Text('缓存操作')
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .width('100%')
-      
-      Button('重置数据库')
+        .margin({ top: 12, bottom: 8 })
+
+      Button('Reset Database')
         .width('100%')
         .backgroundColor('#FF6B6B')
+        .margin({ bottom: 6 })
         .onClick(() => this.resetDatabase())
         .enabled(!this.isProcessing)
-      
-      Button('使缓存失效')
+
+      Button('Invalidate Ambient Cache')
         .width('100%')
         .backgroundColor('#FFA500')
+        .margin({ bottom: 6 })
         .onClick(() => this.invalidateAmbientCache())
         .enabled(!this.isProcessing)
-      
-      Button('清除环境缓存')
+
+      Button('Clear Ambient Cache')
         .width('100%')
         .backgroundColor('#4CAF50')
+        .margin({ bottom: 6 })
         .onClick(() => this.clearAmbientCache())
         .enabled(!this.isProcessing)
-      
-      Button('设置最大缓存(5MB)')
+
+      Button('Set Max Cache (5 MB)')
         .width('100%')
         .backgroundColor('#2196F3')
+        .margin({ bottom: 6 })
         .onClick(() => this.setMaximumAmbientCacheSize())
         .enabled(!this.isProcessing)
-      
-      // 说明文字
-      Text('⚠️ 重置数据库会删除所有离线数据')
+
+      Button('Reload Map Style')
+        .width('100%')
+        .backgroundColor('#607D8B')
+        .onClick(() => this.reloadStyle())
+        .enabled(this.isMapReady)
+
+      Text('Warning: Reset Database deletes all offline data.')
         .fontSize(12)
         .fontColor('#FF6B6B')
         .width('100%')
-        .margin({ top: 8 })
+        .margin({ top: 12 })
     }
     .width('100%')
-    .padding(16)
   }
-  
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Cache Management',
-        description: '缓存管理',
-        showActionBar: false,
-        mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder()
-      });
+      title: 'Cache Management',
+      subtitle: 'Manage tile cache',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

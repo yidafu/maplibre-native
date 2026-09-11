@@ -1,100 +1,164 @@
 /**
- * TextureView Resize Test Page
- * TextureView调整大小测试页面
+ * TextureViewResizeTestPage - Resize the map view container dynamically.
+ *
+ * Demonstrates how the map handles dynamic container resizing by adjusting
+ * the map view height with a slider. Resizing triggers internal renderer updates.
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 
 @Entry
 @Component
 struct TextureViewResizeTestPage {
   private mapController: MapLibreMap | null = null;
+  @State private isMapReady: boolean = false;
   @State private mapHeight: number = 400;
-  
+  @State private mapWidthPct: number = 100;
+  @State private statusMessage: string = 'Adjust the slider to resize';
+
   aboutToDisappear() {
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready - resize it!';
+    showToast('Map ready for resize test');
   };
-  
+
+  private resetSize(): void {
+    this.mapHeight = 400;
+    this.mapWidthPct = 100;
+    this.statusMessage = 'Reset to 400px x 100%';
+    showToast('Reset to default size');
+  }
+
+  private applySizePreset(height: number, widthPct: number): void {
+    this.mapHeight = height;
+    this.mapWidthPct = widthPct;
+    this.statusMessage = 'Size: ' + height + 'px x ' + widthPct + '%';
+  }
+
   @Builder
-  buildMapContent() {
+  mapContent() {
     Column() {
       MapView({
         onMapReady: this.onMapReady,
-            styleUrl: DEFAULT_STYLE_URLS.bright,
-            initialLatitude: 39.9,
-            initialLongitude: 116.4,
-            initialZoom: 10
       })
-      .width('100%')
-      .height(this.mapHeight)
+        .width(this.mapWidthPct + '%')
+        .height(this.mapHeight)
     }
     .width('100%')
     .height('100%')
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor('#E0E0E0')
   }
-  
+
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('地图高度调整')
+  controlPanel() {
+    Column() {
+      Text('Container Size Controls')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
-      
-      Text(`当前高度: ${this.mapHeight}px`)
-        .fontSize(14)
+        .width('100%')
+        .margin({ bottom: 4 })
+
+      Text(this.statusMessage)
+        .fontSize(12)
         .fontColor('#666')
-      
-      Row() {
-        Text('高度:')
-          .fontSize(14)
-          .width(60)
-        Slider({
-          value: this.mapHeight,
-          min: 200,
-          max: 600,
-          step: 50
-        })
-        .layoutWeight(1)
+        .width('100%')
+        .margin({ bottom: 12 })
+
+      Text('Height: ' + this.mapHeight + 'px')
+        .fontSize(13)
+        .width('100%')
+        .margin({ bottom: 2 })
+      Slider({
+        value: this.mapHeight,
+        min: 100,
+        max: 700,
+        step: 10,
+        style: SliderStyle.InSet
+      })
+        .width('100%')
+        .showTips(true)
         .onChange((value: number) => {
           this.mapHeight = value;
-          showToast(`高度: ${value}px`);
+          this.statusMessage = 'Height: ' + value + 'px';
         })
+
+      Text('Width: ' + this.mapWidthPct + '%')
+        .fontSize(13)
+        .width('100%')
+        .margin({ top: 8, bottom: 2 })
+      Slider({
+        value: this.mapWidthPct,
+        min: 30,
+        max: 100,
+        step: 5,
+        style: SliderStyle.InSet
+      })
+        .width('100%')
+        .showTips(true)
+        .onChange((value: number) => {
+          this.mapWidthPct = value;
+          this.statusMessage = 'Width: ' + value + '%';
+        })
+
+      Text('Presets')
+        .fontSize(13)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 12, bottom: 4 })
+
+      Row() {
+        Button('Small 200px')
+          .fontSize(11)
+          .height(32)
+          .layoutWeight(1)
+          .margin({ right: 4 })
+          .onClick(() => this.applySizePreset(200, 60))
+          .enabled(this.isMapReady)
+        Button('Medium 400px')
+          .fontSize(11)
+          .height(32)
+          .layoutWeight(1)
+          .margin({ left: 4, right: 4 })
+          .onClick(() => this.applySizePreset(400, 80))
+          .enabled(this.isMapReady)
+        Button('Large 600px')
+          .fontSize(11)
+          .height(32)
+          .layoutWeight(1)
+          .margin({ left: 4 })
+          .onClick(() => this.applySizePreset(600, 100))
+          .enabled(this.isMapReady)
       }
       .width('100%')
-      
-      Button('重置 (400px)')
+
+      Button('Reset to Default')
         .width('100%')
-        .onClick(() => {
-          this.mapHeight = 400;
-        })
+        .margin({ top: 12 })
+        .onClick(() => this.resetSize())
+        .enabled(this.isMapReady)
     }
     .width('100%')
-    .padding(16)
   }
-  
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'TextureView Resize',
-        description: 'XComponent调整大小',
-        showActionBar: true,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+      title: 'TextureView Resize',
+      subtitle: 'Dynamic map container resize',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
       })
     }
     .width('100%')
     .height('100%')
   }
 }
-
-

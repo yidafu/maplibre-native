@@ -1,402 +1,254 @@
 /**
- * Download Region Test Page
- * 下载离线区域测试页面
- * 
- * 参考: platform/ios/app-swift/Sources/OfflinePackExample.swift
- * 
- * 功能:
- * - 输入区域名称
- * - 下载当前视图区域
- * - 实时显示下载进度
- * - 显示下载详细信息（瓦片数、字节数等）
+ * DownloadRegionTestPage - Test downloading an offline region.
+ *
+ * Demonstrates creating and downloading an offline map region using
+ * the OfflineManager and OfflineRegion APIs.
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { 
-  MapView, 
-  MapLibreMap,
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import {
   OfflineManager,
   OfflineRegion,
+  createTilePyramidRegionDefinition,
+  DownloadState,
   OfflineRegionObserver,
   OfflineRegionStatus,
-  OfflineRegionError,
-  OfflineRegionDownloadState
+  OfflineRegionError
 } from 'maplibre_harmony';
-import type { OfflineTilePyramidRegionDefinition } from 'libmaplibre.so';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
-import common from '@ohos.app.ability.common';
-import { util } from '@kit.ArkTS';
-import maplibre from 'libmaplibre.so';
+import { LatLngBounds, LatLng } from 'maplibre_harmony';
+import { common } from '@kit.AbilityKit';
+import { showToast } from '../common/TestUtils';
 
 @Entry
 @Component
 struct DownloadRegionTestPage {
   private mapController: MapLibreMap | null = null;
   private offlineManager: OfflineManager | null = null;
-  currentRegion: OfflineRegion | null = null;
-  
-  @State regionName: string = '';
-  @State isDownloading: boolean = false;
-  @State downloadProgress: number = 0;
-  @State completedResources: number = 0;
-  @State totalResources: number = 0;
-  @State completedBytes: number = 0;
-  @State private isComplete: boolean = false;
-  @State downloadSpeed: string = '0 KB/s';
-  
-  lastBytes: number = 0;
-  lastTime: number = Date.now();
-  
+  private currentRegion: OfflineRegion | null = null;
+  @State private isMapReady: boolean = false;
+  @State private isDownloading: boolean = false;
+  @State private statusMessage: string = 'Loading...';
+  @State private progress: string = '--';
+  @State private completedTileCount: number = 0;
+  @State private requiredTileCount: number = 0;
+  @State private downloadState: string = 'Idle';
+
   aboutToDisappear() {
-    // 停止下载
-    if (this.currentRegion && this.isDownloading) {
-      this.currentRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
+    // Pause any active download
+    if (this.currentRegion) {
+      try {
+        this.currentRegion.setDownloadState(DownloadState.INACTIVE);
+      } catch (_e) {}
     }
-    
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[DownloadRegionTestPage] onMapReady');
     this.mapController = map;
-    // 设置初始位置（北京）
-    map.jumpTo(0, TEST_LOCATIONS.beijing.latitude, TEST_LOCATIONS.beijing.longitude, 0, 12);
-    
-    // 初始化离线管理器
-    this.initOfflineManager();
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready';
   };
-  
-  /**
-   * 初始化离线管理器
-   */
-  private initOfflineManager = (): void => {
-    try {
-      const context = getContext(this) as common.UIAbilityContext;
+
+  private getOfflineManager(): OfflineManager {
+    if (!this.offlineManager) {
+      // Use the global application context
+      const context = getContext() as common.UIAbilityContext;
       this.offlineManager = OfflineManager.getInstance(context);
-      console.info('[DownloadRegionTestPage] OfflineManager initialized');
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('[DownloadRegionTestPage] Failed to initialize OfflineManager:', errorMsg);
-      showToast(`初始化失败: ${errorMsg}`);
     }
-  };
-  
-  /**
-   * 开始下载
-   */
-  private startDownload = async (): Promise<void> => {
-    if (!this.mapController || !this.offlineManager) {
-      showToast('地图或离线管理器未就绪');
+    return this.offlineManager;
+  }
+
+  private startDownload(): void {
+    if (!this.mapController) {
+      showToast('Map not ready');
       return;
     }
-    
-    if (this.isDownloading) {
-      showToast('正在下载中');
+
+    const styleUrl = this.mapController.getStyleUrl();
+    if (!styleUrl) {
+      showToast('Style URL not available');
       return;
     }
-    
-    const name = this.regionName.trim() || `北京区域_${Date.now()}`;
-    
-    try {
-      this.isDownloading = true;
-      this.isComplete = false;
-      this.downloadProgress = 0;
-      this.completedResources = 0;
-      this.totalResources = 0;
-      this.completedBytes = 0;
-      this.lastBytes = 0;
-      this.lastTime = Date.now();
-      
-      // 获取当前地图视图的边界
-      const projection = this.mapController.getProjection();
-      const visibleRegion = projection.getVisibleRegion();
-      const bounds = visibleRegion.latLngBounds;
-      
-      // 获取缩放级别
-      const zoom = this.mapController.getZoom();
-      const minZoom = zoom;
-      const maxZoom = Math.min(minZoom + 2, 14); // 限制最大缩放级别
-      
-      console.info('[DownloadRegionTestPage] Creating offline region:', {
-        name,
-        bounds: bounds.toString(),
-        minZoom,
-        maxZoom
-      });
-      
-      // 创建离线区域定义的边界对象
-      interface BoundsObject {
-        north: number;
-        east: number;
-        south: number;
-        west: number;
-      }
-      
-      const boundsObj: BoundsObject = {
-        north: bounds.north,
-        east: bounds.east,
-        south: bounds.south,
-        west: bounds.west
-      };
-      
-      // 创建离线区域定义
-      const definition: OfflineTilePyramidRegionDefinition = {
-        type: 'tilePyramid',
-        styleURL: DEFAULT_STYLE_URLS.streets,
-        bounds: boundsObj,
-        minZoom: minZoom,
-        maxZoom: maxZoom,
-        pixelRatio: 2.0,
-        includeIdeographs: false
-      };
-      
-      // 创建元数据
-      const encoder = new util.TextEncoder();
-      const metadata = encoder.encodeInto(JSON.stringify({
-        name: name,
-        date: new Date().toISOString(),
-        minZoom: minZoom,
-        maxZoom: maxZoom
-      }));
-      
-      // 创建离线区域
-      const region = await this.offlineManager.createOfflineRegion(definition, metadata.buffer as ArrayBuffer);
+
+    // Create bounds around current map center (approximately 0.5 degrees)
+    const center = this.mapController.getLatLng();
+    const sw = new LatLng(center.latitude - 0.25, center.longitude - 0.25);
+    const ne = new LatLng(center.latitude + 0.25, center.longitude + 0.25);
+    const bounds = new LatLngBounds(sw, ne);
+
+    const definition = createTilePyramidRegionDefinition(
+      styleUrl,
+      bounds,
+      0,   // minZoom
+      12,  // maxZoom
+      1.0, // pixelRatio
+      true // includeIdeographs
+    );
+
+    // Create with empty metadata for simplicity
+    const metadata = new ArrayBuffer(0);
+
+    this.statusMessage = 'Creating offline region...';
+    showToast('Creating region...');
+
+    const manager = this.getOfflineManager();
+    manager.createOfflineRegion(definition, metadata).then((region: OfflineRegion) => {
       this.currentRegion = region;
-      
-      showToast(`开始下载: ${name}`);
-      
-      // 设置下载观察者（直接使用对象字面量避免 ArkTS 结构类型问题）
-      region.setObserver({
+      this.statusMessage = 'Region created (id=' + region.id + '), starting download';
+      this.downloadState = 'Created';
+
+      // Set up observer
+      const observer: OfflineRegionObserver = {
         onStatusChanged: (status: OfflineRegionStatus) => {
-          this.completedResources = status.completedResourceCount;
-          this.totalResources = status.requiredResourceCount;
-          this.completedBytes = status.completedResourceSize;
-          
-          if (this.totalResources > 0) {
-            this.downloadProgress = (this.completedResources / this.totalResources) * 100;
+          this.completedTileCount = status.completedTileCount ?? 0;
+          this.requiredTileCount = status.requiredTileCount ?? 0;
+          if (status.requiredTileCount && status.requiredTileCount > 0) {
+            const pct = ((status.completedTileCount ?? 0) / status.requiredTileCount * 100).toFixed(1);
+            this.progress = pct + '%';
           }
-          
-          // 计算下载速度
-          const now = Date.now();
-          const timeDiff = now - this.lastTime;
-          if (timeDiff >= 1000) { // 每秒更新一次速度
-            const bytesDiff = this.completedBytes - this.lastBytes;
-            const speedKBps = (bytesDiff / timeDiff); // KB/s
-            this.downloadSpeed = speedKBps < 1024 
-              ? `${speedKBps.toFixed(2)} KB/s`
-              : `${(speedKBps / 1024).toFixed(2)} MB/s`;
-            
-            this.lastBytes = this.completedBytes;
-            this.lastTime = now;
-          }
-          
+          this.downloadState = status.complete ? 'Complete' : ((status.downloadState === 1) ? 'Downloading' : 'Paused');
+
           if (status.complete) {
-            this.onDownloadComplete();
+            this.isDownloading = false;
+            this.statusMessage = 'Download complete! ' + status.completedTileCount + ' tiles';
+            showToast('Download complete');
+          } else {
+            this.statusMessage = 'Downloading: ' + this.progress;
           }
         },
         onError: (error: OfflineRegionError) => {
-          console.error('[DownloadRegionTestPage] Download error:', error);
-          showToast(`下载错误: ${error.message}`);
           this.isDownloading = false;
-          if (this.currentRegion) {
-            this.currentRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
-          }
+          this.statusMessage = 'Download error: ' + error.message;
+          showToast('Error: ' + error.message);
         },
-        mapboxTileCountLimitExceeded: (limit: number) => {
-          console.warn('[DownloadRegionTestPage] Tile count limit exceeded:', limit);
-          showToast(`瓦片数量超限: ${limit}`);
-          this.isDownloading = false;
-          if (this.currentRegion) {
-            this.currentRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
-          }
-        }
-      });
-      
-      // 开始下载
-      region.setDownloadState(OfflineRegionDownloadState.ACTIVE);
-      
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.error('[DownloadRegionTestPage] Failed to start download:', errorMsg);
-      showToast(`下载失败: ${errorMsg}`);
-      this.isDownloading = false;
-    }
-  };
-  
-  /**
-   * 暂停/继续下载
-   */
-  private toggleDownload = (): void => {
-    if (!this.currentRegion) {
-      showToast('没有正在下载的区域');
-      return;
-    }
-    
-    if (this.isDownloading) {
-      this.currentRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
-      this.isDownloading = false;
-      showToast('下载已暂停');
-    } else {
-      this.currentRegion.setDownloadState(OfflineRegionDownloadState.ACTIVE);
+        mapboxTileCountLimitExceeded: (_limit: number) => {
+          console.warn('[DownloadRegionTestPage] Tile count limit exceeded:', _limit);
+        },
+      };
+      region.setObserver(observer);
+
+      // Start downloading
+      region.setDownloadState(DownloadState.ACTIVE);
       this.isDownloading = true;
-      this.lastBytes = this.completedBytes;
-      this.lastTime = Date.now();
-      showToast('下载已继续');
-    }
-  };
-  
-  /**
-   * 下载完成回调
-   */
-  onDownloadComplete = (): void => {
-    console.info('[DownloadRegionTestPage] Download complete');
-    this.isDownloading = false;
-    this.isComplete = true;
-    this.downloadProgress = 100;
-    
-    const bytesInMB = (this.completedBytes / (1024 * 1024)).toFixed(2);
-    showToast(`下载完成！资源数: ${this.completedResources}, 大小: ${bytesInMB}MB`);
-    
-    // 停止下载
+      this.downloadState = 'Downloading';
+      this.statusMessage = 'Download started';
+      showToast('Download started');
+    }).catch((err: Error) => {
+      this.statusMessage = 'Create region failed: ' + err.message;
+      showToast('Error: ' + err.message);
+    });
+  }
+
+  private pauseDownload(): void {
     if (this.currentRegion) {
-      this.currentRegion.setDownloadState(OfflineRegionDownloadState.INACTIVE);
-    }
-  };
-  
-  @Builder
-  actionButtonsBuilder() {
-    Button(this.isDownloading || this.isComplete ? '重新下载' : '开始下载')
-      .fontSize(14)
-      .backgroundColor('#4CAF50')
-      .onClick(() => {
-        if (this.isDownloading) {
-          showToast('请先暂停当前下载');
-        } else {
-          this.startDownload();
-        }
-      });
-    
-    if (this.currentRegion && !this.isComplete) {
-      Button(this.isDownloading ? '暂停' : '继续')
-        .fontSize(14)
-        .backgroundColor(this.isDownloading ? '#FF9800' : '#2196F3')
-        .onClick(this.toggleDownload);
+      this.currentRegion.setDownloadState(DownloadState.INACTIVE);
+      this.isDownloading = false;
+      this.downloadState = 'Paused';
+      this.statusMessage = 'Download paused';
+      showToast('Download paused');
     }
   }
-  
-  @Builder
-  controlPanelBuilder() {
-    Column({ space: 12 }) {
-      Text('下载离线区域')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold);
-      
-      // 区域名称输入
-      Column({ space: 4 }) {
-        Text('区域名称')
-          .fontSize(12)
-          .fontColor('#666')
-          .alignSelf(ItemAlign.Start);
-        
-        TextInput({ placeholder: '输入区域名称（可选）', text: this.regionName })
-          .width('100%')
-          .onChange((value: string) => {
-            this.regionName = value;
-          })
-          .enabled(!this.isDownloading);
-      }
-      
-      Divider();
-      
-      // 下载进度
-      if (this.isDownloading || this.isComplete) {
-        Text(this.isComplete ? '下载完成' : '下载中...')
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.isComplete ? '#4CAF50' : '#FF9800');
-        
-        Progress({
-          value: this.downloadProgress,
-          total: 100,
-          type: ProgressType.Linear
-        })
-          .width('100%')
-          .height(20)
-          .color(this.isComplete ? '#4CAF50' : '#2196F3');
-        
-        Text(`${this.downloadProgress.toFixed(1)}%`)
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#333');
-        
-        Column({ space: 4 }) {
-          Text(`资源: ${this.completedResources} / ${this.totalResources}`)
-            .fontSize(11)
-            .fontColor('#666');
-          
-          Text(`大小: ${(this.completedBytes / (1024 * 1024)).toFixed(2)} MB`)
-            .fontSize(11)
-            .fontColor('#666');
-          
-          if (this.isDownloading) {
-            Text(`速度: ${this.downloadSpeed}`)
-              .fontSize(11)
-              .fontColor('#666');
-          }
-        }
-        .width('100%')
-        .alignItems(HorizontalAlign.Start);
+
+  private resumeDownload(): void {
+    if (this.currentRegion) {
+      this.currentRegion.setDownloadState(DownloadState.ACTIVE);
+      this.isDownloading = true;
+      this.downloadState = 'Downloading';
+      this.statusMessage = 'Download resumed';
+      showToast('Download resumed');
+    }
+  }
+
+  private queryStatus(): void {
+    if (!this.currentRegion) {
+      showToast('No region');
+      return;
+    }
+    this.currentRegion.getStatus((result: OfflineRegionStatus | string) => {
+      if (typeof result === 'string') {
+        this.statusMessage = 'Status error: ' + result;
       } else {
-        Text('说明')
-          .fontSize(14)
-          .fontWeight(FontWeight.Bold);
-        
-        Text('• 输入区域名称（可选）')
-          .fontSize(11)
-          .fontColor('#666');
-        
-        Text('• 点击"开始下载"下载当前视图区域')
-          .fontSize(11)
-          .fontColor('#666');
-        
-        Text('• 支持暂停和继续下载')
-          .fontSize(11)
-          .fontColor('#666');
+        const status = result as OfflineRegionStatus;
+        this.completedTileCount = status.completedTileCount ?? 0;
+        this.requiredTileCount = status.requiredTileCount ?? 0;
+        this.downloadState = status.complete ? 'Complete' : ((status.downloadState === 1) ? 'Downloading' : 'Paused');
+        this.statusMessage = 'Status: ' + this.downloadState + ', tiles: ' +
+          this.completedTileCount + '/' + this.requiredTileCount;
+      }
+    });
+  }
+
+  @Builder
+  mapContent() {
+    MapView({
+      onMapReady: this.onMapReady,
+    })
+      .width('100%')
+      .height('100%')
+  }
+
+  @Builder
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? '#4CAF50' : '#FF9800')
+        .width('100%')
+        .padding(12)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+        .margin({ bottom: 8 })
+
+      Text('State: ' + this.downloadState)
+        .fontSize(13)
+        .fontColor('#333')
+        .width('100%')
+
+      Text('Tiles: ' + this.completedTileCount + ' / ' + this.requiredTileCount)
+        .fontSize(13)
+        .fontColor('#666')
+        .width('100%')
+        .margin({ bottom: 8 })
+
+      if (!this.currentRegion) {
+        Button('Start Download (Current View)')
+          .width('100%')
+          .enabled(this.isMapReady)
+          .onClick(() => this.startDownload())
+      } else {
+        // Download controls
+        if (this.isDownloading) {
+          Button('Pause Download')
+            .width('100%')
+            .backgroundColor('#FF9800')
+            .onClick(() => this.pauseDownload())
+        } else {
+          Button('Resume Download')
+            .width('100%')
+            .backgroundColor('#4CAF50')
+            .onClick(() => this.resumeDownload())
+        }
+
+        Button('Query Status')
+          .width('100%')
+          .margin({ top: 8 })
+          .onClick(() => this.queryStatus())
       }
     }
     .width('100%')
-    .padding(16)
-    .alignItems(HorizontalAlign.Start);
   }
-  
-  @Builder
-  mapContentBuilder() {
-    MapView({
-      onMapReady: this.onMapReady,
-      styleUrl: DEFAULT_STYLE_URLS.streets,
-      initialLatitude: TEST_LOCATIONS.beijing.latitude,
-      initialLongitude: TEST_LOCATIONS.beijing.longitude,
-      initialZoom: 12
-    })
-      .width('100%')
-      .height('100%');
-  }
-  
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Download Region',
-        description: '下载离线区域',
-        showActionBar: true,
-        actionButtons: (): void => this.actionButtonsBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
-        mapContent: (): void => this.mapContentBuilder()
-      });
+      title: 'Download Region',
+      subtitle: 'Download offline map region',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

@@ -1,129 +1,192 @@
 /**
- * TextureView Animation Test Page
- * TextureView动画测试页面
- * 
- * 注意: Harmony使用NativeMapView基于XComponent实现
+ * TextureViewAnimationTestPage - Animate the map view container.
+ *
+ * Demonstrates ArkUI animations applied to the MapView container:
+ * - Size animation: shrink and expand the map view
+ * - Opacity animation: fade the map in and out
+ * - Translate animation: slide the map horizontally
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, MapLibreMapOptions } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 
 @Entry
 @Component
 struct TextureViewAnimationTestPage {
   private mapController: MapLibreMap | null = null;
+  @State private isMapReady: boolean = false;
   @State private mapWidth: string = '100%';
   @State private mapHeight: string = '100%';
   @State private mapOpacity: number = 1.0;
+  @State private translateX: number = 0;
+  @State private cornerRadius: number = 0;
   @State private animating: boolean = false;
-  
+  @State private statusMessage: string = 'Ready';
+
   aboutToDisappear() {
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
     this.mapController = map;
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 12);
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready';
   };
-  
-  private animateSize = (): void => {
+
+  private animateSize(): void {
     if (this.animating) return;
-    
     this.animating = true;
-    animateTo({ duration: 1000, curve: Curve.EaseInOut }, () => {
-      this.mapWidth = '80%';
-      this.mapHeight = '80%';
+    this.statusMessage = 'Animating size...';
+    animateTo({ duration: 1200, curve: Curve.EaseInOut }, () => {
+      this.mapWidth = '70%';
+      this.mapHeight = '70%';
+      this.cornerRadius = 20;
     });
-    
     setTimeout(() => {
-      animateTo({ duration: 1000, curve: Curve.EaseInOut }, () => {
+      animateTo({ duration: 1200, curve: Curve.EaseInOut }, () => {
         this.mapWidth = '100%';
         this.mapHeight = '100%';
+        this.cornerRadius = 0;
       });
       this.animating = false;
-    }, 1000);
-  };
-  
-  private animateOpacity = (): void => {
+      this.statusMessage = 'Size animation complete';
+    }, 1300);
+  }
+
+  private animateOpacity(): void {
     if (this.animating) return;
-    
     this.animating = true;
-    animateTo({ duration: 800 }, () => {
-      this.mapOpacity = 0.3;
+    this.statusMessage = 'Animating opacity...';
+    animateTo({ duration: 800, curve: Curve.EaseIn }, () => {
+      this.mapOpacity = 0.2;
     });
-    
     setTimeout(() => {
-      animateTo({ duration: 800 }, () => {
+      animateTo({ duration: 800, curve: Curve.EaseOut }, () => {
         this.mapOpacity = 1.0;
       });
       this.animating = false;
-    }, 800);
-  };
-  
+      this.statusMessage = 'Opacity animation complete';
+    }, 900);
+  }
+
+  private animateTranslate(): void {
+    if (this.animating) return;
+    this.animating = true;
+    this.statusMessage = 'Sliding...';
+    animateTo({ duration: 600, curve: Curve.EaseInOut }, () => {
+      this.translateX = 80;
+    });
+    setTimeout(() => {
+      animateTo({ duration: 600, curve: Curve.EaseInOut }, () => {
+        this.translateX = -80;
+      });
+      setTimeout(() => {
+        animateTo({ duration: 600, curve: Curve.EaseInOut }, () => {
+          this.translateX = 0;
+        });
+        this.animating = false;
+        this.statusMessage = 'Slide animation complete';
+      }, 700);
+    }, 700);
+  }
+
+  private animateAll(): void {
+    if (this.animating) return;
+    this.animating = true;
+    this.statusMessage = 'Running combo animation...';
+    animateTo({ duration: 1000, curve: Curve.FastOutSlowIn }, () => {
+      this.mapWidth = '60%';
+      this.mapHeight = '60%';
+      this.mapOpacity = 0.5;
+      this.cornerRadius = 30;
+      this.translateX = 50;
+    });
+    setTimeout(() => {
+      animateTo({ duration: 1000, curve: Curve.FastOutSlowIn }, () => {
+        this.mapWidth = '100%';
+        this.mapHeight = '100%';
+        this.mapOpacity = 1.0;
+        this.cornerRadius = 0;
+        this.translateX = 0;
+      });
+      this.animating = false;
+      this.statusMessage = 'Combo animation complete';
+    }, 1100);
+  }
+
   @Builder
-  buildMapContent() {
+  mapContent() {
     Column() {
       MapView({
         onMapReady: this.onMapReady,
-            styleUrl: DEFAULT_STYLE_URLS.bright,
-            initialLatitude: 39.9,
-            initialLongitude: 116.4,
-            initialZoom: 10
       })
-      .width(this.mapWidth)
-      .height(this.mapHeight)
-      .opacity(this.mapOpacity)
+        .width(this.mapWidth)
+        .height(this.mapHeight)
+        .opacity(this.mapOpacity)
+        .translate({ x: this.translateX, y: 0 })
+        .borderRadius(this.cornerRadius)
     }
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
+    .backgroundColor('#E0E0E0')
   }
-  
+
   @Builder
-  buildControlPanel() {
-    Column({ space: 12 }) {
-      Text('XComponent 动画')
+  controlPanel() {
+    Column() {
+      Text('Container Animation Controls')
         .fontSize(16)
         .fontWeight(FontWeight.Bold)
-      
-      Button('大小动画')
         .width('100%')
-        .enabled(!this.animating)
-        .onClick(() => this.animateSize())
-      
-      Button('透明度动画')
-        .width('100%')
-        .enabled(!this.animating)
-        .onClick(() => this.animateOpacity())
-      
-      Text('说明: Harmony使用XComponent实现地图视图')
+        .margin({ bottom: 4 })
+
+      Text(this.statusMessage)
         .fontSize(12)
-        .fontColor('#666')
+        .fontColor(this.animating ? '#FF9800' : '#4CAF50')
+        .width('100%')
+        .margin({ bottom: 12 })
+
+      Row() {
+        Button('Size').fontSize(13).layoutWeight(1).margin({ right: 4 })
+          .enabled(!this.animating && this.isMapReady)
+          .onClick(() => this.animateSize())
+        Button('Opacity').fontSize(13).layoutWeight(1).margin({ left: 4, right: 4 })
+          .enabled(!this.animating && this.isMapReady)
+          .onClick(() => this.animateOpacity())
+        Button('Slide').fontSize(13).layoutWeight(1).margin({ left: 4 })
+          .enabled(!this.animating && this.isMapReady)
+          .onClick(() => this.animateTranslate())
+      }
+      .width('100%')
+      .margin({ bottom: 8 })
+
+      Button('Combo (All Together)')
+        .width('100%')
+        .enabled(!this.animating && this.isMapReady)
+        .onClick(() => this.animateAll())
+
+      Text('Animated properties: width, height, opacity, corner radius, translate')
+        .fontSize(11)
+        .fontColor('#999')
+        .width('100%')
         .margin({ top: 8 })
     }
     .width('100%')
-    .padding(16)
   }
-  
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'TextureView Animation',
-        description: 'XComponent动画',
-        showActionBar: true,
-        mapContent: (): void => this.buildMapContent(),
-        controlPanel: (): void => this.buildControlPanel()
+      title: 'TextureView Animation',
+      subtitle: 'Animate map container with ArkUI transitions',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
       })
     }
     .width('100%')
     .height('100%')
   }
 }
-
-

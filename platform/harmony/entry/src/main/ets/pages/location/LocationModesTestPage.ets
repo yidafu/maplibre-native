@@ -1,273 +1,221 @@
 /**
- * Location Modes Test Page
- * 定位模式测试页面
- * 
- * 参考: platform/android/.../location/LocationModesActivity.kt
- * 
- * 测试功能:
- * - 定位模式切换（NORMAL, COMPASS, GPS）
- * - 相机跟踪模式
- * - 定位点击监听
- * 
- * 使用 MapLibre LocationComponent API
+ * LocationModesTestPage - Test location tracking modes.
+ *
+ * Demonstrates switching between NORMAL, COMPASS, and GPS render modes,
+ * and various camera tracking modes.
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { 
-  NativeMapView, 
-  MapLibreMap, 
-  MapLibreMapOptions, 
-  LocationComponent,
-  LocationComponentOptions,
-  RenderMode,
-  CameraMode,
-  OnLocationClickListener,
-  OnCameraTrackingChangedListener,
-  PermissionManager
-} from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
-import geoLocationManager from '@ohos.geoLocationManager';
-import { MapView } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre_harmony';
+import { showToast } from '../common/TestUtils';
 
 @Entry
 @Component
 struct LocationModesTestPage {
   private mapController: MapLibreMap | null = null;
   private locationComponent: LocationComponent | null = null;
-  @State private currentRenderMode: number = RenderMode.NORMAL;
-  @State private currentCameraMode: number = CameraMode.NONE;
-  @State private locationEnabled: boolean = false;
-  @State private permissionGranted: boolean = false;
-  @State private statusMessage: string = '等待初始化...';
-  
+  @State private isMapReady: boolean = false;
+  @State private isActivated: boolean = false;
+  @State private isEnabled: boolean = false;
+  @State private currentRenderMode: string = 'NORMAL';
+  @State private currentCameraMode: string = 'NONE';
+  @State private statusMessage: string = 'Loading...';
+
   aboutToDisappear() {
-    if (this.locationComponent) {
-      this.locationComponent.setLocationComponentEnabled(false);
-    }
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[LocationModesTestPage] onMapReady');
     this.mapController = map;
-    this.mapController.setStyleUrl(DEFAULT_STYLE_URLS.streets);
-    this.mapController.jumpTo(0, 39.9042, 116.4074, 0, 5);
-    
-    // 等待样式加载后初始化定位组件
-    setTimeout(() => {
-      this.initLocationComponent();
-    }, 1500);
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready';
   };
-  
-  /**
-   * 初始化定位组件
-   */
-  private initLocationComponent = async (): Promise<void> => {
-    if (!this.mapController) return;
-    
-    try {
-      // 先请求权限
-      await this.requestPermissions();
-      
-      // 获取定位组件
-      this.locationComponent = this.mapController.getLocationComponent();
-      
-      // 配置定位选项
+
+  private activateAndEnable(): void {
+    if (!this.mapController) {
+      return;
+    }
+
+    const locationComponent = this.mapController.getLocationComponent();
+    if (!locationComponent) {
+      showToast('Failed to get LocationComponent');
+      return;
+    }
+
+    this.locationComponent = locationComponent;
+
+    // Wait for style to load, then activate
+    this.mapController.addOnDidFinishLoadingStyleListener(() => {
       const options = new LocationComponentOptions();
-      
-      // 激活定位组件
-      this.locationComponent.activateLocationComponent(options);
-      
-      // 添加定位点击监听器
-      class ClickListener implements OnLocationClickListener {
-        onLocationComponentClick(): void {
-          showToast('定位点被点击');
-        }
-      }
-      this.locationComponent.addOnLocationClickListener(new ClickListener());
-      
-      // 添加相机跟踪监听器
-      class TrackingListener implements OnCameraTrackingChangedListener {
-        page: LocationModesTestPage;
-        
-        constructor(page: LocationModesTestPage) {
-          this.page = page;
-        }
-        
-        onCameraTrackingDismissed(): void {
-          this.page.statusMessage = '相机跟踪已取消';
-        }
-        
-        onCameraTrackingChanged(currentMode: number): void {
-          this.page.currentCameraMode = currentMode;
-          this.page.statusMessage = `相机模式: ${CameraMode.getName(currentMode)}`;
-        }
-      }
-      this.locationComponent.addOnCameraTrackingChangedListener(new TrackingListener(this));
-      
-      this.statusMessage = '定位组件已初始化';
-      showToast('定位组件已初始化');
-    } catch (error) {
-      console.error('[LocationModesTestPage] Failed to init location component:', error);
-      this.statusMessage = `初始化失败: ${error}`;
-      showToast(`初始化失败: ${error}`);
-    }
-  };
-  
-  /**
-   * 请求定位权限
-   */
-  private requestPermissions = async (): Promise<void> => {
-    try {
-      const result = await PermissionManager.requestLocationPermission(getContext(this));
-      const granted = result.granted;
-      this.permissionGranted = granted;
-      
-      if (granted) {
-        this.statusMessage = '定位权限已授予';
-      } else {
-        this.statusMessage = '定位权限被拒绝';
-        showToast('定位权限被拒绝');
-      }
-    } catch (error) {
-      console.error('[LocationModesTestPage] Permission request failed:', error);
-      this.statusMessage = `权限请求失败: ${error}`;
-    }
-  };
-  
-  /**
-   * 启用定位
-   */
-  private enableLocation = (): void => {
-    if (!this.locationComponent) {
-      showToast('定位组件未初始化');
+      locationComponent.activateLocationComponent(options).then(() => {
+        this.isActivated = true;
+        locationComponent.setLocationComponentEnabled(true);
+        this.isEnabled = true;
+        locationComponent.setCameraMode(CameraMode.TRACKING);
+        locationComponent.setRenderMode(RenderMode.NORMAL);
+        this.currentRenderMode = RenderMode.getName(RenderMode.NORMAL);
+        this.currentCameraMode = CameraMode.getName(CameraMode.TRACKING);
+        this.statusMessage = 'Location active, mode: NORMAL / TRACKING';
+        showToast('Location activated');
+      }).catch((err: Error) => {
+        this.statusMessage = 'Activation failed: ' + err.message;
+      });
+    });
+  }
+
+  private setRenderMode(mode: number, name: string): void {
+    if (!this.locationComponent || !this.isActivated) {
+      showToast('Activate location first');
       return;
     }
-    
-    try {
-      this.locationComponent.setLocationComponentEnabled(true);
-      this.locationEnabled = true;
-      this.statusMessage = '定位已启用';
-      showToast('定位已启用');
-    } catch (error) {
-      console.error('[LocationModesTestPage] Failed to enable location:', error);
-      showToast(`启用定位失败: ${error}`);
-    }
-  };
-  
-  /**
-   * 禁用定位
-   */
-  private disableLocation = (): void => {
-    if (!this.locationComponent) return;
-    
-    try {
-      this.locationComponent.setLocationComponentEnabled(false);
-      this.locationEnabled = false;
-      this.statusMessage = '定位已禁用';
-      showToast('定位已禁用');
-    } catch (error) {
-      console.error('[LocationModesTestPage] Failed to disable location:', error);
-    }
-  };
-  
-  /**
-   * 切换渲染模式
-   */
-  private switchRenderMode = (mode: number): void => {
-    if (!this.locationComponent) {
-      showToast('定位组件未初始化');
-      return;
-    }
-    
     try {
       this.locationComponent.setRenderMode(mode);
-      this.currentRenderMode = mode;
-      this.statusMessage = `渲染模式: ${RenderMode.getName(mode)}`;
-      showToast(`渲染模式: ${RenderMode.getName(mode)}`);
-    } catch (error) {
-      console.error('[LocationModesTestPage] Failed to switch render mode:', error);
+      this.currentRenderMode = name;
+      this.statusMessage = 'Render mode: ' + name;
+      showToast('Render mode: ' + name);
+    } catch (err) {
+      this.statusMessage = 'Error: ' + err;
     }
-  };
-  
-  /**
-   * 切换相机跟踪模式
-   */
-  private switchCameraMode = (mode: number): void => {
-    if (!this.locationComponent) {
-      showToast('定位组件未初始化');
+  }
+
+  private setCameraMode(mode: number, name: string): void {
+    if (!this.locationComponent || !this.isEnabled) {
+      showToast('Enable location first');
       return;
     }
-    
     try {
       this.locationComponent.setCameraMode(mode);
-      this.currentCameraMode = mode;
-      this.statusMessage = `相机模式: ${CameraMode.getName(mode)}`;
-      showToast(`相机模式: ${CameraMode.getName(mode)}`);
-    } catch (error) {
-      console.error('[LocationModesTestPage] Failed to switch camera mode:', error);
+      this.currentCameraMode = name;
+      this.statusMessage = 'Camera mode: ' + name;
+      showToast('Camera mode: ' + name);
+    } catch (err) {
+      this.statusMessage = 'Error: ' + err;
     }
-  };
-  
+  }
+
+  private toggleEnabled(): void {
+    if (!this.locationComponent || !this.isActivated) {
+      showToast('Activate first');
+      return;
+    }
+    const newState = !this.isEnabled;
+    this.locationComponent.setLocationComponentEnabled(newState);
+    this.isEnabled = newState;
+    this.statusMessage = newState ? 'Location enabled' : 'Location disabled';
+  }
+
   @Builder
-  buildMapContent() {
+  mapContent() {
     MapView({
       onMapReady: this.onMapReady,
-            styleUrl: DEFAULT_STYLE_URLS.bright,
-            initialLatitude: 39.9,
-            initialLongitude: 116.4,
-            initialZoom: 10
     })
+      .width('100%')
+      .height('100%')
   }
-  
+
   @Builder
-  buildActionButtons() {
-    Button(this.locationEnabled ? '禁用定位' : '启用定位')
-      .enabled(this.permissionGranted)
-      .onClick(() => {
-        if (this.locationEnabled) {
-          this.disableLocation();
-        } else {
-          this.enableLocation();
-        }
-      })
-    
-    Button(`NORMAL ${this.currentRenderMode === RenderMode.NORMAL ? '✓' : ''}`)
-      .enabled(this.locationEnabled)
-      .onClick(() => this.switchRenderMode(RenderMode.NORMAL))
-    
-    Button(`COMPASS ${this.currentRenderMode === RenderMode.COMPASS ? '✓' : ''}`)
-      .enabled(this.locationEnabled)
-      .onClick(() => this.switchRenderMode(RenderMode.COMPASS))
-    
-    Button(`GPS ${this.currentRenderMode === RenderMode.GPS ? '✓' : ''}`)
-      .enabled(this.locationEnabled)
-      .onClick(() => this.switchRenderMode(RenderMode.GPS))
-    
-    Button(`TRACKING ${this.currentCameraMode === CameraMode.TRACKING ? '✓' : ''}`)
-      .enabled(this.locationEnabled)
-      .onClick(() => this.switchCameraMode(CameraMode.TRACKING))
-    
-    Button(`TRACKING_COMPASS ${this.currentCameraMode === CameraMode.TRACKING_COMPASS ? '✓' : ''}`)
-      .enabled(this.locationEnabled)
-      .onClick(() => this.switchCameraMode(CameraMode.TRACKING_COMPASS))
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? '#4CAF50' : '#FF9800')
+        .width('100%')
+        .padding(12)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+        .margin({ bottom: 8 })
+
+      if (!this.isActivated) {
+        Button('Activate & Enable Location')
+          .width('100%')
+          .enabled(this.isMapReady)
+          .onClick(() => this.activateAndEnable())
+      } else {
+        Button(this.isEnabled ? 'Disable' : 'Enable')
+          .width('100%')
+          .backgroundColor(this.isEnabled ? '#FF5722' : '#4CAF50')
+          .onClick(() => this.toggleEnabled())
+      }
+
+      Divider().margin({ top: 12, bottom: 8 })
+
+      Text('Render Modes').fontSize(15).fontWeight(FontWeight.Bold).width('100%')
+
+      Row() {
+        Button('NORMAL')
+          .width('31%')
+          .backgroundColor(this.currentRenderMode === 'NORMAL' ? '#2196F3' : '#9E9E9E')
+          .onClick(() => this.setRenderMode(RenderMode.NORMAL, 'NORMAL'))
+
+        Button('COMPASS')
+          .width('31%')
+          .margin({ left: '3%' })
+          .backgroundColor(this.currentRenderMode === 'COMPASS' ? '#2196F3' : '#9E9E9E')
+          .onClick(() => this.setRenderMode(RenderMode.COMPASS, 'COMPASS'))
+
+        Button('GPS')
+          .width('31%')
+          .margin({ left: '3%' })
+          .backgroundColor(this.currentRenderMode === 'GPS' ? '#2196F3' : '#9E9E9E')
+          .onClick(() => this.setRenderMode(RenderMode.GPS, 'GPS'))
+      }
+      .width('100%')
+      .margin({ top: 4 })
+
+      Divider().margin({ top: 12, bottom: 8 })
+
+      Text('Camera Modes').fontSize(15).fontWeight(FontWeight.Bold).width('100%')
+
+      Button('TRACKING')
+        .width('100%')
+        .margin({ top: 4 })
+        .backgroundColor(this.currentCameraMode === 'TRACKING' ? '#2196F3' : '#9E9E9E')
+        .enabled(this.isEnabled)
+        .onClick(() => this.setCameraMode(CameraMode.TRACKING, 'TRACKING'))
+
+      Button('TRACKING_COMPASS')
+        .width('100%')
+        .margin({ top: 4 })
+        .backgroundColor(this.currentCameraMode === 'TRACKING_COMPASS' ? '#2196F3' : '#9E9E9E')
+        .enabled(this.isEnabled)
+        .onClick(() => this.setCameraMode(CameraMode.TRACKING_COMPASS, 'TRACKING_COMPASS'))
+
+      Button('TRACKING_GPS')
+        .width('100%')
+        .margin({ top: 4 })
+        .backgroundColor(this.currentCameraMode === 'TRACKING_GPS' ? '#2196F3' : '#9E9E9E')
+        .enabled(this.isEnabled)
+        .onClick(() => this.setCameraMode(CameraMode.TRACKING_GPS, 'TRACKING_GPS'))
+
+      Button('NONE (No Tracking)')
+        .width('100%')
+        .margin({ top: 4 })
+        .backgroundColor(this.currentCameraMode === 'NONE' ? '#FF5722' : '#9E9E9E')
+        .enabled(this.isEnabled)
+        .onClick(() => this.setCameraMode(CameraMode.NONE, 'NONE'))
+
+      // Status display
+      Text('Render: ' + this.currentRenderMode + ' | Camera: ' + this.currentCameraMode)
+        .fontSize(12)
+        .fontColor('#666')
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ top: 12 })
+    }
+    .width('100%')
   }
-  
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Location Modes',
-        description: '定位模式测试',
-        showActionBar: true,
-        mapContent: (): void => this.buildMapContent(),
-        actionButtons: (): void => this.buildActionButtons()
+      title: 'Location Modes',
+      subtitle: 'Render and camera tracking modes',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
       })
     }
     .width('100%')
     .height('100%')
   }
 }
-

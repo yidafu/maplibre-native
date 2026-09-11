@@ -5,10 +5,12 @@ import { DOMAIN } from '../constants/HiLogConstants';
 
 export default class EntryAbility extends UIAbility {
   private isDestroyed: boolean = false;
+  private pendingLaunchWant?: Want;
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
     this.isDestroyed = false;
+    this.pendingLaunchWant = want;
     
     // 清理可能残留的全局状态
     this.cleanupGlobalState();
@@ -53,11 +55,24 @@ export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
-    
+
     // 保存窗口引用
     this.windowStage = windowStage;
 
-    windowStage.loadContent('pages/Index', (err) => {
+    // Support launching a specific test page via Want parameter.
+    // Used by ohosTest to load the automation test page directly.
+    let startPage: string = 'pages/Index';
+    try {
+      const wantParamPage = this.pendingLaunchWant?.parameters?.['startPage'] as string;
+      if (wantParamPage && typeof wantParamPage === 'string' && wantParamPage.length > 0) {
+        startPage = wantParamPage;
+        hilog.info(DOMAIN, 'testTag', 'Loading custom start page: %{public}s', startPage);
+      }
+    } catch (error) {
+      hilog.warn(DOMAIN, 'testTag', 'Failed to read startPage parameter: %{public}s', JSON.stringify(error));
+    }
+
+    windowStage.loadContent(startPage, (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;

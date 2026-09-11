@@ -1,25 +1,34 @@
-import { LatLng, MapLibreMap, Marker, MarkerOptions, MapView, OnMarkerClickListener } from 'maplibre_harmony';
-import { TestPageLayout } from '../common/TestPageLayout';
-import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
-
 /**
- * Marker Click Activity
- * 标记点击事件测试
- * 参考 Android OnMarkerClickListener
+ * MarkerClickTestPage - Test marker click events and removal.
+ *
+ * Demonstrates handling marker click events, tracking click counts,
+ * and dynamically adding/removing markers.
  */
+import { TestPageLayout } from '../common/TestPageLayout';
+import {
+  MapView, MapLibreMap, Marker, MarkerOptions, LatLng,
+  OnMarkerClickListener
+} from 'maplibre_harmony';
+import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
-class MarkerClickListener implements OnMarkerClickListener {
+interface CityLocation {
+  loc: LatLng;
+  name: string;
+}
+
+class ClickCounterListener implements OnMarkerClickListener {
   private page: MarkerClickTestPage;
-  
+
   constructor(page: MarkerClickTestPage) {
     this.page = page;
   }
-  
+
   onMarkerClick(marker: Marker): boolean {
+    const title = marker.getTitle() || `Marker #${marker.getId()}`;
     this.page.clickCount++;
-    this.page.lastClickedMarker = marker.getTitle() || `ID ${marker.getId()}`;
-    showToast(`点击了: ${this.page.lastClickedMarker}`);
-    return false; // false 表示继续显示 InfoWindow
+    this.page.lastClickedTitle = title;
+    showToast(`Clicked: ${title}`);
+    return false;
   }
 }
 
@@ -27,162 +36,172 @@ class MarkerClickListener implements OnMarkerClickListener {
 @Component
 struct MarkerClickTestPage {
   private mapController: MapLibreMap | null = null;
+  @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Loading...';
   @State clickCount: number = 0;
-  @State lastClickedMarker: string = '';
-  @State markersReady: boolean = false;
-  @State markerCount: number = 0;
-  
-  build() {
-    Column() {
-    TestPageLayout({
-      title: 'Marker Click',
-      description: '标记点击事件',
-      showActionBar: true,
-      mapContent: (): void => this.buildMapContent(),
-      actionButtons: (): void => this.buildActionButtons()
+  @State lastClickedTitle: string = '';
+  @State private markerCount: number = 0;
+
+  aboutToDisappear() {
+    this.mapController?.destroy();
+    this.mapController = null;
+  }
+
+  private onMapReady = async (map: MapLibreMap): Promise<void> => {
+    this.mapController = map;
+    this.isMapReady = true;
+    this.statusMessage = 'Adding markers...';
+
+    // Set up click listener
+    map.setOnMarkerClickListener(new ClickCounterListener(this));
+
+    // Add initial markers at city locations
+    const cities: CityLocation[] = [
+      { loc: TEST_LOCATIONS.beijing, name: 'Beijing' },
+      { loc: TEST_LOCATIONS.shanghai, name: 'Shanghai' },
+      { loc: TEST_LOCATIONS.guangzhou, name: 'Guangzhou' },
+      { loc: TEST_LOCATIONS.shenzhen, name: 'Shenzhen' },
+      { loc: TEST_LOCATIONS.hangzhou, name: 'Hangzhou' },
+    ];
+
+    const optionsList: MarkerOptions[] = cities.map((c): MarkerOptions =>
+      new MarkerOptions()
+        .position(c.loc)
+        .title(c.name)
+        .snippet('Click me!')
+    );
+    const markers: Marker[] = await map.addMarkersBatch(optionsList);
+    this.markerCount = markers.length;
+    this.statusMessage = `${this.markerCount} markers ready - click one`;
+    console.info('[MarkerClickTestPage] Map ready');
+  };
+
+  private async addRandomMarker(): Promise<void> {
+    if (!this.mapController) return;
+    const lat = 20 + Math.random() * 30;
+    const lng = 80 + Math.random() * 50;
+    await this.mapController.addMarker(new MarkerOptions()
+      .position(new LatLng(lat, lng))
+      .title(`Random #${Date.now() % 10000}`)
+    );
+    this.markerCount++;
+    this.statusMessage = `Added marker (total: ${this.markerCount})`;
+    showToast('Random marker added');
+  }
+
+  private removeLastMarker(): void {
+    if (!this.mapController) return;
+    const markers = this.mapController.getMarkers();
+    if (markers.length > 0) {
+      const lastMarker = markers[markers.length - 1];
+      this.mapController.removeMarker(lastMarker);
+      this.markerCount = markers.length - 1;
+      this.statusMessage = `Removed last marker (total: ${this.markerCount})`;
+      showToast('Marker removed');
+    } else {
+      showToast('No markers to remove');
+    }
+  }
+
+  private clearAll(): void {
+    if (!this.mapController) return;
+    this.mapController.clearMarkers();
+    this.markerCount = 0;
+    this.statusMessage = 'All markers cleared';
+    showToast('Cleared all markers');
+  }
+
+  @Builder
+  mapContent() {
+    MapView({
+      onMapReady: this.onMapReady,
     })
       .width('100%')
       .height('100%')
-    }
   }
 
   @Builder
-  buildMapContent() {
-    MapView({
-      styleUrl: DEFAULT_STYLE_URLS.bright,
-      initialLatitude: 39.9,
-      initialLongitude: 116.4,
-      initialZoom: 5,
-      onMapReady: async (map: MapLibreMap) => {
-        console.info('[MarkerClickTest] 📍 onMapReady callback started');
-        this.mapController = map;
-        map.jumpTo(0, 35, 105, 0, 4);
-        
-        console.info('[MarkerClickTest] 📍 Setting up click listener BEFORE adding markers...');
-        this.setupClickListener(map);
-        
-        // 添加多个标记
-        console.info('[MarkerClickTest] 📍 Starting to add markers...');
-        await this.addMultipleMarkers(map);
-        console.info('[MarkerClickTest] 📍 Markers added, onMapReady callback completed');
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? '#4CAF50' : '#FF9800')
+        .width('100%')
+        .padding(8)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+
+      Text('Click Statistics')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 12, bottom: 6 })
+
+      Text(`Markers: ${this.markerCount}`)
+        .fontSize(14)
+        .fontColor('#2196F3')
+        .width('100%')
+
+      Text(`Clicks: ${this.clickCount}`)
+        .fontSize(14)
+        .fontColor('#4CAF50')
+        .width('100%')
+
+      if (this.lastClickedTitle) {
+        Text(`Last clicked: ${this.lastClickedTitle}`)
+          .fontSize(12)
+          .fontColor('#666')
+          .width('100%')
       }
-    })
-  }
 
-  
-  private async addMultipleMarkers(map: MapLibreMap): Promise<void> {
-    console.info('[MarkerClickTest] 开始添加 markers...');
-    this.markersReady = false;
-    
-    const cities = [
-      TEST_LOCATIONS.beijing,
-      TEST_LOCATIONS.shanghai,
-      TEST_LOCATIONS.guangzhou,
-      TEST_LOCATIONS.shenzhen,
-      TEST_LOCATIONS.hangzhou
-    ]
-    
-    const options: MarkerOptions[] = cities.map((latLng, index) => 
-      new MarkerOptions()
-        .position(latLng)
-        .title(`城市 ${index + 1}`)
-    );
-    
-    const markers = await map.addMarkersBatch(options);
-    this.markerCount = markers.length;
-    console.info(`[MarkerClickTest] Markers 添加完成，数量: ${markers.length}`);
-    
-    // 等待一段时间确保 marker 已渲染到地图上
-    // MarkerLayerManager.updateSource 使用 setTimeout(0) 延迟更新
-    setTimeout(() => {
-      this.markersReady = true;
-      console.info('[MarkerClickTest] ✅ Markers 已就绪，可以点击');
-      showToast('Markers 已加载完成，可以点击');
-    }, 500);  // 给足够的时间让渲染完成
-  }
-  
-  private setupClickListener(map: MapLibreMap): void {
-    console.info('[MarkerClickTest] 🔧 Setting up click listener...');
-    const clickListener = new MarkerClickListener(this);
-    console.info(`[MarkerClickTest] 🔧 Created MarkerClickListener instance`);
-    map.setOnMarkerClickListener(clickListener);
-    console.info('[MarkerClickTest] 🔧 Click listener set successfully');
-  }
-  
-  @Builder
-  buildActionButtons() {
-    Column({ space: 12 }) {
-      // 状态信息区域
-      Column({ space: 6 }) {
-        Row({ space: 12 }) {
-          Text(`Marker 数量: ${this.markerCount}`)
-            .fontSize(14)
-            .fontWeight(FontWeight.Medium)
-          
-          Text(this.markersReady ? '✓ 已就绪' : '⏳ 加载中')
-            .fontSize(12)
-            .fontColor(this.markersReady ? '#4CAF50' : '#FF9800')
-        }
-        
-        Row({ space: 8 }) {
-          Text(`点击次数: ${this.clickCount}`)
-            .fontSize(14)
-          
-          if (this.lastClickedMarker) {
-            Text(`| ${this.lastClickedMarker}`)
-              .fontSize(12)
-              .fontColor('#666666')
-          }
-        }
+      Divider().margin({ top: 8, bottom: 8 })
+
+      Row() {
+        Button('Add Marker')
+          .width('48%')
+          .onClick((): void => { this.addRandomMarker(); })
+          .enabled(this.isMapReady)
+
+        Button('Remove Last')
+          .width('48%')
+          .margin({ left: 8 })
+          .backgroundColor('#FF9800')
+          .onClick((): void => this.removeLastMarker())
+          .enabled(this.isMapReady && this.markerCount > 0)
       }
       .width('100%')
-      .padding(8)
-      .backgroundColor('#F5F5F5')
-      .borderRadius(4)
-      
-      // 操作按钮区域
-      Row({ space: 10 }) {
-        Button('添加 Marker')
-          .onClick(() => {
-            this.addRandomMarker();
-          })
-        
-        Button('重置计数')
-          .onClick(() => {
-            this.clickCount = 0;
-            this.lastClickedMarker = '';
-            showToast('计数已重置');
-          })
-      }
+
+      Button('Clear All')
+        .width('100%')
+        .margin({ top: 6 })
+        .backgroundColor('#F44336')
+        .fontColor(Color.White)
+        .onClick((): void => this.clearAll())
+        .enabled(this.isMapReady && this.markerCount > 0)
+
+      Button('Reset Counter')
+        .width('100%')
+        .margin({ top: 6 })
+        .onClick((): void => {
+          this.clickCount = 0;
+          this.lastClickedTitle = '';
+          this.statusMessage = 'Counter reset';
+        })
+        .enabled(this.isMapReady)
     }
-    .alignItems(HorizontalAlign.Start)
+    .width('100%')
   }
-  
-  private async addRandomMarker(): Promise<void> {
-    if (!this.mapController) {
-      showToast('地图未加载');
-      return;
+
+  build() {
+    Column() {
+      TestPageLayout({
+      title: 'Marker Click',
+      subtitle: 'Click and remove markers',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
-    
-    // 生成随机经纬度 (中国范围内)
-    const lat = 20 + Math.random() * 30;  // 20-50度
-    const lng = 80 + Math.random() * 50;  // 80-130度
-    
-    console.info(`[MarkerClickTest] 添加随机 marker at (${lat.toFixed(2)}, ${lng.toFixed(2)})`);
-    this.markersReady = false;
-    
-    const markerOption = new MarkerOptions()
-      .position(new LatLng(lat, lng))
-      .title(`随机标记 ${Date.now()}`);
-    
-    await this.mapController.addMarker(markerOption);
-    this.markerCount++;
-    
-    // 等待渲染完成
-    setTimeout(() => {
-      this.markersReady = true;
-      showToast(`已添加标记 (${lat.toFixed(2)}, ${lng.toFixed(2)})`);
-      console.info('[MarkerClickTest] ✅ 随机 Marker 已就绪');
-    }, 500);
+    .width('100%')
+    .height('100%')
   }
 }

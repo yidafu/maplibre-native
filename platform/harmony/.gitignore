@@ -17,3 +17,6 @@
 *.py
 
 archived-backup/
+
+# Mapbox access token (contains secret credentials)
+entry/src/main/ets/entryability/token.ets

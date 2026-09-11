@@ -1,226 +1,189 @@
 /**
- * Press For Marker Test Page
- * 点击添加标注测试页面
- * 
- * 参考: platform/android/MapLibreAndroidTestApp/src/main/java/org/maplibre/android/testapp/activity/annotation/PressForMarkerActivity.kt
+ * PressForMarkerTestPage - Long-press the map to add a marker.
+ *
+ * Demonstrates using OnMapLongClickListener to add markers
+ * at the long-pressed location, and OnMapClickListener for
+ * quick tap placement.
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraPosition, LatLng, Marker, MarkerOptions,
-  OnMapClickListener,
-  OnMapLongClickListener} from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS, formatLatLng , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import {
+  MapView, MapLibreMap, Marker, MarkerOptions, LatLng
+} from 'maplibre_harmony';
+import { MapClickListener, MapLongClickListener } from '../../utils/ListenerFactories';
+import { showToast, formatLatLng } from '../common/TestUtils';
 
 @Entry
 @Component
 struct PressForMarkerTestPage {
   private mapController: MapLibreMap | null = null;
-  private markers: Marker[] = [];;
+  @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Loading...';
   @State private markerCount: number = 0;
-  @State private lastClickType: string = '';
-  
+  @State private lastAction: string = '';
+  @State private mode: string = 'longpress';
+
+  private markers: Marker[] = [];
+
   aboutToDisappear() {
-    this.clearAllMarkers();
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
+    this.mapController?.destroy();
+    this.mapController = null;
+  }
+
+  private onMapReady = (map: MapLibreMap): void => {
+    this.mapController = map;
+    this.isMapReady = true;
+    this.setupListeners(map);
+    this.statusMessage = 'Long-press the map to add a marker';
+    console.info('[PressForMarkerTestPage] Map ready');
+  };
+
+  private setupListeners(map: MapLibreMap): void {
+    // Long-press listener - always adds a marker
+    map.addOnMapLongClickListener(new MapLongClickListener(
+      (x: number, y: number): boolean => {
+        if (!this.mapController) return false;
+        const latLng = this.mapController.latLngForPixel(x, y);
+        this.addMarkerAt(latLng, 'Long-press');
+        return true;
+      }
+    ));
+
+    // Click listener - adds a marker only in click mode
+    map.addOnMapClickListener(new MapClickListener(
+      (x: number, y: number): boolean => {
+        if (!this.mapController || this.mode !== 'click') return false;
+        const latLng = this.mapController.latLngForPixel(x, y);
+        this.addMarkerAt(latLng, 'Click');
+        return true;
+      }
+    ));
+  }
+
+  private async addMarkerAt(position: LatLng, actionType: string): Promise<void> {
+    if (!this.mapController) return;
+
+    try {
+      const marker = await this.mapController.addMarker(new MarkerOptions()
+        .position(position)
+        .title(`Marker #${this.markerCount + 1}`)
+        .snippet(`${actionType}: ${formatLatLng(position.latitude, position.longitude, 4)}`)
+      );
+      this.markers.push(marker);
+      this.markerCount++;
+      this.lastAction = `${actionType} at ${formatLatLng(position.latitude, position.longitude, 4)}`;
+      this.statusMessage = `Added marker #${this.markerCount} via ${actionType}`;
+    } catch (err) {
+      this.statusMessage = `Error adding marker: ${err}`;
     }
   }
-  
-  private onMapReady = (map: MapLibreMap): void => {
-    console.info('[PressForMarkerTestPage] onMapReady');
-    this.mapController = map;
-    
-    // 设置初始相机位置
-    map.jumpTo(0, 39.9, 116.4, 0, 10);
-    
-    // 添加点击监听器
-    this.setupClickListeners(map);
-    
-    showToast('点击地图添加标注');
-  };
-  
-  /**
-   * 设置点击监听器
-   */
-  private setupClickListeners(map: MapLibreMap): void {
-    // 单击添加标注
-    class MapClickListenerImpl implements OnMapClickListener {
-      private page: PressForMarkerTestPage;
-      
-      constructor(page: PressForMarkerTestPage) {
-        this.page = page;
-      }
-      
-      onMapClick(x: number, y: number): boolean {
-        if (!this.page.mapController) return false;
-        const latLng = this.page.mapController.latLngForPixel(x, y);
-        this.page.addMarker(latLng, '单击');
-        return true;
-      }
-    }
-    
-    // 长按添加标注
-    class MapLongClickListenerImpl implements OnMapLongClickListener {
-      private page: PressForMarkerTestPage;
-      
-      constructor(page: PressForMarkerTestPage) {
-        this.page = page;
-      }
-      
-      onMapLongClick(x: number, y: number): boolean {
-        if (!this.page.mapController) return false;
-        const latLng = this.page.mapController.latLngForPixel(x, y);
-        this.page.addMarker(latLng, '长按');
-        return true;
-      }
-    }
-    
-    map.addOnMapClickListener(new MapClickListenerImpl(this));
-    map.addOnMapLongClickListener(new MapLongClickListenerImpl(this));
-  };
-  
-  /**
-   * 添加标注
-   */
-  private addMarker(position: LatLng, clickType: string): void {
+
+  private clearAllMarkers(): void {
     if (!this.mapController) return;
-    
-    this.lastClickType = clickType;
-    
-    // 获取屏幕坐标（用于调试）
-    const screenPoint = this.mapController.pixelForLatLng(position.latitude, position.longitude);
-    console.info(`[PressForMarkerTestPage] Screen point: (${screenPoint.x}, ${screenPoint.y})`);
-    
-    const markerOptions = new MarkerOptions()
-      .position(position)
-      .title(formatLatLng(position.latitude, position.longitude, 5))
-      .snippet(`通过${clickType}添加`);
-    
-    this.mapController.addMarker(markerOptions).then((marker: Marker) => {
-      this.markers.push(marker);
-      this.markerCount = this.markers.length;
-      showToast(`已添加第 ${this.markerCount} 个标注`);
-    });
-  };
-  
-  /**
-   * 清除所有标注
-   */
-  private clearAllMarkers = (): void => {
-    if (!this.mapController) return;
-    
-    for (const marker of this.markers) {
-      this.mapController.removeMarker(marker);
-    }
+    this.mapController.clearMarkers();
     this.markers = [];
     this.markerCount = 0;
-    showToast('已清除所有标注');
-  };
-  
-  /**
-   * 撤销最后一个标注
-   */
-  private undoLastMarker = (): void => {
-    if (!this.mapController || this.markers.length === 0) {
-      showToast('没有可撤销的标注');
-      return;
-    }
-    
+    this.lastAction = '';
+    this.statusMessage = 'All markers cleared';
+    showToast('Cleared all markers');
+  }
+
+  private switchMode(): void {
+    this.mode = this.mode === 'longpress' ? 'click' : 'longpress';
+    this.statusMessage = `Mode: ${this.mode === 'longpress' ? 'Long-press to add' : 'Tap to add'}`;
+    showToast(`Switched to ${this.mode} mode`);
+  }
+
+  private undoLastMarker(): void {
+    if (!this.mapController || this.markers.length === 0) return;
     const lastMarker = this.markers.pop();
     if (lastMarker) {
       this.mapController.removeMarker(lastMarker);
-      this.markerCount = this.markers.length;
-      showToast('已撤销最后一个标注');
+      this.markerCount--;
+      this.statusMessage = `Removed last marker (${this.markerCount} remaining)`;
+      showToast('Last marker removed');
     }
-  };
-  
-  @Builder
-  actionButtonsBuilder() {
-    Button('清除全部')
-      .fontSize(14)
-      .backgroundColor('#F44336')
-      .onClick(this.clearAllMarkers);
-    
-    Button('撤销')
-      .fontSize(14)
-      .backgroundColor('#FF9800')
-      .onClick(this.undoLastMarker);
-    
-    Text(`标注数: ${this.markerCount}`)
-      .fontSize(14)
-      .padding(12)
-      .fontWeight(FontWeight.Bold);
   }
-  
+
   @Builder
-  controlPanelBuilder() {
-    Column() {
-      Text('点击添加标注')
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 12 });
-      
-      Text(`当前标注数: ${this.markerCount}`)
-        .fontSize(14)
-        .margin({ bottom: 8 });
-      
-      if (this.lastClickType) {
-        Text(`最后操作: ${this.lastClickType}`)
-          .fontSize(14)
-          .fontColor('#666666')
-          .margin({ bottom: 8 });
-      }
-      
-      Divider().margin({ top: 8, bottom: 8 });
-      
-      Text('使用说明:')
-        .fontSize(14)
-        .fontWeight(FontWeight.Bold)
-        .margin({ bottom: 4 });
-      
-      Text('• 单击地图添加标注')
-        .fontSize(12)
-        .fontColor('#666666')
-        .margin({ bottom: 4 });
-      
-      Text('• 长按地图添加标注')
-        .fontSize(12)
-        .fontColor('#666666')
-        .margin({ bottom: 4 });
-      
-      Text('• 点击标注查看详情')
-        .fontSize(12)
-        .fontColor('#666666');
-    }
-    .alignItems(HorizontalAlign.Start);
-  }
-  
-  @Builder
-  mapContentBuilder() {
+  mapContent() {
     MapView({
       onMapReady: this.onMapReady,
-      styleUrl: DEFAULT_STYLE_URLS.bright,
-      initialLatitude: 39.9,
-      initialLongitude: 116.4,
-      initialZoom: 10
     })
       .width('100%')
-      .height('100%');
+      .height('100%')
   }
-  
+
+  @Builder
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? '#4CAF50' : '#FF9800')
+        .width('100%')
+        .padding(8)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+
+      Text('Marker Count')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 12 })
+
+      Text(`${this.markerCount}`)
+        .fontSize(28)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#2196F3')
+        .width('100%')
+        .textAlign(TextAlign.Center)
+        .margin({ top: 4 })
+
+      if (this.lastAction) {
+        Text(`Last: ${this.lastAction}`)
+          .fontSize(11)
+          .fontColor('#666')
+          .width('100%')
+          .textAlign(TextAlign.Center)
+          .margin({ top: 4 })
+      }
+
+      Divider().margin({ top: 12, bottom: 8 })
+
+      Button(`Mode: ${this.mode === 'longpress' ? 'Long-Press' : 'Tap'}`)
+        .width('100%')
+        .margin({ top: 4 })
+        .backgroundColor(this.mode === 'longpress' ? '#FF9800' : '#2196F3')
+        .fontColor(Color.White)
+        .onClick((): void => this.switchMode())
+        .enabled(this.isMapReady)
+
+      Button('Undo Last')
+        .width('100%')
+        .margin({ top: 6 })
+        .onClick((): void => this.undoLastMarker())
+        .enabled(this.isMapReady && this.markerCount > 0)
+
+      Button('Clear All')
+        .width('100%')
+        .margin({ top: 6 })
+        .backgroundColor('#F44336')
+        .fontColor(Color.White)
+        .onClick((): void => this.clearAllMarkers())
+        .enabled(this.isMapReady && this.markerCount > 0)
+    }
+    .width('100%')
+  }
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Press For Marker',
-        description: '点击添加标注',
-        showActionBar: true,
-        actionButtons: (): void => this.actionButtonsBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
-        mapContent: (): void => this.mapContentBuilder()
-      });
+      title: 'Press for Marker',
+      subtitle: 'Long-press to add a marker',
+      mapContent: this.mapContent,
+      controlPanel: this.controlPanel,
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

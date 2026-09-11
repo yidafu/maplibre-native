@@ -1,12 +1,6 @@
-import {LatLng, NativeMapView} from 'maplibre_harmony';
-/**
- * TestPageExample - TestPageLayout 使用示例
- * 
- * 展示如何使用 TestPageLayout 组件创建统一风格的测试页面
- */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView } from 'maplibre_harmony/src/main/ets/maps/NativeMapView';
+import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
+import type { CameraOptions, NativeMapView } from 'maplibre_harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -156,7 +150,6 @@ struct TestPageExample {
   build() {
     Column() {
       TestPageLayout({
-        showActionBar: true,
         title: this.currentTitle,
         mapContent: (): void => this.buildMapContent(),
         controlPanel: (): void => this.buildControlPanel()
@@ -233,7 +226,7 @@ struct TestPageExample {
     if (!this.mapView) return;
     
     const center: LatLng = { latitude: 39.9042, longitude: 116.4074 } as LatLng;
-    const options: maplibre.CameraOptions = {
+    const options: CameraOptions = {
       center: center,
       zoom: 10,
       bearing: 0,
@@ -250,7 +243,7 @@ struct TestPageExample {
     if (!this.mapView) return;
     
     const center: LatLng = { latitude: 31.2304, longitude: 121.4737 } as LatLng;
-    const options: maplibre.CameraOptions = {
+    const options: CameraOptions = {
       center: center,
       zoom: 10,
       bearing: 0,

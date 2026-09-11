@@ -1,239 +1,210 @@
 /**
- * Custom Layer
- * 自定义渲染图层
- * 
- * 参考: platform/android/MapLibreAndroidTestApp/activity/customlayer/CustomLayerActivity.kt
- * 
- * 功能测试：
- * 1. 添加/移除自定义图层
- * 2. 切换图层颜色（红/绿/蓝）
- * 3. 触发重绘
+ * CustomLayerTestPage - Demonstrate custom OpenGL rendering on the map.
+ *
+ * Adds a CustomLayer that renders a semi-transparent colored overlay
+ * to show how custom OpenGL content can be composited on the map.
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CustomLayer } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS, TEST_LOCATIONS , DEFAULT_MAP_CONFIG } from '../common/TestUtils';
+import { MapView, MapLibreMap, CustomLayer, createCustomLayerWithColor } from 'maplibre_harmony';
+import type { RGBAColor } from 'maplibre_harmony';
 
 @Entry
 @Component
 struct CustomLayerTestPage {
   private mapController: MapLibreMap | null = null;
-  private customLayer: CustomLayer | null = null;
+  @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Loading...';
+  @State private layerVisible: boolean = true;
+  @State private currentColor: string = 'red';
   @State private layerAdded: boolean = false;
-  @State private currentColor: string = '红色';
-  
+  private customLayer: CustomLayer | null = null;
+
   aboutToDisappear() {
-    // CustomLayer 在移除时自动销毁，无需手动调用 destroy
     if (this.mapController) {
       this.mapController.destroy();
       this.mapController = null;
     }
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[CustomLayerTestPage] onMapReady');
     this.mapController = map;
-    // 设置初始位置（对应Android测试：39.91448, -243.60947）
-    map.jumpTo(0, 39.91448, -243.60947, 0, 10);
-    
-    showToast('CustomLayer 已就绪');
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready';
+    console.info('[CustomLayerTestPage] Map ready');
   };
-  
+
   /**
-   * 添加/移除自定义图层
+   * Add a custom layer with a semi-transparent color.
    */
-  private toggleCustomLayer = (): void => {
-    if (!this.mapController) {
-      showToast('地图未初始化');
-      return;
-    }
-    
+  private addCustomLayer(): void {
+    if (!this.mapController) return;
     const style = this.mapController.getStyle();
     if (!style) {
-      showToast('样式未加载');
+      this.statusMessage = 'Style not yet loaded';
       return;
     }
-    
-    if (this.layerAdded && this.customLayer) {
-      // 移除图层
-      try {
-        const removed = style.removeLayer(this.customLayer.getId());
-        if (removed) {
-          this.layerAdded = false;
-          this.customLayer = null;
-          showToast('已移除CustomLayer');
-          console.info('[CustomLayerTestPage] Custom layer removed');
-        } else {
-          showToast('移除失败：图层不存在');
-        }
-      } catch (error) {
-        showToast(`移除失败: ${error}`);
-        console.error('[CustomLayerTestPage] Failed to remove layer:', error);
-      }
-    } else {
-      // 添加图层
-      try {
-        // 创建自定义图层，默认红色半透明
-        this.customLayer = new CustomLayer('custom-layer');
-        this.customLayer.setColor(1.0, 0.0, 0.0, 0.5);
-        
-        // 添加图层
-        style.addLayer(this.customLayer);
-        this.layerAdded = true;
-        this.currentColor = '红色';
-        showToast('已添加CustomLayer');
-        console.info('[CustomLayerTestPage] Custom layer added');
-      } catch (error) {
-        showToast(`添加失败: ${error}`);
-        console.error('[CustomLayerTestPage] Failed to add layer:', error);
-      }
-    }
-  };
-  
-  /**
-   * 设置图层颜色
-   */
-  private setLayerColor = (red: number, green: number, blue: number, colorName: string): void => {
-    if (!this.layerAdded || !this.customLayer) {
-      showToast('请先添加自定义图层');
-      return;
-    }
-    
+
     try {
-      // 设置颜色（透明度保持为0.5）
-      this.customLayer.setColor(red, green, blue, 0.5);
-      this.currentColor = colorName;
-      
-      // 触发重绘
-      if (this.mapController) {
-        this.mapController.triggerRepaint();
-      }
-      
-      showToast(`颜色已设置为${colorName}`);
-      console.info(`[CustomLayerTestPage] Color set to ${colorName}: (${red}, ${green}, ${blue})`);
+      this.customLayer = createCustomLayerWithColor('custom-demo-layer', {
+        r: 1.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.3
+      } as RGBAColor);
+      style.addLayer(this.customLayer);
+      this.layerAdded = true;
+      this.currentColor = 'red';
+      this.layerVisible = true;
+      this.statusMessage = 'Custom layer added (red, alpha 0.3)';
     } catch (error) {
-      showToast(`设置颜色失败: ${error}`);
-      console.error('[CustomLayerTestPage] Failed to set color:', error);
+      this.statusMessage = `Failed: ${error instanceof Error ? error.message : String(error)}`;
+      console.error('[CustomLayerTestPage] Error:', error);
     }
-  };
-  
-  /**
-   * 触发地图重绘
-   */
-  private updateLayer = (): void => {
-    if (!this.mapController) {
-      showToast('地图未初始化');
-      return;
-    }
-    
-    try {
-      this.mapController.triggerRepaint();
-      showToast('已触发重绘');
-      console.info('[CustomLayerTestPage] Layer update triggered');
-    } catch (error) {
-      showToast(`重绘失败: ${error}`);
-      console.error('[CustomLayerTestPage] Failed to trigger repaint:', error);
-    }
-  };
-  
-  @Builder
-  actionButtonsBuilder() {
-    Column({ space: 8 }) {
-      // 添加/移除图层按钮
-      Button(this.layerAdded ? '移除CustomLayer' : '添加CustomLayer')
-        .fontSize(14)
-        .width('100%')
-        .type(ButtonType.Normal)
-        .backgroundColor(this.layerAdded ? '#FF6B6B' : '#4ECDC4')
-        .onClick(() => {
-          this.toggleCustomLayer();
-        });
-      
-      // 颜色控制按钮组
-      Text('图层颜色控制')
-        .fontSize(12)
-        .fontColor('#666666')
-        .margin({ top: 8 });
-      
-      Row({ space: 8 }) {
-        Button('红色')
-          .fontSize(12)
-          .layoutWeight(1)
-          .type(ButtonType.Normal)
-          .backgroundColor(this.currentColor === '红色' ? '#FF0000' : '#FFB3B3')
-          .onClick(() => {
-            this.setLayerColor(1.0, 0.0, 0.0, '红色');
-          })
-          .enabled(this.layerAdded);
-        
-        Button('绿色')
-          .fontSize(12)
-          .layoutWeight(1)
-          .type(ButtonType.Normal)
-          .backgroundColor(this.currentColor === '绿色' ? '#00FF00' : '#B3FFB3')
-          .onClick(() => {
-            this.setLayerColor(0.0, 1.0, 0.0, '绿色');
-          })
-          .enabled(this.layerAdded);
-        
-        Button('蓝色')
-          .fontSize(12)
-          .layoutWeight(1)
-          .type(ButtonType.Normal)
-          .backgroundColor(this.currentColor === '蓝色' ? '#0000FF' : '#B3B3FF')
-          .onClick(() => {
-            this.setLayerColor(0.0, 0.0, 1.0, '蓝色');
-          })
-          .enabled(this.layerAdded);
-      }
-      .width('100%');
-      
-      // 重绘按钮
-      Button('触发重绘')
-        .fontSize(14)
-        .width('100%')
-        .type(ButtonType.Normal)
-        .backgroundColor('#95A5A6')
-        .onClick(() => {
-          this.updateLayer();
-        })
-        .enabled(this.layerAdded);
-      
-      // 说明文字
-      Text('使用OpenGL ES在地图上进行自定义渲染')
-        .fontSize(11)
-        .fontColor('#999999')
-        .margin({ top: 8 })
-        .textAlign(TextAlign.Center);
-    }
-    .width('100%')
-    .padding(8);
   }
-  
+
+  /**
+   * Toggle the custom layer between visible and hidden.
+   */
+  private toggleLayer(): void {
+    if (!this.customLayer) {
+      this.statusMessage = 'No custom layer to toggle';
+      return;
+    }
+    try {
+      const newVisibility = this.layerVisible ? 'none' : 'visible';
+      this.customLayer.setVisibility(newVisibility);
+      this.layerVisible = !this.layerVisible;
+      this.statusMessage = `Layer ${this.layerVisible ? 'visible' : 'hidden'}`;
+    } catch (error) {
+      this.statusMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  /**
+   * Set the custom layer's color.
+   */
+  private setLayerColor(r: number, g: number, b: number, colorName: string): void {
+    if (!this.customLayer) {
+      this.statusMessage = 'No custom layer to modify';
+      return;
+    }
+    try {
+      this.customLayer.setColor(r, g, b, 0.3);
+      this.currentColor = colorName;
+      this.statusMessage = `Color: ${colorName}`;
+    } catch (error) {
+      this.statusMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  /**
+   * Remove the custom layer from the style.
+   */
+  private removeCustomLayer(): void {
+    if (!this.mapController || !this.customLayer) return;
+    const style = this.mapController.getStyle();
+    if (!style) return;
+
+    try {
+      style.removeLayer(this.customLayer.getId());
+      this.customLayer = null;
+      this.layerAdded = false;
+      this.statusMessage = 'Custom layer removed';
+    } catch (error) {
+      this.statusMessage = `Error: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
   @Builder
-  mapContentBuilder() {
+  mapContent() {
     MapView({
       onMapReady: this.onMapReady,
-      styleUrl: DEFAULT_STYLE_URLS.bright,
-      initialLatitude: 39.9,
-      initialLongitude: 116.4,
-      initialZoom: 10
     })
       .width('100%')
-      .height('100%');
+      .height('100%')
   }
-  
+
+  @Builder
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(14)
+        .fontColor(this.isMapReady ? (this.layerAdded ? '#4CAF50' : '#FF9800') : '#FF9800')
+        .width('100%')
+        .padding(10)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+
+      Text('Custom Layer Controls')
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 12, bottom: 8 })
+
+      Button(this.layerAdded ? 'Remove Layer' : 'Add Custom Layer')
+        .width('100%')
+        .backgroundColor(this.layerAdded ? '#E91E63' : '#2196F3')
+        .onClick((): void => {
+          if (this.layerAdded) {
+            this.removeCustomLayer();
+          } else {
+            this.addCustomLayer();
+          }
+        })
+        .enabled(this.isMapReady)
+
+      if (this.layerAdded) {
+        Text('Layer Color:')
+          .fontSize(14)
+          .width('100%')
+          .margin({ top: 12, bottom: 6 })
+
+        Row() {
+          Button('Red')
+            .width('30%')
+            .fontSize(13)
+            .backgroundColor(this.currentColor === 'red' ? '#F44336' : '#BDBDBD')
+            .onClick((): void => this.setLayerColor(1.0, 0.0, 0.0, 'red'))
+            .enabled(this.layerAdded)
+
+          Button('Green')
+            .width('30%')
+            .fontSize(13)
+            .margin({ left: '5%' })
+            .backgroundColor(this.currentColor === 'green' ? '#4CAF50' : '#BDBDBD')
+            .onClick((): void => this.setLayerColor(0.0, 1.0, 0.0, 'green'))
+            .enabled(this.layerAdded)
+
+          Button('Blue')
+            .width('30%')
+            .fontSize(13)
+            .margin({ left: '5%' })
+            .backgroundColor(this.currentColor === 'blue' ? '#2196F3' : '#BDBDBD')
+            .onClick((): void => this.setLayerColor(0.0, 0.0, 1.0, 'blue'))
+            .enabled(this.layerAdded)
+        }
+        .width('100%')
+
+        Button(this.layerVisible ? 'Hide Layer' : 'Show Layer')
+          .width('100%')
+          .margin({ top: 10 })
+          .onClick((): void => this.toggleLayer())
+          .enabled(this.layerAdded)
+      }
+    }
+    .width('100%')
+  }
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Custom Layer',
-        description: '自定义渲染图层',
-        showActionBar: true,
-        actionButtons: (): void => this.actionButtonsBuilder(),
-        mapContent: (): void => this.mapContentBuilder()
-      });
+      title: 'Custom Layer',
+      subtitle: 'Custom OpenGL rendering',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }

@@ -1,102 +1,164 @@
 /**
- * Animation Types Test Page
- * 动画类型对比测试页面
- * 
- * 功能：easeTo/flyTo/animateCamera 对比
+ * CameraAnimationTypeTestPage - Compare animation curves (easeTo vs flyTo).
  */
-
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { showToast, DEFAULT_STYLE_URLS } from '../common/TestUtils';
+import { MapView, MapLibreMap, LatLng, CameraOptions } from 'maplibre_harmony';
+import { CameraAnimationCallbackImpl } from '../../utils/ListenerFactories';
+import { showToast } from '../common/TestUtils';
 
 @Entry
 @Component
 struct CameraAnimationTypeTestPage {
   private mapController: MapLibreMap | null = null;
-  @State private statusMessage: string = '初始化...';
-  
+  @State private isMapReady: boolean = false;
+  @State private statusMessage: string = 'Ready';
+  @State private isAnimating: boolean = false;
+
   aboutToDisappear() {
-    if (this.mapController) {
-      this.mapController.destroy();
-      this.mapController = null;
-    }
+    this.mapController?.destroy();
+    this.mapController = null;
   }
-  
+
   private onMapReady = (map: MapLibreMap): void => {
-    console.info('[CameraAnimationTypeTestPage] onMapReady');
     this.mapController = map;
-    
-    this.statusMessage = '地图已就绪';
-    showToast('动画类型对比功能已激活');
+    this.isMapReady = true;
+    this.statusMessage = 'Map ready';
   };
-  
+
+  private easeToTarget(lat: number, lng: number, zoom: number, duration: number): void {
+    if (!this.mapController || this.isAnimating) return;
+    this.isAnimating = true;
+    this.statusMessage = `easeTo: moving to (${lat.toFixed(2)}, ${lng.toFixed(2)})...`;
+    this.mapController.easeTo(
+      { center: new LatLng(lat, lng).toObject(), zoom: zoom } as CameraOptions,
+      duration,
+      new CameraAnimationCallbackImpl(
+        (): void => {
+          this.isAnimating = false;
+          this.statusMessage = 'easeTo complete';
+          showToast('easeTo finished');
+        },
+        (): void => {
+          this.isAnimating = false;
+          this.statusMessage = 'easeTo cancelled';
+        }
+      )
+    );
+  }
+
+  private flyToTarget(lat: number, lng: number, zoom: number, duration: number): void {
+    if (!this.mapController || this.isAnimating) return;
+    this.isAnimating = true;
+    this.statusMessage = `flyTo: moving to (${lat.toFixed(2)}, ${lng.toFixed(2)})...`;
+    this.mapController.flyTo(
+      { center: new LatLng(lat, lng).toObject(), zoom: zoom } as CameraOptions,
+      duration,
+      new CameraAnimationCallbackImpl(
+        (): void => {
+          this.isAnimating = false;
+          this.statusMessage = 'flyTo complete';
+          showToast('flyTo finished');
+        },
+        (): void => {
+          this.isAnimating = false;
+          this.statusMessage = 'flyTo cancelled';
+        }
+      )
+    );
+  }
+
+  private jumpToTarget(lat: number, lng: number, zoom: number): void {
+    if (!this.mapController) return;
+    const bearing = this.mapController.getBearing();
+    const pitch = this.mapController.getPitch();
+    this.mapController.jumpTo(bearing, lat, lng, pitch, zoom);
+    this.statusMessage = `Jumped to (${lat.toFixed(2)}, ${lng.toFixed(2)})`;
+  }
+
   @Builder
-  mapContentBuilder() {
+  mapContent() {
     MapView({
       onMapReady: this.onMapReady,
-      styleUrl: DEFAULT_STYLE_URLS.bright,
-      initialLatitude: 39.9,
-      initialLongitude: 116.4,
-      initialZoom: 10
     })
       .width('100%')
-      .height('100%');
+      .height('100%')
   }
-  
+
   @Builder
-  controlPanelBuilder() {
-    Column({ space: 8 }) {
-      Text('动画类型对比')
-        .fontSize(16)
+  controlPanel() {
+    Column() {
+      Text(this.statusMessage)
+        .fontSize(13)
+        .fontColor(this.isAnimating ? '#FF9800' : '#4CAF50')
+        .width('100%')
+        .padding(10)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+
+      Text('Animation Types - Beijing to Shanghai')
+        .fontSize(14)
         .fontWeight(FontWeight.Bold)
         .width('100%')
-      
-      Text(this.statusMessage)
+        .margin({ top: 12, bottom: 6 })
+
+      Row() {
+        Button('Jump').height(44).enabled(!this.isAnimating)
+          .onClick((): void => this.jumpToTarget(31.2304, 121.4737, 10))
+        Button('Ease 500ms').height(44).margin({ left: 6 }).enabled(!this.isAnimating)
+          .onClick((): void => this.easeToTarget(31.2304, 121.4737, 10, 500))
+        Button('Fly 500ms').height(44).margin({ left: 6 }).enabled(!this.isAnimating)
+          .onClick((): void => this.flyToTarget(31.2304, 121.4737, 10, 500))
+      }
+      .width('100%')
+
+      Row() {
+        Button('Ease 2s').height(44).margin({ top: 6 }).enabled(!this.isAnimating)
+          .onClick((): void => this.easeToTarget(31.2304, 121.4737, 12, 2000))
+        Button('Fly 2s').height(44).margin({ top: 6, left: 6 }).enabled(!this.isAnimating)
+          .onClick((): void => this.flyToTarget(31.2304, 121.4737, 12, 2000))
+        Button('Fly 4s').height(44).margin({ top: 6, left: 6 }).enabled(!this.isAnimating)
+          .onClick((): void => this.flyToTarget(31.2304, 121.4737, 14, 4000))
+      }
+      .width('100%')
+
+      Text('Long Distance')
         .fontSize(14)
-        .fontColor('#666')
+        .fontWeight(FontWeight.Bold)
         .width('100%')
-        .padding(8)
-        .backgroundColor('#F5F5F5')
-        .borderRadius(4)
-      
-      Text('💡 easeTo/flyTo/animateCamera 对比')
+        .margin({ top: 12, bottom: 6 })
+
+      Row() {
+        Button('Ease: Beijing->NYC').height(44).enabled(!this.isAnimating)
+          .onClick((): void => this.easeToTarget(40.7128, -74.006, 10, 3000))
+        Button('Fly: Beijing->NYC').height(44).margin({ left: 6 }).enabled(!this.isAnimating)
+          .onClick((): void => this.flyToTarget(40.7128, -74.006, 10, 3000))
+      }
+      .width('100%')
+
+      Text('Notes')
+        .fontSize(13)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+        .margin({ top: 10 })
+      Text('easeTo: smooth linear movement. flyTo: curved aerial arc with zoom out/in.')
         .fontSize(11)
         .fontColor('#666')
-        .width('100%')
-        .margin({ top: 4 })
         .lineHeight(16)
-    }
-    .width('100%')
-    .padding(8)
-  }
-  
-  @Builder
-  actionButtonsBuilder() {
-    Column({ space: 8 }) {
-      Button('测试功能')
         .width('100%')
-        .backgroundColor('#2196F3')
-        .onClick(() => {
-          showToast('功能测试');
-          this.statusMessage = '测试执行中...';
-        })
     }
     .width('100%')
-    .padding(8)
   }
-  
+
   build() {
     Column() {
       TestPageLayout({
-        title: 'Animation Types',
-        description: '动画类型对比',
-        showActionBar: true,
-        mapContent: (): void => this.mapContentBuilder(),
-        controlPanel: (): void => this.controlPanelBuilder(),
-        actionButtons: (): void => this.actionButtonsBuilder()
-      });
+      title: 'Animation Type',
+      subtitle: 'easeTo vs flyTo comparison',
+      mapContent: (): void => this.mapContent(),
+      controlPanel: (): void => this.controlPanel(),
+      })
     }
     .width('100%')
-    .height('100%');
+    .height('100%')
   }
 }
