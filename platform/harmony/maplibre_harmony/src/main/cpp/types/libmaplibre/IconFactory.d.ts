@@ -1,4 +1,5 @@
 import { Icon } from './Icon';
+import resourceManager from '@ohos.resourceManager';
 
 /**
  * IconFactory - Static factory for creating icons with optimized performance
@@ -82,8 +83,10 @@ export class IconFactory {
    * Create icon from rawfile resource (C++ layer decodes directly).
    *
    * Reads and decodes the rawfile using HarmonyOS ResourceManager
-   * and ImageSource API directly in C++.
+   * and Image Kit native APIs entirely in C++, without creating an
+   * intermediate ArkTS PixelMap.
    *
+   * @param resourceManager ResourceManager instance (e.g., `context.resourceManager`)
    * @param fileName Rawfile name (e.g., 'marker.png')
    * @param iconId Optional icon identifier (auto-generated if not provided)
    * @param scale Optional pixel scale ratio (default: 1.0)
@@ -92,10 +95,15 @@ export class IconFactory {
    *
    * @example
    * ```typescript
-   * const icon = maplibre.IconFactory.fromRawfile('marker.png');
+   * const icon = maplibre.IconFactory.fromRawfile(context.resourceManager, 'marker.png');
    * ```
    */
-  static fromRawfile(fileName: string, iconId?: string, scale?: number): Icon;
+  static fromRawfile(
+    resourceManager: resourceManager.ResourceManager,
+    fileName: string,
+    iconId?: string,
+    scale?: number
+  ): Icon;
 
   /**
    * Create icon from file path

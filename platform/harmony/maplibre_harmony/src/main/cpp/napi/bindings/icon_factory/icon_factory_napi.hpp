@@ -57,10 +57,11 @@ private:
     
     /**
      * Create Icon from rawfile resource
-     * 
+     *
      * ETS signature:
-     * static fromRawfile(fileName: string, iconId?: string, scale?: number): Icon
-     * 
+     * static fromRawfile(resourceManager: ResourceManager, fileName: string,
+     *                    iconId?: string, scale?: number): Icon
+     *
      * @param env NAPI environment
      * @param info Callback info
      * @return Icon NAPI object

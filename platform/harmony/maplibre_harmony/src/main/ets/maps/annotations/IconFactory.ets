@@ -27,6 +27,9 @@ interface ColorInfo {
  * - Rawfile resources: load images from the `rawfile` directory.
  *
  * **Key optimizations**:
+ * - Encoded image bytes (PNG/JPEG/WEBP) are decoded in the C++ layer via the
+ *   Image Kit native APIs (no intermediate ArkTS PixelMap). Each source method
+   * falls back to ArkTS decoding if native decoding fails.
  * - Icon image data lives in the C++ layer, avoiding repeated PixelMap-to-bytes conversions.
  * - Singleton pattern guarantees a single factory instance.
  * - Automatically manages icon ID generation to prevent collisions.
@@ -39,7 +42,7 @@ interface ColorInfo {
  *
  * References:
  * - Android: `org.maplibre.android.annotations.IconFactory`
- * - NAPI: `IconNAPI` C++ implementation
+ * - NAPI: `IconNAPI` / `IconFactoryNAPI` C++ implementations
  *
  * @example
 * ```typescript
@@ -143,8 +146,9 @@ export class IconFactory {
    *
    * Loads an image from `resources/media` and creates an `Icon`.
    *
-   * **Performance note**: currently the ETS layer creates a PixelMap and hands it to C++.
-   * Future optimizations will decode image data directly in C++ to avoid PixelMap overhead.
+   * **Performance note**: the encoded media bytes are decoded in the C++ layer
+   * when possible (single allocation, no intermediate ArkTS PixelMap). If native
+   * decoding fails, the factory falls back to the ArkTS decode path.
    *
    * @param resource Resource object (use `$r`, for example `$r('app.media.marker')`).
    * @param reuseIdentifier Optional reuse identifier (deprecated, ignored).
@@ -165,25 +169,17 @@ export class IconFactory {
     }
 
     try {
-      // 1. Fetch the resource content (returns Uint8Array)
-      const uint8Array = await this.resourceMgr.getMediaByName(resource.id.toString());
+      // 1. Fetch the encoded media content (returns Uint8Array)
+      const uint8Array = await this.resourceMgr.getMediaContent(resource);
 
-      // 2. Create an ImageSource
-      const imageSource = image.createImageSource(uint8Array.buffer);
-      if (!imageSource) {
-        throw new Error('Failed to create ImageSource from resource buffer');
+      // 2. Preferred path: decode in C++ (no intermediate PixelMap)
+      const nativeIcon = this.tryCreateNativeIconFromData(uint8Array);
+      if (nativeIcon !== null) {
+        return nativeIcon;
       }
 
-      // 3. Decode to a PixelMap (RGBA_8888 format expected by the NAPI icon)
-      const pixelMap = await imageSource.createPixelMap({
-        desiredPixelFormat: image.PixelMapFormat.RGBA_8888
-      });
-
-      // 4. Release the ImageSource (PixelMap already created)
-      imageSource.release();
-
-      // 5. Create the icon (reuseIdentifier ignored)
-      return this.fromPixelMap(pixelMap);
+      // 3. Fallback: decode in ArkTS
+      return await this.createIconFromDataInArkTS(uint8Array);
     } catch (error) {
       throw new Error(`[IconFactory] Failed to load icon from resource: ${error}`);
     }
@@ -194,8 +190,9 @@ export class IconFactory {
    *
    * Loads an image file from the filesystem and produces an `Icon`.
    *
-   * **Performance note**: the current implementation reads the file in ETS and creates a PixelMap.
-   * Future optimization will decode images directly in C++.
+   * **Performance note**: the file is read and decoded in the C++ layer when
+   * possible (single allocation, no intermediate ArkTS PixelMap). If native
+   * decoding fails, the factory falls back to the ArkTS decode path.
    *
    * @param absolutePath Absolute path to the image file.
    * @param reuseIdentifier Optional reuse identifier (deprecated, ignored).
@@ -215,28 +212,19 @@ export class IconFactory {
         throw new Error(`Path is not a file: ${absolutePath}`);
       }
 
-      // 2. Read the file contents
+      // 2. Preferred path: read + decode in C++ (no intermediate PixelMap)
+      const nativeIcon = this.tryCreateNativeIconFromPath(absolutePath);
+      if (nativeIcon !== null) {
+        return nativeIcon;
+      }
+
+      // 3. Fallback: read the file in ArkTS and decode
       const file = fs.openSync(absolutePath, fs.OpenMode.READ_ONLY);
       const buffer = new ArrayBuffer(stat.size);
       fs.readSync(file.fd, buffer);
       fs.closeSync(file);
 
-      // 3. Create an ImageSource
-      const imageSource = image.createImageSource(buffer);
-      if (!imageSource) {
-        throw new Error('Failed to create ImageSource from file buffer');
-      }
-
-      // 4. Decode to a PixelMap
-      const pixelMap = await imageSource.createPixelMap({
-        desiredPixelFormat: image.PixelMapFormat.RGBA_8888
-      });
-
-      // 5. Release the ImageSource
-      imageSource.release();
-
-      // 6. Create the icon
-      return this.fromPixelMap(pixelMap);
+      return await this.createIconFromDataInArkTS(new Uint8Array(buffer));
     } catch (error) {
       throw new Error(`[IconFactory] Failed to load icon from path '${absolutePath}': ${error}`);
     }
@@ -246,6 +234,10 @@ export class IconFactory {
    * Create an icon from a rawfile.
    *
    * Loads an image from the application's `resources/rawfile` directory and produces an `Icon`.
+   *
+   * **Performance note**: the rawfile is read and decoded in the C++ layer when
+   * possible (single allocation, no intermediate ArkTS PixelMap). If native
+   * decoding fails, the factory falls back to the ArkTS decode path.
    *
    * @param fileName Rawfile name (for example `marker.png`, path prefix not required).
    * @param iconId Optional icon ID; generated automatically when omitted.
@@ -270,27 +262,22 @@ export class IconFactory {
       throw new Error(error);
     }
 
+    // Preferred path: read + decode in C++ (no intermediate PixelMap)
+    try {
+      const nativeIcon = maplibre.IconFactory.fromRawfile(
+        this.resourceMgr, fileName, iconId, this.pixelRatio);
+      return Icon.fromNative(nativeIcon);
+    } catch (nativeError) {
+      console.error(`[IconFactory] Native rawfile decoding failed, falling back to ArkTS: ${nativeError}`);
+    }
+
+    // Fallback: read + decode in ArkTS
     try {
       // 1. Read the rawfile contents
       const uint8Array = await this.resourceMgr.getRawFileContent(fileName);
 
-      // 2. Create an ImageSource
-      const imageSource = image.createImageSource(uint8Array.buffer);
-      if (!imageSource) {
-        throw new Error('Failed to create ImageSource from rawfile buffer');
-      }
-
-      // 3. Decode to a PixelMap
-      const pixelMap = await imageSource.createPixelMap({
-        desiredPixelFormat: image.PixelMapFormat.RGBA_8888
-      });
-
-      // 4. Release the ImageSource
-      imageSource.release();
-
-      // 5. Create the icon (optionally specifying a custom ID)
-      const icon = await this.fromPixelMap(pixelMap, iconId);
-      return icon;
+      // 2. Create the icon (optionally specifying a custom ID)
+      return await this.createIconFromDataInArkTS(uint8Array, iconId);
     } catch (error) {
       const errorMsg = `[IconFactory] Failed to load icon from rawfile '${fileName}': ${error}`;
       console.error(errorMsg);
@@ -387,6 +374,73 @@ export class IconFactory {
    */
   public recreate(iconId: string, pixelMap: image.PixelMap, reuseIdentifier?: string): Icon {
     return Icon.createInternal(iconId, pixelMap, this.pixelRatio);
+  }
+
+  /**
+   * Decode encoded image bytes in the C++ layer and wrap the result.
+   *
+   * @param data Encoded image bytes (PNG/JPEG/WEBP).
+   * @param iconId Optional icon ID; generated automatically when omitted.
+   * @returns Wrapped `Icon`, or null when native decoding fails
+   *          (callers should fall back to the ArkTS decode path).
+   */
+  private tryCreateNativeIconFromData(data: Uint8Array, iconId?: string): Icon | null {
+    try {
+      const nativeIcon = maplibre.IconFactory.fromResourceData(data, iconId, this.pixelRatio);
+      return Icon.fromNative(nativeIcon);
+    } catch (error) {
+      console.error(`[IconFactory] Native image decoding failed, falling back to ArkTS: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Read and decode an image file in the C++ layer and wrap the result.
+   *
+   * @param absolutePath Absolute path to the image file.
+   * @returns Wrapped `Icon`, or null when native decoding fails
+   *          (callers should fall back to the ArkTS decode path).
+   */
+  private tryCreateNativeIconFromPath(absolutePath: string): Icon | null {
+    try {
+      const nativeIcon = maplibre.IconFactory.fromFilePath(absolutePath, undefined, this.pixelRatio);
+      return Icon.fromNative(nativeIcon);
+    } catch (error) {
+      console.error(`[IconFactory] Native file decoding failed, falling back to ArkTS: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * ArkTS decode path: encoded bytes → ImageSource → PixelMap → Icon.
+   *
+   * Used as fallback when native decoding fails. Decodes to RGBA_8888, the
+   * format expected by the NAPI icon implementation.
+   *
+   * @param data Encoded image bytes (PNG/JPEG/WEBP).
+   * @param iconId Optional icon ID; generated automatically when omitted.
+   * @returns Promise resolving to the wrapped `Icon`.
+   * @throws Error If decoding fails.
+   */
+  private async createIconFromDataInArkTS(data: Uint8Array, iconId?: string): Promise<Icon> {
+    // 1. Create an ImageSource (slice to the view range; the backing buffer may
+    //    be larger than the view or start at a non-zero offset)
+    const exactBuffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+    const imageSource = image.createImageSource(exactBuffer);
+    if (!imageSource) {
+      throw new Error('Failed to create ImageSource from image data');
+    }
+
+    // 2. Decode to a PixelMap (RGBA_8888 format expected by the NAPI icon)
+    const pixelMap = await imageSource.createPixelMap({
+      desiredPixelFormat: image.PixelMapFormat.RGBA_8888
+    });
+
+    // 3. Release the ImageSource (PixelMap already created)
+    imageSource.release();
+
+    // 4. Create the icon
+    return this.fromPixelMap(pixelMap, iconId);
   }
 
   /**
