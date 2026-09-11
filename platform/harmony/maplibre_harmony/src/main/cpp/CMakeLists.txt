@@ -112,6 +112,8 @@ add_library(maplibre
     style/layers/layer_property_utils.hpp
     style/layers/custom_layer_harmony.hpp
     style/layers/custom_layer_harmony.cpp
+    napi/bindings/style/custom_drawable_layer_napi.hpp
+    napi/bindings/style/custom_drawable_layer_napi.cpp
     
     # NAPI bindings
     napi/core/napi_init.cpp
@@ -239,6 +241,10 @@ add_library(maplibre
     sources/raster_dem_source_napi.cpp
     sources/image_source_napi.hpp
     sources/image_source_napi.cpp
+    sources/custom_geometry_source_napi.hpp
+    sources/custom_geometry_source_napi.cpp
+    sources/video_source_napi.hpp
+    sources/video_source_napi.cpp
     
     # Style layers
     style/layers/fill_layer_harmony.hpp
@@ -263,6 +269,8 @@ add_library(maplibre
     style/layers/fill_extrusion_layer_harmony.cpp
     style/layers/color_relief_layer_harmony.hpp
     style/layers/color_relief_layer_harmony.cpp
+    style/layers/location_indicator_layer_harmony.hpp
+    style/layers/location_indicator_layer_harmony.cpp
     
     # HarmonyOS i18n files are in mbgl-core (harmony.cmake)
     # ${MBGL_SOURCE_DIR}/platform/default/src/mbgl/i18n/collator.cpp

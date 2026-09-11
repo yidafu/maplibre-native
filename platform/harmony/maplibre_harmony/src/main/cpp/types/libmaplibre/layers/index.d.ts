@@ -6,12 +6,14 @@
 import { BackgroundLayer } from './BackgroundLayer';
 import { CircleLayer } from './CircleLayer';
 import { CustomLayer } from './CustomLayer';
+import { CustomDrawableLayer } from './CustomDrawableLayer';
 import { FillExtrusionLayer } from './FillExtrusionLayer';
 import { FillLayer } from './FillLayer';
 import { HeatmapLayer } from './HeatmapLayer';
 import { HillshadeLayer } from './HillshadeLayer';
 import { ColorReliefLayer } from './ColorReliefLayer';
 import { LineLayer } from './LineLayer';
+import { LocationIndicatorLayer } from './LocationIndicatorLayer';
 import { RasterLayer } from './RasterLayer';
 import { SymbolLayer } from './SymbolLayer';
 
@@ -35,7 +37,11 @@ export { ColorReliefLayer } from './ColorReliefLayer';
 
 export { FillExtrusionLayer } from './FillExtrusionLayer';
 
+export { LocationIndicatorLayer } from './LocationIndicatorLayer';
+
 export { CustomLayer } from './CustomLayer';
+
+export { CustomDrawableLayer, DrawableLineOptions, DrawableFillOptions } from './CustomDrawableLayer';
 
 /**
  * Layer - union of all layer types.
@@ -52,5 +58,7 @@ export type Layer =
     | HillshadeLayer
     | ColorReliefLayer
     | FillExtrusionLayer
-    | CustomLayer;
+    | LocationIndicatorLayer
+    | CustomLayer
+    | CustomDrawableLayer;
 

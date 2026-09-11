@@ -28,6 +28,7 @@ import { HeatmapLayer } from './layers/HeatmapLayer';
 import { HillshadeLayer } from './layers/HillshadeLayer';
 import { ColorReliefLayer } from './layers/ColorReliefLayer';
 import { FillExtrusionLayer } from './layers/FillExtrusionLayer';
+import { LocationIndicatorLayer } from './layers/LocationIndicatorLayer';
 
 /**
  * Internal marker to prevent constructing Style externally
@@ -151,6 +152,9 @@ export class Style {
     }
     if (napiType === FillExtrusionLayer._TYPE_) {
       return FillExtrusionLayer.fromNative(nativeLayer as maplibre.FillExtrusionLayer);
+    }
+    if (napiType === LocationIndicatorLayer._TYPE_) {
+      return LocationIndicatorLayer.fromNative(nativeLayer as maplibre.LocationIndicatorLayer);
     }
 
     console.error(`[Style] wrapLayer: ❌ No matching type found for layer! _TYPE_=${napiType}`);
@@ -298,17 +302,43 @@ export class Style {
   // ========== Image management ==========
 
   /**
-   * Add an image
+   * Add an image.
+   *
+   * Supported forms:
+   * - `addImage(name, buffer, width, height, sdf?)`
+   * - `addImage(name, buffer, width, height, pixelRatio?, sdf?)`
+   *
+   * @param name Image identifier.
+   * @param imageData Raw RGBA (premultiplied) pixel data; its byte length
+   *                  must equal `width * height * 4`.
+   * @param pixelRatioOrSdf Pixel ratio (defaults to 1.0) or SDF flag.
+   * @param sdf Whether the image is an SDF (Signed Distance Field) asset.
    */
-  addImage(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): void {
-    this.nativeInstance.addImage(name, imageData, width, height, sdf);
+  addImage(
+    name: string,
+    imageData: ArrayBuffer | Uint8Array,
+    width: number,
+    height: number,
+    pixelRatioOrSdf?: number | boolean,
+    sdf?: boolean
+  ): void {
+    this.nativeInstance.addImage(name, imageData, width, height, pixelRatioOrSdf, sdf);
   }
 
   /**
-   * Add an image asynchronously (non-blocking for the UI thread)
+   * Add an image asynchronously (non-blocking for the UI thread).
+   *
+   * Accepts the same argument forms as `addImage`.
    */
-  addImageAsync(name: string, imageData: ArrayBuffer | Uint8Array, width: number, height: number, sdf?: boolean): Promise<void> {
-    return this.nativeInstance.addImageAsync(name, imageData, width, height, sdf);
+  addImageAsync(
+    name: string,
+    imageData: ArrayBuffer | Uint8Array,
+    width: number,
+    height: number,
+    pixelRatioOrSdf?: number | boolean,
+    sdf?: boolean
+  ): Promise<void> {
+    return this.nativeInstance.addImageAsync(name, imageData, width, height, pixelRatioOrSdf, sdf);
   }
 
   /**

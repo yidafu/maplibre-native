@@ -9,6 +9,8 @@ import type { VectorSource } from './VectorSource';
 import type { RasterSource } from './RasterSource';
 import type { RasterDemSource } from './RasterDemSource';
 import type { ImageSource } from './ImageSource';
+import type { CustomGeometrySource } from './CustomGeometrySource';
+import type { VideoSource } from './VideoSource';
 /**
  * Source - Union of all supported source types
  *
@@ -19,7 +21,9 @@ export type Source =
     | VectorSource
     | RasterSource
     | RasterDemSource
-    | ImageSource;
+    | ImageSource
+    | CustomGeometrySource
+    | VideoSource;
 
 /**
  * SourceData - Source payload type

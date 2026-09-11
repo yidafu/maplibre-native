@@ -24,6 +24,8 @@ export { ColorReliefLayer } from './ColorReliefLayer';
 
 export { FillExtrusionLayer } from './FillExtrusionLayer';
 
+export { LocationIndicatorLayer } from './LocationIndicatorLayer';
+
 // Property types
 export { PropertyValue } from './PropertyValue';
 
@@ -40,6 +42,9 @@ export type { Layer, LayerOptions, LayerFilter, LayerLayout, LayerPaint, LayerMe
 
 // CustomLayer class
 export { CustomLayer, createCustomLayerWithColor } from './CustomLayer';
+
+// CustomDrawableLayer class
+export { CustomDrawableLayer, DrawableLineOptions, DrawableFillOptions } from './CustomDrawableLayer';
 
 export type { RGBAColor } from './CustomLayer';
 

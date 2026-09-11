@@ -128,8 +128,6 @@ public:
     }
 
     static std::optional<GeoJSON> toGeoJSON(const mbgl::harmony::NapiValue& value, Error& error) {
-        // For now, we primarily support GeoJSON as string (JSON serialized)
-        // TODO: Add support for parsing JavaScript GeoJSON objects directly
         if (value.isNull() || value.isUndefined()) {
             error = {"no json data found"};
             return {};
@@ -139,8 +137,45 @@ public:
             return parseGeoJSON(value.toString(), error);
         }
 
-        // Could add support for object format here in the future
-        error = {"GeoJSON must be provided as a JSON string"};
+        if (value.isObject() || value.isArray()) {
+            // JavaScript GeoJSON object: serialize with JSON.stringify and
+            // reuse the string parser. Must run on the JS thread (napi_env).
+            napi_env env = value.getEnv();
+            napi_value global;
+            if (napi_get_global(env, &global) != napi_ok) {
+                error = {"failed to access JS global object"};
+                return {};
+            }
+            napi_value json;
+            if (napi_get_named_property(env, global, "JSON", &json) != napi_ok) {
+                error = {"failed to access JSON object"};
+                return {};
+            }
+            napi_value stringify;
+            if (napi_get_named_property(env, json, "stringify", &stringify) != napi_ok) {
+                error = {"failed to access JSON.stringify"};
+                return {};
+            }
+            napi_value argv[] = {value.getValue()};
+            napi_value result;
+            if (napi_call_function(env, json, stringify, 1, argv, &result) != napi_ok) {
+                error = {"JSON.stringify failed for GeoJSON object"};
+                return {};
+            }
+            size_t length = 0;
+            if (napi_get_value_string_utf8(env, result, nullptr, 0, &length) != napi_ok) {
+                error = {"JSON.stringify did not return a string"};
+                return {};
+            }
+            std::string jsonText(length, '\0');
+            if (napi_get_value_string_utf8(env, result, jsonText.data(), length + 1, nullptr) != napi_ok) {
+                error = {"failed to read serialized GeoJSON"};
+                return {};
+            }
+            return parseGeoJSON(jsonText, error);
+        }
+
+        error = {"GeoJSON must be provided as a JSON string or object"};
         return {};
     }
 };

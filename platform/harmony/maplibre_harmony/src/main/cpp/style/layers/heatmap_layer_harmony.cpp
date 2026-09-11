@@ -295,9 +295,9 @@ napi_value HeatmapLayerNAPI::SetHeatmapColor(napi_env env, napi_callback_info in
         return thisVar;
     }
     
-    // heatmap-color uses ColorRampPropertyValue, special handling
-    // For now, we use the existing conversion approach
-    // TODO: Implement full ColorRampPropertyValue conversion if needed
+    // heatmap-color uses ColorRampPropertyValue: converted through the core
+    // Converter<ColorRampPropertyValue> (interpolation expressions via the
+    // NapiValue -> Convertible bridge), same path as the other layers.
     try {
         NapiValue napiValue(env, argv[0]);
         mbgl::style::conversion::Error error;

@@ -12,6 +12,8 @@
 #include "layers/raster_layer_harmony.hpp"
 #include "layers/symbol_layer_harmony.hpp"
 #include "layers/color_relief_layer_harmony.hpp"
+#include "layers/location_indicator_layer_harmony.hpp"
+#include "napi/bindings/style/custom_drawable_layer_napi.hpp"
 
 // Source wrappers
 #include "sources/geojson_source_napi.hpp"
@@ -19,6 +21,7 @@
 #include "sources/raster_source_napi.hpp"
 #include "sources/raster_dem_source_napi.hpp"
 #include "sources/image_source_napi.hpp"
+#include "sources/custom_geometry_source_napi.hpp"
 
 // Core types
 #include <mbgl/style/layers/background_layer.hpp>
@@ -31,17 +34,88 @@
 #include <mbgl/style/layers/raster_layer.hpp>
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/style/layers/color_relief_layer.hpp>
+#include <mbgl/style/layers/location_indicator_layer.hpp>
+#include <mbgl/style/layers/custom_drawable_layer.hpp>
 
 #include <mbgl/style/sources/geojson_source.hpp>
 #include <mbgl/style/sources/vector_source.hpp>
 #include <mbgl/style/sources/raster_source.hpp>
 #include <mbgl/style/sources/raster_dem_source.hpp>
 #include <mbgl/style/sources/image_source.hpp>
+#include <mbgl/style/sources/custom_geometry_source.hpp>
 
 using mbgl::harmony::Logger;
 
 namespace mbgl {
 namespace harmony {
+
+namespace {
+
+// Fallback for layer types without a full NAPI wrapper (custom, unknown):
+// a plain info object with id/type/visibility/zoom bounds.
+napi_value createLayerInfoObject(napi_env env, mbgl::style::Layer* layer) {
+    napi_value layerObj;
+    napi_create_object(env, &layerObj);
+
+    napi_value idValue;
+    napi_create_string_utf8(env, layer->getID().c_str(), NAPI_AUTO_LENGTH, &idValue);
+    napi_set_named_property(env, layerObj, "id", idValue);
+
+    napi_value typeValue;
+    napi_create_string_utf8(env, layer->getTypeInfo()->type, NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, layerObj, "type", typeValue);
+
+    auto visibility = layer->getVisibility();
+    napi_value visValue;
+    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &visValue);
+    napi_set_named_property(env, layerObj, "visibility", visValue);
+
+    napi_value minZoomValue, maxZoomValue;
+    napi_create_double(env, layer->getMinZoom(), &minZoomValue);
+    napi_create_double(env, layer->getMaxZoom(), &maxZoomValue);
+    napi_set_named_property(env, layerObj, "minzoom", minZoomValue);
+    napi_set_named_property(env, layerObj, "maxzoom", maxZoomValue);
+
+    return layerObj;
+}
+
+// Fallback for source types without a full NAPI wrapper: a plain info object.
+napi_value createSourceInfoObject(napi_env env, mbgl::style::Source* source, const std::string& typeStr) {
+    napi_value sourceObj;
+    napi_create_object(env, &sourceObj);
+
+    napi_value idValue;
+    napi_create_string_utf8(env, source->getID().c_str(), NAPI_AUTO_LENGTH, &idValue);
+    napi_set_named_property(env, sourceObj, "id", idValue);
+
+    napi_value typeValue;
+    napi_create_string_utf8(env, typeStr.c_str(), NAPI_AUTO_LENGTH, &typeValue);
+    napi_set_named_property(env, sourceObj, "type", typeValue);
+
+    return sourceObj;
+}
+
+std::string sourceTypeToString(mbgl::style::SourceType type) {
+    switch (type) {
+        case mbgl::style::SourceType::Vector:
+            return "vector";
+        case mbgl::style::SourceType::Raster:
+            return "raster";
+        case mbgl::style::SourceType::RasterDEM:
+            return "raster-dem";
+        case mbgl::style::SourceType::GeoJSON:
+            return "geojson";
+        case mbgl::style::SourceType::Image:
+            return "image";
+        case mbgl::style::SourceType::CustomVector:
+            return "custom-vector";
+        default:
+            return "unknown";
+    }
+}
+
+} // namespace
 
 napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Layer* layer) {
     if (!layer) {
@@ -50,45 +124,45 @@ napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Lay
         napi_get_undefined(env, &undefined);
         return undefined;
     }
-    
-    const auto& typeInfo = layer->getTypeInfo();
-    std::string layerType = typeInfo->type;
-    
-    Logger::info("LayerSourceFactory", "Creating wrapper for layer type: %s, id: %s", 
+
+    const std::string layerType = layer->getTypeInfo()->type;
+
+    // Full NAPI wrapper per layer type (consistent with StyleNAPI::GetLayer)
+    if (layerType == "fill") {
+        return mbgl::harmony::FillLayerNAPI::CreateInstance(env, static_cast<mbgl::style::FillLayer*>(layer));
+    } else if (layerType == "line") {
+        return mbgl::harmony::LineLayerNAPI::CreateInstance(env, static_cast<mbgl::style::LineLayer*>(layer));
+    } else if (layerType == "circle") {
+        return mbgl::harmony::CircleLayerNAPI::CreateInstance(env, static_cast<mbgl::style::CircleLayer*>(layer));
+    } else if (layerType == "symbol") {
+        return mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, static_cast<mbgl::style::SymbolLayer*>(layer));
+    } else if (layerType == "raster") {
+        return mbgl::harmony::RasterLayerNAPI::CreateInstance(env, static_cast<mbgl::style::RasterLayer*>(layer));
+    } else if (layerType == "background") {
+        return mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env,
+                                                                  static_cast<mbgl::style::BackgroundLayer*>(layer));
+    } else if (layerType == "heatmap") {
+        return mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, static_cast<mbgl::style::HeatmapLayer*>(layer));
+    } else if (layerType == "hillshade") {
+        return mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env,
+                                                                 static_cast<mbgl::style::HillshadeLayer*>(layer));
+    } else if (layerType == "fill-extrusion") {
+        return mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(
+            env, static_cast<mbgl::style::FillExtrusionLayer*>(layer));
+    } else if (layerType == "color-relief") {
+        return mbgl::harmony::ColorReliefLayerNAPI::CreateInstance(env,
+                                                                   static_cast<mbgl::style::ColorReliefLayer*>(layer));
+    } else if (layerType == "location-indicator") {
+        return mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(
+            env, static_cast<mbgl::style::LocationIndicatorLayer*>(layer));
+    } else if (layerType == "custom-drawable") {
+        return maplibre::harmony::CustomDrawableLayerNAPI::CreateInstance(
+            env, static_cast<mbgl::style::CustomDrawableLayer*>(layer));
+    }
+
+    Logger::info("LayerSourceFactory", "createLayerWrapper: info-only wrapper for type: %s, id: %s",
                 layerType.c_str(), layer->getID().c_str());
-    
-    // Note: We return a simple object with layer info for now
-    // Full NAPI wrapper creation requires more complex setup
-    // TODO: Implement full wrapper creation with proper lifecycle management
-    
-    napi_value layerObj;
-    napi_create_object(env, &layerObj);
-    
-    // Set layer ID
-    napi_value idValue;
-    napi_create_string_utf8(env, layer->getID().c_str(), NAPI_AUTO_LENGTH, &idValue);
-    napi_set_named_property(env, layerObj, "id", idValue);
-    
-    // Set layer type
-    napi_value typeValue;
-    napi_create_string_utf8(env, layerType.c_str(), NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, layerObj, "type", typeValue);
-    
-    // Set visibility
-    auto visibility = layer->getVisibility();
-    napi_value visValue;
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &visValue);
-    napi_set_named_property(env, layerObj, "visibility", visValue);
-    
-    // Set minzoom/maxzoom
-    napi_value minZoomValue, maxZoomValue;
-    napi_create_double(env, layer->getMinZoom(), &minZoomValue);
-    napi_create_double(env, layer->getMaxZoom(), &maxZoomValue);
-    napi_set_named_property(env, layerObj, "minzoom", minZoomValue);
-    napi_set_named_property(env, layerObj, "maxzoom", maxZoomValue);
-    
-    return layerObj;
+    return createLayerInfoObject(env, layer);
 }
 
 napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::Source* source) {
@@ -98,54 +172,38 @@ napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::So
         napi_get_undefined(env, &undefined);
         return undefined;
     }
-    
-    auto sourceType = source->getType();
-    std::string sourceTypeStr;
-    
-    // Convert SourceType enum to string
+
+    const auto sourceType = source->getType();
+
+    // Full NAPI wrapper per source type (consistent with StyleNAPI::GetSource)
     switch (sourceType) {
-        case mbgl::style::SourceType::Vector:
-            sourceTypeStr = "vector";
-            break;
-        case mbgl::style::SourceType::Raster:
-            sourceTypeStr = "raster";
-            break;
-        case mbgl::style::SourceType::RasterDEM:
-            sourceTypeStr = "raster-dem";
-            break;
         case mbgl::style::SourceType::GeoJSON:
-            sourceTypeStr = "geojson";
-            break;
+            return maplibre::harmony::GeoJsonSourceNAPI::CreateInstance(
+                env, static_cast<mbgl::style::GeoJSONSource*>(source));
+        case mbgl::style::SourceType::Vector:
+            return maplibre::harmony::VectorSourceNAPI::CreateInstance(
+                env, static_cast<mbgl::style::VectorSource*>(source));
+        case mbgl::style::SourceType::Raster:
+            return maplibre::harmony::RasterSourceNAPI::CreateInstance(
+                env, static_cast<mbgl::style::RasterSource*>(source));
+        case mbgl::style::SourceType::RasterDEM:
+            return maplibre::harmony::RasterDemSourceNAPI::CreateInstance(
+                env, static_cast<mbgl::style::RasterDEMSource*>(source));
         case mbgl::style::SourceType::Image:
-            sourceTypeStr = "image";
-            break;
+            return maplibre::harmony::ImageSourceNAPI::CreateInstance(
+                env, static_cast<mbgl::style::ImageSource*>(source));
+        case mbgl::style::SourceType::CustomVector:
+            return maplibre::harmony::CustomGeometrySourceNAPI::CreateInstance(
+                env, static_cast<mbgl::style::CustomGeometrySource*>(source));
         default:
-            sourceTypeStr = "unknown";
             break;
     }
-    
-    Logger::info("LayerSourceFactory", "Creating wrapper for source type: %s, id: %s", 
-                sourceTypeStr.c_str(), source->getID().c_str());
-    
-    // Note: We return a simple object with source info for now
-    // TODO: Implement full wrapper creation
-    
-    napi_value sourceObj;
-    napi_create_object(env, &sourceObj);
-    
-    // Set source ID
-    napi_value idValue;
-    napi_create_string_utf8(env, source->getID().c_str(), NAPI_AUTO_LENGTH, &idValue);
-    napi_set_named_property(env, sourceObj, "id", idValue);
-    
-    // Set source type
-    napi_value typeValue;
-    napi_create_string_utf8(env, sourceTypeStr.c_str(), NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, sourceObj, "type", typeValue);
-    
-    return sourceObj;
+
+    const std::string typeStr = sourceTypeToString(sourceType);
+    Logger::info("LayerSourceFactory", "createSourceWrapper: info-only wrapper for type: %s, id: %s",
+                typeStr.c_str(), source->getID().c_str());
+    return createSourceInfoObject(env, source, typeStr);
 }
 
 } // namespace harmony
 } // namespace mbgl
-

@@ -14,6 +14,7 @@ import { RasterLayer } from './RasterLayer';
 import { HillshadeLayer } from './HillshadeLayer';
 import { ColorReliefLayer } from './ColorReliefLayer';
 import { BackgroundLayer } from './BackgroundLayer';
+import { LocationIndicatorLayer } from './LocationIndicatorLayer';
 import type { FilterExpression } from './Expression';
 import type {
   BackgroundLayout,
@@ -39,6 +40,7 @@ import type {
   SymbolPaint
 } from './LayerPaint';
 import { CustomLayer } from '..';
+import { CustomDrawableLayer } from './CustomDrawableLayer';
 
 // Layer type represents the union of all concrete layer types
 export type Layer =
@@ -52,7 +54,9 @@ export type Layer =
     | HillshadeLayer
     | ColorReliefLayer
     | BackgroundLayer
-    | CustomLayer;
+    | LocationIndicatorLayer
+    | CustomLayer
+    | CustomDrawableLayer;
 
 /**
  * LayerFilter - Layer filter type

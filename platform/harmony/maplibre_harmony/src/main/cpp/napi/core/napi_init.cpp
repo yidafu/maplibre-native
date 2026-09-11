@@ -24,6 +24,8 @@
 #include "sources/raster_source_napi.hpp"
 #include "sources/raster_dem_source_napi.hpp"
 #include "sources/image_source_napi.hpp"
+#include "sources/custom_geometry_source_napi.hpp"
+#include "sources/video_source_napi.hpp"
 // Layer bindings
 #include "style/layers/fill_layer_harmony.hpp"
 #include "style/layers/line_layer_harmony.hpp"
@@ -35,7 +37,9 @@
 #include "style/layers/hillshade_layer_harmony.hpp"
 #include "style/layers/fill_extrusion_layer_harmony.hpp"
 #include "style/layers/color_relief_layer_harmony.hpp"
+#include "style/layers/location_indicator_layer_harmony.hpp"
 #include "napi/bindings/style/custom_layer_napi.hpp"
+#include "napi/bindings/style/custom_drawable_layer_napi.hpp"
 // Style components
 #include "style/light_harmony.hpp"
 // Network configuration
@@ -89,6 +93,8 @@ static napi_value Init(napi_env env, napi_value exports) {
     maplibre::harmony::RasterSourceNAPI::Init(env, exports);
     maplibre::harmony::RasterDemSourceNAPI::Init(env, exports);
     maplibre::harmony::ImageSourceNAPI::Init(env, exports);
+    maplibre::harmony::CustomGeometrySourceNAPI::Init(env, exports);
+    maplibre::harmony::VideoSourceNAPI::Init(env, exports);
     
     // Initialize layer bindings
     mbgl::harmony::FillLayerNAPI::Init(env, exports);
@@ -101,7 +107,9 @@ static napi_value Init(napi_env env, napi_value exports) {
     mbgl::harmony::HillshadeLayerNAPI::Init(env, exports);
     mbgl::harmony::FillExtrusionLayerNAPI::Init(env, exports);
     mbgl::harmony::ColorReliefLayerNAPI::Init(env, exports);
+    mbgl::harmony::LocationIndicatorLayerNAPI::Init(env, exports);
     mbgl::harmony::CustomLayerNAPI::Init(env, exports);
+    maplibre::harmony::CustomDrawableLayerNAPI::Init(env, exports);
     
     // Style components
     mbgl::harmony::LightHarmony::Init(env, exports);
