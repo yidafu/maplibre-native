@@ -45,14 +45,14 @@ export class AnnotationFrameNodeController extends NodeController {
     try {
       this.frameNode = new FrameNode(uiContext);
       // Set initial default properties.
-      // Block: taps on the InfoWindow content must not fall through to the map
-      // beneath (otherwise tapping the window would also hit markers under it).
-      // The full-screen overlay container stays Transparent so gestures on
-      // empty areas still reach the map.
+      // Default: the annotation subtree (window content, close button, gestures)
+      // stays interactive while taps on the annotation block siblings — i.e.
+      // they do not fall through to markers beneath. The full-screen overlay
+      // container stays Transparent so gestures on empty areas reach the map.
       this.frameNode.commonAttribute
         .position({ x: 0, y: 0 })
         .visibility(Visibility.Hidden)
-        .hitTestBehavior(HitTestMode.Block);
+        .hitTestBehavior(HitTestMode.Default);
 
       // Attach ComponentContent if already available
       if (this.componentContent) {
@@ -87,11 +87,11 @@ export class AnnotationFrameNodeController extends NodeController {
     this.componentContent = content;
 
     // If FrameNode already exists, rebuild to apply the new content.
-    // This is the correct approach in API 12+ since FrameNode does not
-    // have a removeComponentContent method — we recreate the node instead.
+    // FrameNode has no removeComponentContent method, so we dispose the old
+    // node (releasing its native binding) and recreate it via makeNode().
     if (this.frameNode) {
       try {
-        this.frameNode = null;
+        this.disposeFrameNode();
         this.rebuild();
         console.info(`[AnnotationFrameNodeController] Rebuilt FrameNode with new content for annotation ${this.annotationId}`);
       } catch (error) {
@@ -148,12 +148,16 @@ export class AnnotationFrameNodeController extends NodeController {
       .visibility(state.visible ? Visibility.Visible : Visibility.Hidden)
       .opacity(this.sanitizeOpacity(state.opacity));
 
-    // Apply size if available
-    if (state.width > 0) {
-      fn.commonAttribute.width(state.width);
-    }
-    if (state.height > 0) {
-      fn.commonAttribute.height(state.height);
+    // Apply size only in fixed-size mode. In auto-size mode the content hugs
+    // its own bounds and the measured size feeds the positioning engine; an
+    // explicit width here would re-constrain the measurement (circular).
+    if (state.applySize) {
+      if (state.width > 0) {
+        fn.commonAttribute.width(state.width);
+      }
+      if (state.height > 0) {
+        fn.commonAttribute.height(state.height);
+      }
     }
 
     // Apply transform (scale + rotation) only when significantly different from identity
@@ -185,21 +189,35 @@ export class AnnotationFrameNodeController extends NodeController {
   }
 
   /**
-   * Dispose: remove ComponentContent from FrameNode and release references.
-   * Called when the annotation is removed from the overlay.
+   * Dispose: release the FrameNode's native binding and drop references.
+   * Called when the annotation is removed from the overlay or when the
+   * content is swapped (the node is recreated by rebuild()).
    */
   dispose(): void {
-    // Release references — the FrameNode will be cleaned up by the ArkUI
-    // framework when the NodeContainer is removed from the component tree.
-    // FrameNode has no removeComponentContent in API 12+, so we just null
-    // out our references and let the framework handle cleanup.
     console.info(`[AnnotationFrameNodeController] Disposing annotation ${this.annotationId}`);
+    this.disposeFrameNode();
     this.componentContent = null;
-    this.frameNode = null;
+    this.pendingState = null;
   }
 
   getAnnotationId(): number {
     return this.annotationId;
+  }
+
+  private disposeFrameNode(): void {
+    const node = this.frameNode;
+    this.frameNode = null;
+    if (!node) {
+      return;
+    }
+    try {
+      // Release the native node binding; a node already detached by the
+      // framework is a no-op.
+      node.dispose();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.warn(`[AnnotationFrameNodeController] FrameNode dispose failed for annotation ${this.annotationId}: ${reason}`);
+    }
   }
 
   private sanitizeOpacity(value: number): number {

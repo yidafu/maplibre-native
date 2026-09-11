@@ -655,11 +655,14 @@ export struct MapView {
         contentRegistryProvider: (): ComponentContentRegistry | null => {
           const mapLibreMap = this.controller.getMapLibreMapInstance();
           return mapLibreMap ? mapLibreMap.getViewAnnotationManager().getContentRegistry() : null;
+        },
+        onContentSize: (annotationId: number, width: number, height: number): void => {
+          const mapLibreMap = this.controller.getMapLibreMapInstance();
+          mapLibreMap?.getViewAnnotationManager().handleMeasuredSize(annotationId, width, height);
         }
       })
         .width('100%')
         .height('100%')
-        .hitTestBehavior(HitTestMode.Transparent)
 
       // Declarative child rendering (Marker, Source, Layer, etc.)
       if (this.children) {

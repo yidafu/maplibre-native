@@ -11,6 +11,13 @@ export interface ViewAnnotationRenderStateParams {
   positionY: number;
   width: number;
   height: number;
+  /**
+   * True when the annotation declares a fixed size (width/height options) and
+   * the FrameNode should constrain its content to it. False in auto-size mode:
+   * the content hugs its own size and the measured bounds are fed back to the
+   * positioning engine instead.
+   */
+  applySize: boolean;
   scale: number;
   rotation: number;
   opacity: number;
@@ -25,6 +32,7 @@ export class ViewAnnotationRenderState {
   positionY: number;
   width: number;
   height: number;
+  applySize: boolean;
   scale: number;
   rotation: number;
   opacity: number;
@@ -38,6 +46,7 @@ export class ViewAnnotationRenderState {
     this.positionY = params.positionY;
     this.width = params.width;
     this.height = params.height;
+    this.applySize = params.applySize;
     this.scale = params.scale;
     this.rotation = params.rotation;
     this.opacity = params.opacity;
@@ -68,6 +77,13 @@ export struct NativeViewAnnotationOverlay {
   // after the overlay is first built. Non-private: initialized through the
   // component constructor from NativeMapView.
   contentRegistryProvider: (() => ComponentContentRegistry | null) | null = null;
+  /**
+   * Receives measured content sizes (logical px) for auto-size annotations.
+   * Wired to ViewAnnotationManager.handleMeasuredSize by NativeMapView.
+   */
+  onContentSize?: (id: number, width: number, height: number) => void;
+  // Local dedup so unchanged measurements are not pushed every frame.
+  private lastMeasuredSizes: Map<number, number[]> = new Map();
   private readonly POSITION_EPSILON: number = 0.1;
   private readonly SIZE_EPSILON: number = 0.1;
   private readonly SCALE_EPSILON: number = 0.01;
@@ -84,6 +100,7 @@ export struct NativeViewAnnotationOverlay {
       ctrl.dispose();
     });
     this.controllerMap.clear();
+    this.lastMeasuredSizes.clear();
   }
 
   private onFramesChanged(): void {
@@ -98,6 +115,7 @@ export struct NativeViewAnnotationOverlay {
         positionY: state.positionY,
         width: state.width,
         height: state.height,
+        applySize: state.applySize,
         scale: state.scale,
         rotation: state.rotation,
         opacity: state.opacity,
@@ -140,6 +158,7 @@ export struct NativeViewAnnotationOverlay {
         ctrl.dispose();
         this.controllerMap.delete(key);
       }
+      this.lastMeasuredSizes.delete(key);
       hasChange = true;
     });
 
@@ -216,10 +235,36 @@ export struct NativeViewAnnotationOverlay {
     return ctrl;
   }
 
+  /**
+   * Forwards a measured content size to the positioning engine. Deduped per
+   * annotation so unchanged bounds are not pushed on every frame.
+   */
+  private reportMeasuredSize(id: number, width: number, height: number): void {
+    if (!(width > 0) || !(height > 0)) {
+      return;
+    }
+    if (!this.onContentSize) {
+      return;
+    }
+    const previous = this.lastMeasuredSizes.get(id);
+    if (previous &&
+      Math.abs(previous[0] - width) <= this.SIZE_EPSILON &&
+      Math.abs(previous[1] - height) <= this.SIZE_EPSILON) {
+      return;
+    }
+    this.lastMeasuredSizes.set(id, [width, height]);
+    this.onContentSize(id, width, height);
+  }
+
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
       ForEach(this.renderFrames, (item: ViewAnnotationRenderState) => {
-        NodeContainer(this.getOrCreateController(item))
+        Column() {
+          NodeContainer(this.getOrCreateController(item))
+        }
+        .onAreaChange((_oldArea: Area, newArea: Area) => {
+          this.reportMeasuredSize(item.id, Number(newArea.width), Number(newArea.height));
+        })
       }, (item: ViewAnnotationRenderState) => {
         // Use a stable key (annotation ID only) so ForEach reuses existing
         // NodeContainer + FrameNode. State updates flow through updateProperties()

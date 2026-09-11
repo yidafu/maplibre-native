@@ -246,9 +246,6 @@ export class MapLibreMap {
   private pendingAnimationCallback: CameraAnimationCallback | null = null;
   private animationTimerId: number | null = null;
   private animationCancelled: boolean = false;
-  // Camera move throttling - limits update frequency during gestures
-  private lastCameraMoveTime: number = 0;
-  private static readonly CAMERA_MOVE_THROTTLE_MS = 16; // ~60fps limit
 
   // Camera state cache: populated once per camera move event and shared across all
   // internal listeners (compass, scale bar, annotation views). Cleared after the
@@ -3213,55 +3210,6 @@ export class MapLibreMap {
     this.cameraChangeDispatcher.removeOnCameraMoveCanceledListener(listener);
   }
 
-  /**
-   * Internal: notify that the camera started moving (gesture initiated)
-   * Called by the gesture handler
-   * @internal
-   */
-  public _notifyCameraMoveStartedByGesture(): void {
-    if (this.destroyed) {
-      return;
-    }
-    // Mirrors Android: update UI elements (InfoWindow, etc.) while the camera moves
-    this.onUpdateRegionChange();
-    this.cameraChangeDispatcher.notifyCameraMoveStarted(CameraMoveReason.GESTURE);
-  }
-
-  /**
-   * Internal: notify that the camera is moving
-   * Called by the gesture handler
-   * @internal
-   */
-  public _notifyCameraMove(): void {
-    if (this.destroyed) {
-      console.warn('[MapLibreMap] _notifyCameraMove() called but map is destroyed, skipping');
-      return;
-    }
-    // Throttle updates to ~60fps to avoid overwhelming the UI thread during gestures
-    const now = Date.now();
-    if (now - this.lastCameraMoveTime < MapLibreMap.CAMERA_MOVE_THROTTLE_MS) {
-      return;
-    }
-    this.lastCameraMoveTime = now;
-    // Mirrors Android: update UI elements (InfoWindow, etc.) while the camera moves
-    this.onUpdateRegionChange();
-    this.cameraChangeDispatcher.notifyCameraMove();
-  }
-
-  /**
-   * Internal: notify that the camera became idle
-   * Called by the gesture handler
-   * @internal
-   */
-  public _notifyCameraIdle(): void {
-    if (this.destroyed) {
-      return;
-    }
-    // Mirrors Android: update UI elements (InfoWindow, etc.) once the camera stops
-    this.onUpdateRegionChange();
-    this.cameraChangeDispatcher.notifyCameraIdle();
-  }
-
 // ========== Map loading listener management ==========
 
   /**
@@ -4042,16 +3990,16 @@ export class MapLibreMap {
 
   /**
    * Set the ViewAnnotation render callback to sync the latest render states with the UI
+   *
+   * @internal Rendering-pipeline plumbing wired by NativeMapView; applications
+   * should not call this — the in-map overlay is mounted automatically.
    * @param callback Callback receiving an array of ViewAnnotationRenderState
    */
   public setViewAnnotationRenderCallback(callback: ((states: ViewAnnotationRenderState[]) => void) | null): void {
     const hasCallback = callback !== null;
-    console.info(`[MapLibreMap] setViewAnnotationRenderCallback: ${hasCallback ? 'register' : 'clear'} callback`);
     this.viewAnnotationRenderCallback = callback ?? undefined;
     if (callback) {
-      const states = this.viewAnnotationManager.getRenderStates();
-      console.info(`[MapLibreMap] setViewAnnotationRenderCallback: invoking immediately with ${states.length} states`);
-      callback(states);
+      callback(this.viewAnnotationManager.getRenderStates());
     }
   }
 

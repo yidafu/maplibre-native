@@ -36,29 +36,22 @@ export { InfoWindowAdapter } from './InfoWindowAdapter';
 
 export { InfoWindowManager } from './InfoWindowManager';
 
-// ComponentContent-based rendering
-export { ComponentContentRegistry } from './ComponentContentRegistry';
-
-export { AnnotationFrameNodeController } from './AnnotationFrameNodeController';
-
 // AnnotationView utilities
+// @deprecated Marker custom views are being converged into marker-anchored
+// ViewAnnotations; prefer ViewAnnotationManager for floating layers.
 export { AnnotationView } from './AnnotationView';
 
 export { AnnotationViewAdapter } from './AnnotationViewAdapter';
 
 export { AnnotationViewManager, AnnotationViewData } from './AnnotationViewManager';
 
+export { ViewAnnotationHandle } from './ViewAnnotationHandle';
+
 export {
   ViewAnnotationManager,
   ViewAnnotationAddOptions,
   ViewAnnotationUpdateOptions
 } from './ViewAnnotationManager';
-
-export {
-  NativeViewAnnotationOverlay,
-  ViewAnnotationRenderState,
-  ViewAnnotationRenderStateParams
-} from './NativeViewAnnotationOverlay';
 
 export {
   ViewAnnotationBuilderContext,

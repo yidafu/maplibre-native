@@ -94,6 +94,11 @@ export interface AnnotationViewData {
  * // Update positions
  * manager.batchUpdatePositions(true);
  * ```
+ *
+ * @deprecated 浮层能力正在收敛到单一引擎：ViewAnnotationManager（通用浮层，
+ * InfoWindow 也基于它）。以 marker 为锚点的自定义视图后续将表述为
+ * 「marker 锚定的 ViewAnnotation」，本管理器保留过渡期兼容，新代码请使用
+ * `MapLibreMap.getViewAnnotationManager()`。
  */
 export class AnnotationViewManager {
   // Delegate (preferred over adapter)

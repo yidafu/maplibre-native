@@ -247,9 +247,7 @@ export { AnnotationViewManager } from './annotations/AnnotationViewManager';
 
 export type { AnnotationViewData } from './annotations/AnnotationViewManager';
 
-export { NativeViewAnnotationOverlay, ViewAnnotationRenderState } from './annotations/NativeViewAnnotationOverlay';
-
-export type { ViewAnnotationRenderStateParams } from './annotations/NativeViewAnnotationOverlay';
+export { ViewAnnotationHandle } from './annotations/ViewAnnotationHandle';
 
 export {
   ViewAnnotationManager,

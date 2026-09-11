@@ -52,19 +52,14 @@ export { MapLibre } from './src/main/ets/MapLibre';
 // 导出所有公共 API
 export * from './src/main/ets/maps/index';
 
-// 显式导出 ViewAnnotation Overlay 相关类型，方便 IDE 类型推断
-export {
-  NativeViewAnnotationOverlay,
-  ViewAnnotationRenderState
-} from './src/main/ets/maps/annotations/NativeViewAnnotationOverlay';
-
-export type { ViewAnnotationRenderStateParams } from './src/main/ets/maps/annotations/NativeViewAnnotationOverlay';
-
+// 显式导出 ViewAnnotation 相关类型，方便 IDE 类型推断
+// （渲染 overlay / registry / FrameNode 控制器属于内部实现，不对外导出）
 export {
   ViewAnnotationManager,
   ViewAnnotationAddOptions,
   ViewAnnotationUpdateOptions
 } from './src/main/ets/maps/annotations/ViewAnnotationManager';
+export { ViewAnnotationHandle } from './src/main/ets/maps/annotations/ViewAnnotationHandle';
 
 // 导出常用辅助类型
 export type {

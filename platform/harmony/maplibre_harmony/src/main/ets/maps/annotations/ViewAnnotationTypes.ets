@@ -21,7 +21,6 @@ export class InfoWindowBuilderContext extends ViewAnnotationBuilderContext {
   markerId: number = -1;
   title: string = '';
   content: string = '';
-  notifySizeChanged?: (width: number, height: number) => void;
   builderContext: InfoWindowRenderContext;
   marker: Marker;
   infoWindow: InfoWindow;

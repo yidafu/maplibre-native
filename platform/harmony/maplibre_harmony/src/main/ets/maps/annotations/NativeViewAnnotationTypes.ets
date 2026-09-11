@@ -29,7 +29,9 @@ export class NativeViewAnnotationCenterOffsetImpl implements NativeViewAnnotatio
 }
 
 export interface NativeViewAnnotationOptions {
-  anchor: NativeViewAnnotationAnchor;
+  // Optional: add options always provide it; partial update payloads omit it
+  // so the native layer keeps the previously stored anchor.
+  anchor?: NativeViewAnnotationAnchor;
   width?: number;
   height?: number;
   anchorHeight?: number;
@@ -44,7 +46,7 @@ export interface NativeViewAnnotationOptions {
 }
 
 export class NativeViewAnnotationOptionsImpl implements NativeViewAnnotationOptions {
-  anchor: NativeViewAnnotationAnchor;
+  anchor?: NativeViewAnnotationAnchor;
   width?: number;
   height?: number;
   anchorHeight?: number;
@@ -57,8 +59,10 @@ export class NativeViewAnnotationOptionsImpl implements NativeViewAnnotationOpti
   minZoom?: number;
   maxZoom?: number;
 
-  constructor(anchor: NativeViewAnnotationAnchor) {
-    this.anchor = anchor;
+  constructor(anchor?: NativeViewAnnotationAnchor) {
+    if (anchor) {
+      this.anchor = anchor;
+    }
   }
 }
 

@@ -167,7 +167,9 @@ export interface NativeViewAnnotationCenterOffset {
  * Native ViewAnnotation creation/update options.
  */
 export interface NativeViewAnnotationOptions {
-  anchor: NativeViewAnnotationAnchor;
+  // Optional: creation always provides it; partial update payloads may omit
+  // it so the native layer keeps the previously stored anchor.
+  anchor?: NativeViewAnnotationAnchor;
   width?: number;
   height?: number;
   anchorHeight?: number;  // Height for anchor positioning (e.g., marker icon height)

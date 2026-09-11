@@ -14,7 +14,6 @@ import { ViewAnnotationManager } from './ViewAnnotationManager';
 import { INFO_WINDOW_VIEW_NAME } from './ViewAnnotationTypes';
 import { CenterOffset } from './AnnotationView';
 import type { ComponentContent, UIContext } from '@kit.ArkUI';
-import { ComponentContentRegistry } from './ComponentContentRegistry';
 
 /**
  * Options supplied when displaying an InfoWindow via the manager.
@@ -22,7 +21,6 @@ import { ComponentContentRegistry } from './ComponentContentRegistry';
 export interface InfoWindowDisplayOptions {
   style?: InfoWindowStyle;
   centerOffset?: CenterOffset;
-  anchorHeight?: number;  // Height for anchor positioning (e.g., marker icon height)
   anchorU?: number;
   anchorV?: number;
   zIndex?: number;
@@ -31,16 +29,12 @@ export interface InfoWindowDisplayOptions {
 /**
  * InfoWindowManager - Controls InfoWindows backed by ViewAnnotations.
  *
- * Uses ComponentContent + the per-instance ComponentContentRegistry owned by
- * its ViewAnnotationManager for rendering, so that both default and custom
- * InfoWindows use the same pipeline. Each MapLibreMap owns one manager, so
- * multiple map instances do not share annotation state.
+ * Rendering uses the ComponentContent pipeline of the owning
+ * ViewAnnotationManager (one registry per map instance), so default and
+ * custom InfoWindows share the same path. Content size is measured by the
+ * overlay and fed back to the positioning engine automatically — no explicit
+ * size management is needed here.
  */
-interface MarkerSourcePosition {
-  x: number;
-  y: number;
-}
-
 export class InfoWindowManager {
   private infoWindowMap: Map<number, InfoWindow> = new Map();
   private adapter: InfoWindowAdapter | null = null;
@@ -75,12 +69,11 @@ export class InfoWindowManager {
     }
 
     if (this.viewAnnotationManager) {
-      const registry = this.getContentRegistry();
       this.infoWindowMap.forEach((infoWindow) => {
         const annotationId = infoWindow.getAnnotationId();
         if (annotationId > 0) {
+          // removeViewAnnotation also releases the registered content.
           this.viewAnnotationManager?.removeViewAnnotation(annotationId);
-          registry?.remove(annotationId);
         }
         infoWindow.resetAnnotation();
         infoWindow.setVisible(false);
@@ -209,9 +202,6 @@ export class InfoWindowManager {
       anchorV: options?.anchorV,
       zIndex: options?.zIndex
     };
-    if (options?.anchorHeight !== undefined) {
-      layoutOptions.anchorHeight = options.anchorHeight;
-    }
     infoWindow.setLayoutOptions(layoutOptions);
 
     // Resolve content on every show: consult the adapter, or refresh the
@@ -249,10 +239,10 @@ export class InfoWindowManager {
     const wasShown = infoWindow.isShown();
     const annotationId = infoWindow.getAnnotationId();
     if (annotationId > 0) {
+      // removeViewAnnotation also releases the registered content.
       if (this.viewAnnotationManager) {
         this.viewAnnotationManager.removeViewAnnotation(annotationId);
       }
-      this.getContentRegistry()?.remove(annotationId);
     }
 
     infoWindow.resetAnnotation();
@@ -312,9 +302,6 @@ export class InfoWindowManager {
       onClose: () => {
         this.close(marker);
       },
-      onSizeChanged: (width: number, height: number) => {
-        this.handleSizeChanged(marker, width, height);
-      },
     };
   }
 
@@ -347,9 +334,6 @@ export class InfoWindowManager {
       const updateOptions = {
         anchor: markerPosition,
         viewName: INFO_WINDOW_VIEW_NAME,
-        width: this.resolveDimension(infoWindow.getWidth()),
-        height: this.resolveDimension(infoWindow.getHeight()),
-        anchorHeight: layout.anchorHeight ?? null,
         centerOffset: layout.centerOffset ?? null,
         visible: true,
         zIndex: layout.zIndex ?? null
@@ -360,47 +344,34 @@ export class InfoWindowManager {
       console.error('[InfoWindowManager] updateViewAnnotation failed: ', reason);
     }
 
-    if (content) {
-      this.getContentRegistry()?.register(annotationId, content);
-    }
+    this.viewAnnotationManager?.setAnnotationContent(annotationId, content);
   }
 
   private createAnnotation(infoWindow: InfoWindow, content: ComponentContent<Object> | null): number {
     const markerPosition = infoWindow.getMarker().getPosition();
     const layout = infoWindow.getLayoutOptions();
-    const estimatedSize = infoWindow.estimateSize();
 
     const addOptions = {
       anchor: markerPosition,
       viewName: INFO_WINDOW_VIEW_NAME,
-      width: this.resolveDimension(infoWindow.getWidth(), estimatedSize.width),
-      height: this.resolveDimension(infoWindow.getHeight(), estimatedSize.height),
-      anchorHeight: layout.anchorHeight,
       centerOffset: layout.centerOffset,
       visible: true,
-      allowOverlap: true,
-      draggable: false,
       anchorU: layout.anchorU,
       anchorV: layout.anchorV,
       zIndex: layout.zIndex
     } as ViewAnnotationAddOptions;
 
     try {
-      const annotationId = this.viewAnnotationManager?.addViewAnnotation(addOptions) ?? -1;
-      if (annotationId <= 0) {
+      // Content is handed over together with the geometry; the manager owns
+      // the registry entry. Size runs in auto mode: the overlay measures the
+      // rendered window and feeds the positioning engine.
+      const handle = this.viewAnnotationManager?.addViewAnnotation(addOptions, content ?? undefined) ?? null;
+      if (!handle) {
         console.error('[InfoWindowManager] Failed to add ViewAnnotation for InfoWindow');
         return -1;
       }
+      const annotationId = handle.getId();
       infoWindow.setAnnotationId(annotationId);
-
-      if (content) {
-        this.getContentRegistry()?.register(annotationId, content);
-      } else {
-        console.warn('[InfoWindowManager] No ComponentContent available for InfoWindow (UIContext not set?)');
-      }
-
-      // Trigger a re-render to ensure the overlay picks up the new annotation
-      this.viewAnnotationManager?.refreshRenderStates();
       return annotationId;
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
@@ -425,14 +396,6 @@ export class InfoWindowManager {
    */
   get(marker: Marker): InfoWindow | null {
     return this.infoWindowMap.get(marker.getId()) || null;
-  }
-
-  /**
-   * Update positions for all visible InfoWindows (no-op with ViewAnnotations).
-   */
-  updatePositions(_screenWidth: number, _screenHeight: number,
-    _getMarkerScreenPosition: (marker: Marker) => MarkerSourcePosition): void {
-    // ViewAnnotations are automatically positioned by the native engine.
   }
 
   /**
@@ -484,10 +447,8 @@ export class InfoWindowManager {
     const resolved = infoWindow.getComponentContent(this.uiContext);
 
     const annotationId = infoWindow.getAnnotationId();
-    if (annotationId > 0 && resolved) {
-      this.getContentRegistry()?.register(annotationId, resolved);
-      this.viewAnnotationManager?.refreshRenderStates();
-      return true;
+    if (annotationId > 0) {
+      return this.viewAnnotationManager?.setAnnotationContent(annotationId, resolved) ?? false;
     }
 
     return false;
@@ -506,46 +467,8 @@ export class InfoWindowManager {
     const content = this.resolveContent(infoWindow);
     const annotationId = infoWindow.getAnnotationId();
     if (annotationId > 0 && content) {
-      this.getContentRegistry()?.register(annotationId, content);
-      this.viewAnnotationManager?.refreshRenderStates();
+      return this.viewAnnotationManager?.setAnnotationContent(annotationId, content) ?? false;
     }
     return true;
-  }
-
-  private getContentRegistry(): ComponentContentRegistry | null {
-    return this.viewAnnotationManager?.getContentRegistry() ?? null;
-  }
-
-  /**
-   * Apply a content size reported by onAreaChange to the native annotation.
-   * Sub-epsilon changes are deduplicated to avoid native update storms.
-   */
-  private handleSizeChanged(marker: Marker, width: number, height: number): void {
-    if (!this.viewAnnotationManager) {
-      return;
-    }
-    const infoWindow = this.infoWindowMap.get(marker.getId());
-    if (!infoWindow || !infoWindow.updateSize(width, height)) {
-      return;
-    }
-    const annotationId = infoWindow.getAnnotationId();
-    if (annotationId <= 0) {
-      return;
-    }
-    const updateOptions: ViewAnnotationUpdateOptions = {
-      width: width,
-      height: height
-    };
-    this.viewAnnotationManager.updateViewAnnotation(annotationId, updateOptions);
-  }
-
-  private resolveDimension(measured: number, fallback?: number): number | undefined {
-    if (measured > 0) {
-      return measured;
-    }
-    if (fallback !== undefined && fallback > 0) {
-      return fallback;
-    }
-    return undefined;
   }
 }

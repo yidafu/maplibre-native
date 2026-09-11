@@ -1,4 +1,5 @@
 import { NativeMapView } from 'libmaplibre.so';
+import type { ComponentContent } from '@kit.ArkUI';
 import { LatLng } from '../geometry/LatLng';
 import {
   NativeViewAnnotationAnchorImpl,
@@ -10,52 +11,61 @@ import {
 import { ViewAnnotationRenderState } from './NativeViewAnnotationOverlay';
 import { ComponentContentRegistry } from './ComponentContentRegistry';
 import { CenterOffset } from './AnnotationView';
-
-interface PartialNativeOptionFlags {
-  visible?: boolean;
-  allowOverlap?: boolean;
-  draggable?: boolean;
-  scalesWithViewingDistance?: boolean;
-  rotatesWithCamera?: boolean;
-  minZoom?: number;
-  maxZoom?: number;
-}
+import { ViewAnnotationHandle } from './ViewAnnotationHandle';
+import { normalizeOpacity, resolveFramePixelRatio } from './ViewAnnotationUtils';
 
 /**
  * Configuration options for creating a ViewAnnotation via ViewAnnotationManager.
+ *
+ * Sizing model: width/height are OPTIONAL constraints. When omitted the
+ * annotation runs in auto-size mode — the SDK measures the rendered content
+ * and feeds the measured size back to the positioning engine, so anchorU/
+ * anchorV always anchor the true content bounds. When provided, the content
+ * is constrained to that size and no measurement feedback is applied.
  */
 export interface ViewAnnotationAddOptions {
+  /** Geographic coordinate the annotation is pinned to. Required. */
   anchor: LatLng;
+  /** Logical tag identifying the annotation kind in the overlay. */
   viewName?: string;
+  /** Optional fixed width constraint, logical pixels. */
   width?: number;
+  /** Optional fixed height constraint, logical pixels. */
   height?: number;
-  anchorHeight?: number;  // Height for anchor positioning (e.g., marker icon height)
+  /** Extra offset from the anchor point, logical pixels. */
   centerOffset?: CenterOffset;
   visible?: boolean;
-  allowOverlap?: boolean;
-  draggable?: boolean;
+  /**
+   * Scale the annotation with camera pitch (approximate: 1/cos(pitch),
+   * uniform for all annotations — not a per-position perspective scale).
+   */
   scalesWithViewingDistance?: boolean;
+  /** Rotate the annotation with the camera bearing. */
   rotatesWithCamera?: boolean;
   minZoom?: number;
   maxZoom?: number;
+  /** Horizontal anchor of the annotation content, 0 (left) .. 1 (right). */
   anchorU?: number;
+  /** Vertical anchor of the annotation content, 0 (top) .. 1 (bottom). */
   anchorV?: number;
+  /** Stacking order among annotations in the overlay. */
   zIndex?: number;
 }
 
 /**
  * Partial configuration used when updating an existing ViewAnnotation.
+ *
+ * width/height semantics mirror ViewAnnotationAddOptions: passing a value
+ * switches the annotation to fixed-size (constrained) mode; pass null to
+ * clear a constraint and return to auto-size mode.
  */
 export interface ViewAnnotationUpdateOptions {
   anchor?: LatLng;
   viewName?: string;
-  width?: number;
-  height?: number;
-  anchorHeight?: number | null;
+  width?: number | null;
+  height?: number | null;
   centerOffset?: CenterOffset | null;
   visible?: boolean;
-  allowOverlap?: boolean;
-  draggable?: boolean;
   scalesWithViewingDistance?: boolean;
   rotatesWithCamera?: boolean;
   minZoom?: number | null;
@@ -71,11 +81,8 @@ interface ViewAnnotationEntry {
   viewName: string;
   width?: number;
   height?: number;
-  anchorHeight?: number;
   centerOffset?: CenterOffset;
   visible: boolean;
-  allowOverlap: boolean;
-  draggable: boolean;
   scalesWithViewingDistance: boolean;
   rotatesWithCamera: boolean;
   minZoom?: number;
@@ -83,10 +90,19 @@ interface ViewAnnotationEntry {
   anchorU: number;
   anchorV: number;
   zIndex?: number;
+  /** Last measured content size (logical px) reported by the overlay, for dedup. */
+  measuredWidth: number;
+  measuredHeight: number;
 }
+
+const MEASURED_SIZE_EPSILON: number = 0.1;
 
 /**
  * ViewAnnotationManager coordinates ViewAnnotation entries with the native API.
+ *
+ * One instance per MapLibreMap. It owns the content registry (annotation IDs
+ * are allocated per native map) and the render-state pipeline consumed by the
+ * in-map NativeViewAnnotationOverlay.
  */
 export class ViewAnnotationManager {
   private nativeMapView: NativeMapView | null = null;
@@ -94,65 +110,35 @@ export class ViewAnnotationManager {
   private entries: Map<number, ViewAnnotationEntry> = new Map();
   private renderStates: ViewAnnotationRenderState[] = [];
   private renderCallback?: (states: ViewAnnotationRenderState[]) => void;
-  // Per-instance registry: annotation IDs are allocated per native map, so a
-  // process-wide registry would collide across multiple map instances.
   private contentRegistry: ComponentContentRegistry = new ComponentContentRegistry();
 
   /**
    * Content registry owned by this manager. The rendering overlay resolves it
    * through a provider so each map instance renders only its own contents.
+   *
+   * @internal Rendering-pipeline plumbing; applications should pass content
+   * through addViewAnnotation()/setAnnotationContent() instead.
    */
   getContentRegistry(): ComponentContentRegistry {
     return this.contentRegistry;
   }
 
   /**
-   * Binds the manager to the underlying native map view.
-   * Pass null when disposing the manager.
+   * Creates a ViewAnnotation and returns a handle to it.
+   *
+   * Geometry and content are delivered together: pass the ComponentContent to
+   * render (or register it later via setAnnotationContent). Fails (returns
+   * null) when the native map view is not attached or the anchor is missing.
    */
-  setNativeMapView(mapView: NativeMapView | null): void {
-    console.info(`[ViewAnnotationManager] setNativeMapView: ${mapView ? 'attach' : 'detach'} native map view`);
-    this.nativeMapView = mapView;
-    this.pixelRatio = this.readPixelRatio(mapView);
-    console.info(`[ViewAnnotationManager] setNativeMapView: pixelRatio=${this.pixelRatio}`);
-  }
-
-  /**
-   * Registers a render callback that receives normalized render states for ArkUI.
-   */
-  setRenderCallback(callback: ((states: ViewAnnotationRenderState[]) => void) | null): void {
-    console.info(`[ViewAnnotationManager] setRenderCallback: ${callback ? 'register' : 'clear'} callback`);
-    this.renderCallback = callback ?? undefined;
-    if (callback) {
-      console.info(`[ViewAnnotationManager] setRenderCallback: emitting initial ${this.renderStates.length} states`);
-      callback(this.renderStates.slice());
-    }
-  }
-
-  /**
-   * Updates the pixel ratio used when converting logical dimensions to device pixels.
-   */
-  updatePixelRatio(pixelRatio: number): void {
-    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) {
-      console.warn(`[ViewAnnotationManager] updatePixelRatio: ignore invalid value ${pixelRatio}`);
-      return;
-    }
-    this.pixelRatio = pixelRatio;
-    console.info(`[ViewAnnotationManager] updatePixelRatio: pixelRatio=${this.pixelRatio}`);
-  }
-
-  /**
-   * Creates a ViewAnnotation using the supplied builder and returns the generated identifier.
-   */
-  addViewAnnotation(options: ViewAnnotationAddOptions): number {
+  addViewAnnotation(options: ViewAnnotationAddOptions, content?: ComponentContent<Object>): ViewAnnotationHandle | null {
     if (!this.nativeMapView) {
       console.warn('[ViewAnnotationManager] addViewAnnotation: native map view is not available');
-      return -1;
+      return null;
     }
     const anchor = options.anchor;
     if (!anchor) {
       console.error('[ViewAnnotationManager] addViewAnnotation: anchor is required');
-      return -1;
+      return null;
     }
 
     const nativeOptions = this.buildNativeOptions(options);
@@ -162,7 +148,7 @@ export class ViewAnnotationManager {
       const id = typeof rawId === 'number' ? rawId : -1;
       if (id <= 0) {
         console.error(`[ViewAnnotationManager] addViewAnnotation: invalid id returned: ${rawId}`);
-        return -1;
+        return null;
       }
 
       const entry: ViewAnnotationEntry = {
@@ -171,27 +157,29 @@ export class ViewAnnotationManager {
         viewName: options.viewName ?? 'maplibre_view_annotation',
         width: options.width,
         height: options.height,
-        anchorHeight: options.anchorHeight,
         centerOffset: options.centerOffset,
         visible: options.visible !== false,
-        allowOverlap: options.allowOverlap === undefined ? true : options.allowOverlap,
-        draggable: options.draggable === true,
         scalesWithViewingDistance: options.scalesWithViewingDistance === true,
         rotatesWithCamera: options.rotatesWithCamera === true,
         minZoom: options.minZoom,
         maxZoom: options.maxZoom,
         anchorU: options.anchorU !== undefined ? options.anchorU : 0.5,
         anchorV: options.anchorV !== undefined ? options.anchorV : 1.0,
-        zIndex: options.zIndex
+        zIndex: options.zIndex,
+        measuredWidth: 0,
+        measuredHeight: 0
       };
 
       this.entries.set(id, entry);
+      if (content) {
+        this.contentRegistry.register(id, content);
+      }
       this.refreshRenderStates();
-      return id;
+      return new ViewAnnotationHandle(id, this);
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
       console.error(`[ViewAnnotationManager] addViewAnnotation failed: ${reason}`);
-      return -1;
+      return null;
     }
   }
 
@@ -219,14 +207,10 @@ export class ViewAnnotationManager {
     }
 
     if (options.width !== undefined) {
-      entry.width = options.width;
+      entry.width = options.width === null ? undefined : Math.max(0, options.width);
     }
     if (options.height !== undefined) {
-      entry.height = options.height;
-    }
-
-    if (options.anchorHeight !== undefined) {
-      entry.anchorHeight = options.anchorHeight === null ? undefined : options.anchorHeight;
+      entry.height = options.height === null ? undefined : Math.max(0, options.height);
     }
 
     if (options.centerOffset !== undefined) {
@@ -235,14 +219,6 @@ export class ViewAnnotationManager {
 
     if (options.visible !== undefined) {
       entry.visible = options.visible;
-    }
-
-    if (options.allowOverlap !== undefined) {
-      entry.allowOverlap = options.allowOverlap;
-    }
-
-    if (options.draggable !== undefined) {
-      entry.draggable = options.draggable;
     }
 
     if (options.scalesWithViewingDistance !== undefined) {
@@ -291,16 +267,37 @@ export class ViewAnnotationManager {
   }
 
   /**
-   * Removes a ViewAnnotation from the map.
+   * Replaces the rendered content of an existing ViewAnnotation.
+   * Pass null to detach the content (the annotation frame stays positioned
+   * but renders nothing until new content is set).
+   */
+  setAnnotationContent(id: number, content: ComponentContent<Object> | null): boolean {
+    if (!this.entries.has(id)) {
+      console.warn(`[ViewAnnotationManager] setAnnotationContent: entry ${id} not found`);
+      return false;
+    }
+    if (content) {
+      this.contentRegistry.register(id, content);
+    } else {
+      this.contentRegistry.remove(id);
+    }
+    this.refreshRenderStates();
+    return true;
+  }
+
+  /**
+   * Removes a ViewAnnotation from the map and releases its registered content.
    */
   removeViewAnnotation(id: number): boolean {
     if (!this.entries.has(id)) {
       return true;
     }
 
+    this.entries.delete(id);
+    this.contentRegistry.remove(id);
+
     if (!this.nativeMapView) {
       console.warn('[ViewAnnotationManager] removeViewAnnotation: native map view is not available');
-      this.entries.delete(id);
       this.removeRenderStateById(id);
       return false;
     }
@@ -308,7 +305,6 @@ export class ViewAnnotationManager {
     try {
       const rawResult: boolean | number | string | undefined = this.nativeMapView.removeViewAnnotation(id);
       const removed = typeof rawResult === 'boolean' ? rawResult : false;
-      this.entries.delete(id);
       console.info(`[ViewAnnotationManager] removeViewAnnotation: entry ${id} removed, total entries=${this.entries.size}`);
       this.removeRenderStateById(id);
       if (!removed) {
@@ -318,17 +314,17 @@ export class ViewAnnotationManager {
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
       console.error(`[ViewAnnotationManager] removeViewAnnotation failed: ${reason}`);
-      this.entries.delete(id);
       this.removeRenderStateById(id);
       return false;
     }
   }
 
   /**
-   * Removes all managed ViewAnnotations and clears cached state.
+   * Removes all managed ViewAnnotations and clears cached state and content.
    */
   clear(): void {
     this.entries.clear();
+    this.contentRegistry.clear();
     console.info('[ViewAnnotationManager] clear: all entries removed');
     if (this.nativeMapView) {
       try {
@@ -348,7 +344,49 @@ export class ViewAnnotationManager {
   }
 
   /**
+   * Receives the measured content size for an annotation from the rendering
+   * overlay (auto-size mode). The size is pushed to the native positioning
+   * engine so anchor math uses the true content bounds. Fixed-size entries
+   * (declared width/height) are ignored — their content is constrained and
+   * the declared size is already authoritative.
+   *
+   * @internal Called by the in-map overlay; applications should not invoke it.
+   */
+  handleMeasuredSize(id: number, width: number, height: number): void {
+    const entry = this.entries.get(id);
+    if (!entry) {
+      return;
+    }
+    if (!(width > 0) || !(height > 0)) {
+      return;
+    }
+    if (entry.width !== undefined || entry.height !== undefined) {
+      return;
+    }
+    const widthChanged = Math.abs(width - entry.measuredWidth) > MEASURED_SIZE_EPSILON;
+    const heightChanged = Math.abs(height - entry.measuredHeight) > MEASURED_SIZE_EPSILON;
+    if (!(widthChanged || heightChanged)) {
+      return;
+    }
+    entry.measuredWidth = width;
+    entry.measuredHeight = height;
+
+    if (!this.nativeMapView) {
+      return;
+    }
+    try {
+      const partial = { width: width, height: height } as ViewAnnotationAddOptions;
+      this.nativeMapView.updateViewAnnotation(id, this.buildNativeOptions(partial));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.warn(`[ViewAnnotationManager] handleMeasuredSize failed for ${id}: ${reason}`);
+    }
+  }
+
+  /**
    * Returns the latest render states that can be bound directly to ArkUI overlays.
+   *
+   * @internal Rendering-pipeline plumbing.
    */
   getRenderStates(): ViewAnnotationRenderState[] {
     return this.renderStates.slice();
@@ -356,6 +394,8 @@ export class ViewAnnotationManager {
 
   /**
    * Pulls frame data from native and recomputes ArkUI render states.
+   *
+   * @internal Rendering-pipeline plumbing.
    */
   refreshRenderStates(): void {
     if (!this.nativeMapView) {
@@ -398,11 +438,14 @@ export class ViewAnnotationManager {
         return;
       }
 
-      // Phase 2: positionX/positionY are pre-computed by C++ buildFrame()
-      // No pixelRatio division or anchor math needed on the ArkTS side
-      const frameRatio = this.resolveFramePixelRatio(frame.pixelRatio, safeRatio, frame.id);
+      // positionX/positionY are pre-computed by C++ buildFrame(): final render
+      // coordinates in logical pixels. Only sizes need the ratio conversion.
+      const frameRatio = resolveFramePixelRatio(frame.pixelRatio, safeRatio, frame.id);
       const logicalWidth = frame.width > 0 ? frame.width / frameRatio : (entry.width ?? 0);
       const logicalHeight = frame.height > 0 ? frame.height / frameRatio : (entry.height ?? 0);
+      // Fixed-size entries constrain their content to the declared size;
+      // auto-size entries hug their content and only use the size for anchor math.
+      const applySize = entry.width !== undefined || entry.height !== undefined;
 
       nextStates.push(new ViewAnnotationRenderState({
         id: frame.id,
@@ -410,9 +453,10 @@ export class ViewAnnotationManager {
         positionY: frame.positionY,
         width: logicalWidth,
         height: logicalHeight,
+        applySize: applySize,
         scale: Number.isFinite(frame.scale) && frame.scale > 0 ? frame.scale : 1,
         rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
-        opacity: this.normalizeOpacity(frame.opacity),
+        opacity: normalizeOpacity(frame.opacity),
         visible: entry.visible && frame.visible,
         viewName: entry.viewName,
         zIndex: entry.zIndex
@@ -423,32 +467,40 @@ export class ViewAnnotationManager {
     this.notifyRenderCallback();
   }
 
-  private resolveFramePixelRatio(frameRatio: number, fallback: number, frameId: number): number {
-    const safeFallback = fallback > 0 ? fallback : 1;
-    if (!Number.isFinite(frameRatio) || frameRatio <= 0) {
-      return safeFallback;
+  /**
+   * Registers a render callback that receives normalized render states for ArkUI.
+   *
+   * @internal Rendering-pipeline plumbing.
+   */
+  setRenderCallback(callback: ((states: ViewAnnotationRenderState[]) => void) | null): void {
+    this.renderCallback = callback ?? undefined;
+    if (callback) {
+      callback(this.renderStates.slice());
     }
-
-    const MAX_RATIO_MULTIPLIER = 4;
-    const MIN_RATIO_MULTIPLIER = 0.25;
-    if (frameRatio > safeFallback * MAX_RATIO_MULTIPLIER || frameRatio < safeFallback * MIN_RATIO_MULTIPLIER) {
-      console.warn(`[ViewAnnotationManager] resolveFramePixelRatio: frame ${frameId} pixelRatio ${frameRatio.toFixed(2)} out of expected range, fallback=${safeFallback.toFixed(2)}`);
-      return safeFallback;
-    }
-    return frameRatio;
   }
 
-  private normalizeOpacity(value: number): number {
-    if (!Number.isFinite(value)) {
-      return 1;
+  /**
+   * Binds the manager to the underlying native map view.
+   * Pass null when disposing the manager.
+   *
+   * @internal Called by MapLibreMap during setup/teardown.
+   */
+  setNativeMapView(mapView: NativeMapView | null): void {
+    this.nativeMapView = mapView;
+    this.pixelRatio = this.readPixelRatio(mapView);
+  }
+
+  /**
+   * Updates the pixel ratio used when converting logical dimensions to device pixels.
+   *
+   * @internal Called by MapLibreMap during setup.
+   */
+  updatePixelRatio(pixelRatio: number): void {
+    if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) {
+      console.warn(`[ViewAnnotationManager] updatePixelRatio: ignore invalid value ${pixelRatio}`);
+      return;
     }
-    if (value <= 0) {
-      return 0;
-    }
-    if (value >= 1) {
-      return 1;
-    }
-    return value;
+    this.pixelRatio = pixelRatio;
   }
 
   private notifyRenderCallback(): void {
@@ -469,24 +521,22 @@ export class ViewAnnotationManager {
     this.notifyRenderCallback();
   }
 
-  private buildNativeOptions(source: ViewAnnotationAddOptions | ViewAnnotationEntry): NativeViewAnnotationOptions {
+  private buildNativeOptions(source: Partial<ViewAnnotationAddOptions> | Partial<ViewAnnotationEntry>): NativeViewAnnotationOptions {
     const safeRatio = this.pixelRatio > 0 ? this.pixelRatio : 1;
-    const anchorLatitude = source.anchor.latitude;
-    const anchorLongitude = source.anchor.longitude;
 
-    const nativeOptions = new NativeViewAnnotationOptionsImpl(new NativeViewAnnotationAnchorImpl(anchorLatitude, anchorLongitude));
+    const nativeOptions = new NativeViewAnnotationOptionsImpl();
+    // Only include the anchor when provided: partial update payloads without
+    // an anchor must not reset the stored native anchor to (0, 0).
+    if (source.anchor) {
+      nativeOptions.anchor = new NativeViewAnnotationAnchorImpl(source.anchor.latitude, source.anchor.longitude);
+    }
 
-    if (source.width !== undefined) {
+    if (source.width !== undefined && source.width !== null) {
       nativeOptions.width = Math.max(0, source.width * safeRatio);
     }
 
-    if (source.height !== undefined) {
+    if (source.height !== undefined && source.height !== null) {
       nativeOptions.height = Math.max(0, source.height * safeRatio);
-    }
-
-    // Pass anchorHeight for anchor positioning calculation
-    if (source.anchorHeight !== undefined) {
-      nativeOptions.anchorHeight = Math.max(0, source.anchorHeight * safeRatio);
     }
 
     const centerOffset = source.centerOffset;
@@ -494,40 +544,24 @@ export class ViewAnnotationManager {
       nativeOptions.centerOffset = new NativeViewAnnotationCenterOffsetImpl(centerOffset.dx, centerOffset.dy);
     }
 
-    const partial = source as PartialNativeOptionFlags;
-    const visibility = partial.visible;
-    if (visibility !== undefined) {
-      nativeOptions.visible = visibility;
+    if (source.visible !== undefined) {
+      nativeOptions.visible = source.visible;
     }
 
-    const overlapOption = partial.allowOverlap;
-    if (overlapOption !== undefined) {
-      nativeOptions.allowOverlap = overlapOption;
+    if (source.scalesWithViewingDistance !== undefined) {
+      nativeOptions.scalesWithViewingDistance = source.scalesWithViewingDistance;
     }
 
-    const draggableOption = partial.draggable;
-    if (draggableOption !== undefined) {
-      nativeOptions.draggable = draggableOption;
+    if (source.rotatesWithCamera !== undefined) {
+      nativeOptions.rotatesWithCamera = source.rotatesWithCamera;
     }
 
-    const scalesOption = partial.scalesWithViewingDistance;
-    if (scalesOption !== undefined) {
-      nativeOptions.scalesWithViewingDistance = scalesOption;
+    if (source.minZoom !== undefined && source.minZoom !== null) {
+      nativeOptions.minZoom = source.minZoom;
     }
 
-    const rotatesOption = partial.rotatesWithCamera;
-    if (rotatesOption !== undefined) {
-      nativeOptions.rotatesWithCamera = rotatesOption;
-    }
-
-    const minZoomValue = partial.minZoom;
-    if (minZoomValue !== undefined) {
-      nativeOptions.minZoom = minZoomValue;
-    }
-
-    const maxZoomValue = partial.maxZoom;
-    if (maxZoomValue !== undefined) {
-      nativeOptions.maxZoom = maxZoomValue;
+    if (source.maxZoom !== undefined && source.maxZoom !== null) {
+      nativeOptions.maxZoom = source.maxZoom;
     }
 
     return nativeOptions;
@@ -550,5 +584,3 @@ export class ViewAnnotationManager {
     return 1;
   }
 }
-
-

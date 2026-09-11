@@ -2,15 +2,6 @@ import { Marker } from './Marker';
 import { CenterOffset } from './AnnotationView';
 import type { InfoWindowBuilderContext } from './ViewAnnotationTypes';
 import { ComponentContent } from '@kit.ArkUI';
-import measure from '@ohos.measure';
-
-/**
- * InfoWindow size info
- */
-interface InfoWindowSize {
-  width: number;
-  height: number;
-}
 
 /**
  * InfoWindow style configuration
@@ -27,12 +18,13 @@ export interface InfoWindowStyle {
   padding?: number;
   maxWidth?: number;
   animated?: boolean;
-  // Reserved fields: the default ComponentContent render pipeline cannot inject
-  // arbitrary @Builder functions, so these are currently not rendered.
-  leftAccessoryBuilder?: () => void;
-  rightAccessoryBuilder?: () => void;
   showCloseButton?: boolean;
   thumbnailImage?: ResourceStr;
+  /**
+   * Layout hint consumed by MarkerManager when converting to the underlying
+   * ViewAnnotation centerOffset; the default component does not render these
+   * directly. Prefer InfoWindowDisplayOptions.centerOffset for custom offsets.
+   */
   offsetX?: number;
   offsetY?: number;
 }
@@ -49,7 +41,6 @@ const DEFAULT_INFO_WINDOW_STYLE: InfoWindowStyle = {
  */
 export interface InfoWindowLayoutOptions {
   centerOffset?: CenterOffset;
-  anchorHeight?: number;
   anchorU?: number;
   anchorV?: number;
   zIndex?: number;
@@ -59,7 +50,6 @@ export interface InfoWindowRenderContext {
   onWindowClick?: () => void;
   onLongClick?: () => void;
   onClose?: () => void;
-  onSizeChanged?: (width: number, height: number) => void;
 }
 
 /**
@@ -73,7 +63,6 @@ export interface InfoWindowRenderParams {
   onClick?: () => void;
   onLongClick?: () => void;
   onClose?: () => void;
-  onSizeChanged?: (width: number, height: number) => void;
 }
 
 /**
@@ -94,7 +83,6 @@ function infoWindowDefaultBuilder(params: InfoWindowRenderParams) {
     onWindowClick: params.onClick,
     onLongClick: params.onLongClick,
     onClose: params.onClose,
-    onSizeChanged: params.onSizeChanged,
   });
 }
 
@@ -107,13 +95,10 @@ function infoWindowDefaultBuilder(params: InfoWindowRenderParams) {
 export class InfoWindow {
   private readonly marker: Marker;
   private style: InfoWindowStyle;
-  private width: number = 0;
-  private height: number = 0;
   private annotationId: number = -1;
   private visible: boolean = false;
   private layoutOptions: InfoWindowLayoutOptions = {
     centerOffset: undefined,
-    anchorHeight: undefined,
     anchorU: 0.5,
     anchorV: 1.0,
     zIndex: undefined
@@ -147,8 +132,6 @@ export class InfoWindow {
    */
   public setStyle(style: InfoWindowStyle): InfoWindow {
     this.applyStylePatch(style);
-    this.width = 0;
-    this.height = 0;
     return this;
   }
 
@@ -186,12 +169,6 @@ export class InfoWindow {
     if (patch.animated !== undefined) {
       this.style.animated = patch.animated;
     }
-    if (patch.leftAccessoryBuilder !== undefined) {
-      this.style.leftAccessoryBuilder = patch.leftAccessoryBuilder;
-    }
-    if (patch.rightAccessoryBuilder !== undefined) {
-      this.style.rightAccessoryBuilder = patch.rightAccessoryBuilder;
-    }
     if (patch.thumbnailImage !== undefined) {
       this.style.thumbnailImage = patch.thumbnailImage;
     }
@@ -209,7 +186,6 @@ export class InfoWindow {
   public setLayoutOptions(options: InfoWindowLayoutOptions): InfoWindow {
     this.layoutOptions = {
       centerOffset: options.centerOffset ? { dx: options.centerOffset.dx, dy: options.centerOffset.dy } : undefined,
-      anchorHeight: options.anchorHeight ?? this.layoutOptions.anchorHeight,
       anchorU: options.anchorU ?? this.layoutOptions.anchorU ?? 0.5,
       anchorV: options.anchorV ?? this.layoutOptions.anchorV ?? 1.0,
       zIndex: options.zIndex ?? undefined
@@ -220,7 +196,6 @@ export class InfoWindow {
   public getLayoutOptions(): InfoWindowLayoutOptions {
     return {
       centerOffset: this.layoutOptions.centerOffset ? { dx: this.layoutOptions.centerOffset.dx, dy: this.layoutOptions.centerOffset.dy } : undefined,
-      anchorHeight: this.layoutOptions.anchorHeight,
       anchorU: this.layoutOptions.anchorU,
       anchorV: this.layoutOptions.anchorV,
       zIndex: this.layoutOptions.zIndex
@@ -249,82 +224,6 @@ export class InfoWindow {
   }
 
   /**
-   * Record a measured size, deduplicating sub-epsilon changes so callers can
-   * skip redundant native updates when onAreaChange fires repeatedly.
-   */
-  public updateSize(width: number, height: number): boolean {
-    if (width <= 0 || height <= 0) {
-      return false;
-    }
-    const SIZE_EPSILON = 0.1;
-    const widthChanged = Math.abs(width - this.width) > SIZE_EPSILON;
-    const heightChanged = Math.abs(height - this.height) > SIZE_EPSILON;
-    if (!(widthChanged || heightChanged)) {
-      return false;
-    }
-    this.width = width;
-    this.height = height;
-    return true;
-  }
-
-  public getWidth(): number {
-    return this.width;
-  }
-
-  public getHeight(): number {
-    return this.height;
-  }
-
-  public estimateSize(): InfoWindowSize {
-    const title = this.marker.getTitle() || '';
-    const snippet = this.marker.getSnippet() || '';
-    const titleFontSize = this.style.titleFontSize ?? 16;
-    const snippetFontSize = this.style.snippetFontSize ?? 14;
-    const padding = this.style.padding ?? 12;
-    const maxWidth = this.style.maxWidth ?? DEFAULT_MAX_WIDTH;
-    const showCloseButton = this.style.showCloseButton !== false;
-    const thumbnailWidth = this.style.thumbnailImage ? 40 : 0;
-    const closeButtonWidth = showCloseButton ? 36 : 0;
-
-    const textAreaWidth = Math.max(maxWidth - padding * 2 - thumbnailWidth - closeButtonWidth, 60);
-    const titleWidth = title ? this.measureTextWidth(title, titleFontSize, true) : 0;
-    const snippetWidth = snippet ? this.measureTextWidth(snippet, snippetFontSize, false) : 0;
-    const contentWidth = Math.max(titleWidth, snippetWidth);
-    const estimatedWidth = Math.max(contentWidth + padding * 2 + thumbnailWidth + closeButtonWidth, 80);
-    const width = Math.min(estimatedWidth, maxWidth);
-
-    // The default UI renders the title on one line and the snippet on at most two.
-    const titleLines = title ? 1 : 0;
-    const snippetLines = snippet ? Math.min(2, Math.max(1, Math.ceil(snippetWidth / textAreaWidth))) : 0;
-    const titleHeight = titleLines * (titleFontSize + 8);
-    const snippetHeight = snippetLines * (snippetFontSize + 4);
-    const arrowHeight = 10;
-    const closeButtonHeight = showCloseButton ? 32 : 0;
-    const estimatedHeight = closeButtonHeight + titleHeight + snippetHeight + padding * 2 + arrowHeight;
-    return {
-      width: width,
-      height: estimatedHeight
-    };
-  }
-
-  private measureTextWidth(text: string, fontSize: number, bold: boolean): number {
-    try {
-      return measure.measureText({
-        textContent: text,
-        fontSize: fontSize,
-        fontWeight: bold ? FontWeight.Bold : FontWeight.Normal
-      });
-    } catch (error) {
-      // Fallback heuristic: CJK glyphs are ~1em wide, Latin ~0.55em.
-      let width = 0;
-      for (const ch of text) {
-        width += ch.charCodeAt(0) > 0x2E7F ? fontSize : fontSize * 0.55;
-      }
-      return width;
-    }
-  }
-
-  /**
    * Snapshot the current marker/style state as render params. Used both when
    * creating the default ComponentContent and when refreshing it via update().
    */
@@ -337,7 +236,6 @@ export class InfoWindow {
       onClick: this.renderContext.onWindowClick,
       onLongClick: this.renderContext.onLongClick,
       onClose: this.renderContext.onClose,
-      onSizeChanged: this.renderContext.onSizeChanged,
     };
   }
 
@@ -407,7 +305,6 @@ export struct InfoWindowComponent {
   onWindowClick?: () => void;
   onLongClick?: () => void;
   onClose?: () => void;
-  onSizeChanged?: (width: number, height: number) => void;
 
   /**
    * Appear/disappear transition. Plays a fade + scale-in entrance unless the
@@ -519,13 +416,6 @@ export struct InfoWindowComponent {
             this.onLongClick();
           }
         })
-    )
-    .onAreaChange((_oldValue: Area, newValue: Area) => {
-      const width = Number(newValue.width);
-      const height = Number(newValue.height);
-      if (this.onSizeChanged && width > 0 && height > 0) {
-        this.onSizeChanged(width, height);
-      }
-    })
+      )
   }
 }

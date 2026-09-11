@@ -1454,12 +1454,6 @@ export class MarkerManager {
     if (source.animated !== undefined) {
       clone.animated = source.animated;
     }
-    if (source.leftAccessoryBuilder !== undefined) {
-      clone.leftAccessoryBuilder = source.leftAccessoryBuilder;
-    }
-    if (source.rightAccessoryBuilder !== undefined) {
-      clone.rightAccessoryBuilder = source.rightAccessoryBuilder;
-    }
     if (source.showCloseButton !== undefined) {
       clone.showCloseButton = source.showCloseButton;
     }
@@ -1495,13 +1489,9 @@ export class MarkerManager {
         dy: style.offsetY ?? 0
       };
 
-      // Pass icon height as anchorHeight for correct anchor positioning
-      const anchorHeight = iconHeightLogical > 0 ? iconHeightLogical : undefined;
-
       this.infoWindowManager.show(marker, {
         style: style,
         centerOffset: centerOffset,
-        anchorHeight: anchorHeight,
         anchorU: 0.5,
         anchorV: 1.0,
         zIndex: marker.getZIndex()
