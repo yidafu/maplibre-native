@@ -870,6 +870,10 @@ export class MarkerManager {
       // Sync custom view rendering
       this.annotationViewManager.createOrUpdateView(marker);
 
+      // Position changed: re-anchor the shown InfoWindow through the same
+      // updateViewAnnotation path used by drags.
+      this.infoWindowManager.handleMarkerPositionChanged(marker);
+
     } catch (e) {
       const error = e as Error;
       console.error(`[MarkerManager] Failed to update marker: ${error.message}`);
@@ -1182,6 +1186,10 @@ export class MarkerManager {
 
     // Update position
     marker.setPosition(newPosition);
+
+    // Re-anchor the shown InfoWindow to the new position so it follows the
+    // marker during the drag (mirrors Android InfoWindowManager.update()).
+    this.infoWindowManager.handleMarkerPositionChanged(marker);
 
     // Fire callback
     if (this.onMarkerDragListener) {

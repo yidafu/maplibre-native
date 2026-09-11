@@ -730,6 +730,15 @@ export class NativeMapView {
   getViewAnnotationFrames(): NativeViewAnnotationFrame[];
 
   /**
+   * Register the push-model ViewAnnotation frames listener. The native
+   * positioning engine computes frames on the render thread after each camera
+   * update, dedupes them against the last pushed snapshot (epsilon), and
+   * dispatches the full frame list to this callback. Pass null to unregister.
+   * @param listener Callback receiving the frame list, or null to remove.
+   */
+  setViewAnnotationFramesListener(listener: ((frames: NativeViewAnnotationFrame[]) => void) | null): void;
+
+  /**
    * Update a polyline.
    * @param polyline Polyline object (must already exist on the map).
    */

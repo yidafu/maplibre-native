@@ -111,6 +111,14 @@ export class ViewAnnotationManager {
   private renderStates: ViewAnnotationRenderState[] = [];
   private renderCallback?: (states: ViewAnnotationRenderState[]) => void;
   private contentRegistry: ComponentContentRegistry = new ComponentContentRegistry();
+  /**
+   * Last frame list pushed by the native positioning engine. The push channel
+   * carries positions/sizes; entry metadata (visible/zIndex/viewName) is
+   * re-applied from `entries` when rebuilding render states.
+   */
+  private lastNativeFrames: NativeViewAnnotationFrame[] = [];
+  /** Guards against re-registering the native listener for the same view. */
+  private listenerBoundTo: NativeMapView | null = null;
 
   /**
    * Content registry owned by this manager. The rendering overlay resolves it
@@ -339,6 +347,7 @@ export class ViewAnnotationManager {
         console.error(`[ViewAnnotationManager] clear failed: ${reason}`);
       }
     }
+    this.lastNativeFrames = [];
     this.renderStates = [];
     this.notifyRenderCallback();
   }
@@ -395,6 +404,11 @@ export class ViewAnnotationManager {
   /**
    * Pulls frame data from native and recomputes ArkUI render states.
    *
+   * Positions arrive through the native push channel (see handleNativeFrames);
+   * this method only re-applies entry metadata onto the cached frames — it
+   * performs no native round trip. Content-only refreshes (adapter swap, show)
+   * call this so the overlay re-attaches content even when frames did not move.
+   *
    * @internal Rendering-pipeline plumbing.
    */
   refreshRenderStates(): void {
@@ -404,8 +418,7 @@ export class ViewAnnotationManager {
       return;
     }
 
-    // Fast path: the frame fetch is a synchronous NAPI round trip; skip it
-    // entirely when nothing is on screen (the common per-frame case).
+    // Fast path: nothing on screen (the common per-frame case).
     if (this.entries.size === 0) {
       if (this.renderStates.length !== 0) {
         this.renderStates = [];
@@ -414,27 +427,34 @@ export class ViewAnnotationManager {
       return;
     }
 
-    let frames: NativeViewAnnotationFrame[] = [];
-    try {
-      const rawFrames = this.nativeMapView.getViewAnnotationFrames();
-      if (Array.isArray(rawFrames)) {
-        frames = rawFrames;
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[ViewAnnotationManager] refreshRenderStates failed: ${reason}`);
-      this.renderStates = [];
-      this.notifyRenderCallback();
-      return;
-    }
+    this.rebuildRenderStates(this.lastNativeFrames);
+  }
 
+  /**
+   * Receives a frame list pushed by the native positioning engine (render
+   * thread, epsilon-deduped). Replaces the previous per-camera-event pull of
+   * getViewAnnotationFrames().
+   *
+   * @internal Called by the native frames listener bound in setNativeMapView.
+   */
+  private handleNativeFrames(frames: NativeViewAnnotationFrame[]): void {
+    this.lastNativeFrames = Array.isArray(frames) ? frames : [];
+    this.rebuildRenderStates(this.lastNativeFrames);
+  }
+
+  /**
+   * Converts native frames to overlay render states, re-applying per-entry
+   * metadata (visible/zIndex/viewName and size mode) that lives on the ArkTS
+   * side. Frames without a matching entry are skipped: they belong to another
+   * producer on the same native map (e.g. the deprecated AnnotationViewManager).
+   */
+  private rebuildRenderStates(frames: NativeViewAnnotationFrame[]): void {
     const safeRatio = this.pixelRatio > 0 ? this.pixelRatio : 1;
     const nextStates: ViewAnnotationRenderState[] = [];
 
     frames.forEach((frame) => {
       const entry = this.entries.get(frame.id);
       if (!entry) {
-        console.warn(`[ViewAnnotationManager] refreshRenderStates: skip frame ${frame.id} (entry missing)`);
         return;
       }
 
@@ -483,11 +503,37 @@ export class ViewAnnotationManager {
    * Binds the manager to the underlying native map view.
    * Pass null when disposing the manager.
    *
+   * Binds the native frames push listener: the native engine actively
+   * dispatches computed (epsilon-deduped) frames to this manager.
+   *
    * @internal Called by MapLibreMap during setup/teardown.
    */
   setNativeMapView(mapView: NativeMapView | null): void {
+    if (this.nativeMapView && this.nativeMapView !== mapView && this.listenerBoundTo === this.nativeMapView) {
+      // Release the previous binding so its thread-safe function is not leaked.
+      try {
+        this.nativeMapView.setViewAnnotationFramesListener(null);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : `${error}`;
+        console.warn(`[ViewAnnotationManager] failed to detach previous frames listener: ${reason}`);
+      }
+      this.listenerBoundTo = null;
+    }
+
     this.nativeMapView = mapView;
     this.pixelRatio = this.readPixelRatio(mapView);
+
+    if (mapView && this.listenerBoundTo !== mapView) {
+      try {
+        mapView.setViewAnnotationFramesListener((frames: NativeViewAnnotationFrame[]) => {
+          this.handleNativeFrames(frames);
+        });
+        this.listenerBoundTo = mapView;
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : `${error}`;
+        console.warn(`[ViewAnnotationManager] failed to bind frames listener: ${reason}`);
+      }
+    }
   }
 
   /**

@@ -160,6 +160,7 @@ public:
     static napi_value updateViewAnnotation(napi_env env, napi_callback_info info);
     static napi_value removeViewAnnotation(napi_env env, napi_callback_info info);
     static napi_value getViewAnnotationFrames(napi_env env, napi_callback_info info);
+    static napi_value setViewAnnotationFramesListener(napi_env env, napi_callback_info info);
     static napi_value onLowMemory(napi_env env, napi_callback_info info);
     
     // Rendering Frame listener with stats
@@ -467,6 +468,22 @@ private:
     std::unordered_map<int64_t, HarmonyViewAnnotation> viewAnnotations_;
     int64_t nextViewAnnotationId_ = 1;
     mutable std::mutex viewAnnotationMutex_;
+
+    // Push-model view annotation positioning: the render thread computes frames
+    // (buildFrame) after each camera update, dedupes them against the last
+    // pushed snapshot, and dispatches the full frame list to ArkTS through the
+    // thread-safe callback. viewAnnotationFramesCallback_/lastPushed... are
+    // touched from both the JS thread (listener registration) and the render
+    // thread (push), hence the dedicated mutex below.
+    std::shared_ptr<ThreadSafeCallback> viewAnnotationFramesCallback_;
+    std::vector<HarmonyViewAnnotationFrame> lastPushedViewAnnotationFrames_;
+    mutable std::mutex viewAnnotationFrameMutex_;
+
+    // Compute view annotation frames and push them to ArkTS when they changed
+    // beyond the epsilon threshold. Must be called on the map/render thread;
+    // no-ops when no listener is registered or when nothing was ever pushed
+    // and no annotations exist.
+    void pushViewAnnotationFrames();
     
     // Snapshot state
     std::mutex snapshotMutex_;

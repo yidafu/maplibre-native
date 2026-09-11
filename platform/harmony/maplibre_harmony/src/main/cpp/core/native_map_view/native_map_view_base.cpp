@@ -444,6 +444,7 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         {"updateViewAnnotation", nullptr, updateViewAnnotation, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"removeViewAnnotation", nullptr, removeViewAnnotation, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getViewAnnotationFrames", nullptr, getViewAnnotationFrames, nullptr, nullptr, nullptr, napi_default, nullptr},
+        {"setViewAnnotationFramesListener", nullptr, setViewAnnotationFramesListener, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"onLowMemory", nullptr, onLowMemory, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"setDebug", nullptr, setDebug, nullptr, nullptr, nullptr, napi_default, nullptr},
         {"getDebug", nullptr, getDebug, nullptr, nullptr, nullptr, napi_default, nullptr},

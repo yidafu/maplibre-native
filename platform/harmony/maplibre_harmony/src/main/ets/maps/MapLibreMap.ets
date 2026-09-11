@@ -290,8 +290,9 @@ export class MapLibreMap {
     // Set up native style listeners
     this.setupNativeStyleListeners();
 
-    // InfoWindow positioning is now handled automatically via onUpdateRegionChange() (mirrors Android)
-    // A separate CameraMoveListener is no longer required
+    // InfoWindow positioning is handled by the native engine: it pushes
+    // (epsilon-deduped) frames to ArkTS after every camera update — no
+    // camera-event-driven refresh is needed
 
     // Register the consolidated camera move listener (compass + scale bar + annotations)
     this.setupConsolidatedCameraMoveListener();
@@ -446,9 +447,9 @@ export class MapLibreMap {
     // performed one synchronous cross-boundary call per marker per frame.
     this.annotationViewManager.batchUpdatePositions();
 
-    // ViewAnnotation-backed InfoWindows are repositioned by the native engine;
-    // just refresh the render states pushed to the ArkUI overlay.
-    this.viewAnnotationManager.refreshRenderStates();
+    // ViewAnnotation-backed InfoWindows are positioned by the native engine,
+    // which pushes (epsilon-deduped) frames to the ArkTS overlay directly —
+    // no per-frame pull happens here anymore.
   }
 
   private readPixelRatioSafe(mapView: NativeMapView): number {
@@ -4220,8 +4221,10 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
+    // ViewAnnotation frames (InfoWindows) are pushed by the native engine on
+    // the render thread; only the deprecated AnnotationView pipeline still
+    // updates here.
     this.annotationViewManager.batchUpdatePositions(cameraChanged);
-    this.viewAnnotationManager.refreshRenderStates();
   }
 
 // ==================== Feature queries ====================

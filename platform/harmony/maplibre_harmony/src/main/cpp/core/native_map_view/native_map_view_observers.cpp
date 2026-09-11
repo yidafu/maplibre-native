@@ -71,6 +71,7 @@ void NativeMapView::onCameraIsChanging() {
             if (callbackManager_) {
                 callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
             }
+            pushViewAnnotationFrames();
         });
         return;
     }
@@ -79,6 +80,10 @@ void NativeMapView::onCameraIsChanging() {
     if (callbackManager_) {
         callbackManager_->InvokeCallbackEmpty("onCameraIsChanging");
     }
+
+    // Push-model view annotation positioning: recompute frames for the new
+    // camera state and dispatch to ArkTS when they changed beyond epsilon.
+    pushViewAnnotationFrames();
 }
 
 void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
@@ -109,6 +114,10 @@ void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
             return argv[0];
         });
     }
+
+    // Final camera state may differ from the last onCameraIsChanging sample.
+    // Epsilon dedupe makes this a no-op when the frames did not move.
+    pushViewAnnotationFrames();
 
     // MapLibre already handles render timing internally (via triggerRepaint)
     // No additional render request is required here; otherwise it leads to over-rendering
@@ -268,7 +277,12 @@ void NativeMapView::onDidFinishRenderingMap(MapObserver::RenderMode mode) {
                 return argv[0];
             });
         }
-        
+
+        // Catch-up push for annotations added before the map/style finished
+        // loading (their add-time push ran while projection was not usable).
+        // Epsilon dedupe keeps this free when nothing changed.
+        pushViewAnnotationFrames();
+
         // Rendering is complete; there is no need to request rendering again
         // onCameraDidChange already handled the render request
     } catch (...) {

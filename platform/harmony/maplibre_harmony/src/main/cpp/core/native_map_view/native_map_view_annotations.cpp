@@ -354,6 +354,112 @@ HarmonyViewAnnotationFrame buildFrame(const HarmonyViewAnnotation& annotation,
     return frame;
 }
 
+// Epsilon thresholds for the push channel: a frame set is only dispatched to
+// ArkTS when it drifted beyond these values from the last pushed snapshot
+// (mirrors the dedup constants used by the ArkUI overlay).
+constexpr double kPushPositionEpsilon = 0.1;  // logical pixels
+constexpr double kPushSizeEpsilon = 0.1;      // physical pixels
+constexpr double kPushValueEpsilon = 0.01;    // scale / rotation / opacity
+
+bool pushValueClose(double first, double second, double epsilon) {
+    if (!std::isfinite(first) || !std::isfinite(second)) {
+        return first == second;
+    }
+    return std::fabs(first - second) <= epsilon;
+}
+
+// Both vectors are sorted by annotation id, so index-wise comparison is valid.
+bool pushFramesEquivalent(const std::vector<HarmonyViewAnnotationFrame>& pushed,
+                          const std::vector<HarmonyViewAnnotationFrame>& frames) {
+    if (pushed.size() != frames.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < frames.size(); ++i) {
+        const HarmonyViewAnnotationFrame& a = pushed[i];
+        const HarmonyViewAnnotationFrame& b = frames[i];
+        if (a.id != b.id || a.visible != b.visible) {
+            return false;
+        }
+        if (!pushValueClose(a.positionX, b.positionX, kPushPositionEpsilon) ||
+            !pushValueClose(a.positionY, b.positionY, kPushPositionEpsilon) ||
+            !pushValueClose(a.size.width, b.size.width, kPushSizeEpsilon) ||
+            !pushValueClose(a.size.height, b.size.height, kPushSizeEpsilon) ||
+            !pushValueClose(a.scale, b.scale, kPushValueEpsilon) ||
+            !pushValueClose(a.rotation, b.rotation, kPushValueEpsilon) ||
+            !pushValueClose(a.opacity, b.opacity, kPushValueEpsilon)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+napi_value createFrameObject(napi_env env, const HarmonyViewAnnotationFrame& frame) {
+    napi_value frameObj;
+    if (napi_create_object(env, &frameObj) != napi_ok) {
+        return nullptr;
+    }
+
+    napi_value value;
+
+    napi_create_int64(env, static_cast<int64_t>(frame.id), &value);
+    napi_set_named_property(env, frameObj, "id", value);
+
+    napi_create_double(env, frame.screen.x, &value);
+    napi_set_named_property(env, frameObj, "x", value);
+    napi_create_double(env, frame.screen.y, &value);
+    napi_set_named_property(env, frameObj, "y", value);
+
+    napi_create_uint32(env, frame.size.width, &value);
+    napi_set_named_property(env, frameObj, "width", value);
+    napi_create_uint32(env, frame.size.height, &value);
+    napi_set_named_property(env, frameObj, "height", value);
+
+    napi_create_double(env, frame.offset.x, &value);
+    napi_set_named_property(env, frameObj, "offsetX", value);
+    napi_create_double(env, frame.offset.y, &value);
+    napi_set_named_property(env, frameObj, "offsetY", value);
+
+    napi_create_double(env, frame.scale, &value);
+    napi_set_named_property(env, frameObj, "scale", value);
+    napi_create_double(env, frame.rotation, &value);
+    napi_set_named_property(env, frameObj, "rotation", value);
+    napi_create_double(env, frame.opacity, &value);
+    napi_set_named_property(env, frameObj, "opacity", value);
+    napi_create_double(env, frame.pixelRatio, &value);
+    napi_set_named_property(env, frameObj, "pixelRatio", value);
+
+    napi_get_boolean(env, frame.visible, &value);
+    napi_set_named_property(env, frameObj, "visible", value);
+    napi_get_boolean(env, frame.draggable, &value);
+    napi_set_named_property(env, frameObj, "draggable", value);
+
+    // Phase 2 optimization: pre-computed render position in logical pixels
+    napi_create_double(env, frame.positionX, &value);
+    napi_set_named_property(env, frameObj, "positionX", value);
+    napi_create_double(env, frame.positionY, &value);
+    napi_set_named_property(env, frameObj, "positionY", value);
+
+    return frameObj;
+}
+
+napi_value createFramesArray(napi_env env, const std::vector<HarmonyViewAnnotationFrame>& frames) {
+    napi_value resultArray;
+    if (napi_create_array_with_length(env, frames.size(), &resultArray) != napi_ok) {
+        napi_value undefined;
+        napi_get_undefined(env, &undefined);
+        return undefined;
+    }
+
+    for (size_t i = 0; i < frames.size(); ++i) {
+        napi_value frameObj = createFrameObject(env, frames[i]);
+        if (frameObj) {
+            napi_set_element(env, resultArray, static_cast<int32_t>(i), frameObj);
+        }
+    }
+
+    return resultArray;
+}
+
 } // namespace
 
 napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
@@ -406,11 +512,15 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
     try {
         // Update the marker using SymbolAnnotation
         mbgl::SymbolAnnotation annotation(position, iconId);
-        instance->invokeOnMapThread([annotationId, annotation](mbgl::Map* m){
+        instance->invokeOnMapThread([instance, annotationId, annotation](mbgl::Map* m){
             m->updateAnnotation(annotationId, annotation);
             m->triggerRepaint();
+            // Marker position changed: re-evaluate view annotation frames on
+            // the same push path as camera updates (keeps InfoWindows glued
+            // to moving markers without waiting for a camera event).
+            instance->pushViewAnnotationFrames();
         });
-        
+
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "[MarkerDebug] updateMarker: Failed - %s", e.what());
     }
@@ -1223,10 +1333,13 @@ napi_value NativeMapView::addViewAnnotation(napi_env env, napi_callback_info inf
         instance->viewAnnotations_[annotationId] = annotation;
     }
 
-    instance->invokeOnMapThread([](mbgl::Map* map) {
+    instance->invokeOnMapThread([instance](mbgl::Map* map) {
         if (map) {
             map->triggerRepaint();
         }
+        // Push the initial frame so the annotation appears without waiting
+        // for the next camera event.
+        instance->pushViewAnnotationFrames();
     });
 
     napi_value result;
@@ -1318,10 +1431,12 @@ napi_value NativeMapView::updateViewAnnotation(napi_env env, napi_callback_info 
     }
 
     if (updated) {
-        instance->invokeOnMapThread([](mbgl::Map* map) {
+        instance->invokeOnMapThread([instance](mbgl::Map* map) {
             if (map) {
                 map->triggerRepaint();
             }
+            // Push updated frames (e.g. measured-size feedback, anchor moves).
+            instance->pushViewAnnotationFrames();
         });
     }
 
@@ -1356,10 +1471,12 @@ napi_value NativeMapView::removeViewAnnotation(napi_env env, napi_callback_info 
     }
 
     if (removed) {
-        instance->invokeOnMapThread([](mbgl::Map* map) {
+        instance->invokeOnMapThread([instance](mbgl::Map* map) {
             if (map) {
                 map->triggerRepaint();
             }
+            // Push the retraction so ArkUI drops the removed frame promptly.
+            instance->pushViewAnnotationFrames();
         });
     }
 
@@ -1410,69 +1527,136 @@ napi_value NativeMapView::getViewAnnotationFrames(napi_env env, napi_callback_in
         },
         std::vector<HarmonyViewAnnotationFrame>{});
 
-    napi_value resultArray;
-    napi_create_array_with_length(env, frames.size(), &resultArray);
-
-    // Log frame data for debugging
-    Logger::info("NativeMapView", "[ViewAnnotation] getViewAnnotationFrames: %zu annotations, pixelRatio=%.2f",
-                 frames.size(), pixelRatio);
-    for (size_t i = 0; i < frames.size(); ++i) {
-        Logger::info("NativeMapView", "[ViewAnnotation] Frame[%zu]: id=%ld, screen=(%.2f, %.2f), size=%dx%d",
-                     i, frames[i].id, frames[i].screen.x, frames[i].screen.y,
-                     frames[i].size.width, frames[i].size.height);
-    }
-
-    for (size_t i = 0; i < frames.size(); ++i) {
-        const auto& frame = frames[i];
-        napi_value frameObj;
-        napi_create_object(env, &frameObj);
-
-        napi_value value;
-
-        napi_create_int64(env, static_cast<int64_t>(frame.id), &value);
-        napi_set_named_property(env, frameObj, "id", value);
-
-        napi_create_double(env, frame.screen.x, &value);
-        napi_set_named_property(env, frameObj, "x", value);
-        napi_create_double(env, frame.screen.y, &value);
-        napi_set_named_property(env, frameObj, "y", value);
-
-        napi_create_uint32(env, frame.size.width, &value);
-        napi_set_named_property(env, frameObj, "width", value);
-        napi_create_uint32(env, frame.size.height, &value);
-        napi_set_named_property(env, frameObj, "height", value);
-
-        napi_create_double(env, frame.offset.x, &value);
-        napi_set_named_property(env, frameObj, "offsetX", value);
-        napi_create_double(env, frame.offset.y, &value);
-        napi_set_named_property(env, frameObj, "offsetY", value);
-
-        napi_create_double(env, frame.scale, &value);
-        napi_set_named_property(env, frameObj, "scale", value);
-        napi_create_double(env, frame.rotation, &value);
-        napi_set_named_property(env, frameObj, "rotation", value);
-        napi_create_double(env, frame.opacity, &value);
-        napi_set_named_property(env, frameObj, "opacity", value);
-        napi_create_double(env, frame.pixelRatio, &value);
-        napi_set_named_property(env, frameObj, "pixelRatio", value);
-
-        napi_get_boolean(env, frame.visible, &value);
-        napi_set_named_property(env, frameObj, "visible", value);
-        napi_get_boolean(env, frame.draggable, &value);
-        napi_set_named_property(env, frameObj, "draggable", value);
-
-        // Phase 2 optimization: pre-computed render position in logical pixels
-        napi_create_double(env, frame.positionX, &value);
-        napi_set_named_property(env, frameObj, "positionX", value);
-        napi_create_double(env, frame.positionY, &value);
-        napi_set_named_property(env, frameObj, "positionY", value);
-
-        napi_set_element(env, resultArray, i, frameObj);
-    }
-
-    return resultArray;
+    // One-shot pull path (e.g. clear()-time enumeration). The per-frame path
+    // is the push channel in pushViewAnnotationFrames(); per-frame logging was
+    // removed with it.
+    return createFramesArray(env, frames);
 }
 
+void NativeMapView::pushViewAnnotationFrames() {
+    // Runs on the map/render thread: invoked from the camera observers and
+    // from the map-thread lambdas of the annotation mutation entry points.
+    if (isDestroying.load(std::memory_order_acquire)) {
+        return;
+    }
+
+    std::shared_ptr<ThreadSafeCallback> callback;
+    {
+        std::lock_guard<std::mutex> lock(viewAnnotationFrameMutex_);
+        callback = viewAnnotationFramesCallback_;
+    }
+    if (!callback || !callback->IsValid() || !map) {
+        return;
+    }
+
+    // Native short-circuit: nothing on screen and no stale state to retract —
+    // skip the per-frame work entirely.
+    {
+        std::lock_guard<std::mutex> lock(viewAnnotationMutex_);
+        if (viewAnnotations_.empty() && lastPushedViewAnnotationFrames_.empty()) {
+            return;
+        }
+    }
+
+    std::vector<HarmonyViewAnnotation> annotations;
+    {
+        std::lock_guard<std::mutex> lock(viewAnnotationMutex_);
+        annotations.reserve(viewAnnotations_.size());
+        for (const auto& entry : viewAnnotations_) {
+            annotations.push_back(entry.second);
+        }
+    }
+
+    const double pixelRatio = getPixelRatioValue();
+    const auto camera = map->getCameraOptions();
+    const double currentZoom = camera.zoom.value_or(0.0);
+    const double currentBearing = camera.bearing.value_or(0.0);
+    const double currentPitch = camera.pitch.value_or(0.0);
+
+    std::vector<HarmonyViewAnnotationFrame> frames;
+    frames.reserve(annotations.size());
+    for (const auto& annotation : annotations) {
+        frames.emplace_back(buildFrame(annotation, *map, currentZoom, pixelRatio, currentBearing, currentPitch));
+    }
+    // Sort by id so the epsilon comparison against the last pushed snapshot is
+    // stable regardless of unordered_map iteration order.
+    std::sort(frames.begin(), frames.end(),
+              [](const HarmonyViewAnnotationFrame& a, const HarmonyViewAnnotationFrame& b) {
+                  return a.id < b.id;
+              });
+
+    {
+        std::lock_guard<std::mutex> lock(viewAnnotationFrameMutex_);
+        if (pushFramesEquivalent(lastPushedViewAnnotationFrames_, frames)) {
+            return;
+        }
+        lastPushedViewAnnotationFrames_ = frames;
+    }
+
+    // The builder runs on the JS thread inside ThreadSafeCallback::CallJS; keep
+    // the frame data alive via shared_ptr instead of capturing by reference.
+    auto framesSnapshot = std::make_shared<std::vector<HarmonyViewAnnotationFrame>>(std::move(frames));
+    callback->Call([framesSnapshot](napi_env env) -> napi_value {
+        return createFramesArray(env, *framesSnapshot);
+    });
+}
+
+napi_value NativeMapView::setViewAnnotationFramesListener(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return nullptr;
+    }
+
+    NativeMapView* instance = nullptr;
+    napi_value thisObj = args.This();
+    if (napi_unwrap(env, thisObj, reinterpret_cast<void**>(&instance)) != napi_ok || !instance) {
+        napi_throw_error(env, nullptr, "Failed to unwrap NativeMapView instance");
+        return nullptr;
+    }
+
+    if (instance->isDestroying.load(std::memory_order_acquire)) {
+        return args.Undefined();
+    }
+
+    napi_value callback = args.GetValue(0);
+    napi_valuetype type = napi_undefined;
+    napi_typeof(env, callback, &type);
+
+    if (type == napi_null || type == napi_undefined) {
+        // Remove the listener, and clear the pushed snapshot so a subsequent
+        // registration receives a fresh push instead of a dedupe hit.
+        std::lock_guard<std::mutex> lock(instance->viewAnnotationFrameMutex_);
+        instance->viewAnnotationFramesCallback_.reset();
+        instance->lastPushedViewAnnotationFrames_.clear();
+        return args.Undefined();
+    }
+
+    if (type != napi_function) {
+        napi_throw_error(env, nullptr, "setViewAnnotationFramesListener: callback must be a function or null");
+        return nullptr;
+    }
+
+    auto callbackPtr = ThreadSafeCallback::Create(env, callback, "OnViewAnnotationFrames");
+    if (!callbackPtr) {
+        Logger::error("NativeMapView", "setViewAnnotationFramesListener: Failed to create ThreadSafeCallback");
+        return args.Undefined();
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(instance->viewAnnotationFrameMutex_);
+        instance->viewAnnotationFramesCallback_ = std::move(callbackPtr);
+        instance->lastPushedViewAnnotationFrames_.clear();
+    }
+
+    // Deliver the current state to the new listener (async hop to the map
+    // thread; the cleared snapshot above bypasses the epsilon dedupe).
+    instance->invokeOnMapThread([instance](mbgl::Map*) {
+        instance->pushViewAnnotationFrames();
+    });
+
+    return args.Undefined();
+}
 
 } // namespace harmony
 } // namespace mbgl

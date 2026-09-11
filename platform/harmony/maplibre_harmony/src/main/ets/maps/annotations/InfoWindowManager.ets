@@ -381,6 +381,34 @@ export class InfoWindowManager {
   }
 
   /**
+   * Notify the manager that a marker's position changed (drag, setPosition).
+   * Moves the shown InfoWindow's view-annotation anchor to the new position so
+   * the window follows the marker in real time — Android re-anchors the window
+   * on every drag frame, and the native push channel relays the new frames.
+   */
+  public handleMarkerPositionChanged(marker: Marker): void {
+    const infoWindow = this.infoWindowMap.get(marker.getId());
+    if (!infoWindow || !infoWindow.isShown()) {
+      return;
+    }
+
+    const annotationId = infoWindow.getAnnotationId();
+    if (annotationId <= 0 || !this.viewAnnotationManager) {
+      return;
+    }
+
+    try {
+      this.viewAnnotationManager.updateViewAnnotation(annotationId, {
+        anchor: marker.getPosition(),
+        visible: true
+      } as ViewAnnotationUpdateOptions);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.warn(`[InfoWindowManager] handleMarkerPositionChanged failed: ${reason}`);
+    }
+  }
+
+  /**
    * Determine whether marker has InfoWindow content.
    */
   isValidForMarker(marker: Marker): boolean {
