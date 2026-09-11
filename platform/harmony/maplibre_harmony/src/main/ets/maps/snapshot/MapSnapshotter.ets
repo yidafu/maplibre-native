@@ -10,9 +10,11 @@ import maplibre, {
   SnapshotOptionsNAPI,
   SnapshotResultNAPI
 } from 'libmaplibre.so';
-import type { 
-  Layer, 
+import type {
+  Layer,
   Source,
+  Icon,
+  Image,
   CameraPositionLike,
   LatLngBoundsLike,
   MapSnapshotterObserver as NativeMapSnapshotterObserver
@@ -452,17 +454,37 @@ export class MapSnapshotter {
    *
    * Mirrors Android `MapSnapshotter.addImage(String, Bitmap, boolean)`.
    *
-   * Should be invoked inside `onDidFinishLoadingStyle`.
+   * Should be invoked before `start()` or inside `onDidFinishLoadingStyle` /
+   * `onStyleImageMissing`, while the snapshot style is not being rendered.
+   *
+   * Supported forms:
+   * - `addImage(name, icon, sdf?)` — an Icon created by `IconFactory`; the
+   *   image dimensions and pixel scale are taken from the icon.
+   * - `addImage(name, image, sdf?)` — a style `Image` object.
+   * - `addImage(name, buffer, width, height, pixelRatio?, sdf?)` — raw RGBA
+   *   (premultiplied) pixels; `buffer.byteLength` must equal
+   *   `width * height * 4`.
    *
    * @param name Image identifier.
-   * @param imageData Image data (`ImageBitmap` or `ArrayBuffer`).
-   * @param sdf Whether the image is an SDF (Signed Distance Field) sprite.
+   * @param imageData Icon, Image object, or raw RGBA pixel data.
+   * @param widthOrSdf Width in pixels (raw form) or SDF flag (object form).
+   * @param height Height in pixels (raw form only).
+   * @param pixelRatioOrSdf Pixel ratio (raw form) or SDF flag (object form).
+   * @param sdf Whether the image is an SDF (Signed Distance Field) sprite
+   *            (raw form only).
    *
    * @example
    * ```typescript
+   * // Icon created by IconFactory (recommended).
+   * const icon = maplibre.IconFactory.fromRawfile(context.resourceManager, 'marker.png');
+   * snapshotter.addImage('custom-marker', icon);
+   *
+   * // Raw pixel data.
+   * snapshotter.addImage('sprite', rgbaBuffer, width, height, 2.0, false);
+   *
    * snapshotter.setObserver({
    *   onDidFinishLoadingStyle: () => {
-   *     snapshotter.addImage('custom-marker', imageData, false);
+   *     snapshotter.start({ onSnapshotReady: (snapshot) => { ... } });
    *   },
    *   onStyleImageMissing: (imageName) => {
    *     console.log('Missing image:', imageName);
@@ -470,14 +492,21 @@ export class MapSnapshotter {
    * });
    * ```
    */
-  public addImage(name: string, imageData: ArrayBuffer | Uint8Array, sdf: boolean = false): void {
+  public addImage(
+    name: string,
+    imageData: ArrayBuffer | Uint8Array | Icon | Image,
+    widthOrSdf?: number | boolean,
+    height?: number,
+    pixelRatioOrSdf?: number | boolean,
+    sdf?: boolean
+  ): void {
     if (!this.nativeSnapshotter) {
       hilog.warn(DOMAIN, 'MapSnapshotter', 'Native snapshotter not initialized');
       return;
     }
 
     try {
-      this.nativeSnapshotter.addImage(name, imageData, sdf);
+      this.nativeSnapshotter.addImage(name, imageData, widthOrSdf, height, pixelRatioOrSdf, sdf);
       hilog.info(DOMAIN, 'MapSnapshotter', `Image added: ${name}`);
     } catch (error) {
       hilog.error(DOMAIN, 'MapSnapshotter', `Failed to add image: ${error}`);

@@ -108,6 +108,11 @@ public:
     mbgl::Size getSize() const;
 
     /**
+     * Get the pixel ratio configured for this snapshotter.
+     */
+    float getPixelRatio() const;
+
+    /**
      * Set camera options.
      */
     void setCameraOptions(const mbgl::CameraOptions& camera);

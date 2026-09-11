@@ -97,6 +97,10 @@ mbgl::Size MapSnapshotterHarmony::getSize() const {
     return snapshotter_->getSize();
 }
 
+float MapSnapshotterHarmony::getPixelRatio() const {
+    return pixelRatio_;
+}
+
 void MapSnapshotterHarmony::setCameraOptions(const mbgl::CameraOptions& camera) {
     if (!snapshotter_) return;
     snapshotter_->setCameraOptions(camera);

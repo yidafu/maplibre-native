@@ -11,10 +11,53 @@
 #include "../core/thread_safe_callback.hpp"
 #include "../napi/core/napi_args.hpp"
 
+// Layer NAPI classes (for getLayer)
+#include "../style/layers/fill_layer_harmony.hpp"
+#include "../style/layers/line_layer_harmony.hpp"
+#include "../style/layers/circle_layer_harmony.hpp"
+#include "../style/layers/symbol_layer_harmony.hpp"
+#include "../style/layers/raster_layer_harmony.hpp"
+#include "../style/layers/background_layer_harmony.hpp"
+#include "../style/layers/heatmap_layer_harmony.hpp"
+#include "../style/layers/hillshade_layer_harmony.hpp"
+#include "../style/layers/fill_extrusion_layer_harmony.hpp"
+#include "../style/layers/color_relief_layer_harmony.hpp"
+#include "../style/layers/location_indicator_layer_harmony.hpp"
+// Source NAPI classes (for getSource)
+#include "../sources/geojson_source_napi.hpp"
+#include "../sources/vector_source_napi.hpp"
+#include "../sources/raster_source_napi.hpp"
+#include "../sources/raster_dem_source_napi.hpp"
+#include "../sources/image_source_napi.hpp"
+// Image/Icon NAPI classes (for addImage)
+#include "../napi/bindings/image/image_napi.hpp"
+#include "../napi/bindings/icon/icon_napi.hpp"
+
 #include <mbgl/map/camera.hpp>
+#include <mbgl/style/layer.hpp>
+#include <mbgl/style/style.hpp>
+#include <mbgl/style/source.hpp>
+#include <mbgl/style/image.hpp>
+#include <mbgl/style/layers/fill_layer.hpp>
+#include <mbgl/style/layers/line_layer.hpp>
+#include <mbgl/style/layers/circle_layer.hpp>
+#include <mbgl/style/layers/symbol_layer.hpp>
+#include <mbgl/style/layers/raster_layer.hpp>
+#include <mbgl/style/layers/background_layer.hpp>
+#include <mbgl/style/layers/heatmap_layer.hpp>
+#include <mbgl/style/layers/hillshade_layer.hpp>
+#include <mbgl/style/layers/fill_extrusion_layer.hpp>
+#include <mbgl/style/layers/location_indicator_layer.hpp>
+#include <mbgl/style/sources/geojson_source.hpp>
+#include <mbgl/style/sources/vector_source.hpp>
+#include <mbgl/style/sources/raster_source.hpp>
+#include <mbgl/style/sources/raster_dem_source.hpp>
+#include <mbgl/style/sources/image_source.hpp>
 #include <napi/native_api.h>
 #include <string>
 #include <memory>
+#include <vector>
+#include <cstring>
 
 using mbgl::harmony::ThreadSafeCallback;
 using mbgl::harmony::Logger;
@@ -255,9 +298,8 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     // Use shared_ptr so the callback survives until the async work completes
     auto sharedCallback = std::shared_ptr<ThreadSafeCallback>(std::move(threadSafeCallback));
 
-    // Obtain pixelRatio from the snapshotter options
-    float pixelRatio = 1.0f; // Default; ideally read from the snapshotter
-    // TODO: Pull pixelRatio from snapshotterInstance configuration
+    // Pixel ratio comes from the snapshotter configuration (options.pixelRatio)
+    const float pixelRatio = snapshotterInstance->snapshotter->getPixelRatio();
     
     // Invoke the C++ snapshot method
     snapshotterInstance->snapshotter->snapshot(
@@ -577,13 +619,53 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
     // Parse layerId
     std::string layerId = args.GetString(0, "layerId");
     if (args.HasError()) return args.Undefined();
+    if (layerId.empty()) {
+        napi_throw_error(env, nullptr, "layerId cannot be empty");
+        return nullptr;
+    }
 
-    // TODO: Implement layer retrieval.
-    // Should access snapshotter->getStyle().getLayer(layerId)
-    // and convert the result into a NAPI Layer object.
-    Logger::warn("SnapshotterNAPI", "getLayer: Not fully implemented yet");
-    
-    return args.Undefined();
+    try {
+        mbgl::style::Layer* layer = snapshotterInstance->snapshotter->getStyle().getLayer(layerId);
+        if (!layer) {
+            Logger::info("SnapshotterNAPI", "getLayer: Layer not found: %s", layerId.c_str());
+            return args.Null();
+        }
+
+        const std::string layerType = layer->getTypeInfo()->type;
+        Logger::info("SnapshotterNAPI", "getLayer: %s (type: %s)", layerId.c_str(), layerType.c_str());
+
+        // Create the corresponding NAPI wrapper based on the layer type
+        // (same dispatch as StyleNAPI::GetLayer)
+        if (layerType == "symbol") {
+            return mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, static_cast<mbgl::style::SymbolLayer*>(layer));
+        } else if (layerType == "fill") {
+            return mbgl::harmony::FillLayerNAPI::CreateInstance(env, static_cast<mbgl::style::FillLayer*>(layer));
+        } else if (layerType == "line") {
+            return mbgl::harmony::LineLayerNAPI::CreateInstance(env, static_cast<mbgl::style::LineLayer*>(layer));
+        } else if (layerType == "circle") {
+            return mbgl::harmony::CircleLayerNAPI::CreateInstance(env, static_cast<mbgl::style::CircleLayer*>(layer));
+        } else if (layerType == "raster") {
+            return mbgl::harmony::RasterLayerNAPI::CreateInstance(env, static_cast<mbgl::style::RasterLayer*>(layer));
+        } else if (layerType == "heatmap") {
+            return mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, static_cast<mbgl::style::HeatmapLayer*>(layer));
+        } else if (layerType == "hillshade") {
+            return mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env, static_cast<mbgl::style::HillshadeLayer*>(layer));
+        } else if (layerType == "fill-extrusion") {
+            return mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(env, static_cast<mbgl::style::FillExtrusionLayer*>(layer));
+        } else if (layerType == "background") {
+            return mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env, static_cast<mbgl::style::BackgroundLayer*>(layer));
+        } else if (layerType == "color-relief") {
+            return mbgl::harmony::ColorReliefLayerNAPI::CreateInstance(env, static_cast<mbgl::style::ColorReliefLayer*>(layer));
+        } else if (layerType == "location-indicator") {
+            return mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(env, static_cast<mbgl::style::LocationIndicatorLayer*>(layer));
+        }
+
+        Logger::warn("SnapshotterNAPI", "getLayer: Unknown layer type: %s", layerType.c_str());
+        return args.Null();
+    } catch (const std::exception& e) {
+        Logger::error("SnapshotterNAPI", "getLayer failed: %s", e.what());
+        return args.Null();
+    }
 }
 
 /**
@@ -609,30 +691,79 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
     // Parse sourceId
     std::string sourceId = args.GetString(0, "sourceId");
     if (args.HasError()) return args.Undefined();
+    if (sourceId.empty()) {
+        napi_throw_error(env, nullptr, "sourceId cannot be empty");
+        return nullptr;
+    }
 
-    // TODO: Implement source retrieval.
-    // Should access snapshotter->getStyle().getSource(sourceId)
-    // and convert the result into a NAPI Source object.
-    Logger::warn("SnapshotterNAPI", "getSource: Not fully implemented yet");
-    
-    return args.Undefined();
+    try {
+        mbgl::style::Source* source = snapshotterInstance->snapshotter->getStyle().getSource(sourceId);
+        if (!source) {
+            Logger::info("SnapshotterNAPI", "getSource: Source not found: %s", sourceId.c_str());
+            return args.Null();
+        }
+
+        Logger::info("SnapshotterNAPI", "getSource: %s (type: %d)", sourceId.c_str(),
+                     static_cast<int>(source->getType()));
+
+        // Create the corresponding NAPI wrapper based on the source type
+        // (same dispatch as StyleNAPI::GetSource)
+        switch (source->getType()) {
+            case mbgl::style::SourceType::GeoJSON: {
+                auto* geoJsonSource = static_cast<mbgl::style::GeoJSONSource*>(source);
+                return maplibre::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
+            }
+            case mbgl::style::SourceType::Vector: {
+                auto* vectorSource = static_cast<mbgl::style::VectorSource*>(source);
+                return maplibre::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
+            }
+            case mbgl::style::SourceType::Raster: {
+                auto* rasterSource = static_cast<mbgl::style::RasterSource*>(source);
+                return maplibre::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
+            }
+            case mbgl::style::SourceType::RasterDEM: {
+                auto* rasterDemSource = static_cast<mbgl::style::RasterDEMSource*>(source);
+                return maplibre::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
+            }
+            case mbgl::style::SourceType::Image: {
+                auto* imageSource = static_cast<mbgl::style::ImageSource*>(source);
+                return maplibre::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
+            }
+            default:
+                Logger::warn("SnapshotterNAPI", "getSource: Unknown source type: %d",
+                             static_cast<int>(source->getType()));
+                return args.Null();
+        }
+    } catch (const std::exception& e) {
+        Logger::error("SnapshotterNAPI", "getSource failed: %s", e.what());
+        return args.Null();
+    }
 }
 
 /**
- * Add an image.
+ * Add an image to the snapshot style.
  *
- * JavaScript usage:
- * snapshotter.addImage(name, imageData, sdf);
+ * Supported argument forms:
+ * - addImage(name, icon, sdf?)                 — an Icon created by IconFactory
+ * - addImage(name, image, sdf?)                — a style Image object
+ * - addImage(name, buffer, width, height, pixelRatio?, sdf?)
+ *                                              — raw RGBA (premultiplied) pixels
+ *
+ * Trailing optional arguments are scanned positionally: numbers fill
+ * width/height/pixelRatio in order, a boolean sets `sdf`.
+ *
+ * Should be called before start() or from the onDidFinishLoadingStyle /
+ * onStyleImageMissing observer callbacks.
  */
 napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
-    args.RequireMinArgs(3);
+    args.RequireMinArgs(2);
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
     MapSnapshotterInstance* snapshotterInstance;
     napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
-    
+
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         Logger::warn("SnapshotterNAPI", "addImage: Snapshotter not initialized");
         return args.Undefined();
@@ -640,17 +771,152 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
 
     // Parse arguments
     std::string name = args.GetString(0, "name");
-    // napi_value imageData = args.GetValue(1); // ImageBitmap or ArrayBuffer
-    bool sdf = args.GetBool(2, "sdf");
-    
     if (args.HasError()) return args.Undefined();
 
-    // TODO: Implement image addition:
-    // 1. Convert ImageBitmap/ArrayBuffer into mbgl::PremultipliedImage
-    // 2. Call snapshotter->getStyle().addImage(name, std::move(image), sdf)
-    Logger::warn("SnapshotterNAPI", "addImage: Not fully implemented yet - name=%s, sdf=%d", 
-                 name.c_str(), sdf);
-    
+    napi_value dataValue = args.GetValue(1);
+    if (args.HasError()) return args.Undefined();
+
+    // Scan the trailing optional arguments: booleans set `sdf`, numbers are
+    // collected in order (width, height, pixelRatio for the raw-buffer form).
+    std::vector<double> numbers;
+    bool sdf = false;
+    for (size_t i = 2; i < args.Count(); ++i) {
+        napi_value val = args.GetValue(i);
+        if (args.HasError()) return args.Undefined();
+
+        napi_valuetype valueType;
+        napi_typeof(env, val, &valueType);
+        if (valueType == napi_boolean) {
+            sdf = args.GetBool(i, "sdf");
+            if (args.HasError()) return args.Undefined();
+        } else if (valueType == napi_number) {
+            numbers.push_back(args.GetDouble(i, "number"));
+            if (args.HasError()) return args.Undefined();
+        }
+    }
+
+    try {
+        std::unique_ptr<mbgl::style::Image> styleImage;
+
+        if (maplibre::harmony::IconNAPI::IsIconObject(env, dataValue)) {
+            // Icon created by IconFactory: image data and scale live on the icon.
+            maplibre::harmony::IconNAPI* icon = nullptr;
+            napi_unwrap(env, dataValue, reinterpret_cast<void**>(&icon));
+            if (!icon) {
+                napi_throw_error(env, nullptr, "Failed to unwrap Icon object");
+                return nullptr;
+            }
+
+            const auto iconImage = icon->getImage();
+            if (!iconImage || !iconImage->valid()) {
+                napi_throw_error(env, nullptr, "Icon has been released and cannot be added to the snapshot");
+                return nullptr;
+            }
+
+            const std::string imageId = name.empty() ? icon->getId() : name;
+            const float pixelRatio = icon->getScale() > 0.0f ? icon->getScale() : 1.0f;
+
+            // Copy the pixels so the icon stays usable for other consumers.
+            mbgl::PremultipliedImage copy = iconImage->clone();
+            styleImage = std::make_unique<mbgl::style::Image>(imageId, std::move(copy), pixelRatio, sdf);
+
+            Logger::info("SnapshotterNAPI", "addImage from Icon: %s (%dx%d, ratio: %.2f, sdf: %d)",
+                         imageId.c_str(), icon->getWidth(), icon->getHeight(), pixelRatio, sdf);
+        } else if (maplibre::harmony::ImageNAPI::IsImageObject(env, dataValue)) {
+            // Style Image object: carries its own name, pixel ratio and SDF flag.
+            maplibre::harmony::ImageNAPI* imageNapi = maplibre::harmony::ImageNAPI::Unwrap(env, dataValue);
+            if (!imageNapi) {
+                napi_throw_error(env, nullptr, "Failed to unwrap Image object");
+                return nullptr;
+            }
+
+            styleImage = imageNapi->toStyleImage();
+            if (!styleImage) {
+                napi_throw_error(env, nullptr, "Failed to convert Image object");
+                return nullptr;
+            }
+
+            // The explicit name argument wins over the Image's internal name.
+            if (!name.empty() && styleImage->getID() != name) {
+                styleImage = std::make_unique<mbgl::style::Image>(
+                    name,
+                    styleImage->getImage().clone(),
+                    styleImage->getPixelRatio(),
+                    styleImage->isSdf(),
+                    styleImage->getStretchX(),
+                    styleImage->getStretchY(),
+                    styleImage->getContent()
+                );
+            }
+
+            Logger::info("SnapshotterNAPI", "addImage from Image object: %s (%dx%d, sdf: %d)",
+                         styleImage->getID().c_str(), imageNapi->getWidth(), imageNapi->getHeight(),
+                         styleImage->isSdf());
+        } else {
+            // Raw RGBA (premultiplied) pixel buffer; dimensions are required.
+            napi_valuetype valueType;
+            napi_typeof(env, dataValue, &valueType);
+            void* data = nullptr;
+            size_t byteLength = 0;
+
+            if (valueType == napi_object) {
+                napi_value arrayBuffer;
+                size_t byteOffset;
+                napi_status status = napi_get_typedarray_info(env, dataValue, nullptr, &byteLength, &data,
+                                                              &arrayBuffer, &byteOffset);
+                if (status != napi_ok) {
+                    status = napi_get_arraybuffer_info(env, dataValue, &data, &byteLength);
+                    if (status != napi_ok) {
+                        napi_throw_error(env, nullptr,
+                                         "Image data must be an Icon, an Image, an ArrayBuffer or a TypedArray");
+                        return nullptr;
+                    }
+                }
+            } else {
+                napi_throw_error(env, nullptr,
+                                 "Image data must be an Icon, an Image, an ArrayBuffer or a TypedArray");
+                return nullptr;
+            }
+
+            if (numbers.size() < 2) {
+                napi_throw_error(env, nullptr,
+                                 "addImage requires width and height when adding raw pixel data");
+                return nullptr;
+            }
+
+            const uint32_t width = static_cast<uint32_t>(numbers[0]);
+            const uint32_t height = static_cast<uint32_t>(numbers[1]);
+            const float pixelRatio = numbers.size() >= 3 && numbers[2] > 0.0
+                                         ? static_cast<float>(numbers[2])
+                                         : 1.0f;
+
+            if (width == 0 || height == 0) {
+                napi_throw_error(env, nullptr, "Width and height must be greater than 0");
+                return nullptr;
+            }
+
+            if (byteLength != static_cast<size_t>(width) * height * 4) {
+                Logger::error("SnapshotterNAPI", "addImage: data size mismatch (expected: %u, got: %zu)",
+                             width * height * 4, byteLength);
+                napi_throw_error(env, nullptr, "Image data size does not match width * height * 4");
+                return nullptr;
+            }
+
+            mbgl::PremultipliedImage premultipliedImage({width, height});
+            std::memcpy(premultipliedImage.data.get(), data, byteLength);
+            styleImage = std::make_unique<mbgl::style::Image>(name, std::move(premultipliedImage), pixelRatio, sdf);
+
+            Logger::info("SnapshotterNAPI", "addImage: %s (%ux%u, ratio: %.2f, sdf: %d)",
+                         name.c_str(), width, height, pixelRatio, sdf);
+        }
+
+        snapshotterInstance->snapshotter->getStyle().addImage(std::move(styleImage));
+    } catch (const std::exception& e) {
+        Logger::error("SnapshotterNAPI", "addImage failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return nullptr;
+    }
+
     return args.Undefined();
 }
 
