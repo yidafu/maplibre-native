@@ -33,7 +33,7 @@ bool NativeGestureManager::initialize(ArkUI_NodeHandle node, mbgl::Map* map, flo
         return false;
     }
 
-    map_ = map;
+    reattach(map);
     pixelRatio_ = pixelRatio > 0.0f ? pixelRatio : 1.0f;
     renderThreadDispatcher_ = std::move(dispatcher);
 
@@ -116,7 +116,7 @@ void NativeGestureManager::destroy() {
 
         gestureAPI_ = nullptr;
     }
-    map_ = nullptr;
+    reattach(nullptr);
     Logger::info("NativeGestureManager", "Destroyed");
 }
 
@@ -147,7 +147,7 @@ double NativeGestureManager::currentTimeMs() {
 
 void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userData) {
     auto* self = static_cast<NativeGestureManager*>(userData);
-    if (!self || !self->map_ || !self->renderThreadDispatcher_) return;
+    if (!self || !self->map() || !self->renderThreadDispatcher_) return;
 
     // Read gesture data on UI thread (event pointer is only valid during callback)
     auto action = OH_ArkUI_GestureEvent_GetActionType(event);
@@ -162,7 +162,7 @@ void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userDa
         self->lastPanCumulativeY_ = offsetY;
         // Dispatch map operations to the render thread
         self->renderThreadDispatcher_([self]() {
-            if (self->map_) self->map_->setGestureInProgress(true);
+            if (self->map()) self->map()->setGestureInProgress(true);
         });
 
     } else if (action == GESTURE_EVENT_ACTION_UPDATE) {
@@ -177,8 +177,8 @@ void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userDa
         self->lastPanCumulativeY_ = offsetY;
         // Dispatch map operations to the render thread
         self->renderThreadDispatcher_([self, deltaX, deltaY]() {
-            if (self->map_) {
-                self->map_->moveBy(mbgl::ScreenCoordinate{
+            if (self->map()) {
+                self->map()->moveBy(mbgl::ScreenCoordinate{
                     static_cast<double>(deltaX),
                     static_cast<double>(deltaY)
                 }, mbgl::AnimationOptions{});
@@ -195,14 +195,14 @@ void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userDa
         // Dispatch all end logic to the render thread so timestamp checks and
         // map operations share the same thread (avoid data race on timestamps).
         self->renderThreadDispatcher_([self, vx, vy]() {
-            if (!self->map_) return;
+            if (!self->map()) return;
 
             // Check grace period (suppress fling after multi-touch gestures)
             double now = currentTimeMs();
             if ((now - self->lastScaleEndTimestamp_) < GRACE_PERIOD_MS ||
                 (now - self->lastRotateEndTimestamp_) < GRACE_PERIOD_MS ||
                 (now - self->lastTiltEndTimestamp_) < GRACE_PERIOD_MS) {
-                self->map_->setGestureInProgress(false);
+                self->map()->setGestureInProgress(false);
                 return;
             }
 
@@ -210,7 +210,7 @@ void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userDa
             if (vx != 0.0f || vy != 0.0f) {
                 self->performPanFling(vx, vy);
             }
-            self->map_->setGestureInProgress(false);
+            self->map()->setGestureInProgress(false);
         });
     }
 }
@@ -221,7 +221,7 @@ void NativeGestureManager::onPanCallback(ArkUI_GestureEvent* event, void* userDa
 
 void NativeGestureManager::onPinchCallback(ArkUI_GestureEvent* event, void* userData) {
     auto* self = static_cast<NativeGestureManager*>(userData);
-    if (!self || !self->map_ || !self->renderThreadDispatcher_) return;
+    if (!self || !self->map() || !self->renderThreadDispatcher_) return;
 
     // Read gesture data on UI thread (event pointer is only valid during callback)
     auto action = OH_ArkUI_GestureEvent_GetActionType(event);
@@ -239,9 +239,9 @@ void NativeGestureManager::onPinchCallback(ArkUI_GestureEvent* event, void* user
         self->fixedScaleAnchorY_ = static_cast<double>(centerY);
         // Dispatch initial zoom read and gesture flag to render thread
         self->renderThreadDispatcher_([self]() {
-            if (!self->map_) return;
-            self->initialZoom_ = self->map_->getCameraOptions().zoom.value_or(0.0);
-            self->map_->setGestureInProgress(true);
+            if (!self->map()) return;
+            self->initialZoom_ = self->map()->getCameraOptions().zoom.value_or(0.0);
+            self->map()->setGestureInProgress(true);
         });
 
     } else if (action == GESTURE_EVENT_ACTION_UPDATE) {
@@ -253,8 +253,8 @@ void NativeGestureManager::onPinchCallback(ArkUI_GestureEvent* event, void* user
         double anchorY = self->fixedScaleAnchorY_;
         // Dispatch zoom update to render thread
         self->renderThreadDispatcher_([self, newZoom, anchorX, anchorY]() {
-            if (!self->map_) return;
-            self->map_->jumpTo(mbgl::CameraOptions()
+            if (!self->map()) return;
+            self->map()->jumpTo(mbgl::CameraOptions()
                 .withZoom(newZoom)
                 .withAnchor(mbgl::ScreenCoordinate{anchorX, anchorY}));
         });
@@ -267,11 +267,11 @@ void NativeGestureManager::onPinchCallback(ArkUI_GestureEvent* event, void* user
         if (scale > 0.0f && std::abs(std::log2(scale)) > 0.01) {
             float scaleVelocity = std::log2(scale) * 1000.0f / 16.0f;
             self->renderThreadDispatcher_([self, scaleVelocity]() {
-                if (self->map_) self->performScaleInertia(scaleVelocity);
+                if (self->map()) self->performScaleInertia(scaleVelocity);
             });
         }
         self->renderThreadDispatcher_([self]() {
-            if (self->map_) self->map_->setGestureInProgress(false);
+            if (self->map()) self->map()->setGestureInProgress(false);
         });
     }
 }
@@ -282,7 +282,7 @@ void NativeGestureManager::onPinchCallback(ArkUI_GestureEvent* event, void* user
 
 void NativeGestureManager::onRotateCallback(ArkUI_GestureEvent* event, void* userData) {
     auto* self = static_cast<NativeGestureManager*>(userData);
-    if (!self || !self->map_ || !self->renderThreadDispatcher_) return;
+    if (!self || !self->map() || !self->renderThreadDispatcher_) return;
 
     // Skip if scaling is active (gesture exclusivity)
     if (self->isScaling_) return;
@@ -298,14 +298,14 @@ void NativeGestureManager::onRotateCallback(ArkUI_GestureEvent* event, void* use
         // Dispatch bearing read and gesture flag to render thread.
         // All cached state is read/written on the render thread to avoid data races.
         self->renderThreadDispatcher_([self]() {
-            if (!self->map_) return;
-            self->cachedBearing_ = self->map_->getCameraOptions().bearing.value_or(0.0);
+            if (!self->map()) return;
+            self->cachedBearing_ = self->map()->getCameraOptions().bearing.value_or(0.0);
             // Lock the rotation anchor to the map center at gesture start
             // for a natural rotation pivot (instead of top-left corner).
-            mbgl::Size mapSize = self->map_->getMapOptions().size();
+            mbgl::Size mapSize = self->map()->getMapOptions().size();
             self->rotationAnchorX_ = mapSize.width / 2.0;
             self->rotationAnchorY_ = mapSize.height / 2.0;
-            self->map_->setGestureInProgress(true);
+            self->map()->setGestureInProgress(true);
         });
 
     } else if (action == GESTURE_EVENT_ACTION_UPDATE) {
@@ -314,11 +314,11 @@ void NativeGestureManager::onRotateCallback(ArkUI_GestureEvent* event, void* use
         // Capture angle on UI thread, then dispatch all map operations to
         // the render thread where cachedBearing_ and map size are safe to read.
         self->renderThreadDispatcher_([self, angle]() {
-            if (!self->map_) return;
+            if (!self->map()) return;
             double newBearing = std::fmod(
                 self->cachedBearing_ - static_cast<double>(angle) * ROTATION_RATE, 360.0);
             if (newBearing < 0.0) newBearing += 360.0;
-            self->map_->jumpTo(mbgl::CameraOptions()
+            self->map()->jumpTo(mbgl::CameraOptions()
                 .withBearing(newBearing)
                 .withAnchor(mbgl::ScreenCoordinate{
                     self->rotationAnchorX_, self->rotationAnchorY_}));
@@ -333,8 +333,8 @@ void NativeGestureManager::onRotateCallback(ArkUI_GestureEvent* event, void* use
         float angularVelocity = -angle * 1000.0f / 16.0f;
         self->renderThreadDispatcher_([self, endTimestamp, angularVelocity]() {
             self->lastRotateEndTimestamp_ = endTimestamp;
-            if (self->map_) self->performRotateInertia(angularVelocity);
-            if (self->map_) self->map_->setGestureInProgress(false);
+            if (self->map()) self->performRotateInertia(angularVelocity);
+            if (self->map()) self->map()->setGestureInProgress(false);
         });
     }
 }
@@ -371,7 +371,7 @@ void NativeGestureManager::onTapCallback(ArkUI_GestureEvent* event, void* userDa
 
 void NativeGestureManager::onDoubleTapCallback(ArkUI_GestureEvent* event, void* userData) {
     auto* self = static_cast<NativeGestureManager*>(userData);
-    if (!self || !self->map_ || !self->renderThreadDispatcher_) return;
+    if (!self || !self->map() || !self->renderThreadDispatcher_) return;
     if (!self->doubleTapEnabled_) return;
 
     auto action = OH_ArkUI_GestureEvent_GetActionType(event);
@@ -380,9 +380,9 @@ void NativeGestureManager::onDoubleTapCallback(ArkUI_GestureEvent* event, void* 
 
         // Dispatch zoom animation to render thread
         self->renderThreadDispatcher_([self]() {
-            if (!self->map_) return;
-            double currentZoom = self->map_->getCameraOptions().zoom.value_or(0.0);
-            self->map_->easeTo(mbgl::CameraOptions().withZoom(currentZoom + 1.0),
+            if (!self->map()) return;
+            double currentZoom = self->map()->getCameraOptions().zoom.value_or(0.0);
+            self->map()->easeTo(mbgl::CameraOptions().withZoom(currentZoom + 1.0),
                                mbgl::AnimationOptions{mbgl::Milliseconds(300)});
             Logger::debug("NativeGestureManager", "Double-tap zoom: %.2f -> %.2f", currentZoom, currentZoom + 1.0);
         });
@@ -420,7 +420,7 @@ void NativeGestureManager::onLongPressCallback(ArkUI_GestureEvent* event, void* 
 
 void NativeGestureManager::onTiltCallback(ArkUI_GestureEvent* event, void* userData) {
     auto* self = static_cast<NativeGestureManager*>(userData);
-    if (!self || !self->map_ || !self->renderThreadDispatcher_) return;
+    if (!self || !self->map() || !self->renderThreadDispatcher_) return;
 
     if (self->isScaling_ || self->isRotating_) return;
 
@@ -433,7 +433,7 @@ void NativeGestureManager::onTiltCallback(ArkUI_GestureEvent* event, void* userD
         // Reset cumulative offset tracking for tilt (also uses PanGesture offset)
         self->lastTiltCumulativeY_ = offsetY;
         self->renderThreadDispatcher_([self]() {
-            if (self->map_) self->map_->setGestureInProgress(true);
+            if (self->map()) self->map()->setGestureInProgress(true);
         });
 
     } else if (action == GESTURE_EVENT_ACTION_UPDATE) {
@@ -445,17 +445,17 @@ void NativeGestureManager::onTiltCallback(ArkUI_GestureEvent* event, void* userD
         double deltaPitch = static_cast<double>(deltaY) * 0.1;
         // Dispatch pitch update to render thread (read current value there to avoid stale data)
         self->renderThreadDispatcher_([self, deltaPitch]() {
-            if (!self->map_) return;
-            double currentPitch = self->map_->getCameraOptions().pitch.value_or(0.0);
+            if (!self->map()) return;
+            double currentPitch = self->map()->getCameraOptions().pitch.value_or(0.0);
             double newPitch = std::clamp(currentPitch + deltaPitch, 0.0, 60.0);
-            self->map_->jumpTo(mbgl::CameraOptions().withPitch(newPitch));
+            self->map()->jumpTo(mbgl::CameraOptions().withPitch(newPitch));
         });
 
     } else if (action == GESTURE_EVENT_ACTION_END || action == GESTURE_EVENT_ACTION_CANCEL) {
         self->isTilting_ = false;
         self->lastTiltEndTimestamp_ = currentTimeMs();
         self->renderThreadDispatcher_([self]() {
-            if (self->map_) self->map_->setGestureInProgress(false);
+            if (self->map()) self->map()->setGestureInProgress(false);
         });
     }
 }
@@ -465,31 +465,31 @@ void NativeGestureManager::onTiltCallback(ArkUI_GestureEvent* event, void* userD
 // ============================================================================
 
 void NativeGestureManager::performPanFling(float velocityX, float velocityY) {
-    if (!map_) return;
+    if (!map()) return;
 
     double speed = std::sqrt(velocityX * velocityX + velocityY * velocityY);
     if (speed < 3.0) return;  // Minimum fling velocity threshold
 
     // Android fling calculation
-    double pitch = map_->getCameraOptions().pitch.value_or(0.0);
+    double pitch = map()->getCameraOptions().pitch.value_or(0.0);
     double tiltFactor = 1.0 + (pitch / 60.0) * 0.5;
     double duration = speed / 7.0 / tiltFactor + 100.0;  // base 100ms
     duration = std::clamp(duration, 100.0, 2000.0);
 
     // OH_ArkUI_PanGesture_GetVelocityX/Y returns velocity in logical pixels/sec.
-    // map_->moveBy expects logical pixels — no pixelRatio_ conversion needed.
+    // map()->moveBy expects logical pixels — no pixelRatio_ conversion needed.
     double offsetX = velocityX * duration * FLING_VELOCITY_COEFFICIENT / 1000.0;
     double offsetY = velocityY * duration * FLING_VELOCITY_COEFFICIENT / 1000.0;
 
     Logger::debug("NativeGestureManager", "Pan fling: offset=(%.1f, %.1f) duration=%.0fms",
                   offsetX, offsetY, duration);
 
-    map_->moveBy(mbgl::ScreenCoordinate{offsetX, offsetY},
+    map()->moveBy(mbgl::ScreenCoordinate{offsetX, offsetY},
                  mbgl::AnimationOptions{static_cast<mbgl::Milliseconds>(static_cast<int64_t>(duration))});
 }
 
 void NativeGestureManager::performScaleInertia(float scaleVelocity) {
-    if (!map_ || std::abs(scaleVelocity) < MIN_SCALE_VELOCITY_THRESHOLD) return;
+    if (!map() || std::abs(scaleVelocity) < MIN_SCALE_VELOCITY_THRESHOLD) return;
 
     double zoomDelta = std::log(std::abs(scaleVelocity) / 4.0 + 1.0) * ZOOM_RATE;
     zoomDelta = (scaleVelocity > 0) ? zoomDelta : -zoomDelta;
@@ -499,20 +499,20 @@ void NativeGestureManager::performScaleInertia(float scaleVelocity) {
                       * SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER;
     duration = std::clamp(duration, 100.0, 1000.0);
 
-    double currentZoom = map_->getCameraOptions().zoom.value_or(0.0);
+    double currentZoom = map()->getCameraOptions().zoom.value_or(0.0);
     double finalZoom = currentZoom + zoomDelta;
 
     Logger::debug("NativeGestureManager", "Scale inertia: zoom %f -> %f, duration=%fms",
                   currentZoom, finalZoom, duration);
 
-    map_->easeTo(mbgl::CameraOptions()
+    map()->easeTo(mbgl::CameraOptions()
         .withZoom(finalZoom)
         .withAnchor(mbgl::ScreenCoordinate{fixedScaleAnchorX_, fixedScaleAnchorY_}),
         mbgl::AnimationOptions{static_cast<mbgl::Milliseconds>(static_cast<int64_t>(duration))});
 }
 
 void NativeGestureManager::performRotateInertia(float angularVelocity) {
-    if (!map_ || std::abs(angularVelocity) < MIN_ANGULAR_VELOCITY_THRESHOLD) return;
+    if (!map() || std::abs(angularVelocity) < MIN_ANGULAR_VELOCITY_THRESHOLD) return;
 
     double clampedVelocity = std::clamp(static_cast<double>(angularVelocity),
                                         -MAXIMUM_ANGULAR_VELOCITY, MAXIMUM_ANGULAR_VELOCITY);
@@ -522,14 +522,14 @@ void NativeGestureManager::performRotateInertia(float angularVelocity) {
                       * SCALE_VELOCITY_ANIMATION_DURATION_MULTIPLIER;
     duration = std::clamp(duration, 100.0, 1000.0);
 
-    double currentBearing = map_->getCameraOptions().bearing.value_or(0.0);
+    double currentBearing = map()->getCameraOptions().bearing.value_or(0.0);
     double newBearing = std::fmod(currentBearing + deltaBearing, 360.0);
     if (newBearing < 0.0) newBearing += 360.0;
 
     Logger::debug("NativeGestureManager", "Rotate inertia: bearing %f -> %f deg, duration=%fms",
                   currentBearing, newBearing, duration);
 
-    map_->easeTo(mbgl::CameraOptions()
+    map()->easeTo(mbgl::CameraOptions()
         .withBearing(newBearing)
         .withAnchor(mbgl::ScreenCoordinate{rotationAnchorX_, rotationAnchorY_}),
         mbgl::AnimationOptions{static_cast<mbgl::Milliseconds>(static_cast<int64_t>(duration))});

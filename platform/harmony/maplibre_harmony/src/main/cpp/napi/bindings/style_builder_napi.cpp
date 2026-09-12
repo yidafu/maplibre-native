@@ -282,11 +282,24 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
                 return nullptr;
             }
             
-            // Copy pixel data
-            size_t dataSize = imageData.width * imageData.height * 4; // RGBA
+            // Copy pixel data. The PixelMap must be RGBA-sized (rowSize >=
+            // width * 4): a RGB565/NV21 PixelMap would make the memcpy below
+            // overread the source buffer by up to 2x. Size math stays in
+            // 64-bit to avoid uint32 wraparound on huge dimensions.
+            const uint64_t dataSize64 =
+                static_cast<uint64_t>(imageData.width) * static_cast<uint64_t>(imageData.height) * 4ull;
+            if (imageData.width == 0 || imageData.height == 0 || dataSize64 > (512ull << 20) ||
+                static_cast<uint64_t>(imageInfo.rowSize) < static_cast<uint64_t>(imageInfo.width) * 4ull) {
+                OH_PixelMap_UnAccessPixels(nativePixelMap);
+                Logger::error("StyleBuilderNAPI", "Unsupported PixelMap: %ux%u rowSize=%u (need RGBA of sane size)",
+                              imageData.width, imageData.height, imageInfo.rowSize);
+                napi_throw_error(env, nullptr, "PixelMap must be a non-empty RGBA image of sane size");
+                return nullptr;
+            }
+            const size_t dataSize = static_cast<size_t>(dataSize64);
             imageData.data.resize(dataSize);
             std::memcpy(imageData.data.data(), pixelDataPtr, dataSize);
-            
+
             // Release pixel data access
             OH_PixelMap_UnAccessPixels(nativePixelMap);
             
@@ -307,15 +320,21 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
             
             // Get width (required)
             if (napi_get_named_property(env, imageObj, "width", &widthValue) == napi_ok) {
-                int32_t width;
-                napi_get_value_int32(env, widthValue, &width);
+                int32_t width = 0;
+                if (napi_get_value_int32(env, widthValue, &width) != napi_ok || width <= 0) {
+                    napi_throw_error(env, nullptr, "Image 'width' must be a positive number");
+                    return nullptr;
+                }
                 imageData.width = static_cast<uint32_t>(width);
             }
-            
+
             // Get height (required)
             if (napi_get_named_property(env, imageObj, "height", &heightValue) == napi_ok) {
-                int32_t height;
-                napi_get_value_int32(env, heightValue, &height);
+                int32_t height = 0;
+                if (napi_get_value_int32(env, heightValue, &height) != napi_ok || height <= 0) {
+                    napi_throw_error(env, nullptr, "Image 'height' must be a positive number");
+                    return nullptr;
+                }
                 imageData.height = static_cast<uint32_t>(height);
             }
             
@@ -331,12 +350,17 @@ napi_value StyleBuilderNAPI::WithImage(napi_env env, napi_callback_info info) {
                 bool isDataArrayBuffer;
                 napi_is_arraybuffer(env, dataValue, &isDataArrayBuffer);
                 if (isDataArrayBuffer) {
-                    void* bufferData;
-                    size_t bufferLength;
-                    napi_get_arraybuffer_info(env, dataValue, &bufferData, &bufferLength);
-                    
+                    void* bufferData = nullptr;
+                    size_t bufferLength = 0;
+                    if (napi_get_arraybuffer_info(env, dataValue, &bufferData, &bufferLength) != napi_ok) {
+                        napi_throw_error(env, nullptr, "Failed to read Image 'data' ArrayBuffer");
+                        return nullptr;
+                    }
+
                     imageData.data.resize(bufferLength);
-                    std::memcpy(imageData.data.data(), bufferData, bufferLength);
+                    if (bufferLength > 0) {
+                        std::memcpy(imageData.data.data(), bufferData, bufferLength);
+                    }
                 } else {
                     napi_throw_error(env, nullptr, "Image 'data' property must be ArrayBuffer");
                     return nullptr;

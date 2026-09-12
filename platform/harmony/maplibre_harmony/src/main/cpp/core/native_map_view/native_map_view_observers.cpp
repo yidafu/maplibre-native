@@ -932,16 +932,18 @@ napi_value NativeMapView::setNativeWindow(napi_env env, napi_callback_info info)
         return undefined;
     }
     
-    OHNativeWindow *nativeWindow;
-    OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
-    
+    OHNativeWindow* nativeWindow = nullptr;
+    int32_t createResult = OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
+
     if (nativeWindow) {
         Logger::info("NativeMapView", "Native window created successfully: %p", nativeWindow);
     } else {
-        Logger::error("NativeMapView", "Failed to create native window from surface ID");
+        Logger::error("NativeMapView", "Failed to create native window from surface ID, error=%d", createResult);
         return undefined;
     }
-    
+
+    // Surface rebuild: release the previous window before overwriting the handle
+    nativeMapView->destroyNativeWindow();
     // Store the window pointer
     nativeMapView->nativeWindow = nativeWindow;
     // pixelRatio will be determined during renderer initialization from device

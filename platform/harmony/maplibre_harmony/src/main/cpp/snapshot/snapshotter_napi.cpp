@@ -275,8 +275,10 @@ napi_value SnapshotterStart(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -368,8 +370,10 @@ napi_value SnapshotterCancel(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -391,8 +395,10 @@ napi_value SnapshotterSetStyleUrl(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -417,8 +423,10 @@ napi_value SnapshotterSetCameraPosition(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -459,8 +467,10 @@ napi_value SnapshotterSetStyleJson(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -486,8 +496,10 @@ napi_value SnapshotterSetRegion(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -523,8 +535,10 @@ napi_value SnapshotterSetSize(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -551,8 +565,10 @@ napi_value SnapshotterSetObserver(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         napi_throw_error(env, nullptr, "Snapshotter not initialized");
@@ -608,8 +624,10 @@ napi_value SnapshotterGetLayer(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         Logger::warn("SnapshotterNAPI", "getLayer: Snapshotter not initialized");
@@ -680,8 +698,10 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
     
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         Logger::warn("SnapshotterNAPI", "getSource: Snapshotter not initialized");
@@ -761,8 +781,10 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
     if (args.HasError()) return args.Undefined();
 
     // Retrieve the native instance
-    MapSnapshotterInstance* snapshotterInstance;
-    napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance));
+    MapSnapshotterInstance* snapshotterInstance = nullptr;
+    if (napi_unwrap(env, args.This(), reinterpret_cast<void**>(&snapshotterInstance)) != napi_ok) {
+        snapshotterInstance = nullptr;
+    }
 
     if (!snapshotterInstance || !snapshotterInstance->snapshotter) {
         Logger::warn("SnapshotterNAPI", "addImage: Snapshotter not initialized");
@@ -801,7 +823,9 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
         if (maplibre::harmony::IconNAPI::IsIconObject(env, dataValue)) {
             // Icon created by IconFactory: image data and scale live on the icon.
             maplibre::harmony::IconNAPI* icon = nullptr;
-            napi_unwrap(env, dataValue, reinterpret_cast<void**>(&icon));
+            if (napi_unwrap(env, dataValue, reinterpret_cast<void**>(&icon)) != napi_ok) {
+                icon = nullptr;
+            }
             if (!icon) {
                 napi_throw_error(env, nullptr, "Failed to unwrap Icon object");
                 return nullptr;

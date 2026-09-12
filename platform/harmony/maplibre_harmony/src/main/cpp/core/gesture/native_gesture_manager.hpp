@@ -4,6 +4,7 @@
 #include <arkui/native_node.h>
 #include <mbgl/map/map.hpp>
 #include <mbgl/util/geo.hpp>
+#include <atomic>
 #include <functional>
 #include <memory>
 
@@ -43,6 +44,17 @@ public:
                        mbgl::Map* map,
                        float pixelRatio,
                        std::function<void(std::function<void()>)> renderThreadDispatcher);
+
+    /**
+     * Rebind to a new mbgl::Map after the renderer (and its Map) was rebuilt
+     * (hardReset / initializeRenderer / ensureResourcesReadyOrRecover). Pass
+     * nullptr while the old Map is being torn down so in-flight gesture
+     * callbacks on any thread observe a null map instead of a freed one.
+     */
+    void reattach(mbgl::Map* map) { map_.store(map, std::memory_order_release); }
+
+    /** Current map pointer (safe to read from any thread). */
+    mbgl::Map* map() const { return map_.load(std::memory_order_acquire); }
 
     /** Destroy all gesture recognizers and release resources. */
     void destroy();
@@ -84,7 +96,10 @@ private:
     ArkUI_NativeGestureAPI_1* gestureAPI_ = nullptr;
 
     // ---- Map reference ----
-    mbgl::Map* map_ = nullptr;
+    // Atomic because gesture callbacks read it on the UI thread, dispatched
+    // lambdas read it on the render thread, and rebuild paths write it on the
+    // JS thread (see reattach()).
+    std::atomic<mbgl::Map*> map_{nullptr};
     float pixelRatio_ = 1.0f;
 
     // ---- Render thread dispatcher ----

@@ -141,8 +141,10 @@ napi_value OfflineManagerNAPI::ListOfflineRegions(napi_env env, napi_callback_in
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -227,8 +229,10 @@ napi_value OfflineManagerNAPI::CreateOfflineRegion(napi_env env, napi_callback_i
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -288,8 +292,10 @@ napi_value OfflineManagerNAPI::GetOfflineRegion(napi_env env, napi_callback_info
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -348,8 +354,10 @@ napi_value OfflineManagerNAPI::MergeOfflineRegions(napi_env env, napi_callback_i
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -407,8 +415,10 @@ napi_value OfflineManagerNAPI::ResetDatabase(napi_env env, napi_callback_info in
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -454,8 +464,10 @@ napi_value OfflineManagerNAPI::PackDatabase(napi_env env, napi_callback_info inf
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -501,8 +513,10 @@ napi_value OfflineManagerNAPI::InvalidateAmbientCache(napi_env env, napi_callbac
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -548,8 +562,10 @@ napi_value OfflineManagerNAPI::ClearAmbientCache(napi_env env, napi_callback_inf
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -597,8 +613,10 @@ napi_value OfflineManagerNAPI::SetMaximumAmbientCacheSize(napi_env env, napi_cal
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -645,8 +663,10 @@ napi_value OfflineManagerNAPI::SetOfflineMapboxTileCountLimit(napi_env env, napi
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");
@@ -671,8 +691,10 @@ napi_value OfflineManagerNAPI::RunPackDatabaseAutomatically(napi_env env, napi_c
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineManagerNAPI* obj;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+    OfflineManagerNAPI* obj = nullptr;
+    if (napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj)) != napi_ok) {
+        obj = nullptr;
+    }
     
     if (!obj || !obj->fileSource_) {
         napi_throw_error(env, nullptr, "Invalid OfflineManager instance");

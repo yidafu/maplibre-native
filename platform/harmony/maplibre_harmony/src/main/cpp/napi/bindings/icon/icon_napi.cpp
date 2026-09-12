@@ -123,11 +123,25 @@ napi_value IconNAPI::New(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    int width = imageInfo.width;
-    int height = imageInfo.height;
-    
-    Logger::info("IconNAPI", "Converting PixelMap to PremultipliedImage: %dx%d", width, height);
-    
+    // Validate dimensions before any multiplication: values come from the
+    // PixelMap, the product must be computed in 64-bit to avoid signed overflow,
+    // and the source must actually be RGBA-sized (rowSize >= width * 4) or the
+    // memcpy below would overread the PixelMap buffer.
+    const uint64_t byteSize =
+        static_cast<uint64_t>(imageInfo.width) * static_cast<uint64_t>(imageInfo.height) * 4ull;
+    if (imageInfo.width == 0 || imageInfo.height == 0 || byteSize > (512ull << 20) ||
+        static_cast<uint64_t>(imageInfo.rowSize) < static_cast<uint64_t>(imageInfo.width) * 4ull) {
+        Logger::error("IconNAPI", "Unsupported PixelMap: %ux%u rowSize=%u (need RGBA of sane size)",
+                      imageInfo.width, imageInfo.height, imageInfo.rowSize);
+        napi_throw_error(env, nullptr, "PixelMap must be a non-empty RGBA image of sane size");
+        return nullptr;
+    }
+
+    const uint32_t width = imageInfo.width;
+    const uint32_t height = imageInfo.height;
+
+    Logger::info("IconNAPI", "Converting PixelMap to PremultipliedImage: %ux%u", width, height);
+
     // Access pixel data
     void* pixelData = nullptr;
     result = OH_PixelMap_AccessPixels(nativePixelMap, &pixelData);
@@ -136,24 +150,24 @@ napi_value IconNAPI::New(napi_env env, napi_callback_info info) {
         napi_throw_error(env, nullptr, "Failed to access PixelMap pixels");
         return nullptr;
     }
-    
+
     // Create PremultipliedImage and copy data
     auto image = std::make_shared<mbgl::PremultipliedImage>(
-        mbgl::Size{static_cast<uint32_t>(width), static_cast<uint32_t>(height)}
+        mbgl::Size{width, height}
     );
-    
-    size_t dataSize = width * height * 4; // RGBA
-    std::memcpy(image->data.get(), pixelData, dataSize);
-    
-    // Unaccess pixels
+
+    std::memcpy(image->data.get(), pixelData, byteSize);
+
+    // Unaccess pixels (image data is copied; release the lock before any
+    // fallible operation below)
     OH_PixelMap_UnAccessPixels(nativePixelMap);
-    
-    Logger::info("IconNAPI", "Icon created successfully: id=%s, size=%dx%d, scale=%f", 
+
+    Logger::info("IconNAPI", "Icon created successfully: id=%s, size=%ux%u, scale=%f",
                  id.c_str(), width, height, scale);
-    
+
     // Create IconNAPI instance
-    IconNAPI* icon = new IconNAPI(id, width, height, scale, image);
-    
+    IconNAPI* icon = new IconNAPI(id, static_cast<int>(width), static_cast<int>(height), scale, image);
+
     // Wrap native object
     napi_status status = napi_wrap(env, thisVar, icon, Destructor, nullptr, nullptr);
     if (status != napi_ok) {
@@ -161,7 +175,7 @@ napi_value IconNAPI::New(napi_env env, napi_callback_info info) {
         delete icon;
         return nullptr;
     }
-    
+
     return thisVar;
 }
 

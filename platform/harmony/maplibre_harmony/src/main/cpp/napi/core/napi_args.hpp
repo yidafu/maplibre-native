@@ -77,6 +77,26 @@ public:
      * Determine whether an error has occurred.
      */
     bool HasError() const { return hasError_; }
+
+    /**
+     * Safely unwrap a native instance from a napi_value wrapper.
+     *
+     * Returns nullptr when `value` is not a wrapped instance (napi_unwrap
+     * fails or leaves the output untouched — an uninitialized local read
+     * would otherwise dereference stack garbage). The caller keeps ownership
+     * semantics unchanged; only the null-check contract is guaranteed.
+     */
+    template <typename T>
+    static T* Unwrap(napi_env env, napi_value value) {
+        T* out = nullptr;
+        if (value == nullptr || env == nullptr) {
+            return nullptr;
+        }
+        if (napi_unwrap(env, value, reinterpret_cast<void**>(&out)) != napi_ok) {
+            return nullptr;
+        }
+        return out;
+    }
     
     /**
      * Retrieve the error message.

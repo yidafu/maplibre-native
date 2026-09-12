@@ -45,33 +45,59 @@ napi_value NetworkNAPI::SetCustomHttpHeaders(napi_env env, napi_callback_info in
 
     // Retrieve all property names from the object
     napi_value property_names;
-    napi_get_property_names(env, headersObj, &property_names);
+    if (napi_get_property_names(env, headersObj, &property_names) != napi_ok) {
+        napi_throw_error(env, nullptr, "Failed to read header property names");
+        return nullptr;
+    }
 
-    uint32_t length;
+    uint32_t length = 0;
     napi_get_array_length(env, property_names, &length);
 
     // Build the header map
     std::map<std::string, std::string> headers;
     for (uint32_t i = 0; i < length; i++) {
         napi_value key_value;
-        napi_get_element(env, property_names, i, &key_value);
+        if (napi_get_element(env, property_names, i, &key_value) != napi_ok) {
+            continue;
+        }
 
-        // Get the key name
-        size_t key_length;
-        napi_get_value_string_utf8(env, key_value, nullptr, 0, &key_length);
+        // Get the key name: property names are always strings, but check the
+        // status anyway — an unchecked/uninitialized length would drive a huge
+        // allocation or, worse, a std::string exception escaping a raw NAPI
+        // callback (std::terminate).
+        size_t key_length = 0;
+        if (napi_get_value_string_utf8(env, key_value, nullptr, 0, &key_length) != napi_ok) {
+            napi_throw_error(env, nullptr, "Header names must be strings");
+            return nullptr;
+        }
         std::string key(key_length, '\0');
-        napi_get_value_string_utf8(env, key_value, &key[0], key_length + 1, nullptr);
+        if (key_length > 0 &&
+            napi_get_value_string_utf8(env, key_value, &key[0], key_length + 1, nullptr) != napi_ok) {
+            napi_throw_error(env, nullptr, "Failed to read header name");
+            return nullptr;
+        }
 
-        // Get the value
+        // Get the value: must be a string (a number would previously leave the
+        // length uninitialized and allocate from garbage).
         napi_value value_value;
-        napi_get_property(env, headersObj, key_value, &value_value);
+        if (napi_get_property(env, headersObj, key_value, &value_value) != napi_ok) {
+            napi_throw_error(env, nullptr, "Failed to read header value");
+            return nullptr;
+        }
 
-        size_t value_length;
-        napi_get_value_string_utf8(env, value_value, nullptr, 0, &value_length);
+        size_t value_length = 0;
+        if (napi_get_value_string_utf8(env, value_value, nullptr, 0, &value_length) != napi_ok) {
+            napi_throw_error(env, nullptr, "Header values must be strings");
+            return nullptr;
+        }
         std::string value(value_length, '\0');
-        napi_get_value_string_utf8(env, value_value, &value[0], value_length + 1, nullptr);
+        if (value_length > 0 &&
+            napi_get_value_string_utf8(env, value_value, &value[0], value_length + 1, nullptr) != napi_ok) {
+            napi_throw_error(env, nullptr, "Failed to read header value");
+            return nullptr;
+        }
 
-        headers[key] = value;
+        headers[std::move(key)] = std::move(value);
     }
 
     // Apply the custom headers

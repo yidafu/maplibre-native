@@ -396,12 +396,19 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
                         napi_value element;
                         napi_get_element(env, layerIdsValue, i, &element);
 
-                        size_t strLength;
-                        napi_get_value_string_utf8(env, element, nullptr, 0, &strLength);
+                        size_t strLength = 0;
+                        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
+                            napi_throw_error(env, nullptr, "layerIds must be an array of strings");
+                            return nullptr;
+                        }
                         std::string str(strLength, '\0');
-                        napi_get_value_string_utf8(env, element, &str[0], strLength + 1, &strLength);
+                        if (strLength > 0 &&
+                            napi_get_value_string_utf8(env, element, &str[0], strLength + 1, nullptr) != napi_ok) {
+                            napi_throw_error(env, nullptr, "Failed to read layerIds element");
+                            return nullptr;
+                        }
 
-                        layerIds.push_back(str);
+                        layerIds.push_back(std::move(str));
                     }
 
                     if (!layerIds.empty()) {
@@ -521,12 +528,19 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
                         napi_value element;
                         napi_get_element(env, layerIdsValue, i, &element);
 
-                        size_t strLength;
-                        napi_get_value_string_utf8(env, element, nullptr, 0, &strLength);
+                        size_t strLength = 0;
+                        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
+                            napi_throw_error(env, nullptr, "layerIds must be an array of strings");
+                            return nullptr;
+                        }
                         std::string str(strLength, '\0');
-                        napi_get_value_string_utf8(env, element, &str[0], strLength + 1, &strLength);
+                        if (strLength > 0 &&
+                            napi_get_value_string_utf8(env, element, &str[0], strLength + 1, nullptr) != napi_ok) {
+                            napi_throw_error(env, nullptr, "Failed to read layerIds element");
+                            return nullptr;
+                        }
 
-                        layerIds.push_back(str);
+                        layerIds.push_back(std::move(str));
                     }
 
                     if (!layerIds.empty()) {
@@ -640,13 +654,19 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
                         napi_value element;
                         napi_get_element(env, sourceLayerIdsValue, i, &element);
 
-                        size_t strLength;
-                        napi_get_value_string_utf8(env, element, nullptr, 0, &strLength);
-
+                        size_t strLength = 0;
+                        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strLength) != napi_ok) {
+                            napi_throw_error(env, nullptr, "sourceLayerIds must be an array of strings");
+                            return nullptr;
+                        }
                         std::string layerId(strLength, '\0');
-                        napi_get_value_string_utf8(env, element, &layerId[0], strLength + 1, &strLength);
+                        if (strLength > 0 &&
+                            napi_get_value_string_utf8(env, element, &layerId[0], strLength + 1, nullptr) != napi_ok) {
+                            napi_throw_error(env, nullptr, "Failed to read sourceLayerIds element");
+                            return nullptr;
+                        }
 
-                        sourceLayerIds.push_back(layerId);
+                        sourceLayerIds.push_back(std::move(layerId));
                     }
 
                     options.sourceLayers = sourceLayerIds;

@@ -8,7 +8,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     # 鸿蒙系统特定的 C++20 设置
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fPIC")
+    # -Wall -Wextra：先观察告警不作为错误（-Wno-error），为后续开启
+    #   -Werror 与恢复 .clang-tidy 的 NullDereference/UninitializedObject 检查铺路
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -fPIC -Wall -Wextra")
     # 忽略未使用的命令行参数警告
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=unused-command-line-argument")
     # 启用 RTTI 支持
@@ -17,7 +19,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OHOS")
     add_definitions(-DMLN_SYMBOL_GUARDS=0)
 endif()
 
-link_directories(/opt/homebrew/opt)
 add_subdirectory(
     ../../../../../../
     ${CMAKE_BINARY_DIR}/maplibre
@@ -27,7 +28,8 @@ ADD_DEFINITIONS(-DVK_USE_PLATFORM_OHOS=1)
 ADD_DEFINITIONS(-DOHOS_PLATFORM)
 
 set(NATIVERENDER_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-set(MBGL_SOURCE_DIR "/Users/yidafu/github/maplibre-native")
+# MapLibre 仓库根目录：由本文件在仓库内的位置推导（cpp -> main -> src -> maplibre_harmony -> harmony -> platform -> 根）
+get_filename_component(MBGL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../" ABSOLUTE)
 
 # 获取 DevEco Studio SDK 路径
 if(DEFINED ENV{DEVECO_SDK_HOME})

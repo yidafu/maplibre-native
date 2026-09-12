@@ -116,7 +116,7 @@ napi_value CustomLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj) {
@@ -141,7 +141,7 @@ napi_value CustomLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj || !layerObj->layer) {
@@ -167,7 +167,7 @@ napi_value CustomLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj || !layerObj->layer) {
@@ -189,7 +189,7 @@ napi_value CustomLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj || !layerObj->layer) {
@@ -209,7 +209,7 @@ napi_value CustomLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj || !layerObj->layer) {
@@ -229,7 +229,7 @@ napi_value CustomLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj || !layerObj->layer) {
@@ -249,7 +249,7 @@ napi_value CustomLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
     if (!layerObj || !layerObj->layer) {
@@ -269,10 +269,10 @@ napi_value CustomLayerNAPI::SetColor(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->host) {
+    if (!layerObj || !layerObj->hostAlive()) {
         return thisVar;
     }
     
@@ -295,10 +295,10 @@ napi_value CustomLayerNAPI::GetColor(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CustomLayerNAPI* layerObj;
+    CustomLayerNAPI* layerObj = nullptr;
     napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
     
-    if (!layerObj || !layerObj->host) {
+    if (!layerObj || !layerObj->hostAlive()) {
         napi_value null_value;
         napi_get_null(env, &null_value);
         return null_value;

@@ -287,11 +287,21 @@ napi_value BitmapHarmony::CreateBitmap(napi_env env, const PremultipliedImage& i
 }
 
 napi_value BitmapHarmony::CreateBitmap(napi_env env, uint32_t width, uint32_t height, Config config) {
+    // Compute the byte size in 64-bit: a uint32_t product (e.g. 65536x65536)
+    // would wrap to 0/small and the undersized buffer would be overrun later
+    // by GetPixels / texture upload.
+    const uint64_t byteLength =
+        static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * PremultipliedImage::channels;
+    if (width == 0 || height == 0 || byteLength > (512ull << 20)) {
+        Logger::error("BitmapHarmony", "CreateBitmap: unsupported dimensions %ux%u", width, height);
+        napi_throw_error(env, nullptr, "Bitmap dimensions must be non-zero and of sane size");
+        return nullptr;
+    }
+
     // Create empty image with transparent pixels
-    size_t byteLength = width * height * PremultipliedImage::channels;
-    auto pixels = std::make_unique<uint8_t[]>(byteLength);
-    std::memset(pixels.get(), 0, byteLength);
-    
+    auto pixels = std::make_unique<uint8_t[]>(static_cast<size_t>(byteLength));
+    std::memset(pixels.get(), 0, static_cast<size_t>(byteLength));
+
     PremultipliedImage image(Size{width, height}, std::move(pixels));
     return CreateBitmap(env, image);
 }

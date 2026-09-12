@@ -6,6 +6,7 @@
 #include "core/callback_manager.hpp"
 #include "core/gesture/native_gesture_manager.hpp"
 #include "core/map_registry.hpp"
+#include "utils/logger.h"
 #include <mbgl/map/map.hpp>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/geometry.hpp>
@@ -73,10 +74,13 @@ public:
     
     // Resource cleanup helpers
     void cleanupAllResources();
-    
+
     // Asynchronous resource cleanup (mirrors Android/iOS destruction flow)
     // onComplete: callback invoked when cleanup finishes
     void cleanupAllResourcesAsync(std::function<void()> onComplete);
+
+    // Destroys the owned OHNativeWindow (if any) and clears the pointer.
+    void destroyNativeWindow();
     
     // Explicit resource destruction (invoked from TS layer)
     static napi_value destroy(napi_env env, napi_callback_info info);
@@ -411,7 +415,7 @@ private:
     void ensureResourcesReadyOrRecover(int timeoutMs = 500);
     
     napi_env env_;
-    napi_ref wrapper_;
+    napi_ref wrapper_ = nullptr;
     napi_ref styleRef_ = nullptr;
     
     std::unique_ptr<HarmonyRenderer> harmonyRenderer;
@@ -485,10 +489,16 @@ private:
     // and no annotations exist.
     void pushViewAnnotationFrames();
     
-    // Snapshot state
-    std::mutex snapshotMutex_;
-    bool snapshotInProgress_ = false;
+    // Snapshot state: shared with the snapshot callbacks so they can reset the
+    // in-progress flag without touching `this` (they run on the render thread
+    // and may outlive the request — see scheduleSnapshot).
+    struct SnapshotRequestState {
+        std::mutex mutex;
+        bool inProgress = false;
+    };
+    std::shared_ptr<SnapshotRequestState> snapshotState_ = std::make_shared<SnapshotRequestState>();
     void resetSnapshotState();
+    static void resetSnapshotStateOn(const std::shared_ptr<SnapshotRequestState>& state);
     
     // ==================== Map thread helper methods ====================
     
@@ -508,8 +518,10 @@ private:
             if (map) {
                 try {
                     func(map);
+                } catch (const std::exception& e) {
+                    Logger::error("NativeMapView", "invokeOnMapThread task threw: %s", e.what());
                 } catch (...) {
-                    // Error handled internally
+                    Logger::error("NativeMapView", "invokeOnMapThread task threw unknown exception");
                 }
             }
         });
@@ -555,12 +567,17 @@ private:
         // Wait for the result (up to 5 seconds)
         auto status = future.wait_for(std::chrono::seconds(5));
         if (status == std::future_status::timeout) {
+            Logger::warn("NativeMapView", "invokeOnMapThreadSync timed out after 5s");
             return defaultValue;
         }
-        
+
         try {
             return future.get();
+        } catch (const std::exception& e) {
+            Logger::error("NativeMapView", "invokeOnMapThreadSync task threw: %s", e.what());
+            return defaultValue;
         } catch (...) {
+            Logger::error("NativeMapView", "invokeOnMapThreadSync task threw unknown exception");
             return defaultValue;
         }
     }

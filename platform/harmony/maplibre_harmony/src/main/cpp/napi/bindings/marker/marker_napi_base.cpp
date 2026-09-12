@@ -438,16 +438,23 @@ napi_value MarkerNAPI::SetIcon(napi_env env, napi_callback_info info) {
             status = napi_call_function(env, iconArg, getIdFunc, 0, nullptr, &idValue);
             
             if (status == napi_ok) {
-                size_t length;
-                napi_get_value_string_utf8(env, idValue, nullptr, 0, &length);
-                marker->iconId.resize(length);
-                napi_get_value_string_utf8(env, idValue, &marker->iconId[0], length + 1, &length);
-                
-                // Keep a reference to the Icon object
-                status = napi_create_reference(env, iconArg, 1, &marker->iconRef);
-                if (status != napi_ok) {
-                    Logger::error("MarkerNAPI", "SetIcon: Failed to create Icon reference");
+                size_t length = 0;
+                if (napi_get_value_string_utf8(env, idValue, nullptr, 0, &length) == napi_ok) {
+                    std::string tmp(length, '\0');
+                    if (napi_get_value_string_utf8(env, idValue, tmp.data(), length + 1, &length) == napi_ok) {
+                        tmp.resize(length);
+                        marker->iconId = std::move(tmp);
+
+                        // Keep a reference to the Icon object
+                        status = napi_create_reference(env, iconArg, 1, &marker->iconRef);
+                        if (status != napi_ok) {
+                            Logger::error("MarkerNAPI", "SetIcon: Failed to create Icon reference");
+                        }
+                    } else {
+                        Logger::error("MarkerNAPI", "SetIcon: Failed to read icon id string");
+                    }
                 } else {
+                    Logger::error("MarkerNAPI", "SetIcon: getId() did not return a string");
                 }
             }
         }

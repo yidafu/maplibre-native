@@ -54,10 +54,13 @@ napi_value NativeMapView::setDebug(napi_env env, napi_callback_info info) {
     mbgl::MapDebugOptions options = static_cast<mbgl::MapDebugOptions>(debugOptions);
     
     Logger::info("NativeMapView", "setDebug: Setting debug options to %d", debugOptions);
-    
-    // Set debug options on the map
-    instance->map->setDebug(options);
-    
+
+    // Map must only be touched on the render thread — a direct call here races
+    // the in-flight frame (the "SIGSEGV@0x8" crash pattern).
+    instance->invokeOnMapThread([options](mbgl::Map* m) {
+        m->setDebug(options);
+    });
+
     return args.Undefined();
 }
 
@@ -86,8 +89,10 @@ napi_value NativeMapView::getDebug(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    // Get debug options from the map
-    mbgl::MapDebugOptions options = instance->map->getDebug();
+    // Get debug options from the map (render thread only)
+    mbgl::MapDebugOptions options = instance->invokeOnMapThreadSync(
+        [](mbgl::Map* m) { return m->getDebug(); },
+        mbgl::MapDebugOptions::NoDebug);
     
     // Convert to int32
     int32_t debugOptions = static_cast<int32_t>(options);
@@ -169,10 +174,13 @@ napi_value NativeMapView::setDebugActive(napi_env env, napi_callback_info info) 
         : mbgl::MapDebugOptions::NoDebug;
     
     Logger::info("NativeMapView", "setDebugActive: %s debug mode", active ? "Enabling" : "Disabling");
-    
-    // Set debug options on the map
-    instance->map->setDebug(options);
-    
+
+    // Map must only be touched on the render thread — a direct call here races
+    // the in-flight frame (the "SIGSEGV@0x8" crash pattern).
+    instance->invokeOnMapThread([options](mbgl::Map* m) {
+        m->setDebug(options);
+    });
+
     return args.Undefined();
 }
 
@@ -201,8 +209,10 @@ napi_value NativeMapView::isDebugActive(napi_env env, napi_callback_info info) {
         return result;
     }
     
-    // Get debug options from the map
-    mbgl::MapDebugOptions options = instance->map->getDebug();
+    // Get debug options from the map (render thread only)
+    mbgl::MapDebugOptions options = instance->invokeOnMapThreadSync(
+        [](mbgl::Map* m) { return m->getDebug(); },
+        mbgl::MapDebugOptions::NoDebug);
     
     // Check if any debug options are enabled
     bool active = options != mbgl::MapDebugOptions::NoDebug;

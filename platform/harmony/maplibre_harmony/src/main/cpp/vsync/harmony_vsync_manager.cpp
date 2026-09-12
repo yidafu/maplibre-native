@@ -43,7 +43,10 @@ HarmonyVSyncManager::~HarmonyVSyncManager() {
         vsync_ = nullptr;
         Logger::info("HarmonyVSyncManager", "VSync destroyed");
     }
-    
+
+    // OH_NativeVSync_Destroy does not wait for a callback that was already
+    // running on the VSync thread; drain once more before this object is freed.
+    waitForDispatches();
 }
 
 void HarmonyVSyncManager::setRunLoop(util::RunLoop* runLoop) {
@@ -126,25 +129,47 @@ void HarmonyVSyncManager::stop() {
     // Wait out any in-flight dispatch: it copied the raw RunLoop pointer
     // before we cleared it and is about to call runLoop->invoke(). The owner
     // destroys that RunLoop right after stop() returns.
-    for (int i = 0; i < 100 && inFlightDispatches_.load(std::memory_order_acquire) > 0; ++i) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    waitForDispatches();
+}
+
+void HarmonyVSyncManager::finishDispatch() {
+    if (inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        std::lock_guard<std::mutex> lock(dispatchMutex_);
+        dispatchCv_.notify_all();
     }
-    if (inFlightDispatches_.load(std::memory_order_acquire) > 0) {
+}
+
+void HarmonyVSyncManager::waitForDispatches() {
+    std::unique_lock<std::mutex> lock(dispatchMutex_);
+    // The dispatch window is short (runLoop->invoke() only posts an event), so a
+    // generous safety timeout should never be hit; log loudly if it is.
+    if (!dispatchCv_.wait_for(lock, std::chrono::seconds(1), [this] {
+            return inFlightDispatches_.load(std::memory_order_acquire) == 0;
+        })) {
         Logger::error("HarmonyVSyncManager",
-                      "⚠️  in-flight VSync dispatch did not drain within 100 ms");
+                      "⚠️  in-flight VSync dispatch did not drain within 1 s");
     }
 }
 
 void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
     auto* manager = static_cast<HarmonyVSyncManager*>(data);
-    
-    if (!manager || manager->stopped_.load()) {
+
+    if (!manager) {
         return;
     }
-    
+
+    // Mark in flight BEFORE touching any member, so stop()/destruction can never
+    // overtake a callback that has already been entered.
+    manager->inFlightDispatches_.fetch_add(1, std::memory_order_acq_rel);
+
+    if (manager->stopped_.load(std::memory_order_acquire)) {
+        manager->finishDispatch();
+        return;
+    }
+
     // Reset frame-request flag
     manager->frameRequested_ = false;
-    
+
     // Execute callback
     manager->executeCallback();
 }
@@ -152,14 +177,12 @@ void HarmonyVSyncManager::onVSync(long long timestamp, void* data) {
 void HarmonyVSyncManager::executeCallback() {
     // Dispatch callback to render thread via RunLoop
     // Ensures callback executes on the proper render thread, aligned with other actor messages
-
-    // Mark the dispatch in flight BEFORE touching the RunLoop pointer, so
-    // stop() (which waits for this counter) can never race the invoke below.
-    inFlightDispatches_.fetch_add(1, std::memory_order_acq_rel);
+    // Note: the in-flight counter was already incremented at the top of onVSync(),
+    // covering the window between callback entry and these checks.
 
     // Double-check stopped flag and RunLoop validity
     if (stopped_.load(std::memory_order_acquire)) {
-        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
+        finishDispatch();
         return;
     }
 
@@ -176,7 +199,7 @@ void HarmonyVSyncManager::executeCallback() {
 
     if (!callback) {
         Logger::warn("HarmonyVSyncManager", "No callback to execute");
-        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
+        finishDispatch();
         return;
     }
 
@@ -184,12 +207,12 @@ void HarmonyVSyncManager::executeCallback() {
     if (!runLoop) {
         Logger::warn("HarmonyVSyncManager",
             "⚠️  RunLoop not set, skipping VSync callback (would cause thread safety violation)");
-        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
+        finishDispatch();
         return;
     }
 
     if (stopped_.load(std::memory_order_acquire)) {
-        inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
+        finishDispatch();
         return;
     }
 
@@ -203,7 +226,7 @@ void HarmonyVSyncManager::executeCallback() {
         }
     });
 
-    inFlightDispatches_.fetch_sub(1, std::memory_order_acq_rel);
+    finishDispatch();
 }
 
 } // namespace harmony

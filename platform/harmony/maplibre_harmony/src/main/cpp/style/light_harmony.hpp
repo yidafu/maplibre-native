@@ -20,14 +20,14 @@ public:
     // NAPI registration
     static napi_value Init(napi_env env, napi_value exports);
     
-    // Constructor - wraps existing light
-    LightHarmony(mbgl::Map& coreMap, mbgl::style::Light& coreLight);
-    
+    // Constructor - wraps the light of the given map's current style
+    explicit LightHarmony(mbgl::Map& coreMap);
+
     // Destructor
     ~LightHarmony();
-    
+
     // Factory method to create NAPI wrapper
-    static napi_value CreateLightPeer(napi_env env, mbgl::Map& map, mbgl::style::Light& coreLight);
+    static napi_value CreateLightPeer(napi_env env, mbgl::Map& map);
     
     // Destructor callback
     static void Destructor(napi_env env, void* nativeObject, void* hint);
@@ -53,12 +53,15 @@ public:
 
 private:
     static napi_ref constructor;
-    
-    // Reference to the core light object
-    mbgl::style::Light& light;
-    
-    // Reference to the map
-    mbgl::Map* map;
+
+    // The Light is owned by the Style and is destroyed on style reload or map
+    // teardown; holding a bare reference across calls is a dangling UAF. Keep
+    // only the map and re-fetch the current light on every access.
+    mbgl::Map* map = nullptr;
+
+    // Returns the style's current light, or nullptr when the map/style/light
+    // is gone; callers must null-check before any access.
+    mbgl::style::Light* currentLight() const;
 };
 
 } // namespace harmony

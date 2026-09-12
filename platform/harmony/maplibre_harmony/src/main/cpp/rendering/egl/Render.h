@@ -4,11 +4,12 @@
 // Node APIs are not fully supported. To solve the compilation error of the interface cannot be found,
 // please include "napi/native_api.h".
 
+#ifndef MAPLIBREHARMONY_RENDER_H
+#define MAPLIBREHARMONY_RENDER_H
+
 #include "EGLCore.h"
 #include <ace/xcomponent/native_interface_xcomponent.h>
 #include <native_window/external_window.h>
-#ifndef MAPLIBREHARMONY_RENDER_H
-#define MAPLIBREHARMONY_RENDER_H
 
 class Render {
 public:

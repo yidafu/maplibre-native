@@ -327,14 +327,15 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
     std::string sourceType;
     status = napi_get_named_property(env, sourceValue, "_TYPE_", &typeValue);
     if (status == napi_ok) {
-        size_t typeLen;
-        napi_get_value_string_utf8(env, typeValue, nullptr, 0, &typeLen);
-        if (typeLen > 0) {
-            char *typeBuffer = new char[typeLen + 1];
-            napi_get_value_string_utf8(env, typeValue, typeBuffer, typeLen + 1, nullptr);
-            sourceType = std::string(typeBuffer);
-            delete[] typeBuffer;
-            Logger::info("StyleNAPI", "AddSource: Detected type = %s", sourceType.c_str());
+        // _TYPE_ may be missing (undefined) — measure first and bail out on
+        // non-string values instead of using an uninitialized length.
+        size_t typeLen = 0;
+        if (napi_get_value_string_utf8(env, typeValue, nullptr, 0, &typeLen) == napi_ok && typeLen > 0) {
+            std::string typeBuffer(typeLen, '\0');
+            if (napi_get_value_string_utf8(env, typeValue, typeBuffer.data(), typeLen + 1, nullptr) == napi_ok) {
+                sourceType = std::move(typeBuffer);
+                Logger::info("StyleNAPI", "AddSource: Detected type = %s", sourceType.c_str());
+            }
         }
     }
 

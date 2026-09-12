@@ -363,16 +363,9 @@ napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) 
         return nullptr;
     }
     
-    uint32_t tileSize = args.GetUint32(0, "tileSize");
-    if (args.HasError()) return nullptr;
-    
-    if (tileSize == 0 || tileSize > 1024) {
-        napi_throw_error(env, nullptr, "Invalid tile size (must be between 1 and 1024)");
-        return nullptr;
-    }
-    
     // Note: RasterSource does not support changing tile size after creation.
-    // Tile size must be specified in the constructor.
+    // Tile size must be specified in the constructor; the operation is
+    // unsupported regardless of the argument value.
     Logger::info("RasterSourceNAPI", "SetTileSize not supported - tile size is immutable after source creation");
     napi_throw_error(env, nullptr, "RasterSource does not support changing tile size after creation. Please recreate the source with the desired tile size.");
     return nullptr;

@@ -19,6 +19,7 @@
 #include <chrono>
 #include <thread>
 #include <cstring>
+#include <memory>
 #include <multimedia/image_framework/image_pixel_map_napi.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
@@ -607,7 +608,7 @@ napi_value NativeMapView::getLight(napi_env env, napi_callback_info info) {
             return args.Undefined();
         }
         
-        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *instance->map, *light);
+        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *instance->map);
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "getLight: Exception - %s", e.what());
         return args.Undefined();
@@ -1051,7 +1052,9 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
     OH_PixelMap_UnAccessPixels(nativePixelMap);
 
     try {
-        auto* imagePtr = new mbgl::style::Image(
+        // Hold the image via shared_ptr: if the map-thread task is dropped during
+        // teardown, the capture is released instead of leaking a raw new'd image.
+        auto image = std::make_shared<mbgl::style::Image>(
             imageName,
             std::move(premultiplied),
             static_cast<float>(pixelRatioDouble),
@@ -1059,9 +1062,8 @@ napi_value NativeMapView::addImage(napi_env env, napi_callback_info info) {
         );
 
         std::string imageId = imageName;
-        instance->invokeOnMapThread([imagePtr, imageId, width, height](mbgl::Map* map) {
-            std::unique_ptr<mbgl::style::Image> image(imagePtr);
-            map->getStyle().addImage(std::move(image));
+        instance->invokeOnMapThread([image, imageId, width, height](mbgl::Map* map) {
+            map->getStyle().addImage(std::make_unique<mbgl::style::Image>(*image));
             map->triggerRepaint();
             Logger::info("NativeMapView", "addImage: Added image '%s' (%ux%u)", imageId.c_str(), width, height);
         });
@@ -1131,9 +1133,8 @@ napi_value NativeMapView::addImages(napi_env env, napi_callback_info info) {
             
             // Add to style
             std::string imageName = imageNapi->getName();
-            instance->invokeOnMapThread([styleImagePtr = styleImage.release()](mbgl::Map* m) {
-                std::unique_ptr<mbgl::style::Image> img(styleImagePtr);
-                m->getStyle().addImage(std::move(img));
+            instance->invokeOnMapThread([styleImage = std::shared_ptr<mbgl::style::Image>(std::move(styleImage))](mbgl::Map* m) {
+                m->getStyle().addImage(std::make_unique<mbgl::style::Image>(*styleImage));
             });
             
             Logger::info("NativeMapView", "addImages: Added image '%s'", imageName.c_str());

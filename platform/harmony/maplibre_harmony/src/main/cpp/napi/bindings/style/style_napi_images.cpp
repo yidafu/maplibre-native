@@ -429,27 +429,47 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
     napi_value promise;
     napi_deferred deferred;
     napi_create_promise(env, &deferred, &promise);
-    
+
+    AsyncImageData* asyncData = nullptr;
+    // Deletes the payload and its JS reference on any error path; nulls the
+    // pointer so the catch handler below cannot double-free after ownership
+    // moved to the async work.
+    auto failCleanup = [&env](AsyncImageData*& data) {
+        if (data) {
+            if (data->thisRef) {
+                napi_delete_reference(env, data->thisRef);
+                data->thisRef = nullptr;
+            }
+            delete data;
+            data = nullptr;
+        }
+    };
+
     try {
         // Prepare async data
-        AsyncImageData* asyncData = new AsyncImageData();
+        asyncData = new AsyncImageData();
         asyncData->env = env;
         asyncData->deferred = deferred;
         asyncData->success = false;
-        
+
         // Create reference to this
-        napi_create_reference(env, jsThis, 1, &asyncData->thisRef);
-        
+        if (napi_create_reference(env, jsThis, 1, &asyncData->thisRef) != napi_ok) {
+            asyncData->thisRef = nullptr;
+            failCleanup(asyncData);
+            napi_throw_error(env, nullptr, "Failed to create style reference");
+            return nullptr;
+        }
+
         // Check if first argument is an Image object
         if (ImageNAPI::IsImageObject(env, args[0])) {
             // New way: Accept Image NAPI object
             ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, args[0]);
             if (!imageNapi) {
-                delete asyncData;
+                failCleanup(asyncData);
                 napi_throw_error(env, nullptr, "Failed to unwrap Image object");
                 return nullptr;
             }
-            
+
             asyncData->imageName = imageNapi->getName();
             asyncData->width = imageNapi->getWidth();
             asyncData->height = imageNapi->getHeight();
@@ -457,31 +477,31 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
             asyncData->sdf = imageNapi->isSdf();
             // Get image data from ImageNAPI (need to expose this)
             auto styleImage = imageNapi->toStyleImage();
-            
+
             // Copy data
             const auto& srcImage = styleImage->getImage();
             asyncData->imageData = std::make_shared<std::vector<uint8_t>>(
-                srcImage.data.get(), 
+                srcImage.data.get(),
                 srcImage.data.get() + srcImage.bytes()
             );
-            
+
         } else {
             // Old way: Accept raw parameters
             if (argc < 5) {
-                delete asyncData;
+                failCleanup(asyncData);
                 napi_throw_error(env, nullptr, "AddImageAsync requires at least 5 arguments");
                 return nullptr;
             }
-            
+
             // Parse arguments (same as AddImage)
             asyncData->imageName = GetStringFromValue(env, args[0]);
-            
+
             // Get image data
             void* data = nullptr;
             size_t byteLength = 0;
             napi_valuetype valueType;
             napi_typeof(env, args[1], &valueType);
-            
+
             if (valueType == napi_object) {
                 napi_value arrayBuffer;
                 size_t byteOffset;
@@ -489,17 +509,17 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
                 if (status != napi_ok) {
                     status = napi_get_arraybuffer_info(env, args[1], &data, &byteLength);
                     if (status != napi_ok) {
-                        delete asyncData;
+                        failCleanup(asyncData);
                         napi_throw_error(env, nullptr, "Second argument must be ArrayBuffer or TypedArray");
                         return nullptr;
                     }
                 }
             } else {
-                delete asyncData;
+                failCleanup(asyncData);
                 napi_throw_error(env, nullptr, "Second argument must be ArrayBuffer or TypedArray");
                 return nullptr;
             }
-            
+
             napi_get_value_uint32(env, args[2], &asyncData->width);
             napi_get_value_uint32(env, args[3], &asyncData->height);
 
@@ -521,25 +541,28 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
                     napi_get_value_bool(env, args[i], &asyncData->sdf);
                 }
             }
-            
-            // Verify data size
-            if (byteLength != asyncData->width * asyncData->height * 4) {
-                delete asyncData;
+
+            // Verify data size (64-bit multiply: width/height are uint32_t)
+            const uint64_t expectedBytes =
+                static_cast<uint64_t>(asyncData->width) * static_cast<uint64_t>(asyncData->height) * 4ull;
+            if (expectedBytes == 0 || expectedBytes > (512ull << 20) ||
+                byteLength != expectedBytes) {
+                failCleanup(asyncData);
                 napi_throw_error(env, nullptr, "Image data size does not match width * height * 4");
                 return nullptr;
             }
-            
+
             // Copy data
             asyncData->imageData = std::make_shared<std::vector<uint8_t>>(
                 static_cast<uint8_t*>(data),
                 static_cast<uint8_t*>(data) + byteLength
             );
         }
-        
+
         // Create async work
         napi_value resourceName;
         napi_create_string_utf8(env, "AddImageAsync", NAPI_AUTO_LENGTH, &resourceName);
-        
+
         napi_async_work work;
         napi_status status = napi_create_async_work(
             env,
@@ -550,25 +573,28 @@ napi_value StyleNAPI::AddImageAsync(napi_env env, napi_callback_info info) {
             asyncData,
             &work
         );
-        
+
         if (status != napi_ok) {
-            delete asyncData;
+            failCleanup(asyncData);
             napi_throw_error(env, nullptr, "Failed to create async work");
             return nullptr;
         }
-        
+
         status = napi_queue_async_work(env, work);
         if (status != napi_ok) {
             napi_delete_async_work(env, work);
-            delete asyncData;
+            failCleanup(asyncData);
             napi_throw_error(env, nullptr, "Failed to queue async work");
             return nullptr;
         }
-        
+
+        // Ownership moved to the async work
+        asyncData = nullptr;
         return promise;
-        
+
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "AddImageAsync setup failed: %s", e.what());
+        failCleanup(asyncData);
         napi_value errorMsg;
         napi_create_string_utf8(env, e.what(), NAPI_AUTO_LENGTH, &errorMsg);
         napi_reject_deferred(env, deferred, errorMsg);
@@ -667,11 +693,26 @@ napi_value StyleNAPI::AddImagesAsync(napi_env env, napi_callback_info info) {
     napi_value promise;
     napi_deferred deferred;
     napi_create_promise(env, &deferred, &promise);
-    
+
+    AsyncImagesData* asyncData = nullptr;
+    // Deletes the payload and its JS reference on any error path; nulls the
+    // pointer so the catch handler below cannot double-free after ownership
+    // moved to the async work.
+    auto failCleanup = [&env](AsyncImagesData*& data) {
+        if (data) {
+            if (data->thisRef) {
+                napi_delete_reference(env, data->thisRef);
+                data->thisRef = nullptr;
+            }
+            delete data;
+            data = nullptr;
+        }
+    };
+
     try {
         uint32_t arrayLength = 0;
         napi_get_array_length(env, imagesArray, &arrayLength);
-        
+
         if (arrayLength == 0) {
             // Empty array, resolve immediately
             napi_value undefined;
@@ -679,37 +720,42 @@ napi_value StyleNAPI::AddImagesAsync(napi_env env, napi_callback_info info) {
             napi_resolve_deferred(env, deferred, undefined);
             return promise;
         }
-        
+
         // Prepare async data
-        AsyncImagesData* asyncData = new AsyncImagesData();
+        asyncData = new AsyncImagesData();
         asyncData->env = env;
         asyncData->deferred = deferred;
         asyncData->success = false;
-        
-        napi_create_reference(env, jsThis, 1, &asyncData->thisRef);
-        
+
+        if (napi_create_reference(env, jsThis, 1, &asyncData->thisRef) != napi_ok) {
+            asyncData->thisRef = nullptr;
+            failCleanup(asyncData);
+            napi_throw_error(env, nullptr, "Failed to create style reference");
+            return nullptr;
+        }
+
         // Parse all images
         for (uint32_t i = 0; i < arrayLength; ++i) {
             napi_value imageValue;
             napi_get_element(env, imagesArray, i, &imageValue);
-            
+
             if (!ImageNAPI::IsImageObject(env, imageValue)) {
-                delete asyncData;
+                failCleanup(asyncData);
                 napi_throw_error(env, nullptr, "All array elements must be Image objects");
                 return nullptr;
             }
-            
+
             ImageNAPI* imageNapi = ImageNAPI::Unwrap(env, imageValue);
             if (!imageNapi) {
-                delete asyncData;
+                failCleanup(asyncData);
                 napi_throw_error(env, nullptr, "Failed to unwrap Image object");
                 return nullptr;
             }
-            
+
             // Convert to style::Image
             auto styleImage = imageNapi->toStyleImage();
             std::string imageName = styleImage->getID();
-            
+
             asyncData->images.push_back(std::move(styleImage));
             asyncData->imageNames.push_back(imageName);
         }
@@ -728,25 +774,28 @@ napi_value StyleNAPI::AddImagesAsync(napi_env env, napi_callback_info info) {
             asyncData,
             &work
         );
-        
+
         if (status != napi_ok) {
-            delete asyncData;
+            failCleanup(asyncData);
             napi_throw_error(env, nullptr, "Failed to create async work");
             return nullptr;
         }
-        
+
         status = napi_queue_async_work(env, work);
         if (status != napi_ok) {
             napi_delete_async_work(env, work);
-            delete asyncData;
+            failCleanup(asyncData);
             napi_throw_error(env, nullptr, "Failed to queue async work");
             return nullptr;
         }
-        
+
+        // Ownership moved to the async work
+        asyncData = nullptr;
         return promise;
-        
+
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "AddImagesAsync setup failed: %s", e.what());
+        failCleanup(asyncData);
         napi_value errorMsg;
         napi_create_string_utf8(env, e.what(), NAPI_AUTO_LENGTH, &errorMsg);
         napi_reject_deferred(env, deferred, errorMsg);
@@ -784,7 +833,7 @@ napi_value StyleNAPI::GetLight(napi_env env, napi_callback_info info) {
         if (!map) {
             return napiArgs.Null();
         }
-        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *map, *light);
+        return mbgl::harmony::LightHarmony::CreateLightPeer(env, *map);
     } catch (const std::exception& e) {
         Logger::error("StyleNAPI", "GetLight failed: %s", e.what());
         return napiArgs.Null();

@@ -309,10 +309,15 @@ mbgl::PropertyMap NapiObjectToPropertyMap(napi_env env, napi_value obj) {
         napi_value keyValue;
         napi_get_element(env, propertyNames, i, &keyValue);
         
-        size_t keyLength;
-        napi_get_value_string_utf8(env, keyValue, nullptr, 0, &keyLength);
+        size_t keyLength = 0;
+        if (napi_get_value_string_utf8(env, keyValue, nullptr, 0, &keyLength) != napi_ok) {
+            continue;  // not a string property name — skip
+        }
         std::string key(keyLength, '\0');
-        napi_get_value_string_utf8(env, keyValue, &key[0], keyLength + 1, &keyLength);
+        if (keyLength > 0 &&
+            napi_get_value_string_utf8(env, keyValue, &key[0], keyLength + 1, nullptr) != napi_ok) {
+            continue;
+        }
         
         napi_value value;
         napi_get_named_property(env, obj, key.c_str(), &value);
@@ -325,12 +330,21 @@ mbgl::PropertyMap NapiObjectToPropertyMap(napi_env env, napi_value obj) {
 
 std::string GetStringProperty(napi_env env, napi_value obj, const char* key) {
     napi_value value;
-    napi_get_named_property(env, obj, key, &value);
-    
-    size_t length;
-    napi_get_value_string_utf8(env, value, nullptr, 0, &length);
+    if (napi_get_named_property(env, obj, key, &value) != napi_ok) {
+        return {};
+    }
+
+    size_t length = 0;
+    if (napi_get_value_string_utf8(env, value, nullptr, 0, &length) != napi_ok) {
+        // Property missing or not a string — return empty instead of
+        // allocating from an uninitialized length.
+        return {};
+    }
     std::string result(length, '\0');
-    napi_get_value_string_utf8(env, value, &result[0], length + 1, &length);
+    if (length > 0 &&
+        napi_get_value_string_utf8(env, value, &result[0], length + 1, nullptr) != napi_ok) {
+        return {};
+    }
     
     return result;
 }

@@ -3,6 +3,7 @@
 #include <native_vsync/native_vsync.h>
 #include <functional>
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 
 namespace mbgl {
@@ -75,8 +76,12 @@ private:
     std::atomic<bool> stopped_{false};
     // executeCallback runs on the system VSync thread and calls into the raw
     // render-thread RunLoop pointer; stop() must wait this counter out before
-    // letting the owner destroy that RunLoop.
+    // letting the owner destroy that RunLoop. The counter is incremented at the
+    // very top of onVSync — before any member is read — so a callback that has
+    // been entered is always accounted for.
     std::atomic<int> inFlightDispatches_{0};
+    std::mutex dispatchMutex_;
+    std::condition_variable dispatchCv_;
     uint64_t ownerInstanceId_{0};
     
     /**
@@ -91,6 +96,16 @@ private:
      * Execute the pending callback.
      */
     void executeCallback();
+
+    /**
+     * Decrement the in-flight dispatch counter; wakes stop() when it reaches zero.
+     */
+    void finishDispatch();
+
+    /**
+     * Block until all in-flight VSync dispatches have drained (bounded safety timeout).
+     */
+    void waitForDispatches();
 };
 
 } // namespace harmony

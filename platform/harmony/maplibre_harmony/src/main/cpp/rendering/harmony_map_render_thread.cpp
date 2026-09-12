@@ -36,6 +36,10 @@ HarmonyMapRenderThread::HarmonyMapRenderThread(
 }
 
 HarmonyMapRenderThread::~HarmonyMapRenderThread() {
+    // Withdraw the cross-thread mirror before member destruction begins so
+    // late readers (stop/update) observe null instead of a dying pointer.
+    vsyncManagerMirror_.store(nullptr, std::memory_order_release);
+    rendererMirror_.store(nullptr, std::memory_order_release);
     // Stop the VSync manager
     if (vsyncManager_) {
         vsyncManager_->stop();
@@ -166,6 +170,7 @@ bool HarmonyMapRenderThread::initialize() {
 
     gfx::RendererBackend& backendImpl = backend->getImpl();
     renderer_ = std::make_unique<Renderer>(backendImpl, pixelRatio_, localIdeographFontFamily_);
+    rendererMirror_.store(renderer_.get(), std::memory_order_release);
     if (!renderer_) {
         Logger::error("MapRenderThread", "Failed to create Renderer");
         return false;
@@ -198,6 +203,7 @@ void HarmonyMapRenderThread::cleanup() {
     
     if (renderer_) {
         Logger::warn("MapRenderThread", "⚠️  Renderer still exists in cleanup() - destroying now");
+        rendererMirror_.store(nullptr, std::memory_order_release);
         renderer_.reset();
     }
     
@@ -237,9 +243,12 @@ void HarmonyMapRenderThread::stop() {
     shouldStop_ = true;
     paused_ = true;
 
-    // ✅ Step 2: stop VSync and clear any pending render state
-    if (vsyncManager_) {
-        vsyncManager_->stop();
+    // ✅ Step 2: stop VSync and clear any pending render state.
+    // Read through the atomic mirror: the render thread may concurrently be
+    // creating/destroying the unique_ptr (HarmonyVSyncManager::stop() itself
+    // is thread-safe).
+    if (auto* vsync = vsyncManagerMirror_.load(std::memory_order_acquire)) {
+        vsync->stop();
     }
     pendingRender_ = false;
     // pendingUpdateParams_ is a shared_ptr the render thread reads in
@@ -268,6 +277,7 @@ void HarmonyMapRenderThread::stop() {
                     
                     // Destroy the Renderer
                     if (renderer_) {
+                        rendererMirror_.store(nullptr, std::memory_order_release);
                         renderer_.reset();
                     }
                     
@@ -367,7 +377,7 @@ void HarmonyMapRenderThread::update(std::shared_ptr<UpdateParameters> params) {
         return;
     }
 
-    if (!renderer_ || !backend_) {
+    if (!rendererMirror_.load(std::memory_order_acquire) || !backend_) {
         Logger::error("MapRenderThread", "Renderer or backend not initialized");
         return;
     }
@@ -405,10 +415,16 @@ void HarmonyMapRenderThread::update(std::shared_ptr<UpdateParameters> params) {
 
 void HarmonyMapRenderThread::setObserver(RendererObserver& observer) {
     Logger::info("MapRenderThread", "setObserver() called");
-    
-    invoke([this, &observer]() {
+
+    // Capture the pointer by value: when invoked from a non-render thread the
+    // task runs asynchronously, and capturing a reference would be UB if this
+    // stack frame is gone by then. The caller must guarantee the observer
+    // outlives the renderer that receives it (mbgl::Map owns the observer and
+    // outlives the render thread in the current ownership model).
+    RendererObserver* observerPtr = &observer;
+    invoke([this, observerPtr]() {
         if (renderer_) {
-            renderer_->setObserver(&observer);
+            renderer_->setObserver(observerPtr);
         }
     });
 }
@@ -469,6 +485,7 @@ void HarmonyMapRenderThread::setNativeWindow(void* window) {
         // Initialize the VSync manager
         try {
             vsyncManager_ = std::make_unique<HarmonyVSyncManager>();
+            vsyncManagerMirror_.store(vsyncManager_.get(), std::memory_order_release);
             vsyncManager_->setOwnerInstanceId(instanceId_);
             
             // 🎯 Provide the RunLoop so VSync callbacks are scheduled through it
@@ -632,7 +649,7 @@ std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
         return {};
     }
     
-    if (!renderer_) {
+    if (!rendererMirror_.load(std::memory_order_acquire)) {
         Logger::error("MapRenderThread", "queryRenderedFeatures: Renderer not initialized");
         return {};
     }
@@ -677,7 +694,7 @@ std::vector<Feature> HarmonyMapRenderThread::queryRenderedFeatures(
         return {};
     }
     
-    if (!renderer_) {
+    if (!rendererMirror_.load(std::memory_order_acquire)) {
         Logger::error("MapRenderThread", "queryRenderedFeatures: Renderer not initialized");
         return {};
     }
@@ -722,7 +739,7 @@ std::vector<Feature> HarmonyMapRenderThread::querySourceFeatures(
         return {};
     }
     
-    if (!renderer_) {
+    if (!rendererMirror_.load(std::memory_order_acquire)) {
         Logger::error("MapRenderThread", "querySourceFeatures: Renderer not initialized");
         return {};
     }

@@ -73,10 +73,18 @@ public:
     }
 
 private:
-    explicit CustomLayerNAPI(const std::string& layerId, 
+    explicit CustomLayerNAPI(const std::string& layerId,
                             std::unique_ptr<mbgl::style::CustomLayer> layer,
                             ExampleCustomLayerHost* host);
     ~CustomLayerNAPI();
+
+    // The host is owned by the mbgl::style::CustomLayer, so it is only safe to
+    // touch while the layer is alive — either still owned here (not yet added
+    // to a style) or the style-held layer has not been destroyed by a
+    // removeLayer / style reload.
+    bool hostAlive() const {
+        return host != nullptr && (layer != nullptr || weakLayer.get() != nullptr);
+    }
     
     static napi_ref constructor;
     std::string layerId;

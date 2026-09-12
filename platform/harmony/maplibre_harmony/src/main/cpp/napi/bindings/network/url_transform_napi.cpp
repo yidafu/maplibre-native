@@ -4,9 +4,11 @@
 #include "network/url_transform_manager.hpp"
 #include "utils/logger.h"
 #include <string>
+#include <memory>
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include <thread>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::URLTransformManager;
@@ -16,68 +18,83 @@ namespace mbgl {
 namespace harmony {
 
 // Static member initialization
-URLTransformNAPI::CallbackContext* URLTransformNAPI::callbackContext_ = nullptr;
+std::mutex URLTransformNAPI::contextMutex_;
+std::shared_ptr<URLTransformNAPI::CallbackContext> URLTransformNAPI::callbackContext_;
 
-// Data structure for invoking the threadsafe function
-struct TransformCallData {
-    int kind;
+// State exchanged between the calling (network/render) thread and the JS thread.
+// Heap-allocated and owned by the queued CallJS invocation: if the caller times
+// out and abandons the wait, the queued callback still owns the state and frees
+// it, so no thread ever dereferences freed memory.
+struct TransformCallState {
+    int kind = 0;
     std::string url;
-    std::string* result;  // Pointer to the result string
-    std::mutex* mutex;    // Mutex used for synchronization
-    std::condition_variable* cv;  // Condition variable used for synchronization
-    bool* done;           // Completion flag
+    std::string result;
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool done = false;
 };
+
+// Invoke the JS transform callback and resolve the result into `out`.
+// Must run on the JS thread.
+static void InvokeTransformCallback(napi_env env, napi_value js_callback, int kind, const std::string& url, std::string& out) {
+    try {
+        napi_value args[2];
+        napi_create_int32(env, kind, &args[0]);
+        napi_create_string_utf8(env, url.c_str(), NAPI_AUTO_LENGTH, &args[1]);
+
+        napi_value result_value = nullptr;
+        napi_status status = napi_call_function(env, nullptr, js_callback, 2, args, &result_value);
+        if (status != napi_ok || result_value == nullptr) {
+            Logger::error("URLTransformNAPI", "Failed to call JS callback");
+            out = url;
+            return;
+        }
+
+        // Measure first; bail out on any failure or non-string return value
+        // instead of using an uninitialized length.
+        size_t result_length = 0;
+        if (napi_get_value_string_utf8(env, result_value, nullptr, 0, &result_length) != napi_ok) {
+            out = url;
+            return;
+        }
+        if (result_length == 0) {
+            // Callback returned an empty string; use the original URL
+            out = url;
+            return;
+        }
+        std::string result_str(result_length, '\0');
+        if (napi_get_value_string_utf8(env, result_value, &result_str[0], result_length + 1, nullptr) != napi_ok) {
+            out = url;
+            return;
+        }
+        out = std::move(result_str);
+    } catch (const std::exception& e) {
+        Logger::error("URLTransformNAPI", "Exception in transform callback: %s", e.what());
+        out = url;
+    } catch (...) {
+        Logger::error("URLTransformNAPI", "Unknown exception in transform callback");
+        out = url;
+    }
+}
 
 // Threadsafe function callback (runs on the JS thread)
 static void CallJS(napi_env env, napi_value js_callback, void* context, void* data) {
+    (void)context;
     if (env == nullptr || js_callback == nullptr || data == nullptr) {
         return;
     }
 
-    TransformCallData* callData = static_cast<TransformCallData*>(data);
+    // Take ownership: the calling thread may have timed out and abandoned the state.
+    std::unique_ptr<TransformCallState> callData(static_cast<TransformCallState*>(data));
 
-    try {
-        // Prepare arguments
-        napi_value args[2];
-        napi_create_int32(env, callData->kind, &args[0]);
-        napi_create_string_utf8(env, callData->url.c_str(), NAPI_AUTO_LENGTH, &args[1]);
+    InvokeTransformCallback(env, js_callback, callData->kind, callData->url, callData->result);
 
-        // Invoke the JS callback
-        napi_value result_value;
-        napi_status status = napi_call_function(env, nullptr, js_callback, 2, args, &result_value);
-
-        if (status == napi_ok) {
-            // Retrieve the return value
-            size_t result_length;
-            napi_get_value_string_utf8(env, result_value, nullptr, 0, &result_length);
-            
-            if (result_length > 0) {
-                std::string result_str(result_length, '\0');
-                napi_get_value_string_utf8(env, result_value, &result_str[0], result_length + 1, nullptr);
-                *callData->result = result_str;
-            } else {
-                // Callback returned an empty string or undefined; use the original URL
-                *callData->result = callData->url;
-            }
-        } else {
-            Logger::error("URLTransformNAPI", "Failed to call JS callback");
-            *callData->result = callData->url;
-        }
-
-    } catch (const std::exception& e) {
-        Logger::error("URLTransformNAPI", "Exception in CallJS: %s", e.what());
-        *callData->result = callData->url;
-    } catch (...) {
-        Logger::error("URLTransformNAPI", "Unknown exception in CallJS");
-        *callData->result = callData->url;
-    }
-
-    // Notify the C++ thread that the callback completed
+    // Notify the C++ thread that the callback completed (no-op if it already timed out)
     {
-        std::lock_guard<std::mutex> lock(*callData->mutex);
-        *callData->done = true;
+        std::lock_guard<std::mutex> lock(callData->mutex);
+        callData->done = true;
     }
-    callData->cv->notify_one();
+    callData->cv.notify_one();
 }
 
 napi_value URLTransformNAPI::Init(napi_env env, napi_value exports) {
@@ -107,24 +124,34 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         return nullptr;
     }
 
-    // Clean up the previous callback context
-    if (callbackContext_ != nullptr) {
-        if (callbackContext_->tsfn != nullptr) {
-            napi_release_threadsafe_function(callbackContext_->tsfn, napi_tsfn_abort);
+    // Clean up the previous callback context. The mutex keeps this racing-free
+    // against transform callbacks resolving the context on network threads.
+    {
+        std::lock_guard<std::mutex> lock(contextMutex_);
+        if (callbackContext_ != nullptr) {
+            if (callbackContext_->tsfn != nullptr) {
+                napi_release_threadsafe_function(callbackContext_->tsfn, napi_tsfn_release);
+                callbackContext_->tsfn = nullptr;
+            }
+            if (callbackContext_->callbackRef != nullptr) {
+                napi_delete_reference(callbackContext_->env, callbackContext_->callbackRef);
+                callbackContext_->callbackRef = nullptr;
+            }
         }
-        if (callbackContext_->callbackRef != nullptr) {
-            napi_delete_reference(callbackContext_->env, callbackContext_->callbackRef);
-        }
-        delete callbackContext_;
-        callbackContext_ = nullptr;
+        callbackContext_.reset();
     }
 
     // Create a new callback context
-    callbackContext_ = new CallbackContext();
-    callbackContext_->env = env;
+    auto ctx = std::make_shared<CallbackContext>();
+    ctx->env = env;
+    ctx->jsThreadId = std::this_thread::get_id();
 
-    // Create a persistent reference
-    napi_create_reference(env, callbackValue, 1, &callbackContext_->callbackRef);
+    napi_status refStatus = napi_create_reference(env, callbackValue, 1, &ctx->callbackRef);
+    if (refStatus != napi_ok) {
+        Logger::error("URLTransformNAPI", "Failed to create callback reference");
+        napi_throw_error(env, nullptr, "Failed to create callback reference");
+        return nullptr;
+    }
 
     // Create the threadsafe function
     napi_value async_resource_name;
@@ -141,66 +168,85 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         nullptr,
         nullptr,
         CallJS,
-        &callbackContext_->tsfn);
+        &ctx->tsfn);
 
     if (status != napi_ok) {
         Logger::error("URLTransformNAPI", "Failed to create threadsafe function");
-        delete callbackContext_;
-        callbackContext_ = nullptr;
+        napi_delete_reference(env, ctx->callbackRef);
         napi_throw_error(env, nullptr, "Failed to create threadsafe function");
         return nullptr;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(contextMutex_);
+        callbackContext_ = std::move(ctx);
     }
 
     // Install the C++ conversion callback
     URLTransformManager::getInstance().setTransformCallback(
         [](mbgl::Resource::Kind kind, const std::string& url) -> std::string {
-            if (callbackContext_ == nullptr || callbackContext_->tsfn == nullptr) {
+            std::shared_ptr<CallbackContext> ctx;
+            {
+                std::lock_guard<std::mutex> lock(contextMutex_);
+                ctx = callbackContext_;
+            }
+            if (ctx == nullptr) {
                 return url;
             }
 
-            try {
-                // Prepare the call data
+            // Same-thread fast path: if the request originates on the JS thread,
+            // queuing the callback and blocking on the wait would deadlock until
+            // the timeout elapses — invoke the JS callback directly instead.
+            if (std::this_thread::get_id() == ctx->jsThreadId && ctx->env != nullptr) {
+                napi_value jsCallback = nullptr;
+                if (ctx->callbackRef == nullptr ||
+                    napi_get_reference_value(ctx->env, ctx->callbackRef, &jsCallback) != napi_ok ||
+                    jsCallback == nullptr) {
+                    return url;
+                }
                 std::string result;
-                std::mutex mutex;
-                std::condition_variable cv;
-                bool done = false;
-
-                TransformCallData callData{
-                    static_cast<int>(kind),
-                    url,
-                    &result,
-                    &mutex,
-                    &cv,
-                    &done
-                };
-
-                // Invoke the threadsafe function
-                napi_status status = napi_call_threadsafe_function(
-                    callbackContext_->tsfn,
-                    &callData,
-                    napi_tsfn_blocking);
-
-                if (status != napi_ok) {
-                    Logger::error("URLTransformNAPI", "Failed to call threadsafe function");
-                    return url;
-                }
-
-                // Wait for the callback to finish (with timeout protection)
-                std::unique_lock<std::mutex> lock(mutex);
-                if (!cv.wait_for(lock, std::chrono::seconds(5), [&done] { return done; })) {
-                    Logger::error("URLTransformNAPI", "Timeout waiting for JS callback");
-                    return url;
-                }
-
+                InvokeTransformCallback(ctx->env, jsCallback, static_cast<int>(kind), url, result);
                 return result;
+            }
 
-            } catch (const std::exception& e) {
-                Logger::error("URLTransformNAPI", "Exception in transform callback: %s", e.what());
-                return url;
-            } catch (...) {
-                Logger::error("URLTransformNAPI", "Unknown exception in transform callback");
+            // Keep the threadsafe function alive for the duration of the call.
+            // Acquire fails with napi_closing if the callback was cleared concurrently.
+            napi_threadsafe_function tsfn = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(contextMutex_);
+                if (callbackContext_ != ctx || ctx->tsfn == nullptr) {
+                    return url;
+                }
+                if (napi_acquire_threadsafe_function(ctx->tsfn) != napi_ok) {
+                    return url;
+                }
+                tsfn = ctx->tsfn;
+            }
+
+            auto* state = new TransformCallState();
+            state->kind = static_cast<int>(kind);
+            state->url = url;
+
+            napi_status status = napi_call_threadsafe_function(tsfn, state, napi_tsfn_blocking);
+            if (status != napi_ok) {
+                delete state;
+                napi_release_threadsafe_function(tsfn, napi_tsfn_release);
                 return url;
             }
+
+            std::string result = url;
+            {
+                std::unique_lock<std::mutex> lock(state->mutex);
+                if (state->cv.wait_for(lock, std::chrono::seconds(5), [&state] { return state->done; })) {
+                    result = std::move(state->result);
+                } else {
+                    // Timed out: ownership of `state` has moved to the queued CallJS
+                    // invocation — do not touch it any further.
+                    Logger::error("URLTransformNAPI", "Timeout waiting for JS callback");
+                }
+            }
+            napi_release_threadsafe_function(tsfn, napi_tsfn_release);
+            return result;
         });
 
     Logger::info("URLTransformNAPI", "Resource transform callback set");
@@ -215,17 +261,19 @@ napi_value URLTransformNAPI::ClearResourceTransformCallback(napi_env env, napi_c
     }
 
     // Clean up the callback context
-    if (callbackContext_ != nullptr) {
-        if (callbackContext_->tsfn != nullptr) {
-            napi_release_threadsafe_function(callbackContext_->tsfn, napi_tsfn_abort);
-            callbackContext_->tsfn = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(contextMutex_);
+        if (callbackContext_ != nullptr) {
+            if (callbackContext_->tsfn != nullptr) {
+                napi_release_threadsafe_function(callbackContext_->tsfn, napi_tsfn_release);
+                callbackContext_->tsfn = nullptr;
+            }
+            if (callbackContext_->callbackRef != nullptr) {
+                napi_delete_reference(callbackContext_->env, callbackContext_->callbackRef);
+                callbackContext_->callbackRef = nullptr;
+            }
         }
-        if (callbackContext_->callbackRef != nullptr) {
-            napi_delete_reference(callbackContext_->env, callbackContext_->callbackRef);
-            callbackContext_->callbackRef = nullptr;
-        }
-        delete callbackContext_;
-        callbackContext_ = nullptr;
+        callbackContext_.reset();
     }
 
     // Clear the C++ callback
@@ -251,4 +299,3 @@ napi_value URLTransformNAPI::HasResourceTransformCallback(napi_env env, napi_cal
 
 } // namespace harmony
 } // namespace mbgl
-

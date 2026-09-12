@@ -59,15 +59,19 @@ CURLEventLoop::CURLEventLoop(Mode mode)
     operation_signal_ = new uv_async_t;
     if (int err = uv_async_init(loop_, operation_signal_, onOperationSignal); err != 0) {
         Logger::error("Network", "Failed to initialize operation signal: %s", uv_strerror(err));
+        // holder_ was initialized: close it and drain the loop so its close
+        // callback (which deletes it) actually runs. Deleting it here as well
+        // would be a double free if the loop ever ran, and uv_loop_close fails
+        // while a handle is still registered.
         uv_close(reinterpret_cast<uv_handle_t*>(holder_), [](uv_handle_t* h) {
             delete reinterpret_cast<uv_async_t*>(h);
         });
+        holder_ = nullptr;
+        uv_run(loop_, UV_RUN_DEFAULT);  // returns once the last handle is closed
         uv_loop_close(loop_);
         delete loop_;
         loop_ = nullptr;
-        delete holder_;
-        holder_ = nullptr;
-        delete operation_signal_;
+        delete operation_signal_;  // init failed — never registered with the loop
         operation_signal_ = nullptr;
         throw std::runtime_error("Failed to initialize operation signal: " + std::string(uv_strerror(err)));
     }
@@ -110,26 +114,53 @@ CURLEventLoop::~CURLEventLoop() {
         multi_ = nullptr;
     }
 
-    // Release the polling timer if present (should already be nullptr after stop)
-    if (polling_timer_) {
-        delete polling_timer_;
-        polling_timer_ = nullptr;
-    }
-
-    // Release the holder handle if necessary (should already be nullptr after stop)
-    if (holder_) {
-        delete holder_;
-        holder_ = nullptr;
-    }
-
-    // Release the operation signal handle if necessary (should already be nullptr after stop)
-    if (operation_signal_) {
-        delete operation_signal_;
-        operation_signal_ = nullptr;
-    }
-
-    // Tear down the libuv event loop
+    // Close any libuv handles that are still alive (e.g. a failed start() where
+    // the loop thread never ran and performShutdown never executed). Handles
+    // closed on the loop thread are already nullptr here. The deletes happen in
+    // the close callbacks, which the drain below must run before uv_loop_close —
+    // otherwise uv_loop_close fails with EBUSY and leaks the loop internals.
     if (loop_) {
+        if (polling_timer_) {
+            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(polling_timer_))) {
+                uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
+                    delete reinterpret_cast<uv_timer_t*>(h);
+                });
+            }
+            polling_timer_ = nullptr;
+        }
+        if (timeout_timer_) {
+            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(timeout_timer_))) {
+                uv_close(reinterpret_cast<uv_handle_t*>(timeout_timer_), [](uv_handle_t* h) {
+                    delete reinterpret_cast<uv_timer_t*>(h);
+                });
+            }
+            timeout_timer_ = nullptr;
+        }
+        if (holder_) {
+            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(holder_))) {
+                uv_close(reinterpret_cast<uv_handle_t*>(holder_), [](uv_handle_t* h) {
+                    delete reinterpret_cast<uv_async_t*>(h);
+                });
+            }
+            holder_ = nullptr;
+        }
+        if (operation_signal_) {
+            if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(operation_signal_))) {
+                uv_close(reinterpret_cast<uv_handle_t*>(operation_signal_), [](uv_handle_t* h) {
+                    delete reinterpret_cast<uv_async_t*>(h);
+                });
+            }
+            operation_signal_ = nullptr;
+        }
+
+        // Drain pending close callbacks (bounded — the loop is empty in the
+        // common case and uv_run returns 0 immediately).
+        for (int i = 0; i < 4; ++i) {
+            if (uv_run(loop_, UV_RUN_NOWAIT) == 0) {
+                break;
+            }
+        }
+
         uv_loop_close(loop_);
         delete loop_;
         loop_ = nullptr;
@@ -169,6 +200,14 @@ void CURLEventLoop::start() {
         err = uv_timer_start(polling_timer_, onPolling, 20, 20);
         if (err != 0) {
             Logger::error("Network", "Failed to start polling timer: %s", uv_strerror(err));
+            // The timer is initialized but unusable: close it (the close callback
+            // deletes it) instead of leaking the handle. The loop thread has not
+            // been created yet; the destructor drains any remaining handles.
+            uv_close(reinterpret_cast<uv_handle_t*>(polling_timer_), [](uv_handle_t* h) {
+                delete reinterpret_cast<uv_timer_t*>(h);
+            });
+            polling_timer_ = nullptr;
+            running_.store(false);
             throw std::runtime_error("Failed to start polling timer: " + std::string(uv_strerror(err)));
         }
     }

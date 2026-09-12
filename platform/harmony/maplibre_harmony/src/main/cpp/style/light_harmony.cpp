@@ -1,6 +1,7 @@
 #include "light_harmony.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
+#include <mbgl/style/style.hpp>
 #include <mbgl/style/types.hpp>
 #include <mbgl/util/color.hpp>
 #include <mbgl/style/transition_options.hpp>
@@ -17,12 +18,17 @@ napi_ref LightHarmony::constructor = nullptr;
 // Constructor data structure for passing to napi_new_instance
 struct LightConstructorData {
     mbgl::Map* map;
-    mbgl::style::Light* light;
 };
 
-LightHarmony::LightHarmony(mbgl::Map& coreMap, mbgl::style::Light& coreLight)
-    : light(coreLight), map(&coreMap) {
+LightHarmony::LightHarmony(mbgl::Map& coreMap)
+    : map(&coreMap) {
     Logger::info("LightHarmony", "Light wrapper created");
+}
+
+mbgl::style::Light* LightHarmony::currentLight() const {
+    // Re-fetch on every access: the Light object is replaced when the style is
+    // reloaded and destroyed with the style/map.
+    return map ? map->getStyle().getLight() : nullptr;
 }
 
 LightHarmony::~LightHarmony() {
@@ -70,8 +76,8 @@ napi_value LightHarmony::Init(napi_env env, napi_value exports) {
                 if (argc > 0) {
                     LightConstructorData* data = nullptr;
                     napi_get_value_external(env, argv[0], (void**)&data);
-                    if (data) {
-                        LightHarmony* lightHarmony = new LightHarmony(*data->map, *data->light);
+                    if (data && data->map) {
+                        LightHarmony* lightHarmony = new LightHarmony(*data->map);
                         napi_wrap(env, jsThis, lightHarmony, Destructor, nullptr, nullptr);
                         Logger::info("LightHarmony", "Light wrapper created via constructor");
                     }
@@ -102,7 +108,7 @@ napi_value LightHarmony::Init(napi_env env, napi_value exports) {
     return exports;
 }
 
-napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map, mbgl::style::Light& coreLight) {
+napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map) {
     if (constructor == nullptr) {
         Logger::error("LightHarmony", "Light constructor not initialized");
         napi_value undefined;
@@ -113,8 +119,8 @@ napi_value LightHarmony::CreateLightPeer(napi_env env, mbgl::Map& map, mbgl::sty
     napi_value cons;
     napi_get_reference_value(env, constructor, &cons);
 
-    // Create data structure with Map and Light pointers
-    LightConstructorData data{&map, &coreLight};
+    // Create data structure with the Map pointer
+    LightConstructorData data{&map};
 
     napi_value dataExternal;
     napi_status status = napi_create_external(env, &data, nullptr, nullptr, &dataExternal);
@@ -151,8 +157,14 @@ napi_value LightHarmony::GetAnchor(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    auto anchorType = lightHarmony->light.getAnchor();
+    auto anchorType = light->getAnchor();
     const char* anchorStr = (anchorType == style::LightAnchorType::Map) ? "map" : "viewport";
     
     napi_value result;
@@ -174,6 +186,12 @@ napi_value LightHarmony::SetAnchor(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     std::string anchorStr = args.GetString(0, "anchor");
     if (args.HasError()) {
@@ -181,9 +199,9 @@ napi_value LightHarmony::SetAnchor(napi_env env, napi_callback_info info) {
     }
     
     if (anchorStr == "map") {
-        lightHarmony->light.setAnchor(style::LightAnchorType::Map);
+        light->setAnchor(style::LightAnchorType::Map);
     } else if (anchorStr == "viewport") {
-        lightHarmony->light.setAnchor(style::LightAnchorType::Viewport);
+        light->setAnchor(style::LightAnchorType::Viewport);
     }
     
     return args.Undefined();
@@ -202,8 +220,14 @@ napi_value LightHarmony::GetPosition(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    auto position = lightHarmony->light.getPosition().asConstant();
+    auto position = light->getPosition().asConstant();
     auto spherical = position.getSpherical();
     
     napi_value result;
@@ -235,6 +259,12 @@ napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     napi_value positionObj = args.GetObject(0, "position");
     if (args.HasError()) {
@@ -259,7 +289,7 @@ napi_value LightHarmony::SetPosition(napi_env env, napi_callback_info info) {
         static_cast<float>(polar)
     };
     style::Position position(positionArray);
-    lightHarmony->light.setPosition(position);
+    light->setPosition(position);
     
     return args.Undefined();
 }
@@ -277,8 +307,14 @@ napi_value LightHarmony::GetPositionTransition(napi_env env, napi_callback_info 
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    auto transition = lightHarmony->light.getPositionTransition();
+    auto transition = light->getPositionTransition();
     
     napi_value result;
     napi_create_object(env, &result);
@@ -312,6 +348,12 @@ napi_value LightHarmony::SetPositionTransition(napi_env env, napi_callback_info 
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     int64_t duration = args.GetInt64(0, "duration");
     int64_t delay = args.GetInt64(1, "delay");
@@ -322,7 +364,7 @@ napi_value LightHarmony::SetPositionTransition(napi_env env, napi_callback_info 
     style::TransitionOptions options;
     options.duration.emplace(mbgl::Milliseconds(duration));
     options.delay.emplace(mbgl::Milliseconds(delay));
-    lightHarmony->light.setPositionTransition(options);
+    light->setPositionTransition(options);
     
     return args.Undefined();
 }
@@ -340,8 +382,14 @@ napi_value LightHarmony::GetColor(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    auto color = lightHarmony->light.getColor().asConstant();
+    auto color = light->getColor().asConstant();
     std::string colorStr = color.stringify();
     
     napi_value result;
@@ -363,6 +411,12 @@ napi_value LightHarmony::SetColor(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     std::string colorStr = args.GetString(0, "color");
     if (args.HasError()) {
@@ -371,7 +425,7 @@ napi_value LightHarmony::SetColor(napi_env env, napi_callback_info info) {
     
     auto color = Color::parse(colorStr.c_str());
     if (color) {
-        lightHarmony->light.setColor(*color);
+        light->setColor(*color);
     }
     
     return args.Undefined();
@@ -390,8 +444,14 @@ napi_value LightHarmony::GetColorTransition(napi_env env, napi_callback_info inf
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    auto transition = lightHarmony->light.getColorTransition();
+    auto transition = light->getColorTransition();
     
     napi_value result;
     napi_create_object(env, &result);
@@ -425,6 +485,12 @@ napi_value LightHarmony::SetColorTransition(napi_env env, napi_callback_info inf
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     int64_t duration = args.GetInt64(0, "duration");
     int64_t delay = args.GetInt64(1, "delay");
@@ -435,7 +501,7 @@ napi_value LightHarmony::SetColorTransition(napi_env env, napi_callback_info inf
     style::TransitionOptions options;
     options.duration.emplace(mbgl::Milliseconds(duration));
     options.delay.emplace(mbgl::Milliseconds(delay));
-    lightHarmony->light.setColorTransition(options);
+    light->setColorTransition(options);
     
     return args.Undefined();
 }
@@ -453,8 +519,14 @@ napi_value LightHarmony::GetIntensity(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    float intensity = lightHarmony->light.getIntensity().asConstant();
+    float intensity = light->getIntensity().asConstant();
     
     napi_value result;
     napi_create_double(env, intensity, &result);
@@ -475,13 +547,19 @@ napi_value LightHarmony::SetIntensity(napi_env env, napi_callback_info info) {
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     double intensity = args.GetDouble(0, "intensity");
     if (args.HasError()) {
         return nullptr;
     }
     
-    lightHarmony->light.setIntensity(static_cast<float>(intensity));
+    light->setIntensity(static_cast<float>(intensity));
     
     return args.Undefined();
 }
@@ -499,8 +577,14 @@ napi_value LightHarmony::GetIntensityTransition(napi_env env, napi_callback_info
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
-    auto transition = lightHarmony->light.getIntensityTransition();
+    auto transition = light->getIntensityTransition();
     
     napi_value result;
     napi_create_object(env, &result);
@@ -534,6 +618,12 @@ napi_value LightHarmony::SetIntensityTransition(napi_env env, napi_callback_info
     if (!lightHarmony) {
         return args.Undefined();
     }
+
+    mbgl::style::Light* light = lightHarmony->currentLight();
+    if (!light) {
+        // Style reloaded / map gone — nothing to access
+        return args.Undefined();
+    }
     
     int64_t duration = args.GetInt64(0, "duration");
     int64_t delay = args.GetInt64(1, "delay");
@@ -544,7 +634,7 @@ napi_value LightHarmony::SetIntensityTransition(napi_env env, napi_callback_info
     style::TransitionOptions options;
     options.duration.emplace(mbgl::Milliseconds(duration));
     options.delay.emplace(mbgl::Milliseconds(delay));
-    lightHarmony->light.setIntensityTransition(options);
+    light->setIntensityTransition(options);
     
     return args.Undefined();
 }

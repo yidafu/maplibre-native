@@ -23,6 +23,10 @@ mbgl::Geometry<double> GeoJsonConverter::JsObjectToGeometry(napi_env env, napi_v
     }
 
     std::string type = GetStringProperty(env, jsObj, "type");
+    if (type.empty()) {
+        // GetStringProperty returns empty when 'type' is missing or not a string
+        throw std::runtime_error("Geometry 'type' must be a string");
+    }
     return ParseGeometryByType(env, jsObj, type);
 }
 
@@ -114,6 +118,9 @@ mbgl::GeoJSON GeoJsonConverter::JsObjectToGeoJSON(napi_env env, napi_value jsObj
     std::string type;
     if (HasProperty(env, jsObj, "type")) {
         type = GetStringProperty(env, jsObj, "type");
+        if (type.empty()) {
+            throw std::runtime_error("GeoJSON 'type' must be a string");
+        }
     } else {
         throw std::runtime_error("GeoJSON must have a 'type' property");
     }

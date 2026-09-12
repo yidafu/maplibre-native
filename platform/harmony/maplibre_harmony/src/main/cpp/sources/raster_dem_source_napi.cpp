@@ -375,14 +375,8 @@ napi_value RasterDemSourceNAPI::SetTileSize(napi_env env, napi_callback_info inf
         return nullptr;
     }
 
-    uint32_t tileSize = args.GetUint32(0, "tileSize");
-    if (args.HasError()) return nullptr;
-
-    if (tileSize == 0 || tileSize > 1024) {
-        napi_throw_error(env, nullptr, "Invalid tile size (must be between 1 and 1024)");
-        return nullptr;
-    }
-
+    // Note: RasterDemSource does not support changing tile size after
+    // creation; the operation is unsupported regardless of the argument value.
     Logger::info("RasterDemSourceNAPI", "SetTileSize not supported - tile size is immutable after source creation");
     napi_throw_error(env, nullptr, "RasterDemSource does not support changing tile size after creation. Please recreate the source with the desired tile size.");
     return nullptr;

@@ -340,61 +340,64 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
       resource(std::move(resource_)),
       callback(std::move(callback_)),
       handle(context_ ? context_->getHandle() : nullptr) {
-    if (!context) {
-        throw std::runtime_error("HTTPFileSource context is null");
-    }
-
-    if (!handle) {
-        throw std::runtime_error("Failed to acquire CURL easy handle");
-    }
-
-    // Apply URL transforms when a callback is provided.
-    // Reference Android: platform/android/.../file_source.cpp:122-124
-    // Reference iOS: platform/darwin/src/MLNOfflineStorage.mm:138-141
-    auto& transformManager = URLTransformManager::getInstance();
-    if (transformManager.hasCallback()) {
-        std::string originalUrl = resource.url;
-        std::string transformedUrl = transformManager.transform(resource.kind, resource.url);
-        
-        if (!transformedUrl.empty() && transformedUrl != originalUrl) {
-            resource.url = transformedUrl;
+    // The CURL handle is acquired in the init list and the header list grows
+    // below; if anything in the body throws, the destructor never runs — clean
+    // both up here before rethrowing (P1-1).
+    try {
+        if (!context) {
+            throw std::runtime_error("HTTPFileSource context is null");
         }
-    }
-    
-    if (resource.dataRange) {
-        const std::string header = std::string("Range: bytes=") + std::to_string(resource.dataRange->first) +
-                                   std::string("-") + std::to_string(resource.dataRange->second);
-        headers = curl_slist_append(headers, header.c_str());
-    }
 
-    if (resource.priorEtag) {
-        const std::string header = std::string("If-None-Match: ") + *resource.priorEtag;
-        headers = curl_slist_append(headers, header.c_str());
-    } else if (resource.priorModified) {
-        const std::string time = std::string("If-Modified-Since: ") + util::rfc1123(*resource.priorModified);
-        headers = curl_slist_append(headers, time.c_str());
-    }
+        if (!handle) {
+            throw std::runtime_error("Failed to acquire CURL easy handle");
+        }
 
-    // Apply custom HTTP headers.
-    // Reference iOS: platform/darwin/core/http_file_source.mm:89-96
-    // Reference Android: platform/android/.../HttpRequestImpl.java:115-117
-    auto& config = HTTPRequestConfig::getInstance();
-    auto customHeaders = config.getCustomHeaders();
-    if (!customHeaders.empty()) {
-        for (const auto& [key, value] : customHeaders) {
-            // Skip User-Agent (configured separately below)
-            std::string lowerKey = key;
-            std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
-            if (lowerKey == "user-agent") {
-                continue;
+        // Apply URL transforms when a callback is provided.
+        // Reference Android: platform/android/.../file_source.cpp:122-124
+        // Reference iOS: platform/darwin/src/MLNOfflineStorage.mm:138-141
+        auto& transformManager = URLTransformManager::getInstance();
+        if (transformManager.hasCallback()) {
+            std::string originalUrl = resource.url;
+            std::string transformedUrl = transformManager.transform(resource.kind, resource.url);
+
+            if (!transformedUrl.empty() && transformedUrl != originalUrl) {
+                resource.url = transformedUrl;
             }
-            
-            const std::string header = key + ": " + value;
+        }
+
+        if (resource.dataRange) {
+            const std::string header = std::string("Range: bytes=") + std::to_string(resource.dataRange->first) +
+                                       std::string("-") + std::to_string(resource.dataRange->second);
             headers = curl_slist_append(headers, header.c_str());
         }
-    }
-    
-    try {
+
+        if (resource.priorEtag) {
+            const std::string header = std::string("If-None-Match: ") + *resource.priorEtag;
+            headers = curl_slist_append(headers, header.c_str());
+        } else if (resource.priorModified) {
+            const std::string time = std::string("If-Modified-Since: ") + util::rfc1123(*resource.priorModified);
+            headers = curl_slist_append(headers, time.c_str());
+        }
+
+        // Apply custom HTTP headers.
+        // Reference iOS: platform/darwin/core/http_file_source.mm:89-96
+        // Reference Android: platform/android/.../HttpRequestImpl.java:115-117
+        auto& config = HTTPRequestConfig::getInstance();
+        auto customHeaders = config.getCustomHeaders();
+        if (!customHeaders.empty()) {
+            for (const auto& [key, value] : customHeaders) {
+                // Skip User-Agent (configured separately below)
+                std::string lowerKey = key;
+                std::transform(lowerKey.begin(), lowerKey.end(), lowerKey.begin(), ::tolower);
+                if (lowerKey == "user-agent") {
+                    continue;
+                }
+
+                const std::string header = key + ": " + value;
+                headers = curl_slist_append(headers, header.c_str());
+            }
+        }
+
         if (headers) {
             curl_easy_setopt(handle, CURLOPT_HTTPHEADER, headers);
         }
@@ -426,9 +429,23 @@ HTTPRequest::HTTPRequest(HTTPFileSource::Impl *context_, Resource resource_, Fil
             Logger::error("Network", "❌ CURLEventLoop is null");
             throw std::runtime_error("CURLEventLoop is null");
         }
-        
+
     } catch (const std::exception& e) {
         Logger::error("Network", "Exception in HTTPRequest constructor: %s", e.what());
+        // Nothing after addHandle() can throw, so the handle was never added to
+        // the event loop here — no removeHandle needed; just restore the pooled
+        // handle and free the header list.
+        if (handle) {
+            curl_easy_setopt(handle, CURLOPT_WRITEDATA, nullptr);
+            curl_easy_setopt(handle, CURLOPT_HEADERDATA, nullptr);
+            curl_easy_setopt(handle, CURLOPT_PRIVATE, nullptr);
+            context->returnHandle(handle);
+            handle = nullptr;
+        }
+        if (headers) {
+            curl_slist_free_all(headers);
+            headers = nullptr;
+        }
         throw;
     }
 }
@@ -535,24 +552,33 @@ size_t HTTPRequest::headerCallback(char *const buffer, const size_t size, const 
         }
 
         const size_t length = size * nmemb;
-        size_t begin = std::string::npos;
-        if ((begin = headerMatches("last-modified: ", buffer, length)) != std::string::npos) {
-            const std::string value{buffer + begin, length - begin - 2};
-            baton->response->modified = Timestamp{Seconds(curl_getdate(value.c_str(), nullptr))};
-        } else if ((begin = headerMatches("etag: ", buffer, length)) != std::string::npos) {
-            baton->response->etag = std::string(buffer + begin, length - begin - 2);
-        } else if ((begin = headerMatches("cache-control: ", buffer, length)) != std::string::npos) {
-            const std::string value{buffer + begin, length - begin - 2};
-            const auto cc = http::CacheControl::parse(value);
+
+        // A matched header line always ends in CRLF; require the terminator
+        // before slicing `length - pos - 2` (defensive hardening — libcurl
+        // never delivers a bare header prefix, but stay safe against
+        // size_t underflow in the value length computation).
+        const auto headerValue = [&buffer, length](const char* header) -> std::optional<std::string> {
+            const size_t pos = headerMatches(header, buffer, length);
+            if (pos == std::string::npos || length < pos + 2) {
+                return std::nullopt;
+            }
+            return std::string(buffer + pos, length - pos - 2);
+        };
+
+        if (auto value = headerValue("last-modified: ")) {
+            baton->response->modified = Timestamp{Seconds(curl_getdate(value->c_str(), nullptr))};
+        } else if (auto value = headerValue("etag: ")) {
+            baton->response->etag = std::move(*value);
+        } else if (auto value = headerValue("cache-control: ")) {
+            const auto cc = http::CacheControl::parse(*value);
             baton->response->expires = cc.toTimePoint();
             baton->response->mustRevalidate = cc.mustRevalidate;
-        } else if ((begin = headerMatches("expires: ", buffer, length)) != std::string::npos) {
-            const std::string value{buffer + begin, length - begin - 2};
-            baton->response->expires = Timestamp{Seconds(curl_getdate(value.c_str(), nullptr))};
-        } else if ((begin = headerMatches("retry-after: ", buffer, length)) != std::string::npos) {
-            baton->retryAfter = std::string(buffer + begin, length - begin - 2);
-        } else if ((begin = headerMatches("x-rate-limit-reset: ", buffer, length)) != std::string::npos) {
-            baton->xRateLimitReset = std::string(buffer + begin, length - begin - 2);
+        } else if (auto value = headerValue("expires: ")) {
+            baton->response->expires = Timestamp{Seconds(curl_getdate(value->c_str(), nullptr))};
+        } else if (auto value = headerValue("retry-after: ")) {
+            baton->retryAfter = std::move(*value);
+        } else if (auto value = headerValue("x-rate-limit-reset: ")) {
+            baton->xRateLimitReset = std::move(*value);
         }
 
         return length;

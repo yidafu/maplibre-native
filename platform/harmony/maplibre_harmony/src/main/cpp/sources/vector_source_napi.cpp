@@ -290,13 +290,20 @@ napi_value VectorSourceNAPI::SetTiles(napi_env env, napi_callback_info info) {
         napi_value element;
         napi_get_element(env, tilesArray, i, &element);
         
-        size_t strSize;
-        napi_get_value_string_utf8(env, element, nullptr, 0, &strSize);
-        std::string tile(strSize + 1, '\0');
-        napi_get_value_string_utf8(env, element, &tile[0], strSize + 1, &strSize);
+        size_t strSize = 0;
+        if (napi_get_value_string_utf8(env, element, nullptr, 0, &strSize) != napi_ok) {
+            napi_throw_error(env, nullptr, "tiles must be an array of strings");
+            return nullptr;
+        }
+        std::string tile(strSize, '\0');
+        if (strSize > 0 &&
+            napi_get_value_string_utf8(env, element, &tile[0], strSize + 1, nullptr) != napi_ok) {
+            napi_throw_error(env, nullptr, "Failed to read tiles element");
+            return nullptr;
+        }
         tile.resize(strSize);
-        
-        tiles.push_back(tile);
+
+        tiles.push_back(std::move(tile));
     }
     
     try {

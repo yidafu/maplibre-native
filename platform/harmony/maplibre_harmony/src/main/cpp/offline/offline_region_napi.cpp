@@ -1,17 +1,40 @@
 #include "offline_region_napi.hpp"
 #include "offline_region_definition_napi.hpp"
 #include "offline_region_status_napi.hpp"
+#include "core/thread_safe_callback.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 
 #include <mbgl/storage/response.hpp>
 #include <mbgl/util/string.hpp>
 
+#include <cstring>
+
 namespace maplibre {
 namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
 using NapiArgs = mbgl::harmony::napi::NapiArgs;
+
+namespace {
+
+// Resolve one observer method (e.g. onStatusChanged) into a thread-safe callback.
+// Returns nullptr when the method is absent or not a function.
+std::shared_ptr<mbgl::harmony::ThreadSafeCallback> GetObserverMethodCallback(
+    napi_env env, napi_value observer, const char* methodName, const char* resource) {
+    napi_value fn = nullptr;
+    if (napi_get_named_property(env, observer, methodName, &fn) != napi_ok || fn == nullptr) {
+        return nullptr;
+    }
+    napi_valuetype type = napi_undefined;
+    if (napi_typeof(env, fn, &type) != napi_ok || type != napi_function) {
+        return nullptr;
+    }
+    return std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, fn, resource));
+}
+
+} // namespace
 
 // Static constructor reference initialization
 napi_ref OfflineRegionNAPI::constructor_ = nullptr;
@@ -160,7 +183,7 @@ napi_value OfflineRegionNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_) {
@@ -177,7 +200,7 @@ napi_value OfflineRegionNAPI::GetDefinition(napi_env env, napi_callback_info inf
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_) {
@@ -192,7 +215,7 @@ napi_value OfflineRegionNAPI::GetMetadata(napi_env env, napi_callback_info info)
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_) {
@@ -214,7 +237,7 @@ napi_value OfflineRegionNAPI::SetDownloadState(napi_env env, napi_callback_info 
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_ || !obj->fileSource_) {
@@ -250,7 +273,7 @@ napi_value OfflineRegionNAPI::SetObserver(napi_env env, napi_callback_info info)
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_ || !obj->fileSource_) {
@@ -258,114 +281,102 @@ napi_value OfflineRegionNAPI::SetObserver(napi_env env, napi_callback_info info)
         return nullptr;
     }
     
-    // Store observer reference
+    // Store observer reference (kept only for JS-side lifetime management on the JS thread)
     if (obj->observerRef_ != nullptr) {
         napi_delete_reference(env, obj->observerRef_);
+        obj->observerRef_ = nullptr;
     }
     napi_create_reference(env, observer, 1, &obj->observerRef_);
+    
+    // Resolve each observer method into a thread-safe callback. The observer's
+    // methods are invoked by DatabaseFileSource on the database thread, so all
+    // N-API work must be marshalled back to the JS thread via tsfn.
+    auto statusCb = GetObserverMethodCallback(env, observer, "onStatusChanged", "OfflineRegionStatusChanged");
+    auto errorCb = GetObserverMethodCallback(env, observer, "onError", "OfflineRegionResponseError");
+    auto limitCb = GetObserverMethodCallback(env, observer, "mapboxTileCountLimitExceeded", "OfflineRegionTileLimitExceeded");
     
     // Create observer object
     class Observer : public mbgl::OfflineRegionObserver {
     public:
-        Observer(napi_env env, napi_ref observerRef)
-            : env_(env), observerRef_(observerRef) {}
+        Observer(std::shared_ptr<mbgl::harmony::ThreadSafeCallback> statusCb,
+                 std::shared_ptr<mbgl::harmony::ThreadSafeCallback> errorCb,
+                 std::shared_ptr<mbgl::harmony::ThreadSafeCallback> limitCb)
+            : statusCb_(std::move(statusCb)),
+              errorCb_(std::move(errorCb)),
+              limitCb_(std::move(limitCb)) {}
         
         void statusChanged(mbgl::OfflineRegionStatus status) override {
-            napi_value observerObj;
-            napi_get_reference_value(env_, observerRef_, &observerObj);
-            
-            napi_value onStatusChanged;
-            napi_get_named_property(env_, observerObj, "onStatusChanged", &onStatusChanged);
-            
-            napi_value statusObj = OfflineRegionStatusNAPI::ToNapiObject(env_, status);
-            
-            napi_value global;
-            napi_get_global(env_, &global);
-            
-            napi_value args[1] = {statusObj};
-            napi_value result;
-            napi_call_function(env_, observerObj, onStatusChanged, 1, args, &result);
+            if (!statusCb_) return;
+            statusCb_->Call([status](napi_env env) -> napi_value {
+                return OfflineRegionStatusNAPI::ToNapiObject(env, status);
+            });
         }
         
         void responseError(mbgl::Response::Error error) override {
-            napi_value observerObj;
-            napi_get_reference_value(env_, observerRef_, &observerObj);
-            
-            napi_value onError;
-            napi_get_named_property(env_, observerObj, "onError", &onError);
-            
-            // Create error object
-            napi_value errorObj;
-            napi_create_object(env_, &errorObj);
-            
-            // error.reason is an enum; convert to string
-            std::string reasonStr;
-            switch (error.reason) {
-                case mbgl::Response::Error::Reason::Success:
-                    reasonStr = "Success";
-                    break;
-                case mbgl::Response::Error::Reason::NotFound:
-                    reasonStr = "NotFound";
-                    break;
-                case mbgl::Response::Error::Reason::Server:
-                    reasonStr = "Server";
-                    break;
-                case mbgl::Response::Error::Reason::Connection:
-                    reasonStr = "Connection";
-                    break;
-                case mbgl::Response::Error::Reason::RateLimit:
-                    reasonStr = "RateLimit";
-                    break;
-                case mbgl::Response::Error::Reason::Other:
-                    reasonStr = "Other";
-                    break;
-                default:
-                    reasonStr = "Unknown";
-                    break;
-            }
-            
-            napi_value reasonValue;
-            napi_create_string_utf8(env_, reasonStr.c_str(), NAPI_AUTO_LENGTH, &reasonValue);
-            napi_set_named_property(env_, errorObj, "reason", reasonValue);
-            
-            napi_value messageValue;
-            napi_create_string_utf8(env_, error.message.c_str(), NAPI_AUTO_LENGTH, &messageValue);
-            napi_set_named_property(env_, errorObj, "message", messageValue);
-            
-            napi_value global;
-            napi_get_global(env_, &global);
-            
-            napi_value args[1] = {errorObj};
-            napi_value result;
-            napi_call_function(env_, observerObj, onError, 1, args, &result);
+            if (!errorCb_) return;
+            errorCb_->Call([error = std::move(error)](napi_env env) -> napi_value {
+                napi_value errorObj;
+                if (napi_create_object(env, &errorObj) != napi_ok) {
+                    napi_get_undefined(env, &errorObj);
+                    return errorObj;
+                }
+                
+                // error.reason is an enum; convert to string
+                std::string reasonStr;
+                switch (error.reason) {
+                    case mbgl::Response::Error::Reason::Success:
+                        reasonStr = "Success";
+                        break;
+                    case mbgl::Response::Error::Reason::NotFound:
+                        reasonStr = "NotFound";
+                        break;
+                    case mbgl::Response::Error::Reason::Server:
+                        reasonStr = "Server";
+                        break;
+                    case mbgl::Response::Error::Reason::Connection:
+                        reasonStr = "Connection";
+                        break;
+                    case mbgl::Response::Error::Reason::RateLimit:
+                        reasonStr = "RateLimit";
+                        break;
+                    case mbgl::Response::Error::Reason::Other:
+                        reasonStr = "Other";
+                        break;
+                    default:
+                        reasonStr = "Unknown";
+                        break;
+                }
+                
+                napi_value reasonValue;
+                napi_create_string_utf8(env, reasonStr.c_str(), NAPI_AUTO_LENGTH, &reasonValue);
+                napi_set_named_property(env, errorObj, "reason", reasonValue);
+                
+                napi_value messageValue;
+                napi_create_string_utf8(env, error.message.c_str(), NAPI_AUTO_LENGTH, &messageValue);
+                napi_set_named_property(env, errorObj, "message", messageValue);
+                
+                return errorObj;
+            });
         }
         
         void mapboxTileCountLimitExceeded(uint64_t limit) override {
-            napi_value observerObj;
-            napi_get_reference_value(env_, observerRef_, &observerObj);
-            
-            napi_value onLimitExceeded;
-            napi_get_named_property(env_, observerObj, "mapboxTileCountLimitExceeded", &onLimitExceeded);
-            
-            napi_value limitValue;
-            napi_create_int64(env_, static_cast<int64_t>(limit), &limitValue);
-            
-            napi_value global;
-            napi_get_global(env_, &global);
-            
-            napi_value args[1] = {limitValue};
-            napi_value result;
-            napi_call_function(env_, observerObj, onLimitExceeded, 1, args, &result);
+            if (!limitCb_) return;
+            limitCb_->Call([limit](napi_env env) -> napi_value {
+                napi_value limitValue;
+                napi_create_int64(env, static_cast<int64_t>(limit), &limitValue);
+                return limitValue;
+            });
         }
         
     private:
-        napi_env env_;
-        napi_ref observerRef_;
+        std::shared_ptr<mbgl::harmony::ThreadSafeCallback> statusCb_;
+        std::shared_ptr<mbgl::harmony::ThreadSafeCallback> errorCb_;
+        std::shared_ptr<mbgl::harmony::ThreadSafeCallback> limitCb_;
     };
     
     obj->fileSource_->setOfflineRegionObserver(
         *obj->region_,
-        std::make_unique<Observer>(env, obj->observerRef_)
+        std::make_unique<Observer>(std::move(statusCb), std::move(errorCb), std::move(limitCb))
     );
     
     napi_value undefined;
@@ -384,7 +395,7 @@ napi_value OfflineRegionNAPI::GetStatus(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_ || !obj->fileSource_) {
@@ -392,33 +403,27 @@ napi_value OfflineRegionNAPI::GetStatus(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
+    // DatabaseFileSource invokes its completion on the database thread; marshal
+    // back to the JS thread via ThreadSafeCallback instead of calling NAPI directly.
+    auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "OfflineRegionGetStatus"));
+    if (!jsCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     obj->fileSource_->getOfflineRegionStatus(
         *obj->region_,
-        [env, callbackRef](mbgl::expected<mbgl::OfflineRegionStatus, std::exception_ptr> status) {
-            napi_value callback_func;
-            napi_get_reference_value(env, callbackRef, &callback_func);
-            
-            napi_value global;
-            napi_get_global(env, &global);
-            
-            if (status) {
-                napi_value statusObj = OfflineRegionStatusNAPI::ToNapiObject(env, *status);
-                napi_value args[1] = {statusObj};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 1, args, &ret);
-            } else {
+        [jsCallback](mbgl::expected<mbgl::OfflineRegionStatus, std::exception_ptr> status) {
+            jsCallback->CallBlocking([status](napi_env env) -> napi_value {
+                if (status) {
+                    return OfflineRegionStatusNAPI::ToNapiObject(env, *status);
+                }
                 std::string errorMsg = mbgl::util::toString(status.error());
                 napi_value errorValue;
                 napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                napi_value args[1] = {errorValue};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 1, args, &ret);
-            }
-            
-            napi_delete_reference(env, callbackRef);
+                return errorValue;
+            });
         }
     );
     
@@ -438,7 +443,7 @@ napi_value OfflineRegionNAPI::Delete(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_ || !obj->fileSource_) {
@@ -446,32 +451,27 @@ napi_value OfflineRegionNAPI::Delete(napi_env env, napi_callback_info info) {
         return nullptr;
     }
     
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
+    auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "OfflineRegionDelete"));
+    if (!jsCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     obj->fileSource_->deleteOfflineRegion(
         *obj->region_,
-        [env, callbackRef](std::exception_ptr error) {
-            napi_value callback_func;
-            napi_get_reference_value(env, callbackRef, &callback_func);
-            
-            napi_value global;
-            napi_get_global(env, &global);
-            
-            if (error) {
-                std::string errorMsg = mbgl::util::toString(error);
-                napi_value errorValue;
-                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                napi_value args[1] = {errorValue};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 1, args, &ret);
-            } else {
-                napi_value args[0] = {};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 0, args, &ret);
-            }
-            
-            napi_delete_reference(env, callbackRef);
+        [jsCallback](std::exception_ptr error) {
+            jsCallback->CallBlocking([error](napi_env env) -> napi_value {
+                if (error) {
+                    std::string errorMsg = mbgl::util::toString(error);
+                    napi_value errorValue;
+                    napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
+                    return errorValue;
+                }
+                napi_value undefined;
+                napi_get_undefined(env, &undefined);
+                return undefined;
+            });
         }
     );
     
@@ -491,7 +491,7 @@ napi_value OfflineRegionNAPI::Invalidate(napi_env env, napi_callback_info info) 
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_ || !obj->fileSource_) {
@@ -499,32 +499,27 @@ napi_value OfflineRegionNAPI::Invalidate(napi_env env, napi_callback_info info) 
         return nullptr;
     }
     
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
+    auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "OfflineRegionInvalidate"));
+    if (!jsCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     obj->fileSource_->invalidateOfflineRegion(
         *obj->region_,
-        [env, callbackRef](std::exception_ptr error) {
-            napi_value callback_func;
-            napi_get_reference_value(env, callbackRef, &callback_func);
-            
-            napi_value global;
-            napi_get_global(env, &global);
-            
-            if (error) {
-                std::string errorMsg = mbgl::util::toString(error);
-                napi_value errorValue;
-                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                napi_value args[1] = {errorValue};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 1, args, &ret);
-            } else {
-                napi_value args[0] = {};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 0, args, &ret);
-            }
-            
-            napi_delete_reference(env, callbackRef);
+        [jsCallback](std::exception_ptr error) {
+            jsCallback->CallBlocking([error](napi_env env) -> napi_value {
+                if (error) {
+                    std::string errorMsg = mbgl::util::toString(error);
+                    napi_value errorValue;
+                    napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
+                    return errorValue;
+                }
+                napi_value undefined;
+                napi_get_undefined(env, &undefined);
+                return undefined;
+            });
         }
     );
     
@@ -550,7 +545,7 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
     napi_value jsThis;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     
-    OfflineRegionNAPI* obj;
+    OfflineRegionNAPI* obj = nullptr;
     napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
     
     if (!obj || !obj->region_ || !obj->fileSource_) {
@@ -559,35 +554,33 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
     }
     
     mbgl::OfflineRegionMetadata metadata = ArrayBufferToMetadata(env, metadataValue);
+    // ArrayBufferToMetadata throws into JS on invalid input; surface it instead
+    // of silently forwarding empty metadata.
+    bool pending = false;
+    if (napi_is_exception_pending(env, &pending) == napi_ok && pending) {
+        return nullptr;
+    }
     
-    napi_ref callbackRef;
-    napi_create_reference(env, callback, 1, &callbackRef);
+    auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
+        mbgl::harmony::ThreadSafeCallback::Create(env, callback, "OfflineRegionUpdateMetadata"));
+    if (!jsCallback) {
+        napi_throw_error(env, nullptr, "Failed to create thread-safe callback");
+        return nullptr;
+    }
     
     obj->fileSource_->updateOfflineMetadata(
         obj->region_->getID(),
         metadata,
-        [env, callbackRef](mbgl::expected<mbgl::OfflineRegionMetadata, std::exception_ptr> result) {
-            napi_value callback_func;
-            napi_get_reference_value(env, callbackRef, &callback_func);
-            
-            napi_value global;
-            napi_get_global(env, &global);
-            
-            if (result) {
-                napi_value metadataValue = OfflineRegionNAPI::MetadataToArrayBuffer(env, *result);
-                napi_value args[1] = {metadataValue};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 1, args, &ret);
-            } else {
+        [jsCallback](mbgl::expected<mbgl::OfflineRegionMetadata, std::exception_ptr> result) {
+            jsCallback->CallBlocking([result](napi_env env) -> napi_value {
+                if (result) {
+                    return OfflineRegionNAPI::MetadataToArrayBuffer(env, *result);
+                }
                 std::string errorMsg = mbgl::util::toString(result.error());
                 napi_value errorValue;
                 napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                napi_value args[1] = {errorValue};
-                napi_value ret;
-                napi_call_function(env, global, callback_func, 1, args, &ret);
-            }
-            
-            napi_delete_reference(env, callbackRef);
+                return errorValue;
+            });
         }
     );
     
@@ -599,23 +592,37 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
 // ========== Helper Functions ==========
 
 napi_value OfflineRegionNAPI::MetadataToArrayBuffer(napi_env env, const mbgl::OfflineRegionMetadata& metadata) {
-    napi_value arrayBuffer;
-    void* data;
-    napi_create_arraybuffer(env, metadata.size(), &data, &arrayBuffer);
-    std::memcpy(data, metadata.data(), metadata.size());
+    napi_value arrayBuffer = nullptr;
+    void* data = nullptr;
+    napi_status status = napi_create_arraybuffer(env, metadata.size(), &data, &arrayBuffer);
+    if (status != napi_ok) {
+        Logger::error("OfflineRegionNAPI", "Failed to create metadata arraybuffer");
+        napi_get_undefined(env, &arrayBuffer);
+        return arrayBuffer;
+    }
+    if (data != nullptr && !metadata.empty()) {
+        std::memcpy(data, metadata.data(), metadata.size());
+    }
     return arrayBuffer;
 }
 
 mbgl::OfflineRegionMetadata OfflineRegionNAPI::ArrayBufferToMetadata(napi_env env, napi_value arrayBuffer) {
-    void* data;
-    size_t length;
-    napi_get_arraybuffer_info(env, arrayBuffer, &data, &length);
+    void* data = nullptr;
+    size_t length = 0;
+    bool isArrayBuffer = false;
+    if (arrayBuffer == nullptr ||
+        napi_is_arraybuffer(env, arrayBuffer, &isArrayBuffer) != napi_ok || !isArrayBuffer ||
+        napi_get_arraybuffer_info(env, arrayBuffer, &data, &length) != napi_ok) {
+        napi_throw_error(env, nullptr, "metadata must be an ArrayBuffer");
+        return {};
+    }
     
     mbgl::OfflineRegionMetadata metadata(length);
-    std::memcpy(metadata.data(), data, length);
+    if (data != nullptr && length > 0) {
+        std::memcpy(metadata.data(), data, length);
+    }
     return metadata;
 }
 
 } // namespace harmony
 } // namespace maplibre
-

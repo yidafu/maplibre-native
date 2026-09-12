@@ -10,19 +10,59 @@ namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
 
+namespace {
+
+// Read a UTF-8 string with full status checking. Throws when the value is not a
+// string: an unchecked/uninitialized length would otherwise drive the allocation
+// (or, with a stack buffer, an out-of-bounds read of garbage length).
+std::string ReadStringProperty(napi_env env, napi_value value, const char* name) {
+    size_t len = 0;
+    if (value == nullptr ||
+        napi_get_value_string_utf8(env, value, nullptr, 0, &len) != napi_ok) {
+        throw std::runtime_error(std::string("Offline region property '") + name + "' must be a string");
+    }
+    std::string out(len, '\0');
+    if (len > 0 &&
+        napi_get_value_string_utf8(env, value, &out[0], len + 1, nullptr) != napi_ok) {
+        throw std::runtime_error(std::string("Failed to read offline region property '") + name + "'");
+    }
+    return out;
+}
+
+// Numeric/boolean reads fall back to a default instead of using an
+// uninitialized stack value when the property is missing or mistyped.
+double ReadDoubleProperty(napi_env env, napi_value value, double fallback) {
+    double out = fallback;
+    double tmp = 0.0;
+    if (napi_get_value_double(env, value, &tmp) == napi_ok) {
+        out = tmp;
+    }
+    return out;
+}
+
+bool ReadBoolProperty(napi_env env, napi_value value, bool fallback) {
+    bool out = fallback;
+    bool tmp = fallback;
+    if (napi_get_value_bool(env, value, &tmp) == napi_ok) {
+        out = tmp;
+    }
+    return out;
+}
+
+} // namespace
+
 // ========== Convert from NAPI object to C++ definition ==========
 
 mbgl::OfflineRegionDefinition OfflineRegionDefinitionNAPI::FromNapiObject(napi_env env, napi_value obj) {
     // Check object type
     napi_value typeValue;
-    napi_get_named_property(env, obj, "type", &typeValue);
-    
-    char typeStr[256];
-    size_t typeLen;
-    napi_get_value_string_utf8(env, typeValue, typeStr, sizeof(typeStr), &typeLen);
-    
-    std::string type(typeStr, typeLen);
-    
+    if (napi_get_named_property(env, obj, "type", &typeValue) != napi_ok) {
+        Logger::error("OfflineRegionDefinitionNAPI", "Definition object is missing 'type'");
+        throw std::runtime_error("Offline region definition is missing the 'type' property");
+    }
+
+    std::string type = ReadStringProperty(env, typeValue, "type");
+
     if (type == "tilePyramid") {
         return TilePyramidFromNapi(env, obj);
     } else if (type == "geometry") {
@@ -53,46 +93,39 @@ mbgl::OfflineTilePyramidRegionDefinition OfflineRegionDefinitionNAPI::TilePyrami
     // Get styleURL
     napi_value styleURLValue;
     napi_get_named_property(env, obj, "styleURL", &styleURLValue);
-    
-    char styleURL[1024];
-    size_t styleURLLen;
-    napi_get_value_string_utf8(env, styleURLValue, styleURL, sizeof(styleURL), &styleURLLen);
-    
+    std::string styleURL = ReadStringProperty(env, styleURLValue, "styleURL");
+
     // Get bounds
     napi_value boundsValue;
     napi_get_named_property(env, obj, "bounds", &boundsValue);
-    
+
     mbgl::LatLngBounds bounds;
     if (!mbgl::harmony::LatLngBoundsHarmony::ParseLatLngBounds(env, boundsValue, bounds)) {
         throw std::runtime_error("Failed to parse bounds");
     }
-    
+
     // Get minZoom
     napi_value minZoomValue;
     napi_get_named_property(env, obj, "minZoom", &minZoomValue);
-    double minZoom;
-    napi_get_value_double(env, minZoomValue, &minZoom);
-    
+    double minZoom = ReadDoubleProperty(env, minZoomValue, 0.0);
+
     // Get maxZoom
     napi_value maxZoomValue;
     napi_get_named_property(env, obj, "maxZoom", &maxZoomValue);
-    double maxZoom;
-    napi_get_value_double(env, maxZoomValue, &maxZoom);
-    
+    double maxZoom = ReadDoubleProperty(env, maxZoomValue, 22.0);
+
     // Get pixelRatio
     napi_value pixelRatioValue;
     napi_get_named_property(env, obj, "pixelRatio", &pixelRatioValue);
-    double pixelRatio;
-    napi_get_value_double(env, pixelRatioValue, &pixelRatio);
-    
+    double pixelRatio = ReadDoubleProperty(env, pixelRatioValue, 1.0);
+
     // Get includeIdeographs
     napi_value includeIdeographsValue;
     napi_get_named_property(env, obj, "includeIdeographs", &includeIdeographsValue);
-    bool includeIdeographs;
-    napi_get_value_bool(env, includeIdeographsValue, &includeIdeographs);
-    
+    bool includeIdeographs = ReadBoolProperty(env, includeIdeographsValue, false);
+
     return mbgl::OfflineTilePyramidRegionDefinition(
-        std::string(styleURL, styleURLLen),
+        std::move(styleURL),
         bounds,
         minZoom,
         maxZoom,
@@ -148,43 +181,36 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
     // Get styleURL
     napi_value styleURLValue;
     napi_get_named_property(env, obj, "styleURL", &styleURLValue);
-    
-    char styleURL[1024];
-    size_t styleURLLen;
-    napi_get_value_string_utf8(env, styleURLValue, styleURL, sizeof(styleURL), &styleURLLen);
-    
+    std::string styleURL = ReadStringProperty(env, styleURLValue, "styleURL");
+
     // Get geometry
     napi_value geometryValue;
     napi_get_named_property(env, obj, "geometry", &geometryValue);
-    
+
     mbgl::Geometry<double> geometry = maplibre::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
-    
+
     // Get minZoom
     napi_value minZoomValue;
     napi_get_named_property(env, obj, "minZoom", &minZoomValue);
-    double minZoom;
-    napi_get_value_double(env, minZoomValue, &minZoom);
-    
+    double minZoom = ReadDoubleProperty(env, minZoomValue, 0.0);
+
     // Get maxZoom
     napi_value maxZoomValue;
     napi_get_named_property(env, obj, "maxZoom", &maxZoomValue);
-    double maxZoom;
-    napi_get_value_double(env, maxZoomValue, &maxZoom);
-    
+    double maxZoom = ReadDoubleProperty(env, maxZoomValue, 22.0);
+
     // Get pixelRatio
     napi_value pixelRatioValue;
     napi_get_named_property(env, obj, "pixelRatio", &pixelRatioValue);
-    double pixelRatio;
-    napi_get_value_double(env, pixelRatioValue, &pixelRatio);
-    
+    double pixelRatio = ReadDoubleProperty(env, pixelRatioValue, 1.0);
+
     // Get includeIdeographs
     napi_value includeIdeographsValue;
     napi_get_named_property(env, obj, "includeIdeographs", &includeIdeographsValue);
-    bool includeIdeographs;
-    napi_get_value_bool(env, includeIdeographsValue, &includeIdeographs);
-    
+    bool includeIdeographs = ReadBoolProperty(env, includeIdeographsValue, false);
+
     return mbgl::OfflineGeometryRegionDefinition(
-        std::string(styleURL, styleURLLen),
+        std::move(styleURL),
         geometry,
         minZoom,
         maxZoom,

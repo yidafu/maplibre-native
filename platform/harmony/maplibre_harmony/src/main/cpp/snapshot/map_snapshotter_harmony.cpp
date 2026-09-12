@@ -60,7 +60,15 @@ MapSnapshotterHarmony::MapSnapshotterHarmony(
 MapSnapshotterHarmony::~MapSnapshotterHarmony() {
     Logger::info("MapSnapshotterHarmony", "Destructor");
     if (snapshotter_) {
-        snapshotter_->cancel();
+        // cancel() may throw in rare shutdown races; a throwing destructor
+        // would std::terminate — swallow and log instead.
+        try {
+            snapshotter_->cancel();
+        } catch (const std::exception& e) {
+            Logger::error("MapSnapshotterHarmony", "cancel() threw in destructor: %s", e.what());
+        } catch (...) {
+            Logger::error("MapSnapshotterHarmony", "cancel() threw unknown exception in destructor");
+        }
     }
 }
 

@@ -321,6 +321,11 @@ private:
     std::unique_ptr<util::RunLoop> runLoop_;
     std::unique_ptr<Map> map_;
     std::unique_ptr<Renderer> renderer_;
+    // Race-free cross-thread null-check mirror (P2-2): the render thread
+    // publishes/withdraws the raw pointer whenever renderer_ changes; other
+    // threads must not read the unique_ptr itself. Ownership stays with
+    // renderer_ and is destroyed on the render thread / after join.
+    std::atomic<Renderer*> rendererMirror_{nullptr};
     std::unique_ptr<HarmonyRendererBackend> backend_;
     std::unique_ptr<TaggedScheduler> threadPool_;
     
@@ -357,6 +362,8 @@ private:
 
     // VSync management
     std::unique_ptr<HarmonyVSyncManager> vsyncManager_;
+    // Cross-thread mirror of vsyncManager_ (see rendererMirror_ note)
+    std::atomic<HarmonyVSyncManager*> vsyncManagerMirror_{nullptr};
     std::shared_ptr<UpdateParameters> pendingUpdateParams_{nullptr};
     std::atomic<bool> pendingRender_{false};
     

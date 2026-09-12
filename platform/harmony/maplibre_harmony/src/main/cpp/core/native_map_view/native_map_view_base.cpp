@@ -79,7 +79,10 @@ NativeMapView::NativeMapView(napi_env env, napi_value wrapper, const std::string
     ++g_activeInstanceCount;
 
     // Create the wrapper reference
-    napi_create_reference(env, wrapper, 1, &wrapper_);
+    if (napi_create_reference(env, wrapper, 1, &wrapper_) != napi_ok) {
+        Logger::error("NativeMapView", "Failed to create wrapper reference");
+        wrapper_ = nullptr;
+    }
     
     // Initialize member fields
     mapRenderer = nullptr;
@@ -179,7 +182,7 @@ void NativeMapView::cleanupAllResources() {
 
     // 3. Other native resources
     mapRenderer = nullptr;
-    nativeWindow = nullptr;
+    destroyNativeWindow();
 
     // 4. Release NAPI references
     if (styleRef_) {
@@ -216,6 +219,11 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
         return;
     }
 
+    // Mark destruction before any teardown action: concurrent public calls and
+    // later completion paths must treat this instance as being destroyed while
+    // the detached worker below is still running.
+    isDestroying.store(true, std::memory_order_release);
+
     // Owner-checked clearing of the renderer query hooks while harmonyRenderer
     // is still alive, so no later query can reach the renderer being destroyed
     // (the async path previously left these dangling).
@@ -235,7 +243,7 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             Logger::warn("NativeMapView", "No harmonyRenderer, cleaning up immediately");
             detachMapRegistry();
             mapRenderer = nullptr;
-            nativeWindow = nullptr;
+            destroyNativeWindow();
             if (styleRef_) {
                 napi_delete_reference(env_, styleRef_);
                 styleRef_ = nullptr;
@@ -284,7 +292,21 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
 
         if (!bridge) {
             Logger::error("NativeMapView", "cleanupAllResourcesAsync: failed to create JS bridge; "
-                                           "deferring renderer teardown to the finalizer");
+                                           "falling back to synchronous teardown");
+            // resourcesCleaned_ is already set, so the destructor's
+            // cleanupAllResources() would skip everything — tear the renderer
+            // down here instead of leaking the render thread.
+            detachMapRegistry();
+            if (map) {
+                map = nullptr;
+            }
+            try {
+                harmonyRenderer.reset();
+            } catch (...) {
+                // best effort
+            }
+            mapRenderer = nullptr;
+            destroyNativeWindow();
             if (styleRef_) {
                 napi_delete_reference(env_, styleRef_);
                 styleRef_ = nullptr;
@@ -327,7 +349,7 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
                     harmonyRenderer.reset();
 
                     mapRenderer = nullptr;
-                    nativeWindow = nullptr;
+                    destroyNativeWindow();
 
                     --g_activeInstanceCount;
 
@@ -350,34 +372,62 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             }).detach();
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "Error during resource cleanup: %s", e.what());
-        // ✅ Decrement the counter even if an error occurs
+        // Synchronous fallback teardown: resourcesCleaned_ is already set, so the
+        // destructor's cleanupAllResources() would skip everything — join the
+        // render thread and release what we hold here (no fallback otherwise).
+        detachMapRegistry();
+        map = nullptr;
+        try {
+            harmonyRenderer.reset();
+        } catch (...) {
+            // best effort
+        }
+        mapRenderer = nullptr;
+        destroyNativeWindow();
         --g_activeInstanceCount;
         if (onComplete) onComplete();
     } catch (...) {
         Logger::error("NativeMapView", "Unknown error during resource cleanup");
-        // ✅ Decrement the counter even if an error occurs
+        detachMapRegistry();
+        map = nullptr;
+        try {
+            harmonyRenderer.reset();
+        } catch (...) {
+            // best effort
+        }
+        mapRenderer = nullptr;
+        destroyNativeWindow();
         --g_activeInstanceCount;
         if (onComplete) onComplete();
     }
 }
 
 
+void NativeMapView::destroyNativeWindow() {
+    if (nativeWindow) {
+        OH_NativeWindow_DestroyNativeWindow(nativeWindow);
+        nativeWindow = nullptr;
+    }
+}
+
 void NativeMapView::setNativeWindowWithSize(int64_t surfaceId, int width, int height) {
     // Update stored dimensions
     this->width = width;
     this->height = height;
-    
+
     // Create the native window
-    OHNativeWindow *nativeWindow;
-    OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
-    
+    OHNativeWindow* nativeWindow = nullptr;
+    int32_t createResult = OH_NativeWindow_CreateNativeWindowFromSurfaceId(surfaceId, &nativeWindow);
+
     if (nativeWindow) {
+        // Surface rebuild: release the previous window before overwriting the handle
+        destroyNativeWindow();
         this->nativeWindow = nativeWindow;
-        
+
         // Initialize the renderer if it has not been set up yet
         this->initializeRenderer();
     } else {
-        Logger::error("NativeMapView", "Failed to create native window from surface ID");
+        Logger::error("NativeMapView", "Failed to create native window from surface ID, error=%d", createResult);
     }
 }
 
@@ -638,13 +688,23 @@ napi_value NativeMapView::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    // Store a reference to the constructor using a static variable
-    static napi_ref static_wrapper;
+    // Store a reference to the constructor using a static variable.
+    // Re-registration (multi-env / re-initialized so): release the previous
+    // reference first instead of silently leaking it — napi_delete_reference
+    // must use the env the ref was created in, so track that env too.
+    static napi_ref static_wrapper = nullptr;
+    static napi_env static_wrapper_env = nullptr;
+    if (static_wrapper != nullptr && static_wrapper_env != nullptr) {
+        napi_delete_reference(static_wrapper_env, static_wrapper);
+        static_wrapper = nullptr;
+        static_wrapper_env = nullptr;
+    }
     status = napi_create_reference(env, cons, 1, &static_wrapper);
     if (status != napi_ok) {
         Logger::error("NativeMapView", "Failed to create reference to constructor");
         return nullptr;
     }
+    static_wrapper_env = env;
     
     // Set up the exports object
     status = napi_set_named_property(env, exports, "NativeMapView", cons);
@@ -679,6 +739,11 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     }
     // Invalidate style wrappers that cached the old Map pointer before dropping it
     instance->detachMapRegistry();
+    // Null out the gesture manager's map before the old Map is freed so
+    // in-flight gesture callbacks observe null instead of freed memory.
+    if (instance->gestureManager_) {
+        instance->gestureManager_->reattach(nullptr);
+    }
     instance->map = nullptr;
     instance->mapRenderer = nullptr;
 
@@ -714,6 +779,10 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     instance->map = instance->harmonyRenderer->getMap();
     if (!instance->map) {
         Logger::warn("NativeMapView", "hardReset: getMap() returned null");
+    }
+    // Rebind gestures to the rebuilt Map (was nulled when the old one was dropped)
+    if (instance->gestureManager_) {
+        instance->gestureManager_->reattach(instance->map);
     }
     instance->attachMapRegistry();
 
@@ -851,6 +920,11 @@ void NativeMapView::initializeRenderer() {
         // StyleNAPI holding the previous token now fails cleanly instead of
         // dereferencing freed memory (see map_registry.hpp).
         detachMapRegistry();
+        // Null out the gesture manager's map before the old Map is freed so
+        // in-flight gesture callbacks observe null instead of freed memory.
+        if (gestureManager_) {
+            gestureManager_->reattach(nullptr);
+        }
         map = nullptr; // drop old Map reference tied to previous renderer/thread
     }
     
@@ -883,6 +957,11 @@ void NativeMapView::initializeRenderer() {
 
         // Publish the new map for style wrappers (liveness token + dispatcher)
         attachMapRegistry();
+
+        // Rebind gestures to the rebuilt Map (was nulled when the old one was dropped)
+        if (gestureManager_) {
+            gestureManager_->reattach(map);
+        }
 
         // ✅ New behavior: once the Map is constructed, fire the onMapViewCreated callback
         // At this point the C++ Map exists, allowing ArkTS to create MapLibreMap and register observers
@@ -952,6 +1031,11 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     // Invalidate style wrappers that cached the old Map pointer (see
     // initializeRenderer for the crash scenario this prevents).
     detachMapRegistry();
+    // Null out the gesture manager's map before the old Map is freed so
+    // in-flight gesture callbacks observe null instead of freed memory.
+    if (gestureManager_) {
+        gestureManager_->reattach(nullptr);
+    }
     map = nullptr;
     harmonyRenderer = std::make_unique<HarmonyRenderer>();
     
@@ -973,6 +1057,11 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
 
     // Publish the new map for style wrappers (liveness token + dispatcher)
     attachMapRegistry();
+
+    // Rebind gestures to the rebuilt Map (was nulled when the old one was dropped)
+    if (gestureManager_) {
+        gestureManager_->reattach(map);
+    }
 
     // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
     maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(

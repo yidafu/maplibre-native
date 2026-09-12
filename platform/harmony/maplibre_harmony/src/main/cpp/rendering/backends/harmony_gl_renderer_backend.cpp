@@ -1194,10 +1194,10 @@ void HarmonyGLRendererBackend::cleanupBackend() {
     Logger::info("HarmonyGLRendererBackend", "Cleaning up EGL resources");
     cleanupEGL();
 
-    // gfx::Backend lacks a virtual destructor, so backend_.reset() does not run
-    // the subclass destructor; the render thread calls cleanupBackend() instead
-    // to keep the shared-display refcount balanced.
-    EGLDisplayManager::getInstance().unregisterInstance();
+    // Note: the instance count is NOT decremented here. gfx::RendererBackend's
+    // destructor is virtual, so backend_.reset() runs ~HarmonyGLRendererBackend,
+    // which calls unregisterInstance(); unregistering here as well double-
+    // decremented the count and permanently broke the concurrency limit.
 }
 
 std::string HarmonyGLRendererBackend::getRendererInfo() {

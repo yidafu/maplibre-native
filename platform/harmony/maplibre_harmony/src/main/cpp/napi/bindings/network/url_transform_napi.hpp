@@ -2,6 +2,9 @@
 
 #include "napi/native_api.h"
 #include <mbgl/storage/resource.hpp>
+#include <memory>
+#include <mutex>
+#include <thread>
 
 namespace mbgl {
 namespace harmony {
@@ -40,16 +43,21 @@ private:
      */
     static napi_value HasResourceTransformCallback(napi_env env, napi_callback_info info);
 
-    // Static context used to store the cross-thread callback
+    // Static context used to store the cross-thread callback. Held via shared_ptr and
+    // guarded by contextMutex_ so transform callbacks running on network threads can
+    // never observe a freed context.
     struct CallbackContext {
-        napi_env env;
-        napi_ref callbackRef;
-        napi_threadsafe_function tsfn;
+        napi_env env = nullptr;
+        napi_ref callbackRef = nullptr;
+        napi_threadsafe_function tsfn = nullptr;
+        // Thread id of the JS thread that installed the callback; used to detect
+        // same-thread invocations which would deadlock on the queued path.
+        std::thread::id jsThreadId;
     };
 
-    static CallbackContext* callbackContext_;
+    static std::mutex contextMutex_;
+    static std::shared_ptr<CallbackContext> callbackContext_;
 };
 
 } // namespace harmony
 } // namespace mbgl
-

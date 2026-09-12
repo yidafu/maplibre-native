@@ -154,10 +154,14 @@ napi_value ImageNAPI::New(napi_env env, napi_callback_info info) {
             return nullptr;
         }
         
-        // Verify data size (RGBA = 4 bytes per pixel)
-        size_t expectedSize = width * height * 4;
-        if (byteLength != expectedSize) {
-            Logger::error("ImageNAPI", "Data size mismatch: expected %zu, got %zu", expectedSize, byteLength);
+        // Verify data size (RGBA = 4 bytes per pixel). The multiply must be in
+        // 64-bit: a uint32_t product would wrap before promotion and let a
+        // mismatched huge image pass validation, then blow up downstream.
+        const uint64_t expectedSize =
+            static_cast<uint64_t>(width) * static_cast<uint64_t>(height) * 4ull;
+        if (expectedSize > (512ull << 20) || byteLength != expectedSize) {
+            Logger::error("ImageNAPI", "Data size mismatch: expected %llu, got %zu",
+                          static_cast<unsigned long long>(expectedSize), byteLength);
             napi_throw_error(env, nullptr, "Image data size does not match width * height * 4");
             return nullptr;
         }

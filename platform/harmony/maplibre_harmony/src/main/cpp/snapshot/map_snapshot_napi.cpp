@@ -83,22 +83,42 @@ napi_value CreateMapSnapshotObject(
     );
 
     // Create an ArrayBuffer for the image data
-    void* data;
-    napi_value arrayBuffer;
+    void* data = nullptr;
+    napi_value arrayBuffer = nullptr;
     size_t byteLength = snapshotInstance->getImage().bytes();
-    napi_create_arraybuffer(env, byteLength, &data, &arrayBuffer);
-    std::memcpy(data, snapshotInstance->getImage().data.get(), byteLength);
+    napi_status status = napi_create_arraybuffer(env, byteLength, &data, &arrayBuffer);
+    if (status != napi_ok || (byteLength > 0 && data == nullptr)) {
+        Logger::error("MapSnapshotNAPI", "Failed to create snapshot arraybuffer (status=%d)", status);
+        delete snapshotInstance;
+        napi_throw_error(env, nullptr, "Failed to create snapshot arraybuffer");
+        return nullptr;
+    }
+    if (byteLength > 0) {
+        std::memcpy(data, snapshotInstance->getImage().data.get(), byteLength);
+    }
 
     // Create the JavaScript object
     napi_value jsSnapshot;
-    napi_create_object(env, &jsSnapshot);
+    if (napi_create_object(env, &jsSnapshot) != napi_ok) {
+        Logger::error("MapSnapshotNAPI", "Failed to create snapshot JS object");
+        delete snapshotInstance;
+        napi_throw_error(env, nullptr, "Failed to create snapshot object");
+        return nullptr;
+    }
 
-    // Wrap the native pointer
-    napi_wrap(env, jsSnapshot, snapshotInstance,
+    // Wrap the native pointer; once wrapped the finalizer owns the instance
+    status = napi_wrap(env, jsSnapshot, snapshotInstance,
               [](napi_env env, void* data, void* hint) {
                   delete static_cast<MapSnapshotInstance*>(data);
               },
               nullptr, nullptr);
+    if (status != napi_ok) {
+        // Wrap failed: the finalizer will never run — delete manually.
+        Logger::error("MapSnapshotNAPI", "Failed to wrap snapshot instance");
+        delete snapshotInstance;
+        napi_throw_error(env, nullptr, "Failed to wrap snapshot instance");
+        return nullptr;
+    }
 
     // Set object properties
     napi_value widthVal, heightVal, pixelRatioVal;

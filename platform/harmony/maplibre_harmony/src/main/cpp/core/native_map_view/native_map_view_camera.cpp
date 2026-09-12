@@ -1447,20 +1447,21 @@ napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info
         return args.Undefined();
     }
     
+    auto snapshotState = instance->snapshotState_;
     {
-        std::lock_guard<std::mutex> lock(instance->snapshotMutex_);
-        if (instance->snapshotInProgress_) {
+        std::lock_guard<std::mutex> lock(snapshotState->mutex);
+        if (snapshotState->inProgress) {
             Logger::warn("NativeMapView", "scheduleSnapshot: Snapshot request already in progress");
             return args.Undefined();
         }
-        instance->snapshotInProgress_ = true;
+        snapshotState->inProgress = true;
     }
     
     auto callbackManager = instance->callbackManager_;
     
     try {
         instance->harmonyRenderer->requestSnapshot(
-            [instance, callbackManager](mbgl::PremultipliedImage&& image, float pixelRatioValue) {
+            [snapshotState, callbackManager](mbgl::PremultipliedImage&& image, float pixelRatioValue) {
                 auto dataPtr = std::make_shared<std::vector<uint8_t>>(image.bytes());
                 if (!dataPtr->empty()) {
                     std::memcpy(dataPtr->data(), image.data.get(), image.bytes());
@@ -1498,14 +1499,14 @@ napi_value NativeMapView::scheduleSnapshot(napi_env env, napi_callback_info info
                         });
                 }
                 
-                instance->resetSnapshotState();
+                NativeMapView::resetSnapshotStateOn(snapshotState);
             },
-            [instance, callbackManager](const std::string& message) {
+            [snapshotState, callbackManager](const std::string& message) {
                 Logger::error("NativeMapView", "scheduleSnapshot: %s", message.c_str());
                 if (callbackManager && callbackManager->HasCallback("onSnapshotError")) {
                     callbackManager->InvokeCallbackWithString("onSnapshotError", message);
                 }
-                instance->resetSnapshotState();
+                NativeMapView::resetSnapshotStateOn(snapshotState);
             });
     } catch (const std::exception& e) {
         Logger::error("NativeMapView", "scheduleSnapshot: Failed to request snapshot - %s", e.what());
@@ -1630,8 +1631,15 @@ napi_value NativeMapView::getCameraState(napi_env env, napi_callback_info info) 
 }
 
 void NativeMapView::resetSnapshotState() {
-    std::lock_guard<std::mutex> lock(snapshotMutex_);
-    snapshotInProgress_ = false;
+    resetSnapshotStateOn(snapshotState_);
+}
+
+// static: safe to call from any thread (including render-thread snapshot
+// callbacks) because it only touches the shared state, never `this`.
+void NativeMapView::resetSnapshotStateOn(const std::shared_ptr<SnapshotRequestState>& state) {
+    if (!state) return;
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->inProgress = false;
 }
 
 
