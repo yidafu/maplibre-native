@@ -7,11 +7,7 @@
  */
 
 import type { Expression } from './Expression';
-import type { ExpressionLiteral } from './PropertyTypes';
-/**
- * Property value that can accept Expressions
- */
-export type DataDrivenProperty<T> = T | Expression | ExpressionLiteral;
+import type { DataDrivenProperty } from './LayerLayout';
 
 /**
  * Color type - accepts CSS color strings or Expressions

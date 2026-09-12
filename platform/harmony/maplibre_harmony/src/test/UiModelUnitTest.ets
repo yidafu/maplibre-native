@@ -10,7 +10,7 @@ import { UiSettings, FocalPoint } from '../main/ets/maps/UiSettings';
 import { MapDebugOptions } from '../main/ets/maps/types/MapDebugOptions';
 import {
   OrnamentPosition, RenderingRefreshMode, TileOperation,
-  UserTrackingMode, CameraMoveReason as NativeCameraMoveReason,
+  UserTrackingMode,
   createMargins, createUniformMargins, mergeMargins, Margins
 } from '../main/ets/maps/types/NativeTypes';
 import { CompassVisibility } from '../main/ets/maps/widgets/CompassVisibility';
@@ -317,15 +317,6 @@ export default function UiModelUnitTest() {
       expect(UserTrackingMode.Follow).assertEqual(1);
       expect(UserTrackingMode.FollowWithHeading).assertEqual(2);
       expect(UserTrackingMode.FollowWithCourse).assertEqual(3);
-    });
-  });
-
-  describe('NativeCameraMoveReason', () => {
-    it('should have correct values', 0, () => {
-      expect(NativeCameraMoveReason.Unknown).assertEqual(0);
-      expect(NativeCameraMoveReason.API_ANIMATION).assertEqual(1);
-      expect(NativeCameraMoveReason.API_GESTURE).assertEqual(2);
-      expect(NativeCameraMoveReason.DEVELOPER_ANIMATION).assertEqual(3);
     });
   });
 

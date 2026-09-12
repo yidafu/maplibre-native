@@ -305,17 +305,17 @@ Represents the visible map region.
 
 ```typescript
 class VisibleRegion {
-  nearLeft: LatLng;       // Near-left corner
-  nearRight: LatLng;      // Near-right corner
-  farLeft: LatLng;        // Far-left corner
-  farRight: LatLng;       // Far-right corner
+  topLeft: LatLng;        // Upper-left corner
+  topRight: LatLng;       // Upper-right corner
+  bottomLeft: LatLng;     // Lower-left corner
+  bottomRight: LatLng;    // Lower-right corner
   latLngBounds: LatLngBounds;  // Bounding box
   
   constructor(
-    nearLeft: LatLng,
-    nearRight: LatLng,
-    farLeft: LatLng,
-    farRight: LatLng,
+    topLeft: LatLng,
+    topRight: LatLng,
+    bottomLeft: LatLng,
+    bottomRight: LatLng,
     bounds: LatLngBounds
   );
   

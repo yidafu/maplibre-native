@@ -1,7 +1,7 @@
 import { CompassVisibility } from './widgets/CompassVisibility';
-import { OrnamentPosition, Margins } from './types/NativeTypes';
+import { Margins } from './types/NativeTypes';
 import { ScaleBarUnit } from './widgets/ScaleBarView';
-import { WidgetLayoutHelper, Offset2D } from './widgets/WidgetLayoutTypes';
+import { Offset2D } from './widgets/WidgetLayoutTypes';
 
 /**
  * Focal point data type
@@ -646,25 +646,6 @@ export class UiSettings {
   }
 
   /**
-   * Set compass position (backward compatibility)
-   * @param position Ornament position enum
-   * @deprecated Use setCompassAlignment() instead
-   */
-  setCompassPosition(position: OrnamentPosition): void {
-    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
-    this.setCompassAlignment(alignment);
-  }
-
-  /**
-   * Get compass position (backward compatibility)
-   * @deprecated Use getCompassAlignment() instead
-   */
-  getCompassPosition(): OrnamentPosition {
-    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.compassAlignment);
-    return position !== null ? position : OrnamentPosition.TopRight;
-  }
-
-  /**
    * Notify compass configuration change
    */
   private notifyCompassConfigChanged(): void {
@@ -709,25 +690,6 @@ export class UiSettings {
    */
   getLogoAlignment(): Alignment {
     return this.logoAlignment;
-  }
-
-  /**
-   * Set logo position (backward compatibility)
-   * @param position Ornament position enum
-   * @deprecated Use setLogoAlignment() instead
-   */
-  setLogoPosition(position: OrnamentPosition): void {
-    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
-    this.setLogoAlignment(alignment);
-  }
-
-  /**
-   * Get logo position (backward compatibility)
-   * @deprecated Use getLogoAlignment() instead
-   */
-  getLogoPosition(): OrnamentPosition {
-    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.logoAlignment);
-    return position !== null ? position : OrnamentPosition.BottomLeft;
   }
 
   /**
@@ -880,25 +842,6 @@ export class UiSettings {
   }
 
   /**
-   * Set ScaleBar position (backward compatibility)
-   * @param position Ornament position enum
-   * @deprecated Use setScaleBarAlignment() instead
-   */
-  setScaleBarPosition(position: OrnamentPosition): void {
-    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
-    this.setScaleBarAlignment(alignment);
-  }
-
-  /**
-   * Get ScaleBar position (backward compatibility)
-   * @deprecated Use getScaleBarAlignment() instead
-   */
-  getScaleBarPosition(): OrnamentPosition {
-    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.scaleBarAlignment);
-    return position !== null ? position : OrnamentPosition.TopLeft;
-  }
-
-  /**
    * Set ScaleBar margins
    * @param left Left margin
    * @param top Top margin
@@ -1009,25 +952,6 @@ export class UiSettings {
    */
   getAttributionAlignment(): Alignment {
     return this.attributionAlignment;
-  }
-
-  /**
-   * Set attribution position (backward compatibility)
-   * @param position Ornament position enum
-   * @deprecated Use setAttributionAlignment() instead
-   */
-  setAttributionPosition(position: OrnamentPosition): void {
-    const alignment = WidgetLayoutHelper.ornamentPositionToAlignment(position);
-    this.setAttributionAlignment(alignment);
-  }
-
-  /**
-   * Get attribution position (backward compatibility)
-   * @deprecated Use getAttributionAlignment() instead
-   */
-  getAttributionPosition(): OrnamentPosition {
-    const position = WidgetLayoutHelper.alignmentToOrnamentPosition(this.attributionAlignment);
-    return position !== null ? position : OrnamentPosition.BottomRight;
   }
 
   /**

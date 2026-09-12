@@ -1,7 +1,7 @@
 /**
  * HillshadeLayer - Wrapper class
  */
-import type { ExpressionLiteral, NumberValue } from 'libmaplibre.so';
+import type { ExpressionLiteral } from 'libmaplibre.so';
 import maplibre from 'libmaplibre.so';
 import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
 import { Expression } from '../expressions/index';

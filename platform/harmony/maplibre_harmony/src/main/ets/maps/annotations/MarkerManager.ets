@@ -570,7 +570,7 @@ export class MarkerManager {
       const screenPoint = PixelCoordinate.fromLogicalPixels(x, y, pixelRatio);
 
       // Convert screen coordinates to geographic coordinates
-      const latLng: LatLng = this.mapLibreMap.getProjection().screenLocationToLatLng(screenPoint);
+      const latLng: LatLng = this.mapLibreMap.getProjection().fromScreenLocation(screenPoint);
 
       // Update marker position
       this.handleDrag(this.draggingMarker, latLng);

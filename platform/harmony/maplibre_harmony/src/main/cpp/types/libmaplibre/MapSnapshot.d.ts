@@ -60,10 +60,3 @@ export interface MapSnapshot {
   latLngForPixel(x: number, y: number): LatLng;
 }
 
-/**
- * SnapshotResult - snapshot result type (NAPI return).
- *
- * @deprecated Use MapSnapshot instead.
- */
-export type SnapshotResultNAPI = MapSnapshot;
-

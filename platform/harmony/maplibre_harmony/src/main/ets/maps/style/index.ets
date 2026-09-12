@@ -20,8 +20,6 @@ export { Image } from './images/Image';
 // Lighting.
 export { Light } from './light/Light';
 
-export type { LightOptions } from './light/Light';
-
 // Expression system (PropertyValue omitted to avoid conflicts).
 export {
   Expression,

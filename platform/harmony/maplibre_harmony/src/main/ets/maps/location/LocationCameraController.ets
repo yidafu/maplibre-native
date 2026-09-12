@@ -3,7 +3,8 @@ import { LocationComponentOptions } from './LocationComponentOptions';
 import { CameraMode } from './modes/CameraMode';
 import { OnCameraTrackingChangedListener } from './listeners/OnCameraTrackingChangedListener';
 import { LatLng } from '../geometry/LatLng';
-import { CameraOptions, CameraPosition } from '../camera/CameraPosition';
+import { CameraPosition } from '../camera/CameraPosition';
+import maplibre from 'libmaplibre.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 
@@ -111,7 +112,7 @@ export class LocationCameraController {
       }
 
       // Build camera options
-      const cameraOptions: CameraOptions = {
+      const cameraOptions: maplibre.CameraOptions = {
         center: location,
         zoom: (currentCamera as CameraPosition)?.zoom ?? 15,
         bearing: cameraBearing,

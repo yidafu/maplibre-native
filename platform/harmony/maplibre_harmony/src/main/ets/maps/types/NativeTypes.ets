@@ -8,8 +8,6 @@
 import maplibre from 'libmaplibre.so';
 
 // Do not export maplibre directly; native methods must be proxied in ETS (or re-exported).
-// ========== Export maplibre namespace ==========
-// export { maplibre };
 
 // ========== Helper type definitions ==========
 
@@ -207,20 +205,6 @@ export enum UserTrackingMode {
   FollowWithHeading = 2,
   /** Follow user location and course (movement direction); revert to Follow when the user rotates the map. */
   FollowWithCourse = 3
-}
-
-/**
- * Camera move reason (aligned with Android OnCameraMoveStartedListener).
- */
-export enum CameraMoveReason {
-  /** Unknown reason. */
-  Unknown = 0,
-  /** Programmatic API call. */
-  API_ANIMATION = 1,
-  /** User gesture interaction. */
-  API_GESTURE = 2,
-  /** Developer-triggered animation. */
-  DEVELOPER_ANIMATION = 3
 }
 
 

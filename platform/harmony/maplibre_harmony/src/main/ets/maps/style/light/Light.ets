@@ -141,10 +141,3 @@ export class Light {
     };
   }
 }
-
-/**
- * LightOptions - legacy alias for backward compatibility.
- *
- * @deprecated Use `Light` or `LightSpecification` instead.
- */
-export type LightOptions = LightSpecification;

@@ -6,7 +6,6 @@
 import maplibre from 'libmaplibre.so';
 // Do not export maplibre directly; keep the encapsulation intact
 // namespace export would expose the NAPI layer for advanced use
-// export { maplibre };
 
 // ========== Core components ==========
 export { MapView } from './mapview/NativeMapView';
@@ -188,9 +187,6 @@ export {
   CameraChangeListener
 } from './camera/CameraListener';
 
-// Canonical CameraMoveReason for the OnCameraMoveStartedListener contract.
-// (types/NativeTypes also declares a CameraMoveReason; it is not exported
-// here to avoid a conflicting root export.)
 export { CameraMoveReason, getCameraMoveReasonText } from './camera/CameraMoveReason';
 
 // ========== UI components ==========
@@ -262,8 +258,6 @@ export * from './geojson';
 export { Style, StyleBuilder } from './style/Style';
 
 export { Light } from './style/light/Light';
-
-export type { LightOptions } from './style/light/Light';
 
 export { TransitionOptions } from './style/layers/TransitionOptions';
 

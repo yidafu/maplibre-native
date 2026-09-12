@@ -123,13 +123,6 @@ export class SnapshotOverlay {
     // 3. Use the drawing API to render onto pixelMap.
     
     console.warn('[SnapshotOverlay] drawLogo: Not yet implemented - requires graphics.drawing API');
-    
-    // Example implementation (adjust for actual logo resources):
-    // const canvas = drawing.Canvas.createCanvas(pixelMap);
-    // const imageInfo = await pixelMap.getImageInfo();
-    // const logoX = margin;
-    // const logoY = imageInfo.size.height - logoHeight - margin;
-    // canvas.drawImage(logoImage, logoX, logoY);
   }
 
   /**
@@ -159,13 +152,6 @@ export class SnapshotOverlay {
     // 3. Use the drawing API to place text on the pixelMap.
     
     console.warn('[SnapshotOverlay] drawAttributions: Not yet implemented - requires graphics.drawing API');
-    
-    // Example implementation:
-    // const canvas = drawing.Canvas.createCanvas(pixelMap);
-    // const text = attributions.join(' | ');
-    // const paint = new drawing.Paint();
-    // paint.setTextSize(textSize);
-    // canvas.drawText(text, x, y, paint);
   }
 
   /**

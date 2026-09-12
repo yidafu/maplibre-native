@@ -1,6 +1,5 @@
 import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
-// import { ComponentContent } from '@kit.ArkUI';
 
 import { Marker } from './Marker';
 

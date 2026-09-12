@@ -2,8 +2,7 @@ import maplibre from 'libmaplibre.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import {
-  NativeMapViewController,
-  type NativeMapView
+  NativeMapViewController
 } from './NativeMapViewController';
 import { MapLibreMap } from '../MapLibreMap';
 import { MapLibreMapOptions } from '../MapLibreMapOptions';
@@ -21,7 +20,7 @@ import { LogoView } from '../widgets/LogoView';
 import { ScaleBarView } from '../widgets/ScaleBarView';
 import { AttributionButton, DEFAULT_ATTRIBUTIONS } from '../widgets/AttributionButton';
 import type { AttributionInfo } from '../widgets/AttributionButton';
-import { OrnamentPosition, RenderingRefreshMode } from '../types/NativeTypes';
+import { RenderingRefreshMode } from '../types/NativeTypes';
 import type { MapSurfaceType } from '../types/NativeTypes';
 import { OnFpsChangedListener } from '../listeners/OnFpsChangedListener';
 // Phase 3: Gesture listener types no longer needed — gesture recognition moved to C++
@@ -60,6 +59,8 @@ type NativeMapViewErrorInput = Error | string | number | boolean | object;
 export { registerMapLibreMap } from './NativeMapViewController';
 
 type CameraOptions = maplibre.CameraOptions;
+
+type NativeMapView = maplibre.NativeMapView;
 
 @Component
 export struct MapView {
@@ -349,18 +350,16 @@ export struct MapView {
    */
   private getCompassX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getCompassPosition();
+    const alignment = uiSettings.getCompassAlignment();
     const margins = uiSettings.getCompassMargins();
 
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.BottomLeft:
+    switch (alignment) {
+      case Alignment.TopStart:
+      case Alignment.Start:
+      case Alignment.BottomStart:
         return margins.left;
-      case OrnamentPosition.TopRight:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - component width - right margin
       default:
-        return `calc(100% - 48vp - ${margins.right}vp)`; // Default right alignment (same as TopRight)
+        return `calc(100% - 48vp - ${margins.right}vp)`; // 100% - component width - right margin
     }
   }
 
@@ -369,18 +368,16 @@ export struct MapView {
    */
   private getCompassY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getCompassPosition();
+    const alignment = uiSettings.getCompassAlignment();
     const margins = uiSettings.getCompassMargins();
 
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.TopRight:
-        return margins.top;
-      case OrnamentPosition.BottomLeft:
-      case OrnamentPosition.BottomRight:
+    switch (alignment) {
+      case Alignment.BottomStart:
+      case Alignment.Bottom:
+      case Alignment.BottomEnd:
         return `calc(100% - 48vp - ${margins.bottom}vp)`; // 100% - component height - bottom margin
       default:
-        return margins.top; // Default top alignment (same as TopRight)
+        return margins.top;
     }
   }
 
@@ -389,18 +386,20 @@ export struct MapView {
    */
   private getLogoX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getLogoPosition();
+    const alignment = uiSettings.getLogoAlignment();
     const margins = uiSettings.getLogoMargins();
 
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.BottomLeft:
+    switch (alignment) {
+      case Alignment.TopStart:
+      case Alignment.Start:
+      case Alignment.BottomStart:
         return margins.left;
-      case OrnamentPosition.TopRight:
-      case OrnamentPosition.BottomRight:
+      case Alignment.TopEnd:
+      case Alignment.End:
+      case Alignment.BottomEnd:
         return `calc(100% - 80vp - ${margins.right}vp)`; // 100% - logo width - right margin
       default:
-        return margins.left; // Default left alignment (same as BottomLeft)
+        return margins.left; // Default left alignment
     }
   }
 
@@ -409,18 +408,16 @@ export struct MapView {
    */
   private getLogoY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getLogoPosition();
+    const alignment = uiSettings.getLogoAlignment();
     const margins = uiSettings.getLogoMargins();
 
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.TopRight:
+    switch (alignment) {
+      case Alignment.TopStart:
+      case Alignment.Top:
+      case Alignment.TopEnd:
         return margins.top;
-      case OrnamentPosition.BottomLeft:
-      case OrnamentPosition.BottomRight:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - logo height - bottom margin
       default:
-        return `calc(100% - 40vp - ${margins.bottom}vp)`; // Default bottom alignment (same as BottomLeft)
+        return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - logo height - bottom margin
     }
   }
 
@@ -429,18 +426,20 @@ export struct MapView {
    */
   private getScaleBarX(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getScaleBarPosition();
+    const alignment = uiSettings.getScaleBarAlignment();
     const margins = uiSettings.getScaleBarMargins();
 
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.BottomLeft:
+    switch (alignment) {
+      case Alignment.TopStart:
+      case Alignment.Start:
+      case Alignment.BottomStart:
         return margins.left;
-      case OrnamentPosition.TopRight:
-      case OrnamentPosition.BottomRight:
+      case Alignment.TopEnd:
+      case Alignment.End:
+      case Alignment.BottomEnd:
         return `calc(100% - 200vp - ${margins.right}vp)`; // 100% - scale bar max width - right margin
       default:
-        return margins.left; // Default left alignment (same as TopLeft)
+        return margins.left; // Default left alignment
     }
   }
 
@@ -449,18 +448,16 @@ export struct MapView {
    */
   private getScaleBarY(): Length {
     const uiSettings = this.controller.getUiSettings();
-    const position = uiSettings.getScaleBarPosition();
+    const alignment = uiSettings.getScaleBarAlignment();
     const margins = uiSettings.getScaleBarMargins();
 
-    switch (position) {
-      case OrnamentPosition.TopLeft:
-      case OrnamentPosition.TopRight:
-        return margins.top;
-      case OrnamentPosition.BottomLeft:
-      case OrnamentPosition.BottomRight:
+    switch (alignment) {
+      case Alignment.BottomStart:
+      case Alignment.Bottom:
+      case Alignment.BottomEnd:
         return `calc(100% - 40vp - ${margins.bottom}vp)`; // 100% - scale bar height - bottom margin
       default:
-        return margins.top; // Default top alignment (same as TopLeft)
+        return margins.top;
     }
   }
 

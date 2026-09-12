@@ -134,28 +134,6 @@ export class Projection {
     return LatLng.fromNative(this.nativeMapView.latLngForPixel(physicalX, physicalY));
   }
 
-  /**
-   * Convert a geographic coordinate to a screen coordinate (legacy name for backward compatibility)
-   * @deprecated Use toScreenLocation instead
-   *
-   * @param latLng Geographic coordinate
-   * @returns Screen coordinate (pixels)
-   */
-  public latLngToScreenLocation(latLng: LatLng): Point {
-    return this.toScreenLocation(latLng);
-  }
-
-  /**
-   * Convert a screen coordinate to a geographic coordinate (legacy name for backward compatibility)
-   * @deprecated Use fromScreenLocation instead
-   *
-   * @param point Screen coordinate (pixels)
-   * @returns Geographic coordinate
-   */
-  public screenLocationToLatLng(point: Point): LatLng {
-    return this.fromScreenLocation(point);
-  }
-
   // ========== Batch coordinate conversion ==========
 
   /**
@@ -210,36 +188,6 @@ export class Projection {
       output[i] = latLng.latitude;
       output[i + 1] = latLng.longitude;
     }
-  }
-
-  /**
-   * Batch convert geographic coordinates to screen positions (legacy name for backward compatibility)
-   * @deprecated Use the array-based toScreenLocations or iterate over toScreenLocation
-   *
-   * @param latLngs Array of geographic coordinates
-   * @returns Array of screen coordinates
-   */
-  public latLngsToScreenLocations(latLngs: LatLng[]): Point[] {
-    const points: Point[] = [];
-    for (const latLng of latLngs) {
-      points.push(this.toScreenLocation(latLng));
-    }
-    return points;
-  }
-
-  /**
-   * Batch convert screen coordinates to geographic coordinates (legacy name for backward compatibility)
-   * @deprecated Use the array-based fromScreenLocations or iterate over fromScreenLocation
-   *
-   * @param points Array of screen coordinates
-   * @returns Array of geographic coordinates
-   */
-  public screenLocationsToLatLngs(points: Point[]): LatLng[] {
-    const latLngs: LatLng[] = [];
-    for (const point of points) {
-      latLngs.push(this.fromScreenLocation(point));
-    }
-    return latLngs;
   }
 
   // ========== Visible region ==========
@@ -430,28 +378,6 @@ export class Projection {
   public getLatLngForProjectedMeters(projectedMeters: ProjectedMeters): LatLng {
     return LatLng.fromNative(this.nativeMapView.latLngForProjectedMeters(projectedMeters.northing,
       projectedMeters.easting));
-  }
-
-  /**
-   * Convert a geographic coordinate to projected meters (legacy name for backward compatibility)
-   * @deprecated Use getProjectedMetersForLatLng instead
-   *
-   * @param latLng Geographic coordinate
-   * @returns Projected meters
-   */
-  public toProjectedMeters(latLng: LatLng): ProjectedMeters {
-    return this.getProjectedMetersForLatLng(latLng);
-  }
-
-  /**
-   * Convert projected meters to a geographic coordinate (legacy name for backward compatibility)
-   * @deprecated Use getLatLngForProjectedMeters instead
-   *
-   * @param projectedMeters Projected meters
-   * @returns Geographic coordinate
-   */
-  public fromProjectedMeters(projectedMeters: ProjectedMeters): LatLng {
-    return this.getLatLngForProjectedMeters(projectedMeters);
   }
 
   /**

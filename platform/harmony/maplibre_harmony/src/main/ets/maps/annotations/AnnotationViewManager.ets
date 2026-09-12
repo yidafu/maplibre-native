@@ -1,5 +1,4 @@
 import { NativeMapView } from 'libmaplibre.so';
-// import { ComponentContent } from '@kit.ArkUI';
 import { Point } from '../geometry/Point';
 import {
   NativeViewAnnotationAnchorImpl,

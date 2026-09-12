@@ -66,13 +66,3 @@ export type BooleanValue = boolean | Expression | ExpressionLiteral;
  */
 export type StringValue = string | Expression | ExpressionLiteral;
 
-/**
- * PropertyValue - Generic property type
- *
- * Supported forms:
- * 1. Constant values of type T
- * 2. Expression instances
- * 3. Expression literals (JSON array format)
- */
-export type PropertyValue<T> = T | Expression | ExpressionLiteral;
-

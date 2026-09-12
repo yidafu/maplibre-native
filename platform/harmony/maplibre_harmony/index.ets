@@ -75,8 +75,8 @@ export type {
 export type { EdgeInsets } from './src/main/ets/maps/camera/CameraPosition';
 
 // ========== 声明式组件 (Declarative API) ==========
-// 由于 ArkTS 限制（属性名冲突、不支持 @Watch 等），声明式 API 暂时不可用
+// 由于 ArkTS 限制（属性名冲突、不支持 @Watch 等），声明式 API 已移除
 // 请使用命令式 API（MapLibreMap.addMarker, Style.addLayer 等）
-// 参考文档: docs/DECLARATIVE_API_LIMITATIONS.md
+// 历史文档见 docs/archived-backup/DECLARATIVE_API_*.md
 
 

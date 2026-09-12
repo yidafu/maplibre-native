@@ -82,7 +82,7 @@ export * from './ExpressionTypes';
 
 /**
  * Layer property value types.
- * Includes PropertyValue, ColorValue, NumberValue, StringValue, BooleanValue.
+ * Includes PropertyValue (concrete value or expression literal).
  */
 export * from './LayerPropertyTypes';
 

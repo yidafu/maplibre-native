@@ -18,8 +18,7 @@ import type {
   OnDidFinishLoadingStyleListener as OnDidFinishLoadingStyleListenerNAPI,
   OnCanRemoveUnusedStyleImageListener as OnCanRemoveUnusedStyleImageListenerNAPI,
   OnDidBecomeIdleListener as OnDidBecomeIdleListenerNAPI,
-  OnSourceChangedListener as OnSourceChangedListenerNAPI,
-  RenderingStats as RenderingStatsNAPI
+  OnSourceChangedListener as OnSourceChangedListenerNAPI
 } from 'libmaplibre.so';
 import type { MapLibreMap } from '../MapLibreMap';
 import type { TileOperation } from '../types/NativeTypes';
@@ -56,7 +55,6 @@ export type OnDidFinishRenderingFrameListener = OnDidFinishRenderingFrameListene
 
 /** Frame-did-finish-rendering listener (with stats) */
 export type OnDidFinishRenderingFrameWithStatsListener = OnDidFinishRenderingFrameWithStatsListenerNAPI;
-export type RenderingStats = RenderingStatsNAPI;
 
 /** Map-will-start-rendering listener */
 export type OnWillStartRenderingMapListener = OnWillStartRenderingMapListenerNAPI;

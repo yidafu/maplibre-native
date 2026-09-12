@@ -60,27 +60,6 @@ export class VisibleRegion {
    */
   public readonly latLngBounds: LatLngBounds;
 
-  // Backwards-compatible accessors.
-  /**
-   * @deprecated Use `bottomLeft` instead.
-   */
-  public get nearLeft(): LatLng { return this.bottomLeft; }
-  
-  /**
-   * @deprecated Use `bottomRight` instead.
-   */
-  public get nearRight(): LatLng { return this.bottomRight; }
-  
-  /**
-   * @deprecated Use `topLeft` instead.
-   */
-  public get farLeft(): LatLng { return this.topLeft; }
-  
-  /**
-   * @deprecated Use `topRight` instead.
-   */
-  public get farRight(): LatLng { return this.topRight; }
-
   /**
    * Constructor (Android-style naming).
    *

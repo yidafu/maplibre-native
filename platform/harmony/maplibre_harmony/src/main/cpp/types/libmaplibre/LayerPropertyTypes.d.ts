@@ -26,37 +26,3 @@ import type { ExpressionLiteral } from './ExpressionTypes';
  */
 export type PropertyValue<T> = T | ExpressionLiteral;
 
-/**
- * ExpressionType - backward-compatibility alias for expressions.
- * @deprecated Use PropertyValue<T> instead.
- */
-export type ExpressionType<T> = PropertyValue<T>;
-
-/**
- * ColorValue - color property type.
- * Accepts CSS color strings or expression literals.
- * @deprecated Use PropertyValue<string> instead.
- */
-export type ColorValue = PropertyValue<string>;
-
-/**
- * NumberValue - numeric property type.
- * Accepts numbers or expression literals.
- * @deprecated Use PropertyValue<number> instead.
- */
-export type NumberValue = PropertyValue<number>;
-
-/**
- * StringValue - string property type.
- * Accepts strings or expression literals.
- * @deprecated Use PropertyValue<string> instead.
- */
-export type StringValue = PropertyValue<string>;
-
-/**
- * BooleanValue - boolean property type.
- * Accepts booleans or expression literals.
- * @deprecated Use PropertyValue<boolean> instead.
- */
-export type BooleanValue = PropertyValue<boolean>;
-

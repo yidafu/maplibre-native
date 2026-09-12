@@ -171,26 +171,24 @@ isCompassEnabled(): boolean
 uiSettings.setCompassEnabled(true);
 ```
 
-#### setCompassPosition()
+#### setCompassAlignment()
 
 Set the compass position on screen.
 
 ```typescript
-setCompassPosition(position: OrnamentPosition): UiSettings
-getCompassPosition(): OrnamentPosition
+setCompassAlignment(alignment: Alignment): void
+getCompassAlignment(): Alignment
 ```
 
 **Parameters:**
-- `position: OrnamentPosition` - Position enum value
+- `alignment: Alignment` - ArkUI alignment (e.g. `Alignment.TopEnd`)
 
 **Example:**
 ```typescript
-import { OrnamentPosition } from '@ohos/maplibre';
-
-uiSettings.setCompassPosition(OrnamentPosition.TopRight);
-uiSettings.setCompassPosition(OrnamentPosition.TopLeft);
-uiSettings.setCompassPosition(OrnamentPosition.BottomRight);
-uiSettings.setCompassPosition(OrnamentPosition.BottomLeft);
+uiSettings.setCompassAlignment(Alignment.TopEnd);
+uiSettings.setCompassAlignment(Alignment.TopStart);
+uiSettings.setCompassAlignment(Alignment.BottomEnd);
+uiSettings.setCompassAlignment(Alignment.BottomStart);
 ```
 
 #### setCompassVisibility()
@@ -270,20 +268,18 @@ isLogoEnabled(): boolean
 uiSettings.setLogoEnabled(true);
 ```
 
-#### setLogoPosition()
+#### setLogoAlignment()
 
 Set the logo position on screen.
 
 ```typescript
-setLogoPosition(position: OrnamentPosition): UiSettings
-getLogoPosition(): OrnamentPosition
+setLogoAlignment(alignment: Alignment): void
+getLogoAlignment(): Alignment
 ```
 
 **Example:**
 ```typescript
-import { OrnamentPosition } from '@ohos/maplibre';
-
-uiSettings.setLogoPosition(OrnamentPosition.BottomLeft);
+uiSettings.setLogoAlignment(Alignment.BottomStart);
 ```
 
 #### setLogoMargins()
@@ -316,20 +312,18 @@ isScaleBarEnabled(): boolean
 uiSettings.setScaleBarEnabled(true);
 ```
 
-#### setScaleBarPosition()
+#### setScaleBarAlignment()
 
 Set the scale bar position on screen.
 
 ```typescript
-setScaleBarPosition(position: OrnamentPosition): UiSettings
-getScaleBarPosition(): OrnamentPosition
+setScaleBarAlignment(alignment: Alignment): void
+getScaleBarAlignment(): Alignment
 ```
 
 **Example:**
 ```typescript
-import { OrnamentPosition } from '@ohos/maplibre';
-
-uiSettings.setScaleBarPosition(OrnamentPosition.TopLeft);
+uiSettings.setScaleBarAlignment(Alignment.TopStart);
 ```
 
 #### setScaleBarUnit()
@@ -399,20 +393,18 @@ isAttributionEnabled(): boolean
 uiSettings.setAttributionEnabled(true);
 ```
 
-#### setAttributionPosition()
+#### setAttributionAlignment()
 
 Set the attribution button position.
 
 ```typescript
-setAttributionPosition(position: OrnamentPosition): UiSettings
-getAttributionPosition(): OrnamentPosition
+setAttributionAlignment(alignment: Alignment): void
+getAttributionAlignment(): Alignment
 ```
 
 **Example:**
 ```typescript
-import { OrnamentPosition } from '@ohos/maplibre';
-
-uiSettings.setAttributionPosition(OrnamentPosition.BottomRight);
+uiSettings.setAttributionAlignment(Alignment.BottomEnd);
 ```
 
 #### setAttributionMargins()
@@ -660,7 +652,6 @@ uiSettings.setRotationRate(1.2);  // 20% more sensitive
 import {
   NativeMapView,
   MapLibreMap,
-  OrnamentPosition,
   CompassVisibility,
   ScaleBarUnit,
   FocalPoint
@@ -700,7 +691,7 @@ struct UISettingsExample {
     // Configure compass
     uiSettings
       .setCompassEnabled(true)
-      .setCompassPosition(OrnamentPosition.TopRight)
+      .setCompassAlignment(Alignment.TopEnd)
       .setCompassVisibility(CompassVisibility.Adaptive)
       .setCompassFadeWhenFacingNorth(true)
       .setCompassMargins(20, 20, 20, 20);
@@ -708,13 +699,13 @@ struct UISettingsExample {
     // Configure logo
     uiSettings
       .setLogoEnabled(true)
-      .setLogoPosition(OrnamentPosition.BottomLeft)
+      .setLogoAlignment(Alignment.BottomStart)
       .setLogoMargins(10, 10, 10, 10);
 
     // Configure scale bar
     uiSettings
       .setScaleBarEnabled(true)
-      .setScaleBarPosition(OrnamentPosition.TopLeft)
+      .setScaleBarAlignment(Alignment.TopStart)
       .setScaleBarUnit(ScaleBarUnit.Metric)
       .setScaleBarUseDarkStyles(false)
       .setScaleBarMargins(10, 60, 10, 10);
@@ -722,7 +713,7 @@ struct UISettingsExample {
     // Configure attribution
     uiSettings
       .setAttributionEnabled(true)
-      .setAttributionPosition(OrnamentPosition.BottomRight)
+      .setAttributionAlignment(Alignment.BottomEnd)
       .setAttributionMargins(10, 10, 10, 10);
 
     // Configure inertial animations

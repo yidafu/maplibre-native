@@ -189,47 +189,5 @@ export class WidgetLayoutHelper {
       margins || { left: 10, top: 10, right: 10, bottom: 10 }
     );
   }
-  
-  /**
-   * Backward compatibility: convert from OrnamentPosition.
-   *
-   * @param position OrnamentPosition enum value (0-3).
-   * @returns Alignment
-   */
-  static ornamentPositionToAlignment(position: number): Alignment {
-    switch (position) {
-      case 0: // TopLeft
-        return Alignment.TopStart;
-      case 1: // TopRight
-        return Alignment.TopEnd;
-      case 2: // BottomLeft
-        return Alignment.BottomStart;
-      case 3: // BottomRight
-        return Alignment.BottomEnd;
-      default:
-        return Alignment.TopEnd;
-    }
-  }
-  
-  /**
-   * Backward compatibility: convert Alignment back to OrnamentPosition.
-   *
-   * @param alignment Alignment enum value.
-   * @returns OrnamentPosition (0-3), or null if it cannot be mapped.
-   */
-  static alignmentToOrnamentPosition(alignment: Alignment): number | null {
-    switch (alignment) {
-      case Alignment.TopStart:
-        return 0; // TopLeft
-      case Alignment.TopEnd:
-        return 1; // TopRight
-      case Alignment.BottomStart:
-        return 2; // BottomLeft
-      case Alignment.BottomEnd:
-        return 3; // BottomRight
-      default:
-        return null; // Not one of the four corners.
-    }
-  }
 }
 

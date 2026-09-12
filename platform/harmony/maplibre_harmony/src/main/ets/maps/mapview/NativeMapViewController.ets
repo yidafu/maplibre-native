@@ -56,7 +56,7 @@ export type {
   NativeViewAnnotationOptions
 } from '../annotations/NativeViewAnnotationTypes';
 // Type alias: distinguish between NAPI NativeMapView and ETS component
-type NativeMapViewNapiType = NativeMapViewNAPI;
+type NativeMapView = NativeMapViewNAPI;
 
 export interface NativeViewAnnotationApi {
   addViewAnnotation(options: NativeViewAnnotationOptions): number;
@@ -64,8 +64,6 @@ export interface NativeViewAnnotationApi {
   removeViewAnnotation(annotationId: number): boolean;
   getViewAnnotationFrames(): NativeViewAnnotationFrame[];
 }
-
-export type NativeMapView = NativeMapViewNapiType ;
 
 // MapView component interface for type declarations (avoid circular references)
 interface MapViewComponent {
@@ -792,9 +790,6 @@ export class NativeMapViewController extends XComponentController implements Nat
     return this.uiSettings;
   }
 
-  /**
-   * Get gesture detector
-   */
   // Phase 3: getGestureDetector() removed — gesture recognition is handled by C++
 
   /**

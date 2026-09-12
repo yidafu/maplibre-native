@@ -11,6 +11,7 @@ import type { RasterDemSource } from './RasterDemSource';
 import type { ImageSource } from './ImageSource';
 import type { CustomGeometrySource } from './CustomGeometrySource';
 import type { VideoSource } from './VideoSource';
+import type { ClusterProperties } from './GeoJsonOptions';
 /**
  * Source - Union of all supported source types
  *
@@ -34,11 +35,6 @@ export type SourceData = Object | string | null;
  * SourceMetadata - Source metadata structure
  */
 export type SourceMetadata = Record<string, Object> | null;
-
-/**
- * ClusterProperties - Aggregation property map
- */
-export type ClusterProperties = Record<string, Object> | null;
 
 /**
  * SourceOptions - Source configuration interface

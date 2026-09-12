@@ -3,7 +3,7 @@
  */
 import maplibre from 'libmaplibre.so';
 import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
-import type { ExpressionLiteral, NumberValue } from 'libmaplibre.so';
+import type { ExpressionLiteral } from 'libmaplibre.so';
 import type { PropertyValue } from '../expressions/index';
 import { Expression } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';

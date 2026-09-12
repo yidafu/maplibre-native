@@ -3,7 +3,7 @@
  * Background layer API (NAPI class).
  */
 
-import type { ColorValue, ExpressionType, NumberValue, StringValue, PropertyValue } from '../LayerPropertyTypes';
+import type { PropertyValue } from '../LayerPropertyTypes';
 import type { JSONValue } from '../CommonTypes';
 
 /**

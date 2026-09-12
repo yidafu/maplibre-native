@@ -100,10 +100,6 @@ add_library(maplibre
     rendering/harmony_map_render_thread.cpp
     rendering/backends/harmony_renderer_backend.hpp
     rendering/backends/harmony_renderer_backend.cpp
-    rendering/egl/Render.h
-    rendering/egl/Render.cpp
-    rendering/egl/EGLCore.h
-    rendering/egl/EGLCore.cpp
     
     # Style conversion system
     style/napi_value_wrapper.hpp

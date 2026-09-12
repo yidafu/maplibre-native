@@ -63,23 +63,3 @@ export function createCameraPosition(
   };
 }
 
-/**
- * CameraOptions - configuration for camera parameters (compatible with NAPI CameraOptions).
- */
-export interface CameraOptions {
-  /** Center coordinate. */
-  center?: LatLng;
-
-  /** Zoom level. */
-  zoom?: number;
-
-  /** Bearing angle (degrees). */
-  bearing?: number;
-
-  /** Pitch/tilt angle (degrees). */
-  pitch?: number;
-
-  /** Padding around the viewport. */
-  padding?: EdgeInsets;
-}
-
