@@ -7,13 +7,10 @@ import {
 import { MapLibreMap } from '../MapLibreMap';
 import { MapLibreMapOptions } from '../MapLibreMapOptions';
 import { Marker } from '../annotations/Marker';
-import { AnnotationViewData } from '../annotations/AnnotationViewManager';
-import { AnnotationViewOverlay } from '../annotations/AnnotationViewOverlay';
 import { NativeViewAnnotationOverlay, ViewAnnotationRenderState } from '../annotations/NativeViewAnnotationOverlay';
 import { ComponentContentRegistry } from '../annotations/ComponentContentRegistry';
 import { ViewAnnotationBuilderContext } from '../annotations/ViewAnnotationTypes';
 import { NativeViewAnnotationOptions, NativeViewAnnotationFrame } from '../annotations/NativeViewAnnotationTypes';
-import { LatLng } from '../geometry/LatLng';
 import { UiSettings } from '../UiSettings';
 import { CompassView } from '../widgets/CompassView';
 import { LogoView } from '../widgets/LogoView';
@@ -99,8 +96,6 @@ export struct MapView {
   @State private scaleBarEnabled: boolean = true;
   @State private attributionEnabled: boolean = true;
   // InfoWindow state management
-  // AnnotationView state management
-  @State private visibleAnnotationViews: AnnotationViewData[] = [];
 
   private getOnMapViewCreatedCallback(): ((map: MapLibreMap) => void) | undefined {
     return typeof this.onMapViewCreated === 'function' ? this.onMapViewCreated : undefined;
@@ -243,18 +238,12 @@ export struct MapView {
         });
 
         this.controller.setPitchUpdateCallback((pitch: number) => {
-          // Pitch is used by the AnnotationViewOverlay; cache it to
-          // avoid a NAPI call in the build() path every frame.
-          // The controller also caches it internally.
+          // The controller caches the pitch internally; MapView keeps no
+          // annotation-overlay state of its own.
         });
 
         this.controller.setScaleBarMetersPerPixelUpdateCallback((metersPerPixel: number) => {
           this.scaleBarMetersPerPixel = metersPerPixel;
-        });
-
-        // Register AnnotationView update callback
-        this.controller.setAnnotationViewUpdateCallback((views: AnnotationViewData[]) => {
-          this.visibleAnnotationViews = views;
         });
 
         this.controller.setViewAnnotationRenderCallback((states: ViewAnnotationRenderState[]) => {
@@ -335,8 +324,7 @@ export struct MapView {
         controllerWithUnregister.unregisterFromGlobalMap?.();
       }
 
-      // 6. Reset AnnotationView state
-      this.visibleAnnotationViews = [];
+      // 6. Reset floating-layer render state
       this.controller.clearViewAnnotationRenderCallback();
       this.viewAnnotationFrames = [];
 
@@ -577,75 +565,6 @@ export struct MapView {
           .height(40)
           .position({ x: this.getAttributionX(), y: this.getAttributionY() })
       }
-
-      // AnnotationView overlay - renders all custom AnnotationViews
-      AnnotationViewOverlay({
-        visibleAnnotationViews: this.visibleAnnotationViews,
-        mapBearing: this.compassBearing,
-        mapPitch: this.controller.getCachedPitch(),
-        screenWidth: this.controller.getWidth(),
-        screenHeight: this.controller.getHeight(),
-        onAnnotationSelect: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().selectMarker(marker, true);
-            }
-          } catch (error) {
-            this.logNativeMapViewError('AnnotationView select error', error);
-          }
-        },
-        onAnnotationDeselect: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().deselectMarker(marker);
-            }
-          } catch (error) {
-            this.logNativeMapViewError('AnnotationView deselect error', error);
-          }
-        },
-        onAnnotationDragStart: (marker: Marker) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().handleDragStart(marker);
-            }
-          } catch (error) {
-            this.logNativeMapViewError('AnnotationView drag start error', error);
-          }
-        },
-        onAnnotationDrag: (marker: Marker, screenX: number, screenY: number) => {
-          try {
-            const mapView = this.controller.getMapView();
-            if (mapView) {
-              // Use cached pixel ratio from controller to avoid NAPI call per drag frame
-              const pixelRatio = this.controller.getCachedPixelRatio();
-
-              const physicalX = screenX * pixelRatio;
-              const physicalY = screenY * pixelRatio;
-              const nativeLatLng: maplibre.LatLng = mapView.latLngForPixel(physicalX, physicalY);
-              const mapLibreMap = this.controller.getMapLibreMapInstance();
-              if (mapLibreMap && nativeLatLng) {
-                const latLng = LatLng.fromNative(nativeLatLng);
-                mapLibreMap.getMarkerManager().handleDrag(marker, latLng);
-              }
-            }
-          } catch (error) {
-            this.logNativeMapViewError('AnnotationView drag error', error);
-          }
-        },
-        onAnnotationDragEnd: (marker: Marker, screenX: number, screenY: number) => {
-          try {
-            const mapLibreMap = this.controller.getMapLibreMapInstance();
-            if (mapLibreMap) {
-              mapLibreMap.getMarkerManager().handleDragEnd(marker);
-            }
-          } catch (error) {
-            this.logNativeMapViewError('AnnotationView drag end error', error);
-          }
-        }
-      })
 
       NativeViewAnnotationOverlay({
         frames: this.viewAnnotationFrames,

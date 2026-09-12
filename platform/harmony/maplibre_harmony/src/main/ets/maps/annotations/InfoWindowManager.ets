@@ -12,7 +12,7 @@ import { Marker } from './Marker';
 import type { ViewAnnotationAddOptions, ViewAnnotationUpdateOptions } from './ViewAnnotationManager';
 import { ViewAnnotationManager } from './ViewAnnotationManager';
 import { INFO_WINDOW_VIEW_NAME } from './ViewAnnotationTypes';
-import { CenterOffset } from './AnnotationView';
+import { CenterOffset } from './ViewAnnotationUtils';
 import type { ComponentContent, UIContext } from '@kit.ArkUI';
 
 /**

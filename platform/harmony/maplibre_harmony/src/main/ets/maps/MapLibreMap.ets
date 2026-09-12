@@ -32,8 +32,7 @@ import { InfoWindowManager } from './annotations/InfoWindowManager';
 import { OnStyleLoadedListener } from './listeners/OnStyleLoadedListener';
 import { OnStyleLoadErrorListener } from './listeners/OnStyleLoadErrorListener';
 import { InfoWindowAdapter } from './annotations/InfoWindowAdapter';
-import { AnnotationViewData, AnnotationViewManager } from './annotations/AnnotationViewManager';
-import { AnnotationViewConfig, AnnotationViewDelegate } from './annotations/AnnotationViewDelegate';
+import type { AnnotationViewConfig, AnnotationViewDelegate } from './annotations/AnnotationViewDelegate';
 import { ViewAnnotationManager } from './annotations/ViewAnnotationManager';
 import { ViewAnnotationRenderState } from './annotations/NativeViewAnnotationOverlay';
 import { CameraChangeDispatcher } from './camera/CameraChangeDispatcher';
@@ -184,10 +183,8 @@ export class MapLibreMap {
   private polygonManager: PolygonManager;
   private polylineManager: PolylineManager;
   private infoWindowManager: InfoWindowManager;
-  private annotationViewManager: AnnotationViewManager;
   private viewAnnotationManager: ViewAnnotationManager;
   private viewAnnotationRenderCallback?: (states: ViewAnnotationRenderState[]) => void;
-  private annotationViewDelegate: AnnotationViewDelegate | null = null;
   private style: Style | null = null;
   private styleLoaded: boolean = false;
   private cameraChangeDispatcher: CameraChangeDispatcher = new CameraChangeDispatcher();
@@ -266,7 +263,6 @@ export class MapLibreMap {
     // ⚠️ Important: InfoWindowManager must be created before MarkerManager
     // Because the MarkerManager constructor calls this.mapLibreMap.getInfoWindowManager()
     this.infoWindowManager = new InfoWindowManager();
-    this.annotationViewManager = new AnnotationViewManager();
     this.viewAnnotationManager = new ViewAnnotationManager();
     
     // Create annotation managers (depend on InfoWindowManager)
@@ -276,8 +272,7 @@ export class MapLibreMap {
     this.locationComponent = new LocationComponent(this);
     this.projection = new Projection(nativeMapView, 0, 0); // Start with zero size and update later
 
-    // Set the NativeMapView for AnnotationViewManager
-    this.annotationViewManager.setNativeMapView(nativeMapView);
+    // Bind the floating-layer engine to the native map view
     this.viewAnnotationManager.setNativeMapView(nativeMapView);
     this.infoWindowManager.setViewAnnotationManager(this.viewAnnotationManager);
     this.viewAnnotationManager.updatePixelRatio(this.readPixelRatioSafe(nativeMapView));
@@ -437,38 +432,9 @@ export class MapLibreMap {
   }
 
   /**
-   * Called when the visible map region changes (mirrors Android MapLibreMap.onUpdateRegionChange)
-   * Updates UI elements whenever the viewport changes due to camera moves or animations
-   * @private
-   */
-  private onUpdateRegionChange(): void {
-    // Update AnnotationView positions with ONE batched NAPI call
-    // (pixelsForLatLngs). The previous per-marker pixelForLatLng projector
-    // performed one synchronous cross-boundary call per marker per frame.
-    this.annotationViewManager.batchUpdatePositions();
-
-    // ViewAnnotation-backed InfoWindows are positioned by the native engine,
-    // which pushes (epsilon-deduped) frames to the ArkTS overlay directly —
-    // no per-frame pull happens here anymore.
-  }
-
-  private readPixelRatioSafe(mapView: NativeMapView): number {
-    try {
-      const ratioCandidate = mapView.getPixelRatio?.();
-      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
-        return ratioCandidate;
-      }
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[MapLibreMap] readPixelRatioSafe failed: ${reason}`);
-    }
-    return 1;
-  }
-
-  /**
    * Consolidated camera move listener — fires once per move event.
-   * Updates compass, scale bar, and annotation views using a single
-   * cached camera state to minimise NAPI cross-boundary calls.
+   * Updates compass and scale bar using a single cached camera state to
+   * minimise NAPI cross-boundary calls.
    * @private
    */
   private setupConsolidatedCameraMoveListener(): void {
@@ -497,26 +463,23 @@ export class MapLibreMap {
         if (this.parent.onPitchUpdate) {
           this.parent.onPitchUpdate(state.pitch);
         }
-
-        // 4. Annotation view position update
-        this.parent.updateAnnotationViewPositions(false);
-      }
-    }
-
-    class ConsolidatedIdleListenerImpl implements OnCameraIdleListener {
-      parent: MapLibreMap;
-
-      constructor(parent: MapLibreMap) {
-        this.parent = parent;
-      }
-
-      onCameraIdle(): void {
-        this.parent.updateAnnotationViewPositions(true);
       }
     }
 
     this.cameraChangeDispatcher.addOnCameraMoveListener(new ConsolidatedMoveListenerImpl(this));
-    this.cameraChangeDispatcher.addOnCameraIdleListener(new ConsolidatedIdleListenerImpl(this));
+  }
+
+  private readPixelRatioSafe(mapView: NativeMapView): number {
+    try {
+      const ratioCandidate = mapView.getPixelRatio?.();
+      if (typeof ratioCandidate === 'number' && Number.isFinite(ratioCandidate) && ratioCandidate > 0) {
+        return ratioCandidate;
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : `${error}`;
+      console.warn(`[MapLibreMap] readPixelRatioSafe failed: ${reason}`);
+    }
+    return 1;
   }
 
   /**
@@ -688,8 +651,8 @@ export class MapLibreMap {
       // descriptors and detaches adapter/listeners/UIContext)
       this.infoWindowManager.destroy();
 
-      // 5. Clear the AnnotationViewManager
-      this.annotationViewManager.clear();
+      // 5. Tear down the floating-layer engine (marker custom views and
+      // InfoWindows are its only producers)
       this.viewAnnotationManager.setRenderCallback(null);
       this.viewAnnotationManager.clear();
       this.viewAnnotationManager.setNativeMapView(null);
@@ -2510,14 +2473,11 @@ export class MapLibreMap {
       return;
     }
 
-    // Clear all markers
+    // Clear all markers (also removes their custom view annotations)
     this.markerManager.clear();
 
     // Close all InfoWindows
     this.infoWindowManager.closeAll();
-
-    // Clear all AnnotationViews
-    this.annotationViewManager.clear();
   }
 
   /**
@@ -3971,18 +3931,14 @@ export class MapLibreMap {
     return false;
   }
 
-// ========== AnnotationView management ==========
-
-  /**
-   * Get the AnnotationViewManager instance
-   * @returns AnnotationViewManager
-   */
-  public getAnnotationViewManager(): AnnotationViewManager {
-    return this.annotationViewManager;
-  }
+// ========== Marker custom views (AnnotationViewDelegate) ==========
 
   /**
    * Get the ViewAnnotationManager
+   *
+   * The single floating-layer engine: generic view annotations,
+   * InfoWindows and marker custom views all render through it.
+   *
    * @returns ViewAnnotationManager
    */
   public getViewAnnotationManager(): ViewAnnotationManager {
@@ -4006,12 +3962,14 @@ export class MapLibreMap {
 
   /**
    * Set the AnnotationViewDelegate
-   * Customizes creation and event handling for AnnotationViews
+   * Customizes creation and event handling for marker custom views.
    *
    * Mirrors iOS MLNMapView.delegate
    *
-   * After the delegate is set, the map invokes viewForAnnotation for every marker to build custom views.
-   * Existing markers will rebuild their views immediately.
+   * After the delegate is set, the map invokes viewForAnnotation for every
+   * marker: a config with a contentBuilder renders a marker-anchored
+   * ViewAnnotation, a null result falls back to the default symbol icon.
+   * Existing markers re-sync immediately.
    *
    * @param delegate AnnotationViewDelegate instance; pass null to clear
    *
@@ -4046,15 +4004,7 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
-    
-    // Cache the delegate
-    this.annotationViewDelegate = delegate;
-
-    // Forward the delegate to AnnotationViewManager
-    this.annotationViewManager.setDelegate(delegate);
-
-    // Note: AnnotationViewManager.setDelegate automatically calls recreateAllViews(),
-    // so existing markers will rebuild their views
+    this.markerManager.setAnnotationViewDelegate(delegate);
   }
 
   /**
@@ -4065,41 +4015,14 @@ export class MapLibreMap {
     if (this.destroyed) {
       return null;
     }
-    return this.annotationViewDelegate;
-  }
-
-  /**
-   * Register an AnnotationView for a marker
-   *
-   * @param marker Marker instance
-   * @param config AnnotationViewConfig
-   */
-  public registerAnnotationView(marker: Marker, config: AnnotationViewConfig): void {
-    if (this.destroyed) {
-      return;
-    }
-
-    // Create or update the view via AnnotationViewManager
-    this.annotationViewManager.createOrUpdateView(marker);
-
-  }
-
-  /**
-   * Unregister an AnnotationView
-   *
-   * @param marker Marker instance
-   */
-  public unregisterAnnotationView(marker: Marker): void {
-    if (this.destroyed) {
-      return;
-    }
-
-    this.annotationViewManager.removeView(marker);
-
+    return this.markerManager.getAnnotationViewDelegate();
   }
 
   /**
    * Select an annotation
+   *
+   * Routes through the shared marker selection state (deselects the previous
+   * selection) and notifies the delegate.
    *
    * @param marker Marker instance
    * @param animated Whether to animate
@@ -4109,11 +4032,10 @@ export class MapLibreMap {
       return;
     }
 
-    this.annotationViewManager.selectAnnotation(marker, animated);
+    this.markerManager.selectMarker(marker, false);
 
-    // Notify delegate callback
-    if (this.annotationViewDelegate?.didSelectAnnotationView) {
-      this.annotationViewDelegate.didSelectAnnotationView(marker);
+    if (this.markerManager.getAnnotationViewDelegate()?.didSelectAnnotationView) {
+      this.markerManager.getAnnotationViewDelegate()!.didSelectAnnotationView!(marker);
     }
   }
 
@@ -4128,11 +4050,10 @@ export class MapLibreMap {
       return;
     }
 
-    this.annotationViewManager.deselectAnnotation(marker, animated);
+    this.markerManager.deselectMarker(marker);
 
-    // Notify delegate callback
-    if (this.annotationViewDelegate?.didDeselectAnnotationView) {
-      this.annotationViewDelegate.didDeselectAnnotationView(marker);
+    if (this.markerManager.getAnnotationViewDelegate()?.didDeselectAnnotationView) {
+      this.markerManager.getAnnotationViewDelegate()!.didDeselectAnnotationView!(marker);
     }
   }
 
@@ -4146,7 +4067,7 @@ export class MapLibreMap {
       return;
     }
 
-    const selected = this.annotationViewManager.getSelectedAnnotations();
+    const selected = this.markerManager.getSelectedMarkers().slice();
     selected.forEach(marker => {
       this.deselectAnnotation(marker, animated);
     });
@@ -4160,20 +4081,7 @@ export class MapLibreMap {
     if (this.destroyed) {
       return [];
     }
-    return this.annotationViewManager.getSelectedAnnotations();
-  }
-
-  /**
-   * Dequeue an AnnotationView from the reuse pool
-   *
-   * @param identifier Reuse identifier
-   * @returns AnnotationViewData or null
-   */
-  public dequeueReusableAnnotationView(identifier: string): AnnotationViewData | null {
-    if (this.destroyed) {
-      return null;
-    }
-    return this.annotationViewManager.dequeueReusableView(identifier);
+    return this.markerManager.getSelectedMarkers();
   }
 
   /**
@@ -4186,13 +4094,14 @@ export class MapLibreMap {
     if (this.destroyed) {
       return false;
     }
-    return this.annotationViewManager.isAnnotationSelected(marker);
+    return marker.isSelected();
   }
 
   /**
    * Get all visible annotations
    *
-   * Mirrors iOS MLNMapView visibleAnnotations
+   * Mirrors iOS MLNMapView visibleAnnotations: markers rendering a custom
+   * view annotation whose visible flag is set.
    *
    * @returns Array of markers currently visible on screen
    */
@@ -4201,30 +4110,7 @@ export class MapLibreMap {
       return [];
     }
 
-    // Fetch all markers with custom views
-    const allViews = this.annotationViewManager.getVisibleViews();
-    // 🔒 Fix ObservedObject error: filter out entries where marker is null
-    return allViews
-      .filter(viewData => viewData.marker !== null)
-      .map(viewData => viewData.marker!);
-  }
-
-  /**
-   * Update positions for every AnnotationView
-   *
-   * Automatically invoked when the camera changes to keep custom view coordinates in sync
-   *
-   * @param cameraChanged Whether camera parameters (bearing/pitch) changed
-   * @private
-   */
-  private updateAnnotationViewPositions(cameraChanged: boolean = false): void {
-    if (this.destroyed) {
-      return;
-    }
-    // ViewAnnotation frames (InfoWindows) are pushed by the native engine on
-    // the render thread; only the deprecated AnnotationView pipeline still
-    // updates here.
-    this.annotationViewManager.batchUpdatePositions(cameraChanged);
+    return this.markerManager.getCustomViewMarkers().filter(marker => marker.getVisible());
   }
 
 // ==================== Feature queries ====================

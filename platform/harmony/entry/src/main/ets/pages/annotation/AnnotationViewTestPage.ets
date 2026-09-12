@@ -1,15 +1,16 @@
 /**
  * AnnotationViewTestPage - Custom annotation views.
  *
- * Demonstrates using AnnotationViewAdapter to create custom
- * marker views with different visual styles and behaviors.
+ * Demonstrates using AnnotationViewDelegate to create custom
+ * marker views (marker-anchored ViewAnnotations) with different
+ * visual styles and behaviors.
  */
 import {
   TestPageLayout
 } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, Marker, MarkerOptions, LatLng,
-  AnnotationViewAdapter, AnnotationViewConfig, AnnotationViewDelegate,
+  AnnotationViewConfig, AnnotationViewDelegate,
   OnMarkerDragListener
 } from 'maplibre_harmony';
 import { MarkerClickListener } from '../../utils/ListenerFactories';
@@ -22,55 +23,57 @@ interface LocationInfo {
   desc: string;
 }
 
-@Component
-export struct ColoredCircleView {
-  @Prop color: string = '#FF5722';
-  @Prop label: string = '';
+const CIRCLE_RED = '#F44336';
+const CIRCLE_BLUE = '#2196F3';
+const CIRCLE_GREEN = '#4CAF50';
+const BADGE_PURPLE = '#9C27B0';
 
-  build() {
-    Column() {
-      Circle()
-        .width(36)
-        .height(36)
-        .fill(this.color)
-        .stroke(Color.White)
-        .strokeWidth(2)
-      Text(this.label)
-        .fontSize(10)
-        .fontColor(this.color)
-        .textAlign(TextAlign.Center)
-        .margin({ top: 2 })
-    }
-    .width(50)
-    .height(50)
-    .alignItems(HorizontalAlign.Center)
-  }
+class CircleContentParams {
+  color: string = '';
+  title: string = '';
 }
 
-@Component
-export struct InfoBadgeView {
-  @Prop title: string = '';
-  @Prop snippet: string = '';
-  @Prop color: string = '#2196F3';
+class BadgeContentParams {
+  title: string = '';
+}
 
-  build() {
-    Column() {
-      Text(this.title)
-        .fontSize(13)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(Color.White)
-        .padding({ left: 10, right: 10, top: 4, bottom: 2 })
-      if (this.snippet) {
-        Text(this.snippet)
-          .fontSize(10)
-          .fontColor('rgba(255,255,255,0.8)')
-          .padding({ left: 10, right: 10, bottom: 4 })
-      }
-    }
-    .backgroundColor(this.color)
-    .borderRadius(8)
-    .shadow({ radius: 4, color: 'rgba(0,0,0,0.3)', offsetX: 0, offsetY: 2 })
+// UI (DSL) syntax is only allowed inside @Builder contexts, so marker view
+// content lives in module-level @Builder functions; the delegate's
+// contentBuilder closures simply forward to them.
+@Builder
+function circleMarkerContent($$: CircleContentParams) {
+  Column() {
+    Circle()
+      .width(36)
+      .height(36)
+      .fill($$.color)
+      .stroke(Color.White)
+      .strokeWidth(2)
+    Text($$.title)
+      .fontSize(10)
+      .fontColor($$.color)
+      .textAlign(TextAlign.Center)
+      .maxLines(1)
   }
+  .alignItems(HorizontalAlign.Center)
+}
+
+@Builder
+function badgeMarkerContent($$: BadgeContentParams) {
+  Column() {
+    Text($$.title)
+      .fontSize(13)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(Color.White)
+      .padding({ left: 10, right: 10, top: 4, bottom: 2 })
+    Text('Custom view annotation')
+      .fontSize(10)
+      .fontColor('rgba(255,255,255,0.8)')
+      .padding({ left: 10, right: 10, bottom: 4 })
+  }
+  .backgroundColor(BADGE_PURPLE)
+  .borderRadius(8)
+  .shadow({ radius: 4, color: 'rgba(0,0,0,0.3)', offsetX: 0, offsetY: 2 })
 }
 
 class TestAnnotationViewDelegate implements AnnotationViewDelegate {
@@ -82,30 +85,29 @@ class TestAnnotationViewDelegate implements AnnotationViewDelegate {
 
   viewForAnnotation(marker: Marker): AnnotationViewConfig | null {
     const snippet = marker.getSnippet();
-    if (snippet === 'circle-red') {
+    if (snippet === 'circle-red' || snippet === 'circle-blue' || snippet === 'circle-green') {
+      const color = snippet === 'circle-red' ? CIRCLE_RED :
+        snippet === 'circle-blue' ? CIRCLE_BLUE : CIRCLE_GREEN;
+      const params = new CircleContentParams();
+      params.color = color;
+      params.title = marker.getTitle();
       return {
-        reuseIdentifier: 'circle-red',
-        draggable: false,
-        centerOffset: { dx: 0, dy: -18 },
-        zIndex: 5
-      } as AnnotationViewConfig;
-    } else if (snippet === 'circle-blue') {
-      return {
-        reuseIdentifier: 'circle-blue',
-        draggable: false,
-        centerOffset: { dx: 0, dy: -18 },
-        zIndex: 5
-      } as AnnotationViewConfig;
-    } else if (snippet === 'circle-green') {
-      return {
-        reuseIdentifier: 'circle-green',
+        reuseIdentifier: snippet,
+        contentBuilder: (): void => {
+          circleMarkerContent(params)
+        },
         draggable: false,
         centerOffset: { dx: 0, dy: -18 },
         zIndex: 5
       } as AnnotationViewConfig;
     } else if (snippet === 'info-badge') {
+      const params = new BadgeContentParams();
+      params.title = marker.getTitle();
       return {
         reuseIdentifier: 'info-badge',
+        contentBuilder: (): void => {
+          badgeMarkerContent(params)
+        },
         draggable: false,
         centerOffset: { dx: 0, dy: -30 },
         zIndex: 10
@@ -142,9 +144,6 @@ struct AnnotationViewTestPage {
   @State private isMapReady: boolean = false;
   @State statusMessage: string = 'Loading...';
   @State private markerCount: number = 0;
-  @State private scalesEnabled: boolean = false;
-  @State private rotatesEnabled: boolean = false;
-  @State private dragMode: boolean = false;
 
   private delegate: TestAnnotationViewDelegate | null = null;
 
@@ -157,9 +156,10 @@ struct AnnotationViewTestPage {
     this.mapController = map;
     this.isMapReady = true;
 
-    // Set up delegate
+    // Set up delegate (marker custom views render as marker-anchored
+    // ViewAnnotations on the shared floating-layer engine)
     this.delegate = new TestAnnotationViewDelegate(this);
-    map.getMarkerManager().getAnnotationViewManager().setDelegate(this.delegate);
+    map.setAnnotationViewDelegate(this.delegate);
 
     // Set up click listener
     map.setOnMarkerClickListener(new MarkerClickListener(
@@ -227,16 +227,6 @@ struct AnnotationViewTestPage {
     showToast('Cleared all');
   }
 
-  private toggleScale(): void {
-    this.scalesEnabled = !this.scalesEnabled;
-    showToast(`Scale: ${this.scalesEnabled ? 'enabled' : 'disabled'}`);
-  }
-
-  private toggleRotate(): void {
-    this.rotatesEnabled = !this.rotatesEnabled;
-    showToast(`Rotate: ${this.rotatesEnabled ? 'enabled' : 'disabled'}`);
-  }
-
   @Builder
   mapContent() {
     MapView({
@@ -269,7 +259,7 @@ struct AnnotationViewTestPage {
         Button('Red (5)')
           .width('31%')
           .fontSize(12)
-          .backgroundColor('#F44336')
+          .backgroundColor(CIRCLE_RED)
           .fontColor(Color.White)
           .onClick((): void => { this.addMarkers('red', 5); })
           .enabled(this.isMapReady)
@@ -278,7 +268,7 @@ struct AnnotationViewTestPage {
           .width('31%')
           .margin({ left: 8 })
           .fontSize(12)
-          .backgroundColor('#2196F3')
+          .backgroundColor(CIRCLE_BLUE)
           .fontColor(Color.White)
           .onClick((): void => { this.addMarkers('blue', 5); })
           .enabled(this.isMapReady)
@@ -287,7 +277,7 @@ struct AnnotationViewTestPage {
           .width('31%')
           .margin({ left: 8 })
           .fontSize(12)
-          .backgroundColor('#4CAF50')
+          .backgroundColor(CIRCLE_GREEN)
           .fontColor(Color.White)
           .onClick((): void => { this.addMarkers('green', 5); })
           .enabled(this.isMapReady)
@@ -298,36 +288,16 @@ struct AnnotationViewTestPage {
       Button('Add Info Badges')
         .width('100%')
         .margin({ top: 6 })
-        .backgroundColor('#9C27B0')
+        .backgroundColor(BADGE_PURPLE)
         .fontColor(Color.White)
         .fontSize(13)
         .onClick((): void => { this.addInfoBadgeMarkers(); })
         .enabled(this.isMapReady)
 
-      Divider().margin({ top: 8, bottom: 8 })
-
-      Row() {
-        Button(`Scale: ${this.scalesEnabled ? 'ON' : 'OFF'}`)
-          .width('48%')
-          .fontSize(12)
-          .backgroundColor(this.scalesEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick((): void => this.toggleScale())
-          .enabled(this.isMapReady)
-
-        Button(`Rotate: ${this.rotatesEnabled ? 'ON' : 'OFF'}`)
-          .width('48%')
-          .margin({ left: 8 })
-          .fontSize(12)
-          .backgroundColor(this.rotatesEnabled ? '#4CAF50' : '#9E9E9E')
-          .onClick((): void => this.toggleRotate())
-          .enabled(this.isMapReady)
-      }
-      .width('100%')
-
       Button('Clear All')
         .width('100%')
         .margin({ top: 8 })
-        .backgroundColor('#F44336')
+        .backgroundColor(CIRCLE_RED)
         .fontColor(Color.White)
         .onClick((): void => this.clearAll())
         .enabled(this.isMapReady && this.markerCount > 0)

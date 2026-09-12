@@ -6,6 +6,21 @@
  */
 
 // ============================================================================
+// Shared option types
+// ============================================================================
+
+/**
+ * Center offset
+ *
+ * Adjusts a floating view's center relative to its anchor point.
+ * Positive values shift right/down; negative values shift left/up.
+ */
+export interface CenterOffset {
+  dx: number; // Horizontal offset in logical pixels
+  dy: number; // Vertical offset in logical pixels
+}
+
+// ============================================================================
 // Constants
 // ============================================================================
 

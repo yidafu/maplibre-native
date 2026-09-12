@@ -1,0 +1,78 @@
+name: harmony-vulkan-gate
+
+# The HarmonyOS module builds the OpenGL backend by default
+# (-DMLN_WITH_VULKAN=OFF), so the Vulkan renderer backend
+# (`harmony_vulkan_renderer_backend.{hpp,cpp}`) is not exercised by any other
+# pipeline. This workflow is the compile gate for that path: it configures the
+# module CMake with MLN_WITH_VULKAN=ON against the OpenHarmony NDK and
+# compiles the backend translation unit (no device, no HAP).
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'platform/harmony/**'
+      - 'vendor/Vulkan-Headers/**'
+      - '.github/workflows/harmony-vulkan-gate.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+env:
+  # OpenHarmony NDK release used to provision the toolchain.
+  # Bump OHOS_SDK_URL to move to a newer release; the tarball must contain
+  # ohos-sdk/linux/native-linux-x64-*.tar.gz (standard layout of
+  # https://repo.huaweicloud.com/openharmony/os/<version>/ohos-sdk-windows_linux-public.tar.gz)
+  OHOS_SDK_URL: https://repo.huaweicloud.com/openharmony/os/5.0.3-Release/ohos-sdk-windows_linux-public.tar.gz
+
+jobs:
+  vulkan-compile-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Cache OpenHarmony SDK
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/ohos-sdk
+          key: ohos-sdk-${{ env.OHOS_SDK_URL }}
+
+      - name: Download OpenHarmony SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/ohos-sdk-download
+          curl -fSL --retry 3 -o ~/ohos-sdk-download/sdk.tar.gz "${OHOS_SDK_URL}"
+          tar -xzf ~/ohos-sdk-download/sdk.tar.gz -C ~/ohos-sdk-download
+          # Layout: ohos-sdk/linux/native-linux-x64-*.tar.gz -> extract native/
+          INNER=$(find ~/ohos-sdk-download -name 'native-linux-x64-*.tar.gz' | head -1)
+          test -n "${INNER}" || { echo "native SDK tarball not found"; exit 1; }
+          mkdir -p ~/ohos-sdk
+          tar -xzf "${INNER}" -C ~/ohos-sdk
+          test -f ~/ohos-sdk/native/build/cmake/ohos.toolchain.cmake \
+            || { echo "ohos.toolchain.cmake missing after extraction"; exit 1; }
+
+      - name: Arrange DevEco-style SDK layout
+        run: |
+          # The module CMake derives sysroot paths from DEVECO_SDK_HOME as
+          # <root>/default/openharmony/native — provide that layout via symlink.
+          mkdir -p ~/deveco-layout/default/openharmony
+          ln -sfn ~/ohos-sdk/native ~/deveco-layout/default/openharmony/native
+
+      - name: Compile Vulkan backend gate
+        run: |
+          export DEVECO_SDK_HOME="$HOME/deveco-layout"
+          ./platform/harmony/scripts/verify-vulkan-backend.sh

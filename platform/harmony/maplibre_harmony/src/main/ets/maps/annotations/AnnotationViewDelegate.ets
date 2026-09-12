@@ -1,6 +1,5 @@
-import maplibre from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
-import { CenterOffset } from './AnnotationView';
+import { CenterOffset } from './ViewAnnotationUtils';
 
 import { Marker } from './Marker';
 
@@ -75,8 +74,11 @@ export interface AnnotationViewConfig {
   /**
    * Custom content builder
    *
-   * Provides custom UI in place of the default icon.
-   * If omitted, the marker icon is used as the visual.
+   * Provides custom UI rendered as a marker-anchored ViewAnnotation.
+   * A config without a contentBuilder produces no custom view (the marker
+   * falls back to its default symbol icon). The builder closure is bridged
+   * into the ComponentContent pipeline internally; omitting size lets the
+   * SDK measure the content and anchor on its real bounds.
    *
    * @example
    * ```typescript

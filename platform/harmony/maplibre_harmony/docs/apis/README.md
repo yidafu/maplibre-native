@@ -7,7 +7,7 @@ Welcome to the MapLibre Native for HarmonyOS API documentation. This documentati
 - **Getting Started**: See [01-core.md](./01-core.md#usage-example) for basic usage
 - **Full Documentation**: Browse modules below by category
 - **Examples**: Each module includes complete code examples
-- **Main Docs**: See `../api/` directory for additional guides
+- **Guides**: `../guides/` for tutorials and usage examples
 
 ## API Modules
 
@@ -336,9 +336,9 @@ layer
 
 ## Additional Resources
 
-- **API Reference (Chinese)**: `../api/README_zh.md`
-- **Usage Guide**: `../api/USAGE_GUIDE.md`
-- **Implementation Guide**: `../api/CPP_NAPI_BINDING_GUIDE.md`
+- **Usage Guide (bilingual)**: `../guides/USAGE_GUIDE.md`
+- **NAPI Implementation Guide**: `../implementation/CPP_NAPI_BINDING_GUIDE.md`
+- **NativeMapView NAPI Quick Reference**: `../implementation/QUICK_REFERENCE.md`
 - **Migration Guide**: `../guides/CAMERA_API_MIGRATION_GUIDE.md`
 - **Quick Start**: `../guides/QUICK_START.md`
 

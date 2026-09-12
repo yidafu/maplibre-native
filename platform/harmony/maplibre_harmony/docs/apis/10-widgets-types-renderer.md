@@ -2,7 +2,14 @@
 
 ## Overview
 
-This document covers UI widgets (compass, logo, scale bar), type definitions/enums, and rendering statistics.
+This document covers UI widgets (compass, logo, scale bar, attribution), type definitions/enums, and rendering statistics.
+
+> **Positioning note**: widget components are mounted automatically by
+> `MapView`/`TextureMapView`. Their on-screen position is configured through
+> `UiSettings` alignment setters (`setCompassAlignment`,
+> `setLogoAlignment`, `setScaleBarAlignment`, `setAttributionAlignment`)
+> with the ArkUI `Alignment` enum — see [02-ui-settings.md](./02-ui-settings.md).
+> The legacy `*Position(OrnamentPosition)` setters were removed.
 
 ---
 
@@ -10,95 +17,87 @@ This document covers UI widgets (compass, logo, scale bar), type definitions/enu
 
 ### CompassView
 
-Displays a compass indicating map rotation.
+Displays a compass indicating map rotation; tapping it resets the camera to north. Mounted by MapView; configured via `UiSettings`.
 
 ```typescript
 @Component
 struct CompassView {
-  @Prop bearing: number;                      // Current map bearing
-  @Prop visibility: CompassVisibility;        // Visibility mode
-  @Prop position: OrnamentPosition;           // Screen position
-  @Prop fadeWhenNorth: boolean;               // Fade when pointing north
-  @Prop onClick?: () => void;                 // Click callback
+  @Prop compassEnabled: boolean = true;
+  @Prop compassVisibility: CompassVisibility = CompassVisibility.Adaptive;
+  @Prop fadeWhenFacingNorth: boolean = true;   // Fade when map faces north
+  @Prop compassImage: Resource = $r('app.media.compass_icon');
+  @Prop @Watch('onBearingChanged') externalBearing: number = 0;  // Fed by the map camera
 }
 ```
 
-**Usage:**
+**Configuration (recommended — via UiSettings):**
 ```typescript
-CompassView({
-  bearing: map.getBearing(),
-  visibility: CompassVisibility.Adaptive,
-  position: OrnamentPosition.TopRight,
-  fadeWhenNorth: true,
-  onClick: () => {
-    // Reset bearing to north
-    map.setBearing(0, { duration: 300 });
-  }
-})
+const uiSettings = map.getUiSettings();
+uiSettings.setCompassEnabled(true);
+uiSettings.setCompassVisibility(CompassVisibility.Adaptive);
+uiSettings.setCompassAlignment(Alignment.TopEnd); // positioning
 ```
 
 ### LogoView
 
-Displays MapLibre logo (required by license).
+Displays MapLibre logo (required by license). Mounted by MapView; configured via `UiSettings`.
 
 ```typescript
 @Component
 struct LogoView {
-  @Prop position: OrnamentPosition;           // Screen position
-  @Prop enabled: boolean;                     // Visibility
+  @Prop logoImage: Resource = $r('app.media.maplibre_logo_helmet');
+  @Prop logoEnabled: boolean = true;
+  @Prop logoWidth: number | string = 'auto';
+  @Prop logoHeight: number | string = 'auto';
 }
 ```
 
-**Usage:**
+**Configuration (recommended — via UiSettings):**
 ```typescript
-LogoView({
-  position: OrnamentPosition.BottomLeft,
-  enabled: true
-})
+uiSettings.setLogoEnabled(true);
+uiSettings.setLogoAlignment(Alignment.BottomStart);
 ```
 
 ### ScaleBarView
 
-Displays map scale.
+Displays map scale. Mounted by MapView; configured via `UiSettings`.
 
 ```typescript
 @Component
 struct ScaleBarView {
-  @Prop metersPerPixel: number;               // Current scale
-  @Prop unit: ScaleBarUnit;                   // Measurement unit
-  @Prop position: OrnamentPosition;           // Screen position
-  @Prop useDarkStyles: boolean;               // Dark/light theme
-  @Prop enabled: boolean;                     // Visibility
+  @Prop isEnabled: boolean = true;
+  @Prop @Watch('onMetersPerPixelChanged') metersPerPixel: number = 0;
+  @Prop unitSystem: ScaleBarUnit = ScaleBarUnit.Metric;
+  @Prop useDarkStyles: boolean = false;
+  @Prop primaryColor: string = '#122D11';
+  @Prop secondaryColor: string = '#F7F7F7';
+  @Prop maxWidth: number = 200;
 }
 
 enum ScaleBarUnit {
-  Metric,    // Meters/Kilometers
-  Imperial   // Feet/Miles
+  Metric = 0,    // Meters/Kilometers
+  Imperial = 1   // Feet/Miles
 }
 ```
 
-**Usage:**
+**Configuration (recommended — via UiSettings):**
 ```typescript
-ScaleBarView({
-  metersPerPixel: map.getMetersPerPixelAtLatitude(latLng.latitude),
-  unit: ScaleBarUnit.Metric,
-  position: OrnamentPosition.TopLeft,
-  useDarkStyles: false,
-  enabled: true
-})
+uiSettings.setScaleBarEnabled(true);
+uiSettings.setScaleBarUnit(ScaleBarUnit.Metric);
+uiSettings.setScaleBarAlignment(Alignment.TopStart);
 ```
 
 ### AttributionButton
 
-Displays attribution information.
+Displays attribution information; tapping it opens the attribution dialog. Mounted by MapView; configured via `UiSettings`.
 
 ```typescript
 @Component
 struct AttributionButton {
-  @Prop attributions: AttributionInfo[];
-  @Prop position: OrnamentPosition;
-  @Prop enabled: boolean;
-  @Prop onClick?: () => void;
+  @Prop isEnabled: boolean = true;
+  @Prop tintColor: string = '#000000';
+  @Prop iconSize: number = 24;
+  @Prop attributions: AttributionInfo[] = DEFAULT_ATTRIBUTIONS;
 }
 
 interface AttributionInfo {
@@ -112,16 +111,10 @@ const DEFAULT_ATTRIBUTIONS: AttributionInfo[] = [
 ];
 ```
 
-**Usage:**
+**Configuration (recommended — via UiSettings):**
 ```typescript
-AttributionButton({
-  attributions: DEFAULT_ATTRIBUTIONS,
-  position: OrnamentPosition.BottomRight,
-  enabled: true,
-  onClick: () => {
-    // Show attribution dialog
-  }
-})
+uiSettings.setAttributionEnabled(true);
+uiSettings.setAttributionAlignment(Alignment.BottomEnd);
 ```
 
 ---
@@ -130,16 +123,20 @@ AttributionButton({
 
 ### OrnamentPosition
 
-Enum for widget positioning.
+Enum aligned with Android `MLNOrnamentPosition` and iOS `MLNOrnamentPosition`.
 
 ```typescript
 enum OrnamentPosition {
-  TopLeft,
-  TopRight,
-  BottomLeft,
-  BottomRight
+  TopLeft = 0,
+  TopRight = 1,
+  BottomLeft = 2,
+  BottomRight = 3
 }
 ```
+
+> The type remains exported for cross-platform API alignment, but current
+> widget positioning uses the ArkUI `Alignment` enum through the
+> `UiSettings.set*Alignment()` setters (see [02-ui-settings.md](./02-ui-settings.md)).
 
 ### RenderingRefreshMode
 
@@ -184,13 +181,15 @@ enum UserTrackingMode {
 
 ### CameraMoveReason
 
-Enum for camera movement reasons.
+Enum for camera movement reasons (see `maps/camera/CameraMoveReason.ets`).
 
 ```typescript
 enum CameraMoveReason {
-  GESTURE,              // User gesture
-  API_ANIMATION,        // Programmatic animation
-  DEVELOPER_ANIMATION   // Developer-initiated animation
+  UNKNOWN = 0,             // Unknown reason
+  GESTURE = 1,             // User gesture (pan, zoom, rotate, etc.)
+  API_ANIMATION = 2,       // API invocation (e.g. jumpTo, setCenter)
+  DEVELOPER_ANIMATION = 3, // Developer-provided animation (easeTo, flyTo)
+  ANIMATION_CANCELLED = 4  // Animation cancelled
 }
 ```
 
@@ -211,9 +210,9 @@ Enum for compass visibility modes.
 
 ```typescript
 enum CompassVisibility {
-  Visible,    // Always visible
-  Hidden,     // Always hidden
-  Adaptive    // Show only when map is rotated
+  Adaptive = 0, // Show only when the map is not facing north
+  Visible = 1,  // Always visible
+  Hidden = 2    // Always hidden
 }
 ```
 
@@ -263,33 +262,26 @@ interface Margins {
 
 ### RenderingStats
 
-Provides rendering performance statistics.
+Frame statistics delivered by the rendering-frame listener.
 
 ```typescript
-class RenderingStats {
-  getEstimatedFps(): number;              // Estimated frames per second
-  getFrameTime(): number;                 // Frame time in milliseconds
-  getFrameCount(): number;                // Total frames rendered
-  isFullyRendered(): boolean;             // Whether frame is fully rendered
+interface RenderingStats {
+  fully: boolean;              // Whether the frame was fully rendered
+  frameEncodingTime: number;   // Frame encoding time in milliseconds
+  frameRenderingTime: number;  // Frame rendering time in milliseconds
 }
 ```
 
 **Usage:**
 ```typescript
 map.addOnDidFinishRenderingFrameWithStatsListener({
-  onDidFinishRenderingFrame: (fully: boolean, stats: RenderingStats) => {
-    const fps = stats.getEstimatedFps();
-    const frameTime = stats.getFrameTime();
-    const frameCount = stats.getFrameCount();
-    
-    console.info(`FPS: ${fps.toFixed(1)}`);
-    console.info(`Frame time: ${frameTime.toFixed(2)}ms`);
-    console.info(`Total frames: ${frameCount}`);
-    console.info(`Fully rendered: ${fully}`);
-    
-    // Alert if performance is poor
-    if (fps < 30) {
-      console.warn('Low frame rate detected');
+  onDidFinishRenderingFrame: (stats: RenderingStats) => {
+    console.info(`Fully rendered: ${stats.fully}`);
+    console.info(`Encoding: ${stats.frameEncodingTime.toFixed(2)}ms`);
+    console.info(`Rendering: ${stats.frameRenderingTime.toFixed(2)}ms`);
+
+    if (stats.frameRenderingTime > 16) {
+      console.warn('Frame time exceeds a 60fps budget');
     }
   }
 });
@@ -299,23 +291,23 @@ map.addOnDidFinishRenderingFrameWithStatsListener({
 
 ```typescript
 import {
-  NativeMapView,
+  MapView,
   MapLibreMap,
   RenderingStats,
   OnDidFinishRenderingFrameWithStatsListener
-} from '@ohos/maplibre';
+} from 'maplibre_harmony';
 
 @Entry
 @Component
 struct PerformanceMonitor {
   private map: MapLibreMap | null = null;
-  @State private fps: number = 0;
-  @State private frameTime: number = 0;
+  @State private encodingTime: number = 0;
+  @State private renderingTime: number = 0;
 
-  private fpsListener: OnDidFinishRenderingFrameWithStatsListener = {
-    onDidFinishRenderingFrame: (fully: boolean, stats: RenderingStats) => {
-      this.fps = stats.getEstimatedFps();
-      this.frameTime = stats.getFrameTime();
+  private statsListener: OnDidFinishRenderingFrameWithStatsListener = {
+    onDidFinishRenderingFrame: (stats: RenderingStats) => {
+      this.encodingTime = stats.frameEncodingTime;
+      this.renderingTime = stats.frameRenderingTime;
     }
   };
 
@@ -323,16 +315,16 @@ struct PerformanceMonitor {
     Column() {
       // Performance overlay
       Row() {
-        Text(`FPS: ${this.fps.toFixed(1)}`)
+        Text(`Encode: ${this.encodingTime.toFixed(1)}ms`)
           .fontSize(14)
-          .fontColor(this.fps < 30 ? Color.Red : Color.Green)
+          .fontColor(this.encodingTime > 8 ? Color.Red : Color.Green)
           .padding(5)
           .backgroundColor(Color.Black)
           .opacity(0.7)
-        
-        Text(`Frame: ${this.frameTime.toFixed(1)}ms`)
+
+        Text(`Render: ${this.renderingTime.toFixed(1)}ms`)
           .fontSize(14)
-          .fontColor(Color.White)
+          .fontColor(this.renderingTime > 8 ? Color.Red : Color.Green)
           .padding(5)
           .backgroundColor(Color.Black)
           .opacity(0.7)
@@ -341,11 +333,11 @@ struct PerformanceMonitor {
       .zIndex(1000)
 
       // Map
-      NativeMapView({
+      MapView({
         styleUrl: "https://demotiles.maplibre.org/style.json",
         onMapViewCreated: (mapLibreMap) => {
           this.map = mapLibreMap;
-          this.map.addOnDidFinishRenderingFrameWithStatsListener(this.fpsListener);
+          this.map.addOnDidFinishRenderingFrameWithStatsListener(this.statsListener);
         }
       })
         .width('100%')
@@ -355,7 +347,7 @@ struct PerformanceMonitor {
 
   aboutToDisappear() {
     if (this.map) {
-      this.map.removeOnDidFinishRenderingFrameWithStatsListener(this.fpsListener);
+      this.map.removeOnDidFinishRenderingFrameWithStatsListener(this.statsListener);
     }
   }
 }
@@ -363,119 +355,55 @@ struct PerformanceMonitor {
 
 ---
 
-## Complete Widget Integration Example
+## Widget Configuration Example
+
+Widgets are mounted by `MapView` automatically. Configure visibility and
+placement through `UiSettings` — do not instantiate the widgets manually.
 
 ```typescript
 import {
-  NativeMapView,
-  MapLibreMap,
-  CompassView,
-  LogoView,
-  ScaleBarView,
-  AttributionButton,
-  OrnamentPosition,
-  CompassVisibility,
-  ScaleBarUnit,
-  DEFAULT_ATTRIBUTIONS
-} from '@ohos/maplibre';
+  MapView, MapLibreMap,
+  ScaleBarUnit, CompassVisibility
+} from 'maplibre_harmony';
 
 @Entry
 @Component
-struct CustomMapWithWidgets {
+struct ConfiguredMapPage {
   private map: MapLibreMap | null = null;
-  @State private bearing: number = 0;
-  @State private metersPerPixel: number = 0;
-  @State private showAttribution: boolean = false;
+
+  private onMapReady = (map: MapLibreMap): void => {
+    this.map = map;
+
+    const uiSettings = map.getUiSettings();
+    uiSettings.setCompassEnabled(true);
+    uiSettings.setCompassVisibility(CompassVisibility.Adaptive);
+    uiSettings.setCompassAlignment(Alignment.TopEnd);
+
+    uiSettings.setLogoEnabled(true);
+    uiSettings.setLogoAlignment(Alignment.BottomStart);
+
+    uiSettings.setScaleBarEnabled(true);
+    uiSettings.setScaleBarUnit(ScaleBarUnit.Metric);
+    uiSettings.setScaleBarAlignment(Alignment.TopStart);
+
+    uiSettings.setAttributionEnabled(true);
+    uiSettings.setAttributionAlignment(Alignment.BottomEnd);
+  };
 
   build() {
-    Stack() {
-      // Map view
-      NativeMapView({
-        styleUrl: "https://demotiles.maplibre.org/style.json",
-        onMapViewCreated: (mapLibreMap) => {
-          this.map = mapLibreMap;
-          this.setupWidgetUpdates();
-        }
-      })
+    Column() {
+      MapView({ onMapReady: this.onMapReady })
         .width('100%')
         .height('100%')
-
-      // Compass (top-right)
-      CompassView({
-        bearing: this.bearing,
-        visibility: CompassVisibility.Adaptive,
-        position: OrnamentPosition.TopRight,
-        fadeWhenNorth: true,
-        onClick: () => {
-          this.map?.setBearing(0, { duration: 300 });
-        }
-      })
-        .position({ right: 20, top: 20 })
-
-      // Logo (bottom-left)
-      LogoView({
-        position: OrnamentPosition.BottomLeft,
-        enabled: true
-      })
-        .position({ left: 10, bottom: 10 })
-
-      // Scale bar (top-left)
-      ScaleBarView({
-        metersPerPixel: this.metersPerPixel,
-        unit: ScaleBarUnit.Metric,
-        position: OrnamentPosition.TopLeft,
-        useDarkStyles: false,
-        enabled: true
-      })
-        .position({ left: 10, top: 20 })
-
-      // Attribution (bottom-right)
-      AttributionButton({
-        attributions: DEFAULT_ATTRIBUTIONS,
-        position: OrnamentPosition.BottomRight,
-        enabled: true,
-        onClick: () => {
-          this.showAttribution = true;
-        }
-      })
-        .position({ right: 10, bottom: 10 })
-
-      // Attribution dialog
-      if (this.showAttribution) {
-        Dialog({
-          title: 'Attribution',
-          message: DEFAULT_ATTRIBUTIONS.map(a => a.title).join('\n'),
-          confirm: {
-            value: 'Close',
-            action: () => {
-              this.showAttribution = false;
-            }
-          }
-        })
-      }
     }
     .width('100%')
     .height('100%')
   }
-
-  private setupWidgetUpdates() {
-    // Update widgets on camera change
-    this.map?.addOnCameraDidChangeListener({
-      onCameraDidChange: () => {
-        this.bearing = this.map?.getBearing() ?? 0;
-        
-        const latLng = this.map?.getLatLng();
-        if (latLng) {
-          this.metersPerPixel = this.map?.getMetersPerPixelAtLatitude(latLng.latitude) ?? 0;
-        }
-      }
-    });
-  }
 }
 ```
 
 ---
 
-**Last Updated:** 2025-11-04  
-**Version:** 1.0.0
+**Last Updated:** 2026-09-12  
+**Version:** 1.1.0
 

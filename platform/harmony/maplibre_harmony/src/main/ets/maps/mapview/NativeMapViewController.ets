@@ -41,7 +41,6 @@ import {
   OnWillStartRenderingFrameListener,
   OnWillStartRenderingMapListener
 } from '../listeners/MapEventListeners';
-import { AnnotationViewData } from '../annotations/AnnotationViewManager';
 import type { ViewAnnotationRenderState } from '../annotations/NativeViewAnnotationOverlay';
 import { MapLibreMap } from '../MapLibreMap';
 import { MapLibreMapOptions } from '../MapLibreMapOptions';
@@ -377,7 +376,6 @@ export class NativeMapViewController extends XComponentController implements Nat
           mapLibreMap.resizeView(rect.surfaceWidth, rect.surfaceHeight);
         }
 
-        this.updateAnnotationViews(true);
         this.applyInitialCameraIfNeeded('onSurfaceChanged-initialized');
       } catch (error) {
         const err = error as Error;
@@ -396,7 +394,6 @@ export class NativeMapViewController extends XComponentController implements Nat
         
         this.isInitialized = true;
 
-        this.updateAnnotationViews(true);
         this.applyInitialCameraIfNeeded('onSurfaceChanged-reinitialize');
       } catch (error) {
         const err = error as Error;
@@ -633,9 +630,6 @@ export class NativeMapViewController extends XComponentController implements Nat
     try {
       const rawId: number | string | boolean | undefined | null = this.nativeMapView.addViewAnnotation(options);
       const id = typeof rawId === 'number' && Number.isFinite(rawId) ? rawId : -1;
-      if (id > 0) {
-        this.updateAnnotationViews(false);
-      }
       return id;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -653,9 +647,6 @@ export class NativeMapViewController extends XComponentController implements Nat
     try {
       const rawResult: boolean | number | string | undefined = this.nativeMapView.updateViewAnnotation(annotationId, options);
       const updated: boolean = typeof rawResult === 'boolean' ? rawResult : false;
-      if (updated) {
-        this.updateAnnotationViews(false);
-      }
       return updated;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -673,9 +664,6 @@ export class NativeMapViewController extends XComponentController implements Nat
     try {
       const rawResult: boolean | number | string | undefined = this.nativeMapView.removeViewAnnotation(annotationId);
       const removed: boolean = typeof rawResult === 'boolean' ? rawResult : false;
-      if (removed) {
-        this.updateAnnotationViews(false);
-      }
       return removed;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -875,11 +863,6 @@ export class NativeMapViewController extends XComponentController implements Nat
         // Initialize native gesture recognizers (C++ NativeGestureManager)
         this.initializeNativeGestures();
 
-        if (this.annotationViewUpdateCallback) {
-          const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
-          annotationViewManager.setOnViewsUpdateCallback(this.annotationViewUpdateCallback);
-        }
-
         if (this.viewAnnotationRenderCallback) {
           this.mapLibreMapInstance.setViewAnnotationRenderCallback(this.viewAnnotationRenderCallback);
         } else {
@@ -1010,22 +993,7 @@ export class NativeMapViewController extends XComponentController implements Nat
     }
   }
 
-  /**
-   * AnnotationView update callback
-   */
-  private annotationViewUpdateCallback?: (views: AnnotationViewData[]) => void;
   private viewAnnotationRenderCallback?: (states: ViewAnnotationRenderState[]) => void;
-
-  /**
-   * Set AnnotationView update callback
-   */
-  setAnnotationViewUpdateCallback(callback: (views: AnnotationViewData[]) => void): void {
-    this.annotationViewUpdateCallback = callback;
-    if (this.mapLibreMapInstance) {
-      const manager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
-      manager.setOnViewsUpdateCallback(callback);
-    }
-  }
 
   setViewAnnotationRenderCallback(callback: (states: ViewAnnotationRenderState[]) => void): void {
     console.info('[NativeMapViewController] setViewAnnotationRenderCallback: register callback');
@@ -1042,27 +1010,6 @@ export class NativeMapViewController extends XComponentController implements Nat
     if (this.mapLibreMapInstance) {
       console.info('[NativeMapViewController] clearViewAnnotationRenderCallback: forwarding clear to MapLibreMap');
       this.mapLibreMapInstance.setViewAnnotationRenderCallback(null);
-    }
-  }
-
-  /**
-   * Update AnnotationView positions
-   */
-  updateAnnotationViews(recalculate: boolean = true): void {
-    if (this.mapLibreMapInstance && this.annotationViewUpdateCallback) {
-      try {
-        const annotationViewManager = this.mapLibreMapInstance.getMarkerManager().getAnnotationViewManager();
-        const frames = this.getViewAnnotationFrames();
-        if (frames.length > 0) {
-          annotationViewManager.applyNativeFrames(frames);
-        } else if (recalculate) {
-          annotationViewManager.batchUpdatePositions(true);
-        }
-        const views = annotationViewManager.getAllViews();
-        this.annotationViewUpdateCallback(views);
-      } catch (error) {
-        hilog.error(DOMAIN, 'NativeMapView', `Failed to update annotation views: ${error}`);
-      }
     }
   }
 

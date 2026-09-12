@@ -231,17 +231,9 @@ export type { InfoWindowStyle } from './annotations/InfoWindow';
 
 export { InfoWindowAdapter, createInfoWindowAdapter } from './annotations/InfoWindowAdapter';
 
-export { AnnotationView, DragState } from './annotations/AnnotationView';
-
-export type { CenterOffset } from './annotations/AnnotationView';
-
-export { AnnotationViewAdapter, createDelegateFromAdapter } from './annotations/AnnotationViewAdapter';
+export type { CenterOffset } from './annotations/ViewAnnotationUtils';
 
 export type { AnnotationViewDelegate, AnnotationViewConfig, AnnotationViewBuilder, AnnotationViewSize } from './annotations/AnnotationViewDelegate';
-
-export { AnnotationViewManager } from './annotations/AnnotationViewManager';
-
-export type { AnnotationViewData } from './annotations/AnnotationViewManager';
 
 export { ViewAnnotationHandle } from './annotations/ViewAnnotationHandle';
 

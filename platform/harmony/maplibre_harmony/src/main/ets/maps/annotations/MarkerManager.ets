@@ -1,4 +1,3 @@
-import type { NativeMapView } from 'libmaplibre.so';
 import type { MarkerOptions } from './MarkerOptions';
 import { MarkerDragState } from './MarkerDragState';
 import type { LatLng } from '../geometry/LatLng';
@@ -12,17 +11,18 @@ import type { OnInfoWindowCloseListener } from '../listeners/OnInfoWindowCloseLi
 import type { OnMarkerSelectListener } from '../listeners/OnMarkerSelectListener';
 import type { InfoWindowAdapter } from './InfoWindowAdapter';
 import { InfoWindowManager } from './InfoWindowManager';
-import type { AnnotationViewAdapter } from './AnnotationViewAdapter';
-import { AnnotationViewManager } from './AnnotationViewManager';
+import type { AnnotationViewConfig, AnnotationViewDelegate } from './AnnotationViewDelegate';
+import type { ViewAnnotationManager } from './ViewAnnotationManager';
+import { createMarkerViewContent } from './MarkerViewContent';
+import { CenterOffset } from './ViewAnnotationUtils';
 import { IconManager } from './IconManager';
 import { IconFactory } from './IconFactory';
 import { MarkerLayerManager } from './MarkerLayerManager';
 import type { InfoWindowStyle } from './InfoWindow';
 import type { Icon } from './Icon';
-import type { CenterOffset } from './AnnotationView';
 import type { Marker, MarkerAnchor } from './Marker';
 import common from '@ohos.app.ability.common';
-import type { UIContext } from '@kit.ArkUI';
+import type { ComponentContent, UIContext } from '@kit.ArkUI';
 import type {
   OnMapClickListener,
   OnMapLongClickListener,
@@ -47,7 +47,7 @@ export class MarkerManager {
   private selectedMarkers: Set<Marker> = new Set();
   private mapLibreMap: MapLibreMap;
   private infoWindowManager: InfoWindowManager;
-  private annotationViewManager: AnnotationViewManager;
+  private viewAnnotationManager: ViewAnnotationManager;
   private iconManager: IconManager;
   // Marker ID -> Marker
   private markerMap: Map<number, Marker> = new Map();
@@ -56,6 +56,13 @@ export class MarkerManager {
   private markerIconMap: Map<number, Icon> = new Map();
   // Marker ID -> InfoWindowStyle (per-marker InfoWindow configuration)
   private markerInfoWindowStyleMap: Map<number, InfoWindowStyle> = new Map();
+  // Marker custom views expressed as marker-anchored ViewAnnotations:
+  // Marker ID -> ViewAnnotation ID, plus the contentBuilder used last so a
+  // delegate returning a new builder triggers a content swap.
+  private markerViewAnnotations: Map<number, number> = new Map();
+  private markerViewBuilders: Map<number, () => void> = new Map();
+  private viewAnnotationDelegate: AnnotationViewDelegate | null = null;
+  private uiContext: UIContext | null = null;
   // Event listeners
   private onMarkerClickListener: OnMarkerClickListener | null = null;
   private onMarkerLongClickListener: OnMarkerLongClickListener | null = null;
@@ -84,7 +91,7 @@ export class MarkerManager {
     // Reuse the MapLibreMap InfoWindowManager (already wired with UI callbacks)
     // Instead of creating a new instance that lacks those callbacks
     this.infoWindowManager = mapLibreMap.getInfoWindowManager();
-    this.annotationViewManager = mapLibreMap.getAnnotationViewManager();
+    this.viewAnnotationManager = mapLibreMap.getViewAnnotationManager();
 
     // Initialize IconManager with ResourceManager for rawfile support
     const nativeMapView = mapLibreMap.getNativeMapView();
@@ -163,8 +170,8 @@ export class MarkerManager {
           for (const marker of manager.markerMap.values()) {
             manager.markerLayerManager.addMarker(marker, true); // skipUpdate=true
 
-            // Recreate custom annotation views
-            manager.annotationViewManager.createOrUpdateView(marker);
+            // Recreate custom view annotations
+            manager.syncMarkerViewAnnotation(marker);
           }
 
           // Sync source in one shot
@@ -682,8 +689,8 @@ export class MarkerManager {
         this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
       }
 
-      // Create custom view if adapter present
-      this.annotationViewManager.createOrUpdateView(marker);
+      // Create custom view annotation if delegate provides content
+      this.syncMarkerViewAnnotation(marker);
 
       return marker;
     } catch (e) {
@@ -755,8 +762,8 @@ export class MarkerManager {
           this.markerInfoWindowStyleMap.set(featureId, infoWindowStyle);
         }
 
-        // Create/update custom views in sync
-        this.annotationViewManager.createOrUpdateView(marker);
+        // Create/update custom view annotations in sync
+        this.syncMarkerViewAnnotation(marker);
       }
 
       return markers;
@@ -797,8 +804,8 @@ export class MarkerManager {
     // Remove stored InfoWindow style
     this.markerInfoWindowStyleMap.delete(id);
 
-    // Remove custom view association
-    this.annotationViewManager.removeView(marker);
+    // Remove custom view annotation
+    this.removeMarkerViewAnnotation(marker);
 
     // Remove from MarkerLayerManager
     this.markerLayerManager.removeMarker(id);
@@ -833,8 +840,8 @@ export class MarkerManager {
           this.markerIconMap.delete(id);
         }
 
-        // Remove custom view
-        this.annotationViewManager.removeView(marker);
+        // Remove custom view annotation
+        this.removeMarkerViewAnnotation(marker);
 
         ids.push(id);
         this.markerMap.delete(id);
@@ -867,8 +874,8 @@ export class MarkerManager {
       // Update GeoJSON feature via MarkerLayerManager
       this.markerLayerManager.updateMarkerById(markerId, marker);
 
-      // Sync custom view rendering
-      this.annotationViewManager.createOrUpdateView(marker);
+      // Sync custom view annotation rendering
+      this.syncMarkerViewAnnotation(marker);
 
       // Position changed: re-anchor the shown InfoWindow through the same
       // updateViewAnnotation path used by drags.
@@ -907,8 +914,8 @@ export class MarkerManager {
       // Update underlying GeoJSON feature
       this.markerLayerManager.updateMarkerById(markerId, marker);
 
-      // Refresh associated custom view
-      this.annotationViewManager.createOrUpdateView(marker);
+      // Refresh associated custom view annotation
+      this.syncMarkerViewAnnotation(marker);
 
     } catch (e) {
       const error = e as Error;
@@ -971,8 +978,8 @@ export class MarkerManager {
     this.selectedMarkers.clear();
     this.markerInfoWindowStyleMap.clear();
 
-    // Clear custom views
-    this.annotationViewManager.clear();
+    // Clear custom view annotations
+    this.clearMarkerViewAnnotations();
 
   }
 
@@ -1187,8 +1194,10 @@ export class MarkerManager {
     // Update position
     marker.setPosition(newPosition);
 
-    // Re-anchor the shown InfoWindow to the new position so it follows the
-    // marker during the drag (mirrors Android InfoWindowManager.update()).
+    // Re-anchor the custom view annotation and the shown InfoWindow to the
+    // new position so both follow the marker during the drag (the native
+    // push path re-dispatches frames once the anchor moves).
+    this.syncMarkerViewAnnotation(marker);
     this.infoWindowManager.handleMarkerPositionChanged(marker);
 
     // Fire callback
@@ -1366,35 +1375,188 @@ export class MarkerManager {
   }
 
   /**
-   * Set AnnotationView adapter
+   * Set the AnnotationView delegate
    *
-   * @param adapter Adapter instance
-   */
-  public setAnnotationViewAdapter(adapter: AnnotationViewAdapter | null): void {
-    this.annotationViewManager.setAdapter(adapter);
-  }
-
-  /**
-   * Get AnnotationView adapter
+   * The delegate decides which markers render a custom view. Setting it
+   * re-syncs every registered marker: markers whose
+   * {@link AnnotationViewDelegate.viewForAnnotation} returns a config with a
+   * contentBuilder gain a marker-anchored ViewAnnotation, the others fall
+   * back to their default symbol icon.
    *
-   * @returns Adapter instance
+   * @param delegate Delegate instance; pass null to drop all custom views
    */
-  public getAnnotationViewAdapter(): AnnotationViewAdapter | null {
-    return this.annotationViewManager.getAdapter();
+  public setAnnotationViewDelegate(delegate: AnnotationViewDelegate | null): void {
+    this.viewAnnotationDelegate = delegate;
+    for (const marker of this.markerMap.values()) {
+      this.syncMarkerViewAnnotation(marker);
+    }
   }
 
   /**
-   * Expose AnnotationViewManager for UI layer
+   * Get the AnnotationView delegate
+   *
+   * @returns Delegate instance or null
    */
-  public getAnnotationViewManager(): AnnotationViewManager {
-    return this.annotationViewManager;
+  public getAnnotationViewDelegate(): AnnotationViewDelegate | null {
+    return this.viewAnnotationDelegate;
   }
 
   /**
-   * Set native MapView (required for coordinate conversion)
+   * Get markers that currently render a custom view annotation
+   *
+   * @returns Array of markers
    */
-  public setNativeMapView(mapView: object): void {
-    this.annotationViewManager.setNativeMapView(mapView as NativeMapView);
+  public getCustomViewMarkers(): Marker[] {
+    const markers: Marker[] = [];
+    this.markerViewAnnotations.forEach((_viewAnnotationId, markerId) => {
+      const marker = this.markerMap.get(markerId);
+      if (marker) {
+        markers.push(marker);
+      }
+    });
+    return markers;
+  }
+
+  /**
+   * Synchronize the custom view annotation of a marker with the
+   * ViewAnnotationManager (the single floating-layer engine).
+   *
+   * A marker custom view is expressed as a marker-anchored ViewAnnotation:
+   * the delegate's contentBuilder is bridged into a ComponentContent and the
+   * native positioning engine keeps it glued to the marker coordinate.
+   *
+   * Called on marker add/update/icon-change/drag, style reload, delegate
+   * swap and UIContext propagation.
+   */
+  private syncMarkerViewAnnotation(marker: Marker): void {
+    const markerId = marker.getId();
+    if (markerId < 0) {
+      return;
+    }
+
+    const delegate = this.viewAnnotationDelegate;
+    const config = delegate && delegate.viewForAnnotation ? delegate.viewForAnnotation(marker) : null;
+    const existingId = this.markerViewAnnotations.get(markerId);
+
+    // No delegate, no config, or a config without content: the marker falls
+    // back to its default symbol icon.
+    if (!config || !config.contentBuilder) {
+      if (existingId !== undefined) {
+        this.removeMarkerViewAnnotation(marker);
+      }
+      return;
+    }
+
+    // Draggability stays owned by the marker (symbol-layer gesture path):
+    // mirror an explicit delegate decision onto it.
+    if (config.draggable !== undefined) {
+      marker.setDraggable(config.draggable);
+    }
+
+    if (existingId !== undefined) {
+      this.updateMarkerViewAnnotation(marker, existingId, config);
+    } else {
+      this.createMarkerViewAnnotation(marker, config);
+    }
+  }
+
+  /**
+   * Create a marker-anchored ViewAnnotation from a delegate config.
+   *
+   * Content creation is skipped when the UIContext has not propagated yet;
+   * setUIContext() retries those markers once it arrives.
+   */
+  private createMarkerViewAnnotation(marker: Marker, config: AnnotationViewConfig): void {
+    const markerId = marker.getId();
+    const anchor = marker.getAnchor();
+    const builder = config.contentBuilder!;
+    const content = createMarkerViewContent(this.uiContext, builder);
+
+    const handle = this.viewAnnotationManager.addViewAnnotation({
+      anchor: marker.getPosition(),
+      viewName: 'maplibre_marker_view',
+      centerOffset: config.centerOffset,
+      width: config.size ? config.size.width : undefined,
+      height: config.size ? config.size.height : undefined,
+      visible: marker.getVisible(),
+      scalesWithViewingDistance: config.scalesWithViewingDistance === true,
+      rotatesWithCamera: config.rotatesToMatchCamera === true,
+      anchorU: anchor ? anchor.u : 0.5,
+      anchorV: anchor ? anchor.v : 1.0,
+      zIndex: config.zIndex ?? (marker.getZIndex() || 1)
+    }, content ?? undefined);
+
+    if (!handle) {
+      console.warn(`[MarkerManager] addViewAnnotation for marker ${markerId} failed; falling back to default icon`);
+      return;
+    }
+
+    this.markerViewAnnotations.set(markerId, handle.getId());
+    if (content) {
+      this.markerViewBuilders.set(markerId, builder);
+    }
+  }
+
+  /**
+   * Apply position/offset/zIndex updates to an existing marker view
+   * annotation and swap content when the delegate returned a new builder.
+   */
+  private updateMarkerViewAnnotation(marker: Marker, viewAnnotationId: number, config: AnnotationViewConfig): void {
+    const markerId = marker.getId();
+    const anchor = marker.getAnchor();
+    const builder = config.contentBuilder!;
+
+    this.viewAnnotationManager.updateViewAnnotation(viewAnnotationId, {
+      anchor: marker.getPosition(),
+      centerOffset: config.centerOffset ?? null,
+      width: config.size ? config.size.width : null,
+      height: config.size ? config.size.height : null,
+      visible: marker.getVisible(),
+      scalesWithViewingDistance: config.scalesWithViewingDistance === true,
+      rotatesWithCamera: config.rotatesToMatchCamera === true,
+      anchorU: anchor ? anchor.u : 0.5,
+      anchorV: anchor ? anchor.v : 1.0,
+      zIndex: config.zIndex ?? (marker.getZIndex() || 1)
+    });
+
+    if (this.markerViewBuilders.get(markerId) !== builder) {
+      const content = createMarkerViewContent(this.uiContext, builder);
+      if (content && this.viewAnnotationManager.setAnnotationContent(viewAnnotationId, content)) {
+        this.markerViewBuilders.set(markerId, builder);
+      } else {
+        // UIContext not available yet: drop the cached builder so the
+        // setUIContext() retry rebuilds the content.
+        this.markerViewBuilders.delete(markerId);
+      }
+    }
+  }
+
+  /**
+   * Remove the custom view annotation of a marker (fall back to default icon)
+   */
+  private removeMarkerViewAnnotation(marker: Marker): void {
+    const markerId = marker.getId();
+    const viewAnnotationId = this.markerViewAnnotations.get(markerId);
+    if (viewAnnotationId === undefined) {
+      return;
+    }
+    this.viewAnnotationManager.removeViewAnnotation(viewAnnotationId);
+    this.markerViewAnnotations.delete(markerId);
+    this.markerViewBuilders.delete(markerId);
+  }
+
+  /**
+   * Remove every custom view annotation owned by this manager
+   *
+   * Only marker-anchored annotations are removed — entries owned by other
+   * producers on the same engine (e.g. InfoWindows) are left untouched.
+   */
+  private clearMarkerViewAnnotations(): void {
+    this.markerViewAnnotations.forEach((viewAnnotationId) => {
+      this.viewAnnotationManager.removeViewAnnotation(viewAnnotationId);
+    });
+    this.markerViewAnnotations.clear();
+    this.markerViewBuilders.clear();
   }
 
   /**
@@ -1406,10 +1568,24 @@ export class MarkerManager {
 
   /**
    * Set UIContext for ComponentContent creation.
-   * Must be called before showing InfoWindows.
+   * Must be called before showing InfoWindows or creating marker custom
+   * view content; markers whose content was deferred are retried here.
    */
   public setUIContext(uiContext: UIContext | null): void {
+    const hadContext = this.uiContext !== null;
+    this.uiContext = uiContext;
     this.infoWindowManager.setUIContext(uiContext);
+
+    if (!hadContext && uiContext !== null) {
+      const pending: Marker[] = [];
+      this.markerViewAnnotations.forEach((_viewAnnotationId, markerId) => {
+        const marker = this.markerMap.get(markerId);
+        if (marker && !this.markerViewBuilders.has(markerId)) {
+          pending.push(marker);
+        }
+      });
+      pending.forEach((marker) => this.syncMarkerViewAnnotation(marker));
+    }
   }
 
   /**

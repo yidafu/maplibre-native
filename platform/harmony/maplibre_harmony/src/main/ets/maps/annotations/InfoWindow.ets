@@ -1,5 +1,5 @@
 import { Marker } from './Marker';
-import { CenterOffset } from './AnnotationView';
+import { CenterOffset } from './ViewAnnotationUtils';
 import type { InfoWindowBuilderContext } from './ViewAnnotationTypes';
 import { ComponentContent } from '@kit.ArkUI';
 

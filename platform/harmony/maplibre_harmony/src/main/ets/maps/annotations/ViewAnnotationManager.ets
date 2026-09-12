@@ -10,7 +10,7 @@ import {
 } from './NativeViewAnnotationTypes';
 import { ViewAnnotationRenderState } from './NativeViewAnnotationOverlay';
 import { ComponentContentRegistry } from './ComponentContentRegistry';
-import { CenterOffset } from './AnnotationView';
+import { CenterOffset } from './ViewAnnotationUtils';
 import { ViewAnnotationHandle } from './ViewAnnotationHandle';
 import { normalizeOpacity, resolveFramePixelRatio } from './ViewAnnotationUtils';
 
@@ -446,7 +446,7 @@ export class ViewAnnotationManager {
    * Converts native frames to overlay render states, re-applying per-entry
    * metadata (visible/zIndex/viewName and size mode) that lives on the ArkTS
    * side. Frames without a matching entry are skipped: they belong to another
-   * producer on the same native map (e.g. the deprecated AnnotationViewManager).
+   * producer on the same native map (foreign annotations are left untouched).
    */
   private rebuildRenderStates(frames: NativeViewAnnotationFrame[]): void {
     const safeRatio = this.pixelRatio > 0 ? this.pixelRatio : 1;
