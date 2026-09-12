@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import { NativeMapView } from 'libmaplibre.so';
 import type { ComponentContent } from '@kit.ArkUI';
 import { LatLng } from '../geometry/LatLng';
@@ -140,12 +142,12 @@ export class ViewAnnotationManager {
    */
   addViewAnnotation(options: ViewAnnotationAddOptions, content?: ComponentContent<Object>): ViewAnnotationHandle | null {
     if (!this.nativeMapView) {
-      console.warn('[ViewAnnotationManager] addViewAnnotation: native map view is not available');
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', '[ViewAnnotationManager] addViewAnnotation: native map view is not available');
       return null;
     }
     const anchor = options.anchor;
     if (!anchor) {
-      console.error('[ViewAnnotationManager] addViewAnnotation: anchor is required');
+      hilog.error(DOMAIN, 'ViewAnnotationManager', '%{public}s', '[ViewAnnotationManager] addViewAnnotation: anchor is required');
       return null;
     }
 
@@ -155,7 +157,7 @@ export class ViewAnnotationManager {
       const rawId: number | string | boolean | null | undefined = this.nativeMapView.addViewAnnotation(nativeOptions);
       const id = typeof rawId === 'number' ? rawId : -1;
       if (id <= 0) {
-        console.error(`[ViewAnnotationManager] addViewAnnotation: invalid id returned: ${rawId}`);
+        hilog.error(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] addViewAnnotation: invalid id returned: ${rawId}`);
         return null;
       }
 
@@ -186,7 +188,7 @@ export class ViewAnnotationManager {
       return new ViewAnnotationHandle(id, this);
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[ViewAnnotationManager] addViewAnnotation failed: ${reason}`);
+      hilog.error(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] addViewAnnotation failed: ${reason}`);
       return null;
     }
   }
@@ -197,12 +199,12 @@ export class ViewAnnotationManager {
   updateViewAnnotation(id: number, options: ViewAnnotationUpdateOptions): boolean {
     const entry = this.entries.get(id);
     if (!entry) {
-      console.warn(`[ViewAnnotationManager] updateViewAnnotation: entry ${id} not found`);
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] updateViewAnnotation: entry ${id} not found`);
       return false;
     }
 
     if (!this.nativeMapView) {
-      console.warn('[ViewAnnotationManager] updateViewAnnotation: native map view is not available');
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', '[ViewAnnotationManager] updateViewAnnotation: native map view is not available');
       return false;
     }
 
@@ -263,13 +265,13 @@ export class ViewAnnotationManager {
       const rawResult: boolean | number | string | undefined = this.nativeMapView.updateViewAnnotation(id, nativeOptions);
       const updated = typeof rawResult === 'boolean' ? rawResult : false;
       if (!updated) {
-        console.warn(`[ViewAnnotationManager] updateViewAnnotation: native returned ${rawResult}`);
+        hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] updateViewAnnotation: native returned ${rawResult}`);
       }
       this.refreshRenderStates();
       return updated;
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[ViewAnnotationManager] updateViewAnnotation failed: ${reason}`);
+      hilog.error(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] updateViewAnnotation failed: ${reason}`);
       return false;
     }
   }
@@ -281,7 +283,7 @@ export class ViewAnnotationManager {
    */
   setAnnotationContent(id: number, content: ComponentContent<Object> | null): boolean {
     if (!this.entries.has(id)) {
-      console.warn(`[ViewAnnotationManager] setAnnotationContent: entry ${id} not found`);
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] setAnnotationContent: entry ${id} not found`);
       return false;
     }
     if (content) {
@@ -305,7 +307,7 @@ export class ViewAnnotationManager {
     this.contentRegistry.remove(id);
 
     if (!this.nativeMapView) {
-      console.warn('[ViewAnnotationManager] removeViewAnnotation: native map view is not available');
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', '[ViewAnnotationManager] removeViewAnnotation: native map view is not available');
       this.removeRenderStateById(id);
       return false;
     }
@@ -313,15 +315,15 @@ export class ViewAnnotationManager {
     try {
       const rawResult: boolean | number | string | undefined = this.nativeMapView.removeViewAnnotation(id);
       const removed = typeof rawResult === 'boolean' ? rawResult : false;
-      console.info(`[ViewAnnotationManager] removeViewAnnotation: entry ${id} removed, total entries=${this.entries.size}`);
+      hilog.info(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] removeViewAnnotation: entry ${id} removed, total entries=${this.entries.size}`);
       this.removeRenderStateById(id);
       if (!removed) {
-        console.warn(`[ViewAnnotationManager] removeViewAnnotation: native returned ${rawResult}`);
+        hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] removeViewAnnotation: native returned ${rawResult}`);
       }
       return removed;
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[ViewAnnotationManager] removeViewAnnotation failed: ${reason}`);
+      hilog.error(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] removeViewAnnotation failed: ${reason}`);
       this.removeRenderStateById(id);
       return false;
     }
@@ -333,7 +335,7 @@ export class ViewAnnotationManager {
   clear(): void {
     this.entries.clear();
     this.contentRegistry.clear();
-    console.info('[ViewAnnotationManager] clear: all entries removed');
+    hilog.info(DOMAIN, 'ViewAnnotationManager', '%{public}s', '[ViewAnnotationManager] clear: all entries removed');
     if (this.nativeMapView) {
       try {
         const frames = this.nativeMapView.getViewAnnotationFrames();
@@ -344,7 +346,7 @@ export class ViewAnnotationManager {
         }
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
-        console.error(`[ViewAnnotationManager] clear failed: ${reason}`);
+        hilog.error(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] clear failed: ${reason}`);
       }
     }
     this.lastNativeFrames = [];
@@ -388,7 +390,7 @@ export class ViewAnnotationManager {
       this.nativeMapView.updateViewAnnotation(id, this.buildNativeOptions(partial));
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[ViewAnnotationManager] handleMeasuredSize failed for ${id}: ${reason}`);
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] handleMeasuredSize failed for ${id}: ${reason}`);
     }
   }
 
@@ -515,7 +517,7 @@ export class ViewAnnotationManager {
         this.nativeMapView.setViewAnnotationFramesListener(null);
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
-        console.warn(`[ViewAnnotationManager] failed to detach previous frames listener: ${reason}`);
+        hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] failed to detach previous frames listener: ${reason}`);
       }
       this.listenerBoundTo = null;
     }
@@ -531,7 +533,7 @@ export class ViewAnnotationManager {
         this.listenerBoundTo = mapView;
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
-        console.warn(`[ViewAnnotationManager] failed to bind frames listener: ${reason}`);
+        hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] failed to bind frames listener: ${reason}`);
       }
     }
   }
@@ -543,7 +545,7 @@ export class ViewAnnotationManager {
    */
   updatePixelRatio(pixelRatio: number): void {
     if (!Number.isFinite(pixelRatio) || pixelRatio <= 0) {
-      console.warn(`[ViewAnnotationManager] updatePixelRatio: ignore invalid value ${pixelRatio}`);
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] updatePixelRatio: ignore invalid value ${pixelRatio}`);
       return;
     }
     this.pixelRatio = pixelRatio;
@@ -625,7 +627,7 @@ export class ViewAnnotationManager {
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[ViewAnnotationManager] readPixelRatio failed: ${reason}`);
+      hilog.warn(DOMAIN, 'ViewAnnotationManager', '%{public}s', `[ViewAnnotationManager] readPixelRatio failed: ${reason}`);
     }
     return 1;
   }

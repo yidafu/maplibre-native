@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../../constants/HiLogConstants';
 /**
  * VideoSource - video-backed content source
  *
@@ -21,16 +23,11 @@ import image from '@ohos.multimedia.image';
 import { BusinessError } from '@ohos.base';
 import maplibre from 'libmaplibre.so';
 import { Image } from '../images/Image';
+import { BaseSource, SourceInternalTag, resolveSourceNative } from './BaseSource';
 
 /**
  * Internal marker used to identify the fromNative factory
  */
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
 
 /**
  * VideoSource options
@@ -53,10 +50,9 @@ export interface VideoSourceOptions {
 /**
  * VideoSource implementation
  */
-export class VideoSource {
+export class VideoSource extends BaseSource<maplibre.VideoSource> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'VideoSource';
-  private nativeInstance: maplibre.VideoSource;
 
   private avPlayer: media.AVPlayer | null = null;
   private imageReceiver: image.ImageReceiver | null = null;
@@ -66,23 +62,27 @@ export class VideoSource {
   private receivingFrames: boolean = false;
   private loop: boolean = false;
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: VideoSourceOptions |
+  constructor(idOrMarker: string | SourceInternalTag, optionsOrNative?: VideoSourceOptions |
     maplibre.VideoSource) {
-    if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
-      this.nativeInstance = optionsOrNative as maplibre.VideoSource;
+    let native: maplibre.VideoSource;
+    let options: VideoSourceOptions | null = null;
+    let idText: string = '';
+    if (idOrMarker === SourceInternalTag.INSTANCE && optionsOrNative instanceof Object) {
+      native = optionsOrNative as maplibre.VideoSource;
     } else if (typeof idOrMarker === 'string') {
-      const options = (optionsOrNative ?? {}) as VideoSourceOptions;
-      this.frameName = `video-frame-${idOrMarker}`;
-      this.frameIntervalMs = options.frameIntervalMs ?? 100;
-      this.loop = options.loop ?? false;
-
-      if (options.coordinates) {
-        this.nativeInstance = new maplibre.VideoSource(idOrMarker, options.coordinates);
-      } else {
-        this.nativeInstance = new maplibre.VideoSource(idOrMarker);
-      }
+      idText = idOrMarker;
+      options = (optionsOrNative ?? {}) as VideoSourceOptions;
+      native = options.coordinates
+        ? new maplibre.VideoSource(idOrMarker, options.coordinates)
+        : new maplibre.VideoSource(idOrMarker);
     } else {
       throw new Error('Invalid VideoSource constructor arguments');
+    }
+    super(native);
+    if (options !== null) {
+      this.frameName = `video-frame-${idText}`;
+      this.frameIntervalMs = options.frameIntervalMs ?? 100;
+      this.loop = options.loop ?? false;
     }
   }
 
@@ -100,21 +100,7 @@ export class VideoSource {
    * @param nativeInstance Native VideoSource instance
    */
   static fromNative(nativeInstance: maplibre.VideoSource): VideoSource {
-    return new VideoSource(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  /**
-   * Get the underlying native instance
-   */
-  getNative(): maplibre.VideoSource {
-    return this.nativeInstance;
-  }
-
-  /**
-   * Get the source identifier
-   */
-  getId(): string {
-    return this.nativeInstance.getId();
+    return new VideoSource(SourceInternalTag.INSTANCE, nativeInstance);
   }
 
   /**
@@ -170,13 +156,13 @@ export class VideoSource {
         player.prepare().then(() => {
           return player.play();
         }).catch((err: BusinessError) => {
-          console.error(`[VideoSource] prepare/play failed: ${JSON.stringify(err)}`);
+          hilog.error(DOMAIN, 'VideoSource', '%{public}s', `[VideoSource] prepare/play failed: ${JSON.stringify(err)}`);
         });
       }
     });
 
     player.on('error', (err: BusinessError) => {
-      console.error(`[VideoSource] player error: ${JSON.stringify(err)}`);
+      hilog.error(DOMAIN, 'VideoSource', '%{public}s', `[VideoSource] player error: ${JSON.stringify(err)}`);
     });
 
     receiver.on('imageArrival', () => {
@@ -223,7 +209,7 @@ export class VideoSource {
     this.receivingFrames = false;
     if (this.imageReceiver) {
       this.imageReceiver.release().catch((err: BusinessError) => {
-        console.error(`[VideoSource] receiver release failed: ${JSON.stringify(err)}`);
+        hilog.error(DOMAIN, 'VideoSource', '%{public}s', `[VideoSource] receiver release failed: ${JSON.stringify(err)}`);
       });
       this.imageReceiver = null;
     }
@@ -267,7 +253,7 @@ export class VideoSource {
           this.releaseImage(img);
         });
       }).catch((componentErr: BusinessError) => {
-        console.error(`[VideoSource] frame read failed: ${JSON.stringify(componentErr)}`);
+        hilog.error(DOMAIN, 'VideoSource', '%{public}s', `[VideoSource] frame read failed: ${JSON.stringify(componentErr)}`);
         this.releaseImage(img);
       });
     });
@@ -303,7 +289,7 @@ export class VideoSource {
         pixelMap.release().catch(() => {});
       }
     } catch (err) {
-      console.error(`[VideoSource] frame decode failed: ${JSON.stringify(err)}`);
+      hilog.error(DOMAIN, 'VideoSource', '%{public}s', `[VideoSource] frame decode failed: ${JSON.stringify(err)}`);
     } finally {
       imageSource.release().catch(() => {});
     }

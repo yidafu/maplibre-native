@@ -7,7 +7,7 @@
 #include <rawfile/raw_file_manager.h>
 #include <string>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 using mbgl::harmony::Logger;
@@ -298,4 +298,4 @@ napi_value IconFactoryNAPI::CreateDefaultMarker(napi_env env, napi_callback_info
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

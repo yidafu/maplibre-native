@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 namespace geojson {
 
@@ -112,5 +112,5 @@ bool IsUndefined(napi_env env, napi_value value);
 
 } // namespace geojson
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

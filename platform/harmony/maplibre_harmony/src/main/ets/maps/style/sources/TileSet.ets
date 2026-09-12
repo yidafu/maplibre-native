@@ -149,4 +149,3 @@ export class TileSet {
     return `TileSet(tiles=${this.options.tiles.length}, minzoom=${this.options.minzoom}, maxzoom=${this.options.maxzoom})`;
   }
 }
-

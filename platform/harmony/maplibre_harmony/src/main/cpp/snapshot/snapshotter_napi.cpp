@@ -731,23 +731,23 @@ napi_value SnapshotterGetSource(napi_env env, napi_callback_info info) {
         switch (source->getType()) {
             case mbgl::style::SourceType::GeoJSON: {
                 auto* geoJsonSource = static_cast<mbgl::style::GeoJSONSource*>(source);
-                return maplibre::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
+                return mbgl::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
             }
             case mbgl::style::SourceType::Vector: {
                 auto* vectorSource = static_cast<mbgl::style::VectorSource*>(source);
-                return maplibre::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
+                return mbgl::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
             }
             case mbgl::style::SourceType::Raster: {
                 auto* rasterSource = static_cast<mbgl::style::RasterSource*>(source);
-                return maplibre::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
+                return mbgl::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
             }
             case mbgl::style::SourceType::RasterDEM: {
                 auto* rasterDemSource = static_cast<mbgl::style::RasterDEMSource*>(source);
-                return maplibre::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
+                return mbgl::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
             }
             case mbgl::style::SourceType::Image: {
                 auto* imageSource = static_cast<mbgl::style::ImageSource*>(source);
-                return maplibre::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
+                return mbgl::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
             }
             default:
                 Logger::warn("SnapshotterNAPI", "getSource: Unknown source type: %d",
@@ -820,9 +820,9 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
     try {
         std::unique_ptr<mbgl::style::Image> styleImage;
 
-        if (maplibre::harmony::IconNAPI::IsIconObject(env, dataValue)) {
+        if (mbgl::harmony::IconNAPI::IsIconObject(env, dataValue)) {
             // Icon created by IconFactory: image data and scale live on the icon.
-            maplibre::harmony::IconNAPI* icon = nullptr;
+            mbgl::harmony::IconNAPI* icon = nullptr;
             if (napi_unwrap(env, dataValue, reinterpret_cast<void**>(&icon)) != napi_ok) {
                 icon = nullptr;
             }
@@ -846,9 +846,9 @@ napi_value SnapshotterAddImage(napi_env env, napi_callback_info info) {
 
             Logger::info("SnapshotterNAPI", "addImage from Icon: %s (%dx%d, ratio: %.2f, sdf: %d)",
                          imageId.c_str(), icon->getWidth(), icon->getHeight(), pixelRatio, sdf);
-        } else if (maplibre::harmony::ImageNAPI::IsImageObject(env, dataValue)) {
+        } else if (mbgl::harmony::ImageNAPI::IsImageObject(env, dataValue)) {
             // Style Image object: carries its own name, pixel ratio and SDF flag.
-            maplibre::harmony::ImageNAPI* imageNapi = maplibre::harmony::ImageNAPI::Unwrap(env, dataValue);
+            mbgl::harmony::ImageNAPI* imageNapi = mbgl::harmony::ImageNAPI::Unwrap(env, dataValue);
             if (!imageNapi) {
                 napi_throw_error(env, nullptr, "Failed to unwrap Image object");
                 return nullptr;

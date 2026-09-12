@@ -1,4 +1,5 @@
 #include "custom_layer_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include "style/layers/custom_layer_harmony.hpp"
@@ -12,6 +13,7 @@ using mbgl::harmony::Logger;
 
 // Static member initialization
 napi_ref CustomLayerNAPI::constructor = nullptr;
+napi_env CustomLayerNAPI::constructorEnv = nullptr;
 
 CustomLayerNAPI::CustomLayerNAPI(const std::string& layerId, 
                                  std::unique_ptr<mbgl::style::CustomLayer> layer,
@@ -57,7 +59,7 @@ napi_value CustomLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("CustomLayerNAPI", "Failed to create reference to CustomLayer constructor");
         return nullptr;

@@ -2,6 +2,7 @@
 
 #include "../napi_value_wrapper.hpp"
 #include "napi/core/napi_args.hpp"
+#include "style/filter_conversion.hpp"
 #include "utils/logger.h"
 
 #include <mbgl/style/layer.hpp>
@@ -203,6 +204,268 @@ napi_value SetPropertiesImpl(napi_env env, napi_callback_info info) {
     
     // Return 'this' for method chaining
     return thisVar;
+}
+
+
+// ============================================================================
+// Shared base-surface callbacks (id / type / source / visibility / zoom /
+// filter). Every layer NAPI class keeps its static napi callback declaration
+// and forwards to these templates; NAPI must expose `getLayer()` returning
+// its concrete mbgl layer pointer (implicitly convertible to
+// mbgl::style::Layer*, which owns the whole shared surface).
+//
+// Canonical guard semantics (previously duplicated with formatting drift in
+// 11 files, normalized here):
+// - getters return null / 0.0 / "" when `this` is not a live wrapper;
+// - setters return `this` unchanged.
+// ============================================================================
+
+template <typename NAPI>
+inline napi_value LayerGetId(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    if (!layerObj || !layerObj->getLayer()) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
+    std::string layerId = layerObj->getLayer()->getID();
+    napi_value result;
+    napi_create_string_utf8(env, layerId.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+inline napi_value LayerGetType(napi_env env, const char* type) {
+    napi_value result;
+    napi_create_string_utf8(env, type, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+template <typename NAPI>
+inline napi_value LayerGetSourceId(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    if (!layerObj || !layerObj->getLayer()) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
+    std::string sourceId = layerObj->getLayer()->getSourceID();
+    napi_value result;
+    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+template <typename NAPI>
+inline napi_value LayerSetVisibility(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    if (!layerObj || !layerObj->getLayer()) {
+        return thisVar;
+    }
+
+    args.RequireMinArgs(1);
+    if (args.HasError()) {
+        return thisVar;
+    }
+
+    std::string visibility = args.GetString(0, "visibility");
+    if (visibility == "visible") {
+        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
+    } else if (visibility == "none") {
+        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
+    }
+
+    return thisVar;
+}
+
+template <typename NAPI>
+inline napi_value LayerGetVisibility(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    if (!layerObj || !layerObj->getLayer()) {
+        napi_value null_value;
+        napi_get_null(env, &null_value);
+        return null_value;
+    }
+
+    auto visibility = layerObj->getLayer()->getVisibility();
+    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
+
+    napi_value result;
+    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+template <typename NAPI>
+inline napi_value LayerSetMinZoom(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        return thisVar;
+    }
+
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
+        layer->setMinZoom(minZoom);
+    }
+
+    return thisVar;
+}
+
+template <typename NAPI>
+inline napi_value LayerGetMinZoom(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float minZoom = layer->getMinZoom();
+    napi_value result;
+    napi_create_double(env, minZoom, &result);
+    return result;
+}
+
+template <typename NAPI>
+inline napi_value LayerSetMaxZoom(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        return thisVar;
+    }
+
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
+        layer->setMaxZoom(maxZoom);
+    }
+
+    return thisVar;
+}
+
+template <typename NAPI>
+inline napi_value LayerGetMaxZoom(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        napi_value result;
+        napi_create_double(env, 0.0, &result);
+        return result;
+    }
+
+    float maxZoom = layer->getMaxZoom();
+    napi_value result;
+    napi_create_double(env, maxZoom, &result);
+    return result;
+}
+
+template <typename NAPI>
+inline napi_value LayerSetSourceLayer(napi_env env, napi_callback_info info) {
+    NapiArgs args(env, info);
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        return thisVar;
+    }
+
+    args.RequireMinArgs(1);
+    if (!args.HasError()) {
+        std::string sourceLayer = args.GetString(0, "sourceLayer");
+        layer->setSourceLayer(sourceLayer);
+    }
+
+    return thisVar;
+}
+
+template <typename NAPI>
+inline napi_value LayerGetSourceLayer(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        napi_value result;
+        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
+        return result;
+    }
+
+    std::string sourceLayer = layer->getSourceLayer();
+    napi_value result;
+    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
+    return result;
+}
+
+template <typename NAPI>
+inline napi_value LayerSetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    size_t argc = 1;
+    napi_value argv[1];
+    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer || argc < 1) {
+        return thisVar;
+    }
+
+    // Convert NAPI array to Filter
+    auto filter = napiArrayToFilter(env, argv[0]);
+    if (filter) {
+        layer->setFilter(*filter);
+    }
+
+    return thisVar;
+}
+
+template <typename NAPI>
+inline napi_value LayerGetFilter(napi_env env, napi_callback_info info) {
+    napi_value thisVar;
+    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
+
+    auto* layerObj = NapiArgs::Unwrap<NAPI>(env, thisVar);
+    auto* layer = layerObj ? layerObj->getLayer() : nullptr;
+    if (!layer) {
+        napi_value result;
+        napi_create_array(env, &result);
+        return result;
+    }
+
+    // Get filter and convert to NAPI array
+    const auto& filter = layer->getFilter();
+    return filterToNapiArray(env, filter);
 }
 
 } // namespace harmony

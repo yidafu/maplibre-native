@@ -137,14 +137,27 @@ void NativeMapView::detachMapRegistry() {
     }
 }
 
+// Release the persistent NAPI references (style wrapper + view wrapper).
+// The refs must be deleted on the env they were created with.
+void NativeMapView::releaseNapiRefs(napi_env env) {
+    if (styleRef_) {
+        napi_delete_reference(env, styleRef_);
+        styleRef_ = nullptr;
+    }
+    if (wrapper_) {
+        napi_delete_reference(env, wrapper_);
+        wrapper_ = nullptr;
+    }
+}
+
 void NativeMapView::cleanupAllResources() {
     // Synchronous teardown: block until the render thread and resources are fully released
     ANRDetector detector("cleanupAllResources_sync", 100, 2000);
 
     // Clear the renderer query hooks — owner-checked, so only the hooks this
     // instance registered are removed (other map instances keep theirs).
-    maplibre::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
-    maplibre::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
+    mbgl::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
+    mbgl::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
 
     // Prevent duplicate cleanup
     if (resourcesCleaned_.exchange(true)) {
@@ -185,14 +198,7 @@ void NativeMapView::cleanupAllResources() {
     destroyNativeWindow();
 
     // 4. Release NAPI references
-    if (styleRef_) {
-        napi_delete_reference(env_, styleRef_);
-        styleRef_ = nullptr;
-    }
-    if (wrapper_) {
-        napi_delete_reference(env_, wrapper_);
-        wrapper_ = nullptr;
-    }
+    releaseNapiRefs(env_);
 
     // 5. Update counters
     --g_activeInstanceCount;
@@ -227,8 +233,8 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
     // Owner-checked clearing of the renderer query hooks while harmonyRenderer
     // is still alive, so no later query can reach the renderer being destroyed
     // (the async path previously left these dangling).
-    maplibre::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
-    maplibre::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
+    mbgl::harmony::GeoJsonSourceNAPI::clearRendererHooks(harmonyRenderer.get());
+    mbgl::harmony::CustomGeometrySourceNAPI::clearQuerySourceFeaturesFn(harmonyRenderer.get());
 
     resetSnapshotState();
 
@@ -244,14 +250,7 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             detachMapRegistry();
             mapRenderer = nullptr;
             destroyNativeWindow();
-            if (styleRef_) {
-                napi_delete_reference(env_, styleRef_);
-                styleRef_ = nullptr;
-            }
-            if (wrapper_) {
-                napi_delete_reference(env_, wrapper_);
-                wrapper_ = nullptr;
-            }
+            releaseNapiRefs(env_);
             --g_activeInstanceCount;
             if (onComplete) onComplete();
             return;
@@ -307,14 +306,7 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
             }
             mapRenderer = nullptr;
             destroyNativeWindow();
-            if (styleRef_) {
-                napi_delete_reference(env_, styleRef_);
-                styleRef_ = nullptr;
-            }
-            if (wrapper_) {
-                napi_delete_reference(env_, wrapper_);
-                wrapper_ = nullptr;
-            }
+            releaseNapiRefs(env_);
             --g_activeInstanceCount;
             if (onComplete) onComplete();
             return;
@@ -353,14 +345,7 @@ void NativeMapView::cleanupAllResourcesAsync(std::function<void()> onComplete) {
 
                     --g_activeInstanceCount;
 
-                    if (styleRef_) {
-                        napi_delete_reference(env, styleRef_);
-                        styleRef_ = nullptr;
-                    }
-                    if (wrapper_) {
-                        napi_delete_reference(env, wrapper_);
-                        wrapper_ = nullptr;
-                    }
+                    releaseNapiRefs(env);
                     if (onComplete) {
                         onComplete();
                     }
@@ -787,7 +772,7 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
     instance->attachMapRegistry();
 
     // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-    maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+    mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
         [renderer = instance->harmonyRenderer.get()](
             const std::string& sourceID,
             const mbgl::Feature& feature,
@@ -800,7 +785,7 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
         instance->harmonyRenderer.get());
 
     // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-        maplibre::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+        mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
             [renderer = instance->harmonyRenderer.get()](
                 const std::string& sourceID,
                 const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
@@ -808,7 +793,7 @@ napi_value NativeMapView::hardReset(napi_env env, napi_callback_info info) {
                 return renderer->querySourceFeatures(sourceID, options);
             },
             instance->harmonyRenderer.get());
-        maplibre::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
+        mbgl::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
             [renderer = instance->harmonyRenderer.get()](
                 const std::string& sourceID,
                 const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
@@ -968,7 +953,7 @@ void NativeMapView::initializeRenderer() {
         // Matches Android behavior: trigger before style loading so listeners can be registered
 
         // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-        maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+        mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
             [renderer = harmonyRenderer.get()](
                 const std::string& sourceID,
                 const mbgl::Feature& feature,
@@ -981,7 +966,7 @@ void NativeMapView::initializeRenderer() {
             harmonyRenderer.get());
 
         // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-        maplibre::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+        mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
             [renderer = harmonyRenderer.get()](
                 const std::string& sourceID,
                 const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
@@ -989,7 +974,7 @@ void NativeMapView::initializeRenderer() {
                 return renderer->querySourceFeatures(sourceID, options);
             },
             harmonyRenderer.get());
-        maplibre::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
+        mbgl::harmony::CustomGeometrySourceNAPI::setQuerySourceFeaturesFn(
             [renderer = harmonyRenderer.get()](
                 const std::string& sourceID,
                 const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {
@@ -1064,7 +1049,7 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
     }
 
     // Wire the cluster query callback so GeoJsonSourceNAPI can reach the renderer
-    maplibre::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
+    mbgl::harmony::GeoJsonSourceNAPI::setQueryFeatureExtensionsFn(
         [renderer = harmonyRenderer.get()](
             const std::string& sourceID,
             const mbgl::Feature& feature,
@@ -1077,7 +1062,7 @@ void NativeMapView::ensureResourcesReadyOrRecover(int timeoutMs) {
         harmonyRenderer.get());
 
     // Wire the source query callback so GeoJsonSourceNAPI can reach the renderer
-    maplibre::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
+    mbgl::harmony::GeoJsonSourceNAPI::setQuerySourceFeaturesFn(
         [renderer = harmonyRenderer.get()](
             const std::string& sourceID,
             const mbgl::SourceQueryOptions& options) -> std::vector<mbgl::Feature> {

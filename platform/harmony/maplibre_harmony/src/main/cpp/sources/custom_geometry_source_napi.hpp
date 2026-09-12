@@ -14,7 +14,7 @@ class ThreadSafeCallback;
 } // namespace harmony
 } // namespace mbgl
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -87,6 +87,7 @@ public:
     }
 
     static napi_ref constructor;
+    static napi_env constructorEnv;
 
 private:
     std::string id;
@@ -102,4 +103,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

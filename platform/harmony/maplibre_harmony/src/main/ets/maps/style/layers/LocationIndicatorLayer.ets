@@ -5,31 +5,18 @@
  * position. Not tied to a source.
  */
 import maplibre from 'libmaplibre.so';
-import type { PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
+
 import type { PropertyValue } from '../expressions/index';
-import { Expression } from '../expressions/Expression';
+
 import { convertValue } from './LayerUtils';
+import { LayerInternalTag, PropertyLayer, resolveLayerNative } from './BaseLayer';
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-export class LocationIndicatorLayer {
+export class LocationIndicatorLayer extends PropertyLayer<maplibre.LocationIndicatorLayer, LocationIndicatorLayer> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'LocationIndicatorLayer';
-  private nativeInstance: maplibre.LocationIndicatorLayer;
 
-  constructor(idOrMarker: string | InternalMarker, nativeOrNothing?: maplibre.LocationIndicatorLayer) {
-    if (idOrMarker === InternalMarker.INSTANCE && nativeOrNothing instanceof Object) {
-      this.nativeInstance = nativeOrNothing;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.LocationIndicatorLayer(idOrMarker);
-    } else {
-      throw new Error('Invalid LocationIndicatorLayer constructor arguments');
-    }
+  constructor(idOrMarker: string | LayerInternalTag, nativeOrNothing?: maplibre.LocationIndicatorLayer) {
+    super(resolveLayerNative(idOrMarker, "", nativeOrNothing, (id) => new maplibre.LocationIndicatorLayer(id), "LocationIndicatorLayer"));
   }
 
   static create(id: string): LocationIndicatorLayer {
@@ -37,46 +24,7 @@ export class LocationIndicatorLayer {
   }
 
   static fromNative(nativeInstance: maplibre.LocationIndicatorLayer): LocationIndicatorLayer {
-    return new LocationIndicatorLayer(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  getNative(): maplibre.LocationIndicatorLayer {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
-  }
-
-  getType(): string {
-    return this.nativeInstance.getType();
-  }
-
-  setVisibility(visibility: 'visible' | 'none'): LocationIndicatorLayer {
-    this.nativeInstance.setVisibility(visibility);
-    return this;
-  }
-
-  getVisibility(): 'visible' | 'none' {
-    return this.nativeInstance.getVisibility();
-  }
-
-  setMinZoom(zoom: number): LocationIndicatorLayer {
-    this.nativeInstance.setMinZoom(zoom);
-    return this;
-  }
-
-  getMinZoom(): number {
-    return this.nativeInstance.getMinZoom();
-  }
-
-  setMaxZoom(zoom: number): LocationIndicatorLayer {
-    this.nativeInstance.setMaxZoom(zoom);
-    return this;
-  }
-
-  getMaxZoom(): number {
-    return this.nativeInstance.getMaxZoom();
+    return new LocationIndicatorLayer(LayerInternalTag.INSTANCE, nativeInstance);
   }
 
   // ========== Location indicator style property helpers ==========
@@ -221,40 +169,6 @@ export class LocationIndicatorLayer {
 
   getTopImageSize(): number | undefined {
     return this.nativeInstance.getTopImageSize();
-  }
-
-  // ========== Generic property API (Android-compatible) ==========
-
-  /**
-   * Set a single property
-   * @param propertyName Property key (e.g. 'accuracy-radius', 'bearing-image')
-   * @param value Property value (constant or Expression)
-   * @returns this (supports chaining)
-   */
-  setProperty(propertyName: string, value: PropertyValue<JSONValue>): LocationIndicatorLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
-    return this;
-  }
-
-  /**
-   * Set multiple properties in batch
-   * @param properties Map of property names to values
-   * @returns this (supports chaining)
-   * @example
-   * layer.setProperties({
-   *   'top-image': 'location-top',
-   *   'accuracy-radius-color': 'rgba(255, 0, 0, 0.2)'
-   * });
-   */
-  setProperties(properties: Record<string, PropertyValue<JSONValue>>): LocationIndicatorLayer {
-    const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
-    const keys = Object.keys(properties);
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]) as NativePropertyValue<JSONValue>;
-    }
-    this.nativeInstance.setProperties(convertedProps);
-    return this;
   }
 
 }

@@ -104,4 +104,3 @@ export type {
   HillshadeMethod,
   ColorReliefPaint
 } from './LayerPaint';
-

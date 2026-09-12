@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * CameraChangeDispatcher - camera change event dispatcher
  *
@@ -245,7 +247,7 @@ export class CameraChangeDispatcher {
       try {
         listener.onCameraMoveStarted(this.moveStartedReason);
       } catch (error) {
-        console.error('CameraChangeDispatcher: Error in onCameraMoveStarted listener:', error);
+        hilog.error(DOMAIN, 'CameraChangeDispatcher', 'CameraChangeDispatcher: Error in onCameraMoveStarted listener: %{public}s', error);
       }
     }
   }
@@ -265,7 +267,7 @@ export class CameraChangeDispatcher {
       try {
         listener.onCameraMove();
       } catch (error) {
-        console.error('CameraChangeDispatcher: Error in onCameraMove listener:', error);
+        hilog.error(DOMAIN, 'CameraChangeDispatcher', 'CameraChangeDispatcher: Error in onCameraMove listener: %{public}s', error);
       }
     }
   }
@@ -287,7 +289,7 @@ export class CameraChangeDispatcher {
       try {
         listener.onCameraIdle();
       } catch (error) {
-        console.error('CameraChangeDispatcher: Error in onCameraIdle listener:', error);
+        hilog.error(DOMAIN, 'CameraChangeDispatcher', 'CameraChangeDispatcher: Error in onCameraIdle listener: %{public}s', error);
       }
     }
   }
@@ -307,7 +309,7 @@ export class CameraChangeDispatcher {
       try {
         listener.onCameraMoveCanceled();
       } catch (error) {
-        console.error('CameraChangeDispatcher: Error in onCameraMoveCanceled listener:', error);
+        hilog.error(DOMAIN, 'CameraChangeDispatcher', 'CameraChangeDispatcher: Error in onCameraMoveCanceled listener: %{public}s', error);
       }
     }
   }

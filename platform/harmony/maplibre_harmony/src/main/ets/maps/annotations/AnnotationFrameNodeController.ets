@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import { ComponentContent, FrameNode, NodeController, UIContext } from '@kit.ArkUI';
 import type { ViewAnnotationRenderState } from './NativeViewAnnotationOverlay';
 
@@ -29,7 +31,7 @@ export class AnnotationFrameNodeController extends NodeController {
   constructor(annotationId: number) {
     super();
     this.annotationId = annotationId;
-    console.info(`[AnnotationFrameNodeController] Created for annotation ${annotationId}`);
+    hilog.info(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] Created for annotation ${annotationId}`);
   }
 
   /**
@@ -38,7 +40,7 @@ export class AnnotationFrameNodeController extends NodeController {
    */
   makeNode(uiContext: UIContext): FrameNode | null {
     if (!uiContext) {
-      console.error(`[AnnotationFrameNodeController] makeNode: no UIContext for annotation ${this.annotationId}`);
+      hilog.error(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] makeNode: no UIContext for annotation ${this.annotationId}`);
       return null;
     }
 
@@ -66,11 +68,11 @@ export class AnnotationFrameNodeController extends NodeController {
         this.applyState(this.frameNode, this.pendingState);
       }
 
-      console.info(`[AnnotationFrameNodeController] makeNode: FrameNode created for annotation ${this.annotationId}`);
+      hilog.info(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] makeNode: FrameNode created for annotation ${this.annotationId}`);
       return this.frameNode;
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[AnnotationFrameNodeController] makeNode failed for annotation ${this.annotationId}: ${reason}`);
+      hilog.error(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] makeNode failed for annotation ${this.annotationId}: ${reason}`);
       return null;
     }
   }
@@ -93,10 +95,10 @@ export class AnnotationFrameNodeController extends NodeController {
       try {
         this.disposeFrameNode();
         this.rebuild();
-        console.info(`[AnnotationFrameNodeController] Rebuilt FrameNode with new content for annotation ${this.annotationId}`);
+        hilog.info(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] Rebuilt FrameNode with new content for annotation ${this.annotationId}`);
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
-        console.warn(`[AnnotationFrameNodeController] rebuild failed for annotation ${this.annotationId}: ${reason}`);
+        hilog.warn(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] rebuild failed for annotation ${this.annotationId}: ${reason}`);
       }
     }
   }
@@ -131,7 +133,7 @@ export class AnnotationFrameNodeController extends NodeController {
       this.applyState(this.frameNode, state);
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[AnnotationFrameNodeController] updateProperties failed for annotation ${this.annotationId}: ${reason}`);
+      hilog.error(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] updateProperties failed for annotation ${this.annotationId}: ${reason}`);
     }
   }
 
@@ -194,7 +196,7 @@ export class AnnotationFrameNodeController extends NodeController {
    * content is swapped (the node is recreated by rebuild()).
    */
   dispose(): void {
-    console.info(`[AnnotationFrameNodeController] Disposing annotation ${this.annotationId}`);
+    hilog.info(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] Disposing annotation ${this.annotationId}`);
     this.disposeFrameNode();
     this.componentContent = null;
     this.pendingState = null;
@@ -216,7 +218,7 @@ export class AnnotationFrameNodeController extends NodeController {
       node.dispose();
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[AnnotationFrameNodeController] FrameNode dispose failed for annotation ${this.annotationId}: ${reason}`);
+      hilog.warn(DOMAIN, 'AnnotationFrameNodeController', 'AnnotationFrameNodeController %{public}s', `[AnnotationFrameNodeController] FrameNode dispose failed for annotation ${this.annotationId}: ${reason}`);
     }
   }
 

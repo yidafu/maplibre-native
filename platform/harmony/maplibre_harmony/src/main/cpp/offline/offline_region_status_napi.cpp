@@ -1,6 +1,6 @@
 #include "offline_region_status_napi.hpp"
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 napi_value OfflineRegionStatusNAPI::ToNapiObject(napi_env env, const mbgl::OfflineRegionStatus& status) {
@@ -57,5 +57,5 @@ napi_value OfflineRegionStatusNAPI::ToNapiObject(napi_env env, const mbgl::Offli
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

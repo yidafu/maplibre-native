@@ -1,9 +1,12 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * Marker - ArkTS wrapper for map markers.
  *
  * Provides an ArkTS-friendly interface around the native marker implementation.
  */
 import maplibre from 'libmaplibre.so';
+import { AnnotationBase, AnnotationInternalTag } from './AnnotationBase';
 import type { MarkerOptions as NAPIMarkerOptions } from 'libmaplibre.so';
 import { LatLng } from '../geometry/LatLng';
 import type { ILatLng } from '../types/NativeTypes';
@@ -35,20 +38,9 @@ export interface NativeMarkerOptions {
 }
 
 /**
- * Internal marker tag used for native construction.
- */
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-/**
  * Marker wrapper.
  */
-export class Marker {
-  private nativeInstance: maplibre.Marker;
+export class Marker extends AnnotationBase<maplibre.Marker> {
   private _id: number = 0; // Marker ID (set by MarkerManager)
   private _map: MapLibreMap | null = null; // Owning MapLibreMap instance
   private _selected: boolean = false; // Selection state cache
@@ -59,10 +51,11 @@ export class Marker {
    * 1. Create from options: `new Marker(options)`
   * 2. Create from a native instance (internal use): `new Marker(marker, nativeInstance)`
    */
-  constructor(optionsOrMarker: NativeMarkerOptions | InternalMarker, nativeInstance?: maplibre.Marker) {
-    if (optionsOrMarker === InternalMarker.INSTANCE && nativeInstance) {
+  constructor(optionsOrMarker: NativeMarkerOptions | AnnotationInternalTag, nativeInstance?: maplibre.Marker) {
+    let native: maplibre.Marker;
+    if (optionsOrMarker === AnnotationInternalTag.INSTANCE && nativeInstance) {
       // Internal mode: construct from a NAPI instance
-      this.nativeInstance = nativeInstance;
+      native = nativeInstance;
     } else if (typeof optionsOrMarker === 'object') {
       // Standard mode: construct from an options object
       // Convert to the NAPI MarkerOptions structure
@@ -79,17 +72,18 @@ export class Marker {
         zIndex: opts.zIndex,
         anchor: opts.anchor
       };
-      this.nativeInstance = new maplibre.Marker(napiOptions);
+      native = new maplibre.Marker(napiOptions);
     } else {
       throw new Error('Invalid Marker constructor arguments');
     }
+    super(native);
   }
 
   /**
    * Construct from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Marker): Marker {
-    return new Marker(InternalMarker.INSTANCE, nativeInstance);
+    return new Marker(AnnotationInternalTag.INSTANCE, nativeInstance);
   }
 
   /**
@@ -97,13 +91,6 @@ export class Marker {
    */
   static createFromOptions(options: NativeMarkerOptions): Marker {
     return new Marker(options);
-  }
-
-  /**
-   * Retrieve the native marker (internal use).
-   */
-  getNative(): maplibre.Marker {
-    return this.nativeInstance;
   }
 
   // ========== Marker API ==========
@@ -208,7 +195,7 @@ export class Marker {
     if (this._map) {
       this._map.showInfoWindow(this);
     } else {
-      console.warn('[Marker] Cannot show InfoWindow: marker not added to map');
+      hilog.warn(DOMAIN, 'Marker', '%{public}s', '[Marker] Cannot show InfoWindow: marker not added to map');
     }
   }
 

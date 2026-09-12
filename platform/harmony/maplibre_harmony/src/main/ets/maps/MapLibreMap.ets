@@ -89,9 +89,10 @@ import {
 } from './listeners/MapEventListeners';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../constants/HiLogConstants';
+import { ListenerGroup, NativeListenerBinding, listenerErrorMessage } from './listeners/ListenerRegistry';
 
 function logListenerError(eventName: string, message: string): void {
-  console.error('MapLibreMap', `${eventName}: ${message}`);
+  hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `${eventName}: ${message}`);
 }
 
 
@@ -144,7 +145,7 @@ type PendingOperation = () => void;
  * // Listen for map events
  * map.addOnMapClickListener({
  *   onMapClick: (x, y) => {
- *     console.log(`Map clicked at: ${x}, ${y}`);
+ *     hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', `Map clicked at: ${x}, ${y}`);
  *     return false;
  *   }
  * });
@@ -198,38 +199,14 @@ export class MapLibreMap {
   private viewWidth: number = 0;
   private viewHeight: number = 0;
   // Style listeners
-  private styleLoadedListeners: OnStyleLoadedListener[] = [];
-  private styleLoadErrorListeners: OnStyleLoadErrorListener[] = [];
+  private styleLoadedListeners: ListenerGroup<OnStyleLoadedListener> = new ListenerGroup<OnStyleLoadedListener>();
+  private styleLoadErrorListeners: ListenerGroup<OnStyleLoadErrorListener> = new ListenerGroup<OnStyleLoadErrorListener>();
   private styleImageMissingListener?: (imageId: string) => void;
   private nativeStyleLoadedCallback?: () => void;
   private nativeStyleLoadErrorCallback?: (error: string) => void;
   private nativeStyleImageMissingCallback?: (imageId: string) => void;
-  // Listener wrapper registries (native layer expects interface objects)
-  private cameraWillChangeWrappers: Map<OnCameraWillChangeListener, OnCameraWillChangeListener> = new Map();
-  private cameraIsChangingWrappers: Map<OnCameraIsChangingListener, OnCameraIsChangingListener> = new Map();
-  private cameraDidChangeWrappers: Map<OnCameraDidChangeListener, OnCameraDidChangeListener> = new Map();
-  private willStartLoadingMapWrappers: Map<OnWillStartLoadingMapListener, OnWillStartLoadingMapListener> = new Map();
-  private didFinishLoadingMapWrappers: Map<OnDidFinishLoadingMapListener, OnDidFinishLoadingMapListener> = new Map();
-  private didFailLoadingMapWrappers: Map<OnDidFailLoadingMapListener, OnDidFailLoadingMapListener> = new Map();
-  private willStartRenderingFrameWrappers: Map<OnWillStartRenderingFrameListener, OnWillStartRenderingFrameListener> = new Map();
-  private didFinishRenderingFrameWrappers: Map<OnDidFinishRenderingFrameListener, OnDidFinishRenderingFrameListener> = new Map();
-  private didFinishRenderingFrameWithStatsWrappers: Map<OnDidFinishRenderingFrameWithStatsListener, OnDidFinishRenderingFrameWithStatsListener> = new Map();
-  private willStartRenderingMapWrappers: Map<OnWillStartRenderingMapListener, OnWillStartRenderingMapListener> = new Map();
-  private didFinishRenderingMapWrappers: Map<OnDidFinishRenderingMapListener, OnDidFinishRenderingMapListener> = new Map();
-  private didFinishLoadingStyleWrappers: Map<OnDidFinishLoadingStyleListener, OnDidFinishLoadingStyleListener> = new Map();
-  private canRemoveUnusedStyleImageWrappers: Map<OnCanRemoveUnusedStyleImageListener, OnCanRemoveUnusedStyleImageListener> = new Map();
-  private didBecomeIdleWrappers: Map<OnDidBecomeIdleListener, OnDidBecomeIdleListener> = new Map();
-  private sourceChangedWrappers: Map<OnSourceChangedListener, OnSourceChangedListener> = new Map();
-  private preCompileShaderWrappers: Map<OnPreCompileShaderListener, OnPreCompileShaderListener> = new Map();
-  private postCompileShaderWrappers: Map<OnPostCompileShaderListener, OnPostCompileShaderListener> = new Map();
-  private shaderCompileFailedWrappers: Map<OnShaderCompileFailedListener, OnShaderCompileFailedListener> = new Map();
-  private glyphsRequestedWrappers: Map<OnGlyphsRequestedListener, OnGlyphsRequestedListener> = new Map();
-  private glyphsLoadedWrappers: Map<OnGlyphsLoadedListener, OnGlyphsLoadedListener> = new Map();
-  private glyphsErrorWrappers: Map<OnGlyphsErrorListener, OnGlyphsErrorListener> = new Map();
-  private spriteRequestedWrappers: Map<OnSpriteRequestedListener, OnSpriteRequestedListener> = new Map();
-  private spriteLoadedWrappers: Map<OnSpriteLoadedListener, OnSpriteLoadedListener> = new Map();
-  private spriteErrorWrappers: Map<OnSpriteErrorListener, OnSpriteErrorListener> = new Map();
-  private tileActionWrappers: Map<OnTileActionListener, OnTileActionListener> = new Map();
+  // Wrapper-based native listener registry lives in the listener section
+  // (nativeListenerRegistry); the per-event wrapper Maps were removed.
   // Operation queue - cache operations before the style is ready
   private pendingOperations: PendingOperation[] = [];
   // Compass update callback (injected by the outer UI layer)
@@ -357,9 +334,9 @@ export class MapLibreMap {
     };
     try {
       this.nativeMapView.addOnMapClickListener(this.mapClickNativeBridge);
-      console.info('[MapLibreMap] Map click native bridge registered');
+      hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', '[MapLibreMap] Map click native bridge registered');
     } catch (error) {
-      console.error(`[MapLibreMap] Failed to register map click native bridge: ${error}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Failed to register map click native bridge: ${error}`);
     }
 
     // Map long-click bridge: forwards long-press coordinates from C++ to ETS listeners
@@ -370,9 +347,9 @@ export class MapLibreMap {
     };
     try {
       this.nativeMapView.addOnMapLongClickListener(this.mapLongClickNativeBridge);
-      console.info('[MapLibreMap] Map long-click native bridge registered');
+      hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', '[MapLibreMap] Map long-click native bridge registered');
     } catch (error) {
-      console.error(`[MapLibreMap] Failed to register map long-click native bridge: ${error}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Failed to register map long-click native bridge: ${error}`);
     }
   }
 
@@ -392,7 +369,7 @@ export class MapLibreMap {
 
     // Register the style load error callback
     this.nativeStyleLoadErrorCallback = (error: string) => {
-      console.error(`MapLibreMap: Native style load error callback triggered: ${error}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Native style load error callback triggered: ${error}`);
       this.onStyleLoadError(error);
     };
     this.nativeMapView.setOnStyleLoadErrorListener(this.nativeStyleLoadErrorCallback);
@@ -403,7 +380,7 @@ export class MapLibreMap {
         try {
           this.styleImageMissingListener(imageId);
         } catch (error) {
-          console.error(`MapLibreMap: Error in onStyleImageMissing listener: ${error}`);
+          hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in onStyleImageMissing listener: ${error}`);
         }
       }
     };
@@ -477,7 +454,7 @@ export class MapLibreMap {
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[MapLibreMap] readPixelRatioSafe failed: ${reason}`);
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] readPixelRatioSafe failed: ${reason}`);
     }
     return 1;
   }
@@ -547,21 +524,21 @@ export class MapLibreMap {
         try {
           operation();
         } catch (error) {
-          console.error(`MapLibreMap: Error executing pending operation: ${error}`);
+          hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error executing pending operation: ${error}`);
         }
       });
       this.pendingOperations = [];
     }
 
     // Notify listeners
-    if (this.styleLoadedListeners.length > 0) {
-      this.styleLoadedListeners.forEach(listener => {
+    if (this.styleLoadedListeners.size() > 0) {
+      this.styleLoadedListeners.getListeners().forEach(listener => {
         try {
           // Note: Pass null for the Style object because NativeMapView has no getStyle() method yet
           // Listeners can interact with layers/sources directly via NativeMapView
           listener.onStyleLoaded(null);
         } catch (error) {
-          console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
+          hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in onStyleLoaded listener: ${error}`);
         }
       });
     }
@@ -576,17 +553,17 @@ export class MapLibreMap {
 
     // Clear pending operations
     if (this.pendingOperations.length > 0) {
-      console.warn(`MapLibreMap: Clearing ${this.pendingOperations.length} pending operations due to style load error`);
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Clearing ${this.pendingOperations.length} pending operations due to style load error`);
       this.pendingOperations = [];
     }
 
     // Notify error listeners
-    if (this.styleLoadErrorListeners.length > 0) {
-      this.styleLoadErrorListeners.forEach(listener => {
+    if (this.styleLoadErrorListeners.size() > 0) {
+      this.styleLoadErrorListeners.getListeners().forEach(listener => {
         try {
           listener.onStyleLoadError(error);
         } catch (err) {
-          console.error(`MapLibreMap: Error in onStyleLoadError listener: ${err}`);
+          hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in onStyleLoadError listener: ${err}`);
         }
       });
     }
@@ -607,19 +584,20 @@ export class MapLibreMap {
 
     try {
       // 1. Clear all listener arrays (mirrors Android)
-      this.styleLoadedListeners = [];
-      this.styleLoadErrorListeners = [];
+      this.styleLoadedListeners.clear();
+      this.styleLoadErrorListeners.clear();
       this.styleImageMissingListener = undefined;
+      this.clearNativeListeners();
       this.pendingOperations = [];
-      this.mapClickListeners = [];
-      this.mapLongClickListeners = [];
+      this.mapClickListeners.clear();
+      this.mapLongClickListeners.clear();
 
       // 1.1 Clean up native bridge callbacks for map tap / long-press
       if (this.mapClickNativeBridge) {
         try {
           this.nativeMapView.removeOnMapClickListener(this.mapClickNativeBridge);
         } catch (error) {
-          console.warn(`[MapLibreMap] Failed to remove map click native bridge: ${error}`);
+          hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Failed to remove map click native bridge: ${error}`);
         }
         this.mapClickNativeBridge = null;
       }
@@ -627,7 +605,7 @@ export class MapLibreMap {
         try {
           this.nativeMapView.removeOnMapLongClickListener(this.mapLongClickNativeBridge);
         } catch (error) {
-          console.warn(`[MapLibreMap] Failed to remove map long-click native bridge: ${error}`);
+          hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Failed to remove map long-click native bridge: ${error}`);
         }
         this.mapLongClickNativeBridge = null;
       }
@@ -671,7 +649,7 @@ export class MapLibreMap {
       // Native resources are released asynchronously in NativeMapView.aboutToDisappear()
 
     } catch (error) {
-      console.error('MapLibreMap: Error during destroy:', error);
+      hilog.error(DOMAIN, 'MapLibreMap', 'MapLibreMap: Error during destroy: %{public}s', error);
     }
   }
 
@@ -728,7 +706,7 @@ export class MapLibreMap {
     // Store the dimensions
     this.viewWidth = width;
     this.viewHeight = height;
-    console.info(`[MapLibreMap] resizeView called: ${width}x${height}`);
+    hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] resizeView called: ${width}x${height}`);
 
     // Update the Projection view size
     this.projection.updateViewSize(width, height);
@@ -742,7 +720,7 @@ export class MapLibreMap {
         const metersPerPixel = this.getMetersPerPixelAtLatitude(latLng.latitude);
         this.onScaleBarUpdate(metersPerPixel);
       } catch (error) {
-        console.error(`[MapLibreMap] Failed to update ScaleBar on resize: ${error}`);
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Failed to update ScaleBar on resize: ${error}`);
       }
     }
   }
@@ -802,7 +780,7 @@ export class MapLibreMap {
         try {
           callback(style);
         } catch (error) {
-          console.error(`MapLibreMap: Error in setStyleWithCallback callback: ${error}`);
+          hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in setStyleWithCallback callback: ${error}`);
         }
         // Remove the listener after the callback executes
         self.removeOnStyleLoadedListener(this);
@@ -844,10 +822,10 @@ export class MapLibreMap {
     // Mirrors Android/iOS where local fonts are fixed when the renderer is created
     try {
       this.nativeMapView.setLocalIdeographFontFamily(fontFamily);
-      console.info('[MapLibreMap] setLocalIdeographFontFamily: Local font updated to ' +
+            hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', '[MapLibreMap] setLocalIdeographFontFamily: Local font updated to ' +
                    (fontFamily || '(disabled)'));
     } catch (error) {
-      console.error('[MapLibreMap] setLocalIdeographFontFamily: Update failed', error);
+      hilog.error(DOMAIN, 'MapLibreMap', '[MapLibreMap] setLocalIdeographFontFamily: Update failed %{public}s', error);
     }
   }
 
@@ -865,7 +843,7 @@ export class MapLibreMap {
     try {
       return this.nativeMapView.getLocalIdeographFontFamily();
     } catch (error) {
-      console.error('[MapLibreMap] getLocalIdeographFontFamily: Failed to query value', error);
+      hilog.error(DOMAIN, 'MapLibreMap', '[MapLibreMap] getLocalIdeographFontFamily: Failed to query value %{public}s', error);
       return this.options.localIdeographFontFamily;
     }
   }
@@ -906,7 +884,7 @@ export class MapLibreMap {
       }
       return null;
     } catch (error) {
-      console.error('Failed to get style:', error);
+      hilog.error(DOMAIN, 'MapLibreMap', 'Failed to get style: %{public}s', error);
       return null;
     }
   }
@@ -1158,7 +1136,7 @@ export class MapLibreMap {
         try {
           this.pendingAnimationCallback.onFinish();
         } catch (error) {
-          console.error('[MapLibreMap] Error in animation onFinish callback:', error);
+          hilog.error(DOMAIN, 'MapLibreMap', '[MapLibreMap] Error in animation onFinish callback: %{public}s', error);
         }
       }
 
@@ -1180,7 +1158,7 @@ export class MapLibreMap {
           this.pendingAnimationCallback.onCancel();
         }
       } catch (error) {
-        console.error('[MapLibreMap] Error in animation onCancel callback:', error);
+        hilog.error(DOMAIN, 'MapLibreMap', '[MapLibreMap] Error in animation onCancel callback: %{public}s', error);
       }
 
       this.clearAnimationCallback();
@@ -1722,29 +1700,24 @@ export class MapLibreMap {
       this.markerManager.updateMarker(marker);
 
     } catch (error) {
-      console.error('[MapLibreMap] updateMarker: Failed -', error);
+      hilog.error(DOMAIN, 'MapLibreMap', '[MapLibreMap] updateMarker: Failed - %{public}s', error);
     }
   }
 
+  /**
+   * @deprecated Legacy symbol-layer marker path. Use `addMarker` /
+   * `addMarkersBatch` (MarkerManager -> ViewAnnotation engine) instead,
+   * which matches the converged annotation architecture.
+   */
   public addMarkers(markers: Marker[]): number[] {
     if (this.destroyed) {
-      console.warn(`[MarkerDebug] MapLibreMap: ⚠️ Map is destroyed, cannot add markers`);
+      hilog.warn(DOMAIN, 'MapLibreMap', 'addMarkers: Map is destroyed, cannot add markers');
       return [];
-    }
-
-    // [MarkerDebug] Log state before calling into NAPI
-    for (let i = 0; i < markers.length; i++) {
-      const pos = markers[i].getPosition();
-      const icon = markers[i].getIcon();
     }
 
     // Convert wrapped markers into native marker objects
     const nativeMarkers: maplibre.Marker[] = markers.map((m: Marker): maplibre.Marker => m.getNative());
-    const ids: number[] = this.nativeMapView.addMarkers(nativeMarkers);
-
-    // [MarkerDebug] Log NAPI result
-
-    return ids;
+    return this.nativeMapView.addMarkers(nativeMarkers);
   }
 
   public addPolylines(polylines: Polyline[]): number[] {
@@ -1770,21 +1743,21 @@ export class MapLibreMap {
       return;
     }
     if (!polyline) {
-      console.error('MapLibreMap.updatePolyline: polyline is null or undefined');
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', 'MapLibreMap.updatePolyline: polyline is null or undefined');
       return;
     }
 
     try {
       const nativePolyline = polyline.getNative();
       if (!nativePolyline) {
-        console.error('MapLibreMap.updatePolyline: nativePolyline is null or undefined');
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', 'MapLibreMap.updatePolyline: nativePolyline is null or undefined');
         return;
       }
 
       // Pass the native NAPI object so C++ can unwrap (the C++ layer reads the ID from the object)
       this.nativeMapView.updatePolyline(nativePolyline);
     } catch (error) {
-      console.error(`MapLibreMap.updatePolyline: Exception - ${error}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap.updatePolyline: Exception - ${error}`);
       // throw error;
     }
   }
@@ -1794,21 +1767,21 @@ export class MapLibreMap {
       return;
     }
     if (!polygon) {
-      console.error('MapLibreMap.updatePolygon: polygon is null or undefined');
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', 'MapLibreMap.updatePolygon: polygon is null or undefined');
       return;
     }
 
     try {
       const nativePolygon = polygon.getNative();
       if (!nativePolygon) {
-        console.error('MapLibreMap.updatePolygon: nativePolygon is null or undefined');
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', 'MapLibreMap.updatePolygon: nativePolygon is null or undefined');
         return;
       }
 
       // Pass the native NAPI object so C++ can unwrap it (C++ layer reads the ID from the object)
       this.nativeMapView.updatePolygon(nativePolygon);
     } catch (error) {
-      console.error(`MapLibreMap.updatePolygon: Exception - ${error}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap.updatePolygon: Exception - ${error}`);
       // throw error;
     }
   }
@@ -2563,7 +2536,7 @@ export class MapLibreMap {
    */
   public setOnMarkerClickListener(listener: OnMarkerClickListener | null): void {
     if (this.destroyed) {
-      console.warn(`[MapLibreMap] ⚠️ Map is destroyed, cannot set listener`);
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] ⚠️ Map is destroyed, cannot set listener`);
       return;
     }
     this.markerManager.setOnMarkerClickListener(listener);
@@ -2576,7 +2549,7 @@ export class MapLibreMap {
    */
   public setOnMarkerLongClickListener(listener: OnMarkerLongClickListener | null): void {
     if (this.destroyed) {
-      console.warn(`[MapLibreMap] ⚠️ Map is destroyed, cannot set listener`);
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] ⚠️ Map is destroyed, cannot set listener`);
       return;
     }
     this.markerManager.setOnMarkerLongClickListener(listener);
@@ -2679,8 +2652,8 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
-    if (!this.styleLoadedListeners.includes(listener)) {
-      this.styleLoadedListeners.push(listener);
+    if (!this.styleLoadedListeners.getListeners().includes(listener)) {
+      this.styleLoadedListeners.add(listener);
 
       // If the style is already loaded, invoke immediately
       if (this.styleLoaded) {
@@ -2688,7 +2661,7 @@ export class MapLibreMap {
           // Note: Style currently passes null
           listener.onStyleLoaded(null);
         } catch (error) {
-          console.error(`MapLibreMap: Error in onStyleLoaded listener: ${error}`);
+          hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in onStyleLoaded listener: ${error}`);
         }
       }
     }
@@ -2700,10 +2673,7 @@ export class MapLibreMap {
    * @param listener Listener instance to remove
    */
   public removeOnStyleLoadedListener(listener: OnStyleLoadedListener): void {
-    const index = this.styleLoadedListeners.indexOf(listener);
-    if (index !== -1) {
-      this.styleLoadedListeners.splice(index, 1);
-    }
+    this.styleLoadedListeners.remove(listener);
   }
 
   /**
@@ -2715,9 +2685,7 @@ export class MapLibreMap {
     if (this.destroyed) {
       return;
     }
-    if (!this.styleLoadErrorListeners.includes(listener)) {
-      this.styleLoadErrorListeners.push(listener);
-    }
+    this.styleLoadErrorListeners.add(listener);
   }
 
   /**
@@ -2726,10 +2694,7 @@ export class MapLibreMap {
    * @param listener Listener instance to remove
    */
   public removeOnStyleLoadErrorListener(listener: OnStyleLoadErrorListener): void {
-    const index = this.styleLoadErrorListeners.indexOf(listener);
-    if (index !== -1) {
-      this.styleLoadErrorListeners.splice(index, 1);
-    }
+    this.styleLoadErrorListeners.remove(listener);
   }
 
   /**
@@ -2769,7 +2734,7 @@ export class MapLibreMap {
       try {
         operation();
       } catch (error) {
-        console.error(`MapLibreMap: Error executing operation: ${error}`);
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error executing operation: ${error}`);
       }
     } else {
       // Style not yet loaded, enqueue
@@ -2913,190 +2878,239 @@ export class MapLibreMap {
     this.markerManager.hideAllInfoWindows();
   }
 
-// ========== Camera listener helpers ==========
+// ========== Native listener registration infrastructure ==========
+
+  // Wrapper-based native listener registry: listener -> (event key -> binding).
+  // registerNativeListener() wraps each listener in an error-guarded proxy and
+  // records how to detach it; remove*/removeAllListeners/destroy use the same map.
+  private nativeListenerRegistry: Map<Object, Map<string, NativeListenerBinding>> = new Map();
+  // One native bridge per camera-dispatcher event, registered lazily on the
+  // first listener add and kept for the map's lifetime. (Re-registering a
+  // native callback on every add made each event fire once per listener ever
+  // added; per-listener fan-out/removal is CameraChangeDispatcher's job.)
+  private cameraBridgeEvents: Set<string> = new Set();
 
   /**
-   * Add an on-camera-will-change listener
-   * Mirrors the Android MapView.addOnCameraWillChangeListener callback
-   *
-   * @param listener OnCameraWillChangeListener instance
+   * Register a listener for a wrapper-based native event.
    */
-  public addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+  private registerNativeListener<L extends Object, W extends Object>(
+    eventType: string,
+    listener: L,
+    wrap: (l: L) => W,
+    nativeAdd: (w: W) => void,
+    nativeRemove: (w: W) => void
+  ): void {
     if (this.destroyed) {
       return;
     }
-    if (this.cameraWillChangeWrappers.has(listener)) {
+    let bindings = this.nativeListenerRegistry.get(listener);
+    if (bindings === undefined) {
+      bindings = new Map<string, NativeListenerBinding>();
+      this.nativeListenerRegistry.set(listener, bindings);
+    }
+    if (bindings.has(eventType)) {
       return;
     }
-    const wrapper: OnCameraWillChangeListener = (animated: boolean) => {
-      try {
-        listener(animated);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnCameraWillChangeListener', message);
+    const wrapper = wrap(listener);
+    const binding: NativeListenerBinding = {
+      removeFromNative: () => {
+        nativeRemove(wrapper);
       }
     };
-    this.cameraWillChangeWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnCameraWillChangeListener(wrapper);
+    bindings.set(eventType, binding);
+    nativeAdd(wrapper);
+  }
+
+  /**
+   * Remove a listener previously registered via registerNativeListener.
+   */
+  private unregisterNativeListener(listener: Object, eventType: string): void {
+    if (this.destroyed) {
+      return;
+    }
+    const bindings = this.nativeListenerRegistry.get(listener);
+    if (bindings === undefined) {
+      return;
+    }
+    const binding = bindings.get(eventType);
+    if (binding !== undefined) {
+      binding.removeFromNative();
+      bindings.delete(eventType);
+      if (bindings.size === 0) {
+        this.nativeListenerRegistry.delete(listener);
+      }
+    }
+  }
+
+  /**
+   * Detach every live wrapper-based native listener (removeAllListeners/destroy).
+   */
+  private clearNativeListeners(): void {
+    this.nativeListenerRegistry.forEach((bindings) => {
+      bindings.forEach((binding) => {
+        try {
+          binding.removeFromNative();
+        } catch (error) {
+          hilog.warn(DOMAIN, 'MapLibreMap', 'clearNativeListeners: detach failed: %{public}s', `${error}`);
+        }
+      });
+    });
+    this.nativeListenerRegistry.clear();
+  }
+
+  /**
+   * Lazily register the permanent native bridge for one camera-dispatcher event.
+   */
+  private ensureCameraDispatcherBridge(event: string): void {
+    if (this.cameraBridgeEvents.has(event)) {
+      return;
+    }
+    this.cameraBridgeEvents.add(event);
+    switch (event) {
+      case 'idle':
+        this.nativeMapView.addOnCameraIdleListener(() => {
+          this.cameraChangeDispatcher.notifyCameraIdle();
+        });
+        break;
+      case 'moveStarted':
+        this.nativeMapView.addOnCameraMoveStartedListener((reason: number) => {
+          this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
+        });
+        break;
+      case 'move':
+        this.nativeMapView.addOnCameraMoveListener(() => {
+          this.cameraChangeDispatcher.notifyCameraMove();
+        });
+        break;
+      case 'moveCanceled':
+        this.nativeMapView.addOnCameraMoveCanceledListener(() => {
+          this.cameraChangeDispatcher.notifyCameraMoveCanceled();
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+
+// ========== Camera listener helpers ==========
+
+  /**
+   * Mirrors the Android MapView.addOnCameraWillChangeListener callback
+   */
+  public addOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
+    this.registerNativeListener<OnCameraWillChangeListener, OnCameraWillChangeListener>(
+      'cameraWillChange',
+      listener,
+      (l) => (animated: boolean): void => {
+        try {
+          l(animated);
+        } catch (error) {
+          logListenerError('OnCameraWillChangeListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnCameraWillChangeListener(w),
+      (w) => this.nativeMapView.removeOnCameraWillChangeListener(w)
+    );
   }
 
   /**
    * Remove an on-camera-will-change listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnCameraWillChangeListener(listener: OnCameraWillChangeListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.cameraWillChangeWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnCameraWillChangeListener(wrapper);
-      this.cameraWillChangeWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'cameraWillChange');
   }
 
   /**
-   * Add an on-camera-is-changing listener
    * Invoked continuously while the camera is moving
-   *
-   * @param listener OnCameraIsChangingListener instance
    */
   public addOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.cameraIsChangingWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnCameraIsChangingListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnCameraIsChangingListener', message);
-      }
-    };
-    this.cameraIsChangingWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnCameraIsChangingListener(wrapper);
+    this.registerNativeListener<OnCameraIsChangingListener, OnCameraIsChangingListener>(
+      'cameraIsChanging',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnCameraIsChangingListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnCameraIsChangingListener(w),
+      (w) => this.nativeMapView.removeOnCameraIsChangingListener(w)
+    );
   }
 
   /**
    * Remove an on-camera-is-changing listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnCameraIsChangingListener(listener: OnCameraIsChangingListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.cameraIsChangingWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnCameraIsChangingListener(wrapper);
-      this.cameraIsChangingWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'cameraIsChanging');
   }
 
   /**
-   * Add an on-camera-did-change listener
    * Invoked after the camera finishes changing
-   *
-   * @param listener OnCameraDidChangeListener instance
    */
   public addOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.cameraDidChangeWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnCameraDidChangeListener = (animated: boolean) => {
-      try {
-        listener(animated);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnCameraDidChangeListener', message);
-      }
-    };
-    this.cameraDidChangeWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnCameraDidChangeListener(wrapper);
+    this.registerNativeListener<OnCameraDidChangeListener, OnCameraDidChangeListener>(
+      'cameraDidChange',
+      listener,
+      (l) => (animated: boolean): void => {
+        try {
+          l(animated);
+        } catch (error) {
+          logListenerError('OnCameraDidChangeListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnCameraDidChangeListener(w),
+      (w) => this.nativeMapView.removeOnCameraDidChangeListener(w)
+    );
   }
 
   /**
    * Remove an on-camera-did-change listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnCameraDidChangeListener(listener: OnCameraDidChangeListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.cameraDidChangeWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnCameraDidChangeListener(wrapper);
-      this.cameraDidChangeWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'cameraDidChange');
   }
 
   /**
-   * Add an on-camera-idle listener
-   * Triggered when the camera stops moving (all animations and gestures complete)
-   *
-   * @param listener OnCameraIdleListener instance
+   * Camera dispatcher listeners: fan-out/removal is handled by CameraChangeDispatcher;
+   * the native bridge is registered once per event via ensureCameraDispatcherBridge().
+   */
+  /**
+   * Add a on camera idle listener
    */
   public addOnCameraIdleListener(listener: OnCameraIdleListener): void {
     if (this.destroyed) {
       return;
     }
-
-    // Register with the dispatcher
+    this.ensureCameraDispatcherBridge('idle');
     this.cameraChangeDispatcher.addOnCameraIdleListener(listener);
-
-    // Register with NAPI
-    const callback = () => {
-      this.cameraChangeDispatcher.notifyCameraIdle();
-    };
-    this.nativeMapView.addOnCameraIdleListener(callback);
   }
 
   /**
-   * Remove an on-camera-idle listener
-   *
-   * @param listener Listener to remove
+   * Remove the on camera idle listener
    */
   public removeOnCameraIdleListener(listener: OnCameraIdleListener): void {
     if (this.destroyed) {
       return;
     }
     this.cameraChangeDispatcher.removeOnCameraIdleListener(listener);
-    // Note: NAPI callbacks cannot be removed individually—known limitation
   }
 
   /**
-   * Add an on-camera-move-started listener
-   * Triggered when the camera begins moving
-   *
-   * @param listener OnCameraMoveStartedListener instance
+   * Add a on camera move started listener
    */
   public addOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     if (this.destroyed) {
       return;
     }
-
-    // Register with the dispatcher
+    this.ensureCameraDispatcherBridge('moveStarted');
     this.cameraChangeDispatcher.addOnCameraMoveStartedListener(listener);
-
-    // Register with NAPI
-    const callback = (reason: number) => {
-      this.cameraChangeDispatcher.notifyCameraMoveStarted(reason as CameraMoveReason);
-    };
-    this.nativeMapView.addOnCameraMoveStartedListener(callback);
   }
 
   /**
-   * Remove an on-camera-move-started listener
-   *
-   * @param listener Listener to remove
+   * Remove the on camera move started listener
    */
   public removeOnCameraMoveStartedListener(listener: OnCameraMoveStartedListener): void {
     if (this.destroyed) {
@@ -3106,30 +3120,18 @@ export class MapLibreMap {
   }
 
   /**
-   * Add an on-camera-move listener
-   * Fires repeatedly while the camera is moving
-   *
-   * @param listener OnCameraMoveListener instance
+   * Add a on camera move listener
    */
   public addOnCameraMoveListener(listener: OnCameraMoveListener): void {
     if (this.destroyed) {
       return;
     }
-
-    // Register with the dispatcher
+    this.ensureCameraDispatcherBridge('move');
     this.cameraChangeDispatcher.addOnCameraMoveListener(listener);
-
-    // Register with NAPI
-    const callback = () => {
-      this.cameraChangeDispatcher.notifyCameraMove();
-    };
-    this.nativeMapView.addOnCameraMoveListener(callback);
   }
 
   /**
-   * Remove an on-camera-move listener
-   *
-   * @param listener Listener to remove
+   * Remove the on camera move listener
    */
   public removeOnCameraMoveListener(listener: OnCameraMoveListener): void {
     if (this.destroyed) {
@@ -3139,30 +3141,18 @@ export class MapLibreMap {
   }
 
   /**
-   * Add an on-camera-move-canceled listener
-   * Triggered when a camera animation is interrupted or canceled
-   *
-   * @param listener OnCameraMoveCanceledListener instance
+   * Add a on camera move canceled listener
    */
   public addOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     if (this.destroyed) {
       return;
     }
-
-    // Register with the dispatcher
+    this.ensureCameraDispatcherBridge('moveCanceled');
     this.cameraChangeDispatcher.addOnCameraMoveCanceledListener(listener);
-
-    // Register with NAPI
-    const callback = () => {
-      this.cameraChangeDispatcher.notifyCameraMoveCanceled();
-    };
-    this.nativeMapView.addOnCameraMoveCanceledListener(callback);
   }
 
   /**
-   * Remove an on-camera-move-canceled listener
-   *
-   * @param listener Listener to remove
+   * Remove the on camera move canceled listener
    */
   public removeOnCameraMoveCanceledListener(listener: OnCameraMoveCanceledListener): void {
     if (this.destroyed) {
@@ -3174,592 +3164,407 @@ export class MapLibreMap {
 // ========== Map loading listener management ==========
 
   /**
-   * Add a will-start-loading-map listener
    * Triggered when the map starts loading (mirrors Android MapView.OnWillStartLoadingMapListener)
    */
   public addOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.willStartLoadingMapWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnWillStartLoadingMapListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnWillStartLoadingMapListener', message);
-      }
-    };
-    this.willStartLoadingMapWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnWillStartLoadingMapListener(wrapper);
+    this.registerNativeListener<OnWillStartLoadingMapListener, OnWillStartLoadingMapListener>(
+      'willStartLoadingMap',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnWillStartLoadingMapListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnWillStartLoadingMapListener(w),
+      (w) => this.nativeMapView.removeOnWillStartLoadingMapListener(w)
+    );
   }
 
   /**
    * Remove a will-start-loading-map listener
    */
   public removeOnWillStartLoadingMapListener(listener: OnWillStartLoadingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.willStartLoadingMapWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnWillStartLoadingMapListener(wrapper);
-      this.willStartLoadingMapWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'willStartLoadingMap');
   }
 
   /**
-   * Add a did-finish-loading-map listener
    * Triggered when the map finishes loading (style and tiles loaded)
    */
   public addOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didFinishLoadingMapWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidFinishLoadingMapListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidFinishLoadingMapListener', message);
-      }
-    };
-    this.didFinishLoadingMapWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidFinishLoadingMapListener(wrapper);
+    this.registerNativeListener<OnDidFinishLoadingMapListener, OnDidFinishLoadingMapListener>(
+      'didFinishLoadingMap',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnDidFinishLoadingMapListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidFinishLoadingMapListener(w),
+      (w) => this.nativeMapView.removeOnDidFinishLoadingMapListener(w)
+    );
   }
 
   /**
    * Remove a did-finish-loading-map listener
    */
   public removeOnDidFinishLoadingMapListener(listener: OnDidFinishLoadingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didFinishLoadingMapWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidFinishLoadingMapListener(wrapper);
-      this.didFinishLoadingMapWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'didFinishLoadingMap');
   }
 
   /**
-   * Add a did-fail-loading-map listener
    * Triggered when the map fails to load (network issues, style errors, etc.)
    */
   public addOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didFailLoadingMapWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidFailLoadingMapListener = (errorMessage: string) => {
-      try {
-        listener(errorMessage);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidFailLoadingMapListener', message);
-      }
-    };
-    this.didFailLoadingMapWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidFailLoadingMapListener(wrapper);
+    this.registerNativeListener<OnDidFailLoadingMapListener, OnDidFailLoadingMapListener>(
+      'didFailLoadingMap',
+      listener,
+      (l) => (errorMessage: string): void => {
+        try {
+          l(errorMessage);
+        } catch (error) {
+          logListenerError('OnDidFailLoadingMapListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidFailLoadingMapListener(w),
+      (w) => this.nativeMapView.removeOnDidFailLoadingMapListener(w)
+    );
   }
 
   /**
    * Remove a did-fail-loading-map listener
    */
   public removeOnDidFailLoadingMapListener(listener: OnDidFailLoadingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didFailLoadingMapWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidFailLoadingMapListener(wrapper);
-      this.didFailLoadingMapWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'didFailLoadingMap');
   }
 
-// ========== Rendering lifecycle listeners ==========
-
   /**
-   * Add a will-start-rendering-frame listener
    * Invoked before each frame begins rendering
    */
   public addOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.willStartRenderingFrameWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnWillStartRenderingFrameListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnWillStartRenderingFrameListener', message);
-      }
-    };
-    this.willStartRenderingFrameWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnWillStartRenderingFrameListener(wrapper);
+    this.registerNativeListener<OnWillStartRenderingFrameListener, OnWillStartRenderingFrameListener>(
+      'willStartRenderingFrame',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnWillStartRenderingFrameListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnWillStartRenderingFrameListener(w),
+      (w) => this.nativeMapView.removeOnWillStartRenderingFrameListener(w)
+    );
   }
 
   /**
    * Remove a will-start-rendering-frame listener
    */
   public removeOnWillStartRenderingFrameListener(listener: OnWillStartRenderingFrameListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.willStartRenderingFrameWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnWillStartRenderingFrameListener(wrapper);
-      this.willStartRenderingFrameWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'willStartRenderingFrame');
   }
 
   /**
    * Add a did-finish-rendering-frame listener (basic version)
    */
   public addOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didFinishRenderingFrameWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidFinishRenderingFrameListener = (
-      fully: boolean,
-      frameEncodingTime: number,
-      frameRenderingTime: number
-    ) => {
-      try {
-        listener(fully, frameEncodingTime, frameRenderingTime);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidFinishRenderingFrameListener', message);
-      }
-    };
-    this.didFinishRenderingFrameWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidFinishRenderingFrameListener(wrapper);
+    this.registerNativeListener<OnDidFinishRenderingFrameListener, OnDidFinishRenderingFrameListener>(
+      'didFinishRenderingFrame',
+      listener,
+      (l) => (fully: boolean, frameEncodingTime: number, frameRenderingTime: number): void => {
+        try {
+          l(fully, frameEncodingTime, frameRenderingTime);
+        } catch (error) {
+          logListenerError('OnDidFinishRenderingFrameListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidFinishRenderingFrameListener(w),
+      (w) => this.nativeMapView.removeOnDidFinishRenderingFrameListener(w)
+    );
   }
 
   /**
    * Remove a did-finish-rendering-frame listener (basic version)
    */
   public removeOnDidFinishRenderingFrameListener(listener: OnDidFinishRenderingFrameListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didFinishRenderingFrameWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidFinishRenderingFrameListener(wrapper);
-      this.didFinishRenderingFrameWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'didFinishRenderingFrame');
   }
 
   /**
    * Add a did-finish-rendering-frame listener (with rendering stats)
    */
-  public addOnDidFinishRenderingFrameWithStatsListener(
-    listener: OnDidFinishRenderingFrameWithStatsListener
-  ): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didFinishRenderingFrameWithStatsWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidFinishRenderingFrameWithStatsListener = (
-      stats: RenderingStats
-    ) => {
-      try {
-        listener(stats);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidFinishRenderingFrameWithStatsListener', message);
-      }
-    };
-    this.didFinishRenderingFrameWithStatsWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidFinishRenderingFrameWithStatsListener(wrapper);
+  public addOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
+    this.registerNativeListener<OnDidFinishRenderingFrameWithStatsListener, OnDidFinishRenderingFrameWithStatsListener>(
+      'didFinishRenderingFrameWithStats',
+      listener,
+      (l) => (stats: RenderingStats): void => {
+        try {
+          l(stats);
+        } catch (error) {
+          logListenerError('OnDidFinishRenderingFrameWithStatsListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidFinishRenderingFrameWithStatsListener(w),
+      (w) => this.nativeMapView.removeOnDidFinishRenderingFrameWithStatsListener(w)
+    );
   }
 
   /**
    * Remove a did-finish-rendering-frame listener (with rendering stats)
    */
-  public removeOnDidFinishRenderingFrameWithStatsListener(
-    listener: OnDidFinishRenderingFrameWithStatsListener
-  ): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didFinishRenderingFrameWithStatsWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidFinishRenderingFrameWithStatsListener(wrapper);
-      this.didFinishRenderingFrameWithStatsWrappers.delete(listener);
-    }
+  public removeOnDidFinishRenderingFrameWithStatsListener(listener: OnDidFinishRenderingFrameWithStatsListener): void {
+    this.unregisterNativeListener(listener, 'didFinishRenderingFrameWithStats');
   }
 
   /**
    * Add a will-start-rendering-map listener
    */
   public addOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.willStartRenderingMapWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnWillStartRenderingMapListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnWillStartRenderingMapListener', message);
-      }
-    };
-    this.willStartRenderingMapWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnWillStartRenderingMapListener(wrapper);
+    this.registerNativeListener<OnWillStartRenderingMapListener, OnWillStartRenderingMapListener>(
+      'willStartRenderingMap',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnWillStartRenderingMapListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnWillStartRenderingMapListener(w),
+      (w) => this.nativeMapView.removeOnWillStartRenderingMapListener(w)
+    );
   }
 
   /**
    * Remove a will-start-rendering-map listener
    */
   public removeOnWillStartRenderingMapListener(listener: OnWillStartRenderingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.willStartRenderingMapWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnWillStartRenderingMapListener(wrapper);
-      this.willStartRenderingMapWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'willStartRenderingMap');
   }
 
   /**
    * Add a did-finish-rendering-map listener
    */
   public addOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didFinishRenderingMapWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidFinishRenderingMapListener = (fully: boolean) => {
-      try {
-        listener(fully);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidFinishRenderingMapListener', message);
-      }
-    };
-    this.didFinishRenderingMapWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidFinishRenderingMapListener(wrapper);
+    this.registerNativeListener<OnDidFinishRenderingMapListener, OnDidFinishRenderingMapListener>(
+      'didFinishRenderingMap',
+      listener,
+      (l) => (fully: boolean): void => {
+        try {
+          l(fully);
+        } catch (error) {
+          logListenerError('OnDidFinishRenderingMapListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidFinishRenderingMapListener(w),
+      (w) => this.nativeMapView.removeOnDidFinishRenderingMapListener(w)
+    );
   }
 
   /**
    * Remove a did-finish-rendering-map listener
    */
   public removeOnDidFinishRenderingMapListener(listener: OnDidFinishRenderingMapListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didFinishRenderingMapWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidFinishRenderingMapListener(wrapper);
-      this.didFinishRenderingMapWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'didFinishRenderingMap');
   }
-
-// ========== Style lifecycle listeners ==========
 
   /**
    * Add a did-finish-loading-style listener (without Style object)
    */
   public addOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didFinishLoadingStyleWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidFinishLoadingStyleListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidFinishLoadingStyleListener', message);
-      }
-    };
-    this.didFinishLoadingStyleWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidFinishLoadingStyleListener(wrapper);
+    this.registerNativeListener<OnDidFinishLoadingStyleListener, OnDidFinishLoadingStyleListener>(
+      'didFinishLoadingStyle',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnDidFinishLoadingStyleListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidFinishLoadingStyleListener(w),
+      (w) => this.nativeMapView.removeOnDidFinishLoadingStyleListener(w)
+    );
   }
 
   /**
    * Remove a did-finish-loading-style listener
    */
   public removeOnDidFinishLoadingStyleListener(listener: OnDidFinishLoadingStyleListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didFinishLoadingStyleWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidFinishLoadingStyleListener(wrapper);
-      this.didFinishLoadingStyleWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'didFinishLoadingStyle');
   }
 
   /**
-   * Add a can-remove-unused-style-image listener
    * Used to control when cached style images can be released
    */
   public addOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.canRemoveUnusedStyleImageWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnCanRemoveUnusedStyleImageListener = (id: string) => {
-      try {
-        return listener(id);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnCanRemoveUnusedStyleImageListener', message);
-        return false;
-      }
-    };
-    this.canRemoveUnusedStyleImageWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnCanRemoveUnusedStyleImageListener(wrapper);
+    this.registerNativeListener<OnCanRemoveUnusedStyleImageListener, OnCanRemoveUnusedStyleImageListener>(
+      'canRemoveUnusedStyleImage',
+      listener,
+      (l) => (id: string) => {
+        try {
+          return l(id);
+        } catch (error) {
+          logListenerError('OnCanRemoveUnusedStyleImageListener', listenerErrorMessage(error));
+          return false;
+        }
+      },
+      (w) => this.nativeMapView.addOnCanRemoveUnusedStyleImageListener(w),
+      (w) => this.nativeMapView.removeOnCanRemoveUnusedStyleImageListener(w)
+    );
   }
 
   /**
    * Remove a can-remove-unused-style-image listener
    */
   public removeOnCanRemoveUnusedStyleImageListener(listener: OnCanRemoveUnusedStyleImageListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.canRemoveUnusedStyleImageWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnCanRemoveUnusedStyleImageListener(wrapper);
-      this.canRemoveUnusedStyleImageWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'canRemoveUnusedStyleImage');
   }
 
 // ========== Map idle & data source listeners ==========
 
   /**
-   * Add a did-become-idle listener
    * Triggered when the map becomes completely idle
    */
   public addOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.didBecomeIdleWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnDidBecomeIdleListener = () => {
-      try {
-        listener();
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnDidBecomeIdleListener', message);
-      }
-    };
-    this.didBecomeIdleWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnDidBecomeIdleListener(wrapper);
+    this.registerNativeListener<OnDidBecomeIdleListener, OnDidBecomeIdleListener>(
+      'didBecomeIdle',
+      listener,
+      (l) => (): void => {
+        try {
+          l();
+        } catch (error) {
+          logListenerError('OnDidBecomeIdleListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnDidBecomeIdleListener(w),
+      (w) => this.nativeMapView.removeOnDidBecomeIdleListener(w)
+    );
   }
 
   /**
    * Remove a did-become-idle listener
    */
   public removeOnDidBecomeIdleListener(listener: OnDidBecomeIdleListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.didBecomeIdleWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnDidBecomeIdleListener(wrapper);
-      this.didBecomeIdleWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'didBecomeIdle');
   }
 
   /**
-   * Add a source-changed listener
    * Invoked when the content of a source changes
    */
   public addOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.sourceChangedWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnSourceChangedListener = (id: string) => {
-      try {
-        listener(id);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnSourceChangedListener', message);
-      }
-    };
-    this.sourceChangedWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnSourceChangedListener(wrapper);
+    this.registerNativeListener<OnSourceChangedListener, OnSourceChangedListener>(
+      'sourceChanged',
+      listener,
+      (l) => (id: string): void => {
+        try {
+          l(id);
+        } catch (error) {
+          logListenerError('OnSourceChangedListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnSourceChangedListener(w),
+      (w) => this.nativeMapView.removeOnSourceChangedListener(w)
+    );
   }
 
   /**
    * Remove a source-changed listener
    */
   public removeOnSourceChangedListener(listener: OnSourceChangedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.sourceChangedWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnSourceChangedListener(wrapper);
-      this.sourceChangedWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'sourceChanged');
   }
 
-// ========== Map click listener management ==========
-
-  private mapClickListeners: OnMapClickListener[] = [];
-  private mapLongClickListeners: OnMapLongClickListener[] = [];
+  // Plain fan-out groups for listeners dispatched by MapLibreMap itself
+  // (map taps feed MarkerManager hit-testing; touch events feed marker dragging).
+  private mapClickListeners: ListenerGroup<OnMapClickListener> = new ListenerGroup<OnMapClickListener>();
+  private mapLongClickListeners: ListenerGroup<OnMapLongClickListener> = new ListenerGroup<OnMapLongClickListener>();
 
   /**
-   * Add a map click listener
-   * Triggered when the user taps the map (mirrors Android addOnMapClickListener)
-   *
-   * @param listener OnMapClickListener instance
+   * Add a map click listener (triggered when the user taps the map)
    */
   public addOnMapClickListener(listener: OnMapClickListener): void {
     if (this.destroyed) {
       return;
     }
-    if (!this.mapClickListeners.includes(listener)) {
-      this.mapClickListeners.push(listener);
-    }
+    this.mapClickListeners.add(listener);
   }
 
   /**
    * Remove a map click listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnMapClickListener(listener: OnMapClickListener): void {
     if (this.destroyed) {
       return;
     }
-    const index = this.mapClickListeners.indexOf(listener);
-    if (index > -1) {
-      this.mapClickListeners.splice(index, 1);
-    }
+    this.mapClickListeners.remove(listener);
   }
 
   /**
-   * Add a map long-click listener
-   * Triggered when the user long-presses the map (mirrors Android addOnMapLongClickListener)
-   *
-   * @param listener OnMapLongClickListener instance
+   * Add a map long-click listener (triggered on long-press)
    */
   public addOnMapLongClickListener(listener: OnMapLongClickListener): void {
     if (this.destroyed) {
       return;
     }
-    if (!this.mapLongClickListeners.includes(listener)) {
-      this.mapLongClickListeners.push(listener);
-    }
+    this.mapLongClickListeners.add(listener);
   }
 
   /**
    * Remove a map long-click listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnMapLongClickListener(listener: OnMapLongClickListener): void {
     if (this.destroyed) {
       return;
     }
-    const index = this.mapLongClickListeners.indexOf(listener);
-    if (index > -1) {
-      this.mapLongClickListeners.splice(index, 1);
-    }
+    this.mapLongClickListeners.remove(listener);
   }
 
-  // Touch event listener lists (used for marker dragging and related features)
-  private touchMoveListeners: OnTouchMoveListener[] = [];
-  private touchUpListeners: OnTouchUpListener[] = [];
+  // Touch listener groups: dispatched by NativeMapView's gesture system
+  private touchMoveListeners: ListenerGroup<OnTouchMoveListener> = new ListenerGroup<OnTouchMoveListener>();
+  private touchUpListeners: ListenerGroup<OnTouchUpListener> = new ListenerGroup<OnTouchUpListener>();
 
   /**
-   * Add a touch-move listener
-   * Used for features that require continuous touch tracking such as marker dragging
-   * Mirrors Android AndroidGesturesManager.setMoveGestureListener
-   *
-   * Note: touch events are dispatched by NativeMapView's gesture system; this only registers the callback
-   *
-   * @param listener OnTouchMoveListener instance
+   * Add a touch-move listener (continuous touch tracking such as marker dragging)
    */
   public addOnTouchMoveListener(listener: OnTouchMoveListener): void {
     if (this.destroyed) {
       return;
     }
-    if (!this.touchMoveListeners.includes(listener)) {
-      this.touchMoveListeners.push(listener);
-    }
+    this.touchMoveListeners.add(listener);
   }
 
   /**
    * Remove a touch-move listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnTouchMoveListener(listener: OnTouchMoveListener): void {
     if (this.destroyed) {
       return;
     }
-    const index = this.touchMoveListeners.indexOf(listener);
-    if (index > -1) {
-      this.touchMoveListeners.splice(index, 1);
-    }
+    this.touchMoveListeners.remove(listener);
   }
 
   /**
-   * Add a touch-up listener
-   * Detects touch end events for flows such as completing marker drag
-   * Mirrors iOS UIPanGestureRecognizer UIGestureRecognizerStateEnded
-   *
-   * @param listener OnTouchUpListener instance
+   * Add a touch-up listener (detects touch end for flows such as completing marker drag)
    */
   public addOnTouchUpListener(listener: OnTouchUpListener): void {
     if (this.destroyed) {
       return;
     }
-    if (!this.touchUpListeners.includes(listener)) {
-      this.touchUpListeners.push(listener);
-    }
+    this.touchUpListeners.add(listener);
   }
 
   /**
    * Remove a touch-up listener
-   *
-   * @param listener Listener to remove
    */
   public removeOnTouchUpListener(listener: OnTouchUpListener): void {
     if (this.destroyed) {
       return;
     }
-    const index = this.touchUpListeners.indexOf(listener);
-    if (index > -1) {
-      this.touchUpListeners.splice(index, 1);
-    }
+    this.touchUpListeners.remove(listener);
   }
 
   /**
@@ -3788,23 +3593,26 @@ export class MapLibreMap {
     }
     
     // Clear style listeners
-    this.styleLoadedListeners = [];
-    this.styleLoadErrorListeners = [];
+    this.styleLoadedListeners.clear();
+    this.styleLoadErrorListeners.clear();
     this.styleImageMissingListener = undefined;
-    
+
+    // Detach every wrapper-based native listener still registered
+    this.clearNativeListeners();
+
     // Clear camera listeners via the dispatcher
     this.cameraChangeDispatcher.clearAllListeners();
-    
+
     // Clear map interaction listeners
-    this.mapClickListeners = [];
-    this.mapLongClickListeners = [];
-    this.touchMoveListeners = [];
-    this.touchUpListeners = [];
+    this.mapClickListeners.clear();
+    this.mapLongClickListeners.clear();
+    this.touchMoveListeners.clear();
+    this.touchUpListeners.clear();
     
     // Clear marker-related listeners
     this.markerManager.clearAllListeners();
     
-    console.info('[MapLibreMap] All listeners removed');
+    hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', '[MapLibreMap] All listeners removed');
   }
 
   /**
@@ -3820,13 +3628,13 @@ export class MapLibreMap {
       return false;
     }
 
-    for (const listener of this.touchMoveListeners) {
+    for (const listener of this.touchMoveListeners.getListeners()) {
       try {
         if (listener.onTouchMove(x, y)) {
           return true; // Event consumed
         }
       } catch (error) {
-        console.error(`MapLibreMap: Error in touch move listener: ${error}`);
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in touch move listener: ${error}`);
       }
     }
     return false;
@@ -3845,13 +3653,13 @@ export class MapLibreMap {
       return false;
     }
 
-    for (const listener of this.touchUpListeners) {
+    for (const listener of this.touchUpListeners.getListeners()) {
       try {
         if (listener.onTouchUp(x, y)) {
           return true; // Event consumed
         }
       } catch (error) {
-        console.error(`MapLibreMap: Error in touch up listener: ${error}`);
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in touch up listener: ${error}`);
       }
     }
     return false;
@@ -3869,21 +3677,21 @@ export class MapLibreMap {
       return false;
     }
 
-    console.info(`[MapLibreMap] _notifyMapClick at (${x}, ${y}), listeners count: ${this.mapClickListeners.length}`);
+    hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] _notifyMapClick at (${x}, ${y}), listeners count: ${this.mapClickListeners.size()}`);
 
     // Traverse every map click listener (including those from MarkerManager)
-    for (const listener of this.mapClickListeners) {
+    for (const listener of this.mapClickListeners.getListeners()) {
       try {
-        console.info(`[MapLibreMap] Calling map click listener...`);
+        hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Calling map click listener...`);
         if (listener.onMapClick(x, y)) {
-          console.info(`[MapLibreMap] Event consumed by listener`);
+          hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] Event consumed by listener`);
           return true; // Event consumed
         }
       } catch (error) {
-        console.error(`MapLibreMap: Error in map click listener: ${error}`);
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in map click listener: ${error}`);
       }
     }
-    console.info(`[MapLibreMap] No listener consumed the event`);
+    hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', `[MapLibreMap] No listener consumed the event`);
     return false;
   }
 
@@ -3898,13 +3706,13 @@ export class MapLibreMap {
     if (this.destroyed) {
       return false;
     }
-    for (const listener of this.mapLongClickListeners) {
+    for (const listener of this.mapLongClickListeners.getListeners()) {
       try {
         if (listener.onMapLongClick(x, y)) {
           return true; // Event consumed
         }
       } catch (error) {
-        console.error(`MapLibreMap: Error in map long click listener: ${error}`);
+        hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `MapLibreMap: Error in map long click listener: ${error}`);
       }
     }
     return false;
@@ -3993,7 +3801,7 @@ export class MapLibreMap {
    *   },
    *
    *   didSelectAnnotationView: (marker: Marker) => {
-   *     console.log('Selected:', marker.getTitle());
+   *     hilog.info(DOMAIN, 'Selected:', '%{public}s', marker.getTitle());
    *   }
    * };
    *
@@ -4148,7 +3956,7 @@ export class MapLibreMap {
     filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'queryRenderedFeaturesForPoint: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'queryRenderedFeaturesForPoint: Map is destroyed');
       return [];
     }
 
@@ -4159,7 +3967,7 @@ export class MapLibreMap {
       const features = this.nativeMapView.queryRenderedFeaturesForPoint(x, y, layerIds, filter);
       return features as IFeature[];
     } catch (error) {
-      console.error('MapLibreMap', `queryRenderedFeaturesForPoint failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `queryRenderedFeaturesForPoint failed: ${error.message}`);
       return [];
     }
   }
@@ -4188,7 +3996,7 @@ export class MapLibreMap {
     filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'queryRenderedFeaturesForBoxPhysical: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'queryRenderedFeaturesForBoxPhysical: Map is destroyed');
       return [];
     }
 
@@ -4198,7 +4006,7 @@ export class MapLibreMap {
       );
       return features as IFeature[];
     } catch (error) {
-      console.error('MapLibreMap', `queryRenderedFeaturesForBoxPhysical failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `queryRenderedFeaturesForBoxPhysical failed: ${error.message}`);
       return [];
     }
   }
@@ -4251,7 +4059,7 @@ export class MapLibreMap {
     filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'queryRenderedFeaturesForBox: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'queryRenderedFeaturesForBox: Map is destroyed');
       return [];
     }
 
@@ -4264,7 +4072,7 @@ export class MapLibreMap {
         left, top, right, bottom, layerIds, filter
       );
     } catch (error) {
-      console.error('MapLibreMap', `queryRenderedFeaturesForBox failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `queryRenderedFeaturesForBox failed: ${error.message}`);
       return [];
     }
   }
@@ -4302,7 +4110,7 @@ export class MapLibreMap {
     filter?: NapiExpressionLiteral
   ): IFeature[] {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'querySourceFeatures: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'querySourceFeatures: Map is destroyed');
       return [];
     }
 
@@ -4314,7 +4122,7 @@ export class MapLibreMap {
       );
       return features as IFeature[];
     } catch (error) {
-      console.error('MapLibreMap', `querySourceFeatures failed: ${error}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `querySourceFeatures failed: ${error}`);
       return [];
     }
   }
@@ -4350,7 +4158,7 @@ export class MapLibreMap {
    */
   public setOnFpsChangedListener(listener: OnFpsChangedListener | null): void {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'setOnFpsChangedListener: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'setOnFpsChangedListener: Map is destroyed');
       return;
     }
 
@@ -4363,389 +4171,272 @@ export class MapLibreMap {
         });
       }
     } catch (error) {
-      console.error('MapLibreMap', `setOnFpsChangedListener failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `setOnFpsChangedListener failed: ${error.message}`);
     }
   }
 
 // ========== Observer event listeners (Shader, Glyph, Sprite, Tile) ==========
-  
+
   /**
    * Add a pre-compile shader listener
-   * @param listener Listener object or callback
    */
   public addOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.preCompileShaderWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnPreCompileShaderListener = (shaderId: number, backendType: number, defines: string) => {
-      try {
-        listener(shaderId, backendType, defines);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnPreCompileShaderListener', message);
-      }
-    };
-    this.preCompileShaderWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnPreCompileShaderListener(wrapper);
+    this.registerNativeListener<OnPreCompileShaderListener, OnPreCompileShaderListener>(
+      'preCompileShader',
+      listener,
+      (l) => (shaderId: number, backendType: number, defines: string): void => {
+        try {
+          l(shaderId, backendType, defines);
+        } catch (error) {
+          logListenerError('OnPreCompileShaderListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnPreCompileShaderListener(w),
+      (w) => this.nativeMapView.removeOnPreCompileShaderListener(w)
+    );
   }
-  
+
   /**
    * Remove a pre-compile shader listener
    */
   public removeOnPreCompileShaderListener(listener: OnPreCompileShaderListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.preCompileShaderWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnPreCompileShaderListener(wrapper);
-      this.preCompileShaderWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'preCompileShader');
   }
-  
+
   /**
    * Add a post-compile shader listener
-   * @param listener Listener object or callback
    */
   public addOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.postCompileShaderWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnPostCompileShaderListener = (shaderId: number, backendType: number, defines: string) => {
-      try {
-        listener(shaderId, backendType, defines);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnPostCompileShaderListener', message);
-      }
-    };
-    this.postCompileShaderWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnPostCompileShaderListener(wrapper);
+    this.registerNativeListener<OnPostCompileShaderListener, OnPostCompileShaderListener>(
+      'postCompileShader',
+      listener,
+      (l) => (shaderId: number, backendType: number, defines: string): void => {
+        try {
+          l(shaderId, backendType, defines);
+        } catch (error) {
+          logListenerError('OnPostCompileShaderListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnPostCompileShaderListener(w),
+      (w) => this.nativeMapView.removeOnPostCompileShaderListener(w)
+    );
   }
-  
+
   /**
    * Remove a post-compile shader listener
    */
   public removeOnPostCompileShaderListener(listener: OnPostCompileShaderListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.postCompileShaderWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnPostCompileShaderListener(wrapper);
-      this.postCompileShaderWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'postCompileShader');
   }
-  
+
   /**
    * Add a shader compile failure listener
-   * @param listener Listener object or callback
    */
   public addOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.shaderCompileFailedWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnShaderCompileFailedListener = (shaderId: number, backendType: number, defines: string) => {
-      try {
-        listener(shaderId, backendType, defines);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnShaderCompileFailedListener', message);
-      }
-    };
-    this.shaderCompileFailedWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnShaderCompileFailedListener(wrapper);
+    this.registerNativeListener<OnShaderCompileFailedListener, OnShaderCompileFailedListener>(
+      'shaderCompileFailed',
+      listener,
+      (l) => (shaderId: number, backendType: number, defines: string): void => {
+        try {
+          l(shaderId, backendType, defines);
+        } catch (error) {
+          logListenerError('OnShaderCompileFailedListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnShaderCompileFailedListener(w),
+      (w) => this.nativeMapView.removeOnShaderCompileFailedListener(w)
+    );
   }
-  
+
   /**
    * Remove a shader compile failure listener
    */
   public removeOnShaderCompileFailedListener(listener: OnShaderCompileFailedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.shaderCompileFailedWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnShaderCompileFailedListener(wrapper);
-      this.shaderCompileFailedWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'shaderCompileFailed');
   }
-  
+
   /**
    * Add a glyph request listener
-   * @param listener Listener object or callback
    */
   public addOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.glyphsRequestedWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnGlyphsRequestedListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
-      try {
-        listener(fontStack, rangeStart, rangeEnd);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnGlyphsRequestedListener', message);
-      }
-    };
-    this.glyphsRequestedWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnGlyphsRequestedListener(wrapper);
+    this.registerNativeListener<OnGlyphsRequestedListener, OnGlyphsRequestedListener>(
+      'glyphsRequested',
+      listener,
+      (l) => (fontStack: string[], rangeStart: number, rangeEnd: number): void => {
+        try {
+          l(fontStack, rangeStart, rangeEnd);
+        } catch (error) {
+          logListenerError('OnGlyphsRequestedListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnGlyphsRequestedListener(w),
+      (w) => this.nativeMapView.removeOnGlyphsRequestedListener(w)
+    );
   }
-  
+
   /**
    * Remove a glyph request listener
    */
   public removeOnGlyphsRequestedListener(listener: OnGlyphsRequestedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.glyphsRequestedWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnGlyphsRequestedListener(wrapper);
-      this.glyphsRequestedWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'glyphsRequested');
   }
-  
+
   /**
    * Add a glyph loaded listener
-   * @param listener Listener object or callback
    */
   public addOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.glyphsLoadedWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnGlyphsLoadedListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
-      try {
-        listener(fontStack, rangeStart, rangeEnd);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnGlyphsLoadedListener', message);
-      }
-    };
-    this.glyphsLoadedWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnGlyphsLoadedListener(wrapper);
+    this.registerNativeListener<OnGlyphsLoadedListener, OnGlyphsLoadedListener>(
+      'glyphsLoaded',
+      listener,
+      (l) => (fontStack: string[], rangeStart: number, rangeEnd: number): void => {
+        try {
+          l(fontStack, rangeStart, rangeEnd);
+        } catch (error) {
+          logListenerError('OnGlyphsLoadedListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnGlyphsLoadedListener(w),
+      (w) => this.nativeMapView.removeOnGlyphsLoadedListener(w)
+    );
   }
-  
+
   /**
    * Remove a glyph loaded listener
    */
   public removeOnGlyphsLoadedListener(listener: OnGlyphsLoadedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.glyphsLoadedWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnGlyphsLoadedListener(wrapper);
-      this.glyphsLoadedWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'glyphsLoaded');
   }
-  
+
   /**
    * Add a glyph error listener
-   * @param listener Listener object or callback
    */
   public addOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.glyphsErrorWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnGlyphsErrorListener = (fontStack: string[], rangeStart: number, rangeEnd: number) => {
-      try {
-        listener(fontStack, rangeStart, rangeEnd);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnGlyphsErrorListener', message);
-      }
-    };
-    this.glyphsErrorWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnGlyphsErrorListener(wrapper);
+    this.registerNativeListener<OnGlyphsErrorListener, OnGlyphsErrorListener>(
+      'glyphsError',
+      listener,
+      (l) => (fontStack: string[], rangeStart: number, rangeEnd: number): void => {
+        try {
+          l(fontStack, rangeStart, rangeEnd);
+        } catch (error) {
+          logListenerError('OnGlyphsErrorListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnGlyphsErrorListener(w),
+      (w) => this.nativeMapView.removeOnGlyphsErrorListener(w)
+    );
   }
-  
+
   /**
    * Remove a glyph error listener
    */
   public removeOnGlyphsErrorListener(listener: OnGlyphsErrorListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.glyphsErrorWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnGlyphsErrorListener(wrapper);
-      this.glyphsErrorWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'glyphsError');
   }
-  
+
   /**
    * Add a sprite request listener
-   * @param listener Listener object or callback
    */
   public addOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.spriteRequestedWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnSpriteRequestedListener = (spriteId: string, url: string) => {
-      try {
-        listener(spriteId, url);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnSpriteRequestedListener', message);
-      }
-    };
-    this.spriteRequestedWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnSpriteRequestedListener(wrapper);
+    this.registerNativeListener<OnSpriteRequestedListener, OnSpriteRequestedListener>(
+      'spriteRequested',
+      listener,
+      (l) => (spriteId: string, url: string): void => {
+        try {
+          l(spriteId, url);
+        } catch (error) {
+          logListenerError('OnSpriteRequestedListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnSpriteRequestedListener(w),
+      (w) => this.nativeMapView.removeOnSpriteRequestedListener(w)
+    );
   }
-  
+
   /**
    * Remove a sprite request listener
    */
   public removeOnSpriteRequestedListener(listener: OnSpriteRequestedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.spriteRequestedWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnSpriteRequestedListener(wrapper);
-      this.spriteRequestedWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'spriteRequested');
   }
-  
+
   /**
    * Add a sprite loaded listener
-   * @param listener Listener object or callback
    */
   public addOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.spriteLoadedWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnSpriteLoadedListener = (spriteId: string, url: string) => {
-      try {
-        listener(spriteId, url);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnSpriteLoadedListener', message);
-      }
-    };
-    this.spriteLoadedWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnSpriteLoadedListener(wrapper);
+    this.registerNativeListener<OnSpriteLoadedListener, OnSpriteLoadedListener>(
+      'spriteLoaded',
+      listener,
+      (l) => (spriteId: string, url: string): void => {
+        try {
+          l(spriteId, url);
+        } catch (error) {
+          logListenerError('OnSpriteLoadedListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnSpriteLoadedListener(w),
+      (w) => this.nativeMapView.removeOnSpriteLoadedListener(w)
+    );
   }
-  
+
   /**
    * Remove a sprite loaded listener
    */
   public removeOnSpriteLoadedListener(listener: OnSpriteLoadedListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.spriteLoadedWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnSpriteLoadedListener(wrapper);
-      this.spriteLoadedWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'spriteLoaded');
   }
-  
+
   /**
    * Add a sprite error listener
-   * @param listener Listener object or callback
    */
   public addOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.spriteErrorWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnSpriteErrorListener = (spriteId: string, url: string) => {
-      try {
-        listener(spriteId, url);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnSpriteErrorListener', message);
-      }
-    };
-    this.spriteErrorWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnSpriteErrorListener(wrapper);
+    this.registerNativeListener<OnSpriteErrorListener, OnSpriteErrorListener>(
+      'spriteError',
+      listener,
+      (l) => (spriteId: string, url: string): void => {
+        try {
+          l(spriteId, url);
+        } catch (error) {
+          logListenerError('OnSpriteErrorListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnSpriteErrorListener(w),
+      (w) => this.nativeMapView.removeOnSpriteErrorListener(w)
+    );
   }
-  
+
   /**
    * Remove a sprite error listener
    */
   public removeOnSpriteErrorListener(listener: OnSpriteErrorListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.spriteErrorWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnSpriteErrorListener(wrapper);
-      this.spriteErrorWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'spriteError');
   }
-  
+
   /**
    * Add a tile action listener
-   * @param listener Listener object or callback
    */
   public addOnTileActionListener(listener: OnTileActionListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    if (this.tileActionWrappers.has(listener)) {
-      return;
-    }
-    const wrapper: OnTileActionListener = (
-      operation: number,
-      x: number,
-      y: number,
-      z: number,
-      wrap: number,
-      overscaledZ: number,
-      sourceId: string
-    ) => {
-      try {
-        listener(operation, x, y, z, wrap, overscaledZ, sourceId);
-      } catch (error) {
-        const message: string = error instanceof Error ? `${error.name}: ${error.message}` : `${error}`;
-        logListenerError('OnTileActionListener', message);
-      }
-    };
-    this.tileActionWrappers.set(listener, wrapper);
-    this.nativeMapView.addOnTileActionListener(wrapper);
+    this.registerNativeListener<OnTileActionListener, OnTileActionListener>(
+      'tileAction',
+      listener,
+      (l) => (operation: number, x: number, y: number, z: number, wrap: number, overscaledZ: number, sourceId: string): void => {
+        try {
+          l(operation, x, y, z, wrap, overscaledZ, sourceId);
+        } catch (error) {
+          logListenerError('OnTileActionListener', listenerErrorMessage(error));
+        }
+      },
+      (w) => this.nativeMapView.addOnTileActionListener(w),
+      (w) => this.nativeMapView.removeOnTileActionListener(w)
+    );
   }
-  
+
   /**
    * Remove a tile action listener
    */
   public removeOnTileActionListener(listener: OnTileActionListener): void {
-    if (this.destroyed) {
-      return;
-    }
-    const wrapper = this.tileActionWrappers.get(listener);
-    if (wrapper) {
-      this.nativeMapView.removeOnTileActionListener(wrapper);
-      this.tileActionWrappers.delete(listener);
-    }
+    this.unregisterNativeListener(listener, 'tileAction');
   }
+
 
   /**
    * Set the maximum FPS (mirrors Android MapView.setMaximumFps)
@@ -4753,14 +4444,14 @@ export class MapLibreMap {
    */
   public setMaximumFps(maximumFps: number): void {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'setMaximumFps: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'setMaximumFps: Map is destroyed');
       return;
     }
 
     try {
       this.nativeMapView.setMaximumFps(maximumFps);
     } catch (error) {
-      console.error('MapLibreMap', `setMaximumFps failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `setMaximumFps failed: ${error.message}`);
     }
   }
 
@@ -4770,14 +4461,14 @@ export class MapLibreMap {
    */
   public setRenderingRefreshMode(mode: RenderingRefreshMode): void {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'setRenderingRefreshMode: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'setRenderingRefreshMode: Map is destroyed');
       return;
     }
 
     try {
       this.nativeMapView.setRenderingRefreshMode(mode);
     } catch (error) {
-      console.error('MapLibreMap', `setRenderingRefreshMode failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `setRenderingRefreshMode failed: ${error.message}`);
     }
   }
 
@@ -4787,14 +4478,14 @@ export class MapLibreMap {
    */
   public getRenderingRefreshMode(): RenderingRefreshMode {
     if (this.destroyed) {
-      console.warn('MapLibreMap', 'getRenderingRefreshMode: Map is destroyed');
+      hilog.warn(DOMAIN, 'MapLibreMap', '%{public}s', 'getRenderingRefreshMode: Map is destroyed');
       return RenderingRefreshMode.WHEN_DIRTY;
     }
 
     try {
       return this.nativeMapView.getRenderingRefreshMode();
     } catch (error) {
-      console.error('MapLibreMap', `getRenderingRefreshMode failed: ${error.message}`);
+      hilog.error(DOMAIN, 'MapLibreMap', '%{public}s', `getRenderingRefreshMode failed: ${error.message}`);
       return RenderingRefreshMode.WHEN_DIRTY;
     }
   }
@@ -4846,7 +4537,7 @@ export class MapLibreMap {
         return padding;
       }
     } catch (error) {
-      console.error('MapLibreMap', 'Failed to get content padding:', error);
+      hilog.error(DOMAIN, 'MapLibreMap', 'Failed to get content padding: %{public}s', `${error}`);
     }
     return [0, 0, 0, 0];
   }
@@ -4914,7 +4605,7 @@ export class MapLibreMap {
    * @example
    * ```typescript
    * const currentOptions = map.getDebugOptions();
-   * console.log('Current debug options:', currentOptions);
+   * hilog.info(DOMAIN, 'Current debug options:', '%{public}s', currentOptions);
    * ```
    */
   public getDebugOptions(): number {
@@ -4942,7 +4633,7 @@ export class MapLibreMap {
    *
    * // Verify the state
    * if (map.isDebugActive()) {
-   *   console.log('Debug mode is active');
+   *   hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', 'Debug mode is active');
    * }
    *
    * // Disable debug mode
@@ -4963,7 +4654,7 @@ export class MapLibreMap {
    * @example
    * ```typescript
    * if (map.isDebugActive()) {
-   *   console.log('Debug visualizations are currently enabled');
+   *   hilog.info(DOMAIN, 'MapLibreMap', '%{public}s', 'Debug visualizations are currently enabled');
    * }
    * ```
    */

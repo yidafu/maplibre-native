@@ -1,4 +1,5 @@
 #include "background_layer_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
@@ -7,6 +8,7 @@
 #include <mbgl/style/property_value.hpp>
 #include <mbgl/style/expression/image.hpp>
 #include <mbgl/util/color.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -16,6 +18,7 @@ using mbgl::harmony::Logger;
 
 // Static member initialization
 napi_ref BackgroundLayerNAPI::constructor = nullptr;
+napi_env BackgroundLayerNAPI::constructorEnv = nullptr;
 
 BackgroundLayerNAPI::BackgroundLayerNAPI(const std::string& layerId)
     : layer(std::make_unique<mbgl::style::BackgroundLayer>(layerId)) {
@@ -77,7 +80,7 @@ napi_value BackgroundLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("BackgroundLayerNAPI", "Failed to create reference to BackgroundLayer constructor");
         return nullptr;
@@ -128,70 +131,8 @@ napi_value BackgroundLayerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value BackgroundLayerNAPI::CreateInstance(napi_env env, mbgl::style::BackgroundLayer* layerPtr) {
-    if (!layerPtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("BackgroundLayerNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    BackgroundLayerNAPI* napiObj = new BackgroundLayerNAPI(layerPtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("BackgroundLayerNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "BackgroundLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return WrapExistingInstance(env, constructor, Destructor, "BackgroundLayer",
+                                layerPtr ? new BackgroundLayerNAPI(layerPtr) : nullptr);
 }
 
 
@@ -329,27 +270,11 @@ napi_value BackgroundLayerNAPI::GetBackgroundOpacity(napi_env env, napi_callback
 // ============================================================================
 
 napi_value BackgroundLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string id = layerObj->getLayer()->getID();
-    napi_value result;
-    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetId<BackgroundLayerNAPI>(env, info);
 }
 
 napi_value BackgroundLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_string_utf8(env, "background", NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetType(env, "background");
 }
 
 // ============================================================================
@@ -357,49 +282,11 @@ napi_value BackgroundLayerNAPI::GetType(napi_env env, napi_callback_info info) {
 // ============================================================================
 
 napi_value BackgroundLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        return thisVar;
-    }
-    
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return thisVar;
-    }
-    
-    std::string visibility = args.GetString(0, "visibility");
-    if (visibility == "visible") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-    } else if (visibility == "none") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-    }
-    
-    return thisVar;
+    return LayerSetVisibility<BackgroundLayerNAPI>(env, info);
 }
 
 napi_value BackgroundLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-    
-    napi_value result;
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetVisibility<BackgroundLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -407,103 +294,19 @@ napi_value BackgroundLayerNAPI::GetVisibility(napi_env env, napi_callback_info i
 // ============================================================================
 
 napi_value BackgroundLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::BackgroundLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layer->setMinZoom(minZoom);
-    }
-    
-    return thisVar;
+    return LayerSetMinZoom<BackgroundLayerNAPI>(env, info);
 }
 
 napi_value BackgroundLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-    
-    mbgl::style::BackgroundLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    float minZoom = layer->getMinZoom();
-    napi_value result;
-    napi_create_double(env, minZoom, &result);
-    return result;
+    return LayerGetMinZoom<BackgroundLayerNAPI>(env, info);
 }
 
 napi_value BackgroundLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::BackgroundLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layer->setMaxZoom(maxZoom);
-    }
-    
-    return thisVar;
+    return LayerSetMaxZoom<BackgroundLayerNAPI>(env, info);
 }
 
 napi_value BackgroundLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-    
-    mbgl::style::BackgroundLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    float maxZoom = layer->getMaxZoom();
-    napi_value result;
-    napi_create_double(env, maxZoom, &result);
-    return result;
+    return LayerGetMaxZoom<BackgroundLayerNAPI>(env, info);
 }
 
 // ==================== Generic Property Methods ====================

@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import type { MarkerOptions } from './MarkerOptions';
 import { MarkerDragState } from './MarkerDragState';
 import type { LatLng } from '../geometry/LatLng';
@@ -104,7 +106,7 @@ export class MarkerManager {
       const resourceMgr = context.resourceManager;
       iconFactory = IconFactory.getInstance(resourceMgr);
     } catch (error) {
-      console.warn('[MarkerManager] Failed to get ResourceManager, using IconFactory without it:', error);
+      hilog.warn(DOMAIN, 'MarkerManager', '[MarkerManager] Failed to get ResourceManager, using IconFactory without it: %{public}s', error);
       iconFactory = IconFactory.getInstance();
     }
 
@@ -158,7 +160,7 @@ export class MarkerManager {
 
     class StyleLoadedListenerImpl implements OnStyleLoadedListener {
       onStyleLoaded(style: Style | null): void {
-        console.warn('[MarkerManager] Warning: style reloaded, reinitializing MarkerLayerManager...');
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', '[MarkerManager] Warning: style reloaded, reinitializing MarkerLayerManager...');
 
         // Reinitialize MarkerLayerManager
         manager.markerLayerManager.initialize();
@@ -293,7 +295,7 @@ export class MarkerManager {
       this.deselectMarkers();
       return false;
     } catch (error) {
-      console.error(`[MarkerManager] Error handling map click: ${error}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Error handling map click: ${error}`);
       return false;
     }
   }
@@ -352,10 +354,10 @@ export class MarkerManager {
       undefined
     );
 
-    console.info(`[MarkerManager] queryMarkerAtPoint - features found: ${features ? features.length : 0}`);
+    hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] queryMarkerAtPoint - features found: ${features ? features.length : 0}`);
     if (features && features.length > 0) {
-      console.info(`[MarkerManager] Feature IDs: ${features.map(f => f.id).join(', ')}`);
-      console.info(`[MarkerManager] MarkerMap has ${this.markerMap.size} markers`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Feature IDs: ${features.map(f => f.id).join(', ')}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] MarkerMap has ${this.markerMap.size} markers`);
     }
 
     if (!features || features.length === 0) {
@@ -365,13 +367,13 @@ export class MarkerManager {
     // Single feature -> return the corresponding marker directly
     if (features.length === 1) {
       const featureId = features[0].id;
-      console.info(`[MarkerManager] Single feature - ID: ${featureId}, type: ${typeof featureId}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Single feature - ID: ${featureId}, type: ${typeof featureId}`);
       if (typeof featureId === 'number' && this.markerMap.has(featureId)) {
         const marker = this.markerMap.get(featureId)!;
-        console.info(`[MarkerManager] Found marker: ${marker.getTitle()}`);
+        hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Found marker: ${marker.getTitle()}`);
         return marker;
       }
-      console.warn(`[MarkerManager] Feature ID ${featureId} not found in markerMap`);
+      hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Feature ID ${featureId} not found in markerMap`);
       return null;
     }
 
@@ -380,18 +382,18 @@ export class MarkerManager {
     const candidateIds: number[] = [];
     for (const feature of features) {
       const featureId = feature.id;
-      console.info(`[MarkerManager] Checking feature ID: ${featureId}, type: ${typeof featureId}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Checking feature ID: ${featureId}, type: ${typeof featureId}`);
       if (typeof featureId === 'number' && this.markerMap.has(featureId)) {
         candidateIds.push(featureId);
-        console.info(`[MarkerManager] Added candidate ID: ${featureId}`);
+        hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Added candidate ID: ${featureId}`);
       } else {
-        console.warn(`[MarkerManager] Feature ID ${featureId} not in markerMap or wrong type`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Feature ID ${featureId} not in markerMap or wrong type`);
       }
     }
 
-    console.info(`[MarkerManager] Candidate markers: ${candidateIds.length}`);
+    hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Candidate markers: ${candidateIds.length}`);
     if (candidateIds.length === 0) {
-      console.warn(`[MarkerManager] No candidate markers found from ${features.length} features`);
+      hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] No candidate markers found from ${features.length} features`);
       return null;
     }
 
@@ -409,7 +411,7 @@ export class MarkerManager {
    * @returns Closest marker or null when none match
    */
   private resolveMarkerHit(x: number, y: number, markerIds: number[]): Marker | null {
-    console.info(`[MarkerManager] resolveMarkerHit called with ${markerIds.length} candidates at logical (${x}, ${y})`);
+    hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] resolveMarkerHit called with ${markerIds.length} candidates at logical (${x}, ${y})`);
     
     let closestMarker: Marker | null = null;
     let maxIntersectionArea = 0;
@@ -418,31 +420,31 @@ export class MarkerManager {
     // pixelForLatLng returns physical pixels, so align coordinate systems
     const pixelRatio = this.mapLibreMap.getNativeMapView().getPixelRatio();
     const physicalPoint = PixelCoordinate.fromLogicalPixels(x, y, pixelRatio);
-    console.info(`[MarkerManager] Click point - logical: (${x}, ${y}), physical: (${physicalPoint.x}, ${physicalPoint.y}), pixelRatio: ${pixelRatio}`);
+    hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Click point - logical: (${x}, ${y}), physical: (${physicalPoint.x}, ${physicalPoint.y}), pixelRatio: ${pixelRatio}`);
 
     for (const markerId of markerIds) {
       const marker = this.markerMap.get(markerId);
       if (!marker) {
-        console.warn(`[MarkerManager] Marker ID ${markerId} not found in markerMap`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ID ${markerId} not found in markerMap`);
         continue;
       }
 
       // Marker screen position in physical pixels (used for hit-testing)
       const position = marker.getPosition();
       const screenPoint = this.mapLibreMap.pixelForLatLngPhysical(position.latitude, position.longitude);
-      console.info(`[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") - geo: (${position.latitude}, ${position.longitude}), physical screen: (${screenPoint.x}, ${screenPoint.y})`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") - geo: (${position.latitude}, ${position.longitude}), physical screen: (${screenPoint.x}, ${screenPoint.y})`);
 
       // Icon dimensions
       const icon = this.markerIconMap.get(markerId);
       if (!icon) {
-        console.warn(`[MarkerManager] Icon not found for marker ID ${markerId}`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Icon not found for marker ID ${markerId}`);
         continue;
       }
 
 
       let bitmapWidth = icon.getWidth();
       let bitmapHeight = icon.getHeight()
-      console.info(`[MarkerManager] Marker ${markerId} - original icon size (physical): ${bitmapWidth}x${bitmapHeight}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} - original icon size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
       // Enforce minimal touch target (Android reference ~32 dp)
       const minimalTouchSize = 48;
@@ -452,7 +454,7 @@ export class MarkerManager {
       if (bitmapWidth < minimalTouchSize) {
         bitmapWidth = minimalTouchSize;
       }
-      console.info(`[MarkerManager] Marker ${markerId} - adjusted touch size (physical): ${bitmapWidth}x${bitmapHeight}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} - adjusted touch size (physical): ${bitmapWidth}x${bitmapHeight}`);
 
       // Anchor values: default bottom-center (0.5, 1.0) per Android MarkerView
       // anchorU: horizontal (0 = left, 0.5 = center, 1 = right)
@@ -460,7 +462,7 @@ export class MarkerManager {
       const anchor: MarkerAnchor = marker.getAnchor();
       const anchorU: number = anchor ? anchor.u : 0.5;
       const anchorV: number = anchor ? anchor.v : 1.0;
-      console.info(`[MarkerManager] Marker ${markerId} - anchor: (${anchorU}, ${anchorV})`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} - anchor: (${anchorU}, ${anchorV})`);
 
       // Build marker hit rectangle relative to anchor
       // screenPoint corresponds to the anchor position on screen
@@ -468,31 +470,31 @@ export class MarkerManager {
       const markerTop = screenPoint.y - bitmapHeight * anchorV;
       const markerRight = markerLeft + bitmapWidth;
       const markerBottom = markerTop + bitmapHeight;
-      console.info(`[MarkerManager] Marker ${markerId} - hit rect (physical): [${markerLeft}, ${markerTop}, ${markerRight}, ${markerBottom}]`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} - hit rect (physical): [${markerLeft}, ${markerTop}, ${markerRight}, ${markerBottom}]`);
 
       // Check whether click lies inside marker rectangle (physical pixels)
       const isInside = physicalPoint.x >= markerLeft && physicalPoint.x <= markerRight &&
         physicalPoint.y >= markerTop && physicalPoint.y <= markerBottom;
-      console.info(`[MarkerManager] Marker ${markerId} - click point (${physicalPoint.x}, ${physicalPoint.y}) isInside: ${isInside}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} - click point (${physicalPoint.x}, ${physicalPoint.y}) isInside: ${isInside}`);
       
       if (isInside) {
         // Intersection area (approximated as marker rectangle area)
         const intersectionArea = bitmapWidth * bitmapHeight;
-        console.info(`[MarkerManager] Marker ${markerId} - intersection area: ${intersectionArea}, current max: ${maxIntersectionArea}`);
+        hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} - intersection area: ${intersectionArea}, current max: ${maxIntersectionArea}`);
 
         // Pick marker with largest intersection area (closest to tap)
         if (intersectionArea > maxIntersectionArea) {
           maxIntersectionArea = intersectionArea;
           closestMarker = marker;
-          console.info(`[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") is now the closest marker`);
+          hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Marker ${markerId} ("${marker.getTitle()}") is now the closest marker`);
         }
       }
     }
 
     if (closestMarker) {
-      console.info(`[MarkerManager] resolveMarkerHit result: "${closestMarker.getTitle()}"`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] resolveMarkerHit result: "${closestMarker.getTitle()}"`);
     } else {
-      console.warn(`[MarkerManager] resolveMarkerHit result: null (no marker hit)`);
+      hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] resolveMarkerHit result: null (no marker hit)`);
     }
 
     return closestMarker;
@@ -514,7 +516,7 @@ export class MarkerManager {
         return false;
       }
 
-      console.info(`[MarkerManager] Drag START: marker id=${marker.getId()}`);
+      hilog.info(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Drag START: marker id=${marker.getId()}`);
 
       // Initiate drag
       this.draggingMarker = marker;
@@ -523,7 +525,7 @@ export class MarkerManager {
 
       return true; // Event consumed
     } catch (error) {
-      console.error(`[MarkerManager] Error starting drag: ${error}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Error starting drag: ${error}`);
       return false;
     }
   }
@@ -551,7 +553,7 @@ export class MarkerManager {
 
       return false;
     } catch (error) {
-      console.error(`[MarkerManager] Error handling long click: ${error}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Error handling long click: ${error}`);
       return false;
     }
   }
@@ -587,7 +589,7 @@ export class MarkerManager {
 
       return true; // Event consumed
     } catch (error) {
-      console.error(`[MarkerManager] Error handling touch move: ${error}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Error handling touch move: ${error}`);
       return false;
     }
   }
@@ -619,7 +621,7 @@ export class MarkerManager {
 
       return true; // Event consumed
     } catch (error) {
-      console.error(`[MarkerManager] Error handling touch up: ${error}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Error handling touch up: ${error}`);
 
       // Ensure drag state is cleared
       this.draggingMarker = null;
@@ -695,7 +697,7 @@ export class MarkerManager {
       return marker;
     } catch (e) {
       const error = e as Error;
-      console.error(`[MarkerManager] Failed to add marker: ${error.message}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to add marker: ${error.message}`);
       throw new Error(`Failed to add marker: ${error.message}`);
     }
   }
@@ -769,7 +771,7 @@ export class MarkerManager {
       return markers;
     } catch (e) {
       const error = e as Error;
-      console.error(`[MarkerManager] Failed to add markers batch: ${error.message}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to add markers batch: ${error.message}`);
       throw new Error(`Failed to add markers batch: ${error.message}`);
     }
   }
@@ -867,7 +869,7 @@ export class MarkerManager {
     try {
       const markerId = marker.getId();
       if (markerId < 0 || !this.markerMap.has(markerId)) {
-        console.warn(`[MarkerManager] updateMarker: Marker ${markerId} not found in manager`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] updateMarker: Marker ${markerId} not found in manager`);
         return;
       }
 
@@ -883,7 +885,7 @@ export class MarkerManager {
 
     } catch (e) {
       const error = e as Error;
-      console.error(`[MarkerManager] Failed to update marker: ${error.message}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to update marker: ${error.message}`);
     }
   }
 
@@ -919,7 +921,7 @@ export class MarkerManager {
 
     } catch (e) {
       const error = e as Error;
-      console.error(`[MarkerManager] Failed to update marker icon: ${error.message}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to update marker icon: ${error.message}`);
       throw new Error(`Failed to update marker icon: ${error.message}`);
     }
   }
@@ -999,7 +1001,7 @@ export class MarkerManager {
       try {
         this.mapLibreMap.removeOnStyleLoadedListener(this.styleLoadedListener);
       } catch (error) {
-        console.warn(`[MarkerManager] Failed to remove style loaded listener: ${error}`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove style loaded listener: ${error}`);
       }
       this.styleLoadedListener = null;
     }
@@ -1009,7 +1011,7 @@ export class MarkerManager {
       try {
         this.mapLibreMap.removeOnMapClickListener(this.mapClickListener);
       } catch (error) {
-        console.warn(`[MarkerManager] Failed to remove map click listener: ${error}`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove map click listener: ${error}`);
       }
       this.mapClickListener = null;
     }
@@ -1019,7 +1021,7 @@ export class MarkerManager {
       try {
         this.mapLibreMap.removeOnMapLongClickListener(this.mapLongClickListener);
       } catch (error) {
-        console.warn(`[MarkerManager] Failed to remove map long-click listener: ${error}`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove map long-click listener: ${error}`);
       }
       this.mapLongClickListener = null;
     }
@@ -1029,7 +1031,7 @@ export class MarkerManager {
       try {
         this.mapLibreMap.removeOnTouchMoveListener(this.touchMoveListener);
       } catch (error) {
-        console.warn(`[MarkerManager] Failed to remove touch move listener: ${error}`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove touch move listener: ${error}`);
       }
       this.touchMoveListener = null;
     }
@@ -1039,7 +1041,7 @@ export class MarkerManager {
       try {
         this.mapLibreMap.removeOnTouchUpListener(this.touchUpListener);
       } catch (error) {
-        console.warn(`[MarkerManager] Failed to remove touch up listener: ${error}`);
+        hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to remove touch up listener: ${error}`);
       }
       this.touchUpListener = null;
     }
@@ -1254,7 +1256,7 @@ export class MarkerManager {
           return true;
         }
       } catch (error) {
-        console.error(`[MarkerManager] Error in onMarkerClickListener: ${error}`);
+        hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Error in onMarkerClickListener: ${error}`);
       }
     }
 
@@ -1487,7 +1489,7 @@ export class MarkerManager {
     }, content ?? undefined);
 
     if (!handle) {
-      console.warn(`[MarkerManager] addViewAnnotation for marker ${markerId} failed; falling back to default icon`);
+      hilog.warn(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] addViewAnnotation for marker ${markerId} failed; falling back to default icon`);
       return;
     }
 
@@ -1681,7 +1683,7 @@ export class MarkerManager {
         zIndex: marker.getZIndex()
       });
     } catch (error) {
-      console.error(`[MarkerManager] Failed to show InfoWindow: ${error.message}`);
+      hilog.error(DOMAIN, 'MarkerManager', '%{public}s', `[MarkerManager] Failed to show InfoWindow: ${error.message}`);
     }
   }
 

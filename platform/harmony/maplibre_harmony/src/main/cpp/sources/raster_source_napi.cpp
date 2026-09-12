@@ -1,20 +1,23 @@
 #include "raster_source_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
 #include <mbgl/util/tileset.hpp>
 #include <mbgl/util/range.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 
 using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
 napi_ref RasterSourceNAPI::constructor = nullptr;
+napi_env RasterSourceNAPI::constructorEnv = nullptr;
 
 RasterSourceNAPI::RasterSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::RasterSource> source)
     : id(id), source(std::move(source)), ownsSource(true) {
@@ -59,7 +62,7 @@ napi_value RasterSourceNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("RasterSourceNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -196,70 +199,8 @@ napi_value RasterSourceNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value RasterSourceNAPI::CreateInstance(napi_env env, mbgl::style::RasterSource* sourcePtr) {
-    if (!sourcePtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("RasterSourceNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    RasterSourceNAPI* napiObj = new RasterSourceNAPI(sourcePtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("RasterSourceNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "RasterSource", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "RasterSource",
+                                sourcePtr ? new RasterSourceNAPI(sourcePtr) : nullptr);
 }
 
 napi_value RasterSourceNAPI::GetId(napi_env env, napi_callback_info info) {
@@ -372,5 +313,5 @@ napi_value RasterSourceNAPI::SetTileSize(napi_env env, napi_callback_info info) 
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

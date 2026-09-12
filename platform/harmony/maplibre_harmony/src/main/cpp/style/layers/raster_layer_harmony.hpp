@@ -96,6 +96,7 @@ private:
     ~RasterLayerNAPI();
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
     std::unique_ptr<mbgl::style::RasterLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };

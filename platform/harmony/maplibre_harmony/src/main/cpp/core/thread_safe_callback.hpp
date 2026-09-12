@@ -5,6 +5,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 namespace mbgl {
 namespace harmony {
@@ -50,6 +51,14 @@ public:
     using DataBuilder = std::function<napi_value(napi_env env)>;
 
     /**
+     * Multi-argument data builder invoked on the UI thread.
+     *
+     * @param env N-API environment (UI thread)
+     * @return Callback arguments, passed to JS in order
+     */
+    using MultiArgBuilder = std::function<std::vector<napi_value>(napi_env env)>;
+
+    /**
      * Create a thread-safe callback.
      *
      * @param env N-API environment
@@ -77,6 +86,15 @@ public:
      * @return True if dispatch succeeded
      */
     bool Call(DataBuilder builder);
+
+    /**
+     * Invoke the callback with multiple arguments from any thread.
+     * Same queue/drop semantics as Call().
+     *
+     * @param builder Multi-argument data builder executed on the UI thread
+     * @return True if dispatch succeeded
+     */
+    bool CallMulti(MultiArgBuilder builder);
 
     /**
      * Invoke the callback from any thread, blocking until the event is queued.
@@ -138,16 +156,18 @@ private:
         const char* resourceName
     );
 
-    bool DispatchInternal(DataBuilder builder, bool blocking);
-
     /**
      * Wrapper for callback data.
      */
     struct CallbackData {
-        DataBuilder builder;
+        DataBuilder builder;          // single-argument path (may be empty)
+        MultiArgBuilder multiBuilder; // multi-argument path (may be empty)
 
         explicit CallbackData(DataBuilder b) : builder(std::move(b)) {}
+        explicit CallbackData(MultiArgBuilder b) : multiBuilder(std::move(b)) {}
     };
+
+    bool DispatchInternal(std::unique_ptr<CallbackData> data, bool blocking);
 
     /**
      * N-API callback executed on the UI thread.

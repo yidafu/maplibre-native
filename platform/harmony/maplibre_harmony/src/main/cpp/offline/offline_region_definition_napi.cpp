@@ -5,7 +5,7 @@
 
 #include <variant>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
@@ -187,7 +187,7 @@ mbgl::OfflineGeometryRegionDefinition OfflineRegionDefinitionNAPI::GeometryFromN
     napi_value geometryValue;
     napi_get_named_property(env, obj, "geometry", &geometryValue);
 
-    mbgl::Geometry<double> geometry = maplibre::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
+    mbgl::Geometry<double> geometry = mbgl::harmony::geojson::GeoJsonConverter::JsObjectToGeometry(env, geometryValue);
 
     // Get minZoom
     napi_value minZoomValue;
@@ -234,7 +234,7 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
     napi_set_named_property(env, obj, "styleURL", styleURLValue);
     
     // Set geometry
-    napi_value geometryValue = maplibre::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
+    napi_value geometryValue = mbgl::harmony::geojson::GeoJsonConverter::GeometryToJsObject(env, def.geometry);
     napi_set_named_property(env, obj, "geometry", geometryValue);
     
     // Set minZoom
@@ -261,5 +261,5 @@ napi_value OfflineRegionDefinitionNAPI::GeometryToNapi(napi_env env, const mbgl:
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

@@ -322,7 +322,7 @@ export class OfflineManager {
    * ```typescript
    * const offlineManager = OfflineManager.getInstance(context);
    * const mergedRegions = await offlineManager.mergeOfflineRegions('/path/to/secondary.db');
-   * console.log(`Merged ${mergedRegions.length} offline regions`);
+   * hilog.info(DOMAIN, 'OfflineManager', '%{public}s', `Merged ${mergedRegions.length} offline regions`);
    * ```
    */
   public async mergeOfflineRegions(path: string): Promise<OfflineRegion[]> {
@@ -372,7 +372,7 @@ export class OfflineManager {
    * // Pack the database after deleting regions.
    * await offlineManager.deleteOfflineRegion(region);
    * await offlineManager.packDatabase();
-   * console.log('Database compressed');
+   * hilog.info(DOMAIN, 'OfflineManager', '%{public}s', 'Database compressed');
    * ```
    */
   public async packDatabase(): Promise<void> {

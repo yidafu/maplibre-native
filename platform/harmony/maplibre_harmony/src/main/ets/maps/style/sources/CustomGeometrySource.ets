@@ -10,16 +10,11 @@
 
 import maplibre from 'libmaplibre.so';
 import type { GeoJsonData } from './GeoJsonSource';
+import { BaseSource, SourceInternalTag, resolveSourceNative } from './BaseSource';
 
 /**
  * Internal marker used to identify the fromNative factory
  */
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
 
 /**
  * Tile identifier (z/x/y) as delivered to the fetchTile/cancelTile callbacks
@@ -89,19 +84,22 @@ export interface LatLngBoundsLike {
 /**
  * CustomGeometrySource implementation
  */
-export class CustomGeometrySource {
+export class CustomGeometrySource extends BaseSource<maplibre.CustomGeometrySource> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'CustomGeometrySource';
-  private nativeInstance: maplibre.CustomGeometrySource;
 
   // Tiles whose last request was cancelled by core; a later setTileData for
   // one of these tiles is dropped (mirrors the Android isCancelled check)
   private cancelledTiles: Set<string> = new Set();
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: CustomGeometrySourceOptions |
+  constructor(idOrMarker: string | SourceInternalTag, optionsOrNative?: CustomGeometrySourceOptions |
     maplibre.CustomGeometrySource) {
-    if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
-      this.nativeInstance = optionsOrNative as maplibre.CustomGeometrySource;
+    let native: maplibre.CustomGeometrySource;
+    // Tile hooks may fire after construction, so the closures route through
+    // `self` instead of touching `this` before the super() call (ArkTS rule).
+    let self: CustomGeometrySource | null = null;
+    if (idOrMarker === SourceInternalTag.INSTANCE && optionsOrNative instanceof Object) {
+      native = optionsOrNative as maplibre.CustomGeometrySource;
     } else if (typeof idOrMarker === 'string') {
       const options = (optionsOrNative ?? {}) as CustomGeometrySourceOptions;
       const nativeOptions: CustomGeometrySourceOptions = {};
@@ -118,35 +116,45 @@ export class CustomGeometrySource {
         const provider = options.provider;
         // Provider flow: fetch the data synchronously and push it back
         nativeOptions.fetchTile = (tileID: TileID): void => {
-          this.cancelledTiles.delete(this.tileKey(tileID));
-          const data = provider.getFeaturesForBounds(tileID, tileID.z);
-          this.pushTileData(tileID, data);
+          if (self !== null) {
+            self.cancelledTiles.delete(self.tileKey(tileID));
+            const data = provider.getFeaturesForBounds(tileID, tileID.z);
+            self.pushTileData(tileID, data);
+          }
         };
         nativeOptions.cancelTile = (tileID: TileID): void => {
-          this.cancelledTiles.add(this.tileKey(tileID));
+          if (self !== null) {
+            self.cancelledTiles.add(self.tileKey(tileID));
+          }
         };
       } else {
         // Explicit callback flow
         if (options.fetchTile) {
           const userFetch = options.fetchTile;
           nativeOptions.fetchTile = (tileID: TileID): void => {
-            this.cancelledTiles.delete(this.tileKey(tileID));
-            userFetch(tileID);
+            if (self !== null) {
+              self.cancelledTiles.delete(self.tileKey(tileID));
+              userFetch(tileID);
+            }
           };
         }
         if (options.cancelTile) {
           const userCancel = options.cancelTile;
           nativeOptions.cancelTile = (tileID: TileID): void => {
-            this.cancelledTiles.add(this.tileKey(tileID));
-            userCancel(tileID);
+            if (self !== null) {
+              self.cancelledTiles.add(self.tileKey(tileID));
+              userCancel(tileID);
+            }
           };
         }
       }
 
-      this.nativeInstance = new maplibre.CustomGeometrySource(idOrMarker, nativeOptions);
+      native = new maplibre.CustomGeometrySource(idOrMarker, nativeOptions);
     } else {
       throw new Error('Invalid CustomGeometrySource constructor arguments');
     }
+    super(native);
+    self = this;
   }
 
   /**
@@ -163,21 +171,7 @@ export class CustomGeometrySource {
    * @param nativeInstance Native CustomGeometrySource instance
    */
   static fromNative(nativeInstance: maplibre.CustomGeometrySource): CustomGeometrySource {
-    return new CustomGeometrySource(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  /**
-   * Get the underlying native instance
-   */
-  getNative(): maplibre.CustomGeometrySource {
-    return this.nativeInstance;
-  }
-
-  /**
-   * Get the source identifier
-   */
-  getId(): string {
-    return this.nativeInstance.getId();
+    return new CustomGeometrySource(SourceInternalTag.INSTANCE, nativeInstance);
   }
 
   private tileKey(tileID: TileID): string {

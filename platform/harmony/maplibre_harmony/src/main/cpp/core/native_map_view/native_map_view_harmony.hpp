@@ -8,6 +8,7 @@
 #include "core/map_registry.hpp"
 #include "utils/logger.h"
 #include <mbgl/map/map.hpp>
+#include <chrono>
 #include <mbgl/tile/tile_operation.hpp>
 #include <mbgl/util/geometry.hpp>
 #include <mbgl/util/run_loop.hpp>
@@ -74,6 +75,7 @@ public:
     
     // Resource cleanup helpers
     void cleanupAllResources();
+    void releaseNapiRefs(napi_env env);
 
     // Asynchronous resource cleanup (mirrors Android/iOS destruction flow)
     // onComplete: callback invoked when cleanup finishes
@@ -438,7 +440,11 @@ private:
     
     // Indicates whether the current style has completed loading at least once
     std::atomic<bool> styleLoadedOnce{false};
-    
+
+    // Baseline for load-time logging; per instance so a second map does not
+    // inherit the first instance's clock origin.
+    std::chrono::steady_clock::time_point loadLogStartTime_{};
+
     // Resource cleanup flag to prevent repeated cleanup
     std::atomic<bool> resourcesCleaned_{false};
     

@@ -67,7 +67,6 @@ set_target_properties(curl
 add_library(maplibre
     SHARED
     # Core module - MapView implementation
-    core/common.hpp
     core/thread_safe_callback.hpp
     core/thread_safe_callback.cpp
     core/map_registry.hpp
@@ -144,6 +143,7 @@ add_library(maplibre
     napi/bindings/style/style_napi_layers.cpp
     napi/bindings/style/style_napi_sources.cpp
     napi/bindings/style/style_napi_images.cpp
+    napi/bindings/style/style_napi_light.cpp
     napi/bindings/style/custom_layer_napi.hpp
     napi/bindings/style/custom_layer_napi.cpp
     napi/bindings/network/network_napi.hpp

@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * ViewAnnotation Utilities
  *
@@ -183,9 +185,7 @@ export function resolveFramePixelRatio(frameRatio: number, fallback: number, fra
 
   // Warn if pixel ratio is significantly different from expected
   if (frameRatio > safeFallback * MAX_RATIO_MULTIPLIER || frameRatio < safeFallback * MIN_RATIO_MULTIPLIER) {
-    console.warn(
-      `[ViewAnnotationUtils] frame ${frameId} pixelRatio ${frameRatio.toFixed(2)} out of expected range, fallback=${safeFallback.toFixed(2)}`
-    );
+    hilog.warn(DOMAIN, 'ViewAnnotationUtils', '%{public}s', `[ViewAnnotationUtils] frame ${frameId} pixelRatio ${frameRatio.toFixed(2)} out of expected range, fallback=${safeFallback.toFixed(2)}`);
     return safeFallback;
   }
   return frameRatio;

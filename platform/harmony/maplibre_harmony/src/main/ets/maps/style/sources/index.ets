@@ -24,4 +24,3 @@ export { VideoSource, VideoSourceOptions } from './VideoSource';
 export { GeoJsonOptions, GeoJsonOptionsBuilder } from './GeoJsonOptions';
 
 export { TileSet, TileSetOptions, VectorLayer } from './TileSet';
-

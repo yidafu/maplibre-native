@@ -1,4 +1,5 @@
 #include "light_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
 #include <mbgl/style/style.hpp>
@@ -14,6 +15,7 @@ namespace harmony {
 
 // Static member initialization
 napi_ref LightHarmony::constructor = nullptr;
+napi_env LightHarmony::constructorEnv = nullptr;
 
 // Constructor data structure for passing to napi_new_instance
 struct LightConstructorData {
@@ -92,7 +94,7 @@ napi_value LightHarmony::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
 
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("LightHarmony", "Failed to create Light constructor reference");
         return nullptr;

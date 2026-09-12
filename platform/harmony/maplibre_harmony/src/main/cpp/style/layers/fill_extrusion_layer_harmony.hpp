@@ -85,6 +85,7 @@ private:
     ~FillExtrusionLayerNAPI();
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
     std::unique_ptr<mbgl::style::FillExtrusionLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };

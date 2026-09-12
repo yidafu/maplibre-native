@@ -2,31 +2,18 @@
  * LineLayer - Wrapper class
  */
 import maplibre, { ExpressionLiteral } from 'libmaplibre.so';
-import type { ExpressionLiteral as NapiExpressionLiteral, PropertyValue as NativePropertyValue, JSONValue } from 'libmaplibre.so';
+
 import type { PropertyValue } from '../expressions/index';
-import { Expression } from '../expressions/Expression';
+
 import { convertValue } from './LayerUtils';
+import { LayerInternalTag, SourcedLayer, resolveLayerNative } from './BaseLayer';
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-export class LineLayer {
+export class LineLayer extends SourcedLayer<maplibre.LineLayer, LineLayer> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'LineLayer';
-  private nativeInstance: maplibre.LineLayer;
 
-  constructor(idOrMarker: string | InternalMarker, sourceId: string = "", nativeOrNothing?: maplibre.LineLayer) {
-    if (idOrMarker === InternalMarker.INSTANCE && nativeOrNothing instanceof Object) {
-      this.nativeInstance = nativeOrNothing;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.LineLayer(idOrMarker, sourceId);
-    } else {
-      throw new Error('Invalid LineLayer constructor arguments');
-    }
+  constructor(idOrMarker: string | LayerInternalTag, sourceId: string = "", nativeOrNothing?: maplibre.LineLayer) {
+    super(resolveLayerNative(idOrMarker, sourceId, nativeOrNothing, (id, sid) => new maplibre.LineLayer(id, sid), "LineLayer"));
   }
 
   static create(id: string, sourceId: string = ""): LineLayer {
@@ -34,73 +21,7 @@ export class LineLayer {
   }
 
   static fromNative(nativeInstance: maplibre.LineLayer): LineLayer {
-    return new LineLayer(InternalMarker.INSTANCE, "", nativeInstance);
-  }
-
-  getNative(): maplibre.LineLayer {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
-  }
-
-  getType(): string {
-    return this.nativeInstance.getType();
-  }
-
-  getSourceId(): string {
-    return this.nativeInstance.getSourceId();
-  }
-
-  getSourceLayer(): string {
-    return this.nativeInstance.getSourceLayer();
-  }
-
-  setVisibility(visibility: 'visible' | 'none'): LineLayer {
-    this.nativeInstance.setVisibility(visibility);
-    return this;
-  }
-
-  getVisibility(): 'visible' | 'none' {
-    return this.nativeInstance.getVisibility();
-  }
-
-  setMinZoom(zoom: number): LineLayer {
-    this.nativeInstance.setMinZoom(zoom);
-    return this;
-  }
-
-  getMinZoom(): number {
-    return this.nativeInstance.getMinZoom();
-  }
-
-  setMaxZoom(zoom: number): LineLayer {
-    this.nativeInstance.setMaxZoom(zoom);
-    return this;
-  }
-
-  getMaxZoom(): number {
-    return this.nativeInstance.getMaxZoom();
-  }
-
-  /**
-   * Configure the layer filter
-   * @param filter Expression instance or expression literal array
-   */
-  setFilter(filter: PropertyValue<boolean>): LineLayer {
-    const filterArray = filter instanceof Expression ? filter.toArray() : filter;
-    this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
-    return this;
-  }
-
-  getFilter(): ExpressionLiteral | null {
-    return this.nativeInstance.getFilter();
-  }
-
-  setSourceLayer(sourceLayer: string): LineLayer {
-    this.nativeInstance.setSourceLayer(sourceLayer);
-    return this;
+    return new LineLayer(LayerInternalTag.INSTANCE, "", nativeInstance);
   }
 
   // ========== Line style property helpers ==========
@@ -182,41 +103,6 @@ export class LineLayer {
 
   setLineSortKey(sortKey: PropertyValue<number>): LineLayer {
     this.nativeInstance.setLineSortKey(convertValue(sortKey));
-    return this;
-  }
-
-  // ========== Generic property API (Android-compatible) ==========
-
-  /**
-   * Set a single property
-   * @param propertyName Property key (for example, 'line-color', 'line-width')
-   * @param value Property value (constant or Expression)
-   * @returns this (supports chaining)
-   */
-  setProperty(propertyName: string, value: PropertyValue<JSONValue>): LineLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value) as NativePropertyValue<JSONValue>);
-    return this;
-  }
-
-  /**
-   * Set multiple properties in batch
-   * @param properties Map of property names to values
-   * @returns this (supports chaining)
-   * @example
-   * layer.setProperties({
-   *   'line-color': '#0000FF',
-   *   'line-width': 3,
-   *   'line-dasharray': [2, 4]
-   * });
-   */
-  setProperties(properties: Record<string, PropertyValue<JSONValue>>): LineLayer {
-    const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
-    const keys = Object.keys(properties);
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]) as NativePropertyValue<JSONValue>;
-    }
-    this.nativeInstance.setProperties(convertedProps);
     return this;
   }
 

@@ -1,4 +1,5 @@
 #include "color_relief_layer_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
@@ -9,6 +10,7 @@
 #include <mbgl/style/color_ramp_property_value.hpp>
 #include <mbgl/style/conversion/color_ramp_property_value.hpp>
 #include <mbgl/util/color.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -17,6 +19,7 @@ using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
 napi_ref ColorReliefLayerNAPI::constructor = nullptr;
+napi_env ColorReliefLayerNAPI::constructorEnv = nullptr;
 
 ColorReliefLayerNAPI::ColorReliefLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::ColorReliefLayer>(layerId, sourceId)) {
@@ -67,7 +70,7 @@ napi_value ColorReliefLayerNAPI::Init(napi_env env, napi_value exports) {
 
     if (status != napi_ok) return nullptr;
 
-    napi_create_reference(env, cons, 1, &constructor);
+    mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     napi_set_named_property(env, exports, "ColorReliefLayer", cons);
 
     Logger::info("ColorReliefLayerNAPI", "ColorReliefLayer NAPI class registered");
@@ -97,63 +100,8 @@ napi_value ColorReliefLayerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value ColorReliefLayerNAPI::CreateInstance(napi_env env, mbgl::style::ColorReliefLayer* layerPtr) {
-    if (!layerPtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("ColorReliefLayerNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    ColorReliefLayerNAPI* napiObj = new ColorReliefLayerNAPI(layerPtr);
-
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("ColorReliefLayerNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value typeValue;
-    napi_create_string_utf8(env, "ColorReliefLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-
-    return instance;
+    return WrapExistingInstance(env, constructor, Destructor, "ColorReliefLayer",
+                                layerPtr ? new ColorReliefLayerNAPI(layerPtr) : nullptr);
 }
 
 // ============================================================================
@@ -270,21 +218,7 @@ napi_value ColorReliefLayerNAPI::GetColorReliefOpacity(napi_env env, napi_callba
 // ============================================================================
 
 napi_value ColorReliefLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    std::string id = layerObj->getLayer()->getID();
-    napi_value result;
-    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetId<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::GetType(napi_env env, napi_callback_info info) {
@@ -294,152 +228,31 @@ napi_value ColorReliefLayerNAPI::GetType(napi_env env, napi_callback_info info) 
 }
 
 napi_value ColorReliefLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    std::string sourceId = layerObj->getLayer()->getSourceID();
-    napi_value result;
-    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceId<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) return thisVar;
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string visibility = args.GetString(0, "visibility");
-        if (visibility == "visible") {
-            layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-        } else if (visibility == "none") {
-            layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-        }
-    }
-    return thisVar;
+    return LayerSetVisibility<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-
-    napi_value result;
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetVisibility<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) return thisVar;
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) return thisVar;
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layer->setMinZoom(minZoom);
-    }
-    return thisVar;
+    return LayerSetMinZoom<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    float minZoom = layer->getMinZoom();
-    napi_value result;
-    napi_create_double(env, minZoom, &result);
-    return result;
+    return LayerGetMinZoom<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) return thisVar;
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) return thisVar;
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layer->setMaxZoom(maxZoom);
-    }
-    return thisVar;
+    return LayerSetMaxZoom<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    float maxZoom = layer->getMaxZoom();
-    napi_value result;
-    napi_create_double(env, maxZoom, &result);
-    return result;
+    return LayerGetMaxZoom<ColorReliefLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -447,53 +260,11 @@ napi_value ColorReliefLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info inf
 // ============================================================================
 
 napi_value ColorReliefLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        return thisVar;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layer->setSourceLayer(sourceLayer);
-    }
-
-    return thisVar;
+    return LayerSetSourceLayer<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    std::string sourceLayer = layer->getSourceLayer();
-    napi_value result;
-    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceLayer<ColorReliefLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -501,51 +272,11 @@ napi_value ColorReliefLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info
 // ============================================================================
 
 napi_value ColorReliefLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj || argc < 1) {
-        return thisVar;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    auto filter = mbgl::harmony::napiArrayToFilter(env, argv[0]);
-    if (filter) {
-        layer->setFilter(*filter);
-    }
-
-    return thisVar;
+    return LayerSetFilter<ColorReliefLayerNAPI>(env, info);
 }
 
 napi_value ColorReliefLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-
-    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
-
-    if (!layerObj) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    mbgl::style::ColorReliefLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-
-    auto filter = layer->getFilter();
-    return mbgl::harmony::filterToNapiArray(env, filter);
+    return LayerGetFilter<ColorReliefLayerNAPI>(env, info);
 }
 
 // ==================== Generic Property Methods ====================

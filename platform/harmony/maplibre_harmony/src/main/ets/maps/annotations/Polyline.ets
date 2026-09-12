@@ -4,6 +4,7 @@
  * Provides an ArkTS-compliant implementation.
  */
 import maplibre from 'libmaplibre.so';
+import { AnnotationBase, AnnotationInternalTag } from './AnnotationBase';
 import { LatLng } from '../geometry/LatLng';
 import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
@@ -59,30 +60,20 @@ export interface PolylineOptions {
 }
 
 /**
- * Internal constructor tag.
- */
-class InternalPolyline {
-  static readonly INSTANCE = new InternalPolyline();
-
-  private constructor() {
-  }
-}
-
-/**
  * Polyline wrapper.
  */
-export class Polyline {
-  private nativeInstance: maplibre.Polyline;
+export class Polyline extends AnnotationBase<maplibre.Polyline> {
 
   /**
    * Constructor supporting two modes:
    * 1. Create from options: `new Polyline(options)`
    * 2. Create from a NAPI instance (internal use): `new Polyline(marker, nativeInstance)`
    */
-  constructor(optionsOrPolyline: PolylineOptions | InternalPolyline, nativeInstance?: maplibre.Polyline) {
-    if (optionsOrPolyline === InternalPolyline.INSTANCE && nativeInstance) {
+  constructor(optionsOrPolyline: PolylineOptions | AnnotationInternalTag, nativeInstance?: maplibre.Polyline) {
+    let native: maplibre.Polyline;
+    if (optionsOrPolyline === AnnotationInternalTag.INSTANCE && nativeInstance) {
       // Internal mode: construct from NAPI instance
-      this.nativeInstance = nativeInstance;
+      native = nativeInstance;
     } else if (typeof optionsOrPolyline === 'object') {
       // Standard mode: construct from options
       const options = optionsOrPolyline as PolylineOptions;
@@ -100,17 +91,18 @@ export class Polyline {
         capType: options.capType || 'round'
       };
 
-      this.nativeInstance = new maplibre.Polyline(nativeOptions as PolylineOptions);
+      native = new maplibre.Polyline(nativeOptions as PolylineOptions);
     } else {
       throw new Error('Invalid Polyline constructor arguments');
     }
+    super(native);
   }
 
   /**
    * Construct from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Polyline): Polyline {
-    return new Polyline(InternalPolyline.INSTANCE, nativeInstance);
+    return new Polyline(AnnotationInternalTag.INSTANCE, nativeInstance);
   }
 
   /**
@@ -118,13 +110,6 @@ export class Polyline {
    */
   static createFromOptions(options: PolylineOptions): Polyline {
     return new Polyline(options);
-  }
-
-  /**
-   * Retrieve the native polyline (internal use).
-   */
-  getNative(): maplibre.Polyline {
-    return this.nativeInstance;
   }
 
   // ========== Polyline API ==========

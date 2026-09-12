@@ -35,6 +35,26 @@ static const char *sourceTypeToString(mbgl::style::SourceType type) {
         return "unknown";
     }
 }
+
+// Reads the _TYPE_ marker set by every layer NAPI constructor. Returns ""
+// when the value is missing — callers must treat that as "not a layer"
+// because napi_unwrap alone cannot tell NAPI classes apart.
+static std::string ReadLayerType(napi_env env, napi_value layerValue) {
+    napi_value typeValue = nullptr;
+    if (napi_get_named_property(env, layerValue, "_TYPE_", &typeValue) != napi_ok || !typeValue) {
+        return "";
+    }
+    size_t typeLen = 0;
+    if (napi_get_value_string_utf8(env, typeValue, nullptr, 0, &typeLen) != napi_ok || typeLen == 0) {
+        return "";
+    }
+    std::string typeBuffer(typeLen, '\0');
+    if (napi_get_value_string_utf8(env, typeValue, typeBuffer.data(), typeLen + 1, nullptr) != napi_ok) {
+        return "";
+    }
+    return typeBuffer;
+}
+
 // Source NAPI classes
 #include "sources/geojson_source_napi.hpp"
 #include "sources/vector_source_napi.hpp"
@@ -59,7 +79,7 @@ static const char *sourceTypeToString(mbgl::style::SourceType type) {
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // Note: Constructor, Destructor, and static member are defined in style_napi_base.cpp
@@ -99,6 +119,169 @@ namespace harmony {
 // 3. OR ensure StyleNAPI::map is updated when the Map object is recreated
 //    (e.g., via a callback from NativeMapView to all StyleNAPI instances)
 // ========================================================================
+// ============================================================================
+// Layer dispatch tables
+//
+// napi_unwrap cannot tell NAPI classes apart, so every layer argument is
+// type-gated through the _TYPE_ marker (ReadLayerType) and then dispatched
+// through the tables below instead of a dozen hand-written branches per
+// function. AddLayer/Below/Above/At share the same extract + commit path;
+// commit always runs on the render thread and always reconnects the JS
+// wrapper (attachToStyle), which the Below/Above/At paths used to skip.
+// ============================================================================
+
+// Result of trying to extract a pending layer from a JS wrapper.
+enum class LayerExtract {
+    NotThisType, // the JS object is not this NAPI class; try the next entry
+    Ok,          // layer extracted and reattach callback prepared
+    Failed,      // terminal failure (error already thrown to JS)
+};
+
+// Unwrap layerValue as NapiT, pull the native layer out for style insertion,
+// and prepare the callback that reconnects the wrapper once the layer has
+// been committed on the render thread.
+template <typename NapiT, typename StyleLayerT>
+LayerExtract TryExtractLayer(napi_env env, napi_value layerValue,
+                             std::unique_ptr<mbgl::style::Layer> &pendingLayer,
+                             std::function<void(mbgl::style::Layer *)> &pendingAttach,
+                             std::string &layerId) {
+    NapiT *napiLayer = nullptr;
+    if (napi_unwrap(env, layerValue, reinterpret_cast<void **>(&napiLayer)) != napi_ok || !napiLayer) {
+        return LayerExtract::NotThisType;
+    }
+    try {
+        auto *layer = napiLayer->getLayer();
+        if (!layer) {
+            return LayerExtract::NotThisType;
+        }
+        layerId = layer->getID();
+        auto released = napiLayer->releaseLayer();
+        if (!released) {
+            napi_throw_error(env, nullptr, "Layer already added to style");
+            return LayerExtract::Failed;
+        }
+        pendingLayer = std::move(released);
+        pendingAttach = [napiLayer](mbgl::style::Layer *styleLayer) {
+            if (auto *typed = dynamic_cast<StyleLayerT *>(styleLayer)) {
+                napiLayer->attachToStyle(typed);
+            }
+        };
+        return LayerExtract::Ok;
+    } catch (const std::exception &e) {
+        Logger::error("StyleNAPI", "AddLayer extract failed: %s", e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return LayerExtract::Failed;
+    }
+}
+
+template <typename NapiT, typename StyleLayerT>
+LayerExtract ExtractThunk(napi_env env, napi_value layerValue,
+                          std::unique_ptr<mbgl::style::Layer> &pendingLayer,
+                          std::function<void(mbgl::style::Layer *)> &pendingAttach,
+                          std::string &layerId) {
+    return TryExtractLayer<NapiT, StyleLayerT>(env, layerValue, pendingLayer, pendingAttach, layerId);
+}
+
+struct LayerExtractEntry {
+    const char *jsType; // _TYPE_ marker set by the ETS wrapper
+    LayerExtract (*extract)(napi_env, napi_value,
+                            std::unique_ptr<mbgl::style::Layer> &,
+                            std::function<void(mbgl::style::Layer *)> &,
+                            std::string &);
+};
+
+const LayerExtractEntry kLayerExtractors[] = {
+    {"FillLayer", &ExtractThunk<mbgl::harmony::FillLayerNAPI, mbgl::style::FillLayer>},
+    {"LineLayer", &ExtractThunk<mbgl::harmony::LineLayerNAPI, mbgl::style::LineLayer>},
+    {"CircleLayer", &ExtractThunk<mbgl::harmony::CircleLayerNAPI, mbgl::style::CircleLayer>},
+    {"SymbolLayer", &ExtractThunk<mbgl::harmony::SymbolLayerNAPI, mbgl::style::SymbolLayer>},
+    {"RasterLayer", &ExtractThunk<mbgl::harmony::RasterLayerNAPI, mbgl::style::RasterLayer>},
+    {"BackgroundLayer", &ExtractThunk<mbgl::harmony::BackgroundLayerNAPI, mbgl::style::BackgroundLayer>},
+    {"HeatmapLayer", &ExtractThunk<mbgl::harmony::HeatmapLayerNAPI, mbgl::style::HeatmapLayer>},
+    {"HillshadeLayer", &ExtractThunk<mbgl::harmony::HillshadeLayerNAPI, mbgl::style::HillshadeLayer>},
+    {"FillExtrusionLayer", &ExtractThunk<mbgl::harmony::FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>},
+    {"LocationIndicatorLayer", &ExtractThunk<mbgl::harmony::LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer>},
+    {"ColorReliefLayer", &ExtractThunk<mbgl::harmony::ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer>},
+    {"CustomLayer", &ExtractThunk<mbgl::harmony::CustomLayerNAPI, mbgl::style::CustomLayer>},
+    {"CustomDrawableLayer", &ExtractThunk<mbgl::harmony::CustomDrawableLayerNAPI, mbgl::style::CustomDrawableLayer>},
+};
+
+LayerExtract DispatchLayerExtract(napi_env env, napi_value layerValue, const std::string &layerType,
+                                  std::unique_ptr<mbgl::style::Layer> &pendingLayer,
+                                  std::function<void(mbgl::style::Layer *)> &pendingAttach,
+                                  std::string &layerId) {
+    for (const auto &entry : kLayerExtractors) {
+        if (layerType == entry.jsType) {
+            LayerExtract result = entry.extract(env, layerValue, pendingLayer, pendingAttach, layerId);
+            if (result == LayerExtract::Ok) {
+                Logger::info("StyleNAPI", "%s: %s", layerType.c_str(), layerId.c_str());
+            }
+            return result;
+        }
+    }
+    return LayerExtract::NotThisType;
+}
+
+// Commit a pending layer on the render thread (the renderer reads the style's
+// layer collection every frame; mutating it from the JS thread is a data race,
+// documented SIGSEGV@0x8) and reconnect the JS wrapper to the committed layer.
+bool CommitLayerAdd(napi_env env, StyleNAPI *style, const std::string &layerId,
+                    std::unique_ptr<mbgl::style::Layer> pendingLayer,
+                    std::function<void(mbgl::style::Layer *)> pendingAttach,
+                    std::optional<std::string> beforeLayerId, const char *opName) {
+    try {
+        style->runOnMap([&](mbgl::Map &m) {
+            m.getStyle().addLayer(std::move(pendingLayer), beforeLayerId);
+            if (pendingAttach) {
+                pendingAttach(m.getStyle().getLayer(layerId));
+            }
+        });
+        Logger::info("StyleNAPI", "%s: %s", opName, layerId.c_str());
+        return true;
+    } catch (const std::exception &e) {
+        Logger::error("StyleNAPI", "%s failed: %s", opName, e.what());
+        napi_throw_error(env, nullptr, e.what());
+        return false;
+    }
+}
+
+template <typename NapiT, typename StyleLayerT>
+napi_value CreateLayerPeerThunk(napi_env env, mbgl::style::Layer *layer) {
+    return NapiT::CreateInstance(env, static_cast<StyleLayerT *>(layer));
+}
+
+// Build the NAPI peer for a live style layer, dispatching on the core
+// type-info string (shared by GetLayer and GetLayers).
+napi_value CreateLayerInstanceByType(napi_env env, const std::string &layerType, mbgl::style::Layer *layer) {
+    struct LayerCreatorEntry {
+        const char *typeInfo;
+        napi_value (*create)(napi_env, mbgl::style::Layer *);
+    };
+    static const LayerCreatorEntry kCreators[] = {
+        {"symbol", &CreateLayerPeerThunk<mbgl::harmony::SymbolLayerNAPI, mbgl::style::SymbolLayer>},
+        {"fill", &CreateLayerPeerThunk<mbgl::harmony::FillLayerNAPI, mbgl::style::FillLayer>},
+        {"line", &CreateLayerPeerThunk<mbgl::harmony::LineLayerNAPI, mbgl::style::LineLayer>},
+        {"circle", &CreateLayerPeerThunk<mbgl::harmony::CircleLayerNAPI, mbgl::style::CircleLayer>},
+        {"raster", &CreateLayerPeerThunk<mbgl::harmony::RasterLayerNAPI, mbgl::style::RasterLayer>},
+        {"heatmap", &CreateLayerPeerThunk<mbgl::harmony::HeatmapLayerNAPI, mbgl::style::HeatmapLayer>},
+        {"hillshade", &CreateLayerPeerThunk<mbgl::harmony::HillshadeLayerNAPI, mbgl::style::HillshadeLayer>},
+        {"fill-extrusion", &CreateLayerPeerThunk<mbgl::harmony::FillExtrusionLayerNAPI, mbgl::style::FillExtrusionLayer>},
+        {"background", &CreateLayerPeerThunk<mbgl::harmony::BackgroundLayerNAPI, mbgl::style::BackgroundLayer>},
+        {"color-relief", &CreateLayerPeerThunk<mbgl::harmony::ColorReliefLayerNAPI, mbgl::style::ColorReliefLayer>},
+        {"location-indicator", &CreateLayerPeerThunk<mbgl::harmony::LocationIndicatorLayerNAPI, mbgl::style::LocationIndicatorLayer>},
+        {"custom-drawable", &CreateLayerPeerThunk<mbgl::harmony::CustomDrawableLayerNAPI, mbgl::style::CustomDrawableLayer>},
+    };
+    for (const auto &entry : kCreators) {
+        if (layerType == entry.typeInfo) {
+            return entry.create(env, layer);
+        }
+    }
+    Logger::warn("StyleNAPI", "Unknown layer type: %s", layerType.c_str());
+    napi_value null_value;
+    napi_get_null(env, &null_value);
+    return null_value;
+}
+
 napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
     NapiArgs napiArgs(env, info);
     napiArgs.RequireMinArgs(1);
@@ -106,15 +289,10 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    napi_value layerValue = napiArgs.GetValue(0);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
 
     napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
@@ -126,408 +304,29 @@ napi_value StyleNAPI::AddLayer(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    if (argc < 1) {
-        napi_throw_error(env, nullptr, "AddLayer requires layer argument");
+    // napi_unwrap is type-agnostic: unwrapping an object of the wrong NAPI
+    // class reinterprets its native pointer, so the _TYPE_ marker is mandatory.
+    std::string layerType = ReadLayerType(env, layerValue);
+    if (layerType.empty()) {
+        napi_throw_error(env, nullptr, "AddLayer: value is not a layer instance created by this SDK (missing _TYPE_)");
         return nullptr;
     }
 
-    napi_value layerValue = args[0];
-    bool layerAdded = false;
     std::string layerId;
-    napi_status status;
-
-    // Layer extracted from the JS wrapper (JS thread); committed to the style
-    // in one render-thread dispatch at the end of this function.
     std::unique_ptr<mbgl::style::Layer> pendingLayer;
     std::function<void(mbgl::style::Layer *)> pendingAttach;
-
-    // First check the _TYPE_ property to determine the actual type
-    napi_value typeValue;
-    std::string layerType;
-    status = napi_get_named_property(env, layerValue, "_TYPE_", &typeValue);
-    if (status == napi_ok) {
-        // _TYPE_ may be missing (undefined) — measure first and bail out on
-        // non-string values instead of using an uninitialized length.
-        size_t typeLen = 0;
-        if (napi_get_value_string_utf8(env, typeValue, nullptr, 0, &typeLen) == napi_ok && typeLen > 0) {
-            std::string typeBuffer(typeLen, '\0');
-            if (napi_get_value_string_utf8(env, typeValue, typeBuffer.data(), typeLen + 1, nullptr) == napi_ok) {
-                layerType = std::move(typeBuffer);
-                Logger::info("StyleNAPI", "AddLayer: Detected type = %s", layerType.c_str());
-            }
+    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
+    if (result != LayerExtract::Ok) {
+        if (result == LayerExtract::NotThisType) {
+            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
         }
-    }
-
-    // 1. Try FillLayer
-    if (layerType == "FillLayer" || layerType.empty()) {
-        mbgl::harmony::FillLayerNAPI *fillLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillLayer));
-        if (status == napi_ok && fillLayer) {
-            try {
-                layerId = fillLayer->getId();
-                auto layer = fillLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [fillLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *fillStyleLayer = dynamic_cast<mbgl::style::FillLayer *>(styleLayer)) {
-                        fillLayer->attachToStyle(fillStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (FillLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (FillLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 2. LineLayer
-    if (!layerAdded && (layerType == "LineLayer" || layerType.empty())) {
-        mbgl::harmony::LineLayerNAPI *lineLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&lineLayer));
-        if (status == napi_ok && lineLayer) {
-            try {
-                layerId = lineLayer->getId();
-                auto layer = lineLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [lineLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *lineStyleLayer = dynamic_cast<mbgl::style::LineLayer *>(styleLayer)) {
-                        lineLayer->attachToStyle(lineStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (LineLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (LineLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 3. CircleLayer
-    if (!layerAdded && (layerType == "CircleLayer" || layerType.empty())) {
-        mbgl::harmony::CircleLayerNAPI *circleLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&circleLayer));
-        if (status == napi_ok && circleLayer) {
-            try {
-                layerId = circleLayer->getId();
-                auto layer = circleLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [circleLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *circleStyleLayer = dynamic_cast<mbgl::style::CircleLayer *>(styleLayer)) {
-                        circleLayer->attachToStyle(circleStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (CircleLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (CircleLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 4. SymbolLayer
-    if (!layerAdded && (layerType == "SymbolLayer" || layerType.empty())) {
-        mbgl::harmony::SymbolLayerNAPI *symbolLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&symbolLayer));
-        if (status == napi_ok && symbolLayer) {
-            try {
-                layerId = symbolLayer->getId();
-                auto layer = symbolLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [symbolLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *symbolStyleLayer = dynamic_cast<mbgl::style::SymbolLayer *>(styleLayer)) {
-                        symbolLayer->attachToStyle(symbolStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (SymbolLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (SymbolLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 5. BackgroundLayer
-    if (!layerAdded && (layerType == "BackgroundLayer" || layerType.empty())) {
-        mbgl::harmony::BackgroundLayerNAPI *backgroundLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&backgroundLayer));
-        if (status == napi_ok && backgroundLayer) {
-            try {
-                layerId = backgroundLayer->getId();
-                auto layer = backgroundLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [backgroundLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *backgroundStyleLayer = dynamic_cast<mbgl::style::BackgroundLayer *>(styleLayer)) {
-                        backgroundLayer->attachToStyle(backgroundStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (BackgroundLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (BackgroundLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 6. RasterLayer
-    if (!layerAdded && (layerType == "RasterLayer" || layerType.empty())) {
-        mbgl::harmony::RasterLayerNAPI *rasterLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&rasterLayer));
-        if (status == napi_ok && rasterLayer) {
-            try {
-                layerId = rasterLayer->getId();
-                auto layer = rasterLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayer (RasterLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (RasterLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 7. CustomLayer
-    if (!layerAdded && (layerType == "CustomLayer" || layerType.empty())) {
-        mbgl::harmony::CustomLayerNAPI *customLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&customLayer));
-        if (status == napi_ok && customLayer) {
-            try {
-                layerId = customLayer->getId();
-                auto layer = customLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [customLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *customStyleLayer = dynamic_cast<mbgl::style::CustomLayer *>(styleLayer)) {
-                        customLayer->attachToStyle(customStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (CustomLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (CustomLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 8. FillExtrusionLayer
-    if (!layerAdded && (layerType == "FillExtrusionLayer" || layerType.empty())) {
-        mbgl::harmony::FillExtrusionLayerNAPI *fillExtrusionLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillExtrusionLayer));
-        if (status == napi_ok && fillExtrusionLayer) {
-            try {
-                layerId = fillExtrusionLayer->getLayer()->getID();
-                auto layer = fillExtrusionLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [fillExtrusionLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *fillExtrusionStyleLayer = dynamic_cast<mbgl::style::FillExtrusionLayer *>(styleLayer)) {
-                        fillExtrusionLayer->attachToStyle(fillExtrusionStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (FillExtrusionLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (FillExtrusionLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 9. HeatmapLayer
-    if (!layerAdded && (layerType == "HeatmapLayer" || layerType.empty())) {
-        mbgl::harmony::HeatmapLayerNAPI *heatmapLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&heatmapLayer));
-        if (status == napi_ok && heatmapLayer) {
-            try {
-                layerId = heatmapLayer->getId();
-                auto layer = heatmapLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [heatmapLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *heatmapStyleLayer = dynamic_cast<mbgl::style::HeatmapLayer *>(styleLayer)) {
-                        heatmapLayer->attachToStyle(heatmapStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (HeatmapLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (HeatmapLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 10. HillshadeLayer
-    if (!layerAdded && (layerType == "HillshadeLayer" || layerType.empty())) {
-        mbgl::harmony::HillshadeLayerNAPI *hillshadeLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&hillshadeLayer));
-        if (status == napi_ok && hillshadeLayer) {
-            try {
-                layerId = hillshadeLayer->getLayer()->getID();
-                auto layer = hillshadeLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [hillshadeLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *hillshadeStyleLayer = dynamic_cast<mbgl::style::HillshadeLayer *>(styleLayer)) {
-                        hillshadeLayer->attachToStyle(hillshadeStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (HillshadeLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (HillshadeLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 11. LocationIndicatorLayer (not tied to a source)
-    if (!layerAdded && (layerType == "LocationIndicatorLayer" || layerType.empty())) {
-        mbgl::harmony::LocationIndicatorLayerNAPI *locationIndicatorLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&locationIndicatorLayer));
-        if (status == napi_ok && locationIndicatorLayer) {
-            try {
-                layerId = locationIndicatorLayer->getLayer()->getID();
-                auto layer = locationIndicatorLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [locationIndicatorLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *locationIndicatorStyleLayer = dynamic_cast<mbgl::style::LocationIndicatorLayer *>(styleLayer)) {
-                        locationIndicatorLayer->attachToStyle(locationIndicatorStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (LocationIndicatorLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (LocationIndicatorLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 12. CustomDrawableLayer
-    if (!layerAdded && (layerType == "CustomDrawableLayer" || layerType.empty())) {
-        maplibre::harmony::CustomDrawableLayerNAPI *customDrawableLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&customDrawableLayer));
-        if (status == napi_ok && customDrawableLayer) {
-            try {
-                layerId = customDrawableLayer->getId();
-                auto layer = customDrawableLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                pendingLayer = std::move(layer);
-                pendingAttach = [customDrawableLayer](mbgl::style::Layer *styleLayer) {
-                    if (auto *customDrawableStyleLayer =
-                            dynamic_cast<mbgl::style::CustomDrawableLayer *>(styleLayer)) {
-                        customDrawableLayer->attachToStyle(customDrawableStyleLayer);
-                    }
-                };
-                layerAdded = true;
-
-                Logger::info("StyleNAPI", "AddLayer (CustomDrawableLayer): %s", layerId.c_str());
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayer (CustomDrawableLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    if (!layerAdded) {
-        napi_throw_error(env, nullptr, "Invalid layer type or layer object");
         return nullptr;
     }
 
-    if (!pendingLayer) {
-        napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-        return nullptr;
-    }
-
-    // Commit the layer on the render thread: the renderer reads the style's
-    // layer collection every frame, and mutating it from the JS thread is a
-    // data race (documented SIGSEGV@0x8).
-    try {
-        style->runOnMap([&](mbgl::Map &m) {
-            m.getStyle().addLayer(std::move(pendingLayer));
-            if (pendingAttach) {
-                pendingAttach(m.getStyle().getLayer(layerId));
-            }
-        });
+    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
+                       std::nullopt, "AddLayer")) {
         style->layers[layerId] = true;
-    } catch (const std::exception &e) {
-        Logger::error("StyleNAPI", "AddLayer failed: %s", e.what());
-        napi_throw_error(env, nullptr, e.what());
-        return nullptr;
     }
-
     return nullptr;
 }
 
@@ -538,15 +337,12 @@ napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    napi_value layerValue = napiArgs.GetValue(0);
+    napi_value belowValue = napiArgs.GetValue(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
+    std::string belowLayerId = GetStringFromValue(env, belowValue);
 
     napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
@@ -558,133 +354,27 @@ napi_value StyleNAPI::AddLayerBelow(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "AddLayerBelow requires layer and belowLayerId arguments");
+    std::string layerType = ReadLayerType(env, layerValue);
+    if (layerType.empty()) {
+        napi_throw_error(env, nullptr, "AddLayerBelow: value is not a layer instance created by this SDK (missing _TYPE_)");
         return nullptr;
     }
 
-    napi_value layerValue = args[0];
-    std::string belowLayerId = GetStringFromValue(env, args[1]);
-
-    // Get layer from various layer NAPI types (similar to AddLayer)
-    bool layerAdded = false;
     std::string layerId;
-    napi_status status;
-
-    // Try each layer type (FillLayer, LineLayer, etc.)
-    // 1. FillLayer
-    mbgl::harmony::FillLayerNAPI *fillLayer = nullptr;
-    status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillLayer));
-    if (status == napi_ok && fillLayer) {
-        try {
-            layerId = fillLayer->getId();
-            auto layer = fillLayer->releaseLayer();
-            if (!layer) {
-                napi_throw_error(env, nullptr, "Layer already added to style");
-                return nullptr;
-            }
-            style->runOnMap([&](mbgl::Map &m) {
-                m.getStyle().addLayer(std::move(layer), belowLayerId);
-            });
-            style->layers[layerId] = true;
-            layerAdded = true;
-            Logger::info("StyleNAPI", "AddLayerBelow (FillLayer): %s below %s", layerId.c_str(), belowLayerId.c_str());
-            return nullptr;
-        } catch (const std::exception &e) {
-            Logger::error("StyleNAPI", "AddLayerBelow (FillLayer) failed: %s", e.what());
-            napi_throw_error(env, nullptr, e.what());
-            return nullptr;
+    std::unique_ptr<mbgl::style::Layer> pendingLayer;
+    std::function<void(mbgl::style::Layer *)> pendingAttach;
+    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
+    if (result != LayerExtract::Ok) {
+        if (result == LayerExtract::NotThisType) {
+            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
         }
+        return nullptr;
     }
 
-    // 2. LineLayer
-    if (!layerAdded) {
-        mbgl::harmony::LineLayerNAPI *lineLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&lineLayer));
-        if (status == napi_ok && lineLayer) {
-            try {
-                layerId = lineLayer->getId();
-                auto layer = lineLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                style->runOnMap([&](mbgl::Map &m) {
-                m.getStyle().addLayer(std::move(layer), belowLayerId);
-            });
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayerBelow (LineLayer): %s below %s", layerId.c_str(),
-                             belowLayerId.c_str());
-                return nullptr;
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayerBelow (LineLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
+    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
+                       std::optional<std::string>(belowLayerId), "AddLayerBelow")) {
+        style->layers[layerId] = true;
     }
-
-    // 3. CircleLayer
-    if (!layerAdded) {
-        mbgl::harmony::CircleLayerNAPI *circleLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&circleLayer));
-        if (status == napi_ok && circleLayer) {
-            try {
-                layerId = circleLayer->getId();
-                auto layer = circleLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                style->runOnMap([&](mbgl::Map &m) {
-                m.getStyle().addLayer(std::move(layer), belowLayerId);
-            });
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayerBelow (CircleLayer): %s below %s", layerId.c_str(),
-                             belowLayerId.c_str());
-                return nullptr;
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayerBelow (CircleLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    // 4. SymbolLayer
-    if (!layerAdded) {
-        mbgl::harmony::SymbolLayerNAPI *symbolLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&symbolLayer));
-        if (status == napi_ok && symbolLayer) {
-            try {
-                layerId = symbolLayer->getId();
-                auto layer = symbolLayer->releaseLayer();
-                if (!layer) {
-                    napi_throw_error(env, nullptr, "Layer already added to style");
-                    return nullptr;
-                }
-                style->runOnMap([&](mbgl::Map &m) {
-                m.getStyle().addLayer(std::move(layer), belowLayerId);
-            });
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayerBelow (SymbolLayer): %s below %s", layerId.c_str(),
-                             belowLayerId.c_str());
-                return nullptr;
-            } catch (const std::exception &e) {
-                Logger::error("StyleNAPI", "AddLayerBelow (SymbolLayer) failed: %s", e.what());
-                napi_throw_error(env, nullptr, e.what());
-                return nullptr;
-            }
-        }
-    }
-
-    if (!layerAdded) {
-        napi_throw_error(env, nullptr, "Invalid layer type or layer object");
-    }
-
     return nullptr;
 }
 
@@ -791,48 +481,13 @@ napi_value StyleNAPI::GetLayer(napi_env env, napi_callback_info info) {
 
     Logger::info("StyleNAPI", "GetLayer: %s (type: %s)", layerId.c_str(), layerType.c_str());
 
-    if (layerType == "symbol") {
-        auto *symbolLayer = static_cast<mbgl::style::SymbolLayer *>(layer);
-        return mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, symbolLayer);
-    } else if (layerType == "fill") {
-        auto *fillLayer = static_cast<mbgl::style::FillLayer *>(layer);
-        return mbgl::harmony::FillLayerNAPI::CreateInstance(env, fillLayer);
-    } else if (layerType == "line") {
-        auto *lineLayer = static_cast<mbgl::style::LineLayer *>(layer);
-        return mbgl::harmony::LineLayerNAPI::CreateInstance(env, lineLayer);
-    } else if (layerType == "circle") {
-        auto *circleLayer = static_cast<mbgl::style::CircleLayer *>(layer);
-        return mbgl::harmony::CircleLayerNAPI::CreateInstance(env, circleLayer);
-    } else if (layerType == "raster") {
-        auto *rasterLayer = static_cast<mbgl::style::RasterLayer *>(layer);
-        return mbgl::harmony::RasterLayerNAPI::CreateInstance(env, rasterLayer);
-    } else if (layerType == "heatmap") {
-        auto *heatmapLayer = static_cast<mbgl::style::HeatmapLayer *>(layer);
-        return mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, heatmapLayer);
-    } else if (layerType == "hillshade") {
-        auto *hillshadeLayer = static_cast<mbgl::style::HillshadeLayer *>(layer);
-        return mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env, hillshadeLayer);
-    } else if (layerType == "fill-extrusion") {
-        auto *fillExtrusionLayer = static_cast<mbgl::style::FillExtrusionLayer *>(layer);
-        return mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(env, fillExtrusionLayer);
-    } else if (layerType == "background") {
-        auto *backgroundLayer = static_cast<mbgl::style::BackgroundLayer *>(layer);
-        return mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env, backgroundLayer);
-    } else if (layerType == "color-relief") {
-        auto *colorReliefLayer = static_cast<mbgl::style::ColorReliefLayer *>(layer);
-        return mbgl::harmony::ColorReliefLayerNAPI::CreateInstance(env, colorReliefLayer);
-    } else if (layerType == "location-indicator") {
-        auto *locationIndicatorLayer = static_cast<mbgl::style::LocationIndicatorLayer *>(layer);
-        return mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(env, locationIndicatorLayer);
-    } else if (layerType == "custom-drawable") {
-        auto *customDrawableLayer = static_cast<mbgl::style::CustomDrawableLayer *>(layer);
-        return maplibre::harmony::CustomDrawableLayerNAPI::CreateInstance(env, customDrawableLayer);
-    } else {
-        Logger::warn("StyleNAPI", "GetLayer: Unknown layer type: %s", layerType.c_str());
+    napi_value instance = CreateLayerInstanceByType(env, layerType, layer);
+    if (!instance) {
         napi_value result;
         napi_get_null(env, &result);
         return result;
     }
+    return instance;
 }
 
 
@@ -870,53 +525,13 @@ napi_value StyleNAPI::GetLayers(napi_env env, napi_callback_info info) {
 
         for (auto *layer : layerList) {
             std::string layerType = layer->getTypeInfo()->type;
-            napi_value layerInstance = nullptr;
+            napi_value layerInstance = CreateLayerInstanceByType(env, layerType, layer);
 
-            // Create the corresponding NAPI instance based on the layer type (consistent with GetLayer)
-            if (layerType == "symbol") {
-                auto *symbolLayer = static_cast<mbgl::style::SymbolLayer *>(layer);
-                layerInstance = mbgl::harmony::SymbolLayerNAPI::CreateInstance(env, symbolLayer);
-            } else if (layerType == "fill") {
-                auto *fillLayer = static_cast<mbgl::style::FillLayer *>(layer);
-                layerInstance = mbgl::harmony::FillLayerNAPI::CreateInstance(env, fillLayer);
-            } else if (layerType == "line") {
-                auto *lineLayer = static_cast<mbgl::style::LineLayer *>(layer);
-                layerInstance = mbgl::harmony::LineLayerNAPI::CreateInstance(env, lineLayer);
-            } else if (layerType == "circle") {
-                auto *circleLayer = static_cast<mbgl::style::CircleLayer *>(layer);
-                layerInstance = mbgl::harmony::CircleLayerNAPI::CreateInstance(env, circleLayer);
-            } else if (layerType == "raster") {
-                auto *rasterLayer = static_cast<mbgl::style::RasterLayer *>(layer);
-                layerInstance = mbgl::harmony::RasterLayerNAPI::CreateInstance(env, rasterLayer);
-            } else if (layerType == "heatmap") {
-                auto *heatmapLayer = static_cast<mbgl::style::HeatmapLayer *>(layer);
-                layerInstance = mbgl::harmony::HeatmapLayerNAPI::CreateInstance(env, heatmapLayer);
-            } else if (layerType == "hillshade") {
-                auto *hillshadeLayer = static_cast<mbgl::style::HillshadeLayer *>(layer);
-                layerInstance = mbgl::harmony::HillshadeLayerNAPI::CreateInstance(env, hillshadeLayer);
-            } else if (layerType == "fill-extrusion") {
-                auto *fillExtrusionLayer = static_cast<mbgl::style::FillExtrusionLayer *>(layer);
-                layerInstance = mbgl::harmony::FillExtrusionLayerNAPI::CreateInstance(env, fillExtrusionLayer);
-            } else if (layerType == "background") {
-                auto *backgroundLayer = static_cast<mbgl::style::BackgroundLayer *>(layer);
-                layerInstance = mbgl::harmony::BackgroundLayerNAPI::CreateInstance(env, backgroundLayer);
-            } else if (layerType == "color-relief") {
-                auto *colorReliefLayer = static_cast<mbgl::style::ColorReliefLayer *>(layer);
-                layerInstance = mbgl::harmony::ColorReliefLayerNAPI::CreateInstance(env, colorReliefLayer);
-            } else if (layerType == "location-indicator") {
-                auto *locationIndicatorLayer = static_cast<mbgl::style::LocationIndicatorLayer *>(layer);
-                layerInstance = mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(env, locationIndicatorLayer);
-            } else if (layerType == "custom-drawable") {
-                auto *customDrawableLayer = static_cast<mbgl::style::CustomDrawableLayer *>(layer);
-                layerInstance = maplibre::harmony::CustomDrawableLayerNAPI::CreateInstance(env, customDrawableLayer);
-            } else {
-                Logger::warn("StyleNAPI", "GetLayers: Unknown layer type: %s", layerType.c_str());
-                continue; // Skip unknown layer types
+            if (layerInstance == nullptr) {
+                continue; // Unknown layer types are skipped
             }
 
-            if (layerInstance) {
-                napi_set_element(env, result, index++, layerInstance);
-            }
+            napi_set_element(env, result, index++, layerInstance);
         }
 
         Logger::info("StyleNAPI", "GetLayers: returned %d layers", index);
@@ -991,15 +606,12 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    napi_value layerValue = napiArgs.GetValue(0);
+    napi_value aboveValue = napiArgs.GetValue(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
+    std::string aboveLayerId = GetStringFromValue(env, aboveValue);
 
     napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
@@ -1010,23 +622,17 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "AddLayerAbove requires 2 arguments: layer, aboveLayerId");
-        return nullptr;
-    }
-
-    std::string aboveLayerId = GetStringFromValue(env, args[1]);
-
-    // MapLibre Core does not expose addLayerAbove directly
-    // We need to locate the layer immediately after aboveLayerId and call addLayer(layer, belowLayerId)
+    // MapLibre core only exposes addLayer(layer, beforeLayerID); to insert
+    // above `aboveLayerId`, resolve the ID of the layer right after it.
+    // Collection reads are serialized with the render thread.
+    bool foundAboveLayer = false;
+    std::optional<std::string> beforeLayerId;
     try {
-        bool foundAboveLayer = false;
-        std::optional<std::string> belowLayerId;
         style->runOnMap([&](mbgl::Map &m) {
             const auto &layers = m.getStyle().getLayers();
             for (size_t i = 0; i < layers.size(); ++i) {
-                if (foundAboveLayer && i < layers.size()) {
-                    belowLayerId = layers[i]->getID();
+                if (foundAboveLayer) {
+                    beforeLayerId = layers[i]->getID();
                     break;
                 }
                 if (layers[i]->getID() == aboveLayerId) {
@@ -1034,129 +640,39 @@ napi_value StyleNAPI::AddLayerAbove(napi_env env, napi_callback_info info) {
                 }
             }
         });
-
-        if (!foundAboveLayer) {
-            Logger::warn("StyleNAPI", "AddLayerAbove: layer %s not found", aboveLayerId.c_str());
-            // If the target layer is not found, insert at the top
-            return AddLayer(env, info);
-        }
-
-        // Add the layer now (belowLayerId may be empty, meaning insert at the top)
-        // This repeats AddLayer logic but uses addLayer(layer, belowLayerId)
-        napi_value layerValue = args[0];
-        bool layerAdded = false;
-        std::string layerId;
-        napi_status status;
-
-        // Try each layer type
-        mbgl::harmony::FillLayerNAPI *fillLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillLayer));
-        if (status == napi_ok && fillLayer) {
-            layerId = fillLayer->getId();
-            auto layer = fillLayer->releaseLayer();
-            if (layer) {
-                style->map->getStyle().addLayer(std::move(layer), belowLayerId);
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayerAbove: %s (above: %s)", layerId.c_str(), aboveLayerId.c_str());
-            }
-        }
-
-        if (!layerAdded) {
-            mbgl::harmony::LineLayerNAPI *lineLayer = nullptr;
-            status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&lineLayer));
-            if (status == napi_ok && lineLayer) {
-                layerId = lineLayer->getId();
-                auto layer = lineLayer->releaseLayer();
-                if (layer) {
-                    style->runOnMap([&](mbgl::Map &m) {
-                        m.getStyle().addLayer(std::move(layer), belowLayerId);
-                    });
-                    style->layers[layerId] = true;
-                    layerAdded = true;
-                    Logger::info("StyleNAPI", "AddLayerAbove: %s (above: %s)", layerId.c_str(), aboveLayerId.c_str());
-                }
-            }
-        }
-
-        if (!layerAdded) {
-            mbgl::harmony::CircleLayerNAPI *circleLayer = nullptr;
-            status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&circleLayer));
-            if (status == napi_ok && circleLayer) {
-                layerId = circleLayer->getId();
-                auto layer = circleLayer->releaseLayer();
-                if (layer) {
-                    style->runOnMap([&](mbgl::Map &m) {
-                        m.getStyle().addLayer(std::move(layer), belowLayerId);
-                    });
-                    style->layers[layerId] = true;
-                    layerAdded = true;
-                    Logger::info("StyleNAPI", "AddLayerAbove: %s (above: %s)", layerId.c_str(), aboveLayerId.c_str());
-                }
-            }
-        }
-
-        if (!layerAdded) {
-            mbgl::harmony::SymbolLayerNAPI *symbolLayer = nullptr;
-            status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&symbolLayer));
-            if (status == napi_ok && symbolLayer) {
-                layerId = symbolLayer->getId();
-                auto layer = symbolLayer->releaseLayer();
-                if (layer) {
-                    style->runOnMap([&](mbgl::Map &m) {
-                        m.getStyle().addLayer(std::move(layer), belowLayerId);
-                    });
-                    style->layers[layerId] = true;
-                    layerAdded = true;
-                    Logger::info("StyleNAPI", "AddLayerAbove: %s (above: %s)", layerId.c_str(), aboveLayerId.c_str());
-                }
-            }
-        }
-
-        if (!layerAdded) {
-            mbgl::harmony::BackgroundLayerNAPI *backgroundLayer = nullptr;
-            status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&backgroundLayer));
-            if (status == napi_ok && backgroundLayer) {
-                layerId = backgroundLayer->getId();
-                auto layer = backgroundLayer->releaseLayer();
-                if (layer) {
-                    style->runOnMap([&](mbgl::Map &m) {
-                        m.getStyle().addLayer(std::move(layer), belowLayerId);
-                    });
-                    style->layers[layerId] = true;
-                    layerAdded = true;
-                    Logger::info("StyleNAPI", "AddLayerAbove: %s (above: %s)", layerId.c_str(), aboveLayerId.c_str());
-                }
-            }
-        }
-
-        if (!layerAdded) {
-            mbgl::harmony::RasterLayerNAPI *rasterLayer = nullptr;
-            status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&rasterLayer));
-            if (status == napi_ok && rasterLayer) {
-                layerId = rasterLayer->getId();
-                auto layer = rasterLayer->releaseLayer();
-                if (layer) {
-                    style->runOnMap([&](mbgl::Map &m) {
-                        m.getStyle().addLayer(std::move(layer), belowLayerId);
-                    });
-                    style->layers[layerId] = true;
-                    layerAdded = true;
-                    Logger::info("StyleNAPI", "AddLayerAbove: %s (above: %s)", layerId.c_str(), aboveLayerId.c_str());
-                }
-            }
-        }
-
-        if (!layerAdded) {
-            napi_throw_error(env, nullptr, "Invalid layer type or layer already added");
-        }
-
-        return nullptr;
     } catch (const std::exception &e) {
-        Logger::error("StyleNAPI", "AddLayerAbove failed: %s", e.what());
+        Logger::error("StyleNAPI", "AddLayerAbove lookup failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
         return nullptr;
     }
+
+    if (!foundAboveLayer) {
+        Logger::warn("StyleNAPI", "AddLayerAbove: layer %s not found; adding to top", aboveLayerId.c_str());
+        return AddLayer(env, info);
+    }
+
+    std::string layerType = ReadLayerType(env, layerValue);
+    if (layerType.empty()) {
+        napi_throw_error(env, nullptr, "AddLayerAbove: value is not a layer instance created by this SDK (missing _TYPE_)");
+        return nullptr;
+    }
+
+    std::string layerId;
+    std::unique_ptr<mbgl::style::Layer> pendingLayer;
+    std::function<void(mbgl::style::Layer *)> pendingAttach;
+    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
+    if (result != LayerExtract::Ok) {
+        if (result == LayerExtract::NotThisType) {
+            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
+        }
+        return nullptr;
+    }
+
+    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
+                       beforeLayerId, "AddLayerAbove")) {
+        style->layers[layerId] = true;
+    }
+    return nullptr;
 }
 
 napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
@@ -1166,15 +682,13 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    size_t argc = napiArgs.Count();
-    std::vector<napi_value> argsVec(argc);
-    for (size_t i = 0; i < argc; ++i) {
-        argsVec[i] = napiArgs.GetValue(i);
-        if (napiArgs.HasError()) {
-            return nullptr;
-        }
+    napi_value layerValue = napiArgs.GetValue(0);
+    napi_value indexValue = napiArgs.GetValue(1);
+    if (napiArgs.HasError()) {
+        return nullptr;
     }
-    napi_value* args = argsVec.data();
+    uint32_t index = 0;
+    napi_get_value_uint32(env, indexValue, &index);
 
     napi_value jsThis = napiArgs.This();
     StyleNAPI *style = nullptr;
@@ -1185,63 +699,45 @@ napi_value StyleNAPI::AddLayerAt(napi_env env, napi_callback_info info) {
         return nullptr;
     }
 
-    if (argc < 2) {
-        napi_throw_error(env, nullptr, "AddLayerAt requires 2 arguments: layer, index");
-        return nullptr;
-    }
-
-    uint32_t index = 0;
-    napi_get_value_uint32(env, args[1], &index);
-
+    // Core has no index-based addLayer; translate the index into the ID of the
+    // layer currently at that position (out of range -> insert at the top).
+    std::optional<std::string> beforeLayerId;
     try {
-        std::optional<std::string> belowLayerId;
-
-        // If the index is valid, retrieve the layer ID at that position as below.
-        // Collection reads are serialized with the render thread.
         style->runOnMap([&](mbgl::Map &m) {
             const auto &layers = m.getStyle().getLayers();
             if (index < layers.size()) {
-                belowLayerId = layers[index]->getID();
+                beforeLayerId = layers[index]->getID();
             }
         });
-        // If the index is out of range, add to the top (belowLayerId remains empty)
-
-        // Layer insertion logic (similar to AddLayerAbove)
-        napi_value layerValue = args[0];
-        bool layerAdded = false;
-        std::string layerId;
-        napi_status status;
-
-        // Try each layer type (simplified version; could be refactored into a helper)
-        mbgl::harmony::FillLayerNAPI *fillLayer = nullptr;
-        status = napi_unwrap(env, layerValue, reinterpret_cast<void **>(&fillLayer));
-        if (status == napi_ok && fillLayer) {
-            layerId = fillLayer->getId();
-            auto layer = fillLayer->releaseLayer();
-            if (layer) {
-                style->map->getStyle().addLayer(std::move(layer), belowLayerId);
-                style->layers[layerId] = true;
-                layerAdded = true;
-                Logger::info("StyleNAPI", "AddLayerAt: %s (index: %d)", layerId.c_str(), index);
-            }
-        }
-
-        // Other layer types... (omitted for brevity; real implementation should include every type)
-        // The actual code should mirror AddLayerAbove and cover every layer type
-
-        if (!layerAdded) {
-            // Try additional layer types
-            Logger::warn("StyleNAPI", "AddLayerAt: trying to add to top as fallback");
-            return AddLayer(env, info);
-        }
-
-        return nullptr;
     } catch (const std::exception &e) {
-        Logger::error("StyleNAPI", "AddLayerAt failed: %s", e.what());
+        Logger::error("StyleNAPI", "AddLayerAt lookup failed: %s", e.what());
         napi_throw_error(env, nullptr, e.what());
         return nullptr;
     }
+
+    std::string layerType = ReadLayerType(env, layerValue);
+    if (layerType.empty()) {
+        napi_throw_error(env, nullptr, "AddLayerAt: value is not a layer instance created by this SDK (missing _TYPE_)");
+        return nullptr;
+    }
+
+    std::string layerId;
+    std::unique_ptr<mbgl::style::Layer> pendingLayer;
+    std::function<void(mbgl::style::Layer *)> pendingAttach;
+    LayerExtract result = DispatchLayerExtract(env, layerValue, layerType, pendingLayer, pendingAttach, layerId);
+    if (result != LayerExtract::Ok) {
+        if (result == LayerExtract::NotThisType) {
+            napi_throw_error(env, nullptr, "Invalid layer type or layer object");
+        }
+        return nullptr;
+    }
+
+    if (CommitLayerAdd(env, style, layerId, std::move(pendingLayer), std::move(pendingAttach),
+                       beforeLayerId, "AddLayerAt")) {
+        style->layers[layerId] = true;
+    }
+    return nullptr;
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

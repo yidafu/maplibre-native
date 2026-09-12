@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import { ComponentContent } from '@kit.ArkUI';
 
 /**
@@ -23,7 +25,7 @@ export class ComponentContentRegistry {
    */
   register(id: number, content: ComponentContent<Object>): void {
     if (id <= 0) {
-      console.warn('[ComponentContentRegistry] Ignoring invalid annotation ID:', id);
+      hilog.warn(DOMAIN, 'ComponentContentRegistry', '[ComponentContentRegistry] Ignoring invalid annotation ID: %{public}s', id);
       return;
     }
     this.contentMap.set(id, content);

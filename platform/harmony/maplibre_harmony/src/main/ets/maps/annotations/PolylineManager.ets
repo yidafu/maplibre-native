@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * PolylineManager - polyline manager.
  *
@@ -54,7 +56,7 @@ export class PolylineManager {
 
       return polyline;
     } catch (error) {
-      console.error(`[PolylineManager] Failed to add polyline: ${error}`);
+      hilog.error(DOMAIN, 'PolylineManager', '%{public}s', `[PolylineManager] Failed to add polyline: ${error}`);
       throw new Error(`Failed to add polyline: ${error}`);
     }
   }
@@ -86,7 +88,7 @@ export class PolylineManager {
 
       return polylines;
     } catch (error) {
-      console.error(`[PolylineManager] Failed to add polylines batch: ${error}`);
+      hilog.error(DOMAIN, 'PolylineManager', '%{public}s', `[PolylineManager] Failed to add polylines batch: ${error}`);
       throw new Error(`Failed to add polylines batch: ${error}`);
     }
   }
@@ -135,7 +137,7 @@ export class PolylineManager {
   public updatePolyline(polyline: Polyline): void {
     const id = polyline.getId();
     if (id === -1) {
-      console.warn('[PolylineManager] Cannot update polyline with id -1');
+      hilog.warn(DOMAIN, 'PolylineManager', '%{public}s', '[PolylineManager] Cannot update polyline with id -1');
       return;
     }
 

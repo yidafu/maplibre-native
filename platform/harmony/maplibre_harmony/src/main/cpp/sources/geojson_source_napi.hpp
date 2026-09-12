@@ -11,7 +11,7 @@
 #include <optional>
 #include <vector>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -98,15 +98,15 @@ public:
     
     // Constructor reference
     static napi_ref constructor;
+    static napi_env constructorEnv;
     
 private:
     std::string id;
     std::unique_ptr<mbgl::style::GeoJSONSource> source;
     bool ownsSource;  // Indicates whether this wrapper owns the source
     mapbox::base::WeakPtr<mbgl::style::Source> weakSource;  // WeakPtr used after ownership transfer
-    mbgl::style::GeoJSONSource* rawSourceFallback = nullptr; // Temporary raw pointer when WeakPtr creation fails
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

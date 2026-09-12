@@ -10,7 +10,7 @@
 #include <mbgl/util/client_options.hpp>
 #include <mbgl/util/string.hpp>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
@@ -709,5 +709,5 @@ napi_value OfflineManagerNAPI::RunPackDatabaseAutomatically(napi_env env, napi_c
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

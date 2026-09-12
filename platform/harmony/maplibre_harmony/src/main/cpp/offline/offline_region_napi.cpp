@@ -1,4 +1,5 @@
 #include "offline_region_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "offline_region_definition_napi.hpp"
 #include "offline_region_status_napi.hpp"
 #include "core/thread_safe_callback.hpp"
@@ -10,7 +11,7 @@
 
 #include <cstring>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 using Logger = mbgl::harmony::Logger;
@@ -38,6 +39,7 @@ std::shared_ptr<mbgl::harmony::ThreadSafeCallback> GetObserverMethodCallback(
 
 // Static constructor reference initialization
 napi_ref OfflineRegionNAPI::constructor_ = nullptr;
+napi_env OfflineRegionNAPI::constructor_Env = nullptr;
 
 // ========== Constructors and Destructors ==========
 
@@ -93,7 +95,7 @@ napi_value OfflineRegionNAPI::Init(napi_env env, napi_value exports) {
     }
     
     // Store constructor reference
-    status = napi_create_reference(env, cons, 1, &constructor_);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor_, constructor_Env);
     if (status != napi_ok) {
         Logger::error("OfflineRegionNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -625,4 +627,4 @@ mbgl::OfflineRegionMetadata OfflineRegionNAPI::ArrayBufferToMetadata(napi_env en
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

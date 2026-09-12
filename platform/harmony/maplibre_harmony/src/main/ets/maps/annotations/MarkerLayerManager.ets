@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * MarkerLayerManager - GeoJSON + SymbolLayer based marker manager.
  *
@@ -103,7 +105,7 @@ export class MarkerLayerManager {
    */
   public initialize(): void {
     if (this.initialized && this.source && this.layer) {
-      console.warn('[MarkerLayerManager] Already initialized with valid source/layer');
+      hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Already initialized with valid source/layer');
       return;
     }
 
@@ -119,7 +121,7 @@ export class MarkerLayerManager {
         // If they do not exist, the catch block will handle it
         style.removeLayer(MarkerLayerManager.LAYER_ID);
         style.removeSource(MarkerLayerManager.SOURCE_ID);
-        console.warn('[MarkerLayerManager] Removed existing source/layer before re-initialization');
+        hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Removed existing source/layer before re-initialization');
       } catch (e) {
         // Ignore missing-element errors during removal; this is expected
       }
@@ -149,7 +151,7 @@ export class MarkerLayerManager {
       if (sourceFromStyle) {
         this.source = sourceFromStyle;
       } else {
-        console.warn('[MarkerLayerManager] Warning: failed to get source from style; using original reference');
+        hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Warning: failed to get source from style; using original reference');
       }
 
       // Create a SymbolLayer configured for data-driven styling
@@ -178,13 +180,13 @@ export class MarkerLayerManager {
       if (layerFromStyle) {
         this.layer = layerFromStyle;
       } else {
-        console.warn('[MarkerLayerManager] Warning: failed to get layer from style; using original reference');
+        hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Warning: failed to get layer from style; using original reference');
         this.layer = tempLayer;
       }
 
       this.initialized = true;
     } catch (error) {
-      console.error(`[MarkerLayerManager] Failed to initialize: ${error}`);
+      hilog.error(DOMAIN, 'MarkerLayerManager', '%{public}s', `[MarkerLayerManager] Failed to initialize: ${error}`);
       this.initialized = false;
       this.source = null;
       this.layer = null;
@@ -240,7 +242,7 @@ export class MarkerLayerManager {
   public addMarker(marker: Marker, skipUpdate: boolean = false): number {
     // Ensure initialization and source/layer availability
     if (!this.initialized || !this.source || !this.layer) {
-      console.warn('[MarkerLayerManager] Re-initializing due to missing source/layer');
+      hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Re-initializing due to missing source/layer');
       this.initialized = false; // Reset flag to force re-initialization
       this.initialize();
     }
@@ -267,7 +269,7 @@ export class MarkerLayerManager {
   public addMarkers(markers: Marker[]): number[] {
     // Ensure initialization and source/layer availability
     if (!this.initialized || !this.source || !this.layer) {
-      console.warn('[MarkerLayerManager] Re-initializing due to missing source/layer');
+      hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Re-initializing due to missing source/layer');
       this.initialized = false; // Reset flag to force re-initialization
       this.initialize();
     }
@@ -314,7 +316,7 @@ export class MarkerLayerManager {
   public updateMarker(marker: Marker): void {
     const featureId = marker.getId();
     if (featureId === 0 || !this.features.has(featureId)) {
-      console.error(`[MarkerLayerManager] Marker not found: id=${featureId}`);
+      hilog.error(DOMAIN, 'MarkerLayerManager', '%{public}s', `[MarkerLayerManager] Marker not found: id=${featureId}`);
       return;
     }
 
@@ -333,7 +335,7 @@ export class MarkerLayerManager {
    */
   public updateMarkerById(featureId: number, marker: Marker): void {
     if (!this.features.has(featureId)) {
-      console.error(`Marker feature ${featureId} not found`);
+      hilog.error(DOMAIN, 'MarkerLayerManager', '%{public}s', `Marker feature ${featureId} not found`);
       return;
     }
 
@@ -466,7 +468,7 @@ export class MarkerLayerManager {
    */
   private performUpdate(): void {
     if (!this.source) {
-      console.error('[MarkerLayerManager] Source not initialized, resetting initialized flag');
+      hilog.error(DOMAIN, 'MarkerLayerManager', '%{public}s', '[MarkerLayerManager] Source not initialized, resetting initialized flag');
       this.initialized = false;
       return;
     }
@@ -484,7 +486,7 @@ export class MarkerLayerManager {
 
       // Warn when using the default icon
       if (firstFeature.properties.icon === IconFactory.DEFAULT_MARKER_ICON_ID) {
-        console.warn(`[MarkerLayerManager] Warning: using default icon ID ${IconFactory.DEFAULT_MARKER_ICON_ID}. Ensure it is loaded in the style.`);
+        hilog.warn(DOMAIN, 'MarkerLayerManager', '%{public}s', `[MarkerLayerManager] Warning: using default icon ID ${IconFactory.DEFAULT_MARKER_ICON_ID}. Ensure it is loaded in the style.`);
       }
     }
 
@@ -504,7 +506,7 @@ export class MarkerLayerManager {
 
       const updateTime = Date.now() - updateStartTime;
     } catch (error) {
-      console.error(`[MarkerLayerManager] Failed to update source: ${error}`);
+      hilog.error(DOMAIN, 'MarkerLayerManager', '%{public}s', `[MarkerLayerManager] Failed to update source: ${error}`);
     }
   }
 
@@ -564,7 +566,7 @@ export class MarkerLayerManager {
       this.features.clear();
       this.initialized = false;
     } catch (error) {
-      console.error(`Failed to destroy MarkerLayerManager: ${error}`);
+      hilog.error(DOMAIN, 'MarkerLayerManager', '%{public}s', `Failed to destroy MarkerLayerManager: ${error}`);
     }
   }
 }

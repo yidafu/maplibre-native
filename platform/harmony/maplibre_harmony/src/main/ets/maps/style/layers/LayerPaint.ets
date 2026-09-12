@@ -599,4 +599,3 @@ export interface ColorReliefPaint {
    */
   'color-relief-opacity'?: DataDrivenProperty<number>;
 }
-

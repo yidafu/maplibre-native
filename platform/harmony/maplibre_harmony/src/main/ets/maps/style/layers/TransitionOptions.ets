@@ -48,4 +48,3 @@ export class TransitionOptions implements ITransitionOptions {
     return new TransitionOptions(duration, delay);
   }
 }
-

@@ -117,4 +117,3 @@ export class GeoJsonOptionsBuilder {
     return this.options;
   }
 }
-

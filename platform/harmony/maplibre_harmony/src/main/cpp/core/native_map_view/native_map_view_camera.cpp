@@ -20,7 +20,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
-using maplibre::harmony::geojson::GeoJsonConverter;
+using mbgl::harmony::geojson::GeoJsonConverter;
 
 namespace mbgl {
 namespace harmony {

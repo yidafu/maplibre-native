@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../../constants/HiLogConstants';
 /**
  * Expression - core MapLibre expression class.
  *
@@ -1837,7 +1839,7 @@ export class Expression<T = Object> {
       const json: Object = JSON.parse(jsonString);
       return Expression.convertFromJson(json);
     } catch (e) {
-      console.error(`Failed to parse Expression from JSON: ${e}`);
+      hilog.error(DOMAIN, 'Expression', '%{public}s', `Failed to parse Expression from JSON: ${e}`);
       return null;
     }
   }

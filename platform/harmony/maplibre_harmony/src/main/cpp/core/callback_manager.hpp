@@ -102,6 +102,18 @@ public:
         const std::string& name,
         ThreadSafeCallback::DataBuilder builder
     );
+
+    /**
+     * Invoke a callback with multiple arguments from any thread.
+     *
+     * @param name Callback name
+     * @param builder Multi-argument data builder executed on the UI thread
+     * @return True if dispatch succeeded
+     */
+    bool InvokeCallbackMulti(
+        const std::string& name,
+        ThreadSafeCallback::MultiArgBuilder builder
+    );
     
     /**
      * Convenience: invoke a callback without arguments.

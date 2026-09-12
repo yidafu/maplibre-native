@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import image from '@ohos.multimedia.image';
 import resourceManager from '@ohos.resourceManager';
 import fs from '@ohos.file.fs';
@@ -258,7 +260,7 @@ export class IconFactory {
     if (!this.resourceMgr) {
       const error = '[IconFactory] ResourceManager not set. ' +
         'Call setResourceManager() first or pass it to getInstance()';
-      console.error(error);
+      hilog.error(DOMAIN, 'IconFactory', '%{public}s', error);
       throw new Error(error);
     }
 
@@ -268,7 +270,7 @@ export class IconFactory {
         this.resourceMgr, fileName, iconId, this.pixelRatio);
       return Icon.fromNative(nativeIcon);
     } catch (nativeError) {
-      console.error(`[IconFactory] Native rawfile decoding failed, falling back to ArkTS: ${nativeError}`);
+      hilog.error(DOMAIN, 'IconFactory', '%{public}s', `[IconFactory] Native rawfile decoding failed, falling back to ArkTS: ${nativeError}`);
     }
 
     // Fallback: read + decode in ArkTS
@@ -280,8 +282,8 @@ export class IconFactory {
       return await this.createIconFromDataInArkTS(uint8Array, iconId);
     } catch (error) {
       const errorMsg = `[IconFactory] Failed to load icon from rawfile '${fileName}': ${error}`;
-      console.error(errorMsg);
-      console.error('[IconFactory] Error stack:', error?.stack);
+      hilog.error(DOMAIN, 'IconFactory', '%{public}s', errorMsg);
+      hilog.error(DOMAIN, 'IconFactory', '[IconFactory] Error stack: %{public}s', error?.stack);
       throw new Error(errorMsg);
     }
   }
@@ -329,11 +331,11 @@ export class IconFactory {
           );
           return this.defaultMarkerIcon;
         } catch (rawfileError) {
-          console.error('[IconFactory] Failed to load default icon from rawfile:', rawfileError);
-          console.error('[IconFactory] Error details:', JSON.stringify(rawfileError));
+          hilog.error(DOMAIN, 'IconFactory', '[IconFactory] Failed to load default icon from rawfile: %{public}s', rawfileError);
+          hilog.error(DOMAIN, 'IconFactory', '[IconFactory] Error details: %{public}s', JSON.stringify(rawfileError));
         }
       } else {
-        console.warn('[IconFactory] ResourceManager is null, skipping rawfile loading');
+        hilog.warn(DOMAIN, 'IconFactory', '%{public}s', '[IconFactory] ResourceManager is null, skipping rawfile loading');
       }
 
       // Strategy 2: generate a procedural red pin icon via the C++ layer
@@ -345,7 +347,7 @@ export class IconFactory {
         this.defaultMarkerIcon = Icon.fromNative(nativeIcon);
         return this.defaultMarkerIcon;
       } catch (cppError) {
-        console.error('[IconFactory] C++ createDefaultMarker failed:', cppError);
+        hilog.error(DOMAIN, 'IconFactory', '[IconFactory] C++ createDefaultMarker failed: %{public}s', cppError);
       }
 
       // Strategy 3: procedural ETS fallback (last resort)
@@ -389,7 +391,7 @@ export class IconFactory {
       const nativeIcon = maplibre.IconFactory.fromResourceData(data, iconId, this.pixelRatio);
       return Icon.fromNative(nativeIcon);
     } catch (error) {
-      console.error(`[IconFactory] Native image decoding failed, falling back to ArkTS: ${error}`);
+      hilog.error(DOMAIN, 'IconFactory', '%{public}s', `[IconFactory] Native image decoding failed, falling back to ArkTS: ${error}`);
       return null;
     }
   }
@@ -406,7 +408,7 @@ export class IconFactory {
       const nativeIcon = maplibre.IconFactory.fromFilePath(absolutePath, undefined, this.pixelRatio);
       return Icon.fromNative(nativeIcon);
     } catch (error) {
-      console.error(`[IconFactory] Native file decoding failed, falling back to ArkTS: ${error}`);
+      hilog.error(DOMAIN, 'IconFactory', '%{public}s', `[IconFactory] Native file decoding failed, falling back to ArkTS: ${error}`);
       return null;
     }
   }

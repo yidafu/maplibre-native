@@ -1,4 +1,5 @@
 #include "style_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
@@ -21,11 +22,12 @@
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // Static member initialization
 napi_ref StyleNAPI::constructor = nullptr;
+napi_env StyleNAPI::constructorEnv = nullptr;
 
 StyleNAPI::StyleNAPI(mbgl::Map *map) : map(map), fullyLoaded(false) {
     // Resolve the liveness token + render-thread dispatcher published by
@@ -152,7 +154,7 @@ napi_value StyleNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("StyleNAPI", "Style class defined successfully");
 
     // Create the constructor reference
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("StyleNAPI", "Failed to create constructor reference, status=%d", status);
         return nullptr;
@@ -581,4 +583,4 @@ napi_value StyleNAPI::AddSource(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

@@ -1,4 +1,5 @@
 #include "geojson_source_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
@@ -14,12 +15,13 @@
 
 #include <mutex>
 #include <sstream>
+#include "napi/core/napi_wrap_instance.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
-using namespace maplibre::harmony::geojson;
+using namespace mbgl::harmony::geojson;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 namespace {
@@ -42,6 +44,7 @@ std::unique_ptr<mbgl::style::expression::Expression> convertClusterExpression(
 
 // Static member initialization
 napi_ref GeoJsonSourceNAPI::constructor = nullptr;
+napi_env GeoJsonSourceNAPI::constructorEnv = nullptr;
 
 namespace {
 // Renderer query hooks + their owner. All access happens on the JS thread,
@@ -53,12 +56,12 @@ void* s_hooksOwner = nullptr;
 } // anonymous namespace
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(const std::string& id, std::unique_ptr<mbgl::style::GeoJSONSource> source)
-    : id(id), source(std::move(source)), ownsSource(true), rawSourceFallback(nullptr) {
+    : id(id), source(std::move(source)), ownsSource(true) {
     Logger::info("GeoJsonSourceNAPI", "GeoJsonSource instance created: %s", id.c_str());
 }
 
 GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
-    : ownsSource(false), rawSourceFallback(nullptr) {
+    : ownsSource(false) {
     if (sourcePtr) {
         id = sourcePtr->getID();
         auto weak = sourcePtr->makeWeakPtr();
@@ -66,8 +69,9 @@ GeoJsonSourceNAPI::GeoJsonSourceNAPI(mbgl::style::GeoJSONSource* sourcePtr)
             weakSource = std::move(weak);
             Logger::info("GeoJsonSourceNAPI", "GeoJsonSource created from existing source (WeakPtr): %s", id.c_str());
         } else {
-            rawSourceFallback = sourcePtr;
-            Logger::warn("GeoJsonSourceNAPI", "GeoJsonSource created from existing source but WeakPtr initialization failed: %s", id.c_str());
+            // Do NOT keep the raw pointer: once the source is removed from the
+            // style it would dangle. getSource() returns nullptr instead.
+            Logger::error("GeoJsonSourceNAPI", "GeoJsonSource created from existing source but WeakPtr initialization failed; source access disabled: %s", id.c_str());
         }
     }
 }
@@ -79,7 +83,10 @@ mbgl::style::GeoJSONSource* GeoJsonSourceNAPI::getSource() const {
     if (weakSource) {
         return static_cast<mbgl::style::GeoJSONSource*>(weakSource.get());
     }
-    return rawSourceFallback;
+    // No owned source and no live weak reference: the source was removed from
+    // the style (or WeakPtr init failed). Returning nullptr is the only safe
+    // answer — a stale raw pointer would dangle.
+    return nullptr;
 }
 
 void GeoJsonSourceNAPI::attachToStyle(mbgl::style::GeoJSONSource* sourcePtr) {
@@ -91,11 +98,11 @@ void GeoJsonSourceNAPI::attachToStyle(mbgl::style::GeoJSONSource* sourcePtr) {
     auto weak = sourcePtr->makeWeakPtr();
     if (weak) {
         weakSource = std::move(weak);
-        rawSourceFallback = nullptr;
         Logger::info("GeoJsonSourceNAPI", "attachToStyle: WeakPtr initialized successfully for source %s", id.c_str());
     } else {
-        rawSourceFallback = sourcePtr;
-        Logger::warn("GeoJsonSourceNAPI", "attachToStyle: WeakPtr initialization failed, storing raw pointer temporarily for source %s", id.c_str());
+        // Do NOT keep the raw pointer: once the source is removed from the
+        // style it would dangle. getSource() returns nullptr instead.
+        Logger::error("GeoJsonSourceNAPI", "attachToStyle: WeakPtr initialization failed; source access disabled for %s", id.c_str());
     }
 }
 
@@ -174,7 +181,7 @@ napi_value GeoJsonSourceNAPI::Init(napi_env env, napi_value exports) {
     }
     
     // Create the constructor reference
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("GeoJsonSourceNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -420,70 +427,8 @@ napi_value GeoJsonSourceNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value GeoJsonSourceNAPI::CreateInstance(napi_env env, mbgl::style::GeoJSONSource* sourcePtr) {
-    if (!sourcePtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("GeoJsonSourceNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    GeoJsonSourceNAPI* napiObj = new GeoJsonSourceNAPI(sourcePtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("GeoJsonSourceNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "GeoJsonSource", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "GeoJsonSource",
+                                sourcePtr ? new GeoJsonSourceNAPI(sourcePtr) : nullptr);
 }
 
 // ==================== Getters ====================
@@ -731,6 +676,36 @@ napi_value GeoJsonSourceNAPI::QuerySourceFeatures(napi_env env, napi_callback_in
 
 // ==================== Clustering utilities ====================
 
+// Parse a cluster id given as a number or as a feature object carrying
+// "cluster_id" (shared by GetClusterChildren/Leaves/ExpansionZoom).
+static uint64_t ParseClusterId(napi_env env, napi_value value) {
+    uint64_t clusterId = 0;
+    if (IsNumber(env, value)) {
+        double number = 0;
+        napi_get_value_double(env, value, &number);
+        clusterId = static_cast<uint64_t>(number);
+    } else if (IsObject(env, value)) {
+        auto feature = GeoJsonConverter::JsObjectToFeature(env, value);
+        if (feature.properties.count("cluster_id")) {
+            auto& idValue = feature.properties["cluster_id"];
+            if (idValue.is<double>()) {
+                clusterId = static_cast<uint64_t>(idValue.get<double>());
+            } else if (idValue.is<uint64_t>()) {
+                clusterId = idValue.get<uint64_t>();
+            }
+        }
+    }
+    return clusterId;
+}
+
+// Build the synthetic feature that carries the cluster id into the
+// supercluster extension query.
+static mbgl::Feature MakeClusterFeature(uint64_t clusterId) {
+    mbgl::Feature feature;
+    feature.properties["cluster_id"] = clusterId;
+    return feature;
+}
+
 napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_info info) {
     napi_value jsThis;
     size_t argc = 1;
@@ -769,27 +744,10 @@ napi_value GeoJsonSourceNAPI::GetClusterChildren(napi_env env, napi_callback_inf
             return result;
         }
         
-        // Parse clusterId
-        uint64_t clusterId = 0;
-        if (IsNumber(env, args[0])) {
-            double value = 0;
-            napi_get_value_double(env, args[0], &value);
-            clusterId = static_cast<uint64_t>(value);
-        } else if (IsObject(env, args[0])) {
-            auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
-            if (feature.properties.count("cluster_id")) {
-                auto& idValue = feature.properties["cluster_id"];
-                if (idValue.is<double>()) {
-                    clusterId = static_cast<uint64_t>(idValue.get<double>());
-                } else if (idValue.is<uint64_t>()) {
-                    clusterId = idValue.get<uint64_t>();
-                }
-            }
-        }
+        // Parse clusterId (number or feature object carrying "cluster_id")
+        uint64_t clusterId = ParseClusterId(env, args[0]);
         
-        // Build a Feature with cluster_id property
-        mbgl::Feature clusterFeature;
-        clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
+        mbgl::Feature clusterFeature = MakeClusterFeature(clusterId);
         
         // Query the extension
         auto extResult = queryFeatureExtensionsFn()(
@@ -860,23 +818,8 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
             return result;
         }
         
-        // Parse clusterId
-        uint64_t clusterId = 0;
-        if (IsNumber(env, args[0])) {
-            double value = 0;
-            napi_get_value_double(env, args[0], &value);
-            clusterId = static_cast<uint64_t>(value);
-        } else if (IsObject(env, args[0])) {
-            auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
-            if (feature.properties.count("cluster_id")) {
-                auto& idValue = feature.properties["cluster_id"];
-                if (idValue.is<double>()) {
-                    clusterId = static_cast<uint64_t>(idValue.get<double>());
-                } else if (idValue.is<uint64_t>()) {
-                    clusterId = idValue.get<uint64_t>();
-                }
-            }
-        }
+        // Parse clusterId (number or feature object carrying "cluster_id")
+        uint64_t clusterId = ParseClusterId(env, args[0]);
         
         // Parse limit and offset
         double limitValue = 10, offsetValue = 0;
@@ -886,9 +829,7 @@ napi_value GeoJsonSourceNAPI::GetClusterLeaves(napi_env env, napi_callback_info 
         uint64_t limit = static_cast<uint64_t>(limitValue);
         uint64_t offset = static_cast<uint64_t>(offsetValue);
         
-        // Build a Feature with cluster_id property
-        mbgl::Feature clusterFeature;
-        clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
+        mbgl::Feature clusterFeature = MakeClusterFeature(clusterId);
         
         // Build args map (must use uint64_t for getProperty<uint64_t> in render_geojson_source.cpp)
         std::map<std::string, mbgl::Value> queryArgs;
@@ -956,27 +897,10 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
             return CreateDoubleValue(env, 0.0);
         }
         
-        // Parse clusterId
-        uint64_t clusterId = 0;
-        if (IsNumber(env, args[0])) {
-            double value = 0;
-            napi_get_value_double(env, args[0], &value);
-            clusterId = static_cast<uint64_t>(value);
-        } else if (IsObject(env, args[0])) {
-            auto feature = GeoJsonConverter::JsObjectToFeature(env, args[0]);
-            if (feature.properties.count("cluster_id")) {
-                auto& idValue = feature.properties["cluster_id"];
-                if (idValue.is<double>()) {
-                    clusterId = static_cast<uint64_t>(idValue.get<double>());
-                } else if (idValue.is<uint64_t>()) {
-                    clusterId = idValue.get<uint64_t>();
-                }
-            }
-        }
+        // Parse clusterId (number or feature object carrying "cluster_id")
+        uint64_t clusterId = ParseClusterId(env, args[0]);
         
-        // Build a Feature with cluster_id property
-        mbgl::Feature clusterFeature;
-        clusterFeature.properties["cluster_id"] = static_cast<uint64_t>(clusterId);
+        mbgl::Feature clusterFeature = MakeClusterFeature(clusterId);
         
         // Query the extension
         auto extResult = queryFeatureExtensionsFn()(
@@ -1017,5 +941,5 @@ napi_value GeoJsonSourceNAPI::GetClusterExpansionZoom(napi_env env, napi_callbac
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

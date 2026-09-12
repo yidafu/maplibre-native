@@ -25,4 +25,3 @@ export class PaintPropertyValue<T> extends PropertyValue<T> {
     return new PaintPropertyValue<T>(name, null, expression);
   }
 }
-

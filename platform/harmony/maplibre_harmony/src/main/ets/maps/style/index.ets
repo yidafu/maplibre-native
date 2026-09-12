@@ -5,8 +5,8 @@
 // Core style class (re-export NAPI type).
 export { Style } from './Style';
 
-// Style builder (mirrors Android Style.Builder).
-export { StyleBuilder } from './StyleBuilder';
+// StyleBuilder: the NAPI StyleBuilder re-exported by './Style' is the single
+// public builder (the former ETS StyleBuilder wrapper was dead code).
 
 // Sources.
 export * from './sources/index';

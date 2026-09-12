@@ -31,40 +31,39 @@ void NativeMapView::runOnRenderThread(std::function<void()>&& fn) {
     harmonyRenderer->runOnRenderThread(std::move(fn));
 }
 
-void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
-    if (isDestroying.load(std::memory_order_acquire)) return;
-
-    // ✅ Architecture fix: ensure callbacks execute on the render thread
-    if (!isOnRenderThread()) {
-        runOnRenderThread([this, mode]() {
-            if (isDestroying.load(std::memory_order_acquire)) return;
-            if (callbackManager_) {
-                bool animated = (mode == MapObserver::CameraChangeMode::Animated);
-                callbackManager_->InvokeCallback("onCameraWillChange", [animated](napi_env env) {
-                    napi_value argv[1];
-                    napi_get_boolean(env, animated, &argv[0]);
-                    return argv[0];
-                });
-            }
-        });
-        return;
-    }
-
-    // Notify listeners
-    if (callbackManager_) {
-        bool animated = (mode == MapObserver::CameraChangeMode::Animated);
-        callbackManager_->InvokeCallback("onCameraWillChange", [animated](napi_env env) {
+namespace {
+// One camera-change notification body shared by the on/off-render-thread
+// branches (the branch only decides where it runs).
+void notifyCameraChange(CallbackManager *callbacks, const char *event, bool animated) {
+    if (callbacks) {
+        callbacks->InvokeCallback(event, [animated](napi_env env) {
             napi_value argv[1];
             napi_get_boolean(env, animated, &argv[0]);
             return argv[0];
         });
     }
 }
+} // namespace
+
+void NativeMapView::onCameraWillChange(MapObserver::CameraChangeMode mode) {
+    if (isDestroying.load(std::memory_order_acquire)) return;
+
+    const bool animated = (mode == MapObserver::CameraChangeMode::Animated);
+    // Ensure the callback executes on the render thread
+    if (!isOnRenderThread()) {
+        runOnRenderThread([this, animated]() {
+            if (isDestroying.load(std::memory_order_acquire)) return;
+            notifyCameraChange(callbackManager_.get(), "onCameraWillChange", animated);
+        });
+        return;
+    }
+    notifyCameraChange(callbackManager_.get(), "onCameraWillChange", animated);
+}
 
 void NativeMapView::onCameraIsChanging() {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
-    // ✅ Architecture fix: ensure callbacks execute on the render thread
+    // Ensure the callback executes on the render thread
     if (!isOnRenderThread()) {
         runOnRenderThread([this]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
@@ -89,31 +88,16 @@ void NativeMapView::onCameraIsChanging() {
 void NativeMapView::onCameraDidChange(MapObserver::CameraChangeMode mode) {
     if (isDestroying.load(std::memory_order_acquire)) return;
 
-    // ✅ Architecture fix: ensure callbacks execute on the render thread
+    const bool animated = (mode == MapObserver::CameraChangeMode::Animated);
+    // Ensure the callback executes on the render thread
     if (!isOnRenderThread()) {
-        runOnRenderThread([this, mode]() {
+        runOnRenderThread([this, animated]() {
             if (isDestroying.load(std::memory_order_acquire)) return;
-            if (callbackManager_) {
-                bool animated = (mode == MapObserver::CameraChangeMode::Animated);
-                callbackManager_->InvokeCallback("onCameraDidChange", [animated](napi_env env) {
-                    napi_value argv[1];
-                    napi_get_boolean(env, animated, &argv[0]);
-                    return argv[0];
-                });
-            }
+            notifyCameraChange(callbackManager_.get(), "onCameraDidChange", animated);
         });
         return;
     }
-
-    // Notify listeners
-    if (callbackManager_) {
-        bool animated = (mode == MapObserver::CameraChangeMode::Animated);
-        callbackManager_->InvokeCallback("onCameraDidChange", [animated](napi_env env) {
-            napi_value argv[1];
-            napi_get_boolean(env, animated, &argv[0]);
-            return argv[0];
-        });
-    }
+    notifyCameraChange(callbackManager_.get(), "onCameraDidChange", animated);
 
     // Final camera state may differ from the last onCameraIsChanging sample.
     // Epsilon dedupe makes this a no-op when the frames did not move.
@@ -132,10 +116,12 @@ void NativeMapView::onWillStartLoadingMap() {
 }
 void NativeMapView::onDidFinishLoadingMap() {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     auto now = std::chrono::steady_clock::now();
-    static auto startTime = now;
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
+    if (loadLogStartTime_ == std::chrono::steady_clock::time_point{}) {
+        loadLogStartTime_ = now;
+    }
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - loadLogStartTime_).count();
     
     Logger::warn("NativeMapView", "🗺️ [%lld ms] onDidFinishLoadingMap", elapsed);
     
@@ -214,10 +200,7 @@ void NativeMapView::onDidFinishRenderingFrame(const MapObserver::RenderFrameStat
         // encodingTime and renderingTime are in seconds; convert them to milliseconds
         double encodingTime = stats.encodingTime * 1000.0;
         double renderingTime = stats.renderingTime * 1000.0;
-        
-        if (encodingTime > 0.0 || renderingTime > 0.0) {
-        }
-        
+
         // ThreadSafeCallback passes exactly one argument: the plain frame
         // listener receives `fully` (timings go through the WithStats variant
         // below, which passes a single stats object).
@@ -1360,95 +1343,70 @@ void NativeMapView::onShaderCompileFailed(mbgl::shaders::BuiltIn shader, mbgl::g
         int backendType = static_cast<int>(backend);
         std::string defines = source; // Copy to avoid dangling references
         
-        callbackManager_->InvokeCallback("onShaderCompileFailed", [shaderId, backendType, defines](napi_env env) {
-            napi_value argv[3];
+        callbackManager_->InvokeCallbackMulti("onShaderCompileFailed", [shaderId, backendType, defines](napi_env env) -> std::vector<napi_value> {
+            std::vector<napi_value> argv(3);
             napi_create_int32(env, shaderId, &argv[0]);
             napi_create_int32(env, backendType, &argv[1]);
             napi_create_string_utf8(env, defines.c_str(), defines.length(), &argv[2]);
-            return argv[0];
+            return argv;
         });
     }
 }
 
 // Glyph requests
+namespace {
+// The three glyph events are identical apart from the event name: a font
+// stack array plus the glyph range bounds (three JS arguments).
+void invokeGlyphEvent(const std::shared_ptr<mbgl::harmony::CallbackManager>& callbackManager,
+                      const char* event,
+                      const std::vector<std::string>& fontStack,
+                      int rangeStart, int rangeEnd) {
+    callbackManager->InvokeCallbackMulti(event, [fontStack, rangeStart, rangeEnd](napi_env env) -> std::vector<napi_value> {
+        std::vector<napi_value> argv(3);
+
+        // Create the font array
+        napi_create_array(env, &argv[0]);
+        for (size_t i = 0; i < fontStack.size(); i++) {
+            napi_value fontName;
+            napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
+            napi_set_element(env, argv[0], i, fontName);
+        }
+
+        napi_create_int32(env, rangeStart, &argv[1]);
+        napi_create_int32(env, rangeEnd, &argv[2]);
+        return argv;
+    });
+}
+} // anonymous namespace
+
 void NativeMapView::onGlyphsLoaded(const mbgl::FontStack& stack, const mbgl::GlyphRange& range) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_) {
         // Copy the data to avoid dangling references
-        std::vector<std::string> fontStack(stack.begin(), stack.end());
-        int rangeStart = range.first;
-        int rangeEnd = range.second;
-        
-        callbackManager_->InvokeCallback("onGlyphsLoaded", [fontStack, rangeStart, rangeEnd](napi_env env) {
-            napi_value argv[3];
-            
-            // Create the font array
-            napi_create_array(env, &argv[0]);
-            for (size_t i = 0; i < fontStack.size(); i++) {
-                napi_value fontName;
-                napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
-                napi_set_element(env, argv[0], i, fontName);
-            }
-            
-            napi_create_int32(env, rangeStart, &argv[1]);
-            napi_create_int32(env, rangeEnd, &argv[2]);
-            return argv[0];
-        });
+        invokeGlyphEvent(callbackManager_, "onGlyphsLoaded",
+                         std::vector<std::string>(stack.begin(), stack.end()),
+                         range.first, range.second);
     }
 }
 
 void NativeMapView::onGlyphsError(const mbgl::FontStack& stack, const mbgl::GlyphRange& range, std::exception_ptr) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_) {
-        // Copy the data to avoid dangling references
-        std::vector<std::string> fontStack(stack.begin(), stack.end());
-        int rangeStart = range.first;
-        int rangeEnd = range.second;
-        
-        callbackManager_->InvokeCallback("onGlyphsError", [fontStack, rangeStart, rangeEnd](napi_env env) {
-            napi_value argv[3];
-            
-            // Create the font array
-            napi_create_array(env, &argv[0]);
-            for (size_t i = 0; i < fontStack.size(); i++) {
-                napi_value fontName;
-                napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
-                napi_set_element(env, argv[0], i, fontName);
-            }
-            
-            napi_create_int32(env, rangeStart, &argv[1]);
-            napi_create_int32(env, rangeEnd, &argv[2]);
-            return argv[0];
-        });
+        invokeGlyphEvent(callbackManager_, "onGlyphsError",
+                         std::vector<std::string>(stack.begin(), stack.end()),
+                         range.first, range.second);
     }
 }
 
 void NativeMapView::onGlyphsRequested(const mbgl::FontStack& stack, const mbgl::GlyphRange& range) {
     if (isDestroying.load(std::memory_order_acquire)) return;
-    
+
     if (callbackManager_) {
-        // Copy the data to avoid dangling references
-        std::vector<std::string> fontStack(stack.begin(), stack.end());
-        int rangeStart = range.first;
-        int rangeEnd = range.second;
-        
-        callbackManager_->InvokeCallback("onGlyphsRequested", [fontStack, rangeStart, rangeEnd](napi_env env) {
-            napi_value argv[3];
-            
-            // Create the font array
-            napi_create_array(env, &argv[0]);
-            for (size_t i = 0; i < fontStack.size(); i++) {
-                napi_value fontName;
-                napi_create_string_utf8(env, fontStack[i].c_str(), NAPI_AUTO_LENGTH, &fontName);
-                napi_set_element(env, argv[0], i, fontName);
-            }
-            
-            napi_create_int32(env, rangeStart, &argv[1]);
-            napi_create_int32(env, rangeEnd, &argv[2]);
-            return argv[0];
-        });
+        invokeGlyphEvent(callbackManager_, "onGlyphsRequested",
+                         std::vector<std::string>(stack.begin(), stack.end()),
+                         range.first, range.second);
     }
 }
 

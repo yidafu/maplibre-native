@@ -1,4 +1,5 @@
 #include "image_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
@@ -7,13 +8,14 @@
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 
 using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
 napi_ref ImageNAPI::constructor = nullptr;
+napi_env ImageNAPI::constructorEnv = nullptr;
 
 ImageNAPI::ImageNAPI(
     std::string name,
@@ -71,7 +73,7 @@ napi_value ImageNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("ImageNAPI", "Failed to create reference to Image constructor");
         return nullptr;
@@ -571,5 +573,5 @@ ImageNAPI* ImageNAPI::Unwrap(napi_env env, napi_value value) {
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

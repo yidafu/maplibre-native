@@ -1,4 +1,5 @@
 #include "heatmap_layer_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
@@ -11,6 +12,7 @@
 #include <mbgl/style/color_ramp_property_value.hpp>
 #include <mbgl/style/conversion/color_ramp_property_value.hpp>
 #include <mbgl/util/color.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -20,6 +22,7 @@ using mbgl::harmony::Logger;
 
 // Static member initialization
 napi_ref HeatmapLayerNAPI::constructor = nullptr;
+napi_env HeatmapLayerNAPI::constructorEnv = nullptr;
 
 HeatmapLayerNAPI::HeatmapLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::HeatmapLayer>(layerId, sourceId)) {
@@ -89,7 +92,7 @@ napi_value HeatmapLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("HeatmapLayerNAPI", "Failed to create reference to HeatmapLayer constructor");
         return nullptr;
@@ -141,70 +144,8 @@ napi_value HeatmapLayerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value HeatmapLayerNAPI::CreateInstance(napi_env env, mbgl::style::HeatmapLayer* layerPtr) {
-    if (!layerPtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("HeatmapLayerNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    HeatmapLayerNAPI* napiObj = new HeatmapLayerNAPI(layerPtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("HeatmapLayerNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "HeatmapLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return WrapExistingInstance(env, constructor, Destructor, "HeatmapLayer",
+                                layerPtr ? new HeatmapLayerNAPI(layerPtr) : nullptr);
 }
 
 
@@ -466,264 +407,55 @@ napi_value HeatmapLayerNAPI::GetHeatmapOpacity(napi_env env, napi_callback_info 
 // ============================================================================
 
 napi_value HeatmapLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string id = layerObj->getLayer()->getID();
-    napi_value result;
-    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetId<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_string_utf8(env, "heatmap", NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetType(env, "heatmap");
 }
 
 napi_value HeatmapLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string sourceId = layerObj->getLayer()->getSourceID();
-    napi_value result;
-    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceId<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string visibility = args.GetString(0, "visibility");
-        if (visibility == "visible") {
-            layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-        } else if (visibility == "none") {
-            layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-        }
-    }
-    return thisVar;
+    return LayerSetVisibility<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-    
-    napi_value result;
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetVisibility<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) return thisVar;
-
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layer->setMinZoom(minZoom);
-    }
-    return thisVar;
+    return LayerSetMinZoom<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-    
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    float minZoom = layer->getMinZoom();
-    napi_value result;
-    napi_create_double(env, minZoom, &result);
-    return result;
+    return LayerGetMinZoom<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) return thisVar;
-
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layer->setMaxZoom(maxZoom);
-    }
-    return thisVar;
+    return LayerSetMaxZoom<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    float maxZoom = layer->getMaxZoom();
-    napi_value result;
-    napi_create_double(env, maxZoom, &result);
-    return result;
+    return LayerGetMaxZoom<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) return thisVar;
-
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layer->setSourceLayer(sourceLayer);
-    }
-    return thisVar;
+    return LayerSetSourceLayer<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-
-    std::string sourceLayer = layer->getSourceLayer();
-    napi_value result;
-    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceLayer<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || argc < 1) return thisVar;
-
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) return thisVar;
-    
-    auto filter = napiArrayToFilter(env, argv[0]);
-    if (filter) {
-        layer->setFilter(*filter);
-    }
-    return thisVar;
+    return LayerSetFilter<HeatmapLayerNAPI>(env, info);
 }
 
 napi_value HeatmapLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-
-    mbgl::style::HeatmapLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-
-    const auto& filter = layer->getFilter();
-    return filterToNapiArray(env, filter);
+    return LayerGetFilter<HeatmapLayerNAPI>(env, info);
 }
 
 // ==================== Generic Property Methods ====================

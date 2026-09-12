@@ -53,4 +53,3 @@ export type FilterExpression =
  * Union encompassing every expression, equivalent to ExpressionLiteral
  */
 export type MapLibreExpression = ExpressionLiteral;
-

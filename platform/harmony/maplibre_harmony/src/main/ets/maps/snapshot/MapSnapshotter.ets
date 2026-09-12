@@ -83,7 +83,7 @@ export interface SnapshotErrorHandler {
  *   }
  * }, {
  *   onError: (error) => {
- *     console.error(`Snapshot failed: ${error}`);
+ *     hilog.error(DOMAIN, 'MapSnapshotter', '%{public}s', `Snapshot failed: ${error}`);
  *   }
  * });
  * ```
@@ -487,7 +487,7 @@ export class MapSnapshotter {
    *     snapshotter.start({ onSnapshotReady: (snapshot) => { ... } });
    *   },
    *   onStyleImageMissing: (imageName) => {
-   *     console.log('Missing image:', imageName);
+   *     hilog.info(DOMAIN, 'Missing image:', '%{public}s', imageName);
    *   }
    * });
    * ```

@@ -3,7 +3,7 @@
 #include <napi/native_api.h>
 #include <mbgl/storage/offline.hpp>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -28,5 +28,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

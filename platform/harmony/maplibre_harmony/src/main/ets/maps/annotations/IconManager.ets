@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import { IconFactory } from './IconFactory';
 import { Icon } from './Icon';
 import maplibre, { NativeMapView } from 'libmaplibre.so';
@@ -133,7 +135,7 @@ export class IconManager {
 
       return icon;
     } catch (error) {
-      console.error('[IconManager] Failed to load icon for marker:', error);
+      hilog.error(DOMAIN, 'IconManager', '[IconManager] Failed to load icon for marker: %{public}s', error);
       throw new Error(`[IconManager] Failed to load icon for marker: ${error}`);
     }
   }
@@ -249,7 +251,7 @@ export class IconManager {
     // Ensure the icon exists and has not been released
     if (icon && icon.isReleased()) {
       // If the icon was released, remove it from the reuse map and return null
-      console.warn(`[IconManager] Reusable icon '${reuseIdentifier}' was released, removing from reuse map`);
+      hilog.warn(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Reusable icon '${reuseIdentifier}' was released, removing from reuse map`);
       this.reuseIdentifierMap.delete(reuseIdentifier);
       return null;
     }
@@ -298,7 +300,7 @@ export class IconManager {
 
       return icon;
     } catch (error) {
-      console.error('[IconManager] Failed to get or load icon:', error);
+      hilog.error(DOMAIN, 'IconManager', '[IconManager] Failed to get or load icon: %{public}s', error);
       throw new Error('Failed to get or load icon: ' + error);
     }
   }
@@ -329,7 +331,7 @@ export class IconManager {
       this.updateHighestIconSize(newIcon);
 
     } catch (error) {
-      console.error('[IconManager] Failed to update marker icon:', error);
+      hilog.error(DOMAIN, 'IconManager', '[IconManager] Failed to update marker icon: %{public}s', error);
       throw new Error('Failed to update marker icon: ' + error);
     }
   }
@@ -374,7 +376,7 @@ export class IconManager {
 
     } catch (error) {
       const iconId = icon.getId();
-      console.error(`[IconManager] Failed to load icon '${iconId}' to native:`, error);
+      hilog.error(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to load icon '${iconId}' to native: ${error}`);
       throw new Error(`[IconManager] Failed to load icon '${iconId}' to native: ${error}`);
     }
   }
@@ -413,7 +415,7 @@ export class IconManager {
     const cached = this.iconMap.get(iconId);
 
     if (!cached) {
-      console.warn(`[IconManager] Icon '${iconId}' not found in cache, cannot cleanup`);
+      hilog.warn(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Icon '${iconId}' not found in cache, cannot cleanup`);
       return;
     }
 
@@ -454,7 +456,7 @@ export class IconManager {
         icon.release();
       }
     } catch (error) {
-      console.error(`[IconManager] Failed to remove icon '${iconId}':`, error);
+      hilog.error(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to remove icon '${iconId}': ${error}`);
     }
   }
 
@@ -473,7 +475,7 @@ export class IconManager {
         await this.loadIconToNative(cached.icon);
         successCount++;
       } catch (error) {
-        console.error(`[IconManager] Failed to reload icon ${cached.icon.getId()}:`, error);
+        hilog.error(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to reload icon ${cached.icon.getId()}: ${error}`);
         failCount++;
       }
     }
@@ -518,7 +520,7 @@ export class IconManager {
       const topOffset: number = this.nativeMapView.getTopOffsetPixelsForAnnotationSymbol(icon.getId());
       return topOffset * pixelRatio;
     } catch (error) {
-      console.warn(`[IconManager] Failed to get top offset for icon ${icon.getId()}:`, error);
+      hilog.warn(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to get top offset for icon ${icon.getId()}: ${error}`);
       return 0;
     }
   }
@@ -649,7 +651,7 @@ export class IconManager {
 
         successCount++;
       } catch (error) {
-        console.error(`[IconManager] Failed to cleanup icon '${iconId}':`, error);
+        hilog.error(DOMAIN, 'IconManager', '%{public}s', `[IconManager] Failed to cleanup icon '${iconId}': ${error}`);
         failCount++;
       }
     });

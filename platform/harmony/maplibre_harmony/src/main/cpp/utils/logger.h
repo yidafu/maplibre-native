@@ -11,8 +11,7 @@ namespace mbgl {
 namespace harmony {
 
 // Log domain for MapLibre
-// 注意：此处为 0x0000；自定义域 0xFF00 (65280) 定义在 core/common.hpp。
-// 在 DevEco Studio 日志窗口按需设置域过滤器（0xFF00 或 All）。
+// 在 DevEco Studio 日志窗口按需设置域过滤器（0x0000 或 All）。
 constexpr unsigned int LOG_PRINT_DOMAIN = 0x0000;
 
 /**

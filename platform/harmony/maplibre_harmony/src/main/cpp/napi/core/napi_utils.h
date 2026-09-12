@@ -17,13 +17,13 @@
 namespace mbgl {
 namespace harmony {
 namespace napi {
-    // 旧版本：保留用于兼容性
+    // Parses the surface id argument of an init/create callback.
     int64_t ParseSurfaceId(napi_env env, napi_callback_info info);
-    
-    // 新版本：使用 NapiArgs（推荐使用）
-    int64_t ParseSurfaceIdV2(napi_env env, napi_callback_info info);
 
-    // NAPI工具函数
+    // NAPI value-level converters. These complement NapiArgs (argument-stream
+// parsing) for values obtained outside the argument list - named properties,
+// array elements, callback payloads. They are not legacy code scheduled for
+// removal.
     
     /**
      * 从NAPI值获取字符串

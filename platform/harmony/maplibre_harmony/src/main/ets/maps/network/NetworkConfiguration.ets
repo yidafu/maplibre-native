@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * NetworkConfiguration - network configuration manager.
  *
@@ -118,7 +120,7 @@ export class NetworkConfiguration {
 
     // Prevent overriding reserved headers
     if (key.toLowerCase() === 'user-agent') {
-      console.warn('NetworkConfiguration: Cannot override User-Agent header');
+      hilog.warn(DOMAIN, 'NetworkConfiguration', '%{public}s', 'NetworkConfiguration: Cannot override User-Agent header');
       return;
     }
 
@@ -135,7 +137,7 @@ export class NetworkConfiguration {
    * @example
    * ```typescript
    * const removed = NetworkConfiguration.removeCustomHttpHeader('X-Custom-Header');
-   * console.log('Header removed:', removed);
+   * hilog.info(DOMAIN, 'Header removed:', '%{public}s', removed);
    * ```
    */
   static removeCustomHttpHeader(key: string): boolean {
@@ -170,7 +172,7 @@ export class NetworkConfiguration {
    * @example
    * ```typescript
    * const headers = NetworkConfiguration.getCustomHttpHeaders();
-   * console.log('Current headers:', headers);
+   * hilog.info(DOMAIN, 'Current headers:', '%{public}s', headers);
    * ```
    */
   static getCustomHttpHeaders(): HttpHeaders {

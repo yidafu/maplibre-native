@@ -352,7 +352,7 @@ export class NativeMapViewController extends XComponentController implements Nat
    * Surface change callback
    */
   onSurfaceChanged(surfaceId: string, rect: SurfaceRect): void {
-    console.info(`[NativeMapView] onSurfaceChanged called: ${rect.surfaceWidth}x${rect.surfaceHeight}`);
+    hilog.info(DOMAIN, 'NativeMapViewController', '%{public}s', `[NativeMapView] onSurfaceChanged called: ${rect.surfaceWidth}x${rect.surfaceHeight}`);
 
     // Guard against abnormally small sizes (potential setXComponentSurfaceRect side effect)
     if (rect.surfaceWidth < 100 || rect.surfaceHeight < 100) {
@@ -856,7 +856,7 @@ export class NativeMapViewController extends XComponentController implements Nat
         
         // ⚠️ Important: sync current view size immediately (onSurfaceChanged may fire before MapLibreMap exists)
         if (this.surfaceWidth > 0 && this.surfaceHeight > 0) {
-          console.info(`[NativeMapView] Syncing view size to MapLibreMap: ${this.surfaceWidth}x${this.surfaceHeight}`);
+          hilog.info(DOMAIN, 'NativeMapViewController', '%{public}s', `[NativeMapView] Syncing view size to MapLibreMap: ${this.surfaceWidth}x${this.surfaceHeight}`);
           this.mapLibreMapInstance.resizeView(this.surfaceWidth, this.surfaceHeight);
         }
         
@@ -996,19 +996,19 @@ export class NativeMapViewController extends XComponentController implements Nat
   private viewAnnotationRenderCallback?: (states: ViewAnnotationRenderState[]) => void;
 
   setViewAnnotationRenderCallback(callback: (states: ViewAnnotationRenderState[]) => void): void {
-    console.info('[NativeMapViewController] setViewAnnotationRenderCallback: register callback');
+    hilog.info(DOMAIN, 'NativeMapViewController', '%{public}s', '[NativeMapViewController] setViewAnnotationRenderCallback: register callback');
     this.viewAnnotationRenderCallback = callback;
     if (this.mapLibreMapInstance) {
-      console.info('[NativeMapViewController] setViewAnnotationRenderCallback: forwarding to MapLibreMap');
+      hilog.info(DOMAIN, 'NativeMapViewController', '%{public}s', '[NativeMapViewController] setViewAnnotationRenderCallback: forwarding to MapLibreMap');
       this.mapLibreMapInstance.setViewAnnotationRenderCallback(callback);
     }
   }
 
   clearViewAnnotationRenderCallback(): void {
-    console.info('[NativeMapViewController] clearViewAnnotationRenderCallback: clear callback');
+    hilog.info(DOMAIN, 'NativeMapViewController', '%{public}s', '[NativeMapViewController] clearViewAnnotationRenderCallback: clear callback');
     this.viewAnnotationRenderCallback = undefined;
     if (this.mapLibreMapInstance) {
-      console.info('[NativeMapViewController] clearViewAnnotationRenderCallback: forwarding clear to MapLibreMap');
+      hilog.info(DOMAIN, 'NativeMapViewController', '%{public}s', '[NativeMapViewController] clearViewAnnotationRenderCallback: forwarding clear to MapLibreMap');
       this.mapLibreMapInstance.setViewAnnotationRenderCallback(null);
     }
   }
@@ -1286,7 +1286,8 @@ export class NativeMapViewController extends XComponentController implements Nat
   // ========== Rendering control ==========
 
   /**
-   * Queue a task on the rendering thread (Android queueEvent parity)
+   * Queue a task to run on the next UI event loop tick (Android queueEvent parity).
+   * Note: unlike Android, the task runs on the UI thread — not the render thread.
    * @param runnable Task to execute
    */
   queueEvent(runnable: () => void): void {
@@ -1295,9 +1296,8 @@ export class NativeMapViewController extends XComponentController implements Nat
       return;
     }
 
-    // Execute task via rendering thread queue
-    // Use setTimeout(0) to run on next event loop tick
-    // Avoids modifying state during active rendering
+    // setTimeout(0) defers to the next event loop tick, avoiding state
+    // mutation while a render pass is in flight on the UI thread.
     setTimeout(() => {
       try {
         runnable();

@@ -10,6 +10,7 @@
  */
 
 import maplibre from 'libmaplibre.so';
+import { BaseLayer, LayerInternalTag, resolveLayerNative } from './BaseLayer';
 
 /**
  * Line draw options
@@ -47,28 +48,15 @@ export interface DrawableFillOptions {
   opacity?: number;
 }
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
 /**
  * CustomDrawableLayer implementation
  */
-export class CustomDrawableLayer {
+export class CustomDrawableLayer extends BaseLayer<maplibre.CustomDrawableLayer, CustomDrawableLayer> {
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'CustomDrawableLayer';
-  private nativeInstance: maplibre.CustomDrawableLayer;
 
-  constructor(idOrMarker: string | InternalMarker, nativeOrNothing?: maplibre.CustomDrawableLayer) {
-    if (idOrMarker === InternalMarker.INSTANCE && nativeOrNothing instanceof Object) {
-      this.nativeInstance = nativeOrNothing;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.CustomDrawableLayer(idOrMarker);
-    } else {
-      throw new Error('Invalid CustomDrawableLayer constructor arguments');
-    }
+  constructor(idOrMarker: string | LayerInternalTag, nativeOrNothing?: maplibre.CustomDrawableLayer) {
+    super(resolveLayerNative(idOrMarker, "", nativeOrNothing, (id) => new maplibre.CustomDrawableLayer(id), "CustomDrawableLayer"));
   }
 
   static create(id: string): CustomDrawableLayer {
@@ -76,46 +64,7 @@ export class CustomDrawableLayer {
   }
 
   static fromNative(nativeInstance: maplibre.CustomDrawableLayer): CustomDrawableLayer {
-    return new CustomDrawableLayer(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  getNative(): maplibre.CustomDrawableLayer {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
-  }
-
-  getType(): string {
-    return this.nativeInstance.getType();
-  }
-
-  setVisibility(visibility: 'visible' | 'none'): CustomDrawableLayer {
-    this.nativeInstance.setVisibility(visibility);
-    return this;
-  }
-
-  getVisibility(): 'visible' | 'none' {
-    return this.nativeInstance.getVisibility() as 'visible' | 'none';
-  }
-
-  setMinZoom(minZoom: number): CustomDrawableLayer {
-    this.nativeInstance.setMinZoom(minZoom);
-    return this;
-  }
-
-  getMinZoom(): number {
-    return this.nativeInstance.getMinZoom();
-  }
-
-  setMaxZoom(maxZoom: number): CustomDrawableLayer {
-    this.nativeInstance.setMaxZoom(maxZoom);
-    return this;
-  }
-
-  getMaxZoom(): number {
-    return this.nativeInstance.getMaxZoom();
+    return new CustomDrawableLayer(LayerInternalTag.INSTANCE, nativeInstance);
   }
 
   /**

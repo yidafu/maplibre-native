@@ -25,7 +25,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
-using maplibre::harmony::ImageNAPI;
+using mbgl::harmony::ImageNAPI;
 
 namespace mbgl {
 namespace harmony {
@@ -442,14 +442,14 @@ napi_value NativeMapView::ensureStyleWrapper(napi_env env, NativeMapView* instan
         instance->styleRef_ = nullptr;
     }
 
-    if (maplibre::harmony::StyleNAPI::constructor == nullptr) {
+    if (mbgl::harmony::StyleNAPI::constructor == nullptr) {
         Logger::error("NativeMapView", "ensureStyleWrapper: StyleNAPI::constructor is nullptr");
         return nullptr;
     }
 
     napi_value constructor;
     napi_status status =
-        napi_get_reference_value(env, maplibre::harmony::StyleNAPI::constructor, &constructor);
+        napi_get_reference_value(env, mbgl::harmony::StyleNAPI::constructor, &constructor);
     if (status != napi_ok) {
         Logger::error("NativeMapView", "ensureStyleWrapper: Failed to get Style constructor reference, status=%d",
                       status);

@@ -25,4 +25,3 @@ export class LayoutPropertyValue<T> extends PropertyValue<T> {
     return new LayoutPropertyValue<T>(name, null, expression);
   }
 }
-

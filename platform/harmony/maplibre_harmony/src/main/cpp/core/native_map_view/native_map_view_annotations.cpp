@@ -26,11 +26,11 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
-using maplibre::harmony::MarkerNAPI;
-using maplibre::harmony::PolylineNAPI;
-using maplibre::harmony::PolygonNAPI;
-using maplibre::harmony::StyleNAPI;
-using maplibre::harmony::IconNAPI;
+using mbgl::harmony::MarkerNAPI;
+using mbgl::harmony::PolylineNAPI;
+using mbgl::harmony::PolygonNAPI;
+using mbgl::harmony::StyleNAPI;
+using mbgl::harmony::IconNAPI;
 
 namespace mbgl {
 namespace harmony {
@@ -493,7 +493,7 @@ napi_value NativeMapView::updateMarker(napi_env env, napi_callback_info info) {
     }
     
     // Unwrap the Marker NAPI object
-    maplibre::harmony::MarkerNAPI* marker = nullptr;
+    mbgl::harmony::MarkerNAPI* marker = nullptr;
     if (napi_unwrap(env, args[0], reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
         Logger::error("NativeMapView", "updateMarker: Failed to unwrap Marker object");
         return undefined;
@@ -575,7 +575,7 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
     // Parse all markers on this (JS) thread first...
     struct PendingMarker {
         mbgl::SymbolAnnotation annotation;
-        maplibre::harmony::MarkerNAPI* marker;
+        mbgl::harmony::MarkerNAPI* marker;
     };
     std::vector<PendingMarker> pending;
     pending.reserve(length);
@@ -589,7 +589,7 @@ napi_value NativeMapView::addMarkers(napi_env env, napi_callback_info info) {
         }
 
         // Unwrap the MarkerNAPI object
-        maplibre::harmony::MarkerNAPI* marker = nullptr;
+        mbgl::harmony::MarkerNAPI* marker = nullptr;
         if (napi_unwrap(env, markerObj, reinterpret_cast<void**>(&marker)) != napi_ok || !marker) {
             Logger::error("NativeMapView", "addMarkers: Failed to unwrap Marker at index %u", i);
             continue;

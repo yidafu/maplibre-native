@@ -1,4 +1,5 @@
 #include "style_builder_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_utils.h"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
@@ -9,11 +10,12 @@ using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // Static member initialization
 napi_ref StyleBuilderNAPI::constructor = nullptr;
+napi_env StyleBuilderNAPI::constructorEnv = nullptr;
 
 StyleBuilderNAPI::StyleBuilderNAPI()
     : styleUri(""), styleJson("") {
@@ -52,7 +54,7 @@ napi_value StyleBuilderNAPI::Init(napi_env env, napi_value exports) {
     }
     
     // Create constructor reference
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("StyleBuilderNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -450,5 +452,5 @@ napi_value StyleBuilderNAPI::WithTransitionOptions(napi_env env, napi_callback_i
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

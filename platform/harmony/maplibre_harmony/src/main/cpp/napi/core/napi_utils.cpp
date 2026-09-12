@@ -33,18 +33,6 @@ namespace napi {
         }
         return value;
     }
-
-    // New version: uses NapiArgs (preferred)
-    int64_t ParseSurfaceIdV2(napi_env env, napi_callback_info info) {
-        NapiArgs args(env, info);
-        args.RequireMinArgs(1);
-        if (args.HasError()) return -1;
-        
-        int64_t value = args.GetBigInt(0, "surfaceId");
-        if (args.HasError()) return -1;
-        
-        return value;
-    }
 }
 }
 }

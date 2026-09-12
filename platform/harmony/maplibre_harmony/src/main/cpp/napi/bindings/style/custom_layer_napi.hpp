@@ -87,6 +87,7 @@ private:
     }
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
     std::string layerId;
     std::unique_ptr<mbgl::style::CustomLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;

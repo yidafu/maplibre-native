@@ -101,14 +101,11 @@ ThreadSafeCallback::~ThreadSafeCallback() {
     Release();
 }
 
-bool ThreadSafeCallback::DispatchInternal(DataBuilder builder, bool blocking) {
-    if (!builder) {
+bool ThreadSafeCallback::DispatchInternal(std::unique_ptr<CallbackData> data, bool blocking) {
+    if (!data || (!data->builder && !data->multiBuilder)) {
         Logger::warn("ThreadSafeCallback", "DataBuilder is null");
         return false;
     }
-
-    // Create a heap-allocated copy of the data
-    auto* data = new CallbackData(std::move(builder));
 
     // Hold the lock across the N-API call so Release() can never free the tsfn
     // between the null check and the dispatch (call-after-finalize is UB).
@@ -118,14 +115,13 @@ bool ThreadSafeCallback::DispatchInternal(DataBuilder builder, bool blocking) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (tsfn_ == nullptr) {
-            delete data;
             Logger::warn("ThreadSafeCallback", "Cannot call - already released");
             return false;
         }
 
         status = napi_call_threadsafe_function(
             tsfn_,
-            data,
+            data.get(),
             blocking ? napi_tsfn_blocking : napi_tsfn_nonblocking
         );
     }
@@ -137,19 +133,25 @@ bool ThreadSafeCallback::DispatchInternal(DataBuilder builder, bool blocking) {
             Logger::warn("ThreadSafeCallback", "Call skipped (status %d) for '%s'",
                          status, resourceName_.c_str());
         }
-        delete data;  // Clean up data
+        // data is a unique_ptr: freed automatically on this failure path.
         return false;
     }
 
+    // Queue succeeded: CallJS (or the tsfn teardown) now owns the data.
+    (void)data.release();
     return true;
 }
 
 bool ThreadSafeCallback::Call(DataBuilder builder) {
-    return DispatchInternal(std::move(builder), false);
+    return DispatchInternal(std::make_unique<CallbackData>(std::move(builder)), false);
 }
 
 bool ThreadSafeCallback::CallBlocking(DataBuilder builder) {
-    return DispatchInternal(std::move(builder), true);
+    return DispatchInternal(std::make_unique<CallbackData>(std::move(builder)), true);
+}
+
+bool ThreadSafeCallback::CallMulti(MultiArgBuilder builder) {
+    return DispatchInternal(std::make_unique<CallbackData>(std::move(builder)), false);
 }
 
 bool ThreadSafeCallback::CallWithString(const std::string& value) {
@@ -237,15 +239,24 @@ void ThreadSafeCallback::CallJS(
     napi_status scopeStatus = napi_open_handle_scope(env, &scope);
     const bool scopeOpen = (scopeStatus == napi_ok);
 
-    // Build arguments
-    napi_value arg = nullptr;
-    if (callbackData->builder) {
-        arg = callbackData->builder(env);
+    // Build arguments (single-arg and multi-arg builders)
+    std::vector<napi_value> args;
+    if (callbackData->multiBuilder) {
+        args = callbackData->multiBuilder(env);
+    } else if (callbackData->builder) {
+        args.push_back(callbackData->builder(env));
     }
 
-    // Use undefined if there is no constructor or construction fails
-    if (arg == nullptr) {
-        napi_get_undefined(env, &arg);
+    // Use undefined for missing builders and failed value construction — a
+    // nullptr napi_value must never reach napi_call_function.
+    napi_value undefinedValue = nullptr;
+    for (auto& arg : args) {
+        if (arg == nullptr && napi_get_undefined(env, &undefinedValue) == napi_ok) {
+            arg = undefinedValue;
+        }
+    }
+    if (args.empty() && napi_get_undefined(env, &undefinedValue) == napi_ok) {
+        args.push_back(undefinedValue);
     }
 
     // Invoke JavaScript callback
@@ -259,8 +270,8 @@ void ThreadSafeCallback::CallJS(
                 env,
                 global,
                 js_callback,
-                1,  // argc
-                &arg,
+                static_cast<size_t>(args.size()),
+                args.data(),
                 &result
             );
 

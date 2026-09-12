@@ -104,6 +104,7 @@ private:
     ~LocationIndicatorLayerNAPI();
 
     static napi_ref constructor;
+    static napi_env constructorEnv;
     std::unique_ptr<mbgl::style::LocationIndicatorLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };

@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * Style - Map style management wrapper
  *
@@ -16,6 +18,8 @@ import { VectorSource } from './sources/VectorSource';
 import { RasterSource } from './sources/RasterSource';
 import { RasterDemSource } from './sources/RasterDemSource';
 import { ImageSource } from './sources/ImageSource';
+import { VideoSource } from './sources/VideoSource';
+import { CustomGeometrySource } from './sources/CustomGeometrySource';
 
 // Layer wrappers
 import { FillLayer } from './layers/FillLayer';
@@ -80,7 +84,7 @@ export class Style {
    */
   private static wrapSource(nativeSource: Object): Source | null {
     if (!nativeSource) {
-      console.warn('[Style] wrapSource: nativeSource is null/undefined');
+      hilog.warn(DOMAIN, 'Style', '%{public}s', '[Style] wrapSource: nativeSource is null/undefined');
       return null;
     }
 
@@ -104,8 +108,14 @@ export class Style {
     if (napiType === ImageSource._TYPE_) {
       return ImageSource.fromNative(nativeSource as maplibre.ImageSource);
     }
+    if (napiType === VideoSource._TYPE_) {
+      return VideoSource.fromNative(nativeSource as maplibre.VideoSource);
+    }
+    if (napiType === CustomGeometrySource._TYPE_) {
+      return CustomGeometrySource.fromNative(nativeSource as maplibre.CustomGeometrySource);
+    }
 
-    console.error(`[Style] wrapSource: ❌ No matching type found for source! _TYPE_=${napiType}`);
+    hilog.error(DOMAIN, 'Style', '%{public}s', `[Style] wrapSource: ❌ No matching type found for source! _TYPE_=${napiType}`);
     return null;
   }
 
@@ -114,7 +124,7 @@ export class Style {
    */
   private static wrapLayer(nativeLayer: Object): Layer | null {
     if (!nativeLayer) {
-      console.warn('[Style] wrapLayer: nativeLayer is null/undefined');
+      hilog.warn(DOMAIN, 'Style', '%{public}s', '[Style] wrapLayer: nativeLayer is null/undefined');
       return null;
     }
 
@@ -157,7 +167,7 @@ export class Style {
       return LocationIndicatorLayer.fromNative(nativeLayer as maplibre.LocationIndicatorLayer);
     }
 
-    console.error(`[Style] wrapLayer: ❌ No matching type found for layer! _TYPE_=${napiType}`);
+    hilog.error(DOMAIN, 'Style', '%{public}s', `[Style] wrapLayer: ❌ No matching type found for layer! _TYPE_=${napiType}`);
     return null;
   }
 

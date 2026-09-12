@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -93,6 +93,7 @@ public:
     }
 
     static napi_ref constructor;
+    static napi_env constructorEnv;
 
 private:
     std::string layerId;
@@ -103,4 +104,4 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

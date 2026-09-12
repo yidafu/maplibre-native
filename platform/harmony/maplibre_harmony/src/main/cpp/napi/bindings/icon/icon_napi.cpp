@@ -1,10 +1,11 @@
 #include "icon_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
 #include <multimedia/image_framework/image_pixel_map_napi.h>
 #include <multimedia/image_framework/image_pixel_map_mdk.h>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 using mbgl::harmony::Logger;
@@ -12,6 +13,7 @@ using mbgl::harmony::napi::NapiArgs;
 
 // Static member initialization
 napi_ref IconNAPI::constructor = nullptr;
+napi_env IconNAPI::constructorEnv = nullptr;
 
 IconNAPI::IconNAPI(std::string id, int width, int height, float scale,
                    std::shared_ptr<mbgl::PremultipliedImage> image)
@@ -53,7 +55,7 @@ napi_value IconNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("IconNAPI", "Failed to create reference to Icon constructor");
         return nullptr;
@@ -344,5 +346,5 @@ napi_value IconNAPI::CreateFromImage(napi_env env,
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

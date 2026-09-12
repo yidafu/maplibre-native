@@ -16,6 +16,9 @@ namespace harmony {
  */
 class SymbolLayerNAPI {
 public:
+    // Destructor callback (public: also used by the shared CreateInstance
+    // helper to free the wrapper when napi_wrap fails)
+    static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     static napi_value Init(napi_env env, napi_value exports);
 static napi_value New(napi_env env, napi_callback_info info);
     // Create a NAPI instance from an existing native object
@@ -57,7 +60,6 @@ static napi_value New(napi_env env, napi_callback_info info);
     }
     
 private:
-    static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     // Basic layer methods
     static napi_value GetId(napi_env env, napi_callback_info info);
@@ -213,6 +215,7 @@ private:
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
 };
 
 } // namespace harmony

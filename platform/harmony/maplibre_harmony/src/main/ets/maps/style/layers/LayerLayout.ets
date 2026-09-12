@@ -499,4 +499,3 @@ export interface HillshadeLayout {
    */
   visibility?: Visibility;
 }
-

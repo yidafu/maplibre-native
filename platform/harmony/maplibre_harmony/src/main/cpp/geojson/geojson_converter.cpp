@@ -6,7 +6,7 @@
 
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 namespace geojson {
 
@@ -437,4 +437,4 @@ napi_value GeoJsonConverter::CreateGeometryJsObject(napi_env env, const std::str
 
 } // namespace geojson
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

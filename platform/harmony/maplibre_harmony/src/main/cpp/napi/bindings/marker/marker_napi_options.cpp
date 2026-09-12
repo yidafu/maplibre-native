@@ -3,7 +3,7 @@
 #include "napi/core/napi_args.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // Use Logger from mbgl::harmony namespace
@@ -438,5 +438,5 @@ napi_value MarkerNAPI::SetAnchor(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

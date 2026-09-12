@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import { LatLng } from '../geometry/LatLng';
 import { CenterOffset } from './ViewAnnotationUtils';
 
@@ -218,12 +220,12 @@ export interface AnnotationViewConfig {
  *
  *   // Handle selection events
  *   didSelectAnnotationView: (marker: Marker) => {
- *     console.log('Marker selected:', marker.getTitle());
+ *     hilog.info(DOMAIN, 'Marker selected:', '%{public}s', marker.getTitle());
  *   },
  *
  *   // Handle drag events
  *   annotationViewDidEndDragging: (marker: Marker, position: LatLng) => {
- *     console.log('Marker dragged to:', position);
+ *     hilog.info(DOMAIN, 'Marker dragged to:', '%{public}s', position);
  *   }
  * };
  *

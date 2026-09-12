@@ -1,4 +1,5 @@
 #include "fill_layer_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
@@ -9,6 +10,7 @@
 #include <mbgl/style/expression/image.hpp>
 #include <mbgl/style/types.hpp>
 #include <mbgl/util/color.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -18,6 +20,7 @@ using mbgl::harmony::Logger;
 
 // Static member initialization
 napi_ref FillLayerNAPI::constructor = nullptr;
+napi_env FillLayerNAPI::constructorEnv = nullptr;
 
 FillLayerNAPI::FillLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::FillLayer>(layerId, sourceId)) {
@@ -99,7 +102,7 @@ napi_value FillLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("FillLayerNAPI", "Failed to create reference to FillLayer constructor");
         return nullptr;
@@ -154,70 +157,8 @@ napi_value FillLayerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value FillLayerNAPI::CreateInstance(napi_env env, mbgl::style::FillLayer* layerPtr) {
-    if (!layerPtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("FillLayerNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    FillLayerNAPI* napiObj = new FillLayerNAPI(layerPtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("FillLayerNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "FillLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return WrapExistingInstance(env, constructor, Destructor, "FillLayer",
+                                layerPtr ? new FillLayerNAPI(layerPtr) : nullptr);
 }
 
 
@@ -424,45 +365,15 @@ napi_value FillLayerNAPI::GetFillOpacity(napi_env env, napi_callback_info info) 
 // ============================================================================
 
 napi_value FillLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string id = layerObj->getLayer()->getID();
-    napi_value result;
-    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetId<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_string_utf8(env, "fill", NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetType(env, "fill");
 }
 
 napi_value FillLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string sourceId = layerObj->getLayer()->getSourceID();
-    napi_value result;
-    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceId<FillLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -470,49 +381,11 @@ napi_value FillLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
 // ============================================================================
 
 napi_value FillLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        return thisVar;
-    }
-    
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return thisVar;
-    }
-    
-    std::string visibility = args.GetString(0, "visibility");
-    if (visibility == "visible") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-    } else if (visibility == "none") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-    }
-    
-    return thisVar;
+    return LayerSetVisibility<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-    
-    napi_value result;
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetVisibility<FillLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -520,103 +393,19 @@ napi_value FillLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
 // ============================================================================
 
 napi_value FillLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layer->setMinZoom(minZoom);
-    }
-    
-    return thisVar;
+    return LayerSetMinZoom<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    float minZoom = layer->getMinZoom();
-    napi_value result;
-    napi_create_double(env, minZoom, &result);
-    return result;
+    return LayerGetMinZoom<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layer->setMaxZoom(maxZoom);
-    }
-    
-    return thisVar;
+    return LayerSetMaxZoom<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    float maxZoom = layer->getMaxZoom();
-    napi_value result;
-    napi_create_double(env, maxZoom, &result);
-    return result;
+    return LayerGetMaxZoom<FillLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -624,53 +413,11 @@ napi_value FillLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
 // ============================================================================
 
 napi_value FillLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layer->setSourceLayer(sourceLayer);
-    }
-    
-    return thisVar;
+    return LayerSetSourceLayer<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-
-    std::string sourceLayer = layer->getSourceLayer();
-    napi_value result;
-    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceLayer<FillLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -678,53 +425,11 @@ napi_value FillLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) 
 // ============================================================================
 
 napi_value FillLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    // Convert NAPI array to Filter
-    auto filter = napiArrayToFilter(env, argv[0]);
-    if (filter) {
-        layer->setFilter(*filter);
-    }
-    
-    return thisVar;
+    return LayerSetFilter<FillLayerNAPI>(env, info);
 }
 
 napi_value FillLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-
-    mbgl::style::FillLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-
-    // Get filter and convert to NAPI array
-    const auto& filter = layer->getFilter();
-    return filterToNapiArray(env, filter);
+    return LayerGetFilter<FillLayerNAPI>(env, info);
 }
 
 // ============================================================================

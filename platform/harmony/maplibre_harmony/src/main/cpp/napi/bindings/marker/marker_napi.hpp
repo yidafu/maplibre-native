@@ -5,7 +5,7 @@
 #include <mbgl/util/geometry.hpp>
 #include <string>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -90,6 +90,7 @@ public:
     
 private:
     static napi_ref constructor;
+    static napi_env constructorEnv;
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     explicit MarkerNAPI();
@@ -120,5 +121,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

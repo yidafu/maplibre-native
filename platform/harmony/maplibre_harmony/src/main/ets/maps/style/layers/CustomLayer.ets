@@ -6,6 +6,7 @@
  * Enables developers to render directly on the map using OpenGL ES
  */
 import maplibre from 'libmaplibre.so';
+import { BaseLayer, LayerInternalTag, resolveLayerNative } from './BaseLayer';
 
 /**
  * RGBA color interface
@@ -15,13 +16,6 @@ export interface RGBAColor {
   g: number; // Green component (0.0 - 1.0)
   b: number; // Blue component (0.0 - 1.0)
   a: number; // Alpha component (0.0 - 1.0)
-}
-
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
 }
 
 /**
@@ -36,18 +30,12 @@ class InternalMarker {
  * map.getStyle().addLayer(customLayer);
  * ```
  */
-export class CustomLayer {
+export class CustomLayer extends BaseLayer<maplibre.CustomLayer, CustomLayer> {
+  // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'CustomLayer';
-  private nativeInstance: maplibre.CustomLayer;
 
-  constructor(idOrMarker: string | InternalMarker, nativeOrNothing?: maplibre.CustomLayer) {
-    if (idOrMarker === InternalMarker.INSTANCE && nativeOrNothing instanceof Object) {
-      this.nativeInstance = nativeOrNothing;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.CustomLayer(idOrMarker);
-    } else {
-      throw new Error('Invalid CustomLayer constructor arguments');
-    }
+  constructor(idOrMarker: string | LayerInternalTag, nativeOrNothing?: maplibre.CustomLayer) {
+    super(resolveLayerNative(idOrMarker, "", nativeOrNothing, (id) => new maplibre.CustomLayer(id), "CustomLayer"));
   }
 
   static create(id: string): CustomLayer {
@@ -55,46 +43,7 @@ export class CustomLayer {
   }
 
   static fromNative(nativeInstance: maplibre.CustomLayer): CustomLayer {
-    return new CustomLayer(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  getNative(): maplibre.CustomLayer {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
-  }
-
-  getType(): string {
-    return this.nativeInstance.getType();
-  }
-
-  setVisibility(visibility: 'visible' | 'none'): CustomLayer {
-    this.nativeInstance.setVisibility(visibility);
-    return this;
-  }
-
-  getVisibility(): 'visible' | 'none' {
-    return this.nativeInstance.getVisibility() as 'visible' | 'none';
-  }
-
-  setMinZoom(zoom: number): CustomLayer {
-    this.nativeInstance.setMinZoom(zoom);
-    return this;
-  }
-
-  getMinZoom(): number {
-    return this.nativeInstance.getMinZoom();
-  }
-
-  setMaxZoom(zoom: number): CustomLayer {
-    this.nativeInstance.setMaxZoom(zoom);
-    return this;
-  }
-
-  getMaxZoom(): number {
-    return this.nativeInstance.getMaxZoom();
+    return new CustomLayer(LayerInternalTag.INSTANCE, nativeInstance);
   }
 
   /**
@@ -130,4 +79,3 @@ export function createCustomLayerWithColor(id: string, color: RGBAColor): Custom
   layer.setColor(color.r, color.g, color.b, color.a);
   return layer;
 }
-

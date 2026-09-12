@@ -1,4 +1,5 @@
 #include "custom_geometry_source_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
@@ -13,20 +14,22 @@
 #include <mbgl/util/geo.hpp>
 
 #include <mutex>
+#include "napi/core/napi_wrap_instance.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 using ThreadSafeCallback = mbgl::harmony::ThreadSafeCallback;
 
-namespace maplibre {
+namespace mbgl {
 
 using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
-using namespace maplibre::harmony::geojson;
+using namespace mbgl::harmony::geojson;
 
 // Static member initialization
 napi_ref CustomGeometrySourceNAPI::constructor = nullptr;
+napi_env CustomGeometrySourceNAPI::constructorEnv = nullptr;
 
 namespace {
 // Renderer query hook + its owner (see the header for the ownership rules).
@@ -100,7 +103,7 @@ napi_value CustomGeometrySourceNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
 
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("CustomGeometrySourceNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -227,64 +230,8 @@ napi_value CustomGeometrySourceNAPI::New(napi_env env, napi_callback_info info) 
 }
 
 napi_value CustomGeometrySourceNAPI::CreateInstance(napi_env env, mbgl::style::CustomGeometrySource* sourcePtr) {
-    if (!sourcePtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("CustomGeometrySourceNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    CustomGeometrySourceNAPI* napiObj = new CustomGeometrySourceNAPI(sourcePtr);
-
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("CustomGeometrySourceNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "CustomGeometrySource", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-
-    return instance;
+    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "CustomGeometrySource",
+                                sourcePtr ? new CustomGeometrySourceNAPI(sourcePtr) : nullptr);
 }
 
 napi_value CustomGeometrySourceNAPI::GetId(napi_env env, napi_callback_info info) {
@@ -516,4 +463,4 @@ napi_value CustomGeometrySourceNAPI::QuerySourceFeatures(napi_env env, napi_call
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

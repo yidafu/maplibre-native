@@ -6,7 +6,7 @@
 #include <mbgl/util/geojson.hpp>
 #include <vector>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 namespace geojson {
 
@@ -125,5 +125,5 @@ private:
 
 } // namespace geojson
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

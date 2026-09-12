@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * TooManyIconsException - icon count overflow exception.
  *
@@ -13,7 +15,7 @@
  *   const icon = iconFactory.fromPixelMap(pixelMap);
  * } catch (error) {
  *   if (error instanceof TooManyIconsException) {
- *     console.error('Too many icons created!');
+ *     hilog.error(DOMAIN, 'TooManyIconsException', '%{public}s', 'Too many icons created!');
  *   }
  * }
  * ```

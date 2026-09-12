@@ -1,31 +1,18 @@
 /**
  * FillLayer - Wrapper class
  */
-import maplibre, { JSONValue } from 'libmaplibre.so';
-import type { ExpressionLiteral, PropertyValue as NativePropertyValue } from 'libmaplibre.so';
-import { PropertyValue, Expression } from '../expressions/Expression';
+import maplibre from 'libmaplibre.so';
+
+import { PropertyValue } from '../expressions/Expression';
 import { convertValue } from './LayerUtils';
+import { LayerInternalTag, SourcedLayer, resolveLayerNative } from './BaseLayer';
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-export class FillLayer {
+export class FillLayer extends SourcedLayer<maplibre.FillLayer, FillLayer> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'FillLayer';
-  private nativeInstance: maplibre.FillLayer;
 
-  constructor(idOrMarker: string | InternalMarker, sourceId: string = "", nativeOrNothing?: maplibre.FillLayer) {
-    if (idOrMarker === InternalMarker.INSTANCE && nativeOrNothing instanceof Object) {
-      this.nativeInstance = nativeOrNothing;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.FillLayer(idOrMarker, sourceId);
-    } else {
-      throw new Error('Invalid FillLayer constructor arguments');
-    }
+  constructor(idOrMarker: string | LayerInternalTag, sourceId: string = "", nativeOrNothing?: maplibre.FillLayer) {
+    super(resolveLayerNative(idOrMarker, sourceId, nativeOrNothing, (id, sid) => new maplibre.FillLayer(id, sid), "FillLayer"));
   }
 
   static create(id: string, sourceId: string = ""): FillLayer {
@@ -33,73 +20,7 @@ export class FillLayer {
   }
 
   static fromNative(nativeInstance: maplibre.FillLayer): FillLayer {
-    return new FillLayer(InternalMarker.INSTANCE, "", nativeInstance);
-  }
-
-  getNative(): maplibre.FillLayer {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
-  }
-
-  getType(): string {
-    return this.nativeInstance.getType();
-  }
-
-  getSourceId(): string {
-    return this.nativeInstance.getSourceId();
-  }
-
-  getSourceLayer(): string {
-    return this.nativeInstance.getSourceLayer();
-  }
-
-  setVisibility(visibility: 'visible' | 'none'): FillLayer {
-    this.nativeInstance.setVisibility(visibility);
-    return this;
-  }
-
-  getVisibility(): 'visible' | 'none' {
-    return this.nativeInstance.getVisibility();
-  }
-
-  setMinZoom(zoom: number): FillLayer {
-    this.nativeInstance.setMinZoom(zoom);
-    return this;
-  }
-
-  getMinZoom(): number {
-    return this.nativeInstance.getMinZoom();
-  }
-
-  setMaxZoom(zoom: number): FillLayer {
-    this.nativeInstance.setMaxZoom(zoom);
-    return this;
-  }
-
-  getMaxZoom(): number {
-    return this.nativeInstance.getMaxZoom();
-  }
-
-  /**
-   * Configure the layer filter
-   * @param filter Expression instance or expression literal array
-   */
-  setFilter(filter: Expression<boolean> | ExpressionLiteral): FillLayer {
-    const filterArray = filter instanceof Expression ? filter.toArray() : filter;
-    this.nativeInstance.setFilter(filterArray as ExpressionLiteral);
-    return this;
-  }
-
-  getFilter(): ExpressionLiteral | null {
-    return this.nativeInstance.getFilter();
-  }
-
-  setSourceLayer(sourceLayer: string): FillLayer {
-    this.nativeInstance.setSourceLayer(sourceLayer);
-    return this;
+    return new FillLayer(LayerInternalTag.INSTANCE, "", nativeInstance);
   }
 
   // ========== Fill style property helpers ==========
@@ -141,41 +62,6 @@ export class FillLayer {
 
   setFillSortKey(sortKey: PropertyValue<number>): FillLayer {
     this.nativeInstance.setFillSortKey(convertValue(sortKey));
-    return this;
-  }
-
-  // ========== Generic property API (Android-compatible) ==========
-
-  /**
-   * Set a single property
-   * @param propertyName Property key (for example, 'fill-color', 'fill-opacity')
-   * @param value Property value (constant or Expression)
-   * @returns this (supports chaining)
-   */
-  setProperty(propertyName: string, value: PropertyValue<JSONValue>): FillLayer {
-    this.nativeInstance.setProperty(propertyName, convertValue(value));
-    return this;
-  }
-
-  /**
-   * Set multiple properties in batch
-   * @param properties Map of property names to values
-   * @returns this (supports chaining)
-   * @example
-   * layer.setProperties({
-   *   'fill-color': '#FF0000',
-   *   'fill-opacity': 0.5,
-   *   'fill-outline-color': '#000000'
-   * });
-   */
-  setProperties(properties: Record<string, PropertyValue<JSONValue>>): FillLayer {
-    const convertedProps: Record<string, NativePropertyValue<JSONValue>> = {};
-    const keys = Object.keys(properties);
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i];
-      convertedProps[key] = convertValue(properties[key]) as NativePropertyValue<JSONValue>;
-    }
-    this.nativeInstance.setProperties(convertedProps);
     return this;
   }
 

@@ -8,7 +8,7 @@
 #include <vector>
 #include <optional>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -59,6 +59,7 @@ public:
     
 private:
     static napi_ref constructor;
+    static napi_env constructorEnv;
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     explicit ImageNAPI(
@@ -93,5 +94,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

@@ -1,4 +1,6 @@
 #include "custom_drawable_layer_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
+#include "napi/core/napi_wrap_instance.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
@@ -14,7 +16,7 @@
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 namespace {
@@ -278,6 +280,7 @@ mbgl::style::CustomDrawableLayerHost::Interface::LineOptions parseLineOptions(na
 
 // Static member initialization
 napi_ref CustomDrawableLayerNAPI::constructor = nullptr;
+napi_env CustomDrawableLayerNAPI::constructorEnv = nullptr;
 
 CustomDrawableLayerNAPI::CustomDrawableLayerNAPI(const std::string& layerId,
                                                  std::unique_ptr<mbgl::style::CustomDrawableLayer> layer,
@@ -341,7 +344,7 @@ napi_value CustomDrawableLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
 
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("CustomDrawableLayerNAPI", "Failed to create reference to constructor");
         return nullptr;
@@ -406,37 +409,6 @@ napi_value CustomDrawableLayerNAPI::CreateInstance(napi_env env, mbgl::style::Cu
         return result;
     }
 
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
     // Reconnect to the live scene state created by the original wrapper
     std::shared_ptr<CustomDrawableState> state;
     {
@@ -453,21 +425,8 @@ napi_value CustomDrawableLayerNAPI::CreateInstance(napi_env env, mbgl::style::Cu
         state = std::make_shared<CustomDrawableState>();
     }
 
-    CustomDrawableLayerNAPI* napiObj = new CustomDrawableLayerNAPI(layerPtr, std::move(state));
-
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value typeValue;
-    napi_create_string_utf8(env, "CustomDrawableLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-
-    return instance;
+    auto* napiObj = new CustomDrawableLayerNAPI(layerPtr, std::move(state));
+    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "CustomDrawableLayer", napiObj);
 }
 
 napi_value CustomDrawableLayerNAPI::GetId(napi_env env, napi_callback_info info) {
@@ -729,4 +688,4 @@ napi_value CustomDrawableLayerNAPI::Clear(napi_env env, napi_callback_info info)
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

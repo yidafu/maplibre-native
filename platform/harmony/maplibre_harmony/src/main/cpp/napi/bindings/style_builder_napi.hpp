@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -41,6 +41,7 @@ public:
     
     // Reference to the constructor
     static napi_ref constructor;
+    static napi_env constructorEnv;
     
 private:
     std::string styleUri;
@@ -69,5 +70,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

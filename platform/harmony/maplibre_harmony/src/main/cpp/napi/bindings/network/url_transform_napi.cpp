@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <chrono>
 #include <thread>
+#include <unordered_map>
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::URLTransformManager;
@@ -20,6 +21,43 @@ namespace harmony {
 // Static member initialization
 std::mutex URLTransformNAPI::contextMutex_;
 std::shared_ptr<URLTransformNAPI::CallbackContext> URLTransformNAPI::callbackContext_;
+
+namespace {
+// Bounded cache of transform results: tile requests hit the same URL templates
+// constantly, and every cache miss means a synchronous round-trip into JS that
+// can stall a network/render thread for up to the wait timeout.
+constexpr size_t kTransformCacheLimit = 512;
+std::mutex s_cacheMutex;
+std::unordered_map<std::string, std::string> s_transformCache;
+
+std::string cacheKey(int kind, const std::string& url) {
+    return std::to_string(kind) + '|' + url;
+}
+
+bool cacheLookup(int kind, const std::string& url, std::string& out) {
+    std::lock_guard<std::mutex> lock(s_cacheMutex);
+    auto it = s_transformCache.find(cacheKey(kind, url));
+    if (it == s_transformCache.end()) {
+        return false;
+    }
+    out = it->second;
+    return true;
+}
+
+void cacheStore(int kind, const std::string& url, const std::string& transformed) {
+    std::lock_guard<std::mutex> lock(s_cacheMutex);
+    if (s_transformCache.size() >= kTransformCacheLimit) {
+        // Simple reset on overflow; URL keys arrive in effectively random order.
+        s_transformCache.clear();
+    }
+    s_transformCache.emplace(cacheKey(kind, url), transformed);
+}
+
+void cacheClear() {
+    std::lock_guard<std::mutex> lock(s_cacheMutex);
+    s_transformCache.clear();
+}
+} // anonymous namespace
 
 // State exchanged between the calling (network/render) thread and the JS thread.
 // Heap-allocated and owned by the queued CallJS invocation: if the caller times
@@ -141,6 +179,9 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         callbackContext_.reset();
     }
 
+    // A different JS transform invalidates every cached result.
+    cacheClear();
+
     // Create a new callback context
     auto ctx = std::make_shared<CallbackContext>();
     ctx->env = env;
@@ -162,7 +203,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
         callbackValue,
         nullptr,
         async_resource_name,
-        0,  // Unlimited queue size
+        64, // Bounded queue: overflow callers fall back to the untransformed URL
         1,  // Initial thread count
         nullptr,
         nullptr,
@@ -194,6 +235,12 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
                 return url;
             }
 
+            // Repeat URL fast path — avoids the synchronous round-trip into JS.
+            std::string cached;
+            if (cacheLookup(static_cast<int>(kind), url, cached)) {
+                return cached;
+            }
+
             // Same-thread fast path: if the request originates on the JS thread,
             // queuing the callback and blocking on the wait would deadlock until
             // the timeout elapses — invoke the JS callback directly instead.
@@ -206,6 +253,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
                 }
                 std::string result;
                 InvokeTransformCallback(ctx->env, jsCallback, static_cast<int>(kind), url, result);
+                cacheStore(static_cast<int>(kind), url, result);
                 return result;
             }
 
@@ -227,7 +275,16 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
             state->kind = static_cast<int>(kind);
             state->url = url;
 
-            napi_status status = napi_call_threadsafe_function(tsfn, state, napi_tsfn_blocking);
+            // Non-blocking: a stalled JS thread must not back up network/render
+            // threads behind an unbounded queue. On overflow the original URL
+            // is used for this request.
+            napi_status status = napi_call_threadsafe_function(tsfn, state, napi_tsfn_nonblocking);
+            if (status == napi_queue_full) {
+                delete state;
+                napi_release_threadsafe_function(tsfn, napi_tsfn_release);
+                Logger::warn("URLTransformNAPI", "Transform queue full; using untransformed URL");
+                return url;
+            }
             if (status != napi_ok) {
                 delete state;
                 napi_release_threadsafe_function(tsfn, napi_tsfn_release);
@@ -239,6 +296,7 @@ napi_value URLTransformNAPI::SetResourceTransformCallback(napi_env env, napi_cal
                 std::unique_lock<std::mutex> lock(state->mutex);
                 if (state->cv.wait_for(lock, std::chrono::seconds(5), [&state] { return state->done; })) {
                     result = std::move(state->result);
+                    cacheStore(static_cast<int>(kind), url, result);
                 } else {
                     // Timed out: ownership of `state` has moved to the queued CallJS
                     // invocation — do not touch it any further.
@@ -275,6 +333,9 @@ napi_value URLTransformNAPI::ClearResourceTransformCallback(napi_env env, napi_c
         }
         callbackContext_.reset();
     }
+
+    // Cached results were produced by the removed callback.
+    cacheClear();
 
     // Clear the C++ callback
     URLTransformManager::getInstance().clearTransformCallback();

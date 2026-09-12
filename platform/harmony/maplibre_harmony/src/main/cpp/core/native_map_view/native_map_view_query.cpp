@@ -14,7 +14,7 @@
 
 using mbgl::harmony::Logger;
 using mbgl::harmony::napi::NapiArgs;
-using maplibre::harmony::geojson::GeoJsonConverter;
+using mbgl::harmony::geojson::GeoJsonConverter;
 
 namespace mbgl {
 namespace harmony {
@@ -448,7 +448,7 @@ napi_value NativeMapView::queryRenderedFeaturesForPoint(napi_env env, napi_callb
         Logger::info("NativeMapView", "queryRenderedFeaturesForPoint: Found %zu features", features.size());
 
         // 7. Convert result to NAPI array
-        napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        napi_value result = mbgl::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
 
@@ -580,7 +580,7 @@ napi_value NativeMapView::queryRenderedFeaturesForBox(napi_env env, napi_callbac
         Logger::info("NativeMapView", "queryRenderedFeaturesForBox: Found %zu features", features.size());
 
         // 7. Convert result to NAPI array
-        napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        napi_value result = mbgl::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
 
@@ -705,7 +705,7 @@ napi_value NativeMapView::querySourceFeatures(napi_env env, napi_callback_info i
                     features.size(), sourceId.c_str());
 
         // 6. Convert result to NAPI array
-        napi_value result = maplibre::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
+        napi_value result = mbgl::harmony::geojson::GeoJsonConverter::FeatureArrayToJsArray(env, features);
 
         return result;
 

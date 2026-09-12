@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -60,6 +60,7 @@ static napi_value New(napi_env env, napi_callback_info info);
     }
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
     
 private:
     std::string id;
@@ -69,5 +70,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

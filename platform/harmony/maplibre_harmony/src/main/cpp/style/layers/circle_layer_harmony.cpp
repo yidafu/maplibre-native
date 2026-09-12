@@ -1,4 +1,5 @@
 #include "circle_layer_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "utils/logger.h"
@@ -8,6 +9,7 @@
 #include <mbgl/style/property_value.hpp>
 #include <mbgl/style/types.hpp>
 #include <mbgl/util/color.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 namespace mbgl {
 namespace harmony {
@@ -17,6 +19,7 @@ using mbgl::harmony::Logger;
 
 // Static member initialization
 napi_ref CircleLayerNAPI::constructor = nullptr;
+napi_env CircleLayerNAPI::constructorEnv = nullptr;
 
 CircleLayerNAPI::CircleLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : layer(std::make_unique<mbgl::style::CircleLayer>(layerId, sourceId)) {
@@ -106,7 +109,7 @@ napi_value CircleLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("CircleLayerNAPI", "Failed to create reference to CircleLayer constructor");
         return nullptr;
@@ -161,70 +164,8 @@ napi_value CircleLayerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value CircleLayerNAPI::CreateInstance(napi_env env, mbgl::style::CircleLayer* layerPtr) {
-    if (!layerPtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("CircleLayerNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    CircleLayerNAPI* napiObj = new CircleLayerNAPI(layerPtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("CircleLayerNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "CircleLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return WrapExistingInstance(env, constructor, Destructor, "CircleLayer",
+                                layerPtr ? new CircleLayerNAPI(layerPtr) : nullptr);
 }
 
 
@@ -480,45 +421,15 @@ napi_value CircleLayerNAPI::GetCircleOpacity(napi_env env, napi_callback_info in
 // ============================================================================
 
 napi_value CircleLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string id = layerObj->getLayer()->getID();
-    napi_value result;
-    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetId<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_string_utf8(env, "circle", NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetType(env, "circle");
 }
 
 napi_value CircleLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    std::string sourceId = layerObj->getLayer()->getSourceID();
-    napi_value result;
-    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceId<CircleLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -526,49 +437,11 @@ napi_value CircleLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
 // ============================================================================
 
 napi_value CircleLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        return thisVar;
-    }
-    
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return thisVar;
-    }
-    
-    std::string visibility = args.GetString(0, "visibility");
-    if (visibility == "visible") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-    } else if (visibility == "none") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-    }
-    
-    return thisVar;
+    return LayerSetVisibility<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-    
-    napi_value result;
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetVisibility<CircleLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -576,103 +449,19 @@ napi_value CircleLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
 // ============================================================================
 
 napi_value CircleLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layer->setMinZoom(minZoom);
-    }
-    
-    return thisVar;
+    return LayerSetMinZoom<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-
-    float minZoom = layer->getMinZoom();
-    napi_value result;
-    napi_create_double(env, minZoom, &result);
-    return result;
+    return LayerGetMinZoom<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layer->setMaxZoom(maxZoom);
-    }
-    
-    return thisVar;
+    return LayerSetMaxZoom<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-
-    float maxZoom = layer->getMaxZoom();
-    napi_value result;
-    napi_create_double(env, maxZoom, &result);
-    return result;
+    return LayerGetMaxZoom<CircleLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -680,53 +469,11 @@ napi_value CircleLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
 // ============================================================================
 
 napi_value CircleLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        return thisVar;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layer->setSourceLayer(sourceLayer);
-    }
-    
-    return thisVar;
+    return LayerSetSourceLayer<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-
-    std::string sourceLayer = layer->getSourceLayer();
-    napi_value result;
-    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceLayer<CircleLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -734,53 +481,11 @@ napi_value CircleLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info
 // ============================================================================
 
 napi_value CircleLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || argc < 1) {
-        return thisVar;
-    }
-    
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        return thisVar;
-    }
-
-    // Convert NAPI array to Filter
-    auto filter = napiArrayToFilter(env, argv[0]);
-    if (filter) {
-        layer->setFilter(*filter);
-    }
-    
-    return thisVar;
+    return LayerSetFilter<CircleLayerNAPI>(env, info);
 }
 
 napi_value CircleLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
-    
-    if (!layerObj) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-
-    mbgl::style::CircleLayer* layer = layerObj->getLayer();
-    if (!layer) {
-        napi_value result;
-        napi_create_array(env, &result);
-        return result;
-    }
-
-    // Get filter and convert to NAPI array
-    const auto& filter = layer->getFilter();
-    return filterToNapiArray(env, filter);
+    return LayerGetFilter<CircleLayerNAPI>(env, info);
 }
 
 // ============================================================================

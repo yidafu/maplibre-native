@@ -156,7 +156,7 @@ napi_value LayerSourceFactory::createLayerWrapper(napi_env env, mbgl::style::Lay
         return mbgl::harmony::LocationIndicatorLayerNAPI::CreateInstance(
             env, static_cast<mbgl::style::LocationIndicatorLayer*>(layer));
     } else if (layerType == "custom-drawable") {
-        return maplibre::harmony::CustomDrawableLayerNAPI::CreateInstance(
+        return mbgl::harmony::CustomDrawableLayerNAPI::CreateInstance(
             env, static_cast<mbgl::style::CustomDrawableLayer*>(layer));
     }
 
@@ -178,22 +178,22 @@ napi_value LayerSourceFactory::createSourceWrapper(napi_env env, mbgl::style::So
     // Full NAPI wrapper per source type (consistent with StyleNAPI::GetSource)
     switch (sourceType) {
         case mbgl::style::SourceType::GeoJSON:
-            return maplibre::harmony::GeoJsonSourceNAPI::CreateInstance(
+            return mbgl::harmony::GeoJsonSourceNAPI::CreateInstance(
                 env, static_cast<mbgl::style::GeoJSONSource*>(source));
         case mbgl::style::SourceType::Vector:
-            return maplibre::harmony::VectorSourceNAPI::CreateInstance(
+            return mbgl::harmony::VectorSourceNAPI::CreateInstance(
                 env, static_cast<mbgl::style::VectorSource*>(source));
         case mbgl::style::SourceType::Raster:
-            return maplibre::harmony::RasterSourceNAPI::CreateInstance(
+            return mbgl::harmony::RasterSourceNAPI::CreateInstance(
                 env, static_cast<mbgl::style::RasterSource*>(source));
         case mbgl::style::SourceType::RasterDEM:
-            return maplibre::harmony::RasterDemSourceNAPI::CreateInstance(
+            return mbgl::harmony::RasterDemSourceNAPI::CreateInstance(
                 env, static_cast<mbgl::style::RasterDEMSource*>(source));
         case mbgl::style::SourceType::Image:
-            return maplibre::harmony::ImageSourceNAPI::CreateInstance(
+            return mbgl::harmony::ImageSourceNAPI::CreateInstance(
                 env, static_cast<mbgl::style::ImageSource*>(source));
         case mbgl::style::SourceType::CustomVector:
-            return maplibre::harmony::CustomGeometrySourceNAPI::CreateInstance(
+            return mbgl::harmony::CustomGeometrySourceNAPI::CreateInstance(
                 env, static_cast<mbgl::style::CustomGeometrySource*>(source));
         default:
             break;

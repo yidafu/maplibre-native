@@ -53,8 +53,8 @@ static napi_value Init(napi_env env, napi_value exports) {
     // Note: LatLng now lives in the ETS layer and no longer requires NAPI registration
     
     // Initialize offline map APIs
-    maplibre::harmony::OfflineManagerNAPI::Init(env, exports);
-    maplibre::harmony::OfflineRegionNAPI::Init(env, exports);
+    mbgl::harmony::OfflineManagerNAPI::Init(env, exports);
+    mbgl::harmony::OfflineRegionNAPI::Init(env, exports);
     
     // Initialize snapshot API
     mbgl::harmony::MapSnapshotterNAPI::Init(env, exports);
@@ -63,38 +63,38 @@ static napi_value Init(napi_env env, napi_value exports) {
     mbgl::harmony::NativeMapView::Init(env, exports);
     
     // Initialize Marker
-    maplibre::harmony::MarkerNAPI::Init(env, exports);
+    mbgl::harmony::MarkerNAPI::Init(env, exports);
     
     // Initialize Polyline
-    maplibre::harmony::PolylineNAPI::Init(env, exports);
+    mbgl::harmony::PolylineNAPI::Init(env, exports);
     
     // Initialize Polygon (annotations)
-    maplibre::harmony::PolygonNAPI::Init(env, exports);
+    mbgl::harmony::PolygonNAPI::Init(env, exports);
     
     // Initialize Icon
-    maplibre::harmony::IconNAPI::Init(env, exports);
+    mbgl::harmony::IconNAPI::Init(env, exports);
     
     // Initialize IconFactory
-    maplibre::harmony::IconFactoryNAPI::Init(env, exports);
+    mbgl::harmony::IconFactoryNAPI::Init(env, exports);
     
     // Initialize Image
-    maplibre::harmony::ImageNAPI::Init(env, exports);
+    mbgl::harmony::ImageNAPI::Init(env, exports);
     
     // Initialize Bitmap
     mbgl::harmony::BitmapNAPI::Init(env, exports);
     
     // Initialize style API bindings (NAPI objects)
-    maplibre::harmony::StyleNAPI::Init(env, exports);
-    maplibre::harmony::StyleBuilderNAPI::Init(env, exports);
+    mbgl::harmony::StyleNAPI::Init(env, exports);
+    mbgl::harmony::StyleBuilderNAPI::Init(env, exports);
     
     // Initialize source NAPI classes
-    maplibre::harmony::GeoJsonSourceNAPI::Init(env, exports);
-    maplibre::harmony::VectorSourceNAPI::Init(env, exports);
-    maplibre::harmony::RasterSourceNAPI::Init(env, exports);
-    maplibre::harmony::RasterDemSourceNAPI::Init(env, exports);
-    maplibre::harmony::ImageSourceNAPI::Init(env, exports);
-    maplibre::harmony::CustomGeometrySourceNAPI::Init(env, exports);
-    maplibre::harmony::VideoSourceNAPI::Init(env, exports);
+    mbgl::harmony::GeoJsonSourceNAPI::Init(env, exports);
+    mbgl::harmony::VectorSourceNAPI::Init(env, exports);
+    mbgl::harmony::RasterSourceNAPI::Init(env, exports);
+    mbgl::harmony::RasterDemSourceNAPI::Init(env, exports);
+    mbgl::harmony::ImageSourceNAPI::Init(env, exports);
+    mbgl::harmony::CustomGeometrySourceNAPI::Init(env, exports);
+    mbgl::harmony::VideoSourceNAPI::Init(env, exports);
     
     // Initialize layer bindings
     mbgl::harmony::FillLayerNAPI::Init(env, exports);
@@ -109,7 +109,7 @@ static napi_value Init(napi_env env, napi_value exports) {
     mbgl::harmony::ColorReliefLayerNAPI::Init(env, exports);
     mbgl::harmony::LocationIndicatorLayerNAPI::Init(env, exports);
     mbgl::harmony::CustomLayerNAPI::Init(env, exports);
-    maplibre::harmony::CustomDrawableLayerNAPI::Init(env, exports);
+    mbgl::harmony::CustomDrawableLayerNAPI::Init(env, exports);
     
     // Style components
     mbgl::harmony::LightHarmony::Init(env, exports);

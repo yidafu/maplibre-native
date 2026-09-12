@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 import {
   InfoWindow,
   InfoWindowLayoutOptions,
@@ -174,12 +176,12 @@ export class InfoWindowManager {
    */
   show(marker: Marker, options?: InfoWindowDisplayOptions): InfoWindow | null {
     if (!this.viewAnnotationManager) {
-      console.warn('[InfoWindowManager] ViewAnnotationManager not attached, cannot show InfoWindow');
+      hilog.warn(DOMAIN, 'InfoWindowManager', '%{public}s', '[InfoWindowManager] ViewAnnotationManager not attached, cannot show InfoWindow');
       return null;
     }
 
     if (!this.isValidForMarker(marker)) {
-      console.warn('[InfoWindowManager] Marker has no title or snippet, cannot show InfoWindow');
+      hilog.warn(DOMAIN, 'InfoWindowManager', '%{public}s', '[InfoWindowManager] Marker has no title or snippet, cannot show InfoWindow');
       return null;
     }
 
@@ -317,7 +319,7 @@ export class InfoWindowManager {
         custom = this.adapter.getInfoWindow(infoWindow.getMarker(), this.uiContext);
       } catch (error) {
         const reason = error instanceof Error ? error.message : `${error}`;
-        console.error(`[InfoWindowManager] Adapter getInfoWindow failed: ${reason}`);
+        hilog.error(DOMAIN, 'InfoWindowManager', '%{public}s', `[InfoWindowManager] Adapter getInfoWindow failed: ${reason}`);
         custom = null;
       }
     }
@@ -341,7 +343,7 @@ export class InfoWindowManager {
       this.viewAnnotationManager?.updateViewAnnotation(annotationId, updateOptions);
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error('[InfoWindowManager] updateViewAnnotation failed: ', reason);
+      hilog.error(DOMAIN, 'InfoWindowManager', '[InfoWindowManager] updateViewAnnotation failed:  %{public}s', reason);
     }
 
     this.viewAnnotationManager?.setAnnotationContent(annotationId, content);
@@ -367,7 +369,7 @@ export class InfoWindowManager {
       // rendered window and feeds the positioning engine.
       const handle = this.viewAnnotationManager?.addViewAnnotation(addOptions, content ?? undefined) ?? null;
       if (!handle) {
-        console.error('[InfoWindowManager] Failed to add ViewAnnotation for InfoWindow');
+        hilog.error(DOMAIN, 'InfoWindowManager', '%{public}s', '[InfoWindowManager] Failed to add ViewAnnotation for InfoWindow');
         return -1;
       }
       const annotationId = handle.getId();
@@ -375,7 +377,7 @@ export class InfoWindowManager {
       return annotationId;
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error('[InfoWindowManager] addViewAnnotation failed: ', reason);
+      hilog.error(DOMAIN, 'InfoWindowManager', '[InfoWindowManager] addViewAnnotation failed:  %{public}s', reason);
       return -1;
     }
   }
@@ -404,7 +406,7 @@ export class InfoWindowManager {
       } as ViewAnnotationUpdateOptions);
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[InfoWindowManager] handleMarkerPositionChanged failed: ${reason}`);
+      hilog.warn(DOMAIN, 'InfoWindowManager', '%{public}s', `[InfoWindowManager] handleMarkerPositionChanged failed: ${reason}`);
     }
   }
 

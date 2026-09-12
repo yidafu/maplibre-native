@@ -184,6 +184,56 @@ bool CallbackManager::InvokeCallback(
     return allSucceeded;
 }
 
+bool CallbackManager::InvokeCallbackMulti(
+    const std::string& name,
+    ThreadSafeCallback::MultiArgBuilder builder
+) {
+    if (cleared_) {
+        Logger::warn("CallbackManager", "Cannot invoke callback '%s' - already cleared", name.c_str());
+        return false;
+    }
+
+    if (name.empty()) {
+        Logger::error("CallbackManager", "Cannot invoke callback with empty name");
+        return false;
+    }
+
+    // Obtain callback list (requires holding the lock)
+    std::unique_lock<std::mutex> lock(mutex_);
+
+    auto it = callbacks_.find(name);
+    if (it == callbacks_.end()) {
+        // Silent fast-path: per-frame events (camera moves, render frames) fire
+        // whether or not anyone listens — logging here spams the hot path.
+        return false;
+    }
+
+    // Collect shared_ptr copies (requires holding the lock) — a concurrent
+    // Unregister/Clear on the JS thread may destroy map entries, so raw
+    // pointers would dangle once the lock is released.
+    std::vector<std::shared_ptr<ThreadSafeCallback>> callbackPtrs;
+    callbackPtrs.reserve(it->second.size());
+    for (const auto& entry : it->second) {
+        callbackPtrs.push_back(entry.tsfn);
+    }
+
+    // Release the lock
+    lock.unlock();
+
+    // Invoke callbacks (lock already released)
+    bool allSucceeded = true;
+    for (size_t i = 0; i < callbackPtrs.size(); ++i) {
+        // Create an independent builder copy for each callback
+        // Note: requires the builder to be copyable, otherwise another strategy is needed
+        if (!callbackPtrs[i]->CallMulti(builder)) {
+            Logger::error("CallbackManager", "Failed to invoke callback #%zu for: %s", i, name.c_str());
+            allSucceeded = false;
+        }
+    }
+
+    return allSucceeded;
+}
+
 bool CallbackManager::InvokeCallbackEmpty(const std::string& name) {
     return InvokeCallback(name, [](napi_env env) -> napi_value {
         napi_value undefined;

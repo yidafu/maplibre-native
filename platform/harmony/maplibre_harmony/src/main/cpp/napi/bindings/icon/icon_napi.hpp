@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -68,6 +68,7 @@ public:
     
 private:
     static napi_ref constructor;
+    static napi_env constructorEnv;
     static void Destructor(napi_env env, void* nativeObject, void* finalize_hint);
     
     explicit IconNAPI(std::string id, int width, int height, float scale, 
@@ -83,5 +84,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

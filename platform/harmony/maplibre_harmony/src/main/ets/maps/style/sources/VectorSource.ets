@@ -3,48 +3,28 @@
  */
 import type { VectorSourceOptions } from 'libmaplibre.so';
 import maplibre from 'libmaplibre.so';
+import { BaseSource, SourceInternalTag, resolveSourceNative } from './BaseSource';
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-export class VectorSource {
+export class VectorSource extends BaseSource<maplibre.VectorSource> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'VectorSource';
-  private nativeInstance: maplibre.VectorSource;
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: VectorSourceOptions | maplibre.VectorSource) {
-    if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
-      this.nativeInstance = optionsOrNative as maplibre.VectorSource;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.VectorSource(idOrMarker, optionsOrNative as VectorSourceOptions);
-    } else {
-      throw new Error('Invalid VectorSource constructor arguments');
-    }
+  constructor(idOrMarker: string | SourceInternalTag, optionsOrNative?: VectorSourceOptions | maplibre.VectorSource) {
+    super(resolveSourceNative(idOrMarker, optionsOrNative, 
+      (id, o) => new maplibre.VectorSource(id, o as VectorSourceOptions), "VectorSource"));
   }
 
   static create(id: string, options?: VectorSourceOptions): VectorSource {
     return new VectorSource(id, options);
   }
 
+  static fromNative(nativeInstance: maplibre.VectorSource): VectorSource {
+    return new VectorSource(SourceInternalTag.INSTANCE, nativeInstance);
+  }
+
   setTiles(tiles: string[]): VectorSource {
     this.nativeInstance.setTiles(tiles);
     return this;
-  }
-
-  static fromNative(nativeInstance: maplibre.VectorSource): VectorSource {
-    return new VectorSource(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  getNative(): maplibre.VectorSource {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
   }
 
   setUrl(url: string): VectorSource {

@@ -4,6 +4,7 @@
  * Provides an ArkTS-compliant implementation.
  */
 import maplibre from 'libmaplibre.so';
+import { AnnotationBase, AnnotationInternalTag } from './AnnotationBase';
 import { LatLng } from '../geometry/LatLng';
 import { MapLibreMap } from '../MapLibreMap';
 import type { ILatLng } from '../types/NativeTypes';
@@ -58,30 +59,20 @@ export interface PolygonOptions {
 }
 
 /**
- * Internal constructor tag.
- */
-class InternalPolygon {
-  static readonly INSTANCE = new InternalPolygon();
-
-  private constructor() {
-  }
-}
-
-/**
  * Polygon wrapper.
  */
-export class Polygon {
-  private nativeInstance: maplibre.Polygon;
+export class Polygon extends AnnotationBase<maplibre.Polygon> {
 
   /**
    * Constructor supporting two modes:
    * 1. Create from options: `new Polygon(options)`
    * 2. Create from a NAPI instance (internal use): `new Polygon(marker, nativeInstance)`
    */
-  constructor(optionsOrPolygon: PolygonOptions | InternalPolygon, nativeInstance?: maplibre.Polygon) {
-    if (optionsOrPolygon === InternalPolygon.INSTANCE && nativeInstance) {
+  constructor(optionsOrPolygon: PolygonOptions | AnnotationInternalTag, nativeInstance?: maplibre.Polygon) {
+    let native: maplibre.Polygon;
+    if (optionsOrPolygon === AnnotationInternalTag.INSTANCE && nativeInstance) {
       // Internal mode: construct from NAPI instance
-      this.nativeInstance = nativeInstance;
+      native = nativeInstance;
     } else if (typeof optionsOrPolygon === 'object') {
       // Standard mode: construct from options
       const options = optionsOrPolygon as PolygonOptions;
@@ -101,17 +92,18 @@ export class Polygon {
         zIndex: options.zIndex || 0
       };
 
-      this.nativeInstance = new maplibre.Polygon(nativeOptions as PolygonOptions);
+      native = new maplibre.Polygon(nativeOptions as PolygonOptions);
     } else {
       throw new Error('Invalid Polygon constructor arguments');
     }
+    super(native);
   }
 
   /**
    * Construct from a NAPI instance (internal use).
    */
   static fromNative(nativeInstance: maplibre.Polygon): Polygon {
-    return new Polygon(InternalPolygon.INSTANCE, nativeInstance);
+    return new Polygon(AnnotationInternalTag.INSTANCE, nativeInstance);
   }
 
   /**
@@ -119,13 +111,6 @@ export class Polygon {
    */
   static createFromOptions(options: PolygonOptions): Polygon {
     return new Polygon(options);
-  }
-
-  /**
-   * Retrieve the native polygon (internal use).
-   */
-  getNative(): maplibre.Polygon {
-    return this.nativeInstance;
   }
 
   // ========== Polygon API ==========

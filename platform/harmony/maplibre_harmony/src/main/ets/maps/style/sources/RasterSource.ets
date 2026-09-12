@@ -3,27 +3,15 @@
  */
 import type { RasterSourceOptions } from 'libmaplibre.so';
 import maplibre from 'libmaplibre.so';
+import { BaseSource, SourceInternalTag, resolveSourceNative } from './BaseSource';
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-export class RasterSource {
+export class RasterSource extends BaseSource<maplibre.RasterSource> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'RasterSource';
-  private nativeInstance: maplibre.RasterSource;
 
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: RasterSourceOptions | maplibre.RasterSource) {
-    if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
-      this.nativeInstance = optionsOrNative as maplibre.RasterSource;
-    } else if (typeof idOrMarker === 'string') {
-      this.nativeInstance = new maplibre.RasterSource(idOrMarker, optionsOrNative as RasterSourceOptions);
-    } else {
-      throw new Error('Invalid RasterSource constructor arguments');
-    }
+  constructor(idOrMarker: string | SourceInternalTag, optionsOrNative?: RasterSourceOptions | maplibre.RasterSource) {
+    super(resolveSourceNative(idOrMarker, optionsOrNative, 
+      (id, o) => new maplibre.RasterSource(id, o as RasterSourceOptions), "RasterSource"));
   }
 
   static create(id: string, options?: RasterSourceOptions): RasterSource {
@@ -31,15 +19,7 @@ export class RasterSource {
   }
 
   static fromNative(nativeInstance: maplibre.RasterSource): RasterSource {
-    return new RasterSource(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  getNative(): maplibre.RasterSource {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
+    return new RasterSource(SourceInternalTag.INSTANCE, nativeInstance);
   }
 
   setUrl(url: string): RasterSource {

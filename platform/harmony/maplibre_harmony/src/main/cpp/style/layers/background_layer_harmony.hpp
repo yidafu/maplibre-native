@@ -89,6 +89,7 @@ private:
     ~BackgroundLayerNAPI();
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
     std::unique_ptr<mbgl::style::BackgroundLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };

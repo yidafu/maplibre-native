@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * MapSnapshot - snapshot result container.
  *
@@ -115,7 +117,7 @@ export class MapSnapshot {
       return new PixelCoordinate(result.x, result.y);
     } catch (err) {
       const error = err as Error;
-      console.error('[MapSnapshot] pixelForLatLng failed:', error.message);
+      hilog.error(DOMAIN, 'MapSnapshot', '[MapSnapshot] pixelForLatLng failed: %{public}s', error.message);
       throw new Error(`Coordinate conversion failed: ${error.message}`);
     }
   }
@@ -148,7 +150,7 @@ export class MapSnapshot {
       return new LatLng(result.latitude, result.longitude);
     } catch (err) {
       const error = err as Error;
-      console.error('[MapSnapshot] latLngForPixel failed:', error.message);
+      hilog.error(DOMAIN, 'MapSnapshot', '[MapSnapshot] latLngForPixel failed: %{public}s', error.message);
       throw new Error(`Coordinate conversion failed: ${error.message}`);
     }
   }

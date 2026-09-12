@@ -65,4 +65,3 @@ export type BooleanValue = boolean | Expression | ExpressionLiteral;
  * 3. Expression literals: ["get", "lineJoin"]
  */
 export type StringValue = string | Expression | ExpressionLiteral;
-

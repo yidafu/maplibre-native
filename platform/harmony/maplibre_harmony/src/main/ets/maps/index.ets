@@ -307,12 +307,15 @@ export { ExpressionValue } from './style/expressions';
 
 // ========== Data sources ==========
 export {
-  GeoJsonSource, VectorSource, RasterSource, RasterDemSource, ImageSource
+  GeoJsonSource, VectorSource, RasterSource, RasterDemSource, ImageSource,
+  VideoSource, CustomGeometrySource
 } from './style/sources';
 
 export type {
   Source, SourceOptions, GeoJsonData
 } from './style/sources';
+
+export { TileSet, VectorLayer } from './style/sources/TileSet';
 
 export { GeoJsonOptions, GeoJsonOptionsBuilder } from './style/sources/GeoJsonOptions';
 

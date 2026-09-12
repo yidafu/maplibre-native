@@ -53,6 +53,7 @@ public:
 
 private:
     static napi_ref constructor;
+    static napi_env constructorEnv;
 
     // The Light is owned by the Style and is destroyed on style reload or map
     // teardown; holding a bare reference across calls is a dangling UAF. Keep

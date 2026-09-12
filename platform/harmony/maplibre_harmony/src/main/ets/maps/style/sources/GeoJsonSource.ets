@@ -12,15 +12,10 @@ import type { ExpressionLiteral } from 'libmaplibre.so';
 import { Geometry, IFeature, IFeatureCollection } from '../../geojson';
 import { GeoJsonOptions } from './GeoJsonOptions';
 import type { Expression } from '../../style/expressions/Expression';
+import { BaseSource, SourceInternalTag, resolveSourceNative } from './BaseSource';
 /**
  * Internal marker used to identify the fromNative factory
  */
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
 
 /**
  * GeoJSON data shape
@@ -31,39 +26,24 @@ export type GeoJsonData = string | IFeature | IFeatureCollection | Geometry | Ob
 /**
  * GeoJsonSource implementation
  */
-export class GeoJsonSource {
+export class GeoJsonSource extends BaseSource<maplibre.GeoJsonSource> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'GeoJsonSource';
-  private nativeInstance: maplibre.GeoJsonSource;
 
-  /**
-   * Constructor (prefer using the static factory helpers)
-   * @param idOrMarker Source identifier or internal marker
-   * @param optionsOrNative Options object or native instance
-   */
-  constructor(idOrMarker: string | InternalMarker, optionsOrNative?: GeoJsonOptions | maplibre.GeoJsonSource) {
-    if (idOrMarker === InternalMarker.INSTANCE && optionsOrNative instanceof Object) {
-      // Construct from a native instance
-      this.nativeInstance = optionsOrNative as maplibre.GeoJsonSource;
-    } else if (typeof idOrMarker === 'string') {
-      // Construct with ETS options
-      this.nativeInstance = new maplibre.GeoJsonSource(idOrMarker, optionsOrNative as GeoJsonOptions);
-    } else {
-      throw new Error('Invalid GeoJsonSource constructor arguments');
-    }
+  constructor(idOrMarker: string | SourceInternalTag, optionsOrNative?: GeoJsonOptions | maplibre.GeoJsonSource) {
+    super(resolveSourceNative(idOrMarker, optionsOrNative, 
+      (id, o) => new maplibre.GeoJsonSource(id, o as GeoJsonOptions), "GeoJsonSource"));
   }
 
-  // ==================== Static factory helpers ====================
-
-  /**
-   * Create an empty GeoJsonSource
-   * @param id Source identifier
-   * @param options Optional configuration
-   * @returns GeoJsonSource instance
-   */
   static create(id: string, options?: GeoJsonOptions): GeoJsonSource {
     return new GeoJsonSource(id, options);
   }
+
+  static fromNative(nativeInstance: maplibre.GeoJsonSource): GeoJsonSource {
+    return new GeoJsonSource(SourceInternalTag.INSTANCE, nativeInstance);
+  }
+
+  // ==================== Static factory helpers ====================
 
   /**
    * Create a source from a GeoJSON string
@@ -131,32 +111,7 @@ export class GeoJsonSource {
     return source;
   }
 
-  /**
-   * Create from a native instance (internal use)
-   * @param nativeInstance Native GeoJsonSource instance
-   * @returns GeoJsonSource instance
-   */
-  static fromNative(nativeInstance: maplibre.GeoJsonSource): GeoJsonSource {
-    return new GeoJsonSource(InternalMarker.INSTANCE, nativeInstance);
-  }
-
   // ==================== Basic accessors ====================
-
-  /**
-   * Get the underlying native instance
-   * @returns Native GeoJsonSource
-   */
-  getNative(): maplibre.GeoJsonSource {
-    return this.nativeInstance;
-  }
-
-  /**
-   * Get the source identifier
-   * @returns Source ID
-   */
-  getId(): string {
-    return this.nativeInstance.getId();
-  }
 
   // ==================== Data update APIs ====================
 

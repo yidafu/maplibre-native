@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * Projection - Coordinate projection utility
  *
@@ -85,7 +87,7 @@ export class Projection {
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.warn(`[Projection] Failed to read pixel ratio, fallback to 1: ${reason}`);
+      hilog.warn(DOMAIN, 'Projection', '%{public}s', `[Projection] Failed to read pixel ratio, fallback to 1: ${reason}`);
     }
     return Projection.DEFAULT_PIXEL_RATIO;
   }
@@ -432,7 +434,7 @@ export class Projection {
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : `${error}`;
-      console.error(`[Projection] Failed to get content padding from native: ${reason}`);
+      hilog.error(DOMAIN, 'Projection', '%{public}s', `[Projection] Failed to get content padding from native: ${reason}`);
     }
 
     // Return a copy to avoid external mutation

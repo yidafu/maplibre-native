@@ -3,31 +3,15 @@
  */
 import maplibre from 'libmaplibre.so';
 import { Image } from '../images/Image';
+import { BaseSource, SourceInternalTag, resolveSourceNative } from './BaseSource';
 
-class InternalMarker {
-  static readonly INSTANCE = new InternalMarker();
-
-  private constructor() {
-  }
-}
-
-export class ImageSource {
+export class ImageSource extends BaseSource<maplibre.ImageSource> {
   // Type discriminator for instanceof-like checks (NAPI returns plain objects)
   static readonly _TYPE_ = 'ImageSource';
-  private nativeInstance: maplibre.ImageSource;
 
-  constructor(
-    idOrMarker: string | InternalMarker,
-    coordsOrNative?: maplibre.ImageSource
-  ) {
-    if (idOrMarker === InternalMarker.INSTANCE && coordsOrNative instanceof Object) {
-      this.nativeInstance = coordsOrNative;
-    } else if (typeof idOrMarker === 'string') {
-      // ImageSource only requires an id; coordinates are supplied via setCoordinates
-      this.nativeInstance = new maplibre.ImageSource(idOrMarker);
-    } else {
-      throw new Error('Invalid ImageSource constructor arguments');
-    }
+  constructor(idOrMarker: string | SourceInternalTag, coordsOrNative?: maplibre.ImageSource) {
+    super(resolveSourceNative(idOrMarker, coordsOrNative, 
+      (id) => new maplibre.ImageSource(id), "ImageSource"));
   }
 
   static create(id: string): ImageSource {
@@ -35,15 +19,7 @@ export class ImageSource {
   }
 
   static fromNative(nativeInstance: maplibre.ImageSource): ImageSource {
-    return new ImageSource(InternalMarker.INSTANCE, nativeInstance);
-  }
-
-  getNative(): maplibre.ImageSource {
-    return this.nativeInstance;
-  }
-
-  getId(): string {
-    return this.nativeInstance.getId();
+    return new ImageSource(SourceInternalTag.INSTANCE, nativeInstance);
   }
 
   setCoordinates(coordinates: number[][]): ImageSource {

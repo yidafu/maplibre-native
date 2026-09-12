@@ -1,4 +1,5 @@
 #include "symbol_layer_harmony.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "layer_base_methods.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
@@ -9,6 +10,7 @@
 #include <mbgl/style/layers/symbol_layer.hpp>
 #include <mbgl/style/expression/formatted.hpp>
 #include <mbgl/style/expression/image.hpp>
+#include "napi/core/napi_wrap_instance.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
@@ -18,6 +20,7 @@ namespace harmony {
 
 // Static member initialization
 napi_ref SymbolLayerNAPI::constructor = nullptr;
+napi_env SymbolLayerNAPI::constructorEnv = nullptr;
 
 SymbolLayerNAPI::SymbolLayerNAPI(const std::string& layerId, const std::string& sourceId)
     : ownsLayer(true) {
@@ -54,6 +57,161 @@ void SymbolLayerNAPI::Destructor(napi_env env, void* nativeObject, void* finaliz
     SymbolLayerNAPI* layerNapi = static_cast<SymbolLayerNAPI*>(nativeObject);
     delete layerNapi;
 }
+
+
+// ============================================================================
+// Property accessors (generated)
+//
+// Every Set*/Get* below forwards to the shared setLayoutProperty /
+// setPaintProperty / setDataDrivenLayoutProperty / getProperty helpers; the
+// bodies used to be hand-duplicated per property (~2400 lines). The macros
+// take the helper, the property key and the native member functions, and the
+// value type as a variadic tail so comma-bearing types like
+// std::array<float, 2> survive.
+// ============================================================================
+
+#define DEFINE_SYMBOL_SETTER(Fn, Helper, PropName, SetFn, ...)                 \
+    napi_value SymbolLayerNAPI::Fn(napi_env env, napi_callback_info info) {    \
+        napi_value thisVar;                                                    \
+        size_t argc = 1;                                                       \
+        napi_value argv[1];                                                    \
+        napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);           \
+        auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);      \
+        if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;    \
+        mbgl::harmony::Helper<mbgl::style::SymbolLayer, __VA_ARGS__>(          \
+            env, layerObj->getLayer(), argv[0], PropName,                      \
+            &mbgl::style::SymbolLayer::SetFn);                                 \
+        return thisVar;                                                        \
+    }
+
+#define DEFINE_SYMBOL_GETTER(Fn, GetFn, ...)                                   \
+    napi_value SymbolLayerNAPI::Fn(napi_env env, napi_callback_info info) {    \
+        napi_value thisVar;                                                    \
+        napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);      \
+        auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);      \
+        if (!layerObj || !layerObj->getLayer()) {                              \
+            napi_value null_value;                                             \
+            napi_get_null(env, &null_value);                                   \
+            return null_value;                                                 \
+        }                                                                      \
+        return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, __VA_ARGS__>( \
+            env, layerObj->getLayer(), &mbgl::style::SymbolLayer::GetFn);      \
+    }
+
+// --- Generated property accessors ---
+
+DEFINE_SYMBOL_SETTER(SetIconImage, setDataDrivenLayoutProperty, "icon-image", setIconImage, mbgl::style::expression::Image)
+DEFINE_SYMBOL_GETTER(GetIconImage, getIconImage, mbgl::style::expression::Image)
+DEFINE_SYMBOL_SETTER(SetIconSize, setLayoutProperty, "icon-size", setIconSize, float)
+DEFINE_SYMBOL_GETTER(GetIconSize, getIconSize, float)
+DEFINE_SYMBOL_SETTER(SetIconRotate, setDataDrivenLayoutProperty, "icon-rotate", setIconRotate, float)
+DEFINE_SYMBOL_GETTER(GetIconRotate, getIconRotate, float)
+DEFINE_SYMBOL_SETTER(SetIconAnchor, setLayoutProperty, "icon-anchor", setIconAnchor, mbgl::style::SymbolAnchorType)
+DEFINE_SYMBOL_GETTER(GetIconAnchor, getIconAnchor, mbgl::style::SymbolAnchorType)
+DEFINE_SYMBOL_SETTER(SetIconAllowOverlap, setLayoutProperty, "icon-allow-overlap", setIconAllowOverlap, bool)
+DEFINE_SYMBOL_GETTER(GetIconAllowOverlap, getIconAllowOverlap, bool)
+DEFINE_SYMBOL_SETTER(SetTextField, setDataDrivenLayoutProperty, "text-field", setTextField, mbgl::style::expression::Formatted)
+DEFINE_SYMBOL_GETTER(GetTextField, getTextField, mbgl::style::expression::Formatted)
+DEFINE_SYMBOL_SETTER(SetTextSize, setLayoutProperty, "text-size", setTextSize, float)
+DEFINE_SYMBOL_GETTER(GetTextSize, getTextSize, float)
+DEFINE_SYMBOL_SETTER(SetTextMaxWidth, setLayoutProperty, "text-max-width", setTextMaxWidth, float)
+DEFINE_SYMBOL_GETTER(GetTextMaxWidth, getTextMaxWidth, float)
+DEFINE_SYMBOL_SETTER(SetTextAnchor, setLayoutProperty, "text-anchor", setTextAnchor, mbgl::style::SymbolAnchorType)
+DEFINE_SYMBOL_GETTER(GetTextAnchor, getTextAnchor, mbgl::style::SymbolAnchorType)
+DEFINE_SYMBOL_SETTER(SetTextAllowOverlap, setLayoutProperty, "text-allow-overlap", setTextAllowOverlap, bool)
+DEFINE_SYMBOL_GETTER(GetTextAllowOverlap, getTextAllowOverlap, bool)
+DEFINE_SYMBOL_SETTER(SetIconOpacity, setPaintProperty, "icon-opacity", setIconOpacity, float)
+DEFINE_SYMBOL_GETTER(GetIconOpacity, getIconOpacity, float)
+DEFINE_SYMBOL_SETTER(SetIconColor, setPaintProperty, "icon-color", setIconColor, mbgl::Color)
+DEFINE_SYMBOL_GETTER(GetIconColor, getIconColor, mbgl::Color)
+DEFINE_SYMBOL_SETTER(SetIconHaloColor, setPaintProperty, "icon-halo-color", setIconHaloColor, mbgl::Color)
+DEFINE_SYMBOL_GETTER(GetIconHaloColor, getIconHaloColor, mbgl::Color)
+DEFINE_SYMBOL_SETTER(SetIconHaloWidth, setPaintProperty, "icon-halo-width", setIconHaloWidth, float)
+DEFINE_SYMBOL_GETTER(GetIconHaloWidth, getIconHaloWidth, float)
+DEFINE_SYMBOL_SETTER(SetTextOpacity, setPaintProperty, "text-opacity", setTextOpacity, float)
+DEFINE_SYMBOL_GETTER(GetTextOpacity, getTextOpacity, float)
+DEFINE_SYMBOL_SETTER(SetTextColor, setPaintProperty, "text-color", setTextColor, mbgl::Color)
+DEFINE_SYMBOL_GETTER(GetTextColor, getTextColor, mbgl::Color)
+DEFINE_SYMBOL_SETTER(SetTextHaloColor, setPaintProperty, "text-halo-color", setTextHaloColor, mbgl::Color)
+DEFINE_SYMBOL_GETTER(GetTextHaloColor, getTextHaloColor, mbgl::Color)
+DEFINE_SYMBOL_SETTER(SetTextHaloWidth, setPaintProperty, "text-halo-width", setTextHaloWidth, float)
+DEFINE_SYMBOL_GETTER(GetTextHaloWidth, getTextHaloWidth, float)
+DEFINE_SYMBOL_SETTER(SetIconIgnorePlacement, setLayoutProperty, "icon-ignore-placement", setIconIgnorePlacement, bool)
+DEFINE_SYMBOL_GETTER(GetIconIgnorePlacement, getIconIgnorePlacement, bool)
+DEFINE_SYMBOL_SETTER(SetIconOptional, setLayoutProperty, "icon-optional", setIconOptional, bool)
+DEFINE_SYMBOL_GETTER(GetIconOptional, getIconOptional, bool)
+DEFINE_SYMBOL_SETTER(SetIconPadding, setLayoutProperty, "icon-padding", setIconPadding, mbgl::Padding)
+DEFINE_SYMBOL_GETTER(GetIconPadding, getIconPadding, mbgl::Padding)
+DEFINE_SYMBOL_SETTER(SetIconKeepUpright, setLayoutProperty, "icon-keep-upright", setIconKeepUpright, bool)
+DEFINE_SYMBOL_GETTER(GetIconKeepUpright, getIconKeepUpright, bool)
+DEFINE_SYMBOL_SETTER(SetIconPitchAlignment, setLayoutProperty, "icon-pitch-alignment", setIconPitchAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetIconPitchAlignment, getIconPitchAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetIconRotationAlignment, setLayoutProperty, "icon-rotation-alignment", setIconRotationAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetIconRotationAlignment, getIconRotationAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetIconTextFit, setLayoutProperty, "icon-text-fit", setIconTextFit, mbgl::style::IconTextFitType)
+DEFINE_SYMBOL_GETTER(GetIconTextFit, getIconTextFit, mbgl::style::IconTextFitType)
+DEFINE_SYMBOL_SETTER(SetTextLetterSpacing, setLayoutProperty, "text-letter-spacing", setTextLetterSpacing, float)
+DEFINE_SYMBOL_GETTER(GetTextLetterSpacing, getTextLetterSpacing, float)
+DEFINE_SYMBOL_SETTER(SetTextJustify, setLayoutProperty, "text-justify", setTextJustify, mbgl::style::TextJustifyType)
+DEFINE_SYMBOL_GETTER(GetTextJustify, getTextJustify, mbgl::style::TextJustifyType)
+DEFINE_SYMBOL_SETTER(SetTextRadialOffset, setLayoutProperty, "text-radial-offset", setTextRadialOffset, float)
+DEFINE_SYMBOL_GETTER(GetTextRadialOffset, getTextRadialOffset, float)
+DEFINE_SYMBOL_SETTER(SetTextRotate, setLayoutProperty, "text-rotate", setTextRotate, float)
+DEFINE_SYMBOL_GETTER(GetTextRotate, getTextRotate, float)
+DEFINE_SYMBOL_SETTER(SetTextPadding, setLayoutProperty, "text-padding", setTextPadding, float)
+DEFINE_SYMBOL_GETTER(GetTextPadding, getTextPadding, float)
+DEFINE_SYMBOL_SETTER(SetTextKeepUpright, setLayoutProperty, "text-keep-upright", setTextKeepUpright, bool)
+DEFINE_SYMBOL_GETTER(GetTextKeepUpright, getTextKeepUpright, bool)
+DEFINE_SYMBOL_SETTER(SetTextTransform, setLayoutProperty, "text-transform", setTextTransform, mbgl::style::TextTransformType)
+DEFINE_SYMBOL_GETTER(GetTextTransform, getTextTransform, mbgl::style::TextTransformType)
+DEFINE_SYMBOL_SETTER(SetTextMaxAngle, setLayoutProperty, "text-max-angle", setTextMaxAngle, float)
+DEFINE_SYMBOL_GETTER(GetTextMaxAngle, getTextMaxAngle, float)
+DEFINE_SYMBOL_SETTER(SetTextRotationAlignment, setLayoutProperty, "text-rotation-alignment", setTextRotationAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetTextRotationAlignment, getTextRotationAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetTextPitchAlignment, setLayoutProperty, "text-pitch-alignment", setTextPitchAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_GETTER(GetTextPitchAlignment, getTextPitchAlignment, mbgl::style::AlignmentType)
+DEFINE_SYMBOL_SETTER(SetTextLineHeight, setLayoutProperty, "text-line-height", setTextLineHeight, float)
+DEFINE_SYMBOL_GETTER(GetTextLineHeight, getTextLineHeight, float)
+DEFINE_SYMBOL_SETTER(SetTextIgnorePlacement, setLayoutProperty, "text-ignore-placement", setTextIgnorePlacement, bool)
+DEFINE_SYMBOL_GETTER(GetTextIgnorePlacement, getTextIgnorePlacement, bool)
+DEFINE_SYMBOL_SETTER(SetTextOptional, setLayoutProperty, "text-optional", setTextOptional, bool)
+DEFINE_SYMBOL_GETTER(GetTextOptional, getTextOptional, bool)
+DEFINE_SYMBOL_SETTER(SetSymbolPlacement, setLayoutProperty, "symbol-placement", setSymbolPlacement, mbgl::style::SymbolPlacementType)
+DEFINE_SYMBOL_GETTER(GetSymbolPlacement, getSymbolPlacement, mbgl::style::SymbolPlacementType)
+DEFINE_SYMBOL_SETTER(SetSymbolSpacing, setLayoutProperty, "symbol-spacing", setSymbolSpacing, float)
+DEFINE_SYMBOL_GETTER(GetSymbolSpacing, getSymbolSpacing, float)
+DEFINE_SYMBOL_SETTER(SetSymbolAvoidEdges, setLayoutProperty, "symbol-avoid-edges", setSymbolAvoidEdges, bool)
+DEFINE_SYMBOL_GETTER(GetSymbolAvoidEdges, getSymbolAvoidEdges, bool)
+DEFINE_SYMBOL_SETTER(SetSymbolSortKey, setDataDrivenLayoutProperty, "symbol-sort-key", setSymbolSortKey, float)
+DEFINE_SYMBOL_GETTER(GetSymbolSortKey, getSymbolSortKey, float)
+DEFINE_SYMBOL_SETTER(SetSymbolZOrder, setLayoutProperty, "symbol-z-order", setSymbolZOrder, mbgl::style::SymbolZOrderType)
+DEFINE_SYMBOL_GETTER(GetSymbolZOrder, getSymbolZOrder, mbgl::style::SymbolZOrderType)
+DEFINE_SYMBOL_SETTER(SetIconHaloBlur, setPaintProperty, "icon-halo-blur", setIconHaloBlur, float)
+DEFINE_SYMBOL_GETTER(GetIconHaloBlur, getIconHaloBlur, float)
+DEFINE_SYMBOL_SETTER(SetIconTranslateAnchor, setPaintProperty, "icon-translate-anchor", setIconTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_SYMBOL_GETTER(GetIconTranslateAnchor, getIconTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_SYMBOL_SETTER(SetTextHaloBlur, setPaintProperty, "text-halo-blur", setTextHaloBlur, float)
+DEFINE_SYMBOL_GETTER(GetTextHaloBlur, getTextHaloBlur, float)
+DEFINE_SYMBOL_SETTER(SetTextTranslateAnchor, setPaintProperty, "text-translate-anchor", setTextTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_SYMBOL_GETTER(GetTextTranslateAnchor, getTextTranslateAnchor, mbgl::style::TranslateAnchorType)
+DEFINE_SYMBOL_SETTER(SetTextVariableAnchorOffset, setLayoutProperty, "text-variable-anchor-offset", setTextVariableAnchorOffset, mbgl::VariableAnchorOffsetCollection)
+DEFINE_SYMBOL_GETTER(GetTextVariableAnchorOffset, getTextVariableAnchorOffset, mbgl::VariableAnchorOffsetCollection)
+DEFINE_SYMBOL_SETTER(SetIconOffset, setLayoutProperty, "icon-offset", setIconOffset, std::array<float, 2>)
+DEFINE_SYMBOL_GETTER(GetIconOffset, getIconOffset, std::array<float, 2>)
+DEFINE_SYMBOL_SETTER(SetTextFont, setLayoutProperty, "text-font", setTextFont, std::vector<std::string>)
+DEFINE_SYMBOL_GETTER(GetTextFont, getTextFont, std::vector<std::string>)
+DEFINE_SYMBOL_SETTER(SetTextOffset, setLayoutProperty, "text-offset", setTextOffset, std::array<float, 2>)
+DEFINE_SYMBOL_GETTER(GetTextOffset, getTextOffset, std::array<float, 2>)
+DEFINE_SYMBOL_SETTER(SetIconTextFitPadding, setLayoutProperty, "icon-text-fit-padding", setIconTextFitPadding, std::array<float, 4>)
+DEFINE_SYMBOL_GETTER(GetIconTextFitPadding, getIconTextFitPadding, std::array<float, 4>)
+DEFINE_SYMBOL_SETTER(SetTextVariableAnchor, setLayoutProperty, "text-variable-anchor", setTextVariableAnchor, std::vector<mbgl::style::TextVariableAnchorType>)
+DEFINE_SYMBOL_SETTER(SetTextWritingMode, setLayoutProperty, "text-writing-mode", setTextWritingMode, std::vector<mbgl::style::TextWritingModeType>)
+DEFINE_SYMBOL_SETTER(SetIconTranslate, setPaintProperty, "icon-translate", setIconTranslate, std::array<float, 2>)
+DEFINE_SYMBOL_GETTER(GetIconTranslate, getIconTranslate, std::array<float, 2>)
+DEFINE_SYMBOL_SETTER(SetTextTranslate, setPaintProperty, "text-translate", setTextTranslate, std::array<float, 2>)
+DEFINE_SYMBOL_GETTER(GetTextTranslate, getTextTranslate, std::array<float, 2>)
+
+
 
 napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
     Logger::info("SymbolLayerNAPI", "Initializing SymbolLayer NAPI class");
@@ -220,7 +378,7 @@ napi_value SymbolLayerNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("SymbolLayerNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -263,70 +421,8 @@ napi_value SymbolLayerNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value SymbolLayerNAPI::CreateInstance(napi_env env, mbgl::style::SymbolLayer* layerPtr) {
-    if (!layerPtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        Logger::error("SymbolLayerNAPI", "Failed to get constructor reference");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create a plain object and set its prototype (avoid invoking the JS constructor)
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to create object");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Retrieve the constructor prototype
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to get prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Set the object's prototype
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        Logger::error("CreateInstance", "Failed to set prototype");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Create the NAPI wrapper (using the WeakPtr constructor)
-    SymbolLayerNAPI* napiObj = new SymbolLayerNAPI(layerPtr);
-    
-    // Wrap into the JS object
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        Logger::error("SymbolLayerNAPI", "Failed to wrap instance");
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-    
-    // Add the _TYPE_ property
-    napi_value typeValue;
-    napi_create_string_utf8(env, "SymbolLayer", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-    
-    return instance;
+    return WrapExistingInstance(env, constructor, Destructor, "SymbolLayer",
+                                layerPtr ? new SymbolLayerNAPI(layerPtr) : nullptr);
 }
 
 
@@ -335,1286 +431,39 @@ napi_value SymbolLayerNAPI::CreateInstance(napi_env env, mbgl::style::SymbolLaye
 // ============================================================================
 
 napi_value SymbolLayerNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    std::string id = layerObj->getLayer()->getID();
-    napi_value result;
-    napi_create_string_utf8(env, id.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetId<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetType(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_string_utf8(env, "symbol", NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetType(env, "symbol");
 }
 
 napi_value SymbolLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    std::string sourceId = layerObj->getLayer()->getSourceID();
-    napi_value result;
-    napi_create_string_utf8(env, sourceId.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceId<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        std::string sourceLayer = args.GetString(0, "sourceLayer");
-        layerObj->getLayer()->setSourceLayer(sourceLayer);
-    }
-    return thisVar;
+    return LayerSetSourceLayer<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &result);
-        return result;
-    }
-    
-    std::string sourceLayer = layerObj->getLayer()->getSourceLayer();
-    napi_value result;
-    napi_create_string_utf8(env, sourceLayer.c_str(), NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetSourceLayer<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float minZoom = static_cast<float>(args.GetDouble(0, "minZoom"));
-        layerObj->getLayer()->setMinZoom(minZoom);
-    }
-    return thisVar;
+    return LayerSetMinZoom<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_double(env, 0.0, &result);
-        return result;
-    }
-    
-    float minZoom = layerObj->getLayer()->getMinZoom();
-    napi_value result;
-    napi_create_double(env, minZoom, &result);
-    return result;
+    return LayerGetMinZoom<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) return thisVar;
-    
-    args.RequireMinArgs(1);
-    if (!args.HasError()) {
-        float maxZoom = static_cast<float>(args.GetDouble(0, "maxZoom"));
-        layerObj->getLayer()->setMaxZoom(maxZoom);
-    }
-    return thisVar;
+    return LayerSetMaxZoom<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value result;
-        napi_create_double(env, 24.0, &result);
-        return result;
-    }
-    
-    float maxZoom = layerObj->getLayer()->getMaxZoom();
-    napi_value result;
-    napi_create_double(env, maxZoom, &result);
-    return result;
-}
-
-// ============================================================================
-// Layout Properties - Icon (Expression supported)
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetIconImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), argv[0], "icon-image",
-        &mbgl::style::SymbolLayer::setIconImage
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconImage(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Image>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconImage
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "icon-size",
-        &mbgl::style::SymbolLayer::setIconSize
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconSize
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconRotate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "icon-rotate",
-        &mbgl::style::SymbolLayer::setIconRotate
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconRotate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconRotate
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), argv[0], "icon-offset",
-        &mbgl::style::SymbolLayer::setIconOffset
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconOffset
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
-        env, layerObj->getLayer(), argv[0], "icon-anchor",
-        &mbgl::style::SymbolLayer::setIconAnchor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconAnchor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    // 🔍 Debug log: inspect the provided value
-    bool result = mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "icon-allow-overlap",
-        &mbgl::style::SymbolLayer::setIconAllowOverlap
-    );
-    Logger::info("SymbolLayerNAPI", "SetIconAllowOverlap called, result=%d", result);
-    
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconAllowOverlap
-    );
-}
-
-// ============================================================================
-// Layout Properties - Text (Expression supported)
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetTextField(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    // text-field supports data-driven expressions
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Formatted>(
-        env, layerObj->getLayer(), argv[0], "text-field",
-        &mbgl::style::SymbolLayer::setTextField
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextField(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::expression::Formatted>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextField
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextFont(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::vector<std::string>>(
-        env, layerObj->getLayer(), argv[0], "text-font",
-        &mbgl::style::SymbolLayer::setTextFont
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextFont(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::vector<std::string>>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextFont
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-size",
-        &mbgl::style::SymbolLayer::setTextSize
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextSize(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextSize
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextMaxWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-max-width",
-        &mbgl::style::SymbolLayer::setTextMaxWidth
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextMaxWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextMaxWidth
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), argv[0], "text-offset",
-        &mbgl::style::SymbolLayer::setTextOffset
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextOffset
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
-        env, layerObj->getLayer(), argv[0], "text-anchor",
-        &mbgl::style::SymbolLayer::setTextAnchor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextAnchor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    // 🔍 Debug log: inspect the provided value
-    bool result = mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "text-allow-overlap",
-        &mbgl::style::SymbolLayer::setTextAllowOverlap
-    );
-    Logger::info("SymbolLayerNAPI", "SetTextAllowOverlap called, result=%d", result);
-    
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextAllowOverlap(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextAllowOverlap
-    );
-}
-
-// ============================================================================
-// Paint Properties - Icon (Expression supported)
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetIconOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "icon-opacity",
-        &mbgl::style::SymbolLayer::setIconOpacity
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconOpacity
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "icon-color",
-        &mbgl::style::SymbolLayer::setIconColor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconColor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconHaloColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "icon-halo-color",
-        &mbgl::style::SymbolLayer::setIconHaloColor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconHaloColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconHaloColor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "icon-halo-width",
-        &mbgl::style::SymbolLayer::setIconHaloWidth
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconHaloWidth
-    );
-}
-
-// ============================================================================
-// Paint Properties - Text (Expression supported)
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetTextOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-opacity",
-        &mbgl::style::SymbolLayer::setTextOpacity
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextOpacity(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextOpacity
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "text-color",
-        &mbgl::style::SymbolLayer::setTextColor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextColor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextHaloColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), argv[0], "text-halo-color",
-        &mbgl::style::SymbolLayer::setTextHaloColor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextHaloColor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Color>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextHaloColor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-halo-width",
-        &mbgl::style::SymbolLayer::setTextHaloWidth
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextHaloWidth(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextHaloWidth
-    );
-}
-
-// ============================================================================
-// New Icon Layout Properties
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetIconIgnorePlacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "icon-ignore-placement",
-        &mbgl::style::SymbolLayer::setIconIgnorePlacement
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconIgnorePlacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconIgnorePlacement
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconOptional(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "icon-optional",
-        &mbgl::style::SymbolLayer::setIconOptional
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconOptional(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconOptional
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconPadding(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::Padding>(
-        env, layerObj->getLayer(), argv[0], "icon-padding",
-        &mbgl::style::SymbolLayer::setIconPadding
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconPadding(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::Padding>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconPadding
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconKeepUpright(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "icon-keep-upright",
-        &mbgl::style::SymbolLayer::setIconKeepUpright
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconKeepUpright(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconKeepUpright
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconPitchAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), argv[0], "icon-pitch-alignment",
-        &mbgl::style::SymbolLayer::setIconPitchAlignment
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconPitchAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconPitchAlignment
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconRotationAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), argv[0], "icon-rotation-alignment",
-        &mbgl::style::SymbolLayer::setIconRotationAlignment
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconRotationAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconRotationAlignment
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconTextFit(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::IconTextFitType>(
-        env, layerObj->getLayer(), argv[0], "icon-text-fit",
-        &mbgl::style::SymbolLayer::setIconTextFit
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconTextFit(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::IconTextFitType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconTextFit
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconTextFitPadding(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::array<float, 4>>(
-        env, layerObj->getLayer(), argv[0], "icon-text-fit-padding",
-        &mbgl::style::SymbolLayer::setIconTextFitPadding
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconTextFitPadding(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 4>>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconTextFitPadding
-    );
-}
-
-// ============================================================================
-// New Text Layout Properties
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetTextLetterSpacing(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-letter-spacing",
-        &mbgl::style::SymbolLayer::setTextLetterSpacing
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextLetterSpacing(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextLetterSpacing
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextJustify(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::TextJustifyType>(
-        env, layerObj->getLayer(), argv[0], "text-justify",
-        &mbgl::style::SymbolLayer::setTextJustify
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextJustify(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::TextJustifyType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextJustify
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextRadialOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-radial-offset",
-        &mbgl::style::SymbolLayer::setTextRadialOffset
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextRadialOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextRadialOffset
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextVariableAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::vector<mbgl::style::TextVariableAnchorType>>(
-        env, layerObj->getLayer(), argv[0], "text-variable-anchor",
-        &mbgl::style::SymbolLayer::setTextVariableAnchor
-    );
-    return thisVar;
+    return LayerGetMaxZoom<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetTextVariableAnchor(napi_env env, napi_callback_info info) {
@@ -1635,295 +484,6 @@ napi_value SymbolLayerNAPI::GetTextVariableAnchor(napi_env env, napi_callback_in
     return undefined;
 }
 
-napi_value SymbolLayerNAPI::SetTextRotate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-rotate",
-        &mbgl::style::SymbolLayer::setTextRotate
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextRotate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextRotate
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextPadding(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-padding",
-        &mbgl::style::SymbolLayer::setTextPadding
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextPadding(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextPadding
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextKeepUpright(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "text-keep-upright",
-        &mbgl::style::SymbolLayer::setTextKeepUpright
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextKeepUpright(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextKeepUpright
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextTransform(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::TextTransformType>(
-        env, layerObj->getLayer(), argv[0], "text-transform",
-        &mbgl::style::SymbolLayer::setTextTransform
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextTransform(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::TextTransformType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextTransform
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextMaxAngle(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-max-angle",
-        &mbgl::style::SymbolLayer::setTextMaxAngle
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextMaxAngle(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextMaxAngle
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextRotationAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), argv[0], "text-rotation-alignment",
-        &mbgl::style::SymbolLayer::setTextRotationAlignment
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextRotationAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextRotationAlignment
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextPitchAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), argv[0], "text-pitch-alignment",
-        &mbgl::style::SymbolLayer::setTextPitchAlignment
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextPitchAlignment(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::AlignmentType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextPitchAlignment
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextLineHeight(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-line-height",
-        &mbgl::style::SymbolLayer::setTextLineHeight
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextLineHeight(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextLineHeight
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextWritingMode(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, std::vector<mbgl::style::TextWritingModeType>>(
-        env, layerObj->getLayer(), argv[0], "text-writing-mode",
-        &mbgl::style::SymbolLayer::setTextWritingMode
-    );
-    return thisVar;
-}
-
 napi_value SymbolLayerNAPI::GetTextWritingMode(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
@@ -1942,504 +502,16 @@ napi_value SymbolLayerNAPI::GetTextWritingMode(napi_env env, napi_callback_info 
     return undefined;
 }
 
-napi_value SymbolLayerNAPI::SetTextIgnorePlacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "text-ignore-placement",
-        &mbgl::style::SymbolLayer::setTextIgnorePlacement
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextIgnorePlacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextIgnorePlacement
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextOptional(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "text-optional",
-        &mbgl::style::SymbolLayer::setTextOptional
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextOptional(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextOptional
-    );
-}
-
-// ============================================================================
-// Symbol Common Layout Properties
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetSymbolPlacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolPlacementType>(
-        env, layerObj->getLayer(), argv[0], "symbol-placement",
-        &mbgl::style::SymbolLayer::setSymbolPlacement
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetSymbolPlacement(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolPlacementType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getSymbolPlacement
-    );
-}
-
-napi_value SymbolLayerNAPI::SetSymbolSpacing(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "symbol-spacing",
-        &mbgl::style::SymbolLayer::setSymbolSpacing
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetSymbolSpacing(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getSymbolSpacing
-    );
-}
-
-napi_value SymbolLayerNAPI::SetSymbolAvoidEdges(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), argv[0], "symbol-avoid-edges",
-        &mbgl::style::SymbolLayer::setSymbolAvoidEdges
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetSymbolAvoidEdges(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, bool>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getSymbolAvoidEdges
-    );
-}
-
-napi_value SymbolLayerNAPI::SetSymbolSortKey(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setDataDrivenLayoutProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "symbol-sort-key",
-        &mbgl::style::SymbolLayer::setSymbolSortKey
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetSymbolSortKey(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getSymbolSortKey
-    );
-}
-
-napi_value SymbolLayerNAPI::SetSymbolZOrder(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolZOrderType>(
-        env, layerObj->getLayer(), argv[0], "symbol-z-order",
-        &mbgl::style::SymbolLayer::setSymbolZOrder
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetSymbolZOrder(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::SymbolZOrderType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getSymbolZOrder
-    );
-}
-
-// ============================================================================
-// New Paint Properties
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetIconHaloBlur(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "icon-halo-blur",
-        &mbgl::style::SymbolLayer::setIconHaloBlur
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconHaloBlur(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconHaloBlur
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), argv[0], "icon-translate",
-        &mbgl::style::SymbolLayer::setIconTranslate
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconTranslate
-    );
-}
-
-napi_value SymbolLayerNAPI::SetIconTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), argv[0], "icon-translate-anchor",
-        &mbgl::style::SymbolLayer::setIconTranslateAnchor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetIconTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getIconTranslateAnchor
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextHaloBlur(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), argv[0], "text-halo-blur",
-        &mbgl::style::SymbolLayer::setTextHaloBlur
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextHaloBlur(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, float>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextHaloBlur
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), argv[0], "text-translate",
-        &mbgl::style::SymbolLayer::setTextTranslate
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextTranslate(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, std::array<float, 2>>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextTranslate
-    );
-}
-
-napi_value SymbolLayerNAPI::SetTextTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setPaintProperty<mbgl::style::SymbolLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), argv[0], "text-translate-anchor",
-        &mbgl::style::SymbolLayer::setTextTranslateAnchor
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextTranslateAnchor(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::style::TranslateAnchorType>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextTranslateAnchor
-    );
-}
-
 // ============================================================================
 // Visibility
 // ============================================================================
 
 napi_value SymbolLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
-    NapiArgs args(env, info);
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        return thisVar;
-    }
-    
-    args.RequireMinArgs(1);
-    if (args.HasError()) {
-        return thisVar;
-    }
-    
-    std::string visibility = args.GetString(0, "visibility");
-    if (visibility == "visible") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::Visible);
-    } else if (visibility == "none") {
-        layerObj->getLayer()->setVisibility(mbgl::style::VisibilityType::None);
-    }
-    
-    return thisVar;
+    return LayerSetVisibility<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    auto visibility = layerObj->getLayer()->getVisibility();
-    const char* visStr = (visibility == mbgl::style::VisibilityType::Visible) ? "visible" : "none";
-    
-    napi_value result;
-    napi_create_string_utf8(env, visStr, NAPI_AUTO_LENGTH, &result);
-    return result;
+    return LayerGetVisibility<SymbolLayerNAPI>(env, info);
 }
 
 // ============================================================================
@@ -2447,77 +519,11 @@ napi_value SymbolLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
 // ============================================================================
 
 napi_value SymbolLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) {
-        return thisVar;
-    }
-    
-    auto filter = mbgl::harmony::napiArrayToFilter(env, argv[0]);
-    if (filter) {
-        layerObj->getLayer()->setFilter(*filter);
-    }
-    
-    return thisVar;
+    return LayerSetFilter<SymbolLayerNAPI>(env, info);
 }
 
 napi_value SymbolLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    auto filter = layerObj->getLayer()->getFilter();
-    return mbgl::harmony::filterToNapiArray(env, filter);
-}
-
-// ============================================================================
-// Text Variable Anchor Offset
-// ============================================================================
-
-napi_value SymbolLayerNAPI::SetTextVariableAnchorOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    size_t argc = 1;
-    napi_value argv[1];
-    napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
-    
-    mbgl::harmony::setLayoutProperty<mbgl::style::SymbolLayer, mbgl::VariableAnchorOffsetCollection>(
-        env, layerObj->getLayer(), argv[0], "text-variable-anchor-offset",
-        &mbgl::style::SymbolLayer::setTextVariableAnchorOffset
-    );
-    return thisVar;
-}
-
-napi_value SymbolLayerNAPI::GetTextVariableAnchorOffset(napi_env env, napi_callback_info info) {
-    napi_value thisVar;
-    napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    
-    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
-    
-    if (!layerObj || !layerObj->getLayer()) {
-        napi_value null_value;
-        napi_get_null(env, &null_value);
-        return null_value;
-    }
-    
-    return mbgl::harmony::getProperty<mbgl::style::SymbolLayer, mbgl::VariableAnchorOffsetCollection>(
-        env, layerObj->getLayer(), &mbgl::style::SymbolLayer::getTextVariableAnchorOffset
-    );
+    return LayerGetFilter<SymbolLayerNAPI>(env, info);
 }
 
 // ==================== Generic Property Methods ====================

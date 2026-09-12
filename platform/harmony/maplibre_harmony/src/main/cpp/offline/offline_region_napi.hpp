@@ -5,7 +5,7 @@
 #include <mbgl/storage/offline.hpp>
 #include <memory>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -56,8 +56,9 @@ private:
     
     // Static constructor reference
     static napi_ref constructor_;
+    static napi_env constructor_Env;
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

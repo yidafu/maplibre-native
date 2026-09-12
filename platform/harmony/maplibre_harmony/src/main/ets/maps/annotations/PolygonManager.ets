@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * PolygonManager - polygon manager.
  *
@@ -54,7 +56,7 @@ export class PolygonManager {
 
       return polygon;
     } catch (error) {
-      console.error(`[PolygonManager] Failed to add polygon: ${error}`);
+      hilog.error(DOMAIN, 'PolygonManager', '%{public}s', `[PolygonManager] Failed to add polygon: ${error}`);
       throw new Error(`Failed to add polygon: ${error}`);
     }
   }
@@ -86,7 +88,7 @@ export class PolygonManager {
 
       return polygons;
     } catch (error) {
-      console.error(`[PolygonManager] Failed to add polygons batch: ${error}`);
+      hilog.error(DOMAIN, 'PolygonManager', '%{public}s', `[PolygonManager] Failed to add polygons batch: ${error}`);
       throw new Error(`Failed to add polygons batch: ${error}`);
     }
   }
@@ -135,7 +137,7 @@ export class PolygonManager {
   public updatePolygon(polygon: Polygon): void {
     const id = polygon.getId();
     if (id === -1) {
-      console.warn('[PolygonManager] Cannot update polygon with id -1');
+      hilog.warn(DOMAIN, 'PolygonManager', '%{public}s', '[PolygonManager] Cannot update polygon with id -1');
       return;
     }
 

@@ -1,4 +1,5 @@
 #include "video_source_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "napi/core/napi_args.hpp"
 #include "napi/core/napi_utils.h"
 #include "utils/logger.h"
@@ -6,17 +7,19 @@
 #include "bitmap/bitmap_napi.hpp"
 #include <mbgl/util/geo.hpp>
 #include <array>
+#include "napi/core/napi_wrap_instance.hpp"
 
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 
 using mbgl::harmony::napi::NapiArgs;
 namespace harmony {
 
 // Static member initialization
 napi_ref VideoSourceNAPI::constructor = nullptr;
+napi_env VideoSourceNAPI::constructorEnv = nullptr;
 
 namespace {
 
@@ -162,7 +165,7 @@ napi_value VideoSourceNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
 
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("VideoSourceNAPI", "Failed to create constructor reference");
         return nullptr;
@@ -226,58 +229,8 @@ napi_value VideoSourceNAPI::New(napi_env env, napi_callback_info info) {
 }
 
 napi_value VideoSourceNAPI::CreateInstance(napi_env env, mbgl::style::ImageSource* sourcePtr) {
-    if (!sourcePtr) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value cons;
-    napi_status status = napi_get_reference_value(env, constructor, &cons);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value instance;
-    status = napi_create_object(env, &instance);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value prototype;
-    status = napi_get_named_property(env, cons, "prototype", &prototype);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    status = napi_set_named_property(env, instance, "__proto__", prototype);
-    if (status != napi_ok) {
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    VideoSourceNAPI* napiObj = new VideoSourceNAPI(sourcePtr);
-
-    status = napi_wrap(env, instance, napiObj, Destructor, nullptr, nullptr);
-    if (status != napi_ok) {
-        delete napiObj;
-        napi_value result;
-        napi_get_null(env, &result);
-        return result;
-    }
-
-    napi_value typeValue;
-    napi_create_string_utf8(env, "VideoSource", NAPI_AUTO_LENGTH, &typeValue);
-    napi_set_named_property(env, instance, "_TYPE_", typeValue);
-
-    return instance;
+    return mbgl::harmony::WrapExistingInstance(env, constructor, Destructor, "VideoSource",
+                                sourcePtr ? new VideoSourceNAPI(sourcePtr) : nullptr);
 }
 
 napi_value VideoSourceNAPI::GetId(napi_env env, napi_callback_info info) {
@@ -390,4 +343,4 @@ napi_value VideoSourceNAPI::UpdateImage(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl

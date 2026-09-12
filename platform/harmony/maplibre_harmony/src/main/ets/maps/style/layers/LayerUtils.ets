@@ -17,4 +17,3 @@ export function convertValue<T>(value: T | Expression | ExpressionLiteral): T | 
   }
   return value as T | ExpressionLiteral;
 }
-

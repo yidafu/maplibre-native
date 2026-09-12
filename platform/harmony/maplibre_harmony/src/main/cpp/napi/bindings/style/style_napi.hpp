@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <memory>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -120,6 +120,7 @@ public:
 
     // Constructor reference (used to create instances)
     static napi_ref constructor;
+    static napi_env constructorEnv;
 
 private:
     mbgl::Map* map;  // Holds a Map pointer (not owned)
@@ -138,5 +139,5 @@ public:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

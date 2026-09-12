@@ -21,7 +21,7 @@
 using namespace mbgl::harmony::napi;
 using mbgl::harmony::Logger;
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // ==================== Source management ====================
@@ -127,27 +127,27 @@ napi_value StyleNAPI::GetSource(napi_env env, napi_callback_info info) {
         switch (source->getType()) {
             case mbgl::style::SourceType::GeoJSON: {
                 auto* geoJsonSource = static_cast<mbgl::style::GeoJSONSource*>(source);
-                return maplibre::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
+                return mbgl::harmony::GeoJsonSourceNAPI::CreateInstance(env, geoJsonSource);
             }
             case mbgl::style::SourceType::Vector: {
                 auto* vectorSource = static_cast<mbgl::style::VectorSource*>(source);
-                return maplibre::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
+                return mbgl::harmony::VectorSourceNAPI::CreateInstance(env, vectorSource);
             }
             case mbgl::style::SourceType::Raster: {
                 auto* rasterSource = static_cast<mbgl::style::RasterSource*>(source);
-                return maplibre::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
+                return mbgl::harmony::RasterSourceNAPI::CreateInstance(env, rasterSource);
             }
             case mbgl::style::SourceType::RasterDEM: {
                 auto* rasterDemSource = static_cast<mbgl::style::RasterDEMSource*>(source);
-                return maplibre::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
+                return mbgl::harmony::RasterDemSourceNAPI::CreateInstance(env, rasterDemSource);
             }
             case mbgl::style::SourceType::Image: {
                 auto* imageSource = static_cast<mbgl::style::ImageSource*>(source);
-                return maplibre::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
+                return mbgl::harmony::ImageSourceNAPI::CreateInstance(env, imageSource);
             }
             case mbgl::style::SourceType::CustomVector: {
                 auto* customGeometrySource = static_cast<mbgl::style::CustomGeometrySource*>(source);
-                return maplibre::harmony::CustomGeometrySourceNAPI::CreateInstance(env, customGeometrySource);
+                return mbgl::harmony::CustomGeometrySourceNAPI::CreateInstance(env, customGeometrySource);
             }
             default:
                 Logger::warn("StyleNAPI", "GetSource: Unknown source type: %d", static_cast<int>(source->getType()));
@@ -241,5 +241,5 @@ napi_value StyleNAPI::GetSources(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

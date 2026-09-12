@@ -102,6 +102,7 @@ private:
     ~HeatmapLayerNAPI();
     
     static napi_ref constructor;
+    static napi_env constructorEnv;
     std::unique_ptr<mbgl::style::HeatmapLayer> layer;
     mapbox::base::WeakPtr<mbgl::style::Layer> weakLayer;
 };

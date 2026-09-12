@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * ResourceTransform - URL transform manager.
  *
@@ -112,7 +114,7 @@ export class ResourceTransform {
         
         // Fall back to the original URL when the callback returns undefined, null, or a non-string.
         if (result === undefined || result === null || typeof result !== 'string') {
-          console.warn('ResourceTransform: Callback returned invalid value, using original URL');
+          hilog.warn(DOMAIN, 'ResourceTransform', '%{public}s', 'ResourceTransform: Callback returned invalid value, using original URL');
           return url;
         }
         
@@ -124,7 +126,7 @@ export class ResourceTransform {
         return result;
         
       } catch (error) {
-        console.error('ResourceTransform: Exception in callback:', error);
+        hilog.error(DOMAIN, 'ResourceTransform', 'ResourceTransform: Exception in callback: %{public}s', error);
         return url;
       }
     };
@@ -155,7 +157,7 @@ export class ResourceTransform {
    * @example
    * ```typescript
    * if (ResourceTransform.hasCallback()) {
-   *   console.log('URL transform is active');
+   *   hilog.info(DOMAIN, 'ResourceTransform', '%{public}s', 'URL transform is active');
    * }
    * ```
    */

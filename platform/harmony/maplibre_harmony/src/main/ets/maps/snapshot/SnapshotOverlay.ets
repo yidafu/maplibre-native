@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * SnapshotOverlay - helper for drawing overlays on map snapshots.
  *
@@ -122,7 +124,7 @@ export class SnapshotOverlay {
     // 2. Compute the drawing position based on `position`.
     // 3. Use the drawing API to render onto pixelMap.
     
-    console.warn('[SnapshotOverlay] drawLogo: Not yet implemented - requires graphics.drawing API');
+    hilog.warn(DOMAIN, 'SnapshotOverlay', '%{public}s', '[SnapshotOverlay] drawLogo: Not yet implemented - requires graphics.drawing API');
   }
 
   /**
@@ -151,7 +153,7 @@ export class SnapshotOverlay {
     // 2. Compute drawing position based on `position`.
     // 3. Use the drawing API to place text on the pixelMap.
     
-    console.warn('[SnapshotOverlay] drawAttributions: Not yet implemented - requires graphics.drawing API');
+    hilog.warn(DOMAIN, 'SnapshotOverlay', '%{public}s', '[SnapshotOverlay] drawAttributions: Not yet implemented - requires graphics.drawing API');
   }
 
   /**
@@ -214,7 +216,7 @@ export class SnapshotOverlay {
       }
     } catch (err) {
       const error = err as Error;
-      console.error('[SnapshotOverlay] addOverlay failed:', error.message);
+      hilog.error(DOMAIN, 'SnapshotOverlay', '[SnapshotOverlay] addOverlay failed: %{public}s', error.message);
       throw new Error(`Overlay drawing failed: ${error.message}`);
     }
   }

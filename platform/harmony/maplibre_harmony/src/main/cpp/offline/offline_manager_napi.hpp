@@ -5,7 +5,7 @@
 #include <mbgl/storage/offline.hpp>
 #include <memory>
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 /**
@@ -46,5 +46,5 @@ private:
 };
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

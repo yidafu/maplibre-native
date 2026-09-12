@@ -1,9 +1,10 @@
 #include "polygon_napi.hpp"
+#include "napi/core/napi_constructor_ref.hpp"
 #include "utils/logger.h"
 #include "napi/core/napi_args.hpp"
 #include "geometry/lat_lng_harmony.hpp"
 
-namespace maplibre {
+namespace mbgl {
 namespace harmony {
 
 // Use Logger from mbgl::harmony namespace
@@ -12,6 +13,7 @@ using mbgl::harmony::napi::NapiArgs;
 
 // Static member initialization
 napi_ref PolygonNAPI::constructor = nullptr;
+napi_env PolygonNAPI::constructorEnv = nullptr;
 
 PolygonNAPI::PolygonNAPI()
     : annotationId(-1),
@@ -84,7 +86,7 @@ napi_value PolygonNAPI::Init(napi_env env, napi_value exports) {
         return nullptr;
     }
     
-    status = napi_create_reference(env, cons, 1, &constructor);
+    status = mbgl::harmony::RefreshConstructorRef(env, cons, constructor, constructorEnv);
     if (status != napi_ok) {
         Logger::error("PolygonNAPI", "Failed to create reference to Polygon constructor");
         return nullptr;
@@ -915,5 +917,5 @@ napi_value PolygonNAPI::SetMapLibreMap(napi_env env, napi_callback_info info) {
 }
 
 } // namespace harmony
-} // namespace maplibre
+} // namespace mbgl
 

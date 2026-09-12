@@ -1,3 +1,5 @@
+import { hilog } from '@kit.PerformanceAnalysisKit';
+import { DOMAIN } from '../../constants/HiLogConstants';
 /**
  * VisibleRegion - map visible region.
  *
@@ -17,8 +19,8 @@
  * ```typescript
  * const projection = map.getProjection();
  * const visibleRegion = projection.getVisibleRegion();
- * console.log('Visible top left:', visibleRegion.topLeft);
- * console.log('Visible bounds:', visibleRegion.latLngBounds);
+ * hilog.info(DOMAIN, 'Visible top left:', '%{public}s', visibleRegion.topLeft);
+ * hilog.info(DOMAIN, 'Visible bounds:', '%{public}s', visibleRegion.latLngBounds);
  * ```
  */
 import { LatLng } from '../geometry/LatLng';
