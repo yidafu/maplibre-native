@@ -189,8 +189,7 @@ napi_value LocationIndicatorLayerNAPI::SetBearingImage(napi_env env, napi_callba
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -205,8 +204,7 @@ napi_value LocationIndicatorLayerNAPI::GetBearingImage(napi_env env, napi_callba
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -225,8 +223,7 @@ napi_value LocationIndicatorLayerNAPI::SetShadowImage(napi_env env, napi_callbac
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -241,8 +238,7 @@ napi_value LocationIndicatorLayerNAPI::GetShadowImage(napi_env env, napi_callbac
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -261,8 +257,7 @@ napi_value LocationIndicatorLayerNAPI::SetTopImage(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -277,8 +272,7 @@ napi_value LocationIndicatorLayerNAPI::GetTopImage(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -301,8 +295,7 @@ napi_value LocationIndicatorLayerNAPI::SetAccuracyRadius(napi_env env, napi_call
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -317,8 +310,7 @@ napi_value LocationIndicatorLayerNAPI::GetAccuracyRadius(napi_env env, napi_call
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -337,8 +329,7 @@ napi_value LocationIndicatorLayerNAPI::SetAccuracyRadiusBorderColor(napi_env env
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -353,8 +344,7 @@ napi_value LocationIndicatorLayerNAPI::GetAccuracyRadiusBorderColor(napi_env env
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -373,8 +363,7 @@ napi_value LocationIndicatorLayerNAPI::SetAccuracyRadiusColor(napi_env env, napi
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -389,8 +378,7 @@ napi_value LocationIndicatorLayerNAPI::GetAccuracyRadiusColor(napi_env env, napi
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -409,8 +397,7 @@ napi_value LocationIndicatorLayerNAPI::SetBearing(napi_env env, napi_callback_in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -425,8 +412,7 @@ napi_value LocationIndicatorLayerNAPI::GetBearing(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -445,8 +431,7 @@ napi_value LocationIndicatorLayerNAPI::SetBearingImageSize(napi_env env, napi_ca
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -461,8 +446,7 @@ napi_value LocationIndicatorLayerNAPI::GetBearingImageSize(napi_env env, napi_ca
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -481,8 +465,7 @@ napi_value LocationIndicatorLayerNAPI::SetImageTiltDisplacement(napi_env env, na
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -497,8 +480,7 @@ napi_value LocationIndicatorLayerNAPI::GetImageTiltDisplacement(napi_env env, na
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -517,8 +499,7 @@ napi_value LocationIndicatorLayerNAPI::SetLocation(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -533,8 +514,7 @@ napi_value LocationIndicatorLayerNAPI::GetLocation(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -553,8 +533,7 @@ napi_value LocationIndicatorLayerNAPI::SetPerspectiveCompensation(napi_env env, 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -569,8 +548,7 @@ napi_value LocationIndicatorLayerNAPI::GetPerspectiveCompensation(napi_env env, 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -589,8 +567,7 @@ napi_value LocationIndicatorLayerNAPI::SetShadowImageSize(napi_env env, napi_cal
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -605,8 +582,7 @@ napi_value LocationIndicatorLayerNAPI::GetShadowImageSize(napi_env env, napi_cal
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -625,8 +601,7 @@ napi_value LocationIndicatorLayerNAPI::SetTopImageSize(napi_env env, napi_callba
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -641,8 +616,7 @@ napi_value LocationIndicatorLayerNAPI::GetTopImageSize(napi_env env, napi_callba
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -663,8 +637,7 @@ napi_value LocationIndicatorLayerNAPI::GetId(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -689,8 +662,7 @@ napi_value LocationIndicatorLayerNAPI::SetVisibility(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) return thisVar;
 
@@ -710,8 +682,7 @@ napi_value LocationIndicatorLayerNAPI::GetVisibility(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -732,8 +703,7 @@ napi_value LocationIndicatorLayerNAPI::SetMinZoom(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) return thisVar;
 
@@ -749,8 +719,7 @@ napi_value LocationIndicatorLayerNAPI::GetMinZoom(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
@@ -769,8 +738,7 @@ napi_value LocationIndicatorLayerNAPI::SetMaxZoom(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) return thisVar;
 
@@ -786,8 +754,7 @@ napi_value LocationIndicatorLayerNAPI::GetMaxZoom(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    LocationIndicatorLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<LocationIndicatorLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;

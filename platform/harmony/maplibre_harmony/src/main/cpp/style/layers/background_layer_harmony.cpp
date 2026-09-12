@@ -205,8 +205,7 @@ napi_value BackgroundLayerNAPI::SetBackgroundColor(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -229,8 +228,7 @@ napi_value BackgroundLayerNAPI::SetBackgroundOpacity(napi_env env, napi_callback
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -253,8 +251,7 @@ napi_value BackgroundLayerNAPI::SetBackgroundPattern(napi_env env, napi_callback
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -279,8 +276,7 @@ napi_value BackgroundLayerNAPI::GetBackgroundColor(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -306,8 +302,7 @@ napi_value BackgroundLayerNAPI::GetBackgroundOpacity(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -337,8 +332,7 @@ napi_value BackgroundLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -367,8 +361,7 @@ napi_value BackgroundLayerNAPI::SetVisibility(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
@@ -393,8 +386,7 @@ napi_value BackgroundLayerNAPI::GetVisibility(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -419,8 +411,7 @@ napi_value BackgroundLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -444,8 +435,7 @@ napi_value BackgroundLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -471,8 +461,7 @@ napi_value BackgroundLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -496,8 +485,7 @@ napi_value BackgroundLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    BackgroundLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<BackgroundLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;

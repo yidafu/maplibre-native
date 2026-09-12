@@ -338,8 +338,7 @@ napi_value SymbolLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
@@ -363,8 +362,7 @@ napi_value SymbolLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
@@ -383,8 +381,7 @@ napi_value SymbolLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) return thisVar;
     
@@ -400,8 +397,7 @@ napi_value SymbolLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
@@ -420,8 +416,7 @@ napi_value SymbolLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) return thisVar;
     
@@ -437,8 +432,7 @@ napi_value SymbolLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
@@ -457,8 +451,7 @@ napi_value SymbolLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) return thisVar;
     
@@ -474,8 +467,7 @@ napi_value SymbolLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value result;
@@ -499,8 +491,7 @@ napi_value SymbolLayerNAPI::SetIconImage(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -515,8 +506,7 @@ napi_value SymbolLayerNAPI::GetIconImage(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -535,8 +525,7 @@ napi_value SymbolLayerNAPI::SetIconSize(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -551,8 +540,7 @@ napi_value SymbolLayerNAPI::GetIconSize(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -571,8 +559,7 @@ napi_value SymbolLayerNAPI::SetIconRotate(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -587,8 +574,7 @@ napi_value SymbolLayerNAPI::GetIconRotate(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -607,8 +593,7 @@ napi_value SymbolLayerNAPI::SetIconOffset(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -623,8 +608,7 @@ napi_value SymbolLayerNAPI::GetIconOffset(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -643,8 +627,7 @@ napi_value SymbolLayerNAPI::SetIconAnchor(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -659,8 +642,7 @@ napi_value SymbolLayerNAPI::GetIconAnchor(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -679,8 +661,7 @@ napi_value SymbolLayerNAPI::SetIconAllowOverlap(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -698,8 +679,7 @@ napi_value SymbolLayerNAPI::GetIconAllowOverlap(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -722,8 +702,7 @@ napi_value SymbolLayerNAPI::SetTextField(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -739,8 +718,7 @@ napi_value SymbolLayerNAPI::GetTextField(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -759,8 +737,7 @@ napi_value SymbolLayerNAPI::SetTextFont(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -775,8 +752,7 @@ napi_value SymbolLayerNAPI::GetTextFont(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -795,8 +771,7 @@ napi_value SymbolLayerNAPI::SetTextSize(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -811,8 +786,7 @@ napi_value SymbolLayerNAPI::GetTextSize(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -831,8 +805,7 @@ napi_value SymbolLayerNAPI::SetTextMaxWidth(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -847,8 +820,7 @@ napi_value SymbolLayerNAPI::GetTextMaxWidth(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -867,8 +839,7 @@ napi_value SymbolLayerNAPI::SetTextOffset(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -883,8 +854,7 @@ napi_value SymbolLayerNAPI::GetTextOffset(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -903,8 +873,7 @@ napi_value SymbolLayerNAPI::SetTextAnchor(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -919,8 +888,7 @@ napi_value SymbolLayerNAPI::GetTextAnchor(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -939,8 +907,7 @@ napi_value SymbolLayerNAPI::SetTextAllowOverlap(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -958,8 +925,7 @@ napi_value SymbolLayerNAPI::GetTextAllowOverlap(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -982,8 +948,7 @@ napi_value SymbolLayerNAPI::SetIconOpacity(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -998,8 +963,7 @@ napi_value SymbolLayerNAPI::GetIconOpacity(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1018,8 +982,7 @@ napi_value SymbolLayerNAPI::SetIconColor(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1034,8 +997,7 @@ napi_value SymbolLayerNAPI::GetIconColor(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1054,8 +1016,7 @@ napi_value SymbolLayerNAPI::SetIconHaloColor(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1070,8 +1031,7 @@ napi_value SymbolLayerNAPI::GetIconHaloColor(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1090,8 +1050,7 @@ napi_value SymbolLayerNAPI::SetIconHaloWidth(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1106,8 +1065,7 @@ napi_value SymbolLayerNAPI::GetIconHaloWidth(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1130,8 +1088,7 @@ napi_value SymbolLayerNAPI::SetTextOpacity(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1146,8 +1103,7 @@ napi_value SymbolLayerNAPI::GetTextOpacity(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1166,8 +1122,7 @@ napi_value SymbolLayerNAPI::SetTextColor(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1182,8 +1137,7 @@ napi_value SymbolLayerNAPI::GetTextColor(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1202,8 +1156,7 @@ napi_value SymbolLayerNAPI::SetTextHaloColor(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1218,8 +1171,7 @@ napi_value SymbolLayerNAPI::GetTextHaloColor(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1238,8 +1190,7 @@ napi_value SymbolLayerNAPI::SetTextHaloWidth(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1254,8 +1205,7 @@ napi_value SymbolLayerNAPI::GetTextHaloWidth(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1278,8 +1228,7 @@ napi_value SymbolLayerNAPI::SetIconIgnorePlacement(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1294,8 +1243,7 @@ napi_value SymbolLayerNAPI::GetIconIgnorePlacement(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1314,8 +1262,7 @@ napi_value SymbolLayerNAPI::SetIconOptional(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1330,8 +1277,7 @@ napi_value SymbolLayerNAPI::GetIconOptional(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1350,8 +1296,7 @@ napi_value SymbolLayerNAPI::SetIconPadding(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1366,8 +1311,7 @@ napi_value SymbolLayerNAPI::GetIconPadding(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1386,8 +1330,7 @@ napi_value SymbolLayerNAPI::SetIconKeepUpright(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1402,8 +1345,7 @@ napi_value SymbolLayerNAPI::GetIconKeepUpright(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1422,8 +1364,7 @@ napi_value SymbolLayerNAPI::SetIconPitchAlignment(napi_env env, napi_callback_in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1438,8 +1379,7 @@ napi_value SymbolLayerNAPI::GetIconPitchAlignment(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1458,8 +1398,7 @@ napi_value SymbolLayerNAPI::SetIconRotationAlignment(napi_env env, napi_callback
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1474,8 +1413,7 @@ napi_value SymbolLayerNAPI::GetIconRotationAlignment(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1494,8 +1432,7 @@ napi_value SymbolLayerNAPI::SetIconTextFit(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1510,8 +1447,7 @@ napi_value SymbolLayerNAPI::GetIconTextFit(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1530,8 +1466,7 @@ napi_value SymbolLayerNAPI::SetIconTextFitPadding(napi_env env, napi_callback_in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1546,8 +1481,7 @@ napi_value SymbolLayerNAPI::GetIconTextFitPadding(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1570,8 +1504,7 @@ napi_value SymbolLayerNAPI::SetTextLetterSpacing(napi_env env, napi_callback_inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1586,8 +1519,7 @@ napi_value SymbolLayerNAPI::GetTextLetterSpacing(napi_env env, napi_callback_inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1606,8 +1538,7 @@ napi_value SymbolLayerNAPI::SetTextJustify(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1622,8 +1553,7 @@ napi_value SymbolLayerNAPI::GetTextJustify(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1642,8 +1572,7 @@ napi_value SymbolLayerNAPI::SetTextRadialOffset(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1658,8 +1587,7 @@ napi_value SymbolLayerNAPI::GetTextRadialOffset(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1678,8 +1606,7 @@ napi_value SymbolLayerNAPI::SetTextVariableAnchor(napi_env env, napi_callback_in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1694,8 +1621,7 @@ napi_value SymbolLayerNAPI::GetTextVariableAnchor(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1715,8 +1641,7 @@ napi_value SymbolLayerNAPI::SetTextRotate(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1731,8 +1656,7 @@ napi_value SymbolLayerNAPI::GetTextRotate(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1751,8 +1675,7 @@ napi_value SymbolLayerNAPI::SetTextPadding(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1767,8 +1690,7 @@ napi_value SymbolLayerNAPI::GetTextPadding(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1787,8 +1709,7 @@ napi_value SymbolLayerNAPI::SetTextKeepUpright(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1803,8 +1724,7 @@ napi_value SymbolLayerNAPI::GetTextKeepUpright(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1823,8 +1743,7 @@ napi_value SymbolLayerNAPI::SetTextTransform(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1839,8 +1758,7 @@ napi_value SymbolLayerNAPI::GetTextTransform(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1859,8 +1777,7 @@ napi_value SymbolLayerNAPI::SetTextMaxAngle(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1875,8 +1792,7 @@ napi_value SymbolLayerNAPI::GetTextMaxAngle(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1895,8 +1811,7 @@ napi_value SymbolLayerNAPI::SetTextRotationAlignment(napi_env env, napi_callback
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1911,8 +1826,7 @@ napi_value SymbolLayerNAPI::GetTextRotationAlignment(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1931,8 +1845,7 @@ napi_value SymbolLayerNAPI::SetTextPitchAlignment(napi_env env, napi_callback_in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1947,8 +1860,7 @@ napi_value SymbolLayerNAPI::GetTextPitchAlignment(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -1967,8 +1879,7 @@ napi_value SymbolLayerNAPI::SetTextLineHeight(napi_env env, napi_callback_info i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1983,8 +1894,7 @@ napi_value SymbolLayerNAPI::GetTextLineHeight(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2003,8 +1913,7 @@ napi_value SymbolLayerNAPI::SetTextWritingMode(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2019,8 +1928,7 @@ napi_value SymbolLayerNAPI::GetTextWritingMode(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2040,8 +1948,7 @@ napi_value SymbolLayerNAPI::SetTextIgnorePlacement(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2056,8 +1963,7 @@ napi_value SymbolLayerNAPI::GetTextIgnorePlacement(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2076,8 +1982,7 @@ napi_value SymbolLayerNAPI::SetTextOptional(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2092,8 +1997,7 @@ napi_value SymbolLayerNAPI::GetTextOptional(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2116,8 +2020,7 @@ napi_value SymbolLayerNAPI::SetSymbolPlacement(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2132,8 +2035,7 @@ napi_value SymbolLayerNAPI::GetSymbolPlacement(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2152,8 +2054,7 @@ napi_value SymbolLayerNAPI::SetSymbolSpacing(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2168,8 +2069,7 @@ napi_value SymbolLayerNAPI::GetSymbolSpacing(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2188,8 +2088,7 @@ napi_value SymbolLayerNAPI::SetSymbolAvoidEdges(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2204,8 +2103,7 @@ napi_value SymbolLayerNAPI::GetSymbolAvoidEdges(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2224,8 +2122,7 @@ napi_value SymbolLayerNAPI::SetSymbolSortKey(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2240,8 +2137,7 @@ napi_value SymbolLayerNAPI::GetSymbolSortKey(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2260,8 +2156,7 @@ napi_value SymbolLayerNAPI::SetSymbolZOrder(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2276,8 +2171,7 @@ napi_value SymbolLayerNAPI::GetSymbolZOrder(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2300,8 +2194,7 @@ napi_value SymbolLayerNAPI::SetIconHaloBlur(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2316,8 +2209,7 @@ napi_value SymbolLayerNAPI::GetIconHaloBlur(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2336,8 +2228,7 @@ napi_value SymbolLayerNAPI::SetIconTranslate(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2352,8 +2243,7 @@ napi_value SymbolLayerNAPI::GetIconTranslate(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2372,8 +2262,7 @@ napi_value SymbolLayerNAPI::SetIconTranslateAnchor(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2388,8 +2277,7 @@ napi_value SymbolLayerNAPI::GetIconTranslateAnchor(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2408,8 +2296,7 @@ napi_value SymbolLayerNAPI::SetTextHaloBlur(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2424,8 +2311,7 @@ napi_value SymbolLayerNAPI::GetTextHaloBlur(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2444,8 +2330,7 @@ napi_value SymbolLayerNAPI::SetTextTranslate(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2460,8 +2345,7 @@ napi_value SymbolLayerNAPI::GetTextTranslate(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2480,8 +2364,7 @@ napi_value SymbolLayerNAPI::SetTextTranslateAnchor(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2496,8 +2379,7 @@ napi_value SymbolLayerNAPI::GetTextTranslateAnchor(napi_env env, napi_callback_i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2519,8 +2401,7 @@ napi_value SymbolLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
@@ -2545,8 +2426,7 @@ napi_value SymbolLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2572,8 +2452,7 @@ napi_value SymbolLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -2591,8 +2470,7 @@ napi_value SymbolLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -2614,8 +2492,7 @@ napi_value SymbolLayerNAPI::SetTextVariableAnchorOffset(napi_env env, napi_callb
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -2630,8 +2507,7 @@ napi_value SymbolLayerNAPI::GetTextVariableAnchorOffset(napi_env env, napi_callb
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    SymbolLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<SymbolLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;

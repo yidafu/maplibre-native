@@ -231,8 +231,7 @@ napi_value FillLayerNAPI::SetFillColor(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -255,8 +254,7 @@ napi_value FillLayerNAPI::SetFillOpacity(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -279,8 +277,7 @@ napi_value FillLayerNAPI::SetFillOutlineColor(napi_env env, napi_callback_info i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -303,8 +300,7 @@ napi_value FillLayerNAPI::SetFillPattern(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -327,8 +323,7 @@ napi_value FillLayerNAPI::SetFillAntialias(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -351,8 +346,7 @@ napi_value FillLayerNAPI::SetFillTranslate(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -377,8 +371,7 @@ napi_value FillLayerNAPI::GetFillColor(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -404,8 +397,7 @@ napi_value FillLayerNAPI::GetFillOpacity(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -435,8 +427,7 @@ napi_value FillLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -460,8 +451,7 @@ napi_value FillLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -484,8 +474,7 @@ napi_value FillLayerNAPI::SetVisibility(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
@@ -510,8 +499,7 @@ napi_value FillLayerNAPI::GetVisibility(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -536,8 +524,7 @@ napi_value FillLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -561,8 +548,7 @@ napi_value FillLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -588,8 +574,7 @@ napi_value FillLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -613,8 +598,7 @@ napi_value FillLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -644,8 +628,7 @@ napi_value FillLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -669,8 +652,7 @@ napi_value FillLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -701,8 +683,7 @@ napi_value FillLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) {
         return thisVar;
@@ -726,8 +707,7 @@ napi_value FillLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -757,8 +737,7 @@ napi_value FillLayerNAPI::SetFillTranslateAnchor(napi_env env, napi_callback_inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -773,8 +752,7 @@ napi_value FillLayerNAPI::GetFillTranslateAnchor(napi_env env, napi_callback_inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -800,8 +778,7 @@ napi_value FillLayerNAPI::SetFillSortKey(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -816,8 +793,7 @@ napi_value FillLayerNAPI::GetFillSortKey(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;

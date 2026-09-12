@@ -218,8 +218,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapRadius(napi_env env, napi_callback_info i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) return thisVar;
 
@@ -239,8 +238,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapWeight(napi_env env, napi_callback_info i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) return thisVar;
 
@@ -262,8 +260,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapIntensity(napi_env env, napi_callback_inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) return thisVar;
 
@@ -285,8 +282,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapColor(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) return thisVar;
     
@@ -323,8 +319,7 @@ napi_value HeatmapLayerNAPI::SetHeatmapOpacity(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -343,8 +338,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapRadius(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -368,8 +362,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapWeight(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -393,8 +386,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapIntensity(napi_env env, napi_callback_inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -418,8 +410,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapColor(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -450,8 +441,7 @@ napi_value HeatmapLayerNAPI::GetHeatmapOpacity(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -479,8 +469,7 @@ napi_value HeatmapLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -504,8 +493,7 @@ napi_value HeatmapLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -524,8 +512,7 @@ napi_value HeatmapLayerNAPI::SetVisibility(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) return thisVar;
     
@@ -545,8 +532,7 @@ napi_value HeatmapLayerNAPI::GetVisibility(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -567,8 +553,7 @@ napi_value HeatmapLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -587,8 +572,7 @@ napi_value HeatmapLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -614,8 +598,7 @@ napi_value HeatmapLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -634,8 +617,7 @@ napi_value HeatmapLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -661,8 +643,7 @@ napi_value HeatmapLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -681,8 +662,7 @@ napi_value HeatmapLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -709,8 +689,7 @@ napi_value HeatmapLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) return thisVar;
 
@@ -728,8 +707,7 @@ napi_value HeatmapLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HeatmapLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HeatmapLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;

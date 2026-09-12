@@ -178,8 +178,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeIlluminationDirection(napi_env env, n
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -196,8 +195,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeIlluminationAnchor(napi_env env, napi
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -214,8 +212,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeExaggeration(napi_env env, napi_callb
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -232,8 +229,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeShadowColor(napi_env env, napi_callba
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -250,8 +246,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeHighlightColor(napi_env env, napi_cal
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -268,8 +263,7 @@ napi_value HillshadeLayerNAPI::SetHillshadeAccentColor(napi_env env, napi_callba
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -284,8 +278,7 @@ napi_value HillshadeLayerNAPI::GetHillshadeIlluminationDirection(napi_env env, n
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -309,8 +302,7 @@ napi_value HillshadeLayerNAPI::GetHillshadeExaggeration(napi_env env, napi_callb
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -334,8 +326,7 @@ napi_value HillshadeLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -359,8 +350,7 @@ napi_value HillshadeLayerNAPI::GetSourceId(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -379,8 +369,7 @@ napi_value HillshadeLayerNAPI::SetVisibility(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) return thisVar;
     
@@ -400,8 +389,7 @@ napi_value HillshadeLayerNAPI::GetVisibility(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -422,8 +410,7 @@ napi_value HillshadeLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -442,8 +429,7 @@ napi_value HillshadeLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -469,8 +455,7 @@ napi_value HillshadeLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -489,8 +474,7 @@ napi_value HillshadeLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -520,8 +504,7 @@ napi_value HillshadeLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -545,8 +528,7 @@ napi_value HillshadeLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -577,8 +559,7 @@ napi_value HillshadeLayerNAPI::SetFilter(napi_env env, napi_callback_info info) 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) {
         return thisVar;
@@ -601,8 +582,7 @@ napi_value HillshadeLayerNAPI::GetFilter(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    HillshadeLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<HillshadeLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;

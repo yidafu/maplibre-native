@@ -238,8 +238,7 @@ napi_value CircleLayerNAPI::SetCircleRadius(napi_env env, napi_callback_info inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -262,8 +261,7 @@ napi_value CircleLayerNAPI::SetCircleColor(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -286,8 +284,7 @@ napi_value CircleLayerNAPI::SetCircleOpacity(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -310,8 +307,7 @@ napi_value CircleLayerNAPI::SetCircleBlur(napi_env env, napi_callback_info info)
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -334,8 +330,7 @@ napi_value CircleLayerNAPI::SetCircleStrokeWidth(napi_env env, napi_callback_inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -358,8 +353,7 @@ napi_value CircleLayerNAPI::SetCircleStrokeColor(napi_env env, napi_callback_inf
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -382,8 +376,7 @@ napi_value CircleLayerNAPI::SetCircleStrokeOpacity(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) {
         return thisVar;
@@ -408,8 +401,7 @@ napi_value CircleLayerNAPI::GetCircleRadius(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -435,8 +427,7 @@ napi_value CircleLayerNAPI::GetCircleColor(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -462,8 +453,7 @@ napi_value CircleLayerNAPI::GetCircleOpacity(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -493,8 +483,7 @@ napi_value CircleLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -518,8 +507,7 @@ napi_value CircleLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -542,8 +530,7 @@ napi_value CircleLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
@@ -568,8 +555,7 @@ napi_value CircleLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -594,8 +580,7 @@ napi_value CircleLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -619,8 +604,7 @@ napi_value CircleLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -646,8 +630,7 @@ napi_value CircleLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -671,8 +654,7 @@ napi_value CircleLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -702,8 +684,7 @@ napi_value CircleLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -727,8 +708,7 @@ napi_value CircleLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -759,8 +739,7 @@ napi_value CircleLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) {
         return thisVar;
@@ -784,8 +763,7 @@ napi_value CircleLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -815,8 +793,7 @@ napi_value CircleLayerNAPI::SetCircleTranslate(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -831,8 +808,7 @@ napi_value CircleLayerNAPI::GetCircleTranslate(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -858,8 +834,7 @@ napi_value CircleLayerNAPI::SetCircleTranslateAnchor(napi_env env, napi_callback
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -874,8 +849,7 @@ napi_value CircleLayerNAPI::GetCircleTranslateAnchor(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -901,8 +875,7 @@ napi_value CircleLayerNAPI::SetCirclePitchScale(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -917,8 +890,7 @@ napi_value CircleLayerNAPI::GetCirclePitchScale(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -944,8 +916,7 @@ napi_value CircleLayerNAPI::SetCirclePitchAlignment(napi_env env, napi_callback_
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -960,8 +931,7 @@ napi_value CircleLayerNAPI::GetCirclePitchAlignment(napi_env env, napi_callback_
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -987,8 +957,7 @@ napi_value CircleLayerNAPI::SetCircleSortKey(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -1003,8 +972,7 @@ napi_value CircleLayerNAPI::GetCircleSortKey(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    CircleLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<CircleLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;

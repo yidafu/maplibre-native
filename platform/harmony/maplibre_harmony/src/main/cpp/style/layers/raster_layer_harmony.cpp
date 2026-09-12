@@ -189,8 +189,7 @@ napi_value RasterLayerNAPI::SetRasterOpacity(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -207,8 +206,7 @@ napi_value RasterLayerNAPI::SetRasterHueRotate(napi_env env, napi_callback_info 
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -225,8 +223,7 @@ napi_value RasterLayerNAPI::SetRasterBrightnessMin(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -243,8 +240,7 @@ napi_value RasterLayerNAPI::SetRasterBrightnessMax(napi_env env, napi_callback_i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -261,8 +257,7 @@ napi_value RasterLayerNAPI::SetRasterSaturation(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -279,8 +274,7 @@ napi_value RasterLayerNAPI::SetRasterContrast(napi_env env, napi_callback_info i
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -295,8 +289,7 @@ napi_value RasterLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -320,8 +313,7 @@ napi_value RasterLayerNAPI::GetSourceId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -345,8 +337,7 @@ napi_value RasterLayerNAPI::SetRasterFadeDuration(napi_env env, napi_callback_in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -361,8 +352,7 @@ napi_value RasterLayerNAPI::GetRasterFadeDuration(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -388,8 +378,7 @@ napi_value RasterLayerNAPI::SetRasterResampling(napi_env env, napi_callback_info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -404,8 +393,7 @@ napi_value RasterLayerNAPI::GetRasterResampling(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -434,8 +422,7 @@ napi_value RasterLayerNAPI::SetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         return thisVar;
@@ -460,8 +447,7 @@ napi_value RasterLayerNAPI::GetVisibility(napi_env env, napi_callback_info info)
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -486,8 +472,7 @@ napi_value RasterLayerNAPI::SetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -511,8 +496,7 @@ napi_value RasterLayerNAPI::GetMinZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -538,8 +522,7 @@ napi_value RasterLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -563,8 +546,7 @@ napi_value RasterLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -594,8 +576,7 @@ napi_value RasterLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         return thisVar;
@@ -619,8 +600,7 @@ napi_value RasterLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;
@@ -651,8 +631,7 @@ napi_value RasterLayerNAPI::SetFilter(napi_env env, napi_callback_info info) {
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) {
         return thisVar;
@@ -675,8 +654,7 @@ napi_value RasterLayerNAPI::GetFilter(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    RasterLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<RasterLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value null_value;

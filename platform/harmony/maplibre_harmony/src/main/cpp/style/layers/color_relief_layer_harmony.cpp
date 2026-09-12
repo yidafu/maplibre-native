@@ -166,8 +166,7 @@ napi_value ColorReliefLayerNAPI::SetColorReliefColor(napi_env env, napi_callback
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -197,8 +196,7 @@ napi_value ColorReliefLayerNAPI::SetColorReliefOpacity(napi_env env, napi_callba
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
 
@@ -217,8 +215,7 @@ napi_value ColorReliefLayerNAPI::GetColorReliefColor(napi_env env, napi_callback
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         napi_value null_value;
@@ -248,8 +245,7 @@ napi_value ColorReliefLayerNAPI::GetColorReliefOpacity(napi_env env, napi_callba
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         napi_value null_value;
@@ -277,8 +273,7 @@ napi_value ColorReliefLayerNAPI::GetId(napi_env env, napi_callback_info info) {
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -302,8 +297,7 @@ napi_value ColorReliefLayerNAPI::GetSourceId(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -322,8 +316,7 @@ napi_value ColorReliefLayerNAPI::SetVisibility(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) return thisVar;
 
@@ -343,8 +336,7 @@ napi_value ColorReliefLayerNAPI::GetVisibility(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -365,8 +357,7 @@ napi_value ColorReliefLayerNAPI::SetMinZoom(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) return thisVar;
 
@@ -385,8 +376,7 @@ napi_value ColorReliefLayerNAPI::GetMinZoom(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         napi_value result;
@@ -412,8 +402,7 @@ napi_value ColorReliefLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) return thisVar;
 
@@ -432,8 +421,7 @@ napi_value ColorReliefLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         napi_value result;
@@ -463,8 +451,7 @@ napi_value ColorReliefLayerNAPI::SetSourceLayer(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         return thisVar;
@@ -488,8 +475,7 @@ napi_value ColorReliefLayerNAPI::GetSourceLayer(napi_env env, napi_callback_info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         napi_value null_value;
@@ -520,8 +506,7 @@ napi_value ColorReliefLayerNAPI::SetFilter(napi_env env, napi_callback_info info
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj || argc < 1) {
         return thisVar;
@@ -544,8 +529,7 @@ napi_value ColorReliefLayerNAPI::GetFilter(napi_env env, napi_callback_info info
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
 
-    ColorReliefLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<ColorReliefLayerNAPI>(env, thisVar);
 
     if (!layerObj) {
         napi_value null_value;

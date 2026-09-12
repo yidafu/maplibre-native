@@ -80,23 +80,22 @@ napi_value SetPropertyImpl(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Get 'this' object
-    NAPIClass* obj = nullptr;
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&obj));
-    
+    auto* obj = NapiArgs::Unwrap<NAPIClass>(env, thisVar);
+
     if (!obj) {
         Logger::error("LayerBaseMethods", "Failed to unwrap layer object");
         return nullptr;
     }
-    
+
     // Get layer instance
     auto layer = obj->getLayer();
     if (!layer) {
         Logger::error("LayerBaseMethods", "Layer instance is null");
         return nullptr;
     }
-    
+
     // Require 2 arguments: propertyName and value
     args.RequireMinArgs(2);
     if (args.HasError()) {
@@ -137,23 +136,22 @@ napi_value SetPropertiesImpl(napi_env env, napi_callback_info info) {
     NapiArgs args(env, info);
     
     // Get 'this' object
-    NAPIClass* obj = nullptr;
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&obj));
-    
+    auto* obj = NapiArgs::Unwrap<NAPIClass>(env, thisVar);
+
     if (!obj) {
         Logger::error("LayerBaseMethods", "Failed to unwrap layer object");
         return nullptr;
     }
-    
+
     // Get layer instance
     auto layer = obj->getLayer();
     if (!layer) {
         Logger::error("LayerBaseMethods", "Layer instance is null");
         return nullptr;
     }
-    
+
     // Require 1 argument: properties object
     args.RequireMinArgs(1);
     if (args.HasError()) {

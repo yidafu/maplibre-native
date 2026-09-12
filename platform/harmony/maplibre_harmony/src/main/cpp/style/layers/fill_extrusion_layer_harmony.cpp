@@ -183,8 +183,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionColor(napi_env env, napi_call
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -201,8 +200,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionOpacity(napi_env env, napi_ca
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -219,8 +217,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionHeight(napi_env env, napi_cal
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -237,8 +234,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionBase(napi_env env, napi_callb
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -255,8 +251,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionPattern(napi_env env, napi_ca
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -273,8 +268,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionTranslate(napi_env env, napi_
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -290,8 +284,7 @@ napi_value FillExtrusionLayerNAPI::GetId(napi_env env, napi_callback_info info) 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -315,8 +308,7 @@ napi_value FillExtrusionLayerNAPI::GetSourceId(napi_env env, napi_callback_info 
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -335,8 +327,7 @@ napi_value FillExtrusionLayerNAPI::SetVisibility(napi_env env, napi_callback_inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) return thisVar;
     
@@ -356,8 +347,7 @@ napi_value FillExtrusionLayerNAPI::GetVisibility(napi_env env, napi_callback_inf
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer()) {
         napi_value null_value;
@@ -378,8 +368,7 @@ napi_value FillExtrusionLayerNAPI::SetMinZoom(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -398,8 +387,7 @@ napi_value FillExtrusionLayerNAPI::GetMinZoom(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -425,8 +413,7 @@ napi_value FillExtrusionLayerNAPI::SetMaxZoom(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -445,8 +432,7 @@ napi_value FillExtrusionLayerNAPI::GetMaxZoom(napi_env env, napi_callback_info i
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -472,8 +458,7 @@ napi_value FillExtrusionLayerNAPI::SetSourceLayer(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) return thisVar;
 
@@ -492,8 +477,7 @@ napi_value FillExtrusionLayerNAPI::GetSourceLayer(napi_env env, napi_callback_in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -520,8 +504,7 @@ napi_value FillExtrusionLayerNAPI::SetFilter(napi_env env, napi_callback_info in
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || argc < 1) return thisVar;
 
@@ -539,8 +522,7 @@ napi_value FillExtrusionLayerNAPI::GetFilter(napi_env env, napi_callback_info in
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value result;
@@ -569,8 +551,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionTranslateAnchor(napi_env env,
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -585,8 +566,7 @@ napi_value FillExtrusionLayerNAPI::GetFillExtrusionTranslateAnchor(napi_env env,
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
@@ -612,8 +592,7 @@ napi_value FillExtrusionLayerNAPI::SetFillExtrusionVerticalGradient(napi_env env
     napi_value argv[1];
     napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj || !layerObj->getLayer() || argc < 1) return thisVar;
     
@@ -628,8 +607,7 @@ napi_value FillExtrusionLayerNAPI::GetFillExtrusionVerticalGradient(napi_env env
     napi_value thisVar;
     napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
     
-    FillExtrusionLayerNAPI* layerObj;
-    napi_unwrap(env, thisVar, reinterpret_cast<void**>(&layerObj));
+    auto* layerObj = NapiArgs::Unwrap<FillExtrusionLayerNAPI>(env, thisVar);
     
     if (!layerObj) {
         napi_value undefined;
