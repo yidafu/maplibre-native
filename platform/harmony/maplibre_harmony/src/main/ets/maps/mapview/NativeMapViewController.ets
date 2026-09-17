@@ -57,6 +57,10 @@ export type {
 // Type alias: distinguish between NAPI NativeMapView and ETS component
 type NativeMapView = NativeMapViewNAPI;
 
+// Default style applied when the component's styleUrl prop is not provided.
+// Must stay in sync with the @Prop defaults in MapView / TextureMapView.
+export const DEFAULT_STYLE_URL = 'https://demotiles.maplibre.org/style.json';
+
 export interface NativeViewAnnotationApi {
   addViewAnnotation(options: NativeViewAnnotationOptions): number;
   updateViewAnnotation(annotationId: number, options: NativeViewAnnotationOptions): boolean;
@@ -162,7 +166,7 @@ export class NativeMapViewController extends XComponentController implements Nat
   // initializeNativeGestures() (getFrameNodeById) reference the same ID.
   private xcomponentId: string = 'maplibre_xcomponent_' + (nextXComponentId++);
   // Initial configuration
-  public styleUrl: string = "https://demotiles.maplibre.org/style.json";
+  public styleUrl: string = DEFAULT_STYLE_URL;
   public initialLatitude: number = 0;
   public initialLongitude: number = 0;
   public initialZoom: number = 6;

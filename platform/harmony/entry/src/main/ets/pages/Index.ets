@@ -18,8 +18,11 @@ struct Index {
 
   /**
    * Filter categories and pages by search query.
+   * NOTE: must be a plain method — plain getters are dropped by the ArkTS
+   * struct transform, which made this.filteredCategories undefined and the
+   * list render empty.
    */
-  get filteredCategories(): TestPageCategory[] {
+  private getFilteredCategories(): TestPageCategory[] {
     const q = this.searchQuery.trim().toLowerCase();
     if (!q) {
       return this.categories;
@@ -72,7 +75,7 @@ struct Index {
 
       // Sectioned list
       List({ space: 0 }) {
-        ForEach(this.filteredCategories, (category: TestPageCategory, catIndex: number) => {
+        ForEach(this.getFilteredCategories(), (category: TestPageCategory, catIndex: number) => {
           // Section header
           ListItem() {
             this.buildSectionHeader(category, catIndex)

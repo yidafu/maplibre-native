@@ -15,13 +15,14 @@
  */
 
 import { MapView } from './NativeMapView';
+import { DEFAULT_STYLE_URL } from './NativeMapViewController';
 import { MapLibreMap } from '../MapLibreMap';
 import { MapLibreMapOptions } from '../MapLibreMapOptions';
 
 @Component
 export struct TextureMapView {
   // ========== Mirrored MapView props ==========
-  @Prop styleUrl: string;
+  @Prop styleUrl: string = DEFAULT_STYLE_URL;
   @Prop initialLatitude: number = 30.2741;
   @Prop initialLongitude: number = 120.1551;
   @Prop initialZoom: number = 6;
