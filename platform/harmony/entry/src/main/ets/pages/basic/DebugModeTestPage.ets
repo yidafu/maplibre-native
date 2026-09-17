@@ -4,7 +4,7 @@
  * Reference: Android DebugModeActivity, iOS MBXSettingsDebugTools
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, MapDebugOptions } from 'maplibre_harmony';
+import { MapView, MapLibreMap, MapDebugOptions } from 'maplibre-harmony';
 
 @Entry
 @Component

@@ -4,7 +4,7 @@
  * Registers map click, long-click, camera move listeners to log and display gesture events.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng, CameraState } from 'maplibre-harmony';
 import { MapClickListener, MapLongClickListener } from '../../utils/ListenerFactories';
 import { showToast } from '../common/TestUtils';
 

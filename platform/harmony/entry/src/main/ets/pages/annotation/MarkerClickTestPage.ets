@@ -8,7 +8,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, Marker, MarkerOptions, LatLng,
   OnMarkerClickListener
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 interface CityLocation {

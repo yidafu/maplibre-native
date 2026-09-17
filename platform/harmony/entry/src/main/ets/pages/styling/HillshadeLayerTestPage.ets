@@ -8,9 +8,9 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, RasterDemSource, HillshadeLayer,
   LatLng
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
-import { RasterDemSourceOptions } from 'maplibre_harmony/src/main/cpp/types/libmaplibre/sources';
+import { RasterDemSourceOptions } from 'maplibre-harmony/src/main/cpp/types/libmaplibre/sources';
 
 
 @Entry

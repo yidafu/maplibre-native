@@ -6,7 +6,7 @@
  * toggle layers, and show map state info.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraState } from 'maplibre-harmony';
 import { StyleLoadedListener } from '../../utils/ListenerFactories';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 

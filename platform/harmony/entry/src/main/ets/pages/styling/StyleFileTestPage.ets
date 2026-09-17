@@ -5,7 +5,7 @@
  * simulating loading from a local file.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { StyleLoadedListener } from '../../utils/ListenerFactories';
 import { showToast } from '../common/TestUtils';
 

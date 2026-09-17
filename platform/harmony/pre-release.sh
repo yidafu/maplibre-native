@@ -5,7 +5,7 @@
 #   - 指定 new_version: 更新 package.json 版本后再构建
 #   - 不指定: 使用 package.json 中已有的版本号构建（适用于 npm version + npm publish 流程）
 
-PACKAGE_JSON="maplibre_harmony/package.json"
+PACKAGE_JSON="maplibre-harmony/package.json"
 
 # 获取当前版本
 CURRENT_VERSION=$(grep '"version"' "$PACKAGE_JSON" | sed 's/.*"version": "\(.*\)",/\1/')
@@ -50,4 +50,4 @@ $NODE_HOME/bin/node $DEVECO_SDK_HOME/../tools/hvigor/bin/hvigorw.js \
   --incremental --no-daemon
 
 # 复制 har 到根目录
-cp -r maplibre_harmony/build/default/outputs/default/mapping ./maplibre_harmony
+cp -r maplibre-harmony/build/default/outputs/default/mapping ./maplibre-harmony

@@ -5,10 +5,10 @@
  * and showing information about the features found at that location.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { MapClickListener } from '../../utils/ListenerFactories';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
-import type { IFeature } from 'maplibre_harmony';
+import type { IFeature } from 'maplibre-harmony';
 
 @Entry
 @Component

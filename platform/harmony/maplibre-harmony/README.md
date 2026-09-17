@@ -271,7 +271,7 @@ Add to your module's `oh-package.json5`:
 ```json5
 {
   "dependencies": {
-    "maplibre_harmony": "file:./node_modules/maplibre-harmony/maplibre_harmony.har"
+    "maplibre-harmony": "file:./node_modules/maplibre-harmony/maplibre_harmony.har"
   }
 }
 ```
@@ -283,7 +283,7 @@ Add to your module's `oh-package.json5`:
 ### Basic Map
 
 ```typescript
-import { MapView, MapLibreMap, DEFAULT_STYLE_URLS, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, DEFAULT_STYLE_URLS, LatLng } from 'maplibre-harmony';
 
 @Entry
 @Component
@@ -323,7 +323,7 @@ struct MapPage {
 ### Adding Markers
 
 ```typescript
-import { MapLibreMap, Marker, MarkerOptions, LatLng } from 'maplibre_harmony';
+import { MapLibreMap, Marker, MarkerOptions, LatLng } from 'maplibre-harmony';
 
 async function addMarkerExample(map: MapLibreMap): Promise<void> {
   const marker = await map.addMarker(
@@ -347,7 +347,7 @@ async function addMarkerExample(map: MapLibreMap): Promise<void> {
 ### Camera Animations
 
 ```typescript
-import { MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { MapLibreMap, CameraPosition, LatLng } from 'maplibre-harmony';
 
 function animateToShanghai(map: MapLibreMap): void {
   const target: CameraPosition = {
@@ -386,7 +386,7 @@ import {
   OnMapClickListener,
   OnCameraMoveListener,
   OnDidFinishLoadingStyleListener
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 
 class MapClickLogger implements OnMapClickListener {
   private map: MapLibreMap;
@@ -433,7 +433,7 @@ function registerListeners(map: MapLibreMap): void {
 ### Runtime Styling
 
 ```typescript
-import { MapLibreMap, GeoJsonSource, CircleLayer } from 'maplibre_harmony';
+import { MapLibreMap, GeoJsonSource, CircleLayer } from 'maplibre-harmony';
 
 function addCircleLayer(map: MapLibreMap): void {
   const style = map.getStyle();
@@ -505,7 +505,7 @@ For complete API documentation, see the [`/docs`](./docs/) directory.
 ### Build Commands
 
 ```bash
-cd platform/harmony/maplibre_harmony
+cd platform/harmony/maplibre-harmony
 
 ./pre-release.sh
 ```
@@ -514,7 +514,7 @@ cd platform/harmony/maplibre_harmony
 
 The compiled HAR will be at:
 ```
-build/default/outputs/default/maplibre-harmony.har
+build/default/outputs/default/maplibre_harmony.har
 ```
 
 ## Troubleshooting

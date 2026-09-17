@@ -1,0 +1,5 @@
+{
+  "libmaplibre.so": {
+    "source": "src/mock/Libmaplibre.mock.ets"
+  }
+}

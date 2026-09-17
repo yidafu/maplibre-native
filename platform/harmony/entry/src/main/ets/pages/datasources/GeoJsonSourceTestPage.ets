@@ -5,10 +5,10 @@
  * and using GeoJSON clustering to group nearby points.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, GeoJsonSource, CircleLayer, FillLayer, GeoJsonOptionsBuilder } from 'maplibre_harmony';
+import { MapView, MapLibreMap, GeoJsonSource, CircleLayer, FillLayer, GeoJsonOptionsBuilder } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, TEST_LOCATIONS, showToast } from '../common/TestUtils';
-import { LatLng } from 'maplibre_harmony';
-import type { IFeature, IFeatureCollection } from 'maplibre_harmony';
+import { LatLng } from 'maplibre-harmony';
+import type { IFeature, IFeatureCollection } from 'maplibre-harmony';
 
 @Entry
 @Component

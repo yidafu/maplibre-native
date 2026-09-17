@@ -4,7 +4,7 @@
  * Demonstrates map visibility toggling and lifecycle events.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

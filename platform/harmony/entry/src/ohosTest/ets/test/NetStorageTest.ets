@@ -5,7 +5,7 @@
  */
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
 import { Driver, ON } from '@ohos.UiTest';
-import { MapLibreMap, FileSource } from 'maplibre_harmony';
+import { MapLibreMap, FileSource } from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TIMEOUT = 15000;

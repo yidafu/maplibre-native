@@ -5,7 +5,7 @@
  * Each map can be controlled independently with its own camera and location.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 @Entry

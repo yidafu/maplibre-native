@@ -5,7 +5,7 @@
  * and adds layers to render the vector data on the map.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, VectorSource, CircleLayer, FillLayer, LineLayer } from 'maplibre_harmony';
+import { MapView, MapLibreMap, VectorSource, CircleLayer, FillLayer, LineLayer } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 
 @Entry

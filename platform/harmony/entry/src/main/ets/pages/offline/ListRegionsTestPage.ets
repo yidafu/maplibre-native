@@ -4,12 +4,12 @@
  * Demonstrates querying all offline regions and displaying their details.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import {
   OfflineManager,
   OfflineRegion,
   OfflineRegionStatus
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { common } from '@kit.AbilityKit';
 import { showToast } from '../common/TestUtils';
 

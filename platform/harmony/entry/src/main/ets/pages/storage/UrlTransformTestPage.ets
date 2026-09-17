@@ -5,7 +5,7 @@
  * enabling CDN switching, offline remapping, and auth token injection.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, ResourceTransform, ResourceKind } from 'maplibre_harmony';
+import { MapView, MapLibreMap, ResourceTransform, ResourceKind } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 
 interface TransformRecord {

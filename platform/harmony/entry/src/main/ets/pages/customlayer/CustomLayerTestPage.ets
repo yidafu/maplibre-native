@@ -5,8 +5,8 @@
  * to show how custom OpenGL content can be composited on the map.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CustomLayer, createCustomLayerWithColor } from 'maplibre_harmony';
-import type { RGBAColor } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CustomLayer, createCustomLayerWithColor } from 'maplibre-harmony';
+import type { RGBAColor } from 'maplibre-harmony';
 
 @Entry
 @Component

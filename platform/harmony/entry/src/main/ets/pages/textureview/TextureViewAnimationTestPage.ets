@@ -7,7 +7,7 @@
  * - Translate animation: slide the map horizontally
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 
 @Entry

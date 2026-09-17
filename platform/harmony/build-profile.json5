@@ -7,11 +7,11 @@
         "material": {
           "certpath": "/Users/yidafu/.ohos/config/default_harmony_nJ7d6HPs-SHwnJt3MksMiCgoAfkL6_89mU5q8OdRL_E=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001BA9AD7B520E820B2BB699E25A3B837DD7B3C3B0DF52A702756070F4122E50A43737203E1CAAA903",
+          "keyPassword": "0000001AFE44E4DCEBE3C74216B2F7085F19E78677DF8EA091B6CF13AA0B89BA6E42CF3A002162648C78",
           "profile": "/Users/yidafu/.ohos/config/default_harmony_nJ7d6HPs-SHwnJt3MksMiCgoAfkL6_89mU5q8OdRL_E=.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "/Users/yidafu/.ohos/config/default_harmony_nJ7d6HPs-SHwnJt3MksMiCgoAfkL6_89mU5q8OdRL_E=.p12",
-          "storePassword": "0000001B45593768998E53671D74EDF0EC4A9E3BD12F88266E10B8D3DFC9C8055FE0004DDCB66266E20D4C"
+          "storePassword": "0000001A6FD460EFB4F02756AFC61FD2AC0AAA7D4CAF7E3ED01A9F51263EB778136DA5C732668E0C395E"
         }
       }
     ],
@@ -42,7 +42,7 @@
   "modules": [
     {
       "name": "maplibre_harmony",
-      "srcPath": "./maplibre_harmony",
+      "srcPath": "./maplibre-harmony",
       "targets": [
         {
           "name": "default",

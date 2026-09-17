@@ -5,7 +5,7 @@
  * and durations. Tests smooth camera movements and layer animations.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng } from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast, delay } from '../common/TestUtils';
 
 interface CityInfo {

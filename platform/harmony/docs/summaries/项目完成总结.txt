@@ -241,7 +241,7 @@ P2 低优先级:
 
 Android TestApp: platform/android/MapLibreAndroidTestApp/
 iOS TestApp: platform/ios/app/
-MapLibre Harmony API: platform/harmony/maplibre_harmony/
+MapLibre Harmony API: platform/harmony/maplibre-harmony/
 
 ================================================================
 

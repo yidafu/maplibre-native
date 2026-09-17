@@ -9,10 +9,10 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, GeoJsonSource, HeatmapLayer,
   LatLng, GeoJson
-} from 'maplibre_harmony';
-import type { IFeature } from 'maplibre_harmony';
+} from 'maplibre-harmony';
+import type { IFeature } from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
-import { JSONValue } from 'maplibre_harmony/src/main/cpp/types/libmaplibre/CommonTypes';
+import { JSONValue } from 'maplibre-harmony/src/main/cpp/types/libmaplibre/CommonTypes';
 
 /** A single point within a cluster for heatmap generation. */
 interface ClusterPoint {

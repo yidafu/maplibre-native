@@ -170,15 +170,15 @@ target_include_directories(
 )
 
 # Add curl include directory for HTTPFileSource
-if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/include")
+if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre-harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/include")
     target_include_directories(
         mbgl-core
-        PRIVATE ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/include
+        PRIVATE ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre-harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/include
     )
 endif()
 
 # Add curl library path
-if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so")
+if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre-harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so")
     target_link_libraries(
         mbgl-core
         PRIVATE
@@ -195,7 +195,7 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/
             vulkan
             libimage_source.so
             libpixelmap.so
-            ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre_harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so
+            ${PROJECT_SOURCE_DIR}/platform/harmony/maplibre-harmony/src/main/cpp/thirdparty/curl/${OHOS_ARCH}/lib/libcurl.so
     )
 else()
     target_link_libraries(

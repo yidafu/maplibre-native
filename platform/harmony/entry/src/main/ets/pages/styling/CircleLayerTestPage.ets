@@ -9,8 +9,8 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, GeoJsonSource, CircleLayer,
   LatLng, Expression, GeoJson
-} from 'maplibre_harmony';
-import type { IFeature } from 'maplibre_harmony';
+} from 'maplibre-harmony';
+import type { IFeature } from 'maplibre-harmony';
 import type { JSONValue } from 'libmaplibre.so';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 

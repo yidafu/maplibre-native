@@ -5,9 +5,9 @@
  * using NetworkConfiguration.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, NetworkConfiguration } from 'maplibre_harmony';
+import { MapView, MapLibreMap, NetworkConfiguration } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
-import type { HttpHeaders } from 'maplibre_harmony';
+import type { HttpHeaders } from 'maplibre-harmony';
 
 @Entry
 @Component

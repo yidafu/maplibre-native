@@ -4,7 +4,7 @@
  * Reference: Android CameraAnimatorActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraPosition, LatLng } from 'maplibre-harmony';
 import { CameraAnimationCallbackImpl } from '../../utils/ListenerFactories';
 import { showToast } from '../common/TestUtils';
 

@@ -5,10 +5,10 @@
  * specified source without requiring them to be rendered.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, GeoJsonSource, CircleLayer } from 'maplibre_harmony';
+import { MapView, MapLibreMap, GeoJsonSource, CircleLayer } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
-import type { IFeature } from 'maplibre_harmony';
-import { FeatureCollection } from 'maplibre_harmony/src/main/cpp/types/libmaplibre/geojson/FeatureCollection';
+import type { IFeature } from 'maplibre-harmony';
+import { FeatureCollection } from 'maplibre-harmony/src/main/cpp/types/libmaplibre/geojson/FeatureCollection';
 
 @Entry
 @Component

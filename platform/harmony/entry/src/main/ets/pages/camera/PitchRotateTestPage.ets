@@ -2,7 +2,7 @@
  * PitchRotateTestPage - Tilt and rotation control.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraState } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

@@ -5,7 +5,7 @@
  * Demonstrates adding a style later via user interaction.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 
 @Entry

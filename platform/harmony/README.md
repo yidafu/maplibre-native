@@ -8,7 +8,7 @@ OpenGL-based vector map rendering library for HarmonyOS platform.
 
 ```
 platform/harmony/
-├── maplibre_harmony/          # HAR module (publishable package)
+├── maplibre-harmony/          # HAR module (publishable package)
 │   ├── src/main/ets/          # ArkTS API layer
 │   ├── src/main/cpp/          # C++ NAPI bridge
 │   └── README.md              # 👉 Full documentation
@@ -28,7 +28,7 @@ platform/harmony/
 ### Build
 
 ```bash
-cd platform/harmony/maplibre_harmony
+cd platform/harmony/maplibre-harmony
 
 # Set environment (macOS)
 export DEVECO_SDK_HOME=/Applications/DevEco-Studio.app/Contents/sdk
@@ -38,7 +38,7 @@ export NODE_HOME=/Applications/DevEco-Studio.app/Contents/tools/node
 ./pre-release.sh
 ```
 
-**Output**: `maplibre_harmony/build/default/outputs/default/maplibre-harmony.har`
+**Output**: `maplibre-harmony/build/default/outputs/default/maplibre_harmony.har`
 
 ## Usage
 
@@ -59,7 +59,7 @@ struct MapPage {
 }
 ```
 
-For complete examples and API documentation, see **[maplibre_harmony/README.md](maplibre_harmony/README.md)**.
+For complete examples and API documentation, see **[maplibre-harmony/README.md](maplibre-harmony/README.md)**.
 
 ## Features
 
@@ -72,12 +72,12 @@ For complete examples and API documentation, see **[maplibre_harmony/README.md](
 - ✅ Offline maps and snapshots
 - ✅ Thread-safe, DPI-aware
 
-See **[Feature Comparison Table](maplibre_harmony/README.md#feature-comparison-harmonyos-vs-android-vs-ios)** for detailed comparison with Android/iOS.
+See **[Feature Comparison Table](maplibre-harmony/README.md#feature-comparison-harmonyos-vs-android-vs-ios)** for detailed comparison with Android/iOS.
 
 ## Documentation
 
-- **[maplibre_harmony/README.md](maplibre_harmony/README.md)** - Complete package documentation
-- **[API Documentation](maplibre_harmony/docs/api/)** - API reference and guides
+- **[maplibre-harmony/README.md](maplibre-harmony/README.md)** - Complete package documentation
+- **[API Documentation](maplibre-harmony/docs/api/)** - API reference and guides
 - **[00_START_HERE.md](00_START_HERE.md)** - Developer setup guide
 - **[BUILD_AND_TEST.md](BUILD_AND_TEST.md)** - Build instructions
 
@@ -139,14 +139,14 @@ See **[Feature Comparison Table](maplibre_harmony/README.md#feature-comparison-h
 - **Thread-Safe**: ThreadSafeCallback ensures cross-thread safety
 - **Hardware-Accelerated**: OpenGL ES 3.0 + VSync synchronization
 
-Details: See **[Architecture Documentation](maplibre_harmony/docs/)**
+Details: See **[Architecture Documentation](maplibre-harmony/docs/)**
 
 ## Troubleshooting
 
 **Build issues?** 
 ```bash
 # Clean and rebuild
-cd platform/harmony/maplibre_harmony
+cd platform/harmony/maplibre-harmony
 rm -rf build/ .cxx/
 ./pre-release.sh
 ```
@@ -156,7 +156,7 @@ rm -rf build/ .cxx/
 2. Verify style URL accessibility
 3. Check logs: `hdc hilog | grep MapLibre`
 
-**More help:** See **[Troubleshooting Guide](maplibre_harmony/docs/troubleshooting/TROUBLESHOOTING.md)**
+**More help:** See **[Troubleshooting Guide](maplibre-harmony/docs/troubleshooting/TROUBLESHOOTING.md)**
 
 ## Testing
 

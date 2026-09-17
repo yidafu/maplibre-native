@@ -28,7 +28,7 @@ ADD_DEFINITIONS(-DVK_USE_PLATFORM_OHOS=1)
 ADD_DEFINITIONS(-DOHOS_PLATFORM)
 
 set(NATIVERENDER_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-# MapLibre 仓库根目录：由本文件在仓库内的位置推导（cpp -> main -> src -> maplibre_harmony -> harmony -> platform -> 根）
+# MapLibre 仓库根目录：由本文件在仓库内的位置推导（cpp -> main -> src -> maplibre-harmony -> harmony -> platform -> 根）
 get_filename_component(MBGL_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../../" ABSOLUTE)
 
 # 获取 DevEco Studio SDK 路径

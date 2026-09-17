@@ -9,7 +9,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, GeoJsonSource, FillExtrusionLayer,
   LatLng
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, showToast, randomColor } from '../common/TestUtils';
 
 /** GeoJSON geometry for a Polygon. */

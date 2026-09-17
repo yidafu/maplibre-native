@@ -5,7 +5,7 @@
  * entered by the user. Tests style loading with different providers.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { StyleLoadedListener } from '../../utils/ListenerFactories';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 

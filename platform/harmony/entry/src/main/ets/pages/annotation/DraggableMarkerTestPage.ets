@@ -8,7 +8,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, Marker, MarkerOptions, LatLng,
   OnMarkerDragListener
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast, formatLatLng } from '../common/TestUtils';
 
 class DraggableDragListener implements OnMarkerDragListener {

@@ -4,7 +4,7 @@
  * Reference: Android CameraPositionActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraState } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 @Entry

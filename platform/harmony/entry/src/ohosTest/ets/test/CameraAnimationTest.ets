@@ -7,7 +7,7 @@
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { MapLibreMap, LatLng, LatLngBounds, CameraPosition } from 'maplibre_harmony';
+import { MapLibreMap, LatLng, LatLngBounds, CameraPosition } from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'CameraAnimationTest';

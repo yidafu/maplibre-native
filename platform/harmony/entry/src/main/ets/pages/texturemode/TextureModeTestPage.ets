@@ -8,7 +8,7 @@
  * - Debug overlay rendering on top of the composited texture
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { TextureMapView, MapLibreMap } from 'maplibre_harmony';
+import { TextureMapView, MapLibreMap } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

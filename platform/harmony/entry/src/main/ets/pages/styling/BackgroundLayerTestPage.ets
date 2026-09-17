@@ -7,7 +7,7 @@
 import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, BackgroundLayer
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 
 interface ColorItem {

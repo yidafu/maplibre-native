@@ -1,5 +1,5 @@
-import { LatLng, DEFAULT_STYLE_URLS as MAPLIBRE_DEFAULT_STYLE_URLS } from 'maplibre_harmony';
-import type { DefaultStyleUrls } from 'maplibre_harmony';
+import { LatLng, DEFAULT_STYLE_URLS as MAPLIBRE_DEFAULT_STYLE_URLS } from 'maplibre-harmony';
+import type { DefaultStyleUrls } from 'maplibre-harmony';
 /**
  * 测试工具函数
  * 提供测试页面常用的工具方法
@@ -66,7 +66,7 @@ export function delay(ms: number): Promise<void> {
 
 /**
  * 默认地图样式 URL
- * 从 maplibre_harmony 导入并重新导出
+ * 从 maplibre-harmony 导入并重新导出
  */
 export const DEFAULT_STYLE_URLS: DefaultStyleUrls = MAPLIBRE_DEFAULT_STYLE_URLS;
 

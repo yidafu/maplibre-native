@@ -5,7 +5,7 @@
  * UI elements overlay the map (e.g. top bar, bottom sheet).
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraState } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

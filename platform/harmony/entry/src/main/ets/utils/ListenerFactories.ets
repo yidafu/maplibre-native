@@ -20,7 +20,7 @@ import {
   OnStyleLoadedListener, Style,
   // Location listener types
   OnCameraTrackingChangedListener,
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 
 // ========== Snapshot ==========
 

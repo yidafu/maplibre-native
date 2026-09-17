@@ -5,7 +5,7 @@
  * properties, toggling holes, and managing multiple polygons.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, Polygon, LatLng, PolygonOptions } from 'maplibre_harmony';
+import { MapView, MapLibreMap, Polygon, LatLng, PolygonOptions } from 'maplibre-harmony';
 import { showToast, randomColor } from '../common/TestUtils';
 
 @Entry

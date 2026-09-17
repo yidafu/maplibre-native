@@ -4,7 +4,7 @@
  * Reference: Android SimpleMapActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 @Entry

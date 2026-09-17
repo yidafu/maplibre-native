@@ -2,7 +2,7 @@
  * TestListeners - concrete listener implementations for ohosTest suites.
  *
  * ArkTS rejects object literals typed against interfaces that come from
- * another compilation unit (the maplibre_harmony HAR), so tests must pass
+ * another compilation unit (the maplibre-harmony HAR), so tests must pass
  * concrete class instances instead of `{ ... }` literals.
  * Mirrors the pattern used by `entry/src/main/ets/utils/ListenerFactories.ets`.
  */
@@ -19,7 +19,7 @@ import {
   OnMapLongClickListener,
   OnMarkerClickListener,
   CameraMoveReason
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 
 export class TestStyleLoadedListener implements OnStyleLoadedListener {
   private handler: (style: Style | null) => void;

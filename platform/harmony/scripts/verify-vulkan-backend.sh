@@ -5,7 +5,7 @@
 # The HarmonyOS module ships with -DMLN_WITH_VULKAN=OFF (OpenGL is the default
 # render backend), so `harmony_vulkan_renderer_backend.{hpp,cpp}` never
 # participate in day-to-day builds and can silently rot (see
-# maplibre_harmony/DEPRECATED_CODE_AUDIT.md §5.2). This script configures a
+# maplibre-harmony/DEPRECATED_CODE_AUDIT.md §5.2). This script configures a
 # throwaway CMake build with the Vulkan backend enabled and compiles the
 # backend translation unit — no device, no HAP, no full library link.
 #
@@ -24,7 +24,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-MODULE_DIR="${REPO_ROOT}/platform/harmony/maplibre_harmony"
+MODULE_DIR="${REPO_ROOT}/platform/harmony/maplibre-harmony"
 BUILD_DIR="${MODULE_DIR}/.cxx/vulkan-gate"
 OHOS_ARCH="${OHOS_ARCH:-arm64-v8a}"
 

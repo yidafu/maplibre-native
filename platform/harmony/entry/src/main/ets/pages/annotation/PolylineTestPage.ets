@@ -6,7 +6,7 @@
  * multiple polylines.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, Polyline, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, Polyline, LatLng } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast, randomColor } from '../common/TestUtils';
 
 interface RouteDef {

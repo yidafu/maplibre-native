@@ -5,7 +5,7 @@
  * including batch addition, removal, and visibility toggling.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, Marker, MarkerOptions, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, Marker, MarkerOptions, LatLng } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast, delay } from '../common/TestUtils';
 
 interface BoundingBox {

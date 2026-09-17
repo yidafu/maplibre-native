@@ -26,7 +26,7 @@ export type ConfigOptions = Record<string, Object>;
 
 /**
  * IFeatureSource 接口
- * 用于替代 maplibre_harmony 未导出的类型
+ * 用于替代 maplibre-harmony 未导出的类型
  */
 export interface IFeatureSource {
   setGeoJson(data: Object): void;

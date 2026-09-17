@@ -12,7 +12,7 @@ import {
   MapView, MapLibreMap, Marker, MarkerOptions, LatLng,
   AnnotationViewConfig, AnnotationViewDelegate,
   OnMarkerDragListener
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { MarkerClickListener } from '../../utils/ListenerFactories';
 import { showToast, formatLatLng } from '../common/TestUtils';
 

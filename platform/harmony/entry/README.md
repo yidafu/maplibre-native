@@ -451,7 +451,7 @@ entry/
 │   ├── base/                    # Basic resources
 │   └── rawfile/                 # Raw files (GeoJSON, styles)
 └── oh_modules/                   # Dependencies
-    └── maplibre_harmony          # MapLibre Harmony SDK
+    └── maplibre-harmony          # MapLibre Harmony SDK
 ```
 
 ## Usage
@@ -624,7 +624,7 @@ When adding new test pages:
 
 ## Version
 
-- **MapLibre Harmony SDK**: See `oh_modules/maplibre_harmony/package.json`
+- **MapLibre Harmony SDK**: See `oh_modules/maplibre-harmony/package.json`
 - **HarmonyOS API Version**: API 12+
 - **DevEco Studio**: 5.0.0+
 

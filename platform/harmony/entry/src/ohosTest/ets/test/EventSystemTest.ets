@@ -18,7 +18,7 @@ import {
   MapLibreMap,
   Style,
   TileOperation
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 import {
   TestStyleLoadedListener,

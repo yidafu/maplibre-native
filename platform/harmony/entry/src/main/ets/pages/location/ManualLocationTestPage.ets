@@ -5,9 +5,9 @@
  * Tests moving the location indicator to various preset coordinates.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre_harmony';
-import { LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre-harmony';
+import { LatLng } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 @Entry

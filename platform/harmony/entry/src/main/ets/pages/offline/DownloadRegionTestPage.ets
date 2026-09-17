@@ -5,7 +5,7 @@
  * the OfflineManager and OfflineRegion APIs.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import {
   OfflineManager,
   OfflineRegion,
@@ -14,8 +14,8 @@ import {
   OfflineRegionObserver,
   OfflineRegionStatus,
   OfflineRegionError
-} from 'maplibre_harmony';
-import { LatLngBounds, LatLng } from 'maplibre_harmony';
+} from 'maplibre-harmony';
+import { LatLngBounds, LatLng } from 'maplibre-harmony';
 import { common } from '@kit.AbilityKit';
 import { showToast } from '../common/TestUtils';
 

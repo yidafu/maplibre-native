@@ -6,7 +6,7 @@
  *
  * This is used by MapAutomationTestPage and consumed by ohosTest files.
  */
-import { MapLibreMap } from 'maplibre_harmony';
+import { MapLibreMap } from 'maplibre-harmony';
 
 export class TestMapAccessor {
   private static mapInstance: MapLibreMap | null = null;

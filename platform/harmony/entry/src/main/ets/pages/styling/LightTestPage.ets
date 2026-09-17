@@ -7,7 +7,7 @@
 import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, Light
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

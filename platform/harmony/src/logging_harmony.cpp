@@ -2,7 +2,7 @@
 #include <mbgl/util/enum.hpp>
 
 // Include the new Logger class wrapper.
-#include "../maplibre_harmony/src/main/cpp/utils/logger.h"
+#include "../maplibre-harmony/src/main/cpp/utils/logger.h"
 
 namespace mbgl {
 

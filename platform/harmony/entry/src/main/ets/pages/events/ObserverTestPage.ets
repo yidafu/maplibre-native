@@ -13,7 +13,7 @@
  * - Shader compile events
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 import type {
   OnCameraWillChangeListener,
@@ -34,7 +34,7 @@ import type {
   OnSpriteRequestedListener,
   OnTileActionListener,
   OnStyleImageMissingListener,
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 
 interface LogEntry {
   category: string;

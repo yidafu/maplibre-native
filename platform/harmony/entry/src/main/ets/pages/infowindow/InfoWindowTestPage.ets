@@ -5,8 +5,8 @@
  * on tap and programmatically, and customizing InfoWindow style.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { MarkerOptions, LatLng, Marker } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { MarkerOptions, LatLng, Marker } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast, DEFAULT_MAP_CONFIG, formatLatLng } from '../common/TestUtils';
 
 @Entry

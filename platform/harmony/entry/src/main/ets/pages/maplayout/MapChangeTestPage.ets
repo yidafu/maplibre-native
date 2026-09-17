@@ -5,7 +5,7 @@
  * and displays real-time updates for map center, zoom, bearing, pitch.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, CameraState } from 'maplibre-harmony';
 import { CameraIdleListener } from '../../utils/ListenerFactories';
 import { showToast } from '../common/TestUtils';
 

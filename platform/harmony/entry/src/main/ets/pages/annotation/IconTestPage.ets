@@ -8,7 +8,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, Marker, MarkerOptions, LatLng,
   IconFactory, Icon
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { showToast, formatLatLng } from '../common/TestUtils';
 
 @Entry

@@ -5,8 +5,8 @@
  * and overall management of the offline storage system.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { OfflineManager, OfflineRegion, OfflineRegionStatus } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { OfflineManager, OfflineRegion, OfflineRegionStatus } from 'maplibre-harmony';
 import { common } from '@kit.AbilityKit';
 import { showToast } from '../common/TestUtils';
 

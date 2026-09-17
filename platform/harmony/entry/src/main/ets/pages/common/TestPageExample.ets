@@ -1,6 +1,6 @@
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
-import type { CameraOptions, NativeMapView } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng } from 'maplibre-harmony';
+import type { CameraOptions, NativeMapView } from 'maplibre-harmony';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 

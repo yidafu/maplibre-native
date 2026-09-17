@@ -6,7 +6,7 @@
 import { describe, beforeAll, afterAll, it, expect } from '@ohos/hypium';
 import { Driver, ON } from '@ohos.UiTest';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { MapLibreMap, MapDebugOptions, RenderingRefreshMode } from 'maplibre_harmony';
+import { MapLibreMap, MapDebugOptions, RenderingRefreshMode } from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'DebugRenderTest';

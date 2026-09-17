@@ -11,7 +11,7 @@ import {
   MapLibreMap, LatLng, Style, StyleBuilder,
   FillLayer, CircleLayer, LineLayer, GeoJsonSource,
   Expression, TransitionOptions
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'StyleIntegrationTest';

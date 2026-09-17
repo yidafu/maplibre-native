@@ -12,8 +12,8 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, GeoJson, GeoJsonSource, FillLayer, CircleLayer,
   Expression
-} from 'maplibre_harmony';
-import type { Position, IFeature } from 'maplibre_harmony';
+} from 'maplibre-harmony';
+import type { Position, IFeature } from 'maplibre-harmony';
 import type { JSONValue } from 'libmaplibre.so';
 import { showToast, TEST_LOCATIONS } from '../common/TestUtils';
 

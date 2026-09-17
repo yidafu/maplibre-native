@@ -295,7 +295,7 @@ import {
   MapLibreMap,
   RenderingStats,
   OnDidFinishRenderingFrameWithStatsListener
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 
 @Entry
 @Component
@@ -364,7 +364,7 @@ placement through `UiSettings` — do not instantiate the widgets manually.
 import {
   MapView, MapLibreMap,
   ScaleBarUnit, CompassVisibility
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 
 @Entry
 @Component

@@ -6,8 +6,8 @@
  * a FillLayer with adjustable radius and vertex count.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, GeoJson, GeoJsonSource, FillLayer } from 'maplibre_harmony';
-import type { Position } from 'maplibre_harmony';
+import { MapView, MapLibreMap, GeoJson, GeoJsonSource, FillLayer } from 'maplibre-harmony';
+import type { Position } from 'maplibre-harmony';
 import { showToast, TEST_LOCATIONS } from '../common/TestUtils';
 
 @Entry

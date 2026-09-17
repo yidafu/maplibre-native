@@ -5,7 +5,7 @@
  * and adds a RasterLayer to render it on the map.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, RasterSource, RasterLayer } from 'maplibre_harmony';
+import { MapView, MapLibreMap, RasterSource, RasterLayer } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

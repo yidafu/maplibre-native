@@ -8,9 +8,9 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, GeoJsonSource, SymbolLayer,
   LatLng, IconFactory
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
-import { Feature } from 'maplibre_harmony/src/main/cpp/types/libmaplibre/geojson/Feature';
+import { Feature } from 'maplibre-harmony/src/main/cpp/types/libmaplibre/geojson/Feature';
 
 interface SymbolPointInfo {
   lng: number;

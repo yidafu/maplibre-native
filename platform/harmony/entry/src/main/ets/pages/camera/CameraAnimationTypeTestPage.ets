@@ -2,7 +2,7 @@
  * CameraAnimationTypeTestPage - Compare animation curves (easeTo vs flyTo).
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng, CameraOptions } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng, CameraOptions } from 'maplibre-harmony';
 import { CameraAnimationCallbackImpl } from '../../utils/ListenerFactories';
 import { showToast } from '../common/TestUtils';
 

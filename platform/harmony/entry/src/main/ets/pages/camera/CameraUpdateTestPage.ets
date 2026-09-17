@@ -4,7 +4,7 @@
  * Reference: Android CameraUpdateFactoryActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng } from 'maplibre-harmony';
 import { CameraAnimationCallbackImpl } from '../../utils/ListenerFactories';
 import { TEST_LOCATIONS, showToast, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 

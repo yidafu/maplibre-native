@@ -6,7 +6,7 @@
  * Allows retaking with different settings via location and zoom controls.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapSnapshotter, MapSnapshot, SnapshotOptions, LatLng, CameraPosition } from 'maplibre_harmony';
+import { MapSnapshotter, MapSnapshot, SnapshotOptions, LatLng, CameraPosition } from 'maplibre-harmony';
 import { SnapshotReadyCallbackImpl, SnapshotErrorHandlerImpl } from '../../utils/ListenerFactories';
 import { DEFAULT_STYLE_URLS, TEST_LOCATIONS, showToast } from '../common/TestUtils';
 import image from '@ohos.multimedia.image';

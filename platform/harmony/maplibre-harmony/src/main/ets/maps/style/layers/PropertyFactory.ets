@@ -19,7 +19,7 @@ import { Expression } from '../expressions/Expression';
  * @example
  * ```typescript
  * import { FillLayer } from 'libmaplibre.so';
- * import { Expression, Interpolator, Stop, PropertyFactory } from 'maplibre_harmony';
+ * import { Expression, Interpolator, Stop, PropertyFactory } from 'maplibre-harmony';
  *
  * const layer = new FillLayer("regions", "regions-source");
  *

@@ -5,7 +5,7 @@
  * and observing the transition behavior.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng } from 'maplibre-harmony';
 import { StyleLoadedListener } from '../../utils/ListenerFactories';
 import { DEFAULT_STYLE_URLS, showToast } from '../common/TestUtils';
 

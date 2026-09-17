@@ -5,7 +5,7 @@
  * and rendering statistics overlaid on the map view.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, MapDebugOptions, RenderingStats, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, MapDebugOptions, RenderingStats, CameraState } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 
 @Entry

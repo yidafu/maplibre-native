@@ -5,8 +5,8 @@
  * pulseEnabled, pulseColor, pulseSingleDuration, pulseMaxRadius, pulseAlpha.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre-harmony';
 import { showToast, randomColor } from '../common/TestUtils';
 
 @Entry

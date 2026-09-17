@@ -7,7 +7,7 @@
 import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, Marker, MarkerOptions, LatLng
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { MarkerClickListener } from '../../utils/ListenerFactories';
 import { showToast, formatLatLng } from '../common/TestUtils';
 

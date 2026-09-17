@@ -5,8 +5,8 @@
  * content based on marker properties (title, snippet, category).
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { MarkerOptions, LatLng, Marker, InfoWindowAdapter, createInfoWindowAdapter } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { MarkerOptions, LatLng, Marker, InfoWindowAdapter, createInfoWindowAdapter } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 import { UIContext, ComponentContent } from '@kit.ArkUI';
 

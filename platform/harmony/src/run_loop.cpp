@@ -28,7 +28,7 @@
 #include <thread>
 
 // Use platform logger
-#include "../maplibre_harmony/src/main/cpp/utils/logger.h"
+#include "../maplibre-harmony/src/main/cpp/utils/logger.h"
 
 using mbgl::harmony::Logger;
 

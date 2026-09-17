@@ -11,7 +11,7 @@ import {
   MapSnapshotter,
   SnapshotOptions,
   SnapshotOptionsBuilder
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 
 const TAG = 'SnapshotTest';

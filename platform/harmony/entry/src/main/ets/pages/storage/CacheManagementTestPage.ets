@@ -6,7 +6,7 @@
  * maximum ambient cache size.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, OfflineManager } from 'maplibre_harmony';
+import { MapView, MapLibreMap, OfflineManager } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
 import { common } from '@kit.AbilityKit';
 

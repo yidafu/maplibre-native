@@ -5,8 +5,8 @@
  * and the lifecycle methods (onStart, onStop, onDestroy).
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

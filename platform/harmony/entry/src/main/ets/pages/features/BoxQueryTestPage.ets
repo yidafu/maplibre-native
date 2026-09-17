@@ -5,9 +5,9 @@
  * rectangular area on the screen.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, showToast } from '../common/TestUtils';
-import type { IFeature } from 'maplibre_harmony';
+import type { IFeature } from 'maplibre-harmony';
 
 interface Quadrant {
   name: string;

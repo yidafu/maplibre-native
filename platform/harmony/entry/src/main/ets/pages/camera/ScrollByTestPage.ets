@@ -2,7 +2,7 @@
  * ScrollByTestPage - Pan the map by pixel offset.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { showToast } from '../common/TestUtils';
 
 @Entry

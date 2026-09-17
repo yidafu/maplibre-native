@@ -101,7 +101,7 @@ check_build_output() {
     cd /Users/yidafu/github/maplibre-native/platform/harmony
     
     print_test "HAR 文件"
-    HAR_FILE="maplibre_harmony/build/default/outputs/default/maplibre_harmony.har"
+    HAR_FILE="maplibre-harmony/build/default/outputs/default/maplibre_harmony.har"
     if [ -f "$HAR_FILE" ]; then
         HAR_SIZE=$(du -h "$HAR_FILE" | cut -f1)
         record_test "HAR 文件存在" "PASS" "文件大小: $HAR_SIZE"
@@ -111,7 +111,7 @@ check_build_output() {
     fi
     
     print_test ".so 文件"
-    SO_FILE=$(find maplibre_harmony/.cxx -name "libmaplibre_harmony.so" 2>/dev/null | head -1)
+    SO_FILE=$(find maplibre-harmony/.cxx -name "libmaplibre.so" 2>/dev/null | head -1)
     if [ -n "$SO_FILE" ]; then
         SO_SIZE=$(du -h "$SO_FILE" | cut -f1)
         record_test ".so 文件存在" "PASS" "文件大小: $SO_SIZE"
@@ -134,7 +134,7 @@ check_build_output() {
 check_source_code() {
     print_header "检查源代码"
     
-    cd /Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony/src/main/cpp
+    cd /Users/yidafu/github/maplibre-native/platform/harmony/maplibre-harmony/src/main/cpp
     
     print_test "核心文件存在"
     

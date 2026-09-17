@@ -5,7 +5,7 @@
  * allowing the hypium-based ohosTest suites to interact with the
  * native map instance for automated testing.
  */
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 import { TestMapAccessor } from '../common/TestMapAccessor';
 
 @Entry

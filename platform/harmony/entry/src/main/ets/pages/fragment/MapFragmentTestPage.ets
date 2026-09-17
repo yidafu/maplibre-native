@@ -5,7 +5,7 @@
  * fragment-style navigation with show/hide toggles.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, MarkerOptions, LatLng } from 'maplibre_harmony';
+import { MapView, MapLibreMap, MarkerOptions, LatLng } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 @Entry

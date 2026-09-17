@@ -5,7 +5,7 @@
  * transactions. Each "stack entry" shows a different geographic location.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng, CameraPosition } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng, CameraPosition } from 'maplibre-harmony';
 import { DEFAULT_MAP_CONFIG, TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 interface StackEntry {

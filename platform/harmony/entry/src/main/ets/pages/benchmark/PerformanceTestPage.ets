@@ -9,7 +9,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, MapDebugOptions, RenderingStats,
   OnDidFinishRenderingFrameWithStatsListener
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { showToast, TEST_LOCATIONS } from '../common/TestUtils';
 
 @Entry

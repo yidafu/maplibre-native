@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from '@ohos/hypium';
 
-// GeoJson is exported from maplibre_harmony (maps/index.ets)
+// GeoJson is exported from maplibre-harmony (maps/index.ets)
 import { GeoJson } from '../../../../main/ets/maps/geojson';
 import type {
   IPoint, ILineString, IPolygon, IFeature, IFeatureCollection

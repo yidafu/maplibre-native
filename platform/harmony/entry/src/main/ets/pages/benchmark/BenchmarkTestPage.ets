@@ -12,7 +12,7 @@
 import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, MarkerOptions, LatLng
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import { StyleLoadedListener } from '../../utils/ListenerFactories';
 import { showToast, TEST_LOCATIONS, delay } from '../common/TestUtils';
 

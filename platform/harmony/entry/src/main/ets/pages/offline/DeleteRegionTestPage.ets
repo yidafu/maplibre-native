@@ -4,8 +4,8 @@
  * Demonstrates listing all offline regions and deleting selected ones.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { OfflineManager, OfflineRegion } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { OfflineManager, OfflineRegion } from 'maplibre-harmony';
 import { common } from '@kit.AbilityKit';
 import { showToast } from '../common/TestUtils';
 

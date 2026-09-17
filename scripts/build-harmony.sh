@@ -1,6 +1,6 @@
 #!/bin/bash
 # Harmony 平台编译脚本
-# 用于编译 maplibre_harmony 模块
+# 用于编译 maplibre-harmony 模块
 
 set -e  # 遇到错误立即退出
 
@@ -60,7 +60,7 @@ check_environment() {
     print_success "Node 路径正确: $NODE_HOME"
 }
 
-MODULE_DIR="/Users/yidafu/github/maplibre-native/platform/harmony/maplibre_harmony"
+MODULE_DIR="/Users/yidafu/github/maplibre-native/platform/harmony/maplibre-harmony"
 PROFILE_FILE="$MODULE_DIR/build-profile.json5"
 
 # 读取 build-profile.json5 当前配置的后端
@@ -115,14 +115,14 @@ clean_build() {
     
     cd /Users/yidafu/github/maplibre-native/platform/harmony
     
-    if [ -d "maplibre_harmony/.cxx" ]; then
+    if [ -d "maplibre-harmony/.cxx" ]; then
         print_info "删除 .cxx 目录..."
-        rm -rf maplibre_harmony/.cxx
+        rm -rf maplibre-harmony/.cxx
     fi
     
-    if [ -d "maplibre_harmony/build" ]; then
+    if [ -d "maplibre-harmony/build" ]; then
         print_info "删除 build 目录..."
-        rm -rf maplibre_harmony/build
+        rm -rf maplibre-harmony/build
     fi
     
     if [ -d ".hvigor" ]; then
@@ -135,7 +135,7 @@ clean_build() {
 
 # 编译模块
 build_module() {
-    print_header "编译 maplibre_harmony 模块"
+    print_header "编译 maplibre-harmony 模块"
     
     cd /Users/yidafu/github/maplibre-native/platform/harmony
     
@@ -161,14 +161,14 @@ build_module() {
         # 显示输出文件，并按后端分离产物
         # 注意：hvigor 每次构建会清空 outputs 目录，因此分离产物存放在
         # dist/ 下以保留两种后端的构建结果
-        HAR_FILE="maplibre_harmony/build/default/outputs/default/maplibre_harmony.har"
+        HAR_FILE="maplibre-harmony/build/default/outputs/default/maplibre_harmony.har"
         if [ -f "$HAR_FILE" ]; then
             HAR_SIZE=$(du -h "$HAR_FILE" | cut -f1)
             print_success "HAR 文件: $HAR_FILE ($HAR_SIZE)"
 
             DIST_DIR="/Users/yidafu/github/maplibre-native/platform/harmony/dist"
             mkdir -p "$DIST_DIR"
-            BACKEND_HAR="$DIST_DIR/maplibre_harmony_${BACKEND}.har"
+            BACKEND_HAR="$DIST_DIR/maplibre-harmony_${BACKEND}.har"
             cp "$HAR_FILE" "$BACKEND_HAR"
             print_success "后端产物: $BACKEND_HAR ($(du -h "$BACKEND_HAR" | cut -f1))"
         fi
@@ -184,19 +184,19 @@ show_statistics() {
     
     cd /Users/yidafu/github/maplibre-native/platform/harmony
     
-    if [ -f "maplibre_harmony/build/default/outputs/default/maplibre_harmony.har" ]; then
-        HAR_FILE="maplibre_harmony/build/default/outputs/default/maplibre_harmony.har"
+    if [ -f "maplibre-harmony/build/default/outputs/default/maplibre_harmony.har" ]; then
+        HAR_FILE="maplibre-harmony/build/default/outputs/default/maplibre_harmony.har"
         HAR_SIZE=$(du -h "$HAR_FILE" | cut -f1)
         print_info "HAR 大小: $HAR_SIZE"
     fi
     
-    if [ -d "maplibre_harmony/.cxx" ]; then
-        SO_FILES=$(find maplibre_harmony/.cxx -name "*.so" 2>/dev/null | wc -l)
+    if [ -d "maplibre-harmony/.cxx" ]; then
+        SO_FILES=$(find maplibre-harmony/.cxx -name "*.so" 2>/dev/null | wc -l)
         print_info "生成的 .so 文件数: $SO_FILES"
         
         if [ $SO_FILES -gt 0 ]; then
             print_info "主要的 .so 文件:"
-            find maplibre_harmony/.cxx -name "*.so" 2>/dev/null | while read so_file; do
+            find maplibre-harmony/.cxx -name "*.so" 2>/dev/null | while read so_file; do
                 so_size=$(du -h "$so_file" | cut -f1)
                 so_name=$(basename "$so_file")
                 echo -e "  ${BLUE}→${NC} $so_name ($so_size)"
@@ -247,7 +247,7 @@ show_help() {
     echo "  --debug            使用 debug 模式编译（默认）"
     echo "  --release          使用 release 模式编译"
     echo "  --backend opengl   编译 OpenGL ES 后端（默认）"
-    echo "  --backend vulkan   编译 Vulkan 后端（编译期决定，产物分离为 maplibre_harmony_vulkan.har）"
+    echo "  --backend vulkan   编译 Vulkan 后端（编译期决定，产物分离为 maplibre-harmony_vulkan.har）"
     echo ""
     echo "示例:"
     echo "  $0 quick                        # 快速增量编译（debug, opengl）"

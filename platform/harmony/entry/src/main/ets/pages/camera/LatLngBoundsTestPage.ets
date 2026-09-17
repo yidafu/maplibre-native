@@ -4,7 +4,7 @@
  * Reference: Android LatLngBoundsActivity
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap, LatLng, LatLngBounds, CameraPosition, CameraState } from 'maplibre_harmony';
+import { MapView, MapLibreMap, LatLng, LatLngBounds, CameraPosition, CameraState } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast } from '../common/TestUtils';
 
 @Entry

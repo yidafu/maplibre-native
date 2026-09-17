@@ -5,10 +5,10 @@
  * and map movements in TRACKING mode.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
-import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
+import { LocationComponent, LocationComponentOptions, CameraMode, RenderMode } from 'maplibre-harmony';
 import { CameraTrackingChangedListener } from '../../utils/ListenerFactories';
-import { LatLng, CameraPosition } from 'maplibre_harmony';
+import { LatLng, CameraPosition } from 'maplibre-harmony';
 import { TEST_LOCATIONS, showToast, DEFAULT_MAP_CONFIG } from '../common/TestUtils';
 
 interface CameraModeInfo {

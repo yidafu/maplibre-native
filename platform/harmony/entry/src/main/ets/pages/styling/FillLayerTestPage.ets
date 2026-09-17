@@ -8,7 +8,7 @@ import { TestPageLayout } from '../common/TestPageLayout';
 import {
   MapView, MapLibreMap, GeoJsonSource, FillLayer,
   LatLng, GeoJson
-} from 'maplibre_harmony';
+} from 'maplibre-harmony';
 import type { JSONValue } from 'libmaplibre.so';
 import { DEFAULT_STYLE_URLS, showToast, randomColor } from '../common/TestUtils';
 

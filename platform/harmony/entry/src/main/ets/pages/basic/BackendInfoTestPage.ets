@@ -7,7 +7,7 @@
  * compare behaviour on device.
  */
 import { TestPageLayout } from '../common/TestPageLayout';
-import { MapView, MapLibreMap } from 'maplibre_harmony';
+import { MapView, MapLibreMap } from 'maplibre-harmony';
 
 @Entry
 @Component
