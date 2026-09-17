@@ -2,7 +2,8 @@ import maplibre from 'libmaplibre.so';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DOMAIN } from '../../constants/HiLogConstants';
 import {
-  NativeMapViewController
+  NativeMapViewController,
+  DEFAULT_STYLE_URL
 } from './NativeMapViewController';
 import { MapLibreMap } from '../MapLibreMap';
 import { MapLibreMapOptions } from '../MapLibreMapOptions';
@@ -65,7 +66,10 @@ export struct MapView {
   @State private isVisible: boolean = true;
   @State private isDestroyed: boolean = false;
   // Component properties
-  @Prop styleUrl: string;
+  // Local default is mandatory: an uninitialized @Prop is undefined when the
+  // parent omits it, and that undefined used to clobber the controller's
+  // default style (setStyleUrl then failed in native and the map stayed black).
+  @Prop styleUrl: string = DEFAULT_STYLE_URL;
   @Prop initialLatitude: number = 30.2741;
   @Prop initialLongitude: number = 120.1551;
   @Prop initialZoom: number = 6;
@@ -579,6 +583,13 @@ export struct MapView {
       })
         .width('100%')
         .height('100%')
+        // None here (call site) AND inside the overlay: the call-site layout
+        // attributes wrap the overlay in a full-screen __Common__ node, which
+        // is hit-testable by default and would swallow every touch meant for
+        // the XComponent below, killing all native map gestures. The overlay's
+        // own root Stack is None too (see NativeViewAnnotationOverlay.build).
+        // Annotation FrameNodes stay interactive via their own Default mode.
+        .hitTestBehavior(HitTestMode.None)
 
       // Declarative child rendering (Marker, Source, Layer, etc.)
       if (this.children) {

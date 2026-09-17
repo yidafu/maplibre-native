@@ -275,6 +275,12 @@ export struct NativeViewAnnotationOverlay {
     .width('100%')
     .height('100%')
     .clip(true)
-    .hitTestBehavior(HitTestMode.Transparent);
+    // HitTestMode.None: the full-screen container itself must NEVER be hit —
+    // otherwise it sits on top of the XComponent in the Stack and swallows
+    // every touch, killing all native map gestures (pan/pinch/rotate/tap).
+    // None keeps the container transparent to hits while annotation
+    // FrameNode children (HitTestMode.Default in the controller) stay
+    // interactive, so taps on an InfoWindow still don't fall through.
+    .hitTestBehavior(HitTestMode.None);
   }
 }

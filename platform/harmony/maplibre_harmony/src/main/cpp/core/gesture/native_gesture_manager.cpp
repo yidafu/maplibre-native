@@ -88,17 +88,27 @@ bool NativeGestureManager::initialize(ArkUI_NodeHandle node, mbgl::Map* map, flo
 
     // 5. Attach gestures to the XComponent node
     // Parallel group (Pan+Pinch+Rotate) at normal priority
-    gestureAPI_->addGestureToNode(node, parallelGroup_, NORMAL, NORMAL_GESTURE_MASK);
-    // Double-tap at higher priority (to avoid being consumed by tap)
-    gestureAPI_->addGestureToNode(node, doubleTapGesture_, PRIORITY, NORMAL_GESTURE_MASK);
-    // Tap at normal priority
-    gestureAPI_->addGestureToNode(node, tapGesture_, NORMAL, NORMAL_GESTURE_MASK);
-    // Long-press at normal priority
-    gestureAPI_->addGestureToNode(node, longPressGesture_, NORMAL, NORMAL_GESTURE_MASK);
-    // Tilt (2-finger vertical pan) at normal priority
-    gestureAPI_->addGestureToNode(node, tiltGesture_, NORMAL, NORMAL_GESTURE_MASK);
+    // NOTE: addGestureToNode returns an ArkUI_ErrorCode — log every result so
+    // a failed attach is observable (a silent failure here disables ALL map
+    // gestures while init still reports success).
+    const struct { const char* name; ArkUI_GestureRecognizer* gesture; ArkUI_GesturePriority priority; } attaches[] = {
+        {"parallelGroup", parallelGroup_, NORMAL},
+        {"doubleTap(PRIORITY)", doubleTapGesture_, PRIORITY},
+        {"tap", tapGesture_, NORMAL},
+        {"longPress", longPressGesture_, NORMAL},
+        {"tilt", tiltGesture_, NORMAL},
+    };
+    for (const auto& att : attaches) {
+        int32_t ec = gestureAPI_->addGestureToNode(node, att.gesture, att.priority, NORMAL_GESTURE_MASK);
+        if (ec != 0) {
+            Logger::error("NativeGestureManager", "addGestureToNode(%s) FAILED ec=%d", att.name, ec);
+        } else {
+            Logger::info("NativeGestureManager", "addGestureToNode(%s) ok", att.name);
+        }
+    }
 
-    Logger::info("NativeGestureManager", "Initialized successfully (pixelRatio=%.2f)", pixelRatio_);
+    Logger::info("NativeGestureManager", "Initialized successfully (pixelRatio=%.2f, node=%p, map=%p)",
+                 pixelRatio_, static_cast<const void*>(node), static_cast<const void*>(map));
     return true;
 }
 
