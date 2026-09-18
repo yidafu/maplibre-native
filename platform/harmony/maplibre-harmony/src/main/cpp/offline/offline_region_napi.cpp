@@ -35,6 +35,15 @@ std::shared_ptr<mbgl::harmony::ThreadSafeCallback> GetObserverMethodCallback(
         mbgl::harmony::ThreadSafeCallback::Create(env, fn, resource));
 }
 
+// Convert a caught exception pointer into the JS string payload delivered to an
+// offline-region completion callback.
+napi_value ErrorStringValue(napi_env env, std::exception_ptr error) {
+    const std::string message = mbgl::util::toString(error);
+    napi_value value = nullptr;
+    napi_create_string_utf8(env, message.c_str(), NAPI_AUTO_LENGTH, &value);
+    return value;
+}
+
 } // namespace
 
 // Static constructor reference initialization
@@ -65,6 +74,25 @@ OfflineRegionNAPI::~OfflineRegionNAPI() {
 void OfflineRegionNAPI::Destructor(napi_env env, void* nativeObject, void* /* finalize_hint */) {
     OfflineRegionNAPI* obj = static_cast<OfflineRegionNAPI*>(nativeObject);
     delete obj;
+}
+
+// Resolve `this` into the wrapped OfflineRegionNAPI, throwing the standard
+// "Invalid OfflineRegion instance" error when the wrapper, its region, or
+// (when `requireFileSource`) its file source is missing. Returns nullptr after
+// throwing, so every caller can simply `return nullptr;`.
+OfflineRegionNAPI* OfflineRegionNAPI::UnwrapThis(napi_env env, napi_callback_info info,
+                                                 bool requireFileSource) {
+    napi_value jsThis = nullptr;
+    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
+
+    OfflineRegionNAPI* obj = nullptr;
+    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
+
+    if (!obj || !obj->region_ || (requireFileSource && !obj->fileSource_)) {
+        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
+        return nullptr;
+    }
+    return obj;
 }
 
 // ========== NAPI Initialization ==========
@@ -152,7 +180,7 @@ napi_value OfflineRegionNAPI::New(napi_env env,
 napi_value OfflineRegionNAPI::Constructor(napi_env env, napi_callback_info info) {
     // This constructor should not be invoked directly from JS
     // Instances must be created via the New method
-    napi_value jsThis;
+    napi_value jsThis = nullptr;
     napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
     return jsThis;
 }
@@ -160,16 +188,8 @@ napi_value OfflineRegionNAPI::Constructor(napi_env env, napi_callback_info info)
 // ========== Instance Methods ==========
 
 napi_value OfflineRegionNAPI::GetId(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, false);
+    if (!obj) return nullptr;
     
     napi_value result;
     napi_create_int64(env, obj->region_->getID(), &result);
@@ -177,31 +197,15 @@ napi_value OfflineRegionNAPI::GetId(napi_env env, napi_callback_info info) {
 }
 
 napi_value OfflineRegionNAPI::GetDefinition(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, false);
+    if (!obj) return nullptr;
     
     return OfflineRegionDefinitionNAPI::ToNapiObject(env, obj->region_->getDefinition());
 }
 
 napi_value OfflineRegionNAPI::GetMetadata(napi_env env, napi_callback_info info) {
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, false);
+    if (!obj) return nullptr;
     
     return MetadataToArrayBuffer(env, obj->region_->getMetadata());
 }
@@ -214,16 +218,8 @@ napi_value OfflineRegionNAPI::SetDownloadState(napi_env env, napi_callback_info 
     int32_t state = args.GetInt32(0, "state");
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_ || !obj->fileSource_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, true);
+    if (!obj) return nullptr;
     
     mbgl::OfflineRegionDownloadState downloadState;
     if (state == 0) {
@@ -250,16 +246,8 @@ napi_value OfflineRegionNAPI::SetObserver(napi_env env, napi_callback_info info)
     napi_value observer = args.GetObject(0, "observer");
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_ || !obj->fileSource_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, true);
+    if (!obj) return nullptr;
     
     // Store observer reference (kept only for JS-side lifetime management on the JS thread)
     if (obj->observerRef_ != nullptr) {
@@ -372,16 +360,8 @@ napi_value OfflineRegionNAPI::GetStatus(napi_env env, napi_callback_info info) {
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_ || !obj->fileSource_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, true);
+    if (!obj) return nullptr;
     
     // DatabaseFileSource invokes its completion on the database thread; marshal
     // back to the JS thread via ThreadSafeCallback instead of calling NAPI directly.
@@ -399,10 +379,7 @@ napi_value OfflineRegionNAPI::GetStatus(napi_env env, napi_callback_info info) {
                 if (status) {
                     return OfflineRegionStatusNAPI::ToNapiObject(env, *status);
                 }
-                std::string errorMsg = mbgl::util::toString(status.error());
-                napi_value errorValue;
-                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                return errorValue;
+                return ErrorStringValue(env, status.error());
             });
         }
     );
@@ -420,16 +397,8 @@ napi_value OfflineRegionNAPI::DeleteOrInvalidate(napi_env env, napi_callback_inf
     napi_value callback = args.GetFunction(0, "callback");
     if (args.HasError()) return nullptr;
 
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-
-    if (!obj || !obj->region_ || !obj->fileSource_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, true);
+    if (!obj) return nullptr;
 
     auto jsCallback = std::shared_ptr<mbgl::harmony::ThreadSafeCallback>(
         mbgl::harmony::ThreadSafeCallback::Create(
@@ -444,10 +413,7 @@ napi_value OfflineRegionNAPI::DeleteOrInvalidate(napi_env env, napi_callback_inf
     auto completion = [jsCallback](std::exception_ptr error) {
         jsCallback->CallBlocking([error](napi_env env) -> napi_value {
             if (error) {
-                std::string errorMsg = mbgl::util::toString(error);
-                napi_value errorValue;
-                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                return errorValue;
+                return ErrorStringValue(env, error);
             }
             napi_value undefined;
             napi_get_undefined(env, &undefined);
@@ -488,16 +454,8 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
     napi_value callback = args.GetFunction(1, "callback");
     if (args.HasError()) return nullptr;
     
-    napi_value jsThis;
-    napi_get_cb_info(env, info, nullptr, nullptr, &jsThis, nullptr);
-    
-    OfflineRegionNAPI* obj = nullptr;
-    napi_unwrap(env, jsThis, reinterpret_cast<void**>(&obj));
-    
-    if (!obj || !obj->region_ || !obj->fileSource_) {
-        napi_throw_error(env, nullptr, "Invalid OfflineRegion instance");
-        return nullptr;
-    }
+    OfflineRegionNAPI* obj = UnwrapThis(env, info, true);
+    if (!obj) return nullptr;
     
     mbgl::OfflineRegionMetadata metadata = ArrayBufferToMetadata(env, metadataValue);
     // ArrayBufferToMetadata throws into JS on invalid input; surface it instead
@@ -522,10 +480,7 @@ napi_value OfflineRegionNAPI::UpdateMetadata(napi_env env, napi_callback_info in
                 if (result) {
                     return OfflineRegionNAPI::MetadataToArrayBuffer(env, *result);
                 }
-                std::string errorMsg = mbgl::util::toString(result.error());
-                napi_value errorValue;
-                napi_create_string_utf8(env, errorMsg.c_str(), NAPI_AUTO_LENGTH, &errorValue);
-                return errorValue;
+                return ErrorStringValue(env, result.error());
             });
         }
     );

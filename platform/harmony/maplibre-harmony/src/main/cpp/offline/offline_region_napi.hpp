@@ -51,6 +51,12 @@ private:
     // Shared body of delete()/invalidate(); `invalidate` selects the
     // invalidateOfflineRegion call and its thread-safe callback resource name.
     static napi_value DeleteOrInvalidate(napi_env env, napi_callback_info info, bool invalidate);
+
+    // Resolve `this` into the wrapped instance and validate it, throwing
+    // "Invalid OfflineRegion instance" (and returning nullptr) on failure.
+    // `requireFileSource` adds the fileSource_ check used by DB-touching calls.
+    static OfflineRegionNAPI* UnwrapThis(napi_env env, napi_callback_info info,
+                                         bool requireFileSource);
     
     std::shared_ptr<mbgl::DatabaseFileSource> fileSource_;
     std::unique_ptr<mbgl::OfflineRegion> region_;
