@@ -1,6 +1,7 @@
 #include "util.hpp"
 #include "utils/logger.h"
 #include <cstring>
+#include <optional>
 
 using mbgl::harmony::Logger;
 
@@ -8,190 +9,134 @@ namespace mbgl {
 namespace harmony {
 namespace geojson {
 
-std::vector<double> NapiArrayToDoubleVector(napi_env env, napi_value array) {
-    std::vector<double> result;
-    
+namespace {
+
+// Walk a JS array and collect one converted value per element. Returns an empty
+// vector when `array` is not a JS array. `convert` returns std::nullopt for
+// elements that must be skipped (e.g. malformed coordinates).
+template <typename T, typename Convert>
+std::vector<T> MapNapiArray(napi_env env, napi_value array, Convert&& convert) {
+    std::vector<T> result;
     if (!IsArray(env, array)) {
         return result;
     }
-    
+
     uint32_t length = 0;
     napi_get_array_length(env, array, &length);
     result.reserve(length);
-    
+
     for (uint32_t i = 0; i < length; i++) {
-        napi_value element;
+        napi_value element = nullptr;
         napi_get_element(env, array, i, &element);
-        
+        if (auto converted = convert(element)) {
+            result.push_back(std::move(*converted));
+        }
+    }
+
+    return result;
+}
+
+// Build a JS array holding `convert` applied to every element of `vec`.
+template <typename T, typename Convert>
+napi_value MapVectorToNapiArray(napi_env env, const std::vector<T>& vec, Convert&& convert) {
+    napi_value array = nullptr;
+    napi_create_array_with_length(env, vec.size(), &array);
+
+    for (size_t i = 0; i < vec.size(); i++) {
+        napi_set_element(env, array, i, convert(vec[i]));
+    }
+
+    return array;
+}
+
+} // namespace
+
+std::vector<double> NapiArrayToDoubleVector(napi_env env, napi_value array) {
+    return MapNapiArray<double>(env, array, [env](napi_value element) -> std::optional<double> {
         double value = 0.0;
         napi_get_value_double(env, element, &value);
-        result.push_back(value);
-    }
-    
-    return result;
+        return value;
+    });
 }
 
 std::vector<mbgl::Point<double>> NapiArrayToPointVector(napi_env env, napi_value array) {
-    std::vector<mbgl::Point<double>> result;
-    
-    if (!IsArray(env, array)) {
-        return result;
-    }
-    
-    uint32_t length = 0;
-    napi_get_array_length(env, array, &length);
-    result.reserve(length);
-    
-    for (uint32_t i = 0; i < length; i++) {
-        napi_value element;
-        napi_get_element(env, array, i, &element);
-        
-        // Each element should be a [lng, lat] array
-        auto coords = NapiArrayToDoubleVector(env, element);
-        if (coords.size() >= 2) {
-            result.push_back(mbgl::Point<double>{coords[0], coords[1]});
-        }
-    }
-    
-    return result;
+    return MapNapiArray<mbgl::Point<double>>(
+        env, array, [env](napi_value element) -> std::optional<mbgl::Point<double>> {
+            // Each element should be a [lng, lat] array
+            auto coords = NapiArrayToDoubleVector(env, element);
+            if (coords.size() >= 2) {
+                return mbgl::Point<double>{coords[0], coords[1]};
+            }
+            return std::nullopt;
+        });
 }
 
 std::vector<mbgl::LineString<double>> NapiArrayToLineStringVector(napi_env env, napi_value array) {
-    std::vector<mbgl::LineString<double>> result;
-    
-    if (!IsArray(env, array)) {
-        return result;
-    }
-    
-    uint32_t length = 0;
-    napi_get_array_length(env, array, &length);
-    result.reserve(length);
-    
-    for (uint32_t i = 0; i < length; i++) {
-        napi_value element;
-        napi_get_element(env, array, i, &element);
-        
-        // Each element is a coordinate array
-        result.push_back(NapiArrayToPointVector(env, element));
-    }
-    
-    return result;
+    return MapNapiArray<mbgl::LineString<double>>(
+        env, array, [env](napi_value element) -> std::optional<mbgl::LineString<double>> {
+            // Each element is a coordinate array
+            return NapiArrayToPointVector(env, element);
+        });
 }
 
 std::vector<mbgl::LinearRing<double>> NapiArrayToLinearRingVector(napi_env env, napi_value array) {
-    std::vector<mbgl::LinearRing<double>> result;
-    
-    if (!IsArray(env, array)) {
-        return result;
-    }
-    
-    uint32_t length = 0;
-    napi_get_array_length(env, array, &length);
-    result.reserve(length);
-    
-    for (uint32_t i = 0; i < length; i++) {
-        napi_value element;
-        napi_get_element(env, array, i, &element);
-        
-        // Each element is a coordinate array (LinearRing is a vector<Point>)
-        mbgl::LinearRing<double> ring = NapiArrayToPointVector(env, element);
-        result.push_back(std::move(ring));
-    }
-    
-    return result;
+    return MapNapiArray<mbgl::LinearRing<double>>(
+        env, array, [env](napi_value element) -> std::optional<mbgl::LinearRing<double>> {
+            // Each element is a coordinate array (LinearRing is a vector<Point>)
+            return NapiArrayToPointVector(env, element);
+        });
 }
 
 std::vector<mbgl::Polygon<double>> NapiArrayToPolygonVector(napi_env env, napi_value array) {
-    std::vector<mbgl::Polygon<double>> result;
-    
-    if (!IsArray(env, array)) {
-        return result;
-    }
-    
-    uint32_t length = 0;
-    napi_get_array_length(env, array, &length);
-    result.reserve(length);
-    
-    for (uint32_t i = 0; i < length; i++) {
-        napi_value element;
-        napi_get_element(env, array, i, &element);
-        
-        // Each element is a LinearRing array (Polygon is a vector<LinearRing>)
-        result.push_back(NapiArrayToLinearRingVector(env, element));
-    }
-    
-    return result;
+    return MapNapiArray<mbgl::Polygon<double>>(
+        env, array, [env](napi_value element) -> std::optional<mbgl::Polygon<double>> {
+            // Each element is a LinearRing array (Polygon is a vector<LinearRing>)
+            return NapiArrayToLinearRingVector(env, element);
+        });
 }
 
 napi_value DoubleVectorToNapiArray(napi_env env, const std::vector<double>& vec) {
-    napi_value array;
-    napi_create_array_with_length(env, vec.size(), &array);
-    
-    for (size_t i = 0; i < vec.size(); i++) {
-        napi_value element;
-        napi_create_double(env, vec[i], &element);
-        napi_set_element(env, array, i, element);
-    }
-    
-    return array;
+    return MapVectorToNapiArray(env, vec, [env](double value) {
+        napi_value element = nullptr;
+        napi_create_double(env, value, &element);
+        return element;
+    });
 }
 
 napi_value PointVectorToNapiArray(napi_env env, const std::vector<mbgl::Point<double>>& points) {
-    napi_value array;
-    napi_create_array_with_length(env, points.size(), &array);
-    
-    for (size_t i = 0; i < points.size(); i++) {
-        napi_value coordArray;
+    return MapVectorToNapiArray(env, points, [env](const mbgl::Point<double>& point) {
+        napi_value coordArray = nullptr;
         napi_create_array_with_length(env, 2, &coordArray);
-        
-        napi_value lng, lat;
-        napi_create_double(env, points[i].x, &lng);
-        napi_create_double(env, points[i].y, &lat);
-        
+
+        napi_value lng = nullptr;
+        napi_value lat = nullptr;
+        napi_create_double(env, point.x, &lng);
+        napi_create_double(env, point.y, &lat);
+
         napi_set_element(env, coordArray, 0, lng);
         napi_set_element(env, coordArray, 1, lat);
-        napi_set_element(env, array, i, coordArray);
-    }
-    
-    return array;
+        return coordArray;
+    });
 }
 
 napi_value LineStringVectorToNapiArray(napi_env env, const std::vector<mbgl::LineString<double>>& lineStrings) {
-    napi_value array;
-    napi_create_array_with_length(env, lineStrings.size(), &array);
-    
-    for (size_t i = 0; i < lineStrings.size(); i++) {
-        napi_value lineArray = PointVectorToNapiArray(env, lineStrings[i]);
-        napi_set_element(env, array, i, lineArray);
-    }
-    
-    return array;
+    return MapVectorToNapiArray(env, lineStrings, [env](const mbgl::LineString<double>& lineString) {
+        return PointVectorToNapiArray(env, lineString);
+    });
 }
 
 napi_value LinearRingVectorToNapiArray(napi_env env, const std::vector<mbgl::LinearRing<double>>& rings) {
-    napi_value array;
-    napi_create_array_with_length(env, rings.size(), &array);
-    
-    for (size_t i = 0; i < rings.size(); i++) {
+    return MapVectorToNapiArray(env, rings, [env](const mbgl::LinearRing<double>& ring) {
         // LinearRing is essentially a vector<Point>, same as LineString
-        napi_value ringArray = PointVectorToNapiArray(env, rings[i]);
-        napi_set_element(env, array, i, ringArray);
-    }
-    
-    return array;
+        return PointVectorToNapiArray(env, ring);
+    });
 }
 
 napi_value PolygonVectorToNapiArray(napi_env env, const std::vector<mbgl::Polygon<double>>& polygons) {
-    napi_value array;
-    napi_create_array_with_length(env, polygons.size(), &array);
-    
-    for (size_t i = 0; i < polygons.size(); i++) {
+    return MapVectorToNapiArray(env, polygons, [env](const mbgl::Polygon<double>& polygon) {
         // Polygon is a vector<LinearRing>
-        napi_value polyArray = LinearRingVectorToNapiArray(env, polygons[i]);
-        napi_set_element(env, array, i, polyArray);
-    }
-    
-    return array;
+        return LinearRingVectorToNapiArray(env, polygon);
+    });
 }
 
 // MbglValueToNapiValue / NapiValueToMbglValue / PropertyMapToNapiObject /
